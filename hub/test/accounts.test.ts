@@ -142,15 +142,37 @@ for (const harness of ['codex', 'opencode']) test(`${harness} relaunch and hub r
   assert.equal(p.account, account);
   await writeFile(join(f.root, '.cland', 'roles.toml'), '[reviewer.launch]\nharness = "codex"\naccount = "codex-a"\n');
   await writeFile(f.registry, `[accounts.${account}]\nharness = "${harness}"\n${harness === 'codex' ? 'home' : 'data_home'} = ${JSON.stringify(join(f.root, 'codex-a'))}\n`);
-  // Native relaunch must not re-resolve the edited name or role.
-  const resumed = await f.ui.request({ type: 'session.resume', session: p.name, relaunch: true }, 30000);
-  assert.equal(resumed.ok, true, resumed.error);
-  const after = (resumed.value as { found: boolean; process: HarnessProcessView }).process;
-  assert.equal((resumed.value as { found: boolean }).found, true);
-  assert.equal(after.account, account);
-  assert.equal(after.harnessSessionId, p.harnessSessionId);
-  assert.notEqual(after.pid, p.pid);
-  assert.equal((await f.servers(harness)).find(s => s.pid === after.pid)?.env[variable], join(f.root, savedDir));
+  const journal = async () => {
+    await flushProjectLogs(t, f.root);
+    return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8'));
+  };
+  await eventually('initial spoke connected before relaunch', async () => {
+    const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+    return status.sessions.find(session => session.sessionId === p.sessionId && session.name === p.name);
+  });
+  const beforeRelaunch = (await journal()).length;
+  // Arm before relaunch. A replacement can join the retiring connection, keeping
+  // its connectedAt; both hello and replaced acknowledge the new transport.
+  const replacementConnected = eventually('replacement spoke accepted before restart', async () => (await journal()).slice(beforeRelaunch)
+    .map(line => JSON.parse(line) as { event: string; name?: string; sessionId?: string })
+    .find(row => (row.event === 'hello' || row.event === 'replaced') && row.sessionId === p.sessionId && row.name === p.name));
+  void replacementConnected.catch(() => {});
+  let after: HarnessProcessView;
+  try {
+    // Native relaunch must not re-resolve the edited name or role.
+    const resumed = await f.ui.request({ type: 'session.resume', session: p.name, relaunch: true }, 30000);
+    assert.equal(resumed.ok, true, resumed.error);
+    after = (resumed.value as { found: boolean; process: HarnessProcessView }).process;
+    assert.equal((resumed.value as { found: boolean }).found, true);
+    assert.equal(after.account, account);
+    assert.equal(after.harnessSessionId, p.harnessSessionId);
+    assert.notEqual(after.pid, p.pid);
+    assert.equal((await f.servers(harness)).find(s => s.pid === after.pid)?.env[variable], join(f.root, savedDir));
+    assert.equal((await replacementConnected).sessionId, p.sessionId);
+  } finally {
+    // A failed request/assertion must drain this reader before fixture teardown.
+    await replacementConnected.catch(() => {});
+  }
   await f.stop();
   const { discovery } = await projectHub(t, f.root, f.env);
   const ui = await connectUi(t, discovery);
@@ -169,10 +191,6 @@ for (const harness of ['codex', 'opencode']) test(`${harness} relaunch and hub r
     const status = (await ui.request({ type: 'hub.status' })).value as HubStatus;
     return status.sessions.find(session => session.sessionId === p.sessionId && session.name === p.name);
   });
-  const journal = async () => {
-    await flushProjectLogs(t, f.root);
-    return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8'));
-  };
   const beforeStop = (await journal()).length;
   const disconnected = eventually('stopped spoke disconnect journalled', async () => (await journal()).slice(beforeStop)
     .map(line => JSON.parse(line) as { event: string; name?: string })

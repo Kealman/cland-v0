@@ -21,3 +21,20 @@ Fresh resume follows a new durable `bye` record for that name. Native stop alone
 proves neither socket disconnect nor release of its name reservation; do not
 weaken the reservation or replace this receipt with an elapsed delay. The
 prefix excludes disconnects from the earlier relaunch and hub lifetime.
+
+Before relaunch in either generated saved-account relaunch/restart case, observe
+the initial connection and flush the journal prefix. Arm an `eventually` reader
+for a new `hello` or `replaced` receipt with the saved session identity before
+triggering relaunch, then await it before stopping the hub. Join that reader in
+a `finally` enclosing the resume request and every intervening assertion, so an
+earlier setup failure cannot leave journal flushes running through fixture teardown. Both receipts prove
+replacement transport acceptance: a joined spoke keeps the old connection's
+`connectedAt`, so a presence row or a timestamp comparison alone is insufficient.
+Native resume acknowledges the thread before the replacement MCP spoke initializes;
+stopping immediately can remove discovery during that initialization and test
+first discovery instead of reconnection. Keep the subsequent recovered-spoke and
+durable `bye` waits. Setup waits retain the shared `testWaitMs()` budget.
+For this ordering regression, run the Codex case alone five times on macOS and
+five times on Linux (`docker run --init --network none` with fake harnesses).
+Record every producer's `close(code, signal)` and spawn error; a null code, signal
+or error is incomplete/failing evidence even when a passing TAP summary exists.
