@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-10T20:55:02.899Z
+updated: 2026-11-11T12:52:07.761Z
 ---
 
 ## Summary
@@ -36,3 +36,7 @@ A run of `hub/test/host-create-ready.test.ts` (12/12 pass, macOS, 2026-11-10 18:
 ### coord · 2026-11-10T20:55:02.899Z
 
 More evidence (qa-678, E-1535 stage-2 QA at 121ec8bef, 2026-11-10 20:54Z): 21 new dead `/private/tmp/cland-h-*` directories across native rows 60 and 64–73, each holding agent.sock, ctl.sock and git.sock or empty, with no open PID. The producer is `records.ts` `hostPaths` (lines 66–74), reached through `createHost` from `host-create-fixture.ts` and from `host-provision-gate.test.ts` (`tempProject(t,'pg-','/tmp')`); the fixtures' own roots are removed. C1 should place `hostPaths`' socket directory under the caller's scratch root, or register its disposal at allocation.
+
+### coord · 2026-11-11T12:52:07.761Z
+
+Further observation, 2026-11-11 12:52Z: impl-1810's T-1810 native slot (host-restart, host-destroy-native, host-stop at e55f4838b) left four more `cland-h-*` directories in /private/tmp after joined shutdown (A-18704, /private/tmp names 21093 → 21100, including three declared log captures). os.tmpdir() sets were equal (9876). Each native lane adds a few per slot; stage-3 QA attributed 24. Worth a fix before the v0.4 release run, whose native runs will add many more.
