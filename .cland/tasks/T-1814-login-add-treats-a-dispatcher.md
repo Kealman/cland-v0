@@ -3,17 +3,19 @@ id: T-1814
 kind: task
 title: login add treats a dispatcher-synthesized sign-in completion as a close receipt and unmounts before the CLI's SSH has closed
 state: open
-status: backlog
+status: planned
 size: S
+criterion_seq: 4
 labels:
   - needs-triage
 assignee: null
-parent: C-325
-blocked_by: []
+parent: E-1535
+blocked_by:
+  - T-1791
 topic: null
 branch: null
 created: 2026-11-11T16:36:28.908Z
-updated: 2026-11-11T16:36:28.908Z
+updated: 2026-11-11T18:39:48.295Z
 ---
 
 ## Summary
@@ -29,3 +31,4 @@ Distinguish the CLI's own completion (sent on its pinned connection only after i
 - [ ] C1. A peer close mid-add on a fake host leaves the disk mounted and attached, and records the interrupted add with its host (test).
 - [ ] C2. A graceful hub stop mid-add does the same (test).
 - [ ] C3. The CLI's own post-close completion keeps today's success and failure paths, and an exact-machine deletion receipt settles an interrupted add (test).
+- [ ] C4. A "Create one" card sign-in whose run ends without the agent's close receipt is recovered by the same owner as the CLI add: interrupted with its exact machine captured, disk retained until that machine's deletion receipt or the owner's own close (test).

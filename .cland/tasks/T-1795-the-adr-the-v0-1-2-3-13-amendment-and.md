@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1477
 branch: t/T-1795-the-adr-the-v0-1-2-3-13-amendment-and
 created: 2026-11-09T12:44:13.008Z
-updated: 2026-11-11T16:20:25.408Z
+updated: 2026-11-11T18:09:50.360Z
 ---
 
 ## Summary
@@ -37,6 +37,7 @@ Three documents, with no existing paragraph rewritten:
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-3 · 2026-11-11T14:13:21.749Z · commit 50bb55fe6f9c035cec6c83060ab717c8af823ccb
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-4 · 2026-11-11T14:59:58.342Z · commit 7cdaef877eb12e0212da0059de1bb131233a473d
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-5 · 2026-11-11T16:20:25.408Z · commit acfa3d7f6ff8a45df2334b33a0917c060cd757fe
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-6 · 2026-11-11T18:09:50.359Z · commit cc47bce80c424124d78c40fdaa0310cd240f17da
 - [x] C2. Spec v0.1.2 §3.13 carries an appended, dated amendment naming logins on hosts and linking the ADR, with no existing paragraph changed.
   - done: impl-1795 · 2026-11-11T09:08:19.464Z
   - verified: rev-35 [reviewer] · run rev-35-1795-source-1 · 2026-11-11T09:14:25.420Z · commit 478f0a97988eed61c1cb5b1c71306ac143d86681
@@ -44,6 +45,7 @@ Three documents, with no existing paragraph rewritten:
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-3 · 2026-11-11T14:13:21.749Z · commit 50bb55fe6f9c035cec6c83060ab717c8af823ccb
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-4 · 2026-11-11T14:59:58.343Z · commit 7cdaef877eb12e0212da0059de1bb131233a473d
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-5 · 2026-11-11T16:20:25.408Z · commit acfa3d7f6ff8a45df2334b33a0917c060cd757fe
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-6 · 2026-11-11T18:09:50.360Z · commit cc47bce80c424124d78c40fdaa0310cd240f17da
 - [ ] C3. `docs/hub/logins.md` exists and covers login states, binding, release, snapshots, the key store, the login cards and reconciliation.
   - failed: rev-35 [reviewer] · 2026-11-11T12:28:38.293Z · note Current partial as-built notes retain a false startup ownership attribution for pending bindings; remaining planned stage-4 coverage is separately intentional.
 - [x] C4. The closed-item wording lint passes on the three files (test).
@@ -164,5 +166,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-18800 current partial delta CLEAR: Standards0/Spec0. Coordinator97c89684 authorized T1792 landedee483c2a0 merge; inherited runtime/tests/docs/skills/wire byte-identical to rev37-reviewed efaba34f8. Task difference only3docs/164insertions/0deletions. Conflict resolution preserves prior task sections and imported removal paragraphs;24 new owner lines agree with same-store concurrency, claim/admission/shutdown, positive snapshot receipt/accounting recovery before unknown guard, atomic deleteStorage stamps/final store checks and claim-based card suppression (not reason-text authority). ADR/spec unchanged, C1/C2 refreshed. A18799 candidate lint narrative not original/final configured evidence; C4 unverified. C3 deliberately open forT1790/T1791/T1794, finalready/exact-head evidence outstanding. Clean worktree/read-only diff check; no Reviewer tests/native/browser/provider. Hold released; retain staged sequence.
+
+Criteria: C1 verified, C2 verified.
+
+### hub · 2026-11-11T18:07:30.409Z
+
+Merge-delta assessment (report-only)
+{"reviewed":"acfa3d7f6ff8a45df2334b33a0917c060cd757fe","head":"818a867ca5b4e7f11b49fedaff25f06d8090091a","dev":"e744bc339f09d092ec04e1d3e968b65ae07f8e94","mergeBase":"ee483c2a0210d2e0f333f51cfcdc768093ecdb30","mode":"report","rule":"conservative-runtime-coupling-v1","result":"overlapping","branchPaths":["docs/adr/0009-login-storage-boundary.md","docs/hub/logins.md","docs/spec/v0.1.2.md"],"devPaths":[".agents/skills/implement/CHANGES/T-1790-login-signin.md",".agents/skills/implement/SKILL.md",".cland/tasks/T-1790-cland-login-signin-in-place-and-the-one.md",".cland/tasks/T-1792-cland-login-remove.md",".cland/tasks/T-1795-the-adr-the-v0-1-2-3-13-amendment-and.md",".cland/tasks/T-1813-native-fake-host-end-to-end-dead-login.md",".cland/tasks/T-1814-login-add-treats-a-dispatcher.md","docs/agents/session-permissions.md","docs/agents/tests/hub-test-login-add-component.test.ts.md","docs/agents/tests/hub-test-login-list.test.ts.md","docs/agents/tests/hub-test-login-remove.test.ts.md","docs/agents/tests/hub-test-login-resignin-native.test.ts.md","docs/agents/tests/hub-test-login-signed-out.test.ts.md","docs/agents/tests/hub-test-login-signin-recovery.test.ts.md","docs/agents/tests/hub-test-login-signin.test.ts.md","docs/agents/tests/hub-test-login-snapshots.test.ts.md","docs/agents/tests/index.md","docs/hub/logins.md","hub/README.md","hub/src/adapters/sessions.ts","hub/src/cli/help.ts","hub/src/cli/login-terminal.ts","hub/src/cli/login.ts","hub/src/cli/usage/login.ts","hub/src/host/login-add.ts","hub/src/host/login-cards.ts","hub/src/host/login-release.ts","hub/src/host/login-signals.ts","hub/src/host/login-signin.ts","hub/src/host/login-snapshots.ts","hub/src/host/logins.ts","hub/src/host/provision-host.ts","hub/src/hub/daemon.ts","hub/src/hub/dispatch.ts","hub/src/hub/web-authority.ts","hub/src/protocol.ts","hub/test/durations.json","hub/test/fixtures/cli-usage/commands.json","hub/test/login-add-component.test.ts","hub/test/login-list.test.ts","hub/test/login-metadata-owners.ts","hub/test/login-release.test.ts","hub/test/login-remove.test.ts","hub/test/login-resignin-native.test.ts","hub/test/login-signed-out.test.ts","hub/test/login-signin-recovery.test.ts","hub/test/login-signin.test.ts","hub/test/login-snapshots.test.ts","hub/test/tiers.json","shared/wire/index.ts"],"overlap":["docs/hub/logins.md"],"dependency":{"status":"known","importers":[]},"patchIdCurrent":true}
+Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove behavioral independence.
+
+### rev-35 · 2026-11-11T18:09:50.360Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1795-delta-6
+commit: cc47bce80c424124d78c40fdaa0310cd240f17da
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18819 current partial delta CLEAR: Standards0/Spec0. Coordinator9b1ac986 authorized T1790 landed44a2775c9 single merge; inherited runtime/tests/sharedwire/skills/nvim/web/docs-agents byte-identical to reviewed3683b2f7b. Own commit adds26 EOF lines only; prior task/imported sections preserved. Dedicated preparePoolLogin/prepareExistingLoginSignIn, begin/finishSignIn, snapshotHostIdentity, indexed startup recovery and exact-machine deletion settlement/removal fence agree with landed implementation;3 case-guide links resolve. Against landed dev task nontracker diff only3docs/190insertions0deletions (ADR34+spec12+logins144), ADR/spec unchanged fromprior. C1/C2 refreshed. A18818 candidate static-lint narrative qualified,not original/final configured receipt; C4 unverified. C3 deliberately open forT1791/T1794, finalready/exacthead evidence outstanding. Clean fixed head/read-only review; no Reviewer tests/native/browser/provider. Hold released; retain staged sequence.
 
 Criteria: C1 verified, C2 verified.

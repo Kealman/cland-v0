@@ -16,7 +16,7 @@ follows:
 topic: topic-1451
 branch: null
 created: 2026-10-31T18:22:03.944Z
-updated: 2026-11-11T09:03:50.519Z
+updated: 2026-11-11T18:39:46.742Z
 ---
 
 ## Goal
@@ -135,7 +135,9 @@ stages:
     lanes:
       - - T-1789
         - T-1790
+        - T-1815
         - T-1791
+        - T-1814
         - T-1794
       - - T-1792
       - - T-1793
