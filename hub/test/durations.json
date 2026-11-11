@@ -150,9 +150,13 @@
       "A-18550",
       "A-18559",
       "A-18583",
-      "A-18585"
+      "A-18585",
+      "A-18608",
+      "A-18612",
+      "A-18615",
+      "A-18607"
     ],
-    "commit": "0254b5139292f1ba6b44dea2093573d3fe127510"
+    "commit": "08eb98f720b6e8f58961c438898d5eefbce516c4"
   },
   "budget": {
     "testSeconds": 5,
@@ -3949,6 +3953,10 @@
     "hub/test/login-wait.test.ts": {
       "seconds": 1.146033,
       "tests": 7
+    },
+    "hub/test/login-capacity-list.test.ts": {
+      "seconds": 1.075381,
+      "tests": 1
     }
   },
   "tests": {
@@ -11799,7 +11807,10 @@
     "hub/test/pool-scale.test.ts::current role harness change prevents obsolete create admission after held preparation": 0.27274,
     "hub/test/secrets.test.ts::auth store key starts the hub, lists only a fingerprint and rejects unknown auth names": 0.461808,
     "hub/test/secrets.test.ts::secret commands repair a malformed unused auth store key while startup refuses it": 0.412499,
-    "hub/test/waiting-launch.test.ts::login wait card adds one ask and cancellation frees the reserved name": 0.174938
+    "hub/test/waiting-launch.test.ts::login wait card adds one ask and cancellation frees the reserved name": 0.174938,
+    "hub/test/host-status.test.ts::login storage accrues in its recorded pool month only without reserving spend": 0.140023,
+    "hub/test/login-capacity-list.test.ts::capacity counts regional exclusive disks and unlimited shared and key logins": 1.075381,
+    "hub/test/login-selection.test.ts::status reads decode current storage only and bound harness work across retained history": 0.148061
   },
   "allow": {
     "hub/test/login-capacity.test.ts::capacity index bounds visits across same-region rejected rows and agrees with pending fences": {
