@@ -2,8 +2,8 @@
 id: T-1790
 kind: task
 title: "`cland login signin` in place, and the one-sign-in hint"
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1479
 branch: t/T-1790-cland-login-signin-in-place-and-the-one
 created: 2026-11-09T12:44:11.998Z
-updated: 2026-11-11T16:03:27.847Z
+updated: 2026-11-11T18:06:03.753Z
+closed: 2026-11-11T18:06:03.753Z
 ---
 
 ## Summary
@@ -29,16 +30,21 @@ T-1777's sign-in runner on the existing mount, with no new volume. A Codex sign-
 
 ## Acceptance criteria
 
-- [ ] C1. `cland login signin <name>` on a signed-out login runs the fake sign-in over `ssh -t` on the host holding it, with the same volume id and no volume created (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T15:24:42.780Z · note Existing renewal lacks captured binding/native-volume authority across awaits and leaves frozen CLI-help compatibility consumer unmigrated.
-- [ ] C2. The sign-in is followed by freeze, snapshot and thaw on that disk through the snapshot owner, and the login reads in-use while it keeps bindings or ready when unbound, with a new last sign-in (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T15:24:42.780Z · note Renewal freeze/snapshot bypasses shared LoginSnapshots work, permitting early thaw before held freeze settles; interrupted admission also lacks recovery.
-- [ ] C3. The sessions of that harness on the host keep running through the sign-in, and their next turn uses the renewed login (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T15:24:42.780Z · note Safe live renewal ownership is incomplete; approved representative OpenCode scope still requires the absent bound Codex dead-home renewal proof.
-- [ ] C4. A signed-out login bound nowhere is attached and mounted on a ready pool host for its sign-in, and is detached after it (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T15:24:42.780Z · note Existing-volume selection/attachment ownership and interrupted renewal cleanup/recovery remain incomplete.
-- [ ] C5. A second sign-out of one account within 24 h of hub-clock time adds the one-sign-in hint to the card, the Agents line and `cland login list`, and a sign-out 24 h or more after the first does not (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T15:24:42.780Z · note New retained hint-table work-budget proof and recovered-hint fixture hub/Store/root disposal are incomplete.
+- [x] C1. `cland login signin <name>` on a signed-out login runs the fake sign-in over `ssh -t` on the host holding it, with the same volume id and no volume created (test).
+  - done: impl-1790 · 2026-11-11T16:47:18.520Z
+  - verified: rev-35 [reviewer] · run rev-35-1790-final-1 · 2026-11-11T17:26:43.378Z · commit 3683b2f7b098e0a875b7ce8fd6f49eccd6b2eefa
+- [x] C2. The sign-in is followed by freeze, snapshot and thaw on that disk through the snapshot owner, and the login reads in-use while it keeps bindings or ready when unbound, with a new last sign-in (test).
+  - done: impl-1790 · 2026-11-11T16:47:18.661Z
+  - verified: rev-35 [reviewer] · run rev-35-1790-final-1 · 2026-11-11T17:26:43.378Z · commit 3683b2f7b098e0a875b7ce8fd6f49eccd6b2eefa
+- [x] C3. The sessions of that harness on the host keep running through the sign-in, and their next turn uses the renewed login (test).
+  - done: impl-1790 · 2026-11-11T16:47:18.923Z
+  - verified: rev-35 [reviewer] · run rev-35-1790-final-1 · 2026-11-11T17:26:43.378Z · commit 3683b2f7b098e0a875b7ce8fd6f49eccd6b2eefa
+- [x] C4. A signed-out login bound nowhere is attached and mounted on a ready pool host for its sign-in, and is detached after it (test).
+  - done: impl-1790 · 2026-11-11T16:47:19.057Z
+  - verified: rev-35 [reviewer] · run rev-35-1790-final-1 · 2026-11-11T17:26:43.378Z · commit 3683b2f7b098e0a875b7ce8fd6f49eccd6b2eefa
+- [x] C5. A second sign-out of one account within 24 h of hub-clock time adds the one-sign-in hint to the card, the Agents line and `cland login list`, and a sign-out 24 h or more after the first does not (test).
+  - done: impl-1790 · 2026-11-11T16:47:19.334Z
+  - verified: rev-35 [reviewer] · run rev-35-1790-final-1 · 2026-11-11T17:26:43.378Z · commit 3683b2f7b098e0a875b7ce8fd6f49eccd6b2eefa
 
 ## Blocked by
 
@@ -136,3 +142,66 @@ T3: nvim/test/ui.test.ts
 T2: nvim/test/vboard.test.ts
 T2: nvim/test/verification-queue.test.ts
 T2: nvim/test/verification-view.test.ts
+
+### impl-1790 · 2026-11-11T16:31:18.289Z
+
+Directed T-1792 integration consumer disposition: begin/finish now call LoginRecords.assertNotRemoving and assertSnapshotSettled, with native snapshot work retaining its own admission while running. Removed the temporary injected fence constructor seam; real remove/snapshot-admission regressions replace injected cases. beginRemove has the approved one shared assertNotSigningIn call before any claim/effect; actual fake-provider machine deletion then permits removal. LoginCards.withdrawRemoving is retained unchanged; hint/fence text remains separate. T-1792 administrative hostless markSignedOut transitions do not contribute to the operational repeated-death hint (new regression); native host-bound episodes still do. Snapshot identity has exactly three production callers: dispatch resolver capture, dispatch authorizeCleanup comparison, and preparePoolLogin renewal capture. The first two replace existing literals only. prepareExistingLoginSignIn requires captured Machine+identity; new sign-in deletion-receipt caller uses fenceLostLoginRelease with preserveRelease, matching freeze identity, no new release fence and no inferred success. Existing generic signed-out→creating transition callers remain binding-deleting; renewal alone uses beginSignIn/finishSignIn. Provider rate refusal follows Coordinator 500b1ffa: known not-sent leaves ready/in-use with pending/retryAt; only unknown native outcome retains creating. The shared LoginSnapshots timer owns retry. Work/tree evidence: directed merged uncommitted tree, local macOS Node24.21, no browser, 12 named T1/T2 files197/197 code0, hub typecheck code0; no native or Linux verification claimed yet.
+
+### impl-1790 · 2026-11-11T16:36:41.973Z
+
+Owner-loss contract sweep before correction: LoginSignIn production consumers are preparePoolLogin/prepareExistingLoginSignIn/prepareLoginSignIn and dispatcher peer-close, shutdown closers, before-plan-disconnect and connection-pinned login.signed-in completion. Injectable prepareLogin fixtures in login-add-component and runner fixtures in login-host-pin retain add behavior through optional interrupt fallback. Renewal adds interrupt owner loss; real CLI post-nativeClosed completion remains the same wire shape, as Coordinator18d3cb27 explicitly chose. Protocol/shared wire/CLI need no edit; older-wire list/completion controls stay. Tests reached explicitly include login-signin, login-signin-recovery, login-add-component, login-host-pin, login-terminal, login-resignin-native and existing directed native8; prior graph/tier dispositions remain. login add shares the synthetic-null gap but remains unchanged under Coordinator cec7ed39; Coordinator filed T-1814 (Bugs,S). Policy e516d138 overrides prior graceful-stop failure clearing: all owner loss without close receipt retains interrupted exact-machine fence; only connection-pinned native completion or machine deletion settles.
+
+### rev-35 · 2026-11-11T16:40:41.050Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1790-source-2
+commit: 85352c52df09c2583630b8a23da0ec63a4ac8050
+scope: full
+findings: [{"severity":"medium","text":"Standards rules9/12/25/26 and SpecC1–C4: peer-close and #loginClosers synthesize pending.complete(null), indistinguishable from a close-gated CLI receipt. Bound renewal deliberately performs no unmount/drain, then markSignedOut clears sign_in without proving the separate SSH signer has exited; a second signer may be admitted while the first still writes. Lead5bc54b41 confirms. Coordinator e516d138/cec7ed39 override graceful-stop clearing;18d3cb27 requires additive LoginSignIn.interrupt() for owner loss, pinned-connection post-child-close login.signed-in remains the receipt, no wire/CLI change. Invalidate pending/token and retain exact-machine interrupted fence, join already-admitted real completion without overriding its receipt, and add held-disconnect/shutdown/second-signer/wrong-or-late-connection controls. Login-add's analogous gap is explicitly separate T1814; leave its behavior unchanged.","file":"hub/src/hub/dispatch.ts","line":1467},{"severity":"medium","text":"Standards rules24/26 and SpecC2/C4: signIn validates a new admission but launch returns any prior work keyed only by login name. An older scheduled/manual snapshot held in resolve before native admission can coexist with a permitted queued-backup renewal. That older ready/in-use generation must reject after the row becomes creating; renewed terminal success inherits its rejection and never admits its own backup. Lead8378ab3a confirms no exclusion. Drain older-generation work, revalidate current durable admission, then admit/join only the matching renewal generation. Add an actual held prior-owner regression; metadata-only queued-backup tests do not cover this path.","file":"hub/src/host/login-snapshots.ts","line":149}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+A-18802 complete integrated source2 NOT CLEAR:2medium remaining. Original high freeze/thaw owner gap is fixed; indexed reads/work controls, captured episode/machine/volume checks, startup deletion fence, fixture owner, frozen help and bound Codex control appear addressed. Remaining1: peer loss/#loginClosers fabricate complete(null) and clear renewal token with no native-close receipt (lead5bc54b41); Coordinator e516d138/cec7ed39/18d3cb27 requires interrupt(), unchanged exact-connection CLI receipt/wire, conservative machine fence; add gap separateT1814. Remaining2: LoginSnapshots returns old name-only work to new renewal admission; old generation then rejects creating and strands renewed success (lead8378ab3a). Drain/revalidate and admit/join matching generation. Directed T1792 runtime matches efaba34f8; real guards and single approved beginRemove fence present. Rate refusal policy500b1ffa intentional. A18801 supporting precommit197/local/static qualified; A18795/96 prior native/catalog not current coverage. C1–C4failed, C5 remains unverified; no extra production findings. Clean fixed head/read-only review only. Hold released for correction and fresh committed source review before native8/verify; no provenance-only run.
+
+Criteria: C1 failed (Dispatcher owner loss can clear the bound renewal admission without the CLI native-close receipt and admit a concurrent signer.), C2 failed (New renewal can inherit an old queued snapshot generation's rejection rather than admit its own backup; owner-loss settlement remains unfenced.), C3 failed (Disconnect/shutdown can release renewal authority while the original SSH signer may still write to the live session's disk.), C4 failed (An old queued snapshot owner can strand successful unbound renewal in creating without admitting its own snapshot/completion.).
+
+### rev-35 · 2026-11-11T16:50:16.438Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1790-source-3
+commit: 3683b2f7b098e0a875b7ce8fd6f49eccd6b2eefa
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18804 source3 CLEAR: Standards0/Spec0. Both A18802 gaps resolved: renewal interrupt distinguishes receipt-less owner loss, invalidates pending entry/token and preserves exact-machine fence without native cleanup; accepted close-confirmed completion retains shared outcome. Add fallback stays T1814; wire/CLI unchanged per18d3cb27. Snapshot owner drains older generations, revalidates and admits/joins matching renewal work. Seven real-owner T2 receipt outcomes, T1 unbound no-cleanup and actual held-generation/duplicate/invalidation T2 controls source-aligned and cleanup prearmed/joined. Earlier A18789 corrections remain: shared freeze owner/identity/recovery, real removal guards, indexed work proofs, guarded Store disposal, frozen help and bound Codex home control. Current done marks all present; no run-dependent C1–C5 final marks yet. A18803 precommit68/113 supporting receipts and report-only diagnostics qualified; A18795/96 old native/catalog not current coverage. Clean fixed head/read-only diff check; no Reviewer experiments. Hold released; exact-head native8 then mode-free verify per Coordinator; final case/file/consumer reconciliation and runtime verdict still required, fullT3/T4/QA separate.
+
+### impl-1790 · 2026-11-11T16:53:12.336Z
+
+Reviewed-head native evidence: A-18805 original redacted producer captures at3683b2f7b098e0a875b7ce8fd6f49eccd6b2eefa after source3 clearance. macOS arm64 Node24.21 local,fakes only,browser none. All finite directed8 paths executed serially: login-resignin-native3,login-add1,login-write-back1,login-signed-out-native1,login-key-spawn4,host-create-ready12,host-destroy-native3,host-restart1 (all hub/test/*.test.ts),26/26 tests,zero failures/skips; all8 producer code0/signalnull close receipts. Complete before/after TMPDIR name sets unchanged,cland-h0→0,not a global /tmp claim. Owner-checked preservation lock released within15min; no concurrent test/verify. New native case samples4034.97ms boundCodex,3979.22ms unbound allharnesses,3761.90ms OpenCode nextturn; existing C-216 allowances apply,not Linux timing claims. Linux mode-free verify submitted after lock release,receipt pending. OtherT3 deferred to merge-batch coverage,T4 to stage/epic,QA after-stage. Earlier A-18795 native and A-18796 all49 catalog evidence remain earlier-head diagnostics/recording.
+
+### impl-1790 · 2026-11-11T17:22:20.629Z
+
+Final actual receipt reconciliation published after A-18807 verification and A-18808 current-head default49 recorder. Conservative prior/current∪unknown∪explicit union776 normalized paths (prior717,current graph717,unknown15 countedreached,explicit66),actual case/file facts separate. All675 current T1/T2/Web manifest paths have positive file+case receipts;6119 base cases/677 base files,zero negatives/skips. Separate47identities×5 load proof is235test+235file finishes,not extra base cases. Linux changedT3 renewal3cases and mapped inboxT4guard1basecase ran; otherT3/fullT4 deferred. Native8 local26/26 stays A-18805. Catalog49 map:40T2 ordinary current verification;6T3/3T4 ordinary current unexecuted/deferred per Coordinator77f18a15,but all49 now have current-head recording-only A-18808 (6057frames+liveattach,code0/signalnull,clean/no generateddiff). Incoming login.remove changed shared-wire/protocol since72,so conditional regeneration was performed; six named frame-builder files had no diff. PriorA18796 remains earlier-head recording-only. All at3683b2f7b098e0a875b7ce8fd6f49eccd6b2eefa,source unchanged. Droplet Linuxx64/Node24.21/Neovim0.12.5,ChromeHeadlessShell1248/ChromeForTesting156.0.8078.4;budget/ratchet/skipchecks reportmode. Lifetime1179s/cost$0.0819 are executor facts,not suitewalltime. Awaiting reviewer final same-head settlement;no additional test/suite requested.
+
+### rev-35 · 2026-11-11T17:26:43.378Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1790-final-1
+commit: 3683b2f7b098e0a875b7ce8fd6f49eccd6b2eefa
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18812 final CLEAR, Standards0/Spec0, C1–C5 verified at unchanged reviewed3683b2f7b. Independent A18807 audit:6119 base test/677 base file passes,235 separate load test+235 load-file passes (47×5),zero negative/skipped/cancelled;all675 manifest T1/T2/Web files have positive case+file receipts;3 Linux renewal native cases pass once; mappedT4 base only. A18805/06 eight serial Darwin native producers/26 named passes,each close0/signalnull,exact TMPDIR9878-name equality with scope/provenance limits retained. A18809 all776 conservative prior/current/unknown/explicit paths preserved,tiers checked,all exported event IDs/counts matched:525 Linux paths,7 additional local-native,228T3/16T4 ordinary deferred. A18808 current default49 catalog+liveattach code0/null,6057frames,recording-only;40T2 ordinary pass,6T3/3T4 ordinary deferred under77f18a15 after incoming wire login.remove triggered authorized rerun. C3 OpenCode representative+boundCodex own-home proof per82ab5bec;Codex/Claude native next turns T1813. Normalized verification tree independently matches; Linux executor/browser and Mac launcher/redactor/scan qualification retained. Report-only budgets/lint not clean-budget claim. FullT3/broaderT4/after-stageQA remain separate. Clean fixed head; no Reviewer experiments/source mutation. Hold released.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-11T18:06:03.753Z
+
+Merged 44a2775c9f7fb25fca92f9f528fca3b34dec495c onto dev.
