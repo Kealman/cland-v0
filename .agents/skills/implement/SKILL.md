@@ -326,7 +326,8 @@ positive mount/commit or full rollback receipt; shutdown joins binding work to
 native settlement or existing deadlines (abortable
 operations are T-1801). Fresh/cross-host spawns bind at their destination; normal
 native resume keeps its recorded binding.
-Host-stop release leaves pending bindings to startup reconciliation. Settled disk
+Host-stop release leaves pending bindings fenced for the binder's positive
+mount/commit or full rollback receipt. Settled disk
 bindings release in parallel through the shared destroy boundary before transport
 removal. Use the snapshot beginRelease/onReleased hooks and positive detach
 receipts; lost/gone hosts use the snapshot owner's hostLost release mode,

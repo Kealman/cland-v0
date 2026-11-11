@@ -24,6 +24,20 @@ receipt; this native case retains the final inventory count. Native spend proof
 requires the exact lease ledger entry, the fake provider's expected zero cost and
 a finite released timestamp.
 
+The deleted host's provision must durably read `destroyed` within the named
+`SETUP_MS = testWaitMs(60000)` setup bound before the lease and spend reads.
+Detached-login `ready` alone does not prove the release owner has settled the
+provision. The final `destroyed`, absent lease, settled spend, live host and
+watchdog assertions remain; an incomplete settlement times out and fails.
+A commit observer armed before restart records the gone provision's transitions
+across Store instances. After joining the final hub's release retries, the case
+asserts that `destroyed` was published and no transition left that terminal state.
+For T-1810 preservation, run the exact case alone in five fresh Node processes
+on macOS, serially under the Coordinator's native-slot policy. Linux evidence
+comes from the changed-T3 mode-free verification and merge-batch receipt. The
+local container diagnostic stopped at missing `ssh-keygen` before acquisition;
+it supplies no Linux behaviour evidence. No browser or real provider is required.
+
 T-1779 preservation: deleted/unreachable sessions must exit while volume inventory
 remains held or reports attached. The original destroy/restart final assertions
 stay; additional disk assertions observe eventual ready only after detached

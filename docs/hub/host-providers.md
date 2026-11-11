@@ -391,7 +391,9 @@ After both deletions are confirmed the provision record becomes `destroyed`.
 Records remain in `host list` as lifecycle history. If deletion cannot be
 confirmed, the record stays `destroying` with `deletion not confirmed`; its
 unconfirmed sessions stay fenced. A second destroy retries the removal and
-provider release. A repeated destroy of a destroyed record is idempotent. A restarted ambiguous
+provider release. A repeated destroy of a destroyed record retries any retained
+login cleanup without writing the provision or repeating machine release; it
+always preserves `destroyed`. A restarted ambiguous
 acquisition with no returned machine remains deletion-not-confirmed; absence of
 a machine id supplies no non-admission receipt.
 

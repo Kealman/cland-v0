@@ -145,7 +145,9 @@ rotation is refused while key files or rows exist. See
 
 Host stop/destroy and lifecycle teardown release settled disk logins before
 transport removal and provider deletion. Lost hosts wait for provider-confirmed
-detachment before reuse. See [login release](../docs/hub/logins.md#releasing-host-disks).
+detachment before reuse. Retained login cleanup on an already destroyed host
+preserves the terminal provision and settled spend while its release owner retries.
+See [login release](../docs/hub/logins.md#releasing-host-disks).
 
 Startup reconciles active login disks before pool scaling, retaining pending
 native ownership and using confirmed detached/deleted provider receipts. Missing

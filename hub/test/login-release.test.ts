@@ -123,6 +123,25 @@ function retryOwner(f:Awaited<ReturnType<typeof fixture>>,records=f.store.hosts)
  const owner=installLoginRelease(records,{clock:f.input.clock,retry:id=>destroyHost({...f.input,id,records}),host:()=>f.host,beginRelease:async()=>{},onReleased:()=>{},notice:text=>f.notices.push(text)});
  f.own(()=>owner.close());return owner;
 }
+test('destroyed host release retry settles disk without a provision write',async t=>{
+ const f=await fixture(t,1,false),records=f.store.hosts;
+ await f.provider.release(f.input.records.provisions.get(f.input.id)!.machine!);
+ records.revoke(f.input.id);
+ records.provisions.save({...records.provisions.get(f.input.id)!,state:'destroyed',release:'released',machineDeletionRead:'confirmed absent'});
+ const terminal=records.provisions.get(f.input.id),states:string[]=[],writes:string[]=[];
+ const save=records.provisions.save.bind(records.provisions);
+ t.mock.method(records.provisions,'save',(record:Parameters<typeof save>[0])=>{writes.push(record.state);return save(record);});
+ const owner=installLoginRelease(records,{clock:f.input.clock,retry:id=>destroyHost({...f.input,id}),host:()=>undefined,beginRelease:async()=>{states.push(records.provisions.get(f.input.id)!.state);},onReleased:()=>{states.push(records.provisions.get(f.input.id)!.state);},notice:()=>{}});
+ f.own(()=>owner.close());
+ await f.input.clock.advance(LOGIN_RELEASE_RETRY_MS);
+ await eventually('destroyed host retry released disk',()=>records.logins.get('login-0')?.state==='ready'?true:undefined,testWaitMs());
+ await owner.close();
+ assert.deepEqual(writes,[],'terminal provision receives no retry writes');
+ assert.ok(states.length>=2,'release callbacks ran');
+ assert.deepEqual([...new Set(states)],['destroyed'],'every release callback observes terminal destruction');
+ assert.deepEqual(records.provisions.get(f.input.id),terminal);
+ assert.deepEqual(records.logins.forHost(f.input.id),[]);
+});
 async function delayedDetach(t:test.TestContext){
  const f=await fixture(t);let attached=true,reads=0;
  const list=f.provider.listVolumes.bind(f.provider);
@@ -218,8 +237,10 @@ test('gone startup revokes and settles spend before installed owner reconciles d
  assert.equal(f.store.hosts.get(f.input.id)?.state,'revoked');assert.equal(f.store.hosts.provisions.get(f.input.id)?.state,'destroyed');assert.ok(f.store.hosts.provisions.get(f.input.id)?.machineDeletionRead);assert.equal(f.store.hosts.leases.get(f.input.id),null);assert.equal(f.store.hosts.logins.get(row.name)?.state,'in-use');
  const reopened=new Store(join(f.input.root,'hub.db'));f.own(()=>reopened.close());
  const scheduler=new LoginSnapshots({logins:reopened.hosts.logins,clock:f.input.clock,resolve:async()=>{throw Error('lost host resolution forbidden');}});f.own(()=>scheduler.close());
- const owner=installLoginRelease(reopened.hosts,{clock:f.input.clock,retry:id=>destroyHost({...f.input,id,records:reopened.hosts}),host:()=>undefined,beginRelease:(name,options)=>scheduler.beginRelease(name,options),onReleased:(name,receipt)=>scheduler.onReleased(name,receipt),notice:()=>{}});f.own(()=>owner.close());
- await f.input.clock.advance(LOGIN_RELEASE_RETRY_MS);await eventually('destroyed host attached inventory persisted incomplete',()=>{const provision=reopened.hosts.provisions.get(f.input.id);return reads>0&&provision?.state==='destroying'&&provision.release==='incomplete'?true:undefined;},testWaitMs());
+ let retryCompleted=false;
+ const owner=installLoginRelease(reopened.hosts,{clock:f.input.clock,retry:async id=>{try{return await destroyHost({...f.input,id,records:reopened.hosts});}finally{retryCompleted=true;}},host:()=>undefined,beginRelease:(name,options)=>scheduler.beginRelease(name,options),onReleased:(name,receipt)=>scheduler.onReleased(name,receipt),notice:()=>{}});f.own(()=>owner.close());
+ await f.input.clock.advance(LOGIN_RELEASE_RETRY_MS);await eventually('destroyed host attached inventory retry completed',()=>retryCompleted?true:undefined,testWaitMs());
+ assert.ok(reads>0);assert.equal(reopened.hosts.provisions.get(f.input.id)?.state,'destroyed');assert.equal(reopened.hosts.provisions.get(f.input.id)?.release,'released');
  assert.equal(reopened.hosts.logins.get(row.name)?.state,'in-use');detached=true;
  await f.input.clock.advance(2*LOGIN_RELEASE_RETRY_MS);await eventually('later detached inventory releases disk',()=>reopened.hosts.logins.get(row.name)?.state==='ready'?true:undefined,testWaitMs());
  const final=reopened.hosts.logins.get(row.name);assert.ok(final?.kind==='disk');assert.equal(final.backup?.releasing,false);assert.equal(final.backup?.freeze,undefined);

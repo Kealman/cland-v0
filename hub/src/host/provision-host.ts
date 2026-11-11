@@ -215,7 +215,18 @@ async function destroyHostOnce(o:{lost?:boolean;watchdogOptions?:import('../exec
  const initial=o.records.provisions.get(o.id);
  if(!initial)throw Error('unknown host');
  let record:ProvisionRecord=initial;
- if(record.state==='destroyed'&&!hasLoginReleaseObligation(o.records,o.id))return publicProvision(record);
+ if(record.state==='destroyed'){
+  // Machine deletion and spend are already settled. A retained disk obligation
+  // retries its own cleanup without reopening the terminal machine lifecycle.
+  if(record.machine&&hasLoginReleaseObligation(o.records,o.id)){
+   try {
+    const provider=o.provider??new HostProviderRegistry({env:o.env}).resolve(record);
+    const finish=await releaseHostLogins({records:o.records,id:record.id,root:o.root,provider,machine:record.machine,lost:true,clock:o.clock??realClock});
+    await finish();
+   }catch { /* The release owner retains and retries the login obligation. */ }
+  }
+  return publicProvision(record);
+ }
  record.state='destroying';record.reason='deletion not confirmed';o.records.provisions.save(record);
  try {
   const creation=creations.get(join(o.root,o.id));

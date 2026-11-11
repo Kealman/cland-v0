@@ -44,7 +44,15 @@ held volume reconciliation` and `gone startup revokes and settles spend before
 installed owner reconciles destroyed host disk`. They prove callback/deletion
 ordering with held inventory and early ownerless startup, followed by an installed
 scheduler/release owner at the same durable store. The latter waits on the
-persisted incomplete receipt before allowing a later detached read.
+completed retry receipt before allowing a later detached read; the provision
+remains `destroyed`/`released` while the disk binding stays retained.
+
+`destroyed host release retry settles disk without a provision write` seeds a
+confirmed destroyed machine with its retained disk, then advances the release
+owner's FakeClock timer. It checks zero provision saves, `destroyed` in every
+release callback, an unchanged terminal record and a removed binding after ready
+and owner close. Before the fix it records writes `destroying`, `destroying`,
+`destroyed`. The fake provider and recording Host require no native process.
 
 `dispatcher composition recovers a destroyed host disk from durable startup
 records` starts a real in-process projectHub around the retained revoked row.

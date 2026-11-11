@@ -21,6 +21,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { spendPath } from '../src/executor/droplet/spend.ts';
 import { mountedSettledLogin } from './settled-login-fixture.ts';
 import {loginFilePath} from '../src/host/agent/fake-login-mount.ts';
+import { ProvisionRecords, type ProvisionState } from '../src/host/provision-records.ts';
 const SETUP_MS=testWaitMs(60000);
 test('restart keeps the live host and exits the deleted host, settles spend, and restores watchdog ownership',{timeout:12*SETUP_MS},async t=>{
  const f=await fixture(t),store=f.own(new Store(join(f.root,'.cland/hub.db'))),table=f.own(new ProcessTable(join(f.root,'.cland/hub.db')));
@@ -57,6 +58,14 @@ test('restart keeps the live host and exits the deleted host, settles spend, and
   rotated.set(record.id,bytes);
  }
  const live=records[0]!,gone=records[1]!;
+ const goneStates:ProvisionState[]=[];
+ const changed=ProvisionRecords.prototype.changed;
+ // Arm before restart; every Store instance publishes this hook after commit.
+ t.mock.method(ProvisionRecords.prototype,'changed',function(this:ProvisionRecords,id:string,previous:ProvisionState|null){
+  const state=this.get(id)?.state;
+  if(id===gone.id&&state&&state!==previous)goneStates.push(state);
+  return changed.call(this,id,previous);
+ });
  const liveWatchdog=store.hosts.leases.get(live.id)!.watchdog!;
  await f.hub.stop();
  const provider=new FakeHostProvider({env:f.env});
@@ -101,6 +110,9 @@ test('restart keeps the live host and exits the deleted host, settles spend, and
  assert.deepEqual(store.hosts.provisions.get(live.id)?.machine,live.machine);
  const roles=(await restartedUi.request({type:'role.list'})).value as {roles:Array<{role:string;holders:unknown[]}>};
  assert.equal(roles.roles.find(role=>role.role==='implementer')!.holders.length,0);
+ // Detached login readiness precedes the release owner's durable provision
+ // settlement. Observe that boundary before checking its lease and spend.
+ await eventually('deleted host provision durably destroyed',()=>store.hosts.provisions.get(gone.id)?.state==='destroyed'?true:undefined,SETUP_MS);
  assert.equal(store.hosts.leases.get(gone.id),null);
  const ledger=JSON.parse(await readFile(spendPath(f.env),'utf8'));
  const settled=ledger.entries.find((entry:{lease:string})=>entry.lease===gone.id);
@@ -120,4 +132,8 @@ test('restart keeps the live host and exits the deleted host, settles spend, and
  await again.request({type:'session.list'});
  assert.equal(store.hosts.provisions.list().length,2,'minimum uses restored inventory without another acquire');
  assert.equal(store.hosts.provisions.occupied('agents'),1);
+ await reopened.stop(); // Join release retries before evaluating terminal history.
+ const firstDestroyed=goneStates.indexOf('destroyed');
+ assert.notEqual(firstDestroyed,-1,'gone provision published durable destruction');
+ assert.deepEqual(goneStates.slice(firstDestroyed),['destroyed'],'destroyed provision never leaves its terminal state');
 });

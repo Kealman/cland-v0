@@ -144,11 +144,12 @@ public login and binding reply shapes remain unchanged.
 The installed release owner discovers unbound intents on hosts whose destruction
 was interrupted, whose creation failed, or whose destruction already completed,
 including records without a machine-deletion read. `destroyHost` and the retry
-owner share the same release-obligation predicate, so a destroyed row is terminal
-only after its actionable reader obligations settle. Unknown creation on a healthy
+owner share the same release-obligation predicate. A destroyed provision stays
+terminal while its actionable reader and disk obligations retry separately;
+those retries never rewrite the provision or repeat machine release. Unknown creation on a healthy
 ready host remains fenced for launch retry or explicit host release rather than
 causing automatic destruction of that healthy host. Pending native bindings stay
-with startup reconciliation.
+with their binder's positive mount/commit or full rollback receipt.
 
 Import `LoginRecords`, `Login`, `LoginInput`, `LoginState` and `LoginBinding`
 from `hub/src/host/logins.ts`. The hub constructs `store.hosts.logins` on its
@@ -545,7 +546,8 @@ During early startup, before a scheduler exists, the snapshot module's shared
 `fenceLostLoginRelease` persists the same lost-host fence and abandoned freeze.
 Gone-host deletion/revocation and spend settlement finish with the login still
 bound. Once installed, the release owner reconciles its retained deletion receipt,
-including a provision already marked destroyed. Volume delay never holds a
+including a provision already marked destroyed, without changing that provision's
+terminal state, deletion receipt or settled spend. Volume delay never holds a
 session's deleted-host exit.
 
 
