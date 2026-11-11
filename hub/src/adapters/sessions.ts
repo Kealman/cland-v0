@@ -1,5 +1,5 @@
 import { lifecycleNotice } from '../hub/agents-topic.ts';
-import { LoginSignals } from '../host/login-signals.ts';
+import { LoginSignals, loginSignInHint } from '../host/login-signals.ts';
 import { LoginBinder, type ProvisionLoginDemand, type ProvisionLoginWork } from '../host/login-binding.ts';
 import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { type WaitingActor, type WaitingLaunchRecord, type WaitingPublication, type WaitingMemory, WaitingLaunches } from './waiting-launches.ts';
@@ -823,7 +823,8 @@ export class Sessions {
       const id=`login-signed-out:${episode.id}`;
       if(this.#core.store.message(id))return;
       const notice=lifecycleNotice({event:'login-signed-out',login:name,host:episode.host,reason:episode.reason},name=>name)!;
-      this.#core.noticeTo('agents',{...notice,id});
+      const hint=loginSignInHint(episode);
+      this.#core.noticeTo('agents',{...notice,id,text:notice.text+(hint?' '+hint:'')});
     }});
     const records=this.#core.store.hosts.logins;
     this.#loginSignals=new LoginSignals({records,markSignedOut:(name,receipt)=>{

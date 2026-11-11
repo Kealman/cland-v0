@@ -1,6 +1,11 @@
 import type { LoginRecords } from './logins.ts';
 import type { HarnessProcess } from '../adapters/contract.ts';
 
+export const ONE_SIGN_IN_HINT='This account seems to allow one sign-in: set exclusive or add an account.';
+export function loginSignInHint(episode:{oneSignIn?:true}|undefined):string {
+ return episode?.oneSignIn?ONE_SIGN_IN_HINT:'';
+}
+
 export type MarkLoginSignedOut = (name:string, receipt:{reason:string;host:string|null})=>void;
 type SignalOptions={records:LoginRecords;markSignedOut:MarkLoginSignedOut;signedOut:(name:string)=>void};
 export class LoginSignals {

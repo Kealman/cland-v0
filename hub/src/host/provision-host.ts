@@ -1,4 +1,5 @@
 import { releaseHostLogins, trackLoginRelease } from './login-release.ts';
+import {settleLoginSignInsForHost} from './login-signin.ts';
 import { hasLoginReleaseObligation } from './login-release-policy.ts';
 import { provisionSsh } from './provision-ssh.ts';
 import { hostCreateAdmission } from './create-admission.ts';
@@ -216,6 +217,7 @@ async function destroyHostOnce(o:{lost?:boolean;watchdogOptions?:import('../exec
  if(!initial)throw Error('unknown host');
  let record:ProvisionRecord=initial;
  if(record.state==='destroyed'){
+  settleLoginSignInsForHost(o.records,record.id);
   // Machine deletion and spend are already settled. A retained disk obligation
   // retries its own cleanup without reopening the terminal machine lifecycle.
   if(record.machine&&hasLoginReleaseObligation(o.records,o.id)){
@@ -241,6 +243,7 @@ async function destroyHostOnce(o:{lost?:boolean;watchdogOptions?:import('../exec
   const confirmed=new Set<string>();const releaseReads:ReleaseRead[]=[];
   if(!record.machine){if(record.nonAcquisition){await o.records.leases.cancel(record.id,o.processes?{root:o.root,env:o.env,clock:o.clock??realClock,processes:o.processes}:{root:o.root,env:o.env,clock:o.clock??realClock});record.release='released';record.state='destroyed';delete record.reason;o.records.provisions.save(record);return publicProvision(record);}throw Error('acquisition outcome unknown');}
   const result=await provider.release(record.machine,receipt=>{confirmed.add(receipt.resource);releaseReads.push(receipt);if(receipt.resource==='machine'){record.machineDeletionRead=receipt.read;o.records.provisions.save(record);}o.log({event:'host-destroy',host:record.id,...receipt});});
+  settleLoginSignInsForHost(o.records,record.id);
   if(record.machineDeletionRead&&o.records.get(record.id))await o.settleDeleted?.(record.id,record.machineDeletionRead);
   if(confirmed.has('machine'))await finishLogins();
   record.release=result.state;

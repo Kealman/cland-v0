@@ -1,13 +1,19 @@
 import type {Clock, ClockTimer} from '../hub/clock.ts';
 import type {Login, LoginRecords} from './logins.ts';
 import type {Host} from './host.ts';
-import type {HostProvider, Volume, SnapshotVolumeResult} from './provider/provider.ts';
+import type {HostProvider, Volume, SnapshotVolumeResult,Machine} from './provider/provider.ts';
+
+export function snapshotHostIdentity(machine:Machine|undefined,created:string|undefined,registration:unknown):string {
+ return JSON.stringify({machine,created,registration});
+}
 
 const DAY = 24*60*60*1000;
 type Disk = Extract<Login,{kind:'disk'}>;
 export type SnapshotTarget = {
  provider:HostProvider; volume:Volume; host?:Host; identity?:string;
  authorize?:()=>void; authorizeCleanup?:()=>void;
+ mounted?:boolean;
+ validate?:()=>Promise<void>;
 };
 type Control = {installThaw:(thaw:()=>Promise<void>)=>void};
 function disk(logins:LoginRecords,name:string):Disk {
@@ -34,6 +40,7 @@ export async function snapshotLoginDisk(logins:LoginRecords,name:string,target:S
  if(row.volumeId!==target.volume.id)throw Error('login volume identity changed');
  if(row.backup?.receipt&&row.backup.receipt.volumeId!==target.volume.id)throw Error('snapshot receipt volume mismatch');
  const authorize=()=>{target.authorize?.();if(disk(logins,name).volumeId!==target.volume.id)throw Error('login volume identity changed');};
+ await target.validate?.();authorize();
  if(row.backup?.freeze)await recoverThaw(logins,name,target);
  authorize();row=disk(logins,name);
  if(row.snapshotIds.length>2) {
@@ -49,7 +56,7 @@ export async function snapshotLoginDisk(logins:LoginRecords,name:string,target:S
   authorize();checkpoint(logins,name,{pending:true});
   let thaw:(()=>Promise<void>)|undefined;
   try {
-   if(target.volume.attachedTo!==null&&row.state!=='creating') {
+   if(target.mounted||target.volume.attachedTo!==null&&row.state!=='creating') {
     if(!target.host?.loginDisk)throw Error('attached login snapshot requires its mounted host');
     authorize();checkpoint(logins,name,{freeze:{host:target.host.name,identity:target.identity??target.host.name,volumeId:target.volume.id}});
     const settled=Promise.withResolvers<void>();let thawing:Promise<void>|undefined;
@@ -59,13 +66,13 @@ export async function snapshotLoginDisk(logins:LoginRecords,name:string,target:S
     finally {settled.resolve();}
     authorize();
    }
-   authorize();logins.beginSnapshotAdmission(name,target.volume.id);
+   await target.validate?.();authorize();logins.beginSnapshotAdmission(name,target.volume.id);
    result=await target.provider.snapshotVolume(target.volume,{authorize});
    logins.settleSnapshotAdmission(name,result,target.volume);
    // A rejected authority check still records the admitted effect's outcome;
    // publication and pruning remain fenced until a current owner reconciles it.
    if(result.state==='snapshotted'&&result.snapshot.volumeId!==target.volume.id)throw Error('snapshot receipt volume mismatch');
-   try {authorize();}
+   try {await target.validate?.();authorize();}
    catch(error) {
     if(disk(logins,name).volumeId===target.volume.id)checkpoint(logins,name,{...(result.state==='snapshotted'?{receipt:result.snapshot}:result.state==='refused'?{retryAt:result.retryAt}:{}),pending:true,outcome:String(error)});throw error;
    }
@@ -100,14 +107,14 @@ function dueAt(row:Login, now:number):number {
 }
 
 /** Early gone-host startup has no scheduler yet; retain the same lost-kernel fence. */
-export function fenceLostLoginRelease(logins:LoginRecords,name:string,now:number):void {
+export function fenceLostLoginRelease(logins:LoginRecords,name:string,now:number,options?:{preserveRelease?:boolean}):void {
  const row=disk(logins,name),{freeze,...backup}=row.backup??{pending:false};
- logins.updateBackup(name,{...backup,releasing:true,pending:backup.pending||dueAt(row,now)<=now,...(freeze?{outcome:'freeze abandoned with lost host: '+JSON.stringify(freeze)}:{})});
+ logins.updateBackup(name,{...backup,releasing:options?.preserveRelease?backup.releasing??false:true,pending:backup.pending||dueAt(row,now)<=now,...(freeze?{outcome:'freeze abandoned with lost host: '+JSON.stringify(freeze)}:{})});
 }
 
 /** One owner per login; shutdown joins native/provider work before storage closes. */
 type Options = {logins:LoginRecords;clock:Clock;resolve:(row:Disk)=>Promise<SnapshotTarget>;report?:(error:unknown)=>void};
-type Running = {promise:Promise<SnapshotVolumeResult>; prepared:Promise<void>; thaw?:()=>Promise<void>};
+type Running = {promise:Promise<SnapshotVolumeResult>; prepared:Promise<void>; admission?:string;thaw?:()=>Promise<void>};
 export class LoginSnapshots {
  private readonly options:Options;
  private readonly work=new Map<string,Running>();
@@ -129,20 +136,30 @@ export class LoginSnapshots {
   if(row.backup?.releasing)return Promise.reject(Error('login is releasing'));
   return this.launch(name);
  }
- private launch(name:string):Promise<SnapshotVolumeResult> {
+ /** Renewal shares freeze/thaw, release and shutdown ownership with scheduled work. */
+ signIn(name:string,admission:string,target:SnapshotTarget):Promise<SnapshotVolumeResult> {
+  if(this.stopped)return Promise.reject(Error('login snapshots stopped'));
+  this.options.logins.assertSignInAdmission(name,admission);
+  const active=this.work.get(name);
+  if(active&&active.admission!==admission)return active.promise.then(()=>{},()=>{}).then(()=>this.signIn(name,admission,target));
+  if(!active)this.options.logins.assertSnapshotSettled(name);
+  return this.launch(name,{admission,target});
+ }
+ private launch(name:string,renewal?:{admission:string;target:SnapshotTarget}):Promise<SnapshotVolumeResult> {
   const row=disk(this.options.logins,name);
-  if(!['ready','in-use'].includes(row.state))return Promise.reject(Error('login must be ready or in-use'));
+  if(!renewal&&!['ready','in-use'].includes(row.state))return Promise.reject(Error('login must be ready or in-use'));
   if(this.deferPending(name))return Promise.reject(Error('login snapshot deferred: pending binding'));
   const active=this.work.get(name);if(active)return active.promise;
-  const bindings=JSON.stringify(this.options.logins.bindings(name));
+  const bindings=renewal?undefined:JSON.stringify(this.options.logins.bindings(name));
   const prepared=Promise.withResolvers<void>();
-  const running:Running={promise:Promise.resolve({state:'failed',reason:'not started'}),prepared:prepared.promise};
+  const running:Running={promise:Promise.resolve({state:'failed',reason:'not started'}),prepared:prepared.promise,...(renewal?{admission:renewal.admission}:{})};
   checkpoint(this.options.logins,name,{pending:true});
   running.promise=Promise.resolve().then(async()=>{
-   const target=await this.options.resolve(row);
+   const target=renewal?.target??await this.options.resolve(row);
    const authorize=()=>{
     target.authorize?.();const live=disk(this.options.logins,name);
-    if(live.state!==row.state||live.volumeId!==row.volumeId||live.backup?.releasing||JSON.stringify(this.options.logins.bindings(name))!==bindings)throw Error('login snapshot ownership changed or releasing');
+    if(live.state!==row.state||live.volumeId!==row.volumeId||live.backup?.releasing||!renewal&&JSON.stringify(this.options.logins.bindings(name))!==bindings)throw Error('login snapshot ownership changed or releasing');
+    if(renewal)this.options.logins.assertSignInAdmission(name,renewal.admission);
    };
    if(disk(this.options.logins,name).backup?.freeze) {
     let recovering:Promise<void>|undefined;
@@ -150,6 +167,9 @@ export class LoginSnapshots {
     prepared.resolve();await running.thaw();
    }
    prepared.resolve();authorize();
+   // Revalidate admission inventory separately from the native effect's own
+   // validation below; a held admission read must not bless a changed disk.
+   await target.validate?.();authorize();
    return snapshotLoginDisk(this.options.logins,name,{...target,authorize},this.options.clock,{installThaw:thaw=>{running.thaw=thaw;}});
   }).then(result=>{if(result.state==='failed')this.options.report?.(Error('login snapshot failed: '+result.reason));return result;}).catch(error=>{
    const live=this.options.logins.get(name);
@@ -202,7 +222,7 @@ export class LoginSnapshots {
  /** Called after deletion and confirmed detach; does not await snapshot I/O. */
  onReleased(name:string,receipt:{volumeId:string}):void {
   const row=disk(this.options.logins,name);
-  if(row.volumeId!==receipt.volumeId||row.state!=='ready'||this.options.logins.bindings(name).length||row.backup?.freeze)throw Error('snapshot release requires the detached login receipt');
+  if(row.volumeId!==receipt.volumeId||!['ready','signed-out'].includes(row.state)||this.options.logins.hasBindings(name)||row.backup?.freeze)throw Error('snapshot release requires the detached login receipt');
   const due=Date.parse(row.backup?.lastAt??row.lastSignIn??row.backup?.initialAt??this.options.clock.now().toISOString())+DAY;
   checkpoint(this.options.logins,name,{releasing:false,pending:row.backup?.pending===true||due<=this.options.clock.now().getTime()});this.schedule(name);
  }

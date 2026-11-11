@@ -1,5 +1,15 @@
 # hub/test/login-signed-out.test.ts
 
+Renewal work controls: `renewal selection and finish bound retained reader history`
+keeps a 500-reader positive control, then limits returned rows/query work and
+requires indexed writer/existence plans. `one-sign-in window pruning bounds
+expired history without decoding login rows` seeds 130 expired identities,
+proves the retained-row scan control, then requires at most 64 deletions, bounded
+decoded rows/queries and the expiry index. Clock boundaries and the recovered
+card/notice/list assertion are distinct functional coverage.
+The administrative-removal control uses the real removal admission and proves
+its hostless sign-out does not count toward the operational one-sign-in hint.
+
 `hub/test/login-signed-out.test.ts` is T2. It uses in-process adapters,
 SQLite, `projectHub`, recording Hosts and a FakeClock; it starts no harness
 process and needs no browser, provider account or network.

@@ -34,6 +34,11 @@ Cases:
 - `removal suppresses unusable sign-in cards and preserves genuine notice; <ready-full|ready-partial|signed-out-partial>`: actual CLI removal checks durable cards, inbox and notices before and after hub restart. Ready removals emit no sign-in notice; an older genuine notice stays and its card withdraws. The three cases were red before the claim-eligibility fix.
 - `sign-in card eligibility uses removal claim rather than sign-out reason text`: a genuine episode with reason `removing` remains eligible until the durable claim is published; the live notification then withdraws its card while retaining receipt/notice.
 
+`login remove refuses an interrupted unbound renewal until its exact machine deletion receipt`
+proves the shared sign-in fence refuses removal before its claim or effects,
+names the admitted host, then permits removal after the fake provider's actual
+machine deletion receipt. Detached volume inventory alone supplies no authority.
+
 Stage QA runs on integrated dev.
 Check the ready-row removal path from the CLI, including `login list` absence,
 with the existing fake host provider and the same supplied disposable fixture.

@@ -23,6 +23,64 @@ import { testHost } from '../src/host/test-host.ts';
 import { HostSecretStore } from '../src/host/records.ts';
 import { fakeHarness } from './fakes/harness.ts';
 import { onCleanup } from './process-cleanup.ts';
+import {sqliteProbe} from './sqlite-probe.ts';
+
+test('removal sign-out does not count as a dead-login episode for the shared account hint',()=>{
+ const db=new DatabaseSync(':memory:'),r=new LoginRecords(db);try{
+ for(const name of ['removed','native']){r.insert({name,harness:'opencode',account:'shared',kind:'key',lastSignIn:null});r.transition(name,'ready');}
+ r.beginRemove('removed');r.markSignedOut('native',{reason:'provider.auth',host:'h'});
+ assert.equal(r.get('native')?.signedOut?.oneSignIn,undefined);
+ }finally{db.close();}
+});
+
+test('one-sign-in window pruning bounds expired history without decoding login rows',t=>{
+ const probe=sqliteProbe(),db=probe.open(':memory:'),records=new LoginRecords(db),clock=new FakeClock();records.useClock(clock);
+ try{
+ for(let n=0;n<130;n++){const name=`expired-${n}`;records.insert({name,harness:'opencode',account:name,kind:'key',lastSignIn:null});records.transition(name,'ready');records.markSignedOut(name,{reason:'provider.auth',host:'h'});}
+ const old=clock.now().getTime();t.mock.method(clock,'now',()=>new Date(old+86400000));
+ records.insert({name:'current',harness:'opencode',account:'current',kind:'key',lastSignIn:null});records.transition('current','ready');
+ const parse=JSON.parse;let decoded=0,queries=0,pruned=0;const plans:string[]=[];
+ t.mock.method(JSON,'parse',((text:string)=>{const row=parse(text);if(row?.name)decoded++;return row;}) as typeof JSON.parse);
+ records.list();assert.equal(decoded,131,'retained-row decode positive control');decoded=0;
+ probe.trace(t,function(sql,method,bindings,result){queries++;plans.push(...probe.prepare.call(this,'explain query plan '+sql).all(...bindings as import('node:sqlite').SQLInputValue[]).map(row=>String(row.detail)));if(sql.startsWith('delete from login_signout_window'))pruned=Number((result as {changes:number}).changes);});
+ records.markSignedOut('current',{reason:'provider.auth',host:'h'});
+ assert.equal(pruned,64);assert.ok(decoded<=2,`decoded ${decoded} login rows`);assert.ok(queries<=12,`queries ${queries}`);assert.ok(plans.some(plan=>plan.includes('login_signout_expiry')));assert.ok(plans.every(plan=>!/^SCAN (logins|login_signout_window)\b/.test(plan)));
+ assert.equal(db.prepare('select count(*) as n from login_signout_window').get()!.n,67,'only one bounded expiry batch is removed');
+ }finally{db.close();}
+});
+
+test('renewal selection and finish bound retained reader history',t=>{
+ const probe=sqliteProbe(),db=probe.open(':memory:'),records=new LoginRecords(db),clock=new FakeClock();records.useClock(clock);
+ try{
+ records.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null,exclusive:false});records.transition('work','ready');records.bind('work',{host:'writer',role:'writer',volumeId:'v'});
+ for(let n=0;n<500;n++)records.bind('work',{host:`reader-${n}`,role:'reader',volumeId:`reader-v-${n}`});
+ records.markSignedOut('work',{reason:'unauthorized',host:'writer'});const admission=records.beginSignIn('work');
+ let returned=0,queries=0;const plans:string[]=[];
+ probe.trace(t,function(sql,method,bindings,value){queries++;if(method==='all'||method==='get'){returned+=Array.isArray(value)?value.length:value===undefined?0:1;plans.push(...probe.prepare.call(this,'explain query plan '+sql).all(...bindings as import('node:sqlite').SQLInputValue[]).map(row=>String(row.detail)));}});
+ records.bindings('work');assert.ok(returned>=501,'reader-history positive control');returned=0;queries=0;plans.length=0;
+ const selection=records.signInBinding('work');assert.equal(selection.writer?.host,'writer');assert.ok(selection.episode);assert.equal(selection.any,true);
+ records.finishSignIn('work',admission,clock.now().toISOString());
+ assert.ok(returned<30,`renewal finish returned ${returned} rows`);assert.ok(queries<30,`renewal finish queries ${queries}`);
+ assert.ok(plans.some(plan=>plan.includes('login_writer')));assert.ok(plans.every(plan=>!/^SCAN /.test(plan)),'no reader-history scan');
+ }finally{db.close();}
+});
+
+for(const elapsed of [0,86400000-1,86400000,86400001]) test(`one-sign-in hint uses account and an exclusive 24h clock window (${elapsed}ms)`,async()=>{
+ const store=new Store(':memory:'),clock=new FakeClock(),core=new HubCore({store,clock});
+ try {
+ const records=store.hosts.logins;
+ records.useClock(clock);
+ for(const name of ['first','second']){records.insert({name,harness:'opencode',account:'shared',kind:'key',lastSignIn:null});records.transition(name,'ready');}
+ records.markSignedOut('first',{reason:'provider.auth',host:'a'});
+ await clock.advance(elapsed);
+ records.markSignedOut('second',{reason:'provider.auth',host:'b'});
+ const cards=new LoginCards(store,core.cards);cards.signedOut('second');
+ const id=JSON.parse(store.meta('login-signin-cards')!).second.id;
+ const question=store.ask(id)!.question;
+ if(elapsed<86400000)assert.match(question,/This account seems to allow one sign-in: set exclusive or add an account\./);
+ else assert.doesNotMatch(question,/This account seems/);
+ }finally{store.close();}
+});
 import type { AdapterHost } from '../src/adapters/contract.ts';
 
 test('project startup recovers an episode committed before card and notice publication',async t=>{

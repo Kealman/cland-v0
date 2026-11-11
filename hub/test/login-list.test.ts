@@ -6,6 +6,36 @@ import { layout } from '../src/project.ts';
 import { projectHub,tempProject,connectUi,cland,frameClient,inProcessSpoke } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { fakeLockProcesses } from './fakes/lock-processes.ts';
+import {mkdir} from 'node:fs/promises';
+import {loginMetadataOwners} from './login-metadata-owners.ts';
+
+test('recovered one-sign-in hint appears in the card, Agents notice and login list',async t=>{
+ const root=await tempProject(t),clock=new FakeClock(Date.now()),owners=loginMetadataOwners(t,root);await mkdir(layout(root).dir,{recursive:true});const store=owners.store(new Store(layout(root).db));
+ store.hosts.logins.useClock(clock);
+ for(const name of ['first','second']){store.hosts.logins.insert({name,harness:'opencode',account:'shared',kind:'key',lastSignIn:null});store.hosts.logins.transition(name,'ready');store.hosts.logins.markSignedOut(name,{reason:'provider.auth',host:'h'});}
+ const episode=store.hosts.logins.get('second')!.signedOut!;
+ const hub=await owners.start(()=>projectHub(t,root,{}, {clock,processes:fakeLockProcesses().processes,droplet:{processes:fakeLockProcesses().processes}}));
+ const ui=await connectUi(t,hub.discovery,'cli');
+ const inbox=(await ui.request({type:'inbox.list'})).value as {asks:{question:string}[]};
+ const hint='This account seems to allow one sign-in: set exclusive or add an account.';
+ assert.ok(inbox.asks.some(ask=>ask.question.includes('second')&&ask.question.includes(hint)));
+ assert.ok(store.message(`login-signed-out:${episode.id}`)!.text.includes(hint));
+ const list=await cland(root,'login','list');assert.equal(list.code,0,list.stderr);assert.ok(list.stdout.includes(hint));
+});
+
+for(const fault of ['before-hub','hub-drain'] as const)test(`login fixture retains borrowed-store ownership after ${fault} failure`,async t=>{
+ const root=await tempProject(t),owners=loginMetadataOwners(t,root),events:string[]=[];let fail=true;
+ owners.store({close:()=>{events.push('store closed');}});
+ if(fault==='before-hub'){
+  await assert.rejects(owners.start(async()=>{throw Error('planted setup refusal');}),/setup refusal/);
+  await assert.rejects(owners.close(),/root retained/);assert.deepEqual(events,['store closed']);assert.throws(owners.assertReleased,/root retained/);
+  // Supply the known fixture owner and its positive close receipt before disposal.
+  await owners.start(async()=>({stop:async()=>{events.push('hub closed');}}));await owners.close();owners.assertReleased();return;
+ }
+ await owners.start(async()=>({stop:async()=>{events.push('hub stop');if(fail)throw Error('planted hub drain refusal');events.push('hub closed');}}));
+ await assert.rejects(owners.close(),/drainage failed/);assert.deepEqual(events,['hub stop','store closed']);assert.throws(owners.assertReleased,/root retained/);
+ fail=false;await owners.close();assert.deepEqual(events,['hub stop','store closed','hub stop','hub closed']);owners.assertReleased();
+});
 
 test('login list text and JSON expose rows and hosts, retained across hub restart',async t=>{
  const root=await tempProject(t);
@@ -37,7 +67,7 @@ test('login list refuses session, web and remote edges like host list',async t=>
   const client=frameClient(line=>conversation.receive(line.trimEnd()),fn=>{receive=fn;},()=>{open=false;conversation.closed();},root);
   t.after(()=>client.close());client.send({type:'hello',protocol:2,client:'cli'});
   await client.waitFor(f=>f.type==='welcome');
-  for(const type of ['host.list','login.list','login.remove','login.set','login.snapshot','login.add','login.signed-in']){const r=await client.request({type,harness:'codex',name:'work',exclusive:false,code:0});assert.equal(r.ok,false);assert.match(r.error!,edge==='web'?/CLI and Neovim/:/gateway/);}
+  for(const type of ['host.list','login.list','login.remove','login.set','login.snapshot','login.add','login.signin','login.signed-in']){const r=await client.request({type,harness:'codex',name:'work',exclusive:false,code:0});assert.equal(r.ok,false);assert.match(r.error!,edge==='web'?/CLI and Neovim/:/gateway/);}
  }
  const spoke=await inProcessSpoke(t,{cwd:root,discover:true,name:'worker',sessionId:'login-worker',role:'implementer'});
  const result=await spoke.call('session.list',{});assert.ok(result);

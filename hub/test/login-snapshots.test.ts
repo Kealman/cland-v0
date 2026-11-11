@@ -11,9 +11,35 @@ import {FakeHostProvider} from '../src/host/provider/fake.ts';
 import {FakeClock} from './fake-clock.ts';
 import {fixtureEnvironment} from './fixture-environment.ts';
 import {ownDirectory,onCleanup} from './process-cleanup.ts';
-import {until} from './until.ts';
+import {until,testWaitMs} from './until.ts';
+import {prepareExistingLoginSignIn} from '../src/host/login-signin.ts';
+import type {Host} from '../src/host/host.ts';
+import type {HostProvider} from '../src/host/provider/provider.ts';
 import {sqliteProbe} from './sqlite-probe.ts';
 import type {SQLInputValue} from 'node:sqlite';
+
+for(const interrupted of [false,true])test(`renewal drains an older held snapshot generation then ${interrupted?'refuses an invalidated admission':'admits its own backup'}`,async()=>{
+ const db=new DatabaseSync(':memory:'),r=new LoginRecords(db),clock=new FakeClock(),events:string[]=[];r.useClock(clock);
+ r.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});r.transition('work','ready');r.bind('work',{host:'writer',role:'writer',volumeId:'v'});
+ const volume={id:'v',name:'disk',project:'/project',region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:'m'};
+ const host={name:'writer',loginDisk:async({op}:{op:string})=>{events.push(op);}} as unknown as Host;
+ const provider={listVolumes:async()=>({state:'listed',volumes:[volume]}),snapshotVolume:async()=>{events.push('snapshot');return {state:'snapshotted',snapshot:{id:'renewed-backup',volumeId:'v',created:clock.now().toISOString()}};}} as unknown as HostProvider;
+ const gate=Promise.withResolvers<void>();let resolving=false;
+ const owner=new LoginSnapshots({logins:r,clock,resolve:async()=>{resolving=true;await gate.promise;return {provider,host,volume,identity:'writer'};}});
+ const old=owner.snapshot('work');void old.catch(()=>{});let renewal:Promise<unknown>|undefined,duplicate:Promise<unknown>|undefined;
+ try{
+  await until(()=>resolving,{what:'older snapshot owns its held resolver',timeoutMs:testWaitMs()});
+  r.markSignedOut('work',{reason:'unauthorized',host:'writer'});
+  const admission=r.beginSignIn('work'),pending=await prepareExistingLoginSignIn({logins:r,name:'work',provider,host,volume,machine:{id:'m',address:'fake',architecture:'x86_64',created:volume.created},identity:'writer',clock,snapshots:owner,authorize:()=>{},admission});
+  renewal=pending.complete(0);void renewal.catch(()=>{});
+  duplicate=owner.signIn('work',admission,{provider,host,volume,identity:'writer',mounted:true});void duplicate.catch(()=>{});
+  if(interrupted)r.interruptSignIn('work',admission);gate.resolve();
+  await assert.rejects(old,/snapshot ownership changed/);
+  if(interrupted){await assert.rejects(renewal,/admission/);await assert.rejects(duplicate,/admission/);assert.deepEqual(events,[]);assert.equal(r.get('work')?.lastSignIn,null);assert.throws(()=>r.beginSignIn('work'),/may still be running/);return;}
+  await Promise.all([renewal,duplicate]);
+  const row=r.get('work');assert.equal(row?.state,'in-use');assert.ok(row?.lastSignIn);assert.deepEqual(row?.kind==='disk'&&row.snapshotIds,['renewed-backup']);assert.deepEqual(events,['freeze','snapshot','thaw']);
+ }finally{gate.resolve();await Promise.allSettled([old,...(renewal?[renewal]:[]),...(duplicate?[duplicate]:[])]);await owner.close();db.close();}
+});
 
 test('one login save has bounded scheduling work across ten thousand retained logins',async t=>{
  const root=await mkdtemp(join(tmpdir(),'snapshot-budget-'));ownDirectory(t,root);

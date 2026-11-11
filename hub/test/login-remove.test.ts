@@ -35,6 +35,7 @@ import {removeLogin} from '../src/host/login-remove.ts';
 import {LoginSnapshots} from '../src/host/login-snapshots.ts';
 import {readHostPools} from '../src/host/pools.ts';
 import {hostStatus} from '../src/host/status.ts';
+import {settleLoginSignInsForHost} from '../src/host/login-signin.ts';
 
 async function diskFixture(t:test.TestContext,ignoreVolumeDelete=false,providerName='digitalocean') {
  const root=await tempProject(t);await mkdir(join(root,'.cland'));const resources=new AsyncDisposableStack();onCleanup(t,()=>resources.disposeAsync());const store=new Store(join(root,'.cland/hub.db'));
@@ -67,6 +68,15 @@ test('in-use and creating refusals retain every byte and name the host or runnin
  await f.remove();assert.equal(f.rows.get('work'),null);
  assert.deepEqual(await f.provider.listVolumes({project:f.root}),{state:'listed',volumes:[]});
  for(const id of f.ids)assert.equal((await f.provider.getSnapshot(id)).state,'failed');
+});
+
+test('login remove refuses an interrupted unbound renewal until its exact machine deletion receipt',async t=>{
+ const f=await diskFixture(t,false,'fake'),made=await f.provider.acquire({project:f.root,pool:'agents',architecture:'x86_64',region:'fake-1'});if(made.state!=='created')throw Error('fixture machine');
+ const id='interrupted-host',machine=made.machine,record={id,pool:'agents',provider:'fake',size:'fake',region:'fake-1',created:machine.created,state:'ready' as const,machine};f.store.hosts.insert({id,address:machine.address,user:'fixture',clientKeyPath:'unused',knownHosts:'unused'},'synthetic');f.store.hosts.provisions.ready(record);
+ const token=f.rows.beginSignIn('work');f.rows.captureSignInHost('work',token,{id,machine,identity:'fixture-captured-host'});f.rows.interruptSignIn('work');
+ await assert.rejects(f.remove(),/previous sign-in may still be running on host interrupted-host/i);assert.equal(f.rows.isRemoving('work'),false,'refusal precedes removal claim');assert.equal(f.rows.get('work')?.kind,'disk');
+ let deleted=false;const release=await f.provider.release(machine,receipt=>{if(receipt.resource==='machine'){deleted=true;f.store.hosts.provisions.save({...record,state:'destroyed',machineDeletionRead:receipt.read});}});assert.equal(release.state,'released');assert.equal(deleted,true);
+ settleLoginSignInsForHost(f.store.hosts,id);assert.equal(f.rows.signInFenceReason('work'),'');assert.deepEqual(await f.remove(),{removed:'work'});assert.equal(f.rows.get('work'),null);
 });
 
 test('unconfirmed volume delete retains exact id and storage accrual, retry completes after restart',async t=>{

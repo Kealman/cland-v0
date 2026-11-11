@@ -18,3 +18,13 @@ login-disk T3, not inferred from these injected cases.
 The shutdown control injects two distinct cleanup failures, holds the second
 owner, and requires both errors plus the suite owner's close receipt after
 drainage. The direct in-process dispatcher keeps this test below native tiers.
+
+The seven `renewal terminal <outcome> distinguishes native close receipt from owner loss`
+cases use the real mounted renewal owner with injected provider/Host boundaries.
+Disconnect and graceful hub stop retain bindings and the exact-machine fence;
+an interrupted pending entry rejects a late same-connection frame. Every case
+rejects another connection's completion. Success, failure and null native-close
+reports follow their normal settlement paths. A held snapshot after an accepted
+close receipt remains owned across disconnect and publishes its positive result.
+Native SSH-close timing remains the unchanged login-terminal T3 evidence; this
+file proves dispatcher routing and durable metadata, not a native process exit.

@@ -78,3 +78,13 @@ Recovery and ownership regressions:
 - `successful provider send queued before release is refused at its final send boundary`:
   C2/C3, provider would succeed after the held step; release completes thaw first,
   and the final native authorization prevents any snapshot effect.
+
+- `renewal drains an older held snapshot generation then admits its own backup`
+  holds a real manual owner's resolver before native admission, signs out and
+  starts renewal, then observes the old rejection and the renewal's own single
+  freeze/snapshot/thaw receipt. Matching-admission duplicate callers coalesce.
+- `renewal drains an older held snapshot generation then refuses an invalidated admission`
+  interrupts while that prior owner is held; both waiting callers refuse after
+  drainage without native effects, last-sign-in or a successful backup claim.
+  These T2 cases bound setup through until/testWaitMs; all domain time is shared
+  through FakeClock. No native process is started.

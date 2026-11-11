@@ -12,6 +12,45 @@ import { parseConfig } from '../src/init/config.ts';
 import { frameClient, type FrameClient } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { join } from 'node:path';
+import {loginMetadataOwners} from './login-metadata-owners.ts';
+import {prepareExistingLoginSignIn,type LoginSignIn} from '../src/host/login-signin.ts';
+import type {Host} from '../src/host/host.ts';
+import type {HostProvider} from '../src/host/provider/provider.ts';
+
+for(const outcome of ['disconnect','hub stop','interrupt','exit success','exit failure','exit null','disconnect after receipt'] as const)test(`renewal terminal ${outcome} distinguishes native close receipt from owner loss`,async t=>{
+ const root=await tempProject(t),owners=loginMetadataOwners(t,root),clock=new FakeClock(Date.now()),processes=fakeLockProcesses().processes,events:string[]=[];
+ const volume={id:'v',name:'disk',project:root,region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:'m'},machine={id:'m',address:'fake',architecture:'x86_64' as const,created:volume.created};
+ const host={name:'writer',loginDisk:async({op}:{op:string})=>{events.push(op);}} as unknown as Host;
+ const snapshotGate=Promise.withResolvers<void>();onCleanup(t,()=>snapshotGate.resolve());
+ const provider={listVolumes:async()=>({state:'listed',volumes:[volume]}),snapshotVolume:async()=>{events.push('snapshot');if(outcome==='disconnect after receipt')await snapshotGate.promise;return {state:'snapshotted',snapshot:{id:'s',volumeId:'v',created:clock.now().toISOString()}};}} as unknown as HostProvider;
+ let pending:LoginSignIn|undefined;
+ const hub=await owners.start(()=>projectHub(t,root,{}, {clock,processes,droplet:{processes},prepareLogin:async o=>{
+  pending=await prepareExistingLoginSignIn({logins:o.records.logins,name:'work',host,provider,volume,machine,identity:'writer',clock,snapshots:o.snapshots!,authorize:()=>{}});
+  return {pending,plan:{name:'work',host:'writer',command:'ssh',args:[]}};
+ }}));
+ const store=owners.store(new Store(join(root,'.cland/hub.db'))),r=store.hosts.logins;r.useClock(clock);
+ r.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});r.transition('work','ready');r.bind('work',{host:'writer',role:'writer',volumeId:'v'});r.markSignedOut('work',{reason:'unauthorized',host:'writer'});const bindings=r.bindings('work');
+ const terminal=await connectUi(t,hub.discovery,'cli'),other=await connectUi(t,hub.discovery,'cli');
+ assert.equal((await terminal.request({type:'login.signin',name:'work'})).ok,true);
+ assert.equal((await other.request({type:'login.signed-in',name:'work',code:0})).ok,false,'a different connection owns no close receipt');
+ assert.equal(r.get('work')?.state,'creating');
+ if(outcome==='disconnect after receipt'){
+  terminal.send({type:'login.signed-in',id:'native-close-receipt',name:'work',code:0});
+  await eventually('close-confirmed renewal admitted its provider snapshot',()=>events.includes('snapshot')||undefined,testWaitMs());
+  terminal.close();snapshotGate.resolve();
+ }
+ else if(outcome==='disconnect')terminal.close();
+ else if(outcome==='hub stop')await hub.stop();
+ else if(outcome==='interrupt'){
+  const interrupt=(pending as LoginSignIn&{interrupt?:()=>Promise<unknown>}).interrupt;assert.ok(interrupt,'renewal owns an interruption path');await interrupt();
+  assert.equal((await terminal.request({type:'login.signed-in',name:'work',code:0})).ok,false,'a late frame owns no interrupted entry');
+ }else {const result=await terminal.request({type:'login.signed-in',name:'work',code:outcome==='exit success'?0:outcome==='exit null'?null:7});assert.equal(result.ok,true,result.error);}
+ const success=outcome==='exit success'||outcome==='disconnect after receipt',expected=success?'in-use':'signed-out';
+ await eventually('durable renewal terminal outcome',()=>r.get('work')?.state===expected||undefined,testWaitMs());
+ const row=r.get('work')!;assert.deepEqual(r.bindings('work'),bindings);
+ if(outcome.startsWith('exit')||success){assert.equal(r.signInFenceReason('work'),'');if(success){assert.ok(row.lastSignIn);assert.deepEqual(events,['freeze','snapshot','thaw']);}else {assert.equal(row.signedOut?.reason,'sign-in failed');assert.ok(r.beginSignIn('work'),'native close permits the next signer');}}
+ else {assert.equal(row.signedOut?.reason,'sign-in interrupted');assert.equal(row.signedOut?.host,'writer');assert.throws(()=>r.beginSignIn('work'),/may still be running on host writer/);assert.deepEqual(events,[],'owner loss performs no native cleanup or snapshot');}
+});
 
 for(const outcome of ['disconnect','failure','success'] as const) test(`login add ${outcome} settles only its admitted connection`,async t=>{
  const root=await tempProject(t);let closed=0;

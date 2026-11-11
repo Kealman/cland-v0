@@ -4,6 +4,7 @@ import { HostHealth, loseHost } from '../host/host-health.ts';
 import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { reconcileHostLeases, restoreHostLeaseOwners } from '../host/host-restart.ts';
 import {LoginReconciliation} from '../host/login-reconcile.ts';
+import {recoverLoginSignIns} from '../host/login-signin.ts';
 import { destroyHost } from '../host/provision-host.ts';
 import { restoreProvisionedFakeHosts } from '../host/provision-host.ts';
 import { registerFakeHosts } from '../host/records.ts';
@@ -705,6 +706,7 @@ export async function serveProject(root: string, options: { prepareLogin?: impor
       const providers=new HostProviderRegistry({env,digitalocean:{root,clock},now:()=>clock.now().getTime()});
       loginReconciliation=new LoginReconciliation({root,records:store.hosts,clock,provider:provider=>providers.resolve({provider}),notice:text=>hub.core.noticeTo('agents',{kind:'report',to:['coordinator'],text}),log});
       await loginReconciliation.start();
+      recoverLoginSignIns(store.hosts);
     });
     const healthProviders=new HostProviderRegistry({env,digitalocean:{root},now:()=>clock.now().getTime()});
     hostHealth=new HostHealth({records:store.hosts,clock,env,

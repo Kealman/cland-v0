@@ -4,9 +4,16 @@ import type { Login, LoginBinding } from '../host/logins.ts';
 import { runKeyLoginAdd } from './login-key.ts';
 import { terminalLogin } from './login-terminal.ts';
 import type { LoginAddInput } from '../host/login-signin.ts';
+import { loginSignInHint } from '../host/login-signals.ts';
 
 export type ListedLogin = Login & { bindings: LoginBinding[] };
 const commands = {
+ signin:async(args:string[],env:NodeJS.ProcessEnv):Promise<number>=>{
+  if(args.length!==1||!/^[a-z0-9][a-z0-9-]{0,31}$/.test(args[0]!))throw Error('usage: cland login signin <name>');
+  const discovery=readDiscovery(hubDiscovery(process.cwd()));
+  if(!discovery)throw Error('no hub runs for this project — run cland hub start');
+  return terminalLogin(discovery,{name:args[0]!,signin:true},env);
+ },
  remove: async(args:string[],env:NodeJS.ProcessEnv):Promise<number>=>{
   if(args.length!==1||!/^[a-z0-9][a-z0-9-]{0,31}$/.test(args[0]!))throw Error('usage: cland login remove <name>');
   const discovery=readDiscovery(hubDiscovery(process.cwd()));
@@ -58,12 +65,12 @@ const commands = {
   const rows = await askHubFrame(discovery, {type:'login.list'}, 30000, env) as ListedLogin[];
   if (args[0] === '--json') process.stdout.write(JSON.stringify(rows,null,2)+'\n');
   else {
-   process.stdout.write('NAME\tHARNESS\tACCOUNT\tKIND\tEXCLUSIVE\tSTATE\tPROVIDER\tREGION\tVOLUME\tSNAPSHOTS\tLAST SIGN-IN\n');
+   process.stdout.write('NAME\tHARNESS\tACCOUNT\tKIND\tEXCLUSIVE\tSTATE\tPROVIDER\tREGION\tVOLUME\tSNAPSHOTS\tLAST SIGN-IN\tHINT\n');
    for (const row of rows) process.stdout.write([row.name,row.harness,row.account,row.kind,
     row.kind === 'disk' ? String(row.exclusive) : '-',
     row.state + (row.bindings.length ? ' ' + row.bindings.map(b=>b.host).join(', ') : ''),
     ...(row.kind === 'disk' ? [row.provider,row.region,row.volumeId ?? '-',row.snapshotIds.join(', ') || '-'] : ['-','-','-','-']),
-    row.lastSignIn ?? '-',
+    row.lastSignIn ?? '-',loginSignInHint(row.signedOut),
    ].join('\t')+'\n');
   }
   if(args[0]!=='--json'){
@@ -75,6 +82,6 @@ const commands = {
 };
 export async function runLogin(args: string[], env: NodeJS.ProcessEnv = process.env): Promise<number> {
  const command = args[0];
- if (!command || !Object.hasOwn(commands,command)) throw Error('usage: cland login <list|add|snapshot|set|remove>');
+ if (!command || !Object.hasOwn(commands,command)) throw Error('usage: cland login <list|add|signin|snapshot|set|remove>');
  return commands[command as keyof typeof commands](args.slice(1),env);
 }

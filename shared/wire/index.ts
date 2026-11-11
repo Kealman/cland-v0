@@ -927,6 +927,7 @@ export type ClientRequest =
   | { type: 'host.create'; id: string; pool?: string }
   | { type: 'login.remove'; id: string; name: string }
   | { type: 'login.snapshot'; id: string; name: string }
+  | { type: 'login.signin'; id: string; name: string }
   | { type: 'login.list'; id: string }
   | { type: 'login.set'; id: string; name: string; exclusive: boolean }
   | { type: 'login.add'; id: string; harness: 'claude-code'|'codex'|'opencode'; kind?: 'disk'|'key'; name?: string; account?: string; pool?: string }

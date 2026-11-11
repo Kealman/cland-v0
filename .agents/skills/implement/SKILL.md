@@ -314,7 +314,19 @@ Role host pool settings use `[<role>.launch] pool` (default `local`) or
 
 For project login work, use `HostRecords.logins` and isolated SQLite or projectHub
 fixtures. `cland login list`, `cland login set`, `cland login snapshot` and terminal disk `cland login add` are local human
-CLI/Neovim only; sessions, web and remotes are refused. Exercise `login.add` and
+CLI/Neovim only; sessions, web and remotes are refused. `cland login signin <name>`
+renews a signed-out disk through the same terminal owner, preserving live bindings
+and sessions. Use beginSignIn/finishSignIn rather than the generic creating
+transition; refuse unresolved binding, snapshot, release and removal ownership.
+Renewal snapshots enter LoginSnapshots.signIn so release joins the same freeze
+and thaw. Peer loss, graceful stop and startup recovery use the renewal owner's
+interrupt path without native cleanup, retaining an exact-machine fence until
+the release owner's persisted machine deletion receipt, never elapsed time or
+detached inventory. No existing terminal SSH census identifies that writer.
+The exact pending connection's post-child-close completion is the native receipt;
+owner loss joins a completion already admitted with that receipt. Renewal drains
+older snapshot preparation before validating and admitting its own generation.
+Exercise `login.add`, `login.signin` and
 connection-pinned `login.signed-in` only in disposable fake-provider fixtures.
 See [project logins](../../../docs/hub/logins.md).
 

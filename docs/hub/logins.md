@@ -1,5 +1,85 @@
 # Logins
 
+`cland login signin <name>` renews a signed-out disk through the local human
+terminal, using login add's pinned `ssh -t` command and connection-owned
+completion. It keeps the writer host, volume, bindings and running sessions.
+An unbound disk uses login add's pool selection, attach/mount and cleanup path
+with its existing volume from inventory. Real hosts require provider API and
+terminal SSH access; fake-provider tests use no network. Keys refuse disk sign-in.
+
+`LoginRecords.beginSignIn` records a durable admission, moves signed-out to
+creating and clears `signedOut`, retaining binding and reader rows. Pending
+bindings, release and snapshot ownership refuse admission. Native exit zero
+freezes, snapshots and thaws the mounted disk through the existing snapshot owner.
+Unbound mounts detach before `finishSignIn` publishes last sign-in and ready;
+retained bindings publish in-use. Nonzero exit records a sign-in-failed episode;
+unknown cleanup retains the creating fence. The generic transition to creating
+keeps its previous binding-deleting semantics; renewal uses these dedicated methods.
+
+Renewal snapshots enter `LoginSnapshots.signIn` and its shared work map. Release
+joins the admitted native freeze and thaw before unmount, and shutdown joins the
+same work before storage closes. Renewal captures the writer binding's private
+episode, host registration, machine birth and volume birth. Indexed writer and
+binding-existence reads avoid materializing retained readers. Fresh inventory
+checks across admission, native effects and completion fence changed attachment
+or volume identity before publication. Provider and Host disk owners retain their
+own native identity checks.
+Both the resolver and renewal use `snapshotHostIdentity` for that freeze identity;
+a returning machine may thaw its own retained intent, while a different birth
+refuses it. The direct renewal entry requires the captured Machine and identity
+before any effect, including callers that bypass pool selection.
+The real removal and snapshot admission accessors fence both begin and finish;
+the admitted snapshot may use its own private admission while running. A queued
+backup without native admission is not an unknown native outcome.
+If an older scheduled or manual backup still owns preparation, renewal drains
+that generation first, revalidates its durable admission and admits its own
+backup. Only work for the same renewal admission shares a result.
+
+A positive native exit proves sign-in success. A known provider rate refusal
+keeps the login in-use or ready, with `backup.pending` and `retryAt`; the shared
+snapshot owner retries at that time. An unknown snapshot outcome or changed
+authority retains creating and its owner fences. A deferred backup is shown as
+pending and never counted as a completed snapshot.
+
+After startup volume reconciliation and before pool scaling, the sign-in owner
+reverts an orphaned renewal admission to signed-out with `sign-in interrupted`,
+invalidates its old token and retains all bindings. It resumes no terminal and
+infers no success. If a host was admitted before native effects, an interrupted
+fence names that exact host and machine birth. The card explains that another
+sign-in may still be running there, and a new sign-in refuses. No elapsed time
+or detached-volume inventory clears the fence. Only that machine's persisted
+deletion receipt from the existing release owner does: a pool host's idle stop
+or manual `cland host destroy` supplies it. A long-lived host keeps the login
+fenced until then. There is no existing census identity for terminal SSH sign-in,
+so no process-census recovery is attempted. A failure before host admission has
+no native writer and needs no interrupted-host fence.
+The CLI sends `login.signed-in` only after its SSH child closes. That frame on
+the exact owning connection is the positive close receipt; the pending owner
+holds the durable token. Success or failure then follows its native result,
+including `sign-in failed` for a closed failed child. A dispatcher-generated
+peer-close or graceful hub stop instead calls `LoginSignIn.interrupt`, with no
+unmount or detach, invalidates the pending entry and retains the same interrupted
+fence as abrupt death. Other-connection and late interrupted frames refuse.
+Owner loss joins an already-admitted close-confirmed completion, preserving its
+snapshot work rather than replacing it with interruption.
+For a temporary unbound mount, the same exact-machine deletion receipt also
+calls the snapshot owner's existing lost-kernel abandonment path. It settles
+that machine's freeze without adding a release fence, and preserves any positive
+snapshot receipt or native admission. Those retained snapshot obligations still
+refuse a new sign-in; machine deletion never manufactures a successful backup.
+
+A second operational sign-out within 24 hours adds “This account seems to allow
+one sign-in: set exclusive or add an account.” to the card, Agents notice and
+text list. The hub clock and account key define the window; empty accounts key
+by login name. Exactly 24 hours is outside it, and failed creating attempts do
+not count. Additive `signedOut.oneSignIn` retains the hint across restart.
+Hostless administrative transitions such as removal and volume-missing recovery
+do not count as dead-login episodes for this hint.
+Older rows omit it. A private `login_signout_window` table migrates empty and retains
+one timestamp per identity. Each sign-out prunes at most 64 expired entries
+through an expiry index; reads and startup scan no retained sign-out history.
+See [renewal cases](../agents/tests/hub-test-login-resignin-native.test.ts.md).
+
 `cland login list [--json]` reads project login metadata from `hub.db`. It is
 available only through a local human CLI or Neovim connection. Sessions, web
 clients and remotes cannot list logins. In users mode the local user must also
@@ -56,7 +136,7 @@ A provider rate refusal retains the pending backup and retry time while sign-in
 finishes ready; other snapshot failures keep the disk signed out.
 A nonzero exit or connection close unmounts and detaches the kept disk, then
 marks it signed out. A missing native cleanup receipt retains creating state
-and its resource fence. While creating, the login has no bindings or free
+and its resource fence. While a newly added login is creating, it has no bindings or free
 capacity. No step logs out a harness. Provider API access and terminal SSH
 connectivity are required on real hosts; fake-provider tests use no network.
 
@@ -407,15 +487,17 @@ The new snapshot id is persisted before pruning;
 older ids beyond two are removed only after `deleteSnapshot` confirms deletion
 with its provider read. Interrupted pruning resumes before another snapshot.
 
-The sign-in owner calls the shared `snapshotLoginDisk(logins, name, target,
+New-login add calls the shared `snapshotLoginDisk(logins, name, target,
 clock)` after confirmed unmount. Its creating state excludes scheduler admission.
+Renewal on an existing disk instead enters `LoginSnapshots.signIn`, keeping the
+mounted freeze/thaw registered with the same release and shutdown owner.
 The release owner first awaits `dispatcher.loginSnapshots?.beginRelease(name)`
 before asynchronous stop work. It persists a release fence and refuses new
 snapshots. It joins any admitted freeze and its thaw independently of the
 provider snapshot promise; a failed thaw leaves the fence up and refuses release.
 After confirmed detach, it calls
 `dispatcher.loginSnapshots?.onReleased(name,
-{volumeId})` once the login is ready
+{volumeId})` once the login is ready or signed-out
 with no bindings. This synchronous notification validates the volume id, clears the release fence and
 queues a due backup without awaiting provider work. The host release owner makes those calls; this module never stops a host or mutates bindings. A future provider retry
 remains at its recorded deadline after release.

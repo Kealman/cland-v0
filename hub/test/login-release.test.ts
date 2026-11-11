@@ -47,6 +47,28 @@ test('host stop unmounts and detaches the same volume before deletion',async t=>
  assert.deepEqual(f.store.hosts.logins.get('login-0'),{...before,state:'ready'});
  assert.deepEqual(f.store.hosts.logins.bindings('login-0'),[]);
 });
+
+test('confirmed host destruction clears interrupted renewal and detached snapshot release fences',async t=>{
+ const f=await fixture(t),r=f.store.hosts.logins,machine=f.store.hosts.provisions.get(f.input.id)!.machine!;
+ r.useClock(f.input.clock);r.markSignedOut('login-0',{reason:'unauthorized',host:f.input.id});const token=r.beginSignIn('login-0');r.captureSignInHost('login-0',token,{id:f.input.id,machine});r.interruptSignIn('login-0');
+ const scheduler=new LoginSnapshots({logins:r,clock:f.input.clock,resolve:async()=>{throw Error('no snapshot during interrupted release');}});f.own(()=>scheduler.close());
+ installLoginRelease(f.store.hosts,{host:()=>f.host,beginRelease:(name,options)=>scheduler.beginRelease(name,options),onReleased:(name,receipt)=>scheduler.onReleased(name,receipt),notice:()=>{}});
+ assert.throws(()=>r.beginSignIn('login-0'),/may still be running/);
+ const destroyed=await destroyHost(f.input);assert.equal(destroyed.state,'destroyed');assert.ok(f.store.hosts.provisions.get(f.input.id)!.machineDeletionRead);assert.equal(r.signInFenceReason('login-0'),'');assert.deepEqual(r.bindings('login-0'),[]);assert.ok(r.beginSignIn('login-0'),'both positive receipt fences have settled');
+});
+
+for(const changedIdentity of [false,true])test(changedIdentity?'machine deletion never borrows interrupted admission authority for another freeze identity':'machine deletion abandons an unbound interrupted freeze through snapshot ownership while retaining its receipt',async t=>{
+ const f=await fixture(t,0),r=f.store.hosts.logins,machine=f.store.hosts.provisions.get(f.input.id)!.machine!;
+ r.useClock(f.input.clock);const made=await f.provider.createVolume({project:f.input.root,name:'temporary-signin',region:'fake-1',sizeGiB:1});if(made.state!=='created')throw Error('fixture volume');assert.equal((await f.provider.attachVolume(made.volume,machine)).state,'attached');
+ r.insert({name:'temporary',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:made.volume.id,snapshotIds:[],lastSignIn:null});r.markSignedOut('temporary',{reason:'fixture signed out',host:null});const token=r.beginSignIn('temporary');r.captureSignInHost('temporary',token,{id:f.input.id,machine,identity:'admitted-host'});
+ const receipt={id:'retained-snapshot',volumeId:made.volume.id,created:f.input.clock.now().toISOString()};
+ r.updateBackup('temporary',{pending:true,freeze:{host:f.input.id,identity:changedIdentity?'another-freeze-owner':'admitted-host',volumeId:made.volume.id},receipt});r.interruptSignIn('temporary');
+ assert.deepEqual(r.bindings('temporary'),[]);assert.ok(r.signInFenceReason('temporary'));
+ assert.equal((await destroyHost(f.input)).state,'destroyed');const row=r.get('temporary');assert.ok(row?.kind==='disk');
+ if(changedIdentity){assert.ok(r.signInFenceReason('temporary'));assert.equal(row.backup?.freeze?.identity,'another-freeze-owner');assert.equal(row.backup?.releasing,undefined);}
+ else{assert.equal(r.signInFenceReason('temporary'),'');assert.equal(row.backup?.freeze,undefined);assert.equal(row.backup?.releasing,false);assert.match(row.backup?.outcome??'',/freeze abandoned with lost host/);}
+ assert.deepEqual(row.backup?.receipt,receipt);assert.throws(()=>r.beginSignIn('temporary'),/snapshot/);assert.deepEqual(f.events,['delete'],'no native disk effects are resumed');
+});
 test('two login unmounts run concurrently before detach',async t=>{
  const f=await fixture(t,2),gate=Promise.withResolvers<void>();let entered=0;
  f.host.loginDisk=async()=>{entered++;await gate.promise;};

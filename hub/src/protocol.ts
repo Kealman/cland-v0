@@ -712,6 +712,7 @@ export type ClientRequest =
   | { type: 'login.remove'; id: string; name: string }
   | { type: 'login.snapshot'; id: string; name: string }
   | { type: 'login.list'; id: string }
+  | { type: 'login.signin'; id: string; name:string }
   | { type: 'login.set'; id: string; name: string; exclusive: boolean }
   | ({ type: 'login.add'; id: string } & import('./host/login-signin.ts').LoginAddInput)
   | { type: 'login.signed-in'; id: string; name: string; code: number | null }
@@ -1143,6 +1144,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return typeof f.harness === 'string' && ['claude-code','codex','opencode'].includes(f.harness) && (f.kind === undefined || f.kind === 'disk' || f.kind === 'key') && ['name','account','pool'].every(key => f[key] === undefined || typeof f[key] === 'string');
     case 'login.remove':
     case 'login.snapshot':
+    case 'login.signin':
       return typeof f.name === 'string' && /^[a-z0-9][a-z0-9-]{0,31}$/.test(f.name);
     case 'login.set':
       return typeof f.name === 'string' && /^[a-z0-9][a-z0-9-]{0,31}$/.test(f.name) && typeof f.exclusive === 'boolean';

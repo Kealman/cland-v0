@@ -9,7 +9,7 @@ import { hostStatus } from '../host/status.ts';
 import { PoolCreationNotAdmitted } from '../host/pool-runtime.ts';
 import { createHost, listHosts, destroyHost } from '../host/provision-host.ts';
 import { type LoginSignIn } from '../host/login-signin.ts';
-import { LoginSnapshots } from '../host/login-snapshots.ts';
+import { LoginSnapshots, snapshotHostIdentity } from '../host/login-snapshots.ts';
 import { preparePoolLogin } from '../host/login-add.ts';
 import { preparePools } from '../host/provider/pool-image.ts';
 import { hostWorktreeMatches } from '../host/task-worktrees.ts';
@@ -324,10 +324,10 @@ export class Dispatcher {
       const provision=options.core.store.hosts.provisions.get(binding.host);
       const host=this.hostOwner?.hosts.find(host=>host.name===binding.host);
       if(provision?.machine?.id!==volume.attachedTo||!host)throw Error('login writer host unavailable');
-      const identity=JSON.stringify({machine:provision.machine,created:provision.created,registration:options.core.store.hosts.get(binding.host)});
+      const identity=snapshotHostIdentity(provision.machine,provision.created,options.core.store.hosts.get(binding.host));
       const authorizeCleanup=()=>{
         const live=options.core.store.hosts.provisions.get(binding.host);
-        if(JSON.stringify({machine:live?.machine,created:live?.created,registration:options.core.store.hosts.get(binding.host)})!==identity||!this.hostOwner?.hosts.includes(host))throw Error('login snapshot host generation changed');
+        if(snapshotHostIdentity(live?.machine,live?.created,options.core.store.hosts.get(binding.host))!==identity||!this.hostOwner?.hosts.includes(host))throw Error('login snapshot host generation changed');
       };
       const authorize=()=>{authorizeCleanup();if(options.core.store.hosts.provisions.get(binding.host)?.state!=='ready')throw Error('login snapshot host is stopping');};
       return {provider,volume,host,identity,authorize,authorizeCleanup};
@@ -1464,7 +1464,7 @@ export class Dispatcher {
     const loginSignIns = new Map<string, LoginSignIn>();
     const loginClosing = () => {
       for(const pending of loginSignIns.values()) {
-        const work=pending.complete(null);
+        const work=pending.interrupt?.()??pending.complete(null);
         this.#poolPrepares.add(work);
         void work.finally(()=>this.#poolPrepares.delete(work)).catch(error=>this.#log({event:'login-cleanup-incomplete',name:pending.name,error:String(error)}));
       }
@@ -2197,6 +2197,7 @@ export class Dispatcher {
             return answer(this.#options.control.remoteStatus());
           }
           case 'login.add':
+          case 'login.signin':
           case 'login.signed-in':
           case 'login.remove':
           case 'login.snapshot':
@@ -2238,26 +2239,30 @@ export class Dispatcher {
               void work.finally(()=>{loginSignIns.delete(frame.name);this.#poolPrepares.delete(work);}).catch(()=>{});
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));
             }
-            if(frame.type==='login.add') {
-              if(frame.kind==='key') {
+            if(frame.type==='login.add'||frame.type==='login.signin') {
+              if(frame.type==='login.add'&&frame.kind==='key') {
                 const root=this.#options.control?.status().root, config=this.#options.projectConfig?.();
                 if(!root||!config||!this.#options.registerHostSecrets)throw Error('key login runtime unavailable');
                 return answer(addKeyLogin(root,projectTag(root,config.name),core.store.hosts.logins,this.#options.registerHostSecrets,frame));
               }
               if(this.#closed||!this.hostOwner||!this.#options.control) throw Error('host runtime unavailable');
               const root=this.#options.control.status().root, env=this.#options.env??process.env;
+              const existing=frame.type==='login.signin'?core.store.hosts.logins.get(frame.name):null;
+              if(frame.type==='login.signin'&&!existing)throw Error('unknown login: '+frame.name);
+              const input=frame.type==='login.signin'?{harness:existing!.harness,name:frame.name,signin:true}:frame;
               const work=(async()=>{
-                const {pending,plan}=await (this.#options.prepareLogin??preparePoolLogin)({root,env,pools:this.#options.projectConfig!().hosts.pools,records:core.store.hosts,hosts:this.hostOwner!.hosts,clock:core.clock,signal:this.#hostProvisionAbort.signal,createHost:pool=>this.#createPoolHost(pool),pinHost:id=>{
+                const {pending,plan}=await (this.#options.prepareLogin??preparePoolLogin)({root,env,pools:this.#options.projectConfig!().hosts.pools,records:core.store.hosts,hosts:this.hostOwner!.hosts,clock:core.clock,signal:this.#hostProvisionAbort.signal,createHost:pool=>this.#createPoolHost(pool),...(this.loginSnapshots?{snapshots:this.loginSnapshots}:{}),pinHost:id=>{
                   this.#loginPins.set(id,(this.#loginPins.get(id)??0)+1);
                   let released=false;
                   return ()=>{if(released)return;released=true;const n=this.#loginPins.get(id)!-1;if(n)this.#loginPins.set(id,n);else this.#loginPins.delete(id);};
-                }},frame);
-                const close=()=>pending.complete(null);
+                }},input);
+                const close=()=>{loginSignIns.delete(pending.name);return pending.interrupt?.()??pending.complete(null);};
                 this.#loginClosers.add(close);
                 const complete=pending.complete.bind(pending);
                 pending.complete=code=>complete(code).finally(()=>{this.#loginClosers.delete(close);});
+                if(pending.interrupt){const interrupt=pending.interrupt.bind(pending);pending.interrupt=()=>{loginSignIns.delete(pending.name);return interrupt().finally(()=>{this.#loginClosers.delete(close);});};}
                 loginSignIns.set(pending.name,pending);
-                if(!peer.isOpen()||this.#closed) {await pending.complete(null);loginSignIns.delete(pending.name);throw Error('terminal disconnected before sign-in');}
+                if(!peer.isOpen()||this.#closed) {await close();throw Error('terminal disconnected before sign-in');}
                 return plan;
               })();
               this.#poolPrepares.add(work);

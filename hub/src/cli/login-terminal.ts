@@ -7,7 +7,7 @@ import { terminalEnvironment } from '../host/attach.ts';
 import { sessionOf } from '../../../shared/frame-actor.ts';
 
 /** Keep one authenticated connection through native close and final disk receipt. */
-export async function terminalLogin(d: Discovery, input: LoginAddInput, env: NodeJS.ProcessEnv): Promise<number> {
+export async function terminalLogin(d: Discovery, input: LoginAddInput | {name:string;signin:true}, env: NodeJS.ProcessEnv): Promise<number> {
  if(sessionOf(env)) throw Error('login add requires the local human CLI');
  const socket=createConnection(d.socket);socket.setEncoding('utf8');
  let buffer='', closed=false,nativeClosed=true,cancellation:Error|undefined;
@@ -43,7 +43,8 @@ export async function terminalLogin(d: Discovery, input: LoginAddInput, env: Nod
  try {
   await welcome;
   clearTimeout(helloTimer);
-  const plan=await request({type:'login.add',...input}) as {name:string;host:string;command:string;args:string[]};
+  const frame='signin' in input?{type:'login.signin',name:input.name}:{type:'login.add',...input};
+  const plan=await request(frame) as {name:string;host:string;command:string;args:string[]};
   if(plan.command!=='ssh'||!Array.isArray(plan.args)||plan.args.some(arg=>typeof arg!=='string'))throw Error('invalid login terminal plan');
   if(cancellation)throw cancellation;
   nativeClosed=false;

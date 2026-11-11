@@ -1,6 +1,13 @@
 # Hub documentation
 
 Subsystem reference and implementation guidance live in `docs/hub/`.
+The [logins reference](../docs/hub/logins.md) also covers terminal renewal of an
+existing disk with `cland login signin`, binding-preserving admission and the
+24-hour one-sign-in hint.
+Peer loss and hub shutdown interrupt renewal without disk cleanup; a completion
+on its owning connection follows the CLI's positive SSH-close receipt.
+Interrupted renewal uses exact-machine deletion receipts to release its native
+fence, with retained snapshot obligations left to their existing owner.
 Add subsystem text to its file; keep this index as pointers.
 
 - [Prerequisite and packaging reports](../docs/hub/prerequisite-and-packaging-reports.md)

@@ -33,7 +33,7 @@ async function releaseDetached(input:Parameters<typeof releaseDetachedLoginBindi
   const current=records.logins.binding(login.name,binding.host);
   if(JSON.stringify(current)!==JSON.stringify(binding)||records.logins.hasPendingBinding(login.name))throw Error('login binding ownership changed');
   records.logins.unbind(login.name,binding.host);
-  if(records.logins.get(login.name)?.state==='ready')hooks.onReleased(login.name,{volumeId:login.volumeId!});
+  if(!records.logins.hasBindings(login.name)&&['ready','signed-out'].includes(records.logins.get(login.name)!.state))hooks.onReleased(login.name,{volumeId:login.volumeId!});
   return;
  }
  let operation=records.logins.readerOperation(login.name,binding.host);
@@ -101,7 +101,7 @@ export async function releaseHostLogins(input:{records:HostRecords;id:string;roo
    if((await provider.detachVolume(volume,machine)).state!=='detached')throw Error('login detach unconfirmed');
    if(binding.role==='reader'){await finishReader(binding,login,volume);return;}
    records.logins.unbind(login.name,id);
-   if(records.logins.get(login.name)?.state==='ready')hooks.onReleased(login.name,{volumeId:login.volumeId!});
+   if(!records.logins.hasBindings(login.name)&&['ready','signed-out'].includes(records.logins.get(login.name)!.state))hooks.onReleased(login.name,{volumeId:login.volumeId!});
   }catch(error){report(login.name);throw error;}
  }));
  if(results.some(result=>result.status==='rejected'))throw Error('login release unconfirmed');

@@ -10,10 +10,13 @@ export type ReaderOperation = {login:string;host:string;harness:string;provider:
 
 export type LoginBackup = { initialAt?: string; lastAt?: string; pending: boolean; retryAt?: string; releasing?: boolean; freeze?: {host:string; identity:string; volumeId:string}; receipt?: import('./provider/provider.ts').VolumeSnapshot; outcome?: string };
 export type LoginState = 'creating' | 'ready' | 'in-use' | 'signed-out';
-type Base = { name: string; harness: 'claude-code' | 'codex' | 'opencode'; account: string; state: LoginState; lastSignIn: string | null; storage?:LoginStorage; signedOut?:{id:string;reason:string;host:string|null;at:string} };
+type Base = { name: string; harness: 'claude-code' | 'codex' | 'opencode'; account: string; state: LoginState; lastSignIn: string | null; storage?:LoginStorage; signedOut?:{id:string;reason:string;host:string|null;at:string;oneSignIn?:true} };
 export type Login = Base & ({ kind: 'disk'; exclusive: boolean; provider: string; region: string; volumeId: string | null; snapshotIds: string[]; backup?: LoginBackup } | { kind: 'key' });
 export type LoginInput = Omit<Base, 'state'> & ({ kind: 'disk'; exclusive?: boolean; provider: string; region: string; volumeId: string | null; snapshotIds: string[] } | { kind: 'key' });
 export type LoginBinding = { login: string; host: string; role: 'writer' | 'reader'; volumeId: string | null; phase?: 'pending' | 'settled' };
+type SignInBindingAuthority={writer:LoginBinding|null;episode:string|null;any:boolean};
+type SignInHost={id:string;machine:Machine;identity?:string};
+type SignInAdmission={id:string;state:'active'|'interrupted';volumeId:string;binding:SignInBindingAuthority;host?:SignInHost};
 export type LoginBindingRefusalCode = 'disk-volume-required' | 'writer-volume-mismatch' | 'reader-volume-mismatch' | 'key-volume' | 'exclusive-writer' | 'writer-conflict';
 export class LoginBindingRefused extends Error {
  readonly code: LoginBindingRefusalCode;
@@ -107,8 +110,12 @@ export class LoginRecords {
  private readonly db: DatabaseSync;
  constructor(db: DatabaseSync) {
   this.db = db;
+  db.exec('create table if not exists login_signout_window (identity text primary key, at integer not null)');
+  db.exec('create index if not exists login_signout_expiry on login_signout_window(at)');
   db.exec(`create table if not exists logins (name text primary key, record text not null);
    create table if not exists login_bindings (login text not null references logins(name), host text not null, role text not null, volume_id text, primary key(login,host));`);
+  if(!db.prepare('pragma table_info(logins)').all().some(row=>row.name==='sign_in'))db.exec('alter table logins add column sign_in text');
+  db.exec("create index if not exists login_signin_active on logins(name) where json_extract(sign_in,'$.state')='active'; create index if not exists login_signin_host on logins(json_extract(sign_in,'$.host.id'),name) where sign_in is not null");
   if(!db.prepare('pragma table_info(logins)').all().some(row=>row.name==='revision'))db.exec("alter table logins add column revision text not null default ''");
   if (!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='phase')) db.exec('alter table login_bindings add column phase text');
   if(!db.prepare('pragma table_info(logins)').all().some(row=>row.name==='removing'))db.exec('alter table logins add column removing integer not null default 0');
@@ -116,6 +123,7 @@ export class LoginRecords {
   if(!db.prepare('pragma table_info(logins)').all().some(row=>row.name==='removal_volume'))db.exec('alter table logins add column removal_volume text');
   if(!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='episode'))db.exec("alter table login_bindings add column episode text not null default ''");
   db.exec('create index if not exists login_bindings_pending on login_bindings(login,phase)');
+  db.exec("create index if not exists login_writer on login_bindings(login) where role='writer'");
   db.exec("create index if not exists login_reconcile_bindings on login_bindings(login,host) where phase is null or phase='settled'");
   db.exec("create index if not exists login_reconciliation on logins(name) where json_extract(record,'$.kind')='disk' and json_extract(record,'$.state') in ('ready','in-use')");
   db.exec('create table if not exists login_readers(login text not null,host text not null,harness text not null,phase text not null,record text not null,primary key(login,host)); create unique index if not exists login_readers_host on login_readers(host,harness); create index if not exists login_readers_pending on login_readers(login,phase)');
@@ -198,6 +206,7 @@ export class LoginRecords {
  }
  beginRemove(name:string):Login {
   return this.atomicValue(()=>{
+   this.assertNotSigningIn(name);
    const row=this.required(name),bindings=this.bindings(name);
    if(bindings.length||row.state==='in-use')throw Error(`login ${name} is in use on host ${bindings.map(b=>b.host).join(', ')||'unknown'}`);
    if(row.state==='creating')throw Error(`login ${name}: sign-in is running`);
@@ -245,11 +254,21 @@ export class LoginRecords {
  updateCreatingDisk(name: string, update: {volumeId?: string; snapshotIds?: string[]; lastSignIn?: string}): void {
   const row = this.required(name);
   if (row.kind !== 'disk' || row.state !== 'creating') throw Error('disk login must be creating');
+  if(update.volumeId!==undefined&&update.volumeId!==row.volumeId&&this.signInAdmission(name))throw Error('login volume has a retained sign-in admission');
   if(update.volumeId!==undefined&&update.volumeId!==row.volumeId&&(row.backup?.pending||row.backup?.freeze||row.backup?.receipt))throw Error('login volume has retained snapshot ownership');
   this.save({...row,...update});
  }
  bindings(name: string): LoginBinding[] {
   return this.db.prepare('select login,host,role,volume_id as volumeId,phase from login_bindings where login=? order by host').all(name).map(bindingRow);
+ }
+ hasBindings(name:string):boolean {return this.db.prepare('select 1 from login_bindings where login=? limit 1').get(name)!==undefined;}
+ signInBinding(name:string):SignInBindingAuthority {
+  const row=this.db.prepare("select login,host,role,volume_id as volumeId,phase,episode from login_bindings indexed by login_writer where login=? and role='writer' limit 1").get(name);
+  return {writer:row?bindingRow(row):null,episode:row?.episode as string??null,any:!!row||this.hasBindings(name)};
+ }
+ assertSignInBinding(name:string,captured:ReturnType<LoginRecords['signInBinding']>):void {
+  const live=this.signInBinding(name);
+  if(JSON.stringify(live)!==JSON.stringify(captured))throw Error('sign-in writer binding episode changed');
  }
  /** Only bound disks participate; indexed cursor pages decode no retained login rows. */
  boundHosts(after:string,limit:number):string[] {
@@ -360,7 +379,86 @@ export class LoginRecords {
  markSignedOut(name:string,receipt:{reason:string;host:string|null}):void {
   const row=this.required(name);
   if(row.state!=='creating'&&row.state!=='ready'&&row.state!=='in-use')throw Error(`login ${name} cannot mark signed out from ${row.state}`);
-  this.atomic(()=>this.save({...row,state:'signed-out',signedOut:{id:randomUUID(),reason:receipt.reason,host:receipt.host,at:this.clock.now().toISOString()}}));
+  this.atomic(()=>{
+   this.db.prepare('update logins set sign_in=null where name=?').run(name);
+   const now=this.clock.now().getTime(),identity=JSON.stringify(row.account?['account',row.account]:['login',row.name]);
+   const operational=row.state!=='creating'&&!!receipt.host;
+   const previous=operational?this.db.prepare('select at from login_signout_window where identity=?').get(identity)?.at as number|undefined:undefined;
+   const oneSignIn=operational&&previous!==undefined&&now>=previous&&now-previous<86400000;
+   if(operational)this.db.prepare('insert into login_signout_window(identity,at) values (?,?) on conflict(identity) do update set at=excluded.at').run(identity,now);
+   this.db.prepare('delete from login_signout_window where identity in (select identity from login_signout_window indexed by login_signout_expiry where at<=? order by at limit 64)').run(now-86400000);
+   this.save({...row,state:'signed-out',signedOut:{id:randomUUID(),reason:receipt.reason,host:receipt.host,at:this.clock.now().toISOString(),...(oneSignIn?{oneSignIn:true}:{})}});
+  });
+ }
+ /** Sign-in owns a durable admission without releasing existing disk users. */
+ beginSignIn(name:string):string {
+  let admission='';
+  this.atomic(()=>{
+   const row=this.required(name);this.assertSignInSettled(name);
+   this.assertNotSigningIn(name);
+   if(row.kind!=='disk'||!row.volumeId||row.state!=='signed-out')throw Error('sign-in requires a signed-out disk login');
+   admission=randomUUID();this.saveSignIn(name,{id:admission,state:'active',volumeId:row.volumeId,binding:this.signInBinding(name)});
+   const {signedOut,...rest}=row;this.save({...rest,state:'creating'});
+  });return admission;
+ }
+ finishSignIn(name:string,admission:string,lastSignIn:string):Login {
+  this.atomic(()=>{
+   const row=this.required(name);this.assertSignInSettled(name);
+   this.assertSignInAdmission(name,admission);
+   if(!Number.isFinite(Date.parse(lastSignIn)))throw Error('invalid sign-in receipt time');
+   this.db.prepare('update logins set sign_in=null where name=?').run(name);
+   this.save({...row,lastSignIn,state:this.hasBindings(name)?'in-use':'ready'});
+  });return this.required(name);
+ }
+ assertSignInAdmission(name:string,admission:string):void {
+  const owner=this.signInAdmission(name);
+  if(this.required(name).state!=='creating'||owner?.state!=='active'||owner.id!==admission)throw Error('sign-in admission changed');
+  if(!owner.binding)throw Error('sign-in binding admission missing');
+  this.assertSignInBinding(name,owner.binding);
+  this.assertNotRemoving(name);
+  const row=this.required(name);
+  if(row.kind!=='disk'||row.volumeId!==owner.volumeId)throw Error('sign-in volume admission changed');
+  if(row.kind==='disk'&&row.backup?.releasing)throw Error('login is releasing');
+ }
+ private signInAdmission(name:string):SignInAdmission|null {
+  const value=this.db.prepare('select sign_in from logins where name=?').get(name)?.sign_in;
+  return value?JSON.parse(String(value)) as SignInAdmission:null;
+ }
+ private saveSignIn(name:string,owner:SignInAdmission):void {this.db.prepare('update logins set sign_in=? where name=?').run(JSON.stringify(owner),name);}
+ captureSignInHost(name:string,admission:string,host:SignInHost):void {
+  this.atomic(()=>{this.assertSignInAdmission(name,admission);const owner=this.signInAdmission(name)!;if(owner.host&&(owner.host.id!==host.id||JSON.stringify(owner.host.machine)!==JSON.stringify(host.machine)||owner.host.identity!==undefined&&owner.host.identity!==host.identity))throw Error('sign-in host admission changed');this.saveSignIn(name,{...owner,host});});
+ }
+ signInFenceReason(name:string):string {
+  const owner=this.signInAdmission(name);
+  return owner?.state==='interrupted'&&owner.host?`Previous sign-in may still be running on host ${owner.host.id}; its idle stop or cland host destroy must confirm machine deletion before signing in again.`:'';
+ }
+ assertNotSigningIn(name:string):void {
+  const interrupted=this.signInFenceReason(name);if(interrupted)throw Error(interrupted);
+  if(this.signInAdmission(name))throw Error(`login ${name}: sign-in is running; requires a signed-out disk login`);
+ }
+ activeSignIns(after='',limit=64):string[] {
+  this.pageLimit(limit);return this.db.prepare("select name from logins indexed by login_signin_active where name>? and json_extract(sign_in,'$.state')='active' order by name limit ?").all(after,limit).map(row=>String(row.name));
+ }
+ signInHostAfter(after:string):string|null {
+  return this.db.prepare("select json_extract(sign_in,'$.host.id') as host from logins indexed by login_signin_host where sign_in is not null and json_extract(sign_in,'$.host.id')>? order by json_extract(sign_in,'$.host.id') limit 1").get(after)?.host as string??null;
+ }
+ interruptSignIn(name:string,admission?:string):void {
+  this.atomic(()=>{const owner=this.signInAdmission(name);if(admission&&owner?.id!==admission)throw Error('sign-in admission changed');if(owner?.state!=='active')return;this.markSignedOut(name,{reason:'sign-in interrupted',host:owner.host?.id??null});if(owner.host)this.saveSignIn(name,{...owner,state:'interrupted'});});
+ }
+ /** Only the release owner calls this after reading its persisted machine receipt. */
+ settleSignInHost(host:string,machine:Machine,settleFreeze?:(name:string,host:SignInHost)=>boolean):void {
+  let after='';
+  for(;;){
+   const page=this.db.prepare("select name,sign_in from logins indexed by login_signin_host where sign_in is not null and json_extract(sign_in,'$.host.id')=? and name>? order by name limit 64").all(host,after);if(!page.length)return;
+   for(const item of page){const owner=JSON.parse(String(item.sign_in)) as SignInAdmission;if(JSON.stringify(owner.host?.machine)!==JSON.stringify(machine))continue;this.atomic(()=>{const name=String(item.name);this.interruptSignIn(name);if(settleFreeze?.(name,owner.host!)===false)return;this.db.prepare('update logins set sign_in=null where name=?').run(name);this.changed(name);});}
+   after=String(page.at(-1)!.name);
+  }
+ }
+ private assertSignInSettled(name:string):void {
+  this.assertNotRemoving(name);this.assertSnapshotSettled(name);
+  const row=this.required(name);
+  if(this.hasPendingBinding(name))throw Error('login pending binding outcome unknown');
+  if(row.kind==='disk'&&(row.backup?.releasing||row.backup?.freeze||row.backup?.receipt))throw Error('login snapshot or release outcome requires reconciliation');
  }
  transition(name: string, state: LoginState, binding?: Omit<LoginBinding,'login'>): Login {
   this.assertNotRemoving(name);

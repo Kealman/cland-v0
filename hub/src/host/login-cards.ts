@@ -1,6 +1,7 @@
 import type { WaitingLaunch } from '../protocol.ts';
 import type { Store } from '../hub/store.ts';
 import type { HubCards } from '../hub/hub-cards.ts';
+import { loginSignInHint } from './login-signals.ts';
 
 const metadataKey = 'login-wait-cards';
 export type SignOutEpisode=NonNullable<import('./logins.ts').Login['signedOut']>;
@@ -59,7 +60,8 @@ export class LoginCards {
       const previous=Object.hasOwn(active,name)?active[name]:undefined;
       if(previous?.episode===episode.id)return;
       if(previous&&this.store.ask(previous.id)?.state==='open')this.cards.withdraw(previous.id,'New sign-out episode');
-      const id=this.cards.raise('login-signin','general',`Login ${name} is signed out. Sign in again?`,['Sign in again','Not now'],false,{login:name,episode:episode.id});
+      const hint=[loginSignInHint(episode),this.store.hosts.logins.signInFenceReason(name)].filter(Boolean).join(' ');
+      const id=this.cards.raise('login-signin','general',`Login ${name} is signed out. Sign in again?${hint?' '+hint:''}`,['Sign in again','Not now'],false,{login:name,episode:episode.id});
       active[name]={id,episode:episode.id};
       this.store.setMeta('login-signin-cards',JSON.stringify(active));
     });
@@ -77,7 +79,7 @@ export class LoginCards {
   loginChanged(name:string):void {
     const login=this.store.hosts.logins.get(name);
     if(login?.state==='signed-out'){this.signedOut(name);return;}
-    if(login&&login.state!=='ready')return;
+    if(login&&login.state!=='ready'&&login.state!=='in-use')return;
     this.store.transaction(()=>{
       const active=JSON.parse(this.store.meta('login-signin-cards')??'{}') as Record<string,SignInCard>;
       if(!Object.hasOwn(active,name))return;

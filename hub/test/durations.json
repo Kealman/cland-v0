@@ -11817,6 +11817,27 @@
     "hub/test/login-selection.test.ts::status reads decode current storage only and bound harness work across retained history": 0.148061
   },
   "allow": {
+    "hub/test/login-resignin-native.test.ts::native bound Codex renews its own dead credential home without replacing the disk": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1790: correction72b0612bd native8 receipt A-18795, macOS arm64 Node24.21 local fake-only bound Codex dead-home CLI case 3.718276417s including fixture setup and joined cleanup. Linux unexecuted projection 1.6x; ceil(1.5x projection)=9s. Report mode unchanged; no real provider, credential, network or browser."
+    },
+    "hub/test/login-resignin-native.test.ts::native sign-in of unbound Claude, Codex and OpenCode disks reuses and detaches each volume": {
+      "seconds": 11,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1790: macOS arm64 Node24.21 local fake-provider/fake-SSH native case, green 4.371731333s including fixture setup and joined cleanup. Linux unexecuted projection 1.6x; allowance ceil(1.5x projection). No real provider, credential, network or browser. Report mode unchanged."
+    },
+    "hub/test/login-resignin-native.test.ts::native opencode sign-in renews the mounted writer while its session keeps running": {
+      "seconds": 10,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1790: macOS arm64 Node24.21 local fake-provider/fake-SSH native case, green 3.786300333s including fixture setup and joined cleanup. Linux unexecuted projection 1.6x; allowance ceil(1.5x projection). No real provider, credential, network or browser. Report mode unchanged."
+    },
     "hub/test/login-capacity.test.ts::capacity index bounds visits across same-region rejected rows and agrees with pending fences": {
       "seconds": 10,
       "owner": "C-216",

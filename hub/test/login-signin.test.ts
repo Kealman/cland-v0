@@ -3,12 +3,157 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { LoginRecords } from '../src/host/logins.ts';
-import { prepareLoginSignIn, loginSignInCommand } from '../src/host/login-signin.ts';
+import { prepareLoginSignIn, prepareExistingLoginSignIn, loginSignInCommand } from '../src/host/login-signin.ts';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Host } from '../src/host/host.ts';
 import type { HostProvider } from '../src/host/provider/provider.ts';
 import { FakeClock } from './fake-clock.ts';
+import {LoginSnapshots,snapshotHostIdentity} from '../src/host/login-snapshots.ts';
+
+test('unbound renewal interruption retains its native fence without invoking disk cleanup',async()=>{
+ const db=new DatabaseSync(':memory:'),r=new LoginRecords(db),clock=new FakeClock(),events:string[]=[];r.useClock(clock);
+ r.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});r.markSignedOut('work',{reason:'fixture signed out',host:null});
+ const volume={id:'v',name:'disk',project:'/project',region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:'m'},host={name:'temporary',loginDisk:async()=>{events.push('disk effect');}} as unknown as Host;
+ const provider={listVolumes:async()=>({state:'listed',volumes:[volume]})} as unknown as HostProvider,owner=new LoginSnapshots({logins:r,clock,resolve:async()=>({host,provider,volume})});
+ try{const pending=await prepareExistingLoginSignIn({logins:r,name:'work',provider,host,volume,machine:{id:'m',address:'fake',architecture:'x86_64',created:volume.created},identity:'temporary',clock,snapshots:owner,authorize:()=>{},cleanup:async()=>{events.push('cleanup');}});assert.ok(pending.interrupt);await pending.interrupt();assert.deepEqual(events,[]);assert.equal(r.get('work')?.signedOut?.host,'temporary');assert.throws(()=>r.beginSignIn('work'),/may still be running on host temporary/);}finally{await owner.close();db.close();}
+});
+
+test('renewal rate refusal publishes native success and the shared owner retries its pending backup',async()=>{
+ const db=new DatabaseSync(':memory:'),r=new LoginRecords(db),clock=new FakeClock(),events:string[]=[];r.useClock(clock);
+ r.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});r.transition('work','ready');r.bind('work',{host:'h',role:'writer',volumeId:'v'});r.markSignedOut('work',{reason:'unauthorized',host:'h'});
+ const volume={id:'v',name:'disk',project:'/project',region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:'m'},retryAt=new Date(clock.now().getTime()+1000).toISOString();let attempts=0;
+ const host={name:'h',loginDisk:async({op}:{op:string})=>{events.push(op);}} as unknown as Host;
+ const provider={listVolumes:async()=>({state:'listed',volumes:[volume]}),snapshotVolume:async()=>{attempts++;events.push('snapshot');return attempts===1?{state:'refused',reason:'rate limited',retryAt}:{state:'snapshotted',snapshot:{id:'backup',volumeId:'v',created:clock.now().toISOString()}};}} as unknown as HostProvider;
+ const owner=new LoginSnapshots({logins:r,clock,resolve:async()=>({provider,host,volume,identity:'h'})});
+ try{const pending=await prepareExistingLoginSignIn({logins:r,name:'work',provider,host,volume,machine:{id:'m',address:'fake',architecture:'x86_64',created:volume.created},identity:'h',clock,snapshots:owner,authorize:()=>{}});const signedIn=await pending.complete(0);assert.equal(signedIn.state,'in-use');assert.ok(signedIn.lastSignIn);assert.equal(signedIn.kind==='disk'&&signedIn.backup?.pending,true);assert.equal(signedIn.kind==='disk'&&signedIn.backup?.retryAt,retryAt);await clock.advance(1000);await owner.close();const row=r.get('work');assert.ok(row?.kind==='disk');assert.deepEqual(row.snapshotIds,['backup']);assert.equal(row.backup?.pending,false);assert.equal(attempts,2);assert.deepEqual(events,['freeze','snapshot','thaw','freeze','snapshot','thaw']);}finally{await owner.close();db.close();}
+});
+
+test('active renewal refuses replacing its admitted volume before settlement',()=>{
+ const db=new DatabaseSync(':memory:'),r=new LoginRecords(db);
+ try{r.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});r.markSignedOut('work',{reason:'fixture signed out',host:null});r.beginSignIn('work');assert.throws(()=>r.updateCreatingDisk('work',{volumeId:'replacement'}),/sign-in admission/);const row=r.get('work');assert.equal(row?.kind==='disk'&&row.volumeId,'v');}finally{db.close();}
+});
+
+test('durable renewal admission refuses binding changes at the final transaction boundary',()=>{
+ const db=new DatabaseSync(':memory:'),r=new LoginRecords(db);
+ try{r.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});r.transition('work','ready');r.bind('work',{host:'h',role:'writer',volumeId:'v'});r.markSignedOut('work',{reason:'unauthorized',host:'h'});const token=r.beginSignIn('work');r.unbind('work','h');assert.throws(()=>r.finishSignIn('work',token,'2026-11-11T00:00:00Z'),/binding/);assert.equal(r.get('work')?.state,'creating');}finally{db.close();}
+});
+
+for(const changedBirth of [false,true,null])test(`renewal freeze recovery ${changedBirth===null?'refuses absent live host':changedBirth?'refuses another birth':'thaws on the same admitted machine'}`,async()=>{
+ const db=new DatabaseSync(':memory:'),r=new LoginRecords(db),clock=new FakeClock();r.useClock(clock);
+ const machine={id:'m',address:'fake',architecture:'x86_64' as const,created:clock.now().toISOString()},registration={id:'h',state:'registered'};
+ const identity=snapshotHostIdentity(machine,machine.created,registration),volume={id:'v',name:'disk',project:'/project',region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:'m'};
+ r.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});r.transition('work','ready');r.bind('work',{host:'h',role:'writer',volumeId:'v'});r.markSignedOut('work',{reason:'unauthorized',host:'h'});
+ let restarted=false,snapshotsTaken=0;const events:string[]=[];
+ const host={name:'h',loginDisk:async({op}:{op:string})=>{events.push(op);if(op==='thaw'&&!restarted)throw Error('planted incomplete thaw');}} as unknown as Host;
+ const provider={listVolumes:async()=>({state:'listed',volumes:[volume]}),snapshotVolume:async()=>{snapshotsTaken++;return {state:'snapshotted',snapshot:{id:'s',volumeId:'v',created:clock.now().toISOString()}};}} as unknown as HostProvider;
+ let owner=new LoginSnapshots({logins:r,clock,resolve:async()=>({provider,volume,host,identity})});
+ try{
+  const pending=await prepareExistingLoginSignIn({logins:r,name:'work',provider,host,volume,clock,snapshots:owner,machine,identity,authorize:()=>{}});
+  await assert.rejects(pending.complete(0),/incomplete thaw/);await owner.close();restarted=true;events.length=0;
+  const returning=changedBirth===null?undefined:changedBirth?{...machine,created:new Date(Date.parse(machine.created)+1).toISOString()}:machine;
+  owner=new LoginSnapshots({logins:r,clock,resolve:async()=>({provider,volume,host,identity:snapshotHostIdentity(returning,returning?machine.created:undefined,registration)})});
+  if(changedBirth!==false){await assert.rejects(owner.beginRelease('work'),/identity changed/);assert.deepEqual(events,[]);}
+  else {await owner.beginRelease('work');assert.deepEqual(events,['thaw']);const row=r.get('work');assert.equal(row?.kind==='disk'&&row.backup?.freeze,undefined);}
+  assert.equal(snapshotsTaken,1,'recovery never resends the provider snapshot');
+ }finally{await owner.close();db.close();}
+});
+
+for(const mutation of ['unbind','episode','detach','birth'] as const)test(`renewal fences ${mutation} across held inventory before freeze or snapshot`,async()=>{
+ const db=new DatabaseSync(':memory:'),logins=new LoginRecords(db),clock=new FakeClock(),events:string[]=[];
+ logins.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});logins.transition('work','ready');logins.bind('work',{host:'h',role:'writer',volumeId:'v'});logins.markSignedOut('work',{reason:'unauthorized',host:'h'});
+ const volume={id:'v',name:'disk',project:'/project',region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:'m'};
+ const host={name:'h',loginDisk:async({op}:{op:string})=>{events.push(op);}} as unknown as Host;
+ const entered=Promise.withResolvers<void>(),gate=Promise.withResolvers<void>();let hold=false,live=volume;
+ const provider={listVolumes:async()=>{const captured=live;if(hold){entered.resolve();await gate.promise;}return {state:'listed',volumes:[captured]};},snapshotVolume:async()=>{events.push('snapshot');return {state:'snapshotted',snapshot:{id:'s',volumeId:'v',created:clock.now().toISOString()}};}} as unknown as HostProvider;
+ const snapshots=new LoginSnapshots({logins,clock,resolve:async()=>({host,provider,volume})});
+ let work:Promise<unknown>|undefined;
+ try{
+  const pending=await prepareExistingLoginSignIn({logins,name:'work',provider,host,volume,machine:{id:'m',address:'fake',architecture:'x86_64',created:volume.created},identity:'h',clock,snapshots,authorize:()=>{}});hold=true;
+  work=pending.complete(0);void work.catch(()=>{});await entered.promise;
+  if(mutation==='unbind')logins.unbind('work','h');
+  // A replacement private episode has identical public binding values.
+  if(mutation==='episode')db.prepare("update login_bindings set episode='replacement' where login='work' and host='h'").run();
+  if(mutation==='detach')live={...volume,attachedTo:'different-machine'};
+  if(mutation==='birth')live={...volume,created:new Date(Date.parse(volume.created)+1).toISOString()};
+  hold=false;gate.resolve();
+  // Inventory captured before a provider-side change must be followed by a fresh
+  // read before the next effect. Binding mutations are rejected immediately.
+  await assert.rejects(work,/binding|birth|attachment/);assert.deepEqual(events,[]);
+ }finally{gate.resolve();await work?.catch(()=>{});await snapshots.close();db.close();}
+});
+
+test('renewal snapshot owner joins held freeze before release can thaw or shutdown can finish',async()=>{
+ const db=new DatabaseSync(':memory:'),logins=new LoginRecords(db),clock=new FakeClock(),events:string[]=[];
+ logins.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});logins.transition('work','ready');logins.bind('work',{host:'h',role:'writer',volumeId:'v'});logins.markSignedOut('work',{reason:'unauthorized',host:'h'});
+ const entered=Promise.withResolvers<void>(),freeze=Promise.withResolvers<void>();
+ const host={name:'h',loginDisk:async({op}:{op:string})=>{events.push(op);if(op==='freeze'){entered.resolve();await freeze.promise;}}} as unknown as Host;
+ const volume={id:'v',name:'disk',project:'/project',region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:'m'};
+ const provider={listVolumes:async()=>({state:'listed',volumes:[volume]}),snapshotVolume:async()=>{events.push('snapshot');throw Error('release must fence provider');}} as unknown as HostProvider;
+ const snapshots=new LoginSnapshots({logins,clock,resolve:async()=>({host,volume,provider})});
+ let work:Promise<unknown>|undefined;
+ try{
+  const pending=await prepareExistingLoginSignIn({logins,name:'work',provider,host,volume,machine:{id:'m',address:'fake',architecture:'x86_64',created:volume.created},identity:'h',clock,authorize:()=>{},snapshots});
+  work=pending.complete(0);void work.catch(()=>{});await entered.promise;
+  const release=snapshots.beginRelease('work');let released=false;void release.then(()=>{released=true;});
+  const closing=snapshots.close();let closed=false;void closing.then(()=>{closed=true;});
+  await Promise.resolve();assert.deepEqual(events,['freeze']);assert.equal(released,false);
+  assert.equal(closed,false);freeze.resolve();await release;await assert.rejects(work,/releasing|ownership/);await closing;assert.equal(closed,true);
+  assert.deepEqual(events,['freeze','thaw']);const row=logins.get('work');assert.equal(row?.kind==='disk'&&row.backup?.freeze,undefined);
+ }finally{freeze.resolve();await work?.catch(()=>{});await snapshots.close();db.close();}
+});
+
+for(const fence of ['pending','release','snapshot','removal-admission','snapshot-admission'])test(`sign-in refuses retained ${fence} ownership`,()=>{
+ const db=new DatabaseSync(':memory:');
+ const logins=new LoginRecords(db);
+ try {
+ logins.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});logins.transition('work','ready');
+ if(fence==='pending')logins.bind('work',{host:'h',role:'writer',volumeId:'v',phase:'pending'});
+ if(fence==='release')logins.updateBackup('work',{pending:false,releasing:true});
+ if(fence==='snapshot')logins.updateBackup('work',{pending:true,freeze:{host:'h',identity:'held-freeze',volumeId:'v'}});
+ logins.markSignedOut('work',{reason:'unauthorized',host:'h'});
+ if(fence==='removal-admission')logins.beginRemove('work');
+ if(fence==='snapshot-admission')logins.beginSnapshotAdmission('work','v');
+ const before=logins.get('work');assert.throws(()=>logins.beginSignIn('work'),/ownership|outcome|snapshot|removal/);assert.deepEqual(logins.get('work'),before);
+ }finally{db.close();}
+});
+
+test('finish sign-in refuses a newly acquired ownership fence without publishing ready',()=>{
+ const db=new DatabaseSync(':memory:');const logins=new LoginRecords(db);
+ try{logins.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});logins.markSignedOut('work',{reason:'fixture signed out',host:null});const admission=logins.beginSignIn('work');logins.beginSnapshotAdmission('work','v');assert.throws(()=>logins.finishSignIn('work',admission,'2026-11-11T00:00:00Z'),/snapshot/);assert.equal(logins.get('work')!.state,'creating');}finally{db.close();}
+});
+
+test('a queued backup without native admission does not strand signed-out renewal',()=>{
+ const db=new DatabaseSync(':memory:'),r=new LoginRecords(db);try{r.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});r.updateBackup('work',{pending:true});r.markSignedOut('work',{reason:'fixture signed out',host:null});assert.ok(r.beginSignIn('work'));}finally{db.close();}
+});
+
+test('renewing a mounted login snapshots under freeze and keeps the writer mounted',async t=>{
+ const db=new DatabaseSync(':memory:');let snapshots:LoginSnapshots|undefined;t.after(async()=>{await snapshots?.close();db.close();});const logins=new LoginRecords(db),events:string[]=[],clock=new FakeClock();logins.useClock(clock);
+ const volume={id:'v',name:'disk',project:'/project',region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:'m'};
+ logins.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});logins.transition('work','ready');logins.bind('work',{host:'h',role:'writer',volumeId:'v',phase:'settled'});logins.markSignedOut('work',{reason:'unauthorized',host:'h'});
+ const provider={listVolumes:async()=>({state:'listed',volumes:[volume]}),snapshotVolume:async()=>{events.push('snapshot');return {state:'snapshotted',snapshot:{id:'s',volumeId:'v',created:clock.now().toISOString()}};}} as unknown as HostProvider;
+ const host={name:'h',loginDisk:async({op}:{op:string})=>{events.push(op);}} as unknown as Host;
+ snapshots=new LoginSnapshots({logins,clock,resolve:async()=>({host,volume,provider})});
+ const pending=await prepareExistingLoginSignIn({logins,name:'work',provider,host,volume,machine:{id:'m',address:'fake',architecture:'x86_64',created:volume.created},identity:'h',clock,snapshots,authorize:()=>{}});
+ assert.equal(pending.path,'/cland/auth/codex-work');assert.deepEqual(events,[]);
+ const row=await pending.complete(0);assert.equal(row.state,'in-use');assert.equal(row.lastSignIn,clock.now().toISOString());assert.deepEqual(events,['freeze','snapshot','thaw']);assert.equal(logins.bindings('work')[0]!.volumeId,'v');
+});
+
+test('sign-in admission retains bindings, fences competing attempts and publishes renewed in-use state',()=>{
+ const db=new DatabaseSync(':memory:'),logins=new LoginRecords(db);
+ try {
+ logins.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});
+ logins.transition('work','ready');logins.bind('work',{host:'h',role:'writer',volumeId:'v',phase:'settled'});
+ logins.markSignedOut('work',{reason:'unauthorized',host:'h'});
+ const before=logins.bindings('work');
+ const admission=logins.beginSignIn('work');
+ assert.equal(logins.get('work')!.signedOut,undefined);assert.deepEqual(logins.bindings('work'),before);
+ assert.throws(()=>logins.beginSignIn('work'),/signed-out/);
+ assert.throws(()=>logins.finishSignIn('work','wrong','2026-11-11T00:00:00.000Z'),/admission/);
+ const row=logins.finishSignIn('work',admission,'2026-11-11T00:00:00.000Z');
+ assert.equal(row.state,'in-use');assert.equal(row.lastSignIn,'2026-11-11T00:00:00.000Z');assert.deepEqual(logins.bindings('work'),before);
+ }finally{db.close();}
+});
 
 test('all harness sign-in plans contain only the documented home and native arguments',()=>{
  assert.equal(loginSignInCommand('codex','/cland/auth/codex-work'),"CODEX_HOME='/cland/auth/codex-work' codex login --device-auth");
