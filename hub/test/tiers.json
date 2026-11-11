@@ -436,6 +436,7 @@
     "hub/test/login-provision-bind.test.ts": "T2",
     "hub/test/login-reconcile.test.ts": "T2",
     "hub/test/login-records.test.ts": "T1",
+    "hub/test/login-relaunch.test.ts": "T2",
     "hub/test/login-release.test.ts": "T2",
     "hub/test/login-remove.test.ts": "T2",
     "hub/test/login-resignin-native.test.ts": "T3",

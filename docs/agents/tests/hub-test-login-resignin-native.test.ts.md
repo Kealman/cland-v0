@@ -8,10 +8,11 @@ uses fixtureEnvironment with explicit fake root and membership overlays.
 - `native sign-in of unbound Claude, Codex and OpenCode disks reuses and detaches each volume`
   drives the actual CLI and SSH terminal through each harness. It proves ready,
   last sign-in, snapshot, unchanged volume id/count and confirmed detach.
-- `native opencode sign-in renews the mounted writer while its session keeps running`
+- `native opencode sign-in renews the mounted writer with relaunch false` and
+  `native opencode sign-in renews the mounted writer with relaunch true`
   sends a native dead-login turn, renews through the actual CLI, then observes a
-  new turn receipt in that same volume's rotating file. The process keeps its
-  original native identity and binding. No real browser or harness is used.
+  new turn receipt in that same volume's rotating file. With false it keeps its original native PID; with true it receives a new PID
+  while preserving cland session, conversation, cwd and binding. No real browser or harness is used.
 - `native bound Codex renews its own dead credential home without replacing the disk`
   proves the Codex-specific in-place dead-home rule on the mounted original disk,
   its renewed login file, unchanged file-store config and retained binding.

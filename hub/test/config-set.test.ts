@@ -329,7 +329,7 @@ test('config set refuses unknown keys, invalid parser values and silently ignore
   }
   for (const [key, value] of [
     ['project.name', ''], ['verification.budget', false], ['verification.lock_path', 'relative'],
-    ['verification.cache_max_age_minutes', -1], ['keys.layouts', [1]], ['artifacts.retention_days', 'two'], ['artifacts.max_upload_mb', 0], ['artifacts.max_upload_mb', -1], ['artifacts.max_upload_mb', '50'],
+    ['verification.cache_max_age_minutes', -1], ['hosts.relaunch_after_signin', 'true'], ['keys.layouts', [1]], ['artifacts.retention_days', 'two'], ['artifacts.max_upload_mb', 0], ['artifacts.max_upload_mb', -1], ['artifacts.max_upload_mb', '50'],
     ['hygiene.rate_limit_max', 'two'], ['hygiene.max_text_bytes', 0.5],
     ['verification.droplet.workers', 0], ['visibility.messages.agent', 'never'],
   ]) {
@@ -363,10 +363,12 @@ test('config set keeps unmarked and broken files unchanged and refuses symlinks'
   assert.equal(await readFile(outside, 'utf8'), text);
 });
 
-test('config set supports optional template keys, inline tables and normalized parser readback', async t => {
+test('config set applies optional template keys now with normalized parser readback', async t => {
   const { root, path, discovery } = await fixture(t);
   const ui = await connectUi(t, discovery);
   for (const [key, value, expected, applies] of [
+    ['hosts.relaunch_after_signin', true, true, 'now'],
+    ['hosts.relaunch_after_signin', false, false, 'now'],
     ['keys.layouts', ['ru', 'ru'], ['ru'], 'now'],
     ['verification.droplet.workers', 3, 3, 'now'],
     ['verification.wait_p90_target', '120s', '2m', 'now'],

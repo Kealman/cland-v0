@@ -690,3 +690,8 @@ overlay on the process row. Unknown native outcomes retain an in-use pending
 binding; release leaves it for reconciliation. See [launch binding](../hub/logins.md#binding-at-launch).
 
 Prepared spawn checkpoints retain the nonsecret environment. `OPENCODE_API_KEY` stays in the current operation's memory until commit; it is absent from prepared and launch plans. Restart never replays an uncommitted spawn: it expires preparation or reconciles the committing launch id and native birth. A new native generation asks the hub key store again.
+
+The hub's optional `[hosts] relaunch_after_signin` (boolean, default false, hot
+applied, omitted by init) renews live sessions through their existing relaunch
+owner only after durable sign-in success. It preserves worktrees and conversations;
+stopped sessions stay stopped. This adds no agent permission or native command.

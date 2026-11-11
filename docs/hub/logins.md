@@ -2,7 +2,7 @@
 
 `cland login signin <name>` renews a signed-out disk through the local human
 terminal, using login add's pinned `ssh -t` command and connection-owned
-completion. It keeps the writer host, volume, bindings and running sessions.
+completion. It keeps the writer host, volume and bindings.
 An unbound disk uses login add's pool selection, attach/mount and cleanup path
 with its existing volume from inventory. Real hosts require provider API and
 terminal SSH access; fake-provider tests use no network. Keys refuse disk sign-in.
@@ -768,3 +768,21 @@ card nor the notice contains native diagnostic bodies or login contents.
 
 See [component cases](../agents/tests/hub-test-login-signed-out.test.ts.md) and
 [native fake-harness cases](../agents/tests/hub-test-login-signed-out-native.test.ts.md).
+
+## Relaunch after sign-in
+
+`[hosts] relaunch_after_signin` is a boolean defaulting to false. `cland init`
+omits it. `cland config set hosts.relaunch_after_signin true` applies now;
+config reload also publishes changes. The shared renewal success hook reads the
+current setting after `finishSignIn` durably commits. CLI and card renewal use
+this same hook; failed and interrupted sign-ins never invoke it.
+
+When enabled, each live session of the renewed harness on that host goes through
+`Sessions.resume(name, true)` in its existing worktree and native conversation.
+Other hosts, other harnesses, archived and explicitly stopped sessions stay as
+they are. A failed relaunch is reported by session name after attempting the
+remaining sessions; the successful sign-in stays committed. No fresh-conversation
+fallback is requested. Real hosts still require their native harness, SSH and
+provider availability; tests use only fake hosts and adapters.
+
+See [relaunch cases](../agents/tests/hub-test-login-relaunch.test.ts.md).

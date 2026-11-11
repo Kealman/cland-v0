@@ -366,3 +366,8 @@ Project login removal is a local-human CLI/Neovim operation. Use disposable fake
 fixtures when implementing it; partial deletion retains its removal claim and
 remaining ids for `cland login remove <name>` to retry. Never clear that claim
 through another transition. See [login removal](../../../docs/hub/logins.md#removing-a-login).
+
+Disk renewal uses the shared afterSignIn hook after finishSignIn commits. The
+hot-applied hosts.relaunch_after_signin boolean defaults false and init omits it;
+when enabled only live sessions of that host/harness relaunch through the existing
+resume owner, preserving worktree and conversation. Stopped sessions stay stopped.

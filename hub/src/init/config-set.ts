@@ -23,7 +23,7 @@ export function configKeys(): string[] {
     const assignment = /^([\w.]+)\s*=/.exec(line);
     if (assignment) keys.push(`${section}.${assignment[1]}`);
   }
-  return [...keys, 'hosts.harnesses', 'hosts.weights', ...POOL_KEYS.map(key => `hosts.<pool>.${key}`)];
+  return [...keys, 'hosts.harnesses', 'hosts.weights', 'hosts.relaunch_after_signin', ...POOL_KEYS.map(key => `hosts.<pool>.${key}`)];
 }
 
 function tableAt(doc: Table, parts: string[]): Table {

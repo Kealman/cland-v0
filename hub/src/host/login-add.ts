@@ -9,7 +9,7 @@ import type { Clock } from '../hub/clock.ts';
 import {snapshotHostIdentity,type LoginSnapshots} from './login-snapshots.ts';
 
 /** Reuse any ready host, including full hosts; join a boot already admitted. */
-export async function preparePoolLogin(o:{root:string;env:NodeJS.ProcessEnv;pools:HostPools['pools'];records:HostRecords;hosts:readonly Host[];clock:Clock;signal:AbortSignal;createHost:(pool:string)=>Promise<unknown>;runner?:typeof prepareLoginSignIn;snapshots?:LoginSnapshots;pinHost?:(id:string)=>()=>void}, input:LoginAddInput & {signin?:boolean}) {
+export async function preparePoolLogin(o:{root:string;env:NodeJS.ProcessEnv;pools:HostPools['pools'];records:HostRecords;hosts:readonly Host[];clock:Clock;signal:AbortSignal;createHost:(pool:string)=>Promise<unknown>;runner?:typeof prepareLoginSignIn;snapshots?:LoginSnapshots;pinHost?:(id:string)=>()=>void;afterSignIn?:(host:string,harness:LoginAddInput['harness'])=>Promise<void>}, input:LoginAddInput & {signin?:boolean}) {
  if(input.signin&&!o.snapshots)throw Error('login snapshots unavailable');
  const existing=input.signin&&input.name?o.records.logins.get(input.name):null;
  if(input.signin&&(!existing||existing.kind!=='disk'))throw Error('sign-in requires an existing disk login');
@@ -72,9 +72,9 @@ export async function preparePoolLogin(o:{root:string;env:NodeJS.ProcessEnv;pool
    const inventory=await provider.listVolumes({project:o.root});authorize();
    const volume=inventory.state==='listed'?inventory.volumes.find(v=>v.id===writer.volumeId):undefined;
    if(!volume||volume.attachedTo!==record.machine!.id)throw Error('sign-in writer volume identity changed');
-   return prepareExistingLoginSignIn({logins:o.records.logins,name,provider,host,volume,machine:record.machine!,identity,clock:o.clock,snapshots:o.snapshots!,authorize,authorizeCleanup,admission});
+   return prepareExistingLoginSignIn({logins:o.records.logins,name,provider,host,volume,machine:record.machine!,identity,clock:o.clock,snapshots:o.snapshots!,authorize,authorizeCleanup,admission,...(o.afterSignIn?{afterSignIn:o.afterSignIn}:{})});
   }
-  return (o.runner??prepareLoginSignIn)({logins:o.records.logins,provider,host,machine:record.machine!,identity,project:o.root,tag:projectTag(o.root,o.root),region:settings.region,providerName:settings.provider,pool,harness:input.harness,name,account:input.account,clock:o.clock,admitted,authorize,authorizeCleanup,...(o.snapshots?{snapshots:o.snapshots}:{}),...(admission?{admission}:{})});
+  return (o.runner??prepareLoginSignIn)({logins:o.records.logins,provider,host,machine:record.machine!,identity,project:o.root,tag:projectTag(o.root,o.root),region:settings.region,providerName:settings.provider,pool,harness:input.harness,name,account:input.account,clock:o.clock,admitted,authorize,authorizeCleanup,...(o.afterSignIn?{afterSignIn:o.afterSignIn}:{}),...(o.snapshots?{snapshots:o.snapshots}:{}),...(admission?{admission}:{})});
  })();
  const complete=pending.complete.bind(pending);
  pending.complete=code=>complete(code).finally(()=>{if(o.records.logins.get(name)?.state!=='creating')unpin();});

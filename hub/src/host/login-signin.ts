@@ -30,7 +30,7 @@ export function settleLoginSignInsForHost(records:HostRecords,id:string):void {
 }
 
 /** Reuse the mounted writer; session and binding ownership never move. */
-export async function prepareExistingLoginSignIn(o:{logins:LoginRecords;name:string;provider:HostProvider;host:Host;volume:Volume;machine:Machine;identity:string;clock:Clock;snapshots:LoginSnapshots;authorize:()=>void;authorizeCleanup?:()=>void;admission?:string;cleanup?:()=>Promise<void>}):Promise<LoginSignIn> {
+export async function prepareExistingLoginSignIn(o:{logins:LoginRecords;name:string;provider:HostProvider;host:Host;volume:Volume;machine:Machine;identity:string;clock:Clock;snapshots:LoginSnapshots;authorize:()=>void;authorizeCleanup?:()=>void;admission?:string;cleanup?:()=>Promise<void>;afterSignIn?:(host:string,harness:Login['harness'])=>Promise<void>}):Promise<LoginSignIn> {
  if(!o.identity||!o.machine?.id)throw Error('sign-in host identity required');
  const row=o.logins.get(o.name);
  if(row?.kind!=='disk'||row.volumeId!==o.volume.id||!o.host.loginDisk)throw Error('sign-in disk unavailable');
@@ -56,7 +56,11 @@ export async function prepareExistingLoginSignIn(o:{logins:LoginRecords;name:str
   }
   if(o.cleanup)await o.cleanup();
   await validate(o.cleanup?null:o.volume.attachedTo);
-  if(code===0)return o.logins.finishSignIn(o.name,admission,o.clock.now().toISOString());
+  if(code===0){
+   const row=o.logins.finishSignIn(o.name,admission,o.clock.now().toISOString());
+   await o.afterSignIn?.(o.host.name,row.harness);
+   return row;
+  }
   o.logins.markSignedOut(o.name,{reason:'sign-in failed',host:null});return o.logins.get(o.name)!;
  })();}};
 }
@@ -83,7 +87,7 @@ export async function prepareLoginSignIn(o: {
  logins: LoginRecords; provider: HostProvider; host: Host; machine: Machine;
  project: string; tag: string; region: string; providerName: string; pool?: string;
  harness: Login['harness']; name?: string | undefined; account?: string | undefined; clock: Clock;
- admitted?: Login; authorize?:()=>void; authorizeCleanup?:()=>void; admission?:string; snapshots?:LoginSnapshots;identity?:string;
+ admitted?: Login; authorize?:()=>void; authorizeCleanup?:()=>void; admission?:string; snapshots?:LoginSnapshots;identity?:string;afterSignIn?:(host:string,harness:Login['harness'])=>Promise<void>;
 }): Promise<LoginSignIn> {
  if (!o.host.loginDisk) throw Error('host does not support login-disk');
  if(o.admission&&(!o.snapshots||!o.identity))throw Error('renewal snapshot owner identity required');
@@ -130,7 +134,7 @@ export async function prepareLoginSignIn(o: {
  }
  if(o.admission){
   if(!o.snapshots)throw Error('login snapshots unavailable');
-  return prepareExistingLoginSignIn({logins:o.logins,name,provider:o.provider,host:o.host,volume:{...volume!,attachedTo:o.machine.id},machine:o.machine,identity:o.identity!,clock:o.clock,snapshots:o.snapshots,authorize,...(o.authorizeCleanup?{authorizeCleanup:o.authorizeCleanup}:{}),admission:o.admission,cleanup});
+  return prepareExistingLoginSignIn({logins:o.logins,name,provider:o.provider,host:o.host,volume:{...volume!,attachedTo:o.machine.id},machine:o.machine,identity:o.identity!,clock:o.clock,snapshots:o.snapshots,authorize,...(o.authorizeCleanup?{authorizeCleanup:o.authorizeCleanup}:{}),admission:o.admission,cleanup,...(o.afterSignIn?{afterSignIn:o.afterSignIn}:{})});
  }
  let completion:Promise<Login>|undefined;
  return {name,path,complete(code) {

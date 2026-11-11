@@ -55,7 +55,7 @@ test('native sign-in of unbound Claude, Codex and OpenCode disks reuses and deta
  }
 });
 
-for(const [harness,reason] of cases)test(`native ${harness} sign-in renews the mounted writer while its session keeps running`,async t=>{
+for(const [harness,reason] of cases)for(const relaunch of [false,true])test(`native ${harness} sign-in renews the mounted writer with relaunch ${relaunch}`,async t=>{
  const f=await fixture(t,{loginRoles:true}),store=f.own(new Store(join(f.root,'.cland/hub.db'))),table=f.own(new ProcessTable(join(f.root,'.cland/hub.db')));
  const hosts:import('../src/host/host.ts').Host[]=[];
  const stops:string[]=[],homes:string[]=[],loginHomes:string[]=[];let complete=false;
@@ -72,15 +72,17 @@ for(const [harness,reason] of cases)test(`native ${harness} sign-in renews the m
   const hostEnv=fixtureEnvironment(f.root,f.env,{CLAND_FAKE_HOST_ROOT:f.root,CLAND_FAKE_HOSTS:record.machine.id,CLAND_HOST_BOOT_ID_FILE:join(directory,'boot-id')});
   const loginHome=await loginFilePath(path,hostEnv);
   loginHomes.push(loginHome);
-  await writeFile(join(directory,'ports.json'),JSON.stringify({'12345':join(home,'session.sock')}));host.freePort=async()=>12345;
+  let generation=0;
+  host.freePort=async()=>{const port=12345+generation++;await writeFile(join(directory,'ports.json'),JSON.stringify({[port]:join(home,`session-${port}.sock`)}));return port;};
   const spawn=host.spawn.bind(host),stop=host.stop.bind(host);
-  host.spawn=(command,options)=>spawn({...command,env:nativeLoginEnvironment(command.env,{FAKE_LOGIN_HOME:loginHome,FAKE_LOGIN_ENABLED:'1',FAKE_LOGIN_HOST:host.name,FAKE_OPENCODE_HOME:join(home,'native'),FAKE_OPENCODE_SOCKET:join(home,'session.sock'),FAKE_OPENCODE_TURN_MS:'1'})},options);
+  host.spawn=(command,options)=>spawn({...command,env:nativeLoginEnvironment(command.env,{FAKE_LOGIN_HOME:loginHome,FAKE_LOGIN_ENABLED:'1',FAKE_LOGIN_HOST:host.name,FAKE_OPENCODE_HOME:join(home,'native'),FAKE_OPENCODE_SOCKET:join(home,`session-${12344+generation}.sock`),FAKE_OPENCODE_TURN_MS:'1'})},options);
   host.stop=(...args)=>{stops.push(host.name);return stop(...args);};
  }
  const ui=await connectUi(t,f.hub.discovery,'cli');
  const launched=await ui.request({type:'session.launch',name:'first',role:'login-source',host:hosts[0]!.name,harness,cwd:homes[0]!,model:harness==='opencode'?'opencode/fake-paid':undefined},testWaitMs());assert.equal(launched.ok,true,launched.error);
  const first=await eventually('native first session durably persisted',()=>{const row=table.get('first');return row?.status==='running'&&row.pid&&row.harnessSessionId?row:undefined;});
  await eventually('native OpenCode subscribed to its event stream',async()=>{try{return (await readFile(join(homes[0]!,'native',`server-${first.pid}.log`),'utf8')).includes('event stream subscribed')?true:undefined;}catch{return undefined;}});
+ if(relaunch){const configPath=join(f.root,'.cland/config.toml');await writeFile(configPath,'# managed by cland\n'+await readFile(configPath,'utf8'));const configured=await ui.request({type:'config.set',key:'hosts.relaunch_after_signin',value:true});assert.equal(configured.ok,true,configured.error);assert.deepEqual(configured.value,{key:'hosts.relaunch_after_signin',value:true,applies:'now'});}
  const bindings=store.hosts.logins.bindings(first.login!);
  const sent=await ui.request({type:'topic.send',topic:'general',to:['first'],text:'DEAD-LOGIN'});assert.equal(sent.ok,true,sent.error);
  const dead=await eventually('exact native signal persisted on its login',()=>{const row=store.hosts.logins.get(first.login!);return row?.state==='signed-out'&&row.signedOut?.reason===reason?row:undefined;});
@@ -91,6 +93,7 @@ for(const [harness,reason] of cases)test(`native ${harness} sign-in renews the m
  const child=spawn(process.execPath,[new URL('../bin/cland.ts',import.meta.url).pathname,'login','signin',first.login!],{cwd:f.root,env:fixtureEnvironment(f.root,f.env,{CLAND_FAKE_HOST_ROOT:f.root,CLAND_FAKE_HOSTS:store.hosts.get(hosts[0]!.name)!.address})});
  const joined=loginChild(owners,child);let output='',error='';child.stdout.on('data',bytes=>{output+=String(bytes);});child.stderr.on('data',bytes=>{error+=String(bytes);});child.stdin.end();
  assert.equal(await joined(),0,error);assert.match(output,/ready/);
+ const resumed=table.get('first')!;assert.equal(resumed.harnessSessionId,first.harnessSessionId);assert.equal(resumed.cwd,first.cwd);assert.equal(resumed.sessionId,first.sessionId);assert.equal(resumed.status,'running');if(relaunch)assert.notEqual(resumed.pid,first.pid);else assert.equal(resumed.pid,first.pid);
  const renewed=store.hosts.logins.get(first.login!)!;assert.equal(renewed.state,'in-use');assert.ok(renewed.lastSignIn);assert.deepEqual(store.hosts.logins.bindings(first.login!),bindings);
  assert.equal(JSON.parse(await readFile(join(loginHomes[0]!,'login.json'),'utf8')).dead,false,'native login home renewed');
  const after=await new FakeHostProvider({env:f.env}).listVolumes({project:f.root});

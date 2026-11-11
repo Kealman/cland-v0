@@ -115,6 +115,7 @@ const INJECT_RETRY_MAX_MS = 15 * 60_000;
 type UnconfirmedInject = { delay: number; retryAt: number; report: boolean };
 
 const untimed: Resumed = (work) => work();
+class SignInRelaunchSuperseded extends Error {}
 
 export const DEFAULT_HARNESS = 'claude-code';
 
@@ -2124,8 +2125,30 @@ export class Sessions {
     } finally { resumed(() => { this.#credentialRemoving.delete(identity); slot.release(); }); }
   }
 
+  /** Renew only live harnesses on the signed-in host, through the same-conversation owner. */
+  async relaunchAfterSignIn(host: string, harness: HarnessProcess['harness']): Promise<void> {
+    if (!this.#poolRuntime?.settings().relaunchAfterSignIn) return;
+    const admitted = this.#table.activeOnHost(host).filter(p => p.harness === harness);
+    const failures: string[] = [];
+    for (const captured of admitted) {
+      const current = this.#table.bySessionId(captured.sessionId);
+      if (!current || current.status !== 'running' || (current.host ?? 'local') !== host || current.harness !== harness) continue;
+      const authorize = () => {
+        const row = this.#table.bySessionId(captured.sessionId);
+        if (!row || row.sessionId !== captured.sessionId || (row.host ?? 'local') !== host || row.harness !== harness || row.harnessSessionId !== captured.harnessSessionId) throw Error('sign-in relaunch session changed');
+      };
+      try {
+        const result = await this.resume(current.name, true, untimed, authorize, false, undefined, undefined, row => {
+          if (hostGenerationKey(row) !== hostGenerationKey(captured) || row.status !== 'running' || row.archivedAt) throw new SignInRelaunchSuperseded();
+        });
+        if (!result.found) failures.push(current.name);
+      } catch (error) { if (!(error instanceof SignInRelaunchSuperseded)) failures.push(current.name); }
+    }
+    if (failures.length) throw Error(`signed in; session relaunch failed: ${failures.join(', ')}`);
+  }
+
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
-  async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false, host?: string, worktrees?: TaskWorktrees): Promise<SessionResumeAnswer> {
+  async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false, host?: string, worktrees?: TaskWorktrees, admit?: (process: HarnessProcess) => void): Promise<SessionResumeAnswer> {
     authorize();
     const placement = this.#process(name);
     const handoff = this.#relaunchIntent(placement);
@@ -2144,6 +2167,9 @@ export class Sessions {
     this.#resuming++;
     try {
       if (slot.ready) await slot.ready;
+      const admitted = this.#table.bySessionId(identity);
+      if (!admitted) throw new Error('session disappeared before resume admission');
+      admit?.(admitted);
       const cwdRefusal = relaunch ? await resumed(() => this.#hostForProcess(original).statDirectory(original.cwd).then(info => info.refusal)) : null;
       if (relaunch && !cwdRefusal && this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
       return await resumed(() => {

@@ -5,8 +5,8 @@ import { durationMs } from '../duration.ts';
 export const POOL_KEYS = ['provider', 'size', 'region', 'transport', 'slots', 'min_hosts', 'max_hosts', 'idle_stop', 'spread'] as const;
 export type HarnessPins = Partial<Record<'claude-code' | 'codex' | 'opencode', string>>;
 export type HostPool = { provider: string; size: string; region: string; transport: 'ssh'; slots: number; minHosts: number; maxHosts: number; idleStop: string; idleStopMs: number; spread: boolean };
-export type HostPools = { pools: Record<string, HostPool>; harnesses: HarnessPins; dailySpendUsd: number; lease: string; leaseMs: number; weights?: Record<string, number> };
-const GLOBAL_KEYS = ['harnesses', 'daily_spend_usd', 'lease', 'weights'];
+export type HostPools = { pools: Record<string, HostPool>; harnesses: HarnessPins; dailySpendUsd: number; lease: string; leaseMs: number; relaunchAfterSignIn: boolean; weights?: Record<string, number> };
+const GLOBAL_KEYS = ['harnesses', 'daily_spend_usd', 'lease', 'weights', 'relaunch_after_signin'];
 const SIZE_SLOTS: Record<string, number> = { 's-2vcpu-4gb': 4, 's-4vcpu-8gb': 8 };
 function table(value: unknown, key: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value) || value instanceof Date) throw new Error(`${key} must be a table`);
@@ -34,6 +34,8 @@ export function readHostPools(hosts: unknown): HostPools {
 /** Whole-table parser shared by project loading, settings writes and provider callers. */
 function parseHostPools(hosts: unknown): HostPools {
   const source = hosts === undefined ? {} : table(hosts, 'hosts');
+  const relaunchAfterSignIn = source.relaunch_after_signin === undefined ? false : source.relaunch_after_signin;
+  if (typeof relaunchAfterSignIn !== 'boolean') throw new Error('hosts.relaunch_after_signin must be a boolean');
   const dailySpendUsd = number(source.daily_spend_usd ?? 3, 'hosts.daily_spend_usd', true);
   const [lease, leaseMs] = duration(source.lease ?? '12h', 'hosts.lease');
   if (leaseMs < 30000) throw new Error('hosts.lease must be at least 30s');
@@ -63,11 +65,11 @@ function parseHostPools(hosts: unknown): HostPools {
     if (typeof spread !== 'boolean') throw new Error(`${key}.spread must be a boolean`);
     pools[name] = { provider, size, region, transport, slots, minHosts, maxHosts, idleStop, idleStopMs, spread };
   }
-  return { pools, harnesses: Object.fromEntries(Object.entries(pins).sort(([a], [b]) => a.localeCompare(b))) as HarnessPins, dailySpendUsd, lease, leaseMs, ...(weights === undefined ? {} : { weights }) };
+  return { pools, relaunchAfterSignIn, harnesses: Object.fromEntries(Object.entries(pins).sort(([a], [b]) => a.localeCompare(b))) as HarnessPins, dailySpendUsd, lease, leaseMs, ...(weights === undefined ? {} : { weights }) };
 }
 
 export function hostPoolsDocument(hosts: HostPools): Record<string, unknown> {
-  return { daily_spend_usd: hosts.dailySpendUsd, lease: hosts.lease,
+  return { ...(hosts.relaunchAfterSignIn ? { relaunch_after_signin: true } : {}), daily_spend_usd: hosts.dailySpendUsd, lease: hosts.lease,
     ...(Object.keys(hosts.harnesses).length ? { harnesses: hosts.harnesses } : {}),
     ...(hosts.weights === undefined ? {} : { weights: hosts.weights }),
     ...Object.fromEntries(Object.entries(hosts.pools).map(([name, p]) => [name, { provider: p.provider, size: p.size, region: p.region, transport: p.transport, slots: p.slots, min_hosts: p.minHosts, max_hosts: p.maxHosts, idle_stop: p.idleStop, spread: p.spread }])) };

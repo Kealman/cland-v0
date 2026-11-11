@@ -174,3 +174,9 @@ Login capacity and monthly storage reporting use indexed login metadata and prov
 CLI or Neovim. Provider-confirmed disk deletions and encrypted-key removal precede
 row removal; incomplete deletions retain exact ids for retry and the shared auth
 store key stays. See [removal](../docs/hub/logins.md#removing-a-login).
+
+Login renewal can relaunch live sessions of the renewed harness on its host when
+`[hosts] relaunch_after_signin = true` (default false; init omits it). Config set
+and reload apply it immediately. The shared CLI/card success hook commits sign-in
+before using the existing same-conversation relaunch; stopped sessions remain
+stopped. See [login renewal](../docs/hub/logins.md#relaunch-after-sign-in).

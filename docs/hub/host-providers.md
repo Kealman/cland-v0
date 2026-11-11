@@ -541,3 +541,8 @@ The hub snapshot scheduler uses this boundary to fence a queued send when releas
 has begun; see [login backups](logins.md#backup-snapshots).
 
 Provider declarations require nonnegative `volumePerGiBMonth` and `snapshotPerGiBMonth` (USD/GiB-month); a missing or invalid value names its key. Fake declares zero, and DigitalOcean declares 0.10 and 0.06 respectively (checked 2026-11-11). These reporting prices do not enter machine reservations.
+
+`hosts.relaunch_after_signin` is a boolean defaulting to false, omitted by init.
+Config set and reload apply it immediately. Successful CLI/card disk renewal
+then relaunches live sessions of that harness on the writer host, resuming their
+conversations in their existing worktrees. See [renewal](logins.md#relaunch-after-sign-in).

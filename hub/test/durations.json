@@ -4361,7 +4361,6 @@
     "hub/test/config-set.test.ts::config set keeps verification command arguments verbatim and applies them now": 0.492787,
     "hub/test/config-set.test.ts::config set parses numbers and lists, applies reloadable values now and reports pending startup edits": 1.069629,
     "hub/test/config-set.test.ts::config set refuses unknown keys, invalid parser values and silently ignored values without changing bytes": 0.964122,
-    "hub/test/config-set.test.ts::config set supports optional template keys, inline tables and normalized parser readback": 0.329747,
     "hub/test/config-set.test.ts::config set without a running hub refuses and leaves the managed file unchanged": 0.190997,
     "hub/test/cover-quiet.test.ts::Neovim T2 fixture refuses cover-quiet at its actual entry before allocation or spawn": 0.294527,
     "hub/test/cover-quiet.test.ts::Neovim T2 stub-client refuses cover-quiet at its actual entry before allocation or spawn": 0.223759,
@@ -11818,25 +11817,25 @@
   },
   "allow": {
     "hub/test/login-resignin-native.test.ts::native bound Codex renews its own dead credential home without replacing the disk": {
-      "seconds": 9,
-      "owner": "C-216",
-      "added": "2026-11-11",
-      "expires": "2026-11-18",
-      "reason": "T-1790: correction72b0612bd native8 receipt A-18795, macOS arm64 Node24.21 local fake-only bound Codex dead-home CLI case 3.718276417s including fixture setup and joined cleanup. Linux unexecuted projection 1.6x; ceil(1.5x projection)=9s. Report mode unchanged; no real provider, credential, network or browser."
-    },
-    "hub/test/login-resignin-native.test.ts::native sign-in of unbound Claude, Codex and OpenCode disks reuses and detaches each volume": {
       "seconds": 11,
       "owner": "C-216",
       "added": "2026-11-11",
       "expires": "2026-11-18",
-      "reason": "T-1790: macOS arm64 Node24.21 local fake-provider/fake-SSH native case, green 4.371731333s including fixture setup and joined cleanup. Linux unexecuted projection 1.6x; allowance ceil(1.5x projection). No real provider, credential, network or browser. Report mode unchanged."
+      "reason": "T-1794: macOS arm64 Node24.21 local fake-only full-file green 4.193085166s including setup and joined cleanup. Linux unexecuted projection 1.6x; allowance ceil(1.5x projection). Report mode unchanged; no real provider, credential, network or browser."
     },
-    "hub/test/login-resignin-native.test.ts::native opencode sign-in renews the mounted writer while its session keeps running": {
-      "seconds": 10,
+    "hub/test/login-resignin-native.test.ts::native sign-in of unbound Claude, Codex and OpenCode disks reuses and detaches each volume": {
+      "seconds": 12,
       "owner": "C-216",
       "added": "2026-11-11",
       "expires": "2026-11-18",
-      "reason": "T-1790: macOS arm64 Node24.21 local fake-provider/fake-SSH native case, green 3.786300333s including fixture setup and joined cleanup. Linux unexecuted projection 1.6x; allowance ceil(1.5x projection). No real provider, credential, network or browser. Report mode unchanged."
+      "reason": "T-1794: macOS arm64 Node24.21 local fake-only full-file green 4.717385083s including setup and joined cleanup. Linux unexecuted projection 1.6x; allowance ceil(1.5x projection). Report mode unchanged; no real provider, credential, network or browser."
+    },
+    "hub/test/login-resignin-native.test.ts::native opencode sign-in renews the mounted writer with relaunch false": {
+      "seconds": 12,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1794: macOS arm64 Node24.21 local fake-only full-file green 4.669456125s including setup and joined cleanup. Linux unexecuted projection 1.6x; allowance ceil(1.5x projection). Report mode unchanged; no real provider, credential, network or browser."
     },
     "hub/test/login-capacity.test.ts::capacity index bounds visits across same-region rejected rows and agrees with pending fences": {
       "seconds": 10,
@@ -15075,6 +15074,13 @@
       "added": "2026-11-11",
       "expires": "2026-11-18",
       "reason": "T-1789 OpenCode native end-to-end on two fake hosts: local macOS arm64 Node24.21.0 reviewed ad6bfa87b baseline plus five lone fresh-process green samples [6.628299041, 6.58708925, 6.291409458, 6.829408333, 6.29887525, 6.518053125000001] seconds (A-18721/A-18722). Includes setup, two native fake servers, durable sign-out/host, retained binding, alternative placement/native PID, no-stop/alive assertions and joined cleanup; excludes producer startup and slot wait. Linux 10.9270533328s is an unexecuted 1.6x projection; allowance ceil(1.5x projection). No browser, real provider or stress. Known external socket remnants T-1806 recorded A-18723; no zero-leak claim. Duration policy report mode."
+    },
+    "hub/test/login-resignin-native.test.ts::native opencode sign-in renews the mounted writer with relaunch true": {
+      "seconds": 15,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1794: macOS arm64 Node24.21 local fake-only full-file green 5.841264625s including setup and joined cleanup. Linux unexecuted projection 1.6x; allowance ceil(1.5x projection). Report mode unchanged; no real provider, credential, network or browser."
     }
   }
 }

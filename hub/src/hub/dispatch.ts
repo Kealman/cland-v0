@@ -2251,7 +2251,7 @@ export class Dispatcher {
               if(frame.type==='login.signin'&&!existing)throw Error('unknown login: '+frame.name);
               const input=frame.type==='login.signin'?{harness:existing!.harness,name:frame.name,signin:true}:frame;
               const work=(async()=>{
-                const {pending,plan}=await (this.#options.prepareLogin??preparePoolLogin)({root,env,pools:this.#options.projectConfig!().hosts.pools,records:core.store.hosts,hosts:this.hostOwner!.hosts,clock:core.clock,signal:this.#hostProvisionAbort.signal,createHost:pool=>this.#createPoolHost(pool),...(this.loginSnapshots?{snapshots:this.loginSnapshots}:{}),pinHost:id=>{
+                const {pending,plan}=await (this.#options.prepareLogin??preparePoolLogin)({afterSignIn:async(host,harness)=>{if(!this.#sessions)throw Error('session runtime unavailable');await this.#sessions.relaunchAfterSignIn(host,harness);},root,env,pools:this.#options.projectConfig!().hosts.pools,records:core.store.hosts,hosts:this.hostOwner!.hosts,clock:core.clock,signal:this.#hostProvisionAbort.signal,createHost:pool=>this.#createPoolHost(pool),...(this.loginSnapshots?{snapshots:this.loginSnapshots}:{}),pinHost:id=>{
                   this.#loginPins.set(id,(this.#loginPins.get(id)??0)+1);
                   let released=false;
                   return ()=>{if(released)return;released=true;const n=this.#loginPins.get(id)!-1;if(n)this.#loginPins.set(id,n);else this.#loginPins.delete(id);};

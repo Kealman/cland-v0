@@ -43,3 +43,10 @@ test('required provider, custom size slots, lease boundary and explicit override
   assert.deepEqual(parsed.pools.qa, { provider: 'fake', size: 'custom', region: 'fake-1', transport: 'ssh', slots: 1.5, minHosts: 2, maxHosts: 4, idleStop: '30s', idleStopMs: 30000, spread: true });
   assert.throws(() => readHostPools({ agents: { provider: 'fake', max_hosts: 0 } }), /hosts.agents.min_hosts.*hosts.agents.max_hosts/);
 });
+
+ test('hosts relaunch_after_signin defaults false, accepts booleans and init omits it', () => {
+  assert.equal(readHostPools(undefined).relaunchAfterSignIn, false);
+  for (const value of [true, false]) assert.equal(readHostPools({relaunch_after_signin:value}).relaunchAfterSignIn, value);
+  for (const value of ['true', 1, null, {}]) assert.throws(() => readHostPools({relaunch_after_signin:value}), /hosts.relaunch_after_signin.*boolean/);
+  assert.doesNotMatch(renderConfig(defaultConfig('fixture')), /relaunch_after_signin/);
+ });
