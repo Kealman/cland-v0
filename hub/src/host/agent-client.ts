@@ -6,6 +6,7 @@ import { EventEmitter } from 'node:events';
 import { AGENT_PROTOCOL, LineDecoder } from './agent/protocol.ts';
 import { CLAUDE_RESTORE_CAPABILITY, parseClaudeRestoreOutcome, type ClaudeRestoreOutcome } from './agent/claude.ts';
 import type { AgentHello } from './agent/protocol.ts';
+import { signInRefusalFields } from './agent/signin-types.ts';
 /** Owns one authenticated stream; callers reconnect explicitly after native close. */
 export class AgentClient extends EventEmitter {
   hello!: AgentHello;
@@ -23,7 +24,7 @@ export class AgentClient extends EventEmitter {
           const frame = JSON.parse(line);
           if (frame.event) { this.emit('event', frame); continue; }
           const pending = this.#pending.get(frame.id);
-          if (pending) { this.#pending.delete(frame.id); clearTimeout(pending.timer); if (frame.ok) pending.resolve(frame.result); else pending.reject(Object.assign(new Error(frame.error), typeof frame.code === 'string' ? {code:frame.code,...memoryFloorDetails(frame)} : {})); }
+          if (pending) { this.#pending.delete(frame.id); clearTimeout(pending.timer); if (frame.ok) pending.resolve(frame.result); else pending.reject(Object.assign(new Error(frame.error), typeof frame.code === 'string' ? {code:frame.code,...memoryFloorDetails(frame),...signInRefusalFields(frame)} : {})); }
         } catch { socket.destroy(new Error('malformed agent reply')); }
       }
     });

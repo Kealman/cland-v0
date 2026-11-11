@@ -133,3 +133,18 @@ test('optional login-disk reachability preserves absent Hosts and exact boolean 
  optionalLoginDiskReachabilityContract({loginDiskReachable:()=>false},false);
  assert.throws(()=>optionalLoginDiskReachabilityContract({loginDiskReachable:()=>true},false));
 });
+
+test('optional sign-in contract covers absence, typed refusal and admission-bound shape with planted controls',async()=>{
+ const {optionalSignInHostContract}=await import('./host-contract.ts');
+ const {localHost}=await import('../src/host/local.ts');
+ await optionalSignInHostContract(localHost());
+ const input={harness:'codex' as const,path:'/cland/auth/codex-work'};
+ const refusal={code:'CLAND_SIGNIN_UNAVAILABLE',nativeAdmission:'not-admitted' as const};
+ await optionalSignInHostContract({signIn:async()=>{throw Object.assign(new Error('unavailable'),refusal);}},{input,refusal});
+ const close={admission:'contract-admission',state:'closed' as const,code:0,signal:null};let written='';
+ const host={signIn:async(received:typeof input,emit:(value:import('../src/host/host.ts').SignInOutput)=>void)=>{assert.deepEqual(received,input);emit({admission:close.admission,stream:'stdout',text:'https://example.invalid/login'});return {admission:close.admission,write:async(text:string)=>{written=text;},closed:Promise.resolve(close),cancel:async()=>close};}};
+ await optionalSignInHostContract(host,{input,write:'memory-only',close});assert.equal(written,'memory-only');
+ await assert.rejects(optionalSignInHostContract(host));
+ await assert.rejects(optionalSignInHostContract(host,{input,refusal}));
+ await assert.rejects(optionalSignInHostContract(host,{input,close:{...close,admission:'wrong'}}));
+});

@@ -4,6 +4,8 @@ import { MissingClaudeGeneration } from './host.ts';
 import { CLAUDE_LAUNCH_CAPABILITY } from './agent/claude.ts';
 import { randomUUID } from 'node:crypto';
 import { AgentClient, updateRefWatch, readRefWatchStatus } from './agent-client.ts';
+import { startSignIn } from './signin-client.ts';
+import { signInNotAdmitted } from './agent/signin-types.ts';
 import { PREPARED_HOST_CAPABILITY } from './agent/protocol.ts';
 import { remoteCommandEnvironment } from './command-environment.ts';
 import type { Host, HostCommand, HostLaunchLayout, HostCapturedProcess } from './host.ts';
@@ -177,6 +179,12 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     return { ...(claudeCommands.has(command)?{claudeGeneration:claudeCommands.get(command)}:{}),command:command.command,args:command.args,cwd:command.cwd,env:remoteCommandEnvironment(command.env),...(command.timeoutMs === undefined ? {} : {timeoutMs:command.timeoutMs}),...(command.logFile ? {logFile:command.logFile} : {}) };
   };
   const host: Host & {close():Promise<void>;quiesce():void} = {
+    signIn: async (input,onOutput) => {
+      let connection:AgentClient;
+      try{mutation();connection=await connected();}
+      catch{throw signInNotAdmitted('CLAND_SIGNIN_UNAVAILABLE','sign-in host unavailable before admission');}
+      return startSignIn(connection,input,onOutput);
+    },
     loginDiskReachable:()=>!closed&&!quiescing&&unknown.size===0&&(!o.available||o.available())&&o.transport.status().state==='up',
     loginDisk: async input => {
       mutation();

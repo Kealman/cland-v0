@@ -22,20 +22,24 @@ export function loginDiskOperation(env: NodeJS.ProcessEnv, processes: AgentProce
   runOwned: (input:LoginDisk,work:()=>Promise<import('../host.ts').HostRunResult>)=>Promise<import('../host.ts').HostRunResult>,
   assertMutable:()=>void, runHelper:typeof run=run) {
   let busy = false;
+  let incomplete=false;
+  const failed=Promise.withResolvers<never>();void failed.promise.catch(()=>{});
   const mutations=new Set<Promise<void>>();
   const enterMutation=(cleanup=false)=>{
+    if(incomplete&&!cleanup)throw loginDiskError('writers-remain');
     if(busy)throw Object.assign(new Error('login-disk owns writer admission'),{code:'CLAND_AGENT_ADMISSION_REFUSED'});
     if(!cleanup)assertMutable();
     const admission=Promise.withResolvers<void>();mutations.add(admission.promise);
-    return ()=>{mutations.delete(admission.promise);admission.resolve();};
+    return Object.assign(()=>{mutations.delete(admission.promise);admission.resolve();},{incomplete(){incomplete=true;failed.reject(loginDiskError('writers-remain'));}});
   };
   const operation=async (args: Record<string,unknown>) => {
     const input = parseLoginDisk(args);
+    if(incomplete)throw loginDiskError('writers-remain');
     await rejectLoginSymlinks(input.path);
     if (busy) throw loginDiskError('busy');
     busy = true;
     try {
-      await Promise.all([...mutations]);
+      await Promise.race([Promise.all([...mutations]),failed.promise]);
       assertMutable();
       if (env.CLAND_FAKE_HOSTS && env.CLAND_FAKE_HOST_ROOT) return await (await import('./fake-login-disk.ts')).fakeLoginDisk(input,env,processes);
       const result = await runOwned(input,()=>runHelper('sudo', ['-n','/usr/local/sbin/cland-auth',input.op,input.volume,input.path], env, 60_000));

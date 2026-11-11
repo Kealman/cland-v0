@@ -1,5 +1,7 @@
 import { availableMemory, memoryFloorDetails, requireSpawnMemory } from './memory.ts';
 import { loginDiskOperation } from './login-disk.ts';
+import { signIns } from './signin.ts';
+import { SIGNIN_CAPABILITY, signInRefusalFields } from './signin-types.ts';
 import { refPushOwner } from './ref-push.ts';
 import { RefWatches, REF_FLUSH_CAPABILITY, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY } from './watch.ts';
 import { claudeLaunches, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY } from './claude.ts';
@@ -73,6 +75,7 @@ export async function serveAgent(options: AgentOptions) {
   let admitting = false;
   const pending = new Set<Promise<void>>();
   const cleanupFailures = new Set<unknown>();
+  const signinFailures = new Set<unknown>();
   const retain = (work:Promise<void>) => {
     const observed:Promise<void>=work.catch(error=>{cleanupFailures.add(error);try{options.cleanupError?.(error);}catch{}}).then(()=>{pending.delete(observed);});
     pending.add(observed);
@@ -83,6 +86,8 @@ export async function serveAgent(options: AgentOptions) {
     connection.on('close', () => { connections.delete(connection); authenticatedConnections.delete(connection); });
     connection.on('error', () => {});
     let authenticated = false, chain = Promise.resolve();
+    const signin=signIns(options.runDir,options.env??process.env,processes,()=>loginDisk.enterMutation(),frame=>{if(!connection.destroyed)connection.write(JSON.stringify(frame)+'\n');});
+    connection.once('close',()=>{retain(signin.close().catch(error=>{signinFailures.add(error);throw error;}));});
     const owned = new Set<string>();
     const fileOwners = new Set<string>();
     connection.once('close', () => { for (const token of fileOwners) prepared.fenceCommand(token); });
@@ -102,6 +107,14 @@ export async function serveAgent(options: AgentOptions) {
       let lines: string[];
       try { lines = decoder.push(chunk); } catch { connection.destroy(); return; }
       for (const line of lines) {
+        // Input and cancel must bypass an unmount waiting for this writer's close.
+        if(authenticated){
+          try{const request=parseRequest(line);if(request.op==='signin-write'||request.op==='signin-cancel'){
+            retain((async()=>{try{const result=await (request.op==='signin-write'?signin.write(request.args):signin.cancel(request.args));if(!connection.destroyed)connection.write(JSON.stringify({id:request.id,ok:true,result})+'\n');}
+            catch(error){if(!connection.destroyed)connection.write(JSON.stringify({id:request.id,ok:false,error:error instanceof Error?error.message:'sign-in failed'})+'\n');}})());
+            continue;
+          }}catch{}
+        }
         // Cancellation must reach the in-flight command before the serial reply queue.
         if(authenticated) {
           try {const request=parseRequest(line); if(request.op === 'cancel-run') {const token=String(request.args.token);cancelled.add(token);commands.get(token)?.abort();}} catch {}
@@ -116,13 +129,14 @@ export async function serveAgent(options: AgentOptions) {
               const valid = typeof secret === 'string' && Buffer.byteLength(secret) === Buffer.byteLength(options.secret) && timingSafeEqual(Buffer.from(secret), Buffer.from(options.secret));
               if (!valid || request.args.protocol !== AGENT_PROTOCOL) throw new Error('hello secret or protocol refused');
               authenticated = true; authenticatedConnections.add(connection);
-              connection.write(JSON.stringify({ id, ok: true, result: { protocol: AGENT_PROTOCOL, version: options.version, pid: process.pid, bootId, capabilities: [PREPARED_HOST_CAPABILITY, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY, REF_FLUSH_CAPABILITY] } }) + '\n');
+              connection.write(JSON.stringify({ id, ok: true, result: { protocol: AGENT_PROTOCOL, version: options.version, pid: process.pid, bootId, capabilities: [SIGNIN_CAPABILITY, PREPARED_HOST_CAPABILITY, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY, REF_FLUSH_CAPABILITY] } }) + '\n');
             } else {
               if (!authenticated) throw new Error('hello required');
               let result: unknown;
               if(['spawn','run','run-host','writeFile','publishFile','appendFile','makeDirectory','removePath','worktreeAdd','worktreeRemove'].includes(request.op))prepared.assertMutable();
-              const releaseMutation=request.op==='login-disk'||['identity','alive','processes','native-receipts','processUsage','cancel-run','settle-prepared','watch-status'].includes(request.op)?()=>{}:loginDisk.enterMutation(['stop','signal','prepare-stop','abort-prepared','remove-claude','forget-claude','unwatch'].includes(request.op));
+              const releaseMutation=request.op==='login-disk'||['identity','alive','processes','native-receipts','processUsage','cancel-run','settle-prepared','watch-status','signin-start'].includes(request.op)?()=>{}:loginDisk.enterMutation(['stop','signal','prepare-stop','abort-prepared','remove-claude','forget-claude','unwatch'].includes(request.op));
               try { switch (request.op) {
+                case 'signin-start':result=await signin.start(request.args);break;
                 case 'watch-status': result=watches.status();break;
                 case 'watch': await watches.watch(String(request.args.path),String(request.args.branch));result=null;break;
                 case 'worktreeRemove': result=await watches.remove(String(request.args.path),String(request.args.root),async()=>{await operations.worktreeRemove!(request.args);return null;});break;
@@ -187,7 +201,7 @@ export async function serveAgent(options: AgentOptions) {
               connection.write(reply + '\n');
             }
           } catch (error) {
-            const frame = JSON.stringify({ id, ok: false, ...memoryFloorDetails(error), error: error instanceof Error ? error.message : 'operation failed', ...(typeof (error as NodeJS.ErrnoException)?.code === 'string' ? {code:(error as NodeJS.ErrnoException).code} : {}) }) + '\n';
+            const frame = JSON.stringify({ id, ok: false, ...memoryFloorDetails(error), ...signInRefusalFields(error), error: error instanceof Error ? error.message : 'operation failed', ...(typeof (error as NodeJS.ErrnoException)?.code === 'string' ? {code:(error as NodeJS.ErrnoException).code} : {}) }) + '\n';
             if (!authenticated || /hello secret/.test(error instanceof Error ? error.message : '')) connection.end(frame); else connection.write(frame);
           }
         });
@@ -197,7 +211,9 @@ export async function serveAgent(options: AgentOptions) {
   });
   const close = async () => {
     admitting = false; clearInterval(memoryTimer); clearTimeout(recoveryTimer);
+    const peerCloses=[...connections].map(connection=>connection.closed?Promise.resolve():new Promise<void>(resolve=>connection.once('close',resolve)));
     for (const connection of connections) connection.destroy();
+    await Promise.all(peerCloses);
     if (server.listening) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     await memoryWork;
     while(pending.size) await Promise.all([...pending]);
@@ -206,6 +222,7 @@ export async function serveAgent(options: AgentOptions) {
     try{await prepared.close();cleanupFailures.clear();}catch(error){failures.push(error);}
     try{await processes.drain();}catch(error){failures.push(error);}
     failures.push(...cleanupFailures);
+    failures.push(...signinFailures);
     if(failures.length)throw new AggregateError(failures,'agent cleanup incomplete');
   };
   try {

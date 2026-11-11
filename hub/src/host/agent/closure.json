@@ -66,7 +66,7 @@
     },
     {
       "path": "hub/src/host/agent/login-disk.ts",
-      "sha256": "e9c8b3cafc3cb5e15df06fa3aeb88cc5f244c4c85f4fd37c9c89cc6ce7edd2a0"
+      "sha256": "637519510f4913269cbdc59ad26d5d933acd604102fcdb5410dd75f32716a337"
     },
     {
       "path": "hub/src/host/agent/memory.ts",
@@ -102,7 +102,7 @@
     },
     {
       "path": "hub/src/host/agent/processes.ts",
-      "sha256": "3a333b9464c2901bc3eada04a72dbafc373318d97091bcd96c97a345c6b6e48f"
+      "sha256": "ea5350934d35a0fc04fe7d512ee67430d0e10c7b0b74c8cf320c7f86986df70a"
     },
     {
       "path": "hub/src/host/agent/protocol.ts",
@@ -130,7 +130,23 @@
     },
     {
       "path": "hub/src/host/agent/server.ts",
-      "sha256": "b575401bdd46226f2e315c05b205bfdba1123d2e583e8e999b524d153054271b"
+      "sha256": "ca6634756d8ffc633a5a3805bfb4fc8c1910825f8a148906aebf2e674896a9f8"
+    },
+    {
+      "path": "hub/src/host/agent/signin-command.ts",
+      "sha256": "140b9b17b2befc82d1af5eef63db68303f4d6e89889a63b0c95d2aba671f3f6e"
+    },
+    {
+      "path": "hub/src/host/agent/signin-redactor.ts",
+      "sha256": "e338fc5ba5426459da156c0db671646ea712126dcd98de9e375da5179d6b5b4e"
+    },
+    {
+      "path": "hub/src/host/agent/signin-types.ts",
+      "sha256": "60341c25129b7f4ed9a697e6206e7af5ade622d12f0d7e88ef58bc133286db5f"
+    },
+    {
+      "path": "hub/src/host/agent/signin.ts",
+      "sha256": "a0a9a4735f1da3a9a2dd1002af297766beafb40064acc51f50f60d07591e4139"
     },
     {
       "path": "hub/src/host/agent/stat-directory.ts",
@@ -138,7 +154,7 @@
     },
     {
       "path": "hub/src/host/agent/state-paths.ts",
-      "sha256": "5827954635bafff1d29ff373d028f642206c9d221ce76d9b819f5c0a372228c5"
+      "sha256": "c47ea0f5dff9e78b37fc294f6169d32ea5d2df061a28038a1d8cfbf1203f24b8"
     },
     {
       "path": "hub/src/host/agent/storage.ts",

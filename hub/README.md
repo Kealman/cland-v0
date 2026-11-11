@@ -174,6 +174,11 @@ Login capacity and monthly storage reporting use indexed login metadata and prov
 CLI or Neovim. Provider-confirmed disk deletions and encrypted-key removal precede
 row removal; incomplete deletions retain exact ids for retry and the shared auth
 store key stays. See [removal](../docs/hub/logins.md#removing-a-login).
+Interactive harness sign-in uses the agent's optional `signin-v1` capability,
+memory-only redacted streams, bounded output and durable admission-bound tree
+close receipts; older agents refuse before spawn. See
+[interactive sign-in](../docs/hub/ssh-host.md#interactive-sign-in).
+
 
 Login renewal can relaunch live sessions of the renewed harness on its host when
 `[hosts] relaunch_after_signin = true` (default false; init omits it). Config set

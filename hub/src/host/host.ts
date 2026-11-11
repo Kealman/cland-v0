@@ -4,6 +4,8 @@ import type { WorktreeAdd } from './agent/worktrees.ts';
 export type HostProcess = { pid: number | null; pidStarted?: string | null; pidIdentity?: string | null };
 export type { LoginDisk } from './agent/resource-types.ts';
 import type { LoginDisk } from './agent/resource-types.ts';
+export type { SignInInput, SignInOutput, SignInClose, SignInRun } from './agent/signin-types.ts';
+import type { SignInInput, SignInOutput, SignInRun } from './agent/signin-types.ts';
 export type HostCommand = {
   command: string; args: readonly string[]; cwd: string; env: NodeJS.ProcessEnv; timeoutMs?: number; signal?: AbortSignal;
   /** Host-side path; spawn appends stdout and stderr, otherwise ignoring both. */
@@ -33,6 +35,8 @@ export type HostLaunchLayout = Readonly<HostLaunchLayoutInput & { runDirectory: 
 
 /** Operations shared by local and remote implementations. No native handles cross this seam. */
 export interface Host {
+  /** Agent-owned interactive sign-in; older Hosts refuse by absence. Input is memory-only. */
+  signIn?(input:SignInInput,onOutput:(output:SignInOutput)=>void):Promise<SignInRun>;
   /** Older Hosts may lack the login-disk operation; callers must refuse then. */
   loginDisk?(input: LoginDisk): Promise<void>;
   /** Synchronous existing transport/admission observation; absent retains legacy behavior. */

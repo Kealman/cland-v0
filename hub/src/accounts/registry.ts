@@ -23,7 +23,7 @@ export const openCodeDatabase = (env: NodeJS.ProcessEnv) => env.OPENCODE_DB || j
 /** Shared by this user's cland projects, separate from OpenCode's managed service. */
 export const clandOpenCodeDatabase = (env: NodeJS.ProcessEnv) => join(dataHome(env), 'cland', 'opencode', 'opencode.db');
 /** Mounted login path only; never reads database contents. */
-export const mountedOpenCodeDatabase = (mount: string) => join(mount, 'opencode.db');
+export { mountedOpenCodeDatabase } from '../host/agent/state-paths.ts';
 export const openCodeLogin = (database: string) => `OPENCODE_DB=${shellQuote(database)} opencode auth login --standalone`;
 
 export async function readAccounts(env: NodeJS.ProcessEnv = process.env): Promise<Accounts> {

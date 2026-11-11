@@ -23,6 +23,7 @@ export type ProcessHooks = {
   beforeCompletionJoin?: (pid:number) => Promise<void>;
   beforeBootstrap?: (directory: string) => Promise<void>;
   afterSpawn?: (pid: number, directory: string) => Promise<void>;
+  afterRelease?: (pid: number, directory: string) => Promise<void>;
   beforeCheckpoint?: (phase: 'spawn' | 'exit' | 'recover') => Promise<void>;
   closeLog?: (close: () => Promise<void>) => Promise<void>;
   beforeSignals?: (targets: readonly { pid: number; identity: string }[]) => Promise<void>;
@@ -181,7 +182,7 @@ export class AgentProcesses {
     if(!targets)throw new Error('Claude worker capture refused');
     row.targets=targets;this.#rows.push(row);await this.#persist('spawn');this.#adoptionCensus.set(row,new Set(census.map(member=>member.pid)));this.#adopted.add(row);
   }
-  async spawn(args: Record<string, unknown>, preparedLog?: FileHandle, admission?: {launchId: string; accepted: (result: {pid:number;identity:string}) => Promise<void>}) {
+  async spawn(args: Record<string, unknown>, preparedLog?: FileHandle, admission?: {launchId: string; accepted: (result: {pid:number;identity:string}) => Promise<void>}, interactive?: { admitted:()=>void; connected:(child:import('node:child_process').ChildProcess)=>void; closed:(exit:{code:number|null;signal:string|null;ended:boolean})=>void; failed:(error:unknown)=>void }) {
     if (this.#closed) throw new Error('agent closing');
     await requireSpawnMemory(this.#runDir, this.#env);
     if (!process.execve) throw new Error('native execve unavailable');
@@ -207,7 +208,7 @@ export class AgentProcesses {
     try { log = preparedLog ?? (typeof args.logFile === 'string' ? await open(args.logFile, 'a', 0o600) : undefined); }
     catch (error) { this.#inflight.delete(launchId); await this.#removeAdmission(launchId); throw error; }
     let child;
-    try { await this.#hooks.beforeBootstrap?.(directory); child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', fileURLToPath(new URL('./bootstrap.ts', import.meta.url)), directory], { cwd: args.cwd, env: { ...env, ...fakeEnv }, detached: true, stdio: ['ignore', log?.fd ?? 'ignore', log?.fd ?? 'ignore'] }); }
+    try { await this.#hooks.beforeBootstrap?.(directory); child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', fileURLToPath(new URL('./bootstrap.ts', import.meta.url)), directory], { cwd: args.cwd, env: { ...env, ...fakeEnv }, detached: true, stdio: interactive ? ['pipe','pipe','pipe'] : ['ignore', log?.fd ?? 'ignore', log?.fd ?? 'ignore'] }); if(child.pid!==undefined)interactive?.admitted();child.once('spawn',()=>interactive?.admitted());interactive?.connected(child); }
     catch { this.#inflight.delete(launchId); await log?.close(); await this.#removeAdmission(launchId); throw new Error('spawn refused'); }
     let nativeExit: { code: number | null; signal: string | null } | undefined;
     const nativeClosed = new Promise<{ code: number | null; signal: string | null }>(resolve => child.once('close', (code, signal) => { nativeExit = { code, signal }; resolve(nativeExit); }));
@@ -271,11 +272,19 @@ export class AgentProcesses {
         try { await completion; } finally { this.#completions.delete(completion); this.#settling.delete(row); }
       });
       this.#nativeCompletions.set(row, nativeCompletion);
+      if(interactive)void nativeCompletion.then(()=>interactive.closed({code:row.code??null,signal:row.signal??null,ended:row.ended===true}),error=>interactive.failed(error));
       void nativeCompletion.then(() => this.#nativeCompletions.delete(row), () => {this.#nativeCompletionFailures.add(row);this.#nativeCompletions.delete(row);});
       await admission?.accepted({pid:row.pid,identity:row.identity});
       await checkpoint(join(directory, 'release.json'), { identity: row.identity }); accepted = true;
+      await this.#hooks.afterRelease?.(row.pid,directory);
       child.unref(); acceptedResult = { pid: row.pid, identity: row.identity }; return acceptedResult;
     } catch (error) {
+      if(interactive){
+        // A rejected start may have released the harness or retained descendants.
+        // Root close grants no tree-release authority: keep admission/birth metadata.
+        child.kill('SIGKILL');await nativeClosed;
+        throw error;
+      }
       // This handle is an observed fresh launch; never detach an unaccepted writer.
       child.kill('SIGKILL'); await nativeClosed; await this.#removeAdmission(launchId); throw error;
     } finally {

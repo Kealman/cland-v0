@@ -3,7 +3,7 @@
 T1 source-policy coverage. `node --test hub/test/accounts-policy.test.ts` scans hub TypeScript for provider endpoints and credential-store access, with exact file/literal exceptions for authorized metadata, installer plans and saved path construction. It starts no process, installer or network request. The account migration case also guards against literal timer waits and elapsed-time assertions.
 
 The mounted login path uses only the exact pure `mountedOpenCodeDatabase` helper
-in `accounts/registry.ts`. Planted wrong-file, duplicate occurrence and database
+in `host/agent/state-paths.ts`, re-exported by `accounts/registry.ts`. Planted wrong-file, duplicate occurrence and database
 read variants must still fail the exhaustive scanner. Calling the helper only
 joins the mount and filename; it does not inspect login contents.
 

@@ -349,3 +349,41 @@ when the reply is lost. Older agents' fieldless failures remain generic. Native 
 Linux MemAvailable only; non-Linux without a fake override has no verdict and
 admits launches. See
 [the agent memory override](../agents/host-agent.md) for fake-host byte controls.
+# Interactive sign-in
+
+An SSH Host exposes optional `signIn({harness,path}, onOutput)` only through the
+agent's `signin-v1` capability. Older agents refuse before native admission.
+The human terminal command and agent operation share the same public harness
+arguments; stdin never enters argv. Local Hosts without the method remain
+unavailable for card-owned sign-in.
+
+The returned `SignInRun` captures one authenticated connection and admission.
+`write(text)` registers secret input with both in-memory stream redactors before
+writing stdin. Output callbacks carry `{admission,stream,text}`; chunks are at
+most 4096 UTF-8 bytes and total output is at most 64 KiB. Exceeding either raw
+or rendered output capacity stops the owned tree and sets `outcome: 'output-limit'`.
+Raw input and output are never written to agent files or command history.
+
+A refusal proven before this operation's native admission carries
+`nativeAdmission: 'not-admitted'` and a cause code. Missing capability uses
+`CLAND_SIGNIN_UNAVAILABLE`; invalid input/writer admission uses
+`CLAND_SIGNIN_REFUSED`; pre-native spawn refusal uses
+`CLAND_SIGNIN_SPAWN_REFUSED`. Generic failures grant no cleanup authority.
+
+`closed` and `cancel()` return the same `SignInClose` receipt with admission,
+`state: 'closed'`, code and signal. Publication follows the native process
+owner's tree closure and a synced operation checkpoint. The disk mutation lease
+remains held through that checkpoint; input and cancellation bypass an unmount
+waiting on the lease. A peer cannot write or cancel another peer's admission.
+Lost transport or missing close is `CLAND_NATIVE_INCOMPLETE`; the card owner
+must use the interrupted sign-in fence, never infer completion from a timer or
+local SSH exit. Operation receipts contain no input or output bytes.
+
+Both producer and client require an observed exit code or a nonempty native
+signal; null/null is incomplete. Rejected admission after spawn and failed
+close persistence/publication retain the operation and disk mutation hold.
+Already-waiting and later disk operations refuse with `writers-remain`; the
+machine/owner-loss fence is retained. Agent shutdown joins peer-close handlers
+and reports the incomplete owner. Settled native objects retire after receipt
+persistence; at most 32 receipt-only entries remain per peer for repeat cancel.
+Eviction grants no native authority.

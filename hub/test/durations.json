@@ -11576,7 +11576,6 @@
     "hub/test/login-records.test.ts::refuses login transition from signed-out to in-use naming current state": 0.000834,
     "hub/test/login-records.test.ts::refuses login transition from signed-out to ready naming current state": 0.00094,
     "hub/test/login-records.test.ts::refuses login transition from signed-out to signed-out naming current state": 0.000688,
-    "hub/test/accounts-policy.test.ts::mounted database path permits only one exact pure registry helper": 0.00069,
     "hub/test/fake-ssh.test.ts::fake SSH refuses unrecognized login disk commands before local execution": 0.292593,
     "hub/test/fake-ssh.test.ts::fake SSH setup rejection disposes its root before any bin or host setup": 0.009483,
     "hub/test/fake-ssh.test.ts::fake SSH terminal sign-in cannot execute a harness planted on PATH": 0.696577,

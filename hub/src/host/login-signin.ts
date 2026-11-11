@@ -1,9 +1,9 @@
+import { signInCommand } from './agent/signin-command.ts';
 import { snapshotLoginDisk, fenceLostLoginRelease, type LoginSnapshots } from './login-snapshots.ts';
 import type { Host } from './host.ts';
 import type { Login, LoginRecords } from './logins.ts';
 import type { HostProvider, Machine, Volume } from './provider/provider.ts';
 import type { Clock } from '../hub/clock.ts';
-import { mountedOpenCodeDatabase } from '../accounts/registry.ts';
 import { loginMount } from './login-binding.ts';
 import type {HostRecords} from './records.ts';
 import {sameVolume} from './login-reader.ts';
@@ -76,11 +76,8 @@ export function reserveDiskLogin(o:{logins:LoginRecords;harness:Login['harness']
 }
 /** Only paths and public harness arguments enter the terminal command. */
 export function loginSignInCommand(harness: Login['harness'], path: string): string {
- switch(harness) {
-  case 'claude-code': return `CLAUDE_CONFIG_DIR=${quote(path)} claude auth login`;
-  case 'codex': return `CODEX_HOME=${quote(path)} codex login --device-auth`;
-  case 'opencode': return `OPENCODE_DB=${quote(mountedOpenCodeDatabase(path))} opencode auth login`;
- }
+ const plan=signInCommand({harness,path});
+ return `${plan.key}=${quote(plan.value)} ${plan.command} ${plan.args.join(' ')}`;
 }
 /** Caller owns host selection and terminal lifetime. No disk reads or logout. */
 export async function prepareLoginSignIn(o: {

@@ -5,6 +5,7 @@ import { createServer } from 'node:net';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { startSignIn } from "../src/host/signin-client.ts";
 import { AgentClient } from '../src/host/agent-client.ts';
 test('new client accepts original protocol-1 hello without capabilities',async()=>{
  const root=await mkdtemp(join(tmpdir(),'agent-client-'));
@@ -14,6 +15,7 @@ test('new client accepts original protocol-1 hello without capabilities',async()
  try {
   const path=join(root,'agent.sock');await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(path,resolve);});
   client=await AgentClient.connect(path,'synthetic');assert.deepEqual(client.hello,original);
+  await assert.rejects(startSignIn(client,{harness:"codex",path:"/cland/auth/codex-work"},()=>{}),/signin-v1/);
   await assert.rejects(client.request('spawn',{}), error => (error as Error).message === 'previous spawn failure' && !('code' in (error as Error)));
  } finally {await client?.close();await new Promise<void>(resolve=>server.close(()=>resolve()));await rm(root,{recursive:true,force:true});}
 });

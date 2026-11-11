@@ -690,6 +690,27 @@ overlay on the process row. Unknown native outcomes retain an in-use pending
 binding; release leaves it for reconciliation. See [launch binding](../hub/logins.md#binding-at-launch).
 
 Prepared spawn checkpoints retain the nonsecret environment. `OPENCODE_API_KEY` stays in the current operation's memory until commit; it is absent from prepared and launch plans. Restart never replays an uncommitted spawn: it expires preparation or reconciles the committing launch id and native birth. A new native generation asks the hub key store again.
+# Interactive sign-in receipts
+
+The `signin-v1` agent capability runs the public harness sign-in for a mounted
+login path. Input and raw output live in operation memory only; split echoes
+are redacted before bounded output events. The operation reuses native birth,
+bootstrap and descendant ownership from `AgentProcesses`, and retains disk
+mutation admission until its exact close receipt is synced. Cancellation joins
+that receipt. An operation without its own close is owner loss under the
+interrupted sign-in fence, including hub or connection loss; elapsed time grants
+no cleanup authority. See [SSH Host](../hub/ssh-host.md#interactive-sign-in) for
+the client contract and [native tests](tests/hub-test-host-agent-signin-op.test.ts.md)
+for fake-only evidence.
+
+Before-admission refusals carry `nativeAdmission: 'not-admitted'` and a cause
+code; after-admission failure remains `CLAND_NATIVE_INCOMPLETE` until the
+operation's own positive close. A failed native checkpoint or publication
+retains the disk hold and makes waiting disk operations refuse with
+`writers-remain`. Shutdown joins socket-close handlers before draining owners,
+and reports retained sign-in failures. Settled native objects are removed from
+the peer's active map; its repeat-cancel cache holds at most 32 receipts.
+
 
 The hub's optional `[hosts] relaunch_after_signin` (boolean, default false, hot
 applied, omitted by init) renews live sessions through their existing relaunch

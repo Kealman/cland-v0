@@ -492,3 +492,24 @@ export function optionalLoginDiskReachabilityContract(host:Pick<Host,'loginDiskR
  if(expected===undefined)assert.equal(host.loginDiskReachable,undefined);
  else {assert.equal(typeof host.loginDiskReachable,'function');assert.equal(host.loginDiskReachable!(),expected);}
 }
+
+/** Optional sign-in remains absent locally; supplied implementations preserve admission and close. */
+export async function optionalSignInHostContract(host:Pick<Host,'signIn'>,expected?:{
+ input:import('../src/host/host.ts').SignInInput;
+ refusal?:{code:string;nativeAdmission:'not-admitted'};
+ write?:string;
+ close?:import('../src/host/host.ts').SignInClose;
+}):Promise<void>{
+ if(!expected){assert.equal(host.signIn,undefined);return;}
+ assert.equal(typeof host.signIn,'function');
+ if(expected.refusal){await assert.rejects(host.signIn!(expected.input,()=>{}),expected.refusal);return;}
+ const output:import('../src/host/host.ts').SignInOutput[]=[];
+ const run=await host.signIn!(expected.input,value=>output.push(value));
+ assert.equal(typeof run.admission,'string');assert.ok(run.admission);
+ for(const chunk of output){assert.equal(chunk.admission,run.admission);assert.ok(Buffer.byteLength(chunk.text)<=4096);}
+ if(expected.write!==undefined)await run.write(expected.write);
+ const close=await run.closed;assert.equal(close.admission,run.admission);assert.equal(close.state,'closed');
+ assert.ok(Number.isInteger(close.code)||typeof close.signal==='string'&&close.signal.length>0);
+ if(expected.close)assert.deepEqual(close,expected.close);
+ assert.deepEqual(await run.cancel(),close);
+}
