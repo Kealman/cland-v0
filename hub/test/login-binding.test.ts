@@ -1,13 +1,13 @@
 // T2: public session launch over projectHub sockets, recording Host and directory-only provider.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { FakeClock } from './fake-clock.ts';
 import { fakeLockProcesses } from './fakes/lock-processes.ts';
 import { AccountLimits } from '../src/accounts/limits.ts';
 import { LoginBinder } from '../src/host/login-binding.ts';
-import { projectHub, tempProject, inProcessSpoke, eventually } from './harness.ts';
+import { projectHub, tempProject, inProcessSpoke, eventually, connectUi } from './harness.ts';
 import { sessionUi } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
@@ -16,6 +16,10 @@ import { FakeHostProvider } from '../src/host/provider/fake.ts';
 import { Store } from '../src/hub/store.ts';
 import { HostSecretStore } from '../src/host/records.ts';
 import type { LoginDisk } from '../src/host/agent/resource-types.ts';
+import { writeLoginKey } from '../src/host/login-keys.ts';
+import { projectTag } from '../src/executor/droplet/droplet.ts';
+import { readProjectConfig } from '../src/init/config.ts';
+import { fakeHarness } from './fakes/harness.ts';
 
 async function fixture(t: test.TestContext, limited = false) {
  const root = await tempProject(t);
@@ -57,6 +61,62 @@ test('pool launch attaches and mounts a ready login before spawn',async t=>{
  assert.deepEqual(f.store.hosts.logins.bindings('work-codex'),[{login:'work-codex',host:f.machine.id,role:'writer',volumeId:f.volume.id,phase:'settled'}]);
  const inventory=await f.provider.listVolumes({project:f.root});assert.equal(inventory.state,'listed');
  if(inventory.state==='listed')assert.equal(inventory.volumes[0]!.attachedTo,f.machine.id);
+});
+
+test('ready key selection permits simultaneous hosts without disk bindings',async t=>{
+ const f=await fixture(t);
+ f.store.hosts.logins.insert({name:'work-key',harness:'opencode',account:'key',kind:'key',lastSignIn:null});
+ f.store.hosts.logins.transition('work-key','ready');
+ const binder=new LoginBinder(f.store.hosts.logins);
+ try {
+  for(const name of ['host-a','host-b']){
+   const bound=await binder.bind({host:{name},machine:f.machine,provider:()=>{throw Error('key must not resolve provider');},providerName:'fake',region:'any',pool:'agents',project:f.root,harness:'opencode',account:'key',validate:()=>{},checkAccount:()=>{}});
+   assert.deepEqual(bound,{login:'work-key',account:'key',accountEnv:{}});
+  }
+  assert.deepEqual(f.store.hosts.logins.bindings('work-key'),[]);
+  assert.equal(f.store.hosts.logins.get('work-key')!.state,'ready');
+ } finally {await binder.close();}
+});
+
+test('pool key launch carries a secret separately from persisted account environment',async t=>{
+ const f=await fixture(t);
+ writeLoginKey(f.root,projectTag(f.root,readProjectConfig(join(f.root,'.cland/config.toml'),f.root)!.name),'work-key','sentinel-pool-key');
+ f.store.hosts.logins.insert({name:'work-key',harness:'opencode',account:'key',kind:'key',lastSignIn:null});
+ f.store.hosts.logins.transition('work-key','ready');
+ const result=await f.ui.request({type:'session.launch',name:'key-worker',host:f.machine.id,harness:'opencode',account:'key'});
+ assert.equal(result.ok,true,result.error);
+ assert.deepEqual(f.hub.fakes.opencode!.spawns[0]!.secretEnv,{OPENCODE_API_KEY:'sentinel-pool-key'});
+ const rows=await f.ui.request({type:'session.list'});
+ assert.equal(JSON.stringify(rows).includes('sentinel-pool-key'),false);
+ assert.equal((await readFile(join(f.root,'.cland/hub.db'))).includes(Buffer.from('sentinel-pool-key')),false);
+ assert.deepEqual(f.store.hosts.logins.bindings('work-key'),[]);
+ await f.hub.stop();
+ await unlink(join(f.root,'.cland/auth/work-key.key'));
+ const rotated='sentinel-pool-key"\\rotated';
+ writeLoginKey(f.root,projectTag(f.root,readProjectConfig(join(f.root,'.cland/config.toml'),f.root)!.name),'work-key',rotated);
+ const env=fixtureEnvironment(f.root,process.env,{CLAND_FAKE_HOST_ROOT:f.root});
+ const adapter=fakeHarness('opencode');
+ const restarted=await projectHub(t,f.root,env,{adapters:[boundary=>{boundary.log({event:`escaped-event ${rotated}`,reason:`escaped-field ${rotated}`});return adapter;}],hosts:[f.host],clock:f.clock,processes:fakeLockProcesses().processes,droplet:{processes:fakeLockProcesses().processes}});
+ const ui=await sessionUi(t,restarted.discovery);
+ const resumed=await ui.request({type:'session.launch',name:'key-after-restart',host:f.machine.id,harness:'opencode',account:'key'});
+ assert.equal(resumed.ok,true,resumed.error);
+ assert.deepEqual(adapter.spawns[0]!.secretEnv,{OPENCODE_API_KEY:rotated});
+ const loginBeforeStop=f.store.hosts.logins.get('work-key');
+ const human=await connectUi(t,restarted.discovery,'cli');
+ const stopped=await human.request({type:'host.stop',host:f.machine.id});
+ assert.equal(stopped.ok,true,stopped.error);
+ assert.deepEqual(f.store.hosts.logins.get('work-key'),loginBeforeStop);
+ assert.deepEqual(f.store.hosts.logins.bindings('work-key'),[]);
+ await restarted.stop();
+ for(const file of ['hub.db','log/hub.log','journal.jsonl']){
+  const bytes=await readFile(join(f.root,'.cland',file));
+  assert.equal(bytes.includes(Buffer.from('sentinel-pool-key')),false);
+ }
+ const persisted=(await readFile(join(f.root,'.cland/log/hub.log'),'utf8')).split('\n').filter(Boolean).map(line=>JSON.parse(line));
+ const escaped=persisted.find(row=>String(row.event).startsWith('escaped-event '));
+ assert.ok(escaped,'positive event persistence receipt');
+ assert.equal(escaped.event,'escaped-event [redacted]');
+ assert.equal(escaped.reason,'escaped-field [redacted]');
 });
 
 test('second session reuses the binding and records login and account',async t=>{

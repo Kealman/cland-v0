@@ -11,6 +11,29 @@ import { ownProcess } from './process-cleanup.ts';
 import { VERSION } from '../src/version.ts';
 import { AgentClient } from '../src/host/agent-client.ts';
 import { realClock } from '../src/hub/clock.ts';
+import { loginFixtureOwners } from './login-fixture-owners.ts';
+
+test('admission plan excludes environment while native launch receives it', async t => {
+  const owners = loginFixtureOwners(t);
+  const root = await mkdtemp(join(tmpdir(), 'agent-env-')); owners.directory(root);
+  const { writeFile, readFile } = await import('node:fs/promises');
+  await writeFile(join(root, 'boot'), '11111111-1111-1111-1111-111111111111');
+  await writeFile(join(root, 'available-memory'), JSON.stringify({availableBytes:8*1024**3}));
+  const env = fixtureEnvironment(root, process.env, {CLAND_FAKE_HOSTS:'1', CLAND_HOST_BOOT_ID_FILE:join(root,'boot'),MARKER:'sentinel-plan-private',SECOND_MARKER:'complete'});
+  let plan = '';
+  const server = await serveAgent({runDir:root,secret:'synthetic',version:'test',env,processHooks:{beforeBootstrap:async directory=>{plan=await readFile(join(directory,'plan.json'),'utf8');}}}); owners.defer(()=>server.close());
+  const client = await AgentClient.connect(server.socket,'synthetic'); owners.defer(()=>client.close());
+  const exits: Array<{pid:number;code:number|null}> = [];
+  client.on('event', frame=>{if(frame.event==='process-exited')exits.push(frame);});
+  const child = await client.request('spawn',{command:process.execPath,args:['-e',"process.exit(require('node:crypto').createHash('sha256').update(process.env.MARKER || '').digest('hex')==='e4dda54cfb30a146d5c0d3660c9346bec31512133fd43e4564157bbd601a67ba' && process.env.SECOND_MARKER==='complete' ? 0 : 19)"],cwd:root,env}) as {pid:number};
+  owners.defer(ownProcess(undefined,child.pid));
+  const { eventually } = await import('./harness.ts');
+  const exit = await eventually('environment assertion native exit',()=>exits.find(row=>row.pid===child.pid));
+  assert.equal(exit.code,0);
+  assert.equal(plan.includes('sentinel-plan-private'),false);
+  assert.equal(Object.hasOwn(JSON.parse(plan),'env'),false);
+  assert.equal(Object.hasOwn(JSON.parse(plan),'fakeEnv'),false);
+});
 
 test('agent authenticates hello, negotiates protocol and retains connection after unknown op', { timeout: 15000 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'agent-'));

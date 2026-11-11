@@ -57,6 +57,7 @@ The explicit-empty-account control overrides an unavailable role account, then
 selects and reuses the ready login without a pin; both process account/login and
 the logical overlay are checked. Empty input is normalized before indexed selection.
 
+Key selection, hub restart with a rotated encrypted key, persisted-environment separation and host.stop invariance are documented in [key spawn coverage](hub-test-login-key-spawn.test.ts.md).
 Capacity admission now returns a durable login wait for an exhausted login or
 a retained pending binding. The first uncertain native attempt still refuses
 and retains its pending fence; later attempts perform no native effect.

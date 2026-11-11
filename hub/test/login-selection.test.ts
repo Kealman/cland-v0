@@ -42,9 +42,9 @@ test('launch selection has fixed indexed query and decode work across ten thousa
  }) as typeof JSON.parse);
  // Positive control before hot-path checks: a retained-history scan must be seen.
  records.list();assert.equal(historyDecoded,10000);t.diagnostic('decode guard positive control observed all10000 history rows');
- const select=(account:string|null)=>{
+ const select=(account:string|null,harness='codex')=>{
   queries=0;decoded=0;historyDecoded=0;plans.length=0;observing=true;
-  try{return records.selectForLaunch({host:'target',harness:'codex',provider:'fake',region:'wanted',account});}
+  try{return records.selectForLaunch({host:'target',harness,provider:'fake',region:'wanted',account});}
   finally{observing=false;}
  };
  for(const account of [null,'work']){
@@ -52,6 +52,15 @@ test('launch selection has fixed indexed query and decode work across ten thousa
   assert.equal(queries,2);assert.equal(decoded,1);assert.equal(historyDecoded,0);
   assert.ok(plans.some(plan=>plan.includes('login_bindings_launch')));assert.ok(plans.some(plan=>plan.includes('login_ready_launch')));
   assert.ok(plans.every(plan=>!/^SCAN |USE TEMP B-TREE/.test(plan)),plans.join('\n'));
+ }
+ records.insert({name:'creating-key',harness:'opencode',account:'work',kind:'key',lastSignIn:null});
+ records.insert({name:'signedout-key',harness:'opencode',account:'work',kind:'key',lastSignIn:null});records.transition('signedout-key','signed-out');
+ records.insert({name:'wanted-key',harness:'opencode',account:'work',kind:'key',lastSignIn:null});records.transition('wanted-key','ready');
+ assert.deepEqual([...records.keyNames()],['wanted-key']);
+ for(const account of [null,'work']){
+  const result=select(account,'opencode');assert.equal(result.ready?.name,'wanted-key');assert.deepEqual(result.held,[]);
+  assert.equal(queries,2);assert.equal(decoded,1);assert.equal(historyDecoded,0);
+  assert.ok(plans.some(plan=>plan.includes('login_ready_keys')));assert.ok(plans.every(plan=>!/^SCAN |USE TEMP B-TREE/.test(plan)),plans.join('\n'));
  }
  records.bind('wanted',{host:'target',role:'writer',volumeId:'volume-wanted'});
  let result=select(null);assert.equal(result.held[0]!.login.name,'wanted');assert.equal(result.ready,null);assert.equal(queries,1);assert.equal(decoded,1);assert.equal(historyDecoded,0);

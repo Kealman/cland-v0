@@ -54,3 +54,5 @@ realClock deadline started after setup. Memory writes and spawn authorization
 check that same deadline; the final assertion checks the whole phase after
 native completion. Any remaining subscriptions close in finally.
 The fixture resets the memory floor before continuing prepared/native admission.
+
+The environment-free admission case and key spawn composition are documented in [key spawn coverage](hub-test-login-key-spawn.test.ts.md). It observes the plan before bootstrap, then native exit zero from full-environment assertions.

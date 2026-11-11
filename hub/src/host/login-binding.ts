@@ -56,6 +56,10 @@ export class LoginBinder {
    return {finish:async()=>({login:login.name,account:login.account,accountEnv:loginEnvironment(login)}),rollback:async()=>{}};
   }
   const login=selection.ready;
+  if(login?.kind==='key'){
+   this.#validate(input,login);
+   return {finish:async()=>{this.#validate(input,login);return {login:login.name,account:login.account,accountEnv:{}};},rollback:async()=>{}};
+  }
   if(!login||login.kind!=='disk'||!login.volumeId)throw Error(`no login ${input.harness} in pool ${input.pool}`);
   if(!input.host.loginDisk)throw Error(`login ${login.name}: host lacks login-disk`);
   this.#validate(input,login);

@@ -428,6 +428,7 @@
     "hub/test/login-exclusive-native.test.ts": "T3",
     "hub/test/login-exclusive.test.ts": "T2",
     "hub/test/login-host-pin.test.ts": "T2",
+    "hub/test/login-key-spawn.test.ts": "T3",
     "hub/test/login-keys.test.ts": "T2",
     "hub/test/login-list.test.ts": "T2",
     "hub/test/login-provision-bind.test.ts": "T2",

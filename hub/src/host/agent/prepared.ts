@@ -19,7 +19,7 @@ import type { CheckoutOwnership, FileBirth } from './prepared-checkout.ts';
 type Phase = 'preparing' | 'git-running' | 'prepared' | 'committing';
 type Plan = { kind: 'spawn' | 'worktree' | 'stop' | 'run' | 'publishFile' | 'appendFile'; phase: Phase; args: Record<string, unknown>; recoveryKey?: string; cleanup?: FileBirth & {path:string}; checkout?: CheckoutOwnership; targets?: ProcessTarget[] };
 export type PreparedOutcome = {state:'accepted';result:unknown} | ({state:'failed';error:string} & Partial<MemoryFloorDetails>) | {state:'pending';reason:string};
-type Pending = { deadline: number; plan: Plan; log?: FileHandle; timer?: NodeJS.Timeout };
+type Pending = { deadline: number; plan: Plan; secretEnv?: NodeJS.ProcessEnv; log?: FileHandle; timer?: NodeJS.Timeout };
 const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
 /** Tokens bind commits to admission; durable results reconcile a lost accepted reply. */
 export class PreparedOperations {
@@ -102,10 +102,12 @@ export class PreparedOperations {
     const token=typeof operationId==='string'?operationId:randomUUID();this.#path(token);
     if(await this.#readPlan(token)||await this.#outcome(token))throw new Error('operation already admitted; reconcile');
     if(args.env&&typeof args.env==='object'&&!Array.isArray(args.env)) rawArgs.env=remoteCommandEnvironment(args.env as NodeJS.ProcessEnv);
+    const secretEnv:NodeJS.ProcessEnv={};
+    if(kind==='spawn' && rawArgs.env){const env={...rawArgs.env as NodeJS.ProcessEnv};if(env.OPENCODE_API_KEY!==undefined){secretEnv.OPENCODE_API_KEY=env.OPENCODE_API_KEY;delete env.OPENCODE_API_KEY;}rawArgs.env=env;}
     const plan:Plan={kind,phase:'preparing',args:rawArgs,...(typeof recoveryKey==='string'?{recoveryKey}:{})};
     args=rawArgs;
     let log:FileHandle|undefined;
-    const pending:Pending={deadline:Infinity,plan};this.#pending.set(token,pending);
+    const pending:Pending={deadline:Infinity,plan,secretEnv};this.#pending.set(token,pending);
     try {
       await checkpoint(this.#path(token),plan);
     if(kind==='publishFile'||kind==='appendFile') parseAgentFile(args,kind);
@@ -176,7 +178,7 @@ export class PreparedOperations {
         fileCompleted = true;
       } else if(plan.kind==='spawn') {
         const cleanup=plan.cleanup;delete plan.cleanup;await checkpoint(this.#path(token),plan);
-        try {result=await this.#processes.spawn({...plan.args,env:remoteCommandEnvironment({...this.#env,...plan.args.env as NodeJS.ProcessEnv})},pending.log,{launchId:token,accepted:async result=>{await this.#saveOutcome(token,plan,{state:'accepted',result});}});}
+        try {result=await this.#processes.spawn({...plan.args,env:remoteCommandEnvironment({...this.#env,...plan.args.env as NodeJS.ProcessEnv,...pending.secretEnv})},pending.log,{launchId:token,accepted:async result=>{await this.#saveOutcome(token,plan,{state:'accepted',result});}});}
         catch(error){if(!(await this.#outcome(token))&&cleanup)plan.cleanup=cleanup;throw error;}
       } else if(plan.kind==='stop') result=await this.#processes.stop({...plan.args,captured:plan.targets});
       else {

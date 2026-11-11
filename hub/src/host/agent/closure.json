@@ -2,7 +2,7 @@
   "files": [
     {
       "path": "hub/src/host/agent/bootstrap.ts",
-      "sha256": "0c90d87c210ea9d9e7d85f6f9ad67c5b21db1f2d8d3a7328468e4c4fc314b195"
+      "sha256": "7f082ad70abd47bc4e0153603b10baa39f4ec4fff92e17d0242839b3134f22b5"
     },
     {
       "path": "hub/src/host/agent/claude-stop.ts",
@@ -94,7 +94,7 @@
     },
     {
       "path": "hub/src/host/agent/prepared.ts",
-      "sha256": "3fcea232603b7d81a2a5af1151dac6bf1006fa7eb56000042a3cd4090515eec3"
+      "sha256": "0feaadc664988d4e6324338670b6b47320f0d7f66c3b3a6d8d06c23a40fa808c"
     },
     {
       "path": "hub/src/host/agent/process-usage.ts",
@@ -102,7 +102,7 @@
     },
     {
       "path": "hub/src/host/agent/processes.ts",
-      "sha256": "bfecd15363d0d13418259b790d67cae85e15948af94e692ca77aed1349ad7fe1"
+      "sha256": "3a333b9464c2901bc3eada04a72dbafc373318d97091bcd96c97a345c6b6e48f"
     },
     {
       "path": "hub/src/host/agent/protocol.ts",

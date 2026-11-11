@@ -122,6 +122,9 @@ export type LaunchPolicy = {
 };
 
 export type SpawnRequest = LaunchPolicy & {
+  /** Per-generation secrets; consumed by spawn only, never copied into a process row. */
+  secretEnv?: Record<string,string>;
+  login?: string | null;
   /** Registered Host selected at admission; omitted means local. */
   host?: string;
   account?: string | null;
@@ -163,6 +166,7 @@ export type ApprovalRequest = { id: string; kind: ApprovalRecord['kind']; subjec
 
 /** What the hub gives an adapter: the project, how a launched session reaches the hub, and where signals go. */
 export type AdapterHost = {
+  loginKeyEnvironment?: (login:string)=>Record<string,string>;
   /** Optional for standalone adapters built against the previous contract. */
   hostForProcess?: (process: HarnessProcess) => Host;
   hostForLaunch?: (request: SpawnRequest) => Host;

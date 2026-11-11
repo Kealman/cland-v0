@@ -87,7 +87,7 @@ before deletion. Missing receipts retain the binding. Listing includes every
 writer and reader host. Real providers require API and host connectivity;
 fake-provider tests use directory volumes and fake harnesses without network.
 
-Selection first reuses the host's settled binding, then prefers a ready disk;
+Selection first reuses the host's settled binding, then a ready key matching harness/account, then a ready disk;
 only when none is ready does it offer an in-use non-exclusive disk as a reader.
 Harness, provider, region and optional account must match. A pending binding or
 unresolved reader-create or deleted-but-unacknowledged intent fences selection
@@ -140,7 +140,7 @@ existing database. Callers own admission and native resource receipts.
   `setExclusive(name, boolean)` changes disks while they are not in use.
   `free()` returns ready rows only.
 - `selectForLaunch({host, harness, provider, region, account})` returns at most
-  two held host/harness bindings (to detect conflicts), or one ready disk login.
+  two held host/harness bindings (to detect conflicts), or one ready key/disk login.
   Ready selection uses optional account filtering and stable account/name order.
   It uses the store's maintained indexes rather than decoding retained history.
 - `bindings(name)` returns rows sorted by host, each containing login, host,
@@ -307,7 +307,7 @@ query. The private binding harness column is backfilled from existing rows in a
 savepoint with index creation; public binding shapes are unchanged. Every binding
 insert supplies its harness. Selection decodes at most two bound rows or one ready
 row, independently of signed-out/ineligible history. The normal SQLite indexes
-maintain this derived selection across writes and connections. The indexed
+maintain this derived selection across writes and connections. OpenCode key selection uses the partial login_ready_keys harness/account/name index, with no temporary sort. Other harnesses retain their existing query path: held selection takes one query, ready disk selection two. OpenCode ready-key selection takes two queries; falling through to a ready disk takes three. The indexed
 selector itself scans no retained history. Row and binding changes notify the
 snapshot listener with the changed login name. After its initial startup scan,
 the scheduler reads and rearms only that login, without decoding retained history.
@@ -417,6 +417,14 @@ refuse with the 0.4.x limitation. The hub requires its redactor registration hoo
 decrypts before inserting metadata and returns the ready key row. `login.add`
 carries harness, kind, name and account only; no key material or ciphertext. See the
 [key-store cases](../agents/tests/hub-test-login-keys.test.ts.md).
+
+## Key spawn environment
+
+A pool-host OpenCode launch selects a ready key by account without provider or region constraints. The same key can serve concurrent hosts. It remains ready with no bindings; provisioning, stop and destroy perform no key attach or detach. Existing settled disk bindings still take precedence on their host.
+
+The hub decrypts the key file per native generation, including resume/relaunch, and registers its value with the project redactor. Startup streams indexed ready-key names to register launchable values; creating/signed-out metadata without admitted key material remains listable and does not block startup; key add registers before publication. `SpawnRequest.secretEnv` carries `OPENCODE_API_KEY` only until native spawn over the authenticated agent socket. Adapters return the login name and an empty account environment; process rows, attach records, config files and argv contain no key. Key launch errors identify the login and scrub registered secret values from diagnostics while preserving typed refusal classes and safe ownership/receipt fields. Registered secret bytes are scrubbed before journal/log persistence.
+
+Prepared agent checkpoints preserve nonsecret environment values and hold the key only in lifetime memory. The native bootstrap inherits its environment; `launches/<id>/plan.json` holds no environment values. Restart reconciles native receipts rather than replaying a prepared spawn; a fresh launch reads the encrypted key again. This requires the updated host-agent runtime as well as the hub. Local launches and manually registered non-pool hosts keep account-registry behavior. See [key spawn tests](../agents/tests/hub-test-login-key-spawn.test.ts.md).
 
 ## Releasing host disks
 

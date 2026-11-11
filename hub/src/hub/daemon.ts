@@ -1,3 +1,5 @@
+import { loginKeyEnvironment } from '../host/login-keys.ts';
+import { projectTag } from '../executor/droplet/droplet.ts';
 import { HostHealth, loseHost } from '../host/host-health.ts';
 import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { reconcileHostLeases, restoreHostLeaseOwners } from '../host/host-restart.ts';
@@ -7,7 +9,7 @@ import { registerFakeHosts } from '../host/records.ts';
 import { userInfo } from 'node:os';
 import { prepareAuthMode } from '../init/config-set.ts';
 import { speechProvider } from '../speech/provider.ts';
-import { remoteRedactor } from '../remote/redact.ts';
+import { remoteRedactor, redactValue } from '../remote/redact.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import { RemoteWorkbench } from '../remote/workbench.ts';
 import { remoteStopDetails } from '../remote/notices.ts';
@@ -178,7 +180,8 @@ export async function serveProject(root: string, options: { prepareLogin?: impor
       startupStep = entry.event === 'hub-startup-step' ? { step: String(entry.step), started: now } : undefined;
       if (previous) log({ event: 'hub-startup-step-completed', step: previous.step, durationMs: now - previous.started, pid: process.pid });
     }
-    const record: JournalRecord = { ts: clock.now().toISOString(), ...entry, event: String(entry.event), eventsVersion: 1 };
+    const clean=redactValue(entry,text=>remoteOutput.containsSecret(Buffer.from(text)) ? remoteOutput.text(text) : text);
+    const record: JournalRecord = { ts: clock.now().toISOString(), ...clean, event: String(clean.event), eventsVersion: 1 };
     const row = eventRow(record);
     if (row) {
       const id = randomUUID();
@@ -220,6 +223,7 @@ export async function serveProject(root: string, options: { prepareLogin?: impor
   const storageFatalMs = Number(env.CLAND_TEST_TRACKER_FATAL_MS ?? 0);
   const stopTimeoutMs = Number(env.CLAND_TEST_TRACKER_STOP_MS ?? 0);
   let config: ReturnType<typeof readProjectConfig>;
+  let keyEnvironment: (name:string)=>Record<string,string>;
   try {
     config = readProjectConfig(l.config, root, error => { if (/^(auth\.|verification\.(lifetime|run_timeout|daily_spend_usd))/.test(error)) throw new Error(error); log({ event: 'config-unreadable', file: l.config, error, keeping: 'the defaults' }); }, env);
   } catch (error) { await closeLogs(); lock.release(); throw error; }
@@ -319,6 +323,8 @@ export async function serveProject(root: string, options: { prepareLogin?: impor
     }
     log({ event: 'hub-startup-step', step: 'restoring hub state', pid: process.pid });
     store = new Store(l.db, options.openDatabase);
+    keyEnvironment=(name:string)=>loginKeyEnvironment(root,projectTag(root,config!.name),store!.hosts.logins,remoteOutput.register,name);
+    for(const name of store.hosts.logins.keyNames())keyEnvironment(name);
     store.hosts.provisions.reconcileInterrupted();
     await reconcileHostLeases({root,records:store.hosts,env,clock,log});
     await restoreProvisionedFakeHosts(store.hosts,env);
@@ -689,7 +695,7 @@ export async function serveProject(root: string, options: { prepareLogin?: impor
   try {
     log({ event: 'hub-startup-step', step: 'restoring sessions', pid: process.pid });
     sshHosts = await projectSshHosts({clock,onAdd: host => adapters?.sessions.addHost(host), onRemove: id => adapters?.sessions.removeHost(id), settle: id => hub.dispatcher.revokeHost(id), onReady:hostReady,root,records:store.hosts,hubSocket:l.socket,spokeSocket:l.spokeSocket,env,log,...(options.hostConfigurations ? {configurations:options.hostConfigurations} : {}),...(options.hosts ? {provided:options.hosts} : {})});
-    adapters = projectSessions({ hostPools: () => roles.config().hosts, hosts: [...(options.hosts ?? []), ...sshHosts.hosts], ...(options.transportClock ? { transportClock: options.transportClock } : {}), ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
+    adapters = projectSessions({loginKeyEnvironment:keyEnvironment, hostPools: () => roles.config().hosts, hosts: [...(options.hosts ?? []), ...sshHosts.hosts], ...(options.transportClock ? { transportClock: options.transportClock } : {}), ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.hostOwner = sshHosts;
     await hub.dispatcher.restoreSessions(adapters.sessions, () => restoreHostLeaseOwners({root,records:store.hosts,env,clock,log,config:roles.config(),inUse:id=>adapters!.sessions.hostInUse(id),destroy:id=>destroyHost({root,id,records:store.hosts,env,clock,owner:sshHosts!,settleDeleted:(host,read)=>adapters!.sessions.hostDeleted(host,read),log})}));
     const healthProviders=new HostProviderRegistry({env,digitalocean:{root},now:()=>clock.now().getTime()});

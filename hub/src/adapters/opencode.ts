@@ -1,3 +1,4 @@
+import { remoteRedactor } from '../remote/redact.ts';
 import { generationAdapter } from './generation-adapter.ts';
 import { hostGenerationKey } from './processes.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
@@ -285,7 +286,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return { $schema: 'https://opencode.ai/config.json', mcp: { servers: { cland: { type: 'local', command: [layout.node, layout.spoke], environment } } } };
   }
 
-  async #launch(p: Pick<HarnessProcess, 'host' | 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId' | 'account' | 'accountEnv' | 'item' | 'effort'> & LaunchPolicy, scope: LaunchScope, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false): Promise<HarnessProcess> {
+  async #launch(p: Pick<HarnessProcess, 'host' | 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId' | 'account' | 'accountEnv' | 'login' | 'item' | 'effort'> & LaunchPolicy, scope: LaunchScope, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false, secretEnv?: Record<string,string>): Promise<HarnessProcess> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#assertOpen();
       this.#recoveries.assertAvailable(p.name, p.sessionId);
@@ -303,6 +304,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
         yield* this.#activeWait(transaction.file(files.log, true));
         const env = hostCommandEnvironment(host, accountEnvironment(this.#env, p.accountEnv), {
           ...(host.name === 'local' ? {} : p.accountEnv),
+          ...secretEnv,
           CLAND_HUB_FILE: host.layout(this.#host).discoveryFile,
           CLAND_SESSION_ID: p.sessionId,
           CLAND_SESSION_NAME: p.name,
@@ -370,7 +372,14 @@ export class OpenCodeAdapter implements HarnessAdapter {
         return launched;
       } catch (err) {
         // a server whose session could not be made is of no use: it does not outlive the failed launch
-        if (err instanceof Error) {
+        if (secretEnv?.OPENCODE_API_KEY && p.login) {
+          const redact=remoteRedactor(Object.values(secretEnv));
+          if(err instanceof Error){
+            Object.assign(err,redact.value(err));
+            err.message=`login ${p.login}: ${redact.text(err.message)}`;
+            if(err.stack)err.stack=redact.text(err.stack);
+          }else err=new Error(`login ${p.login}: spawn failed`);
+        } else if (err instanceof Error) {
           const message = this.#modelFailure(err.message, p.accountEnv);
           if (message !== err.message) err = err instanceof HttpError ? new HttpError(err.status, message) : new Error(message);
         }
@@ -411,7 +420,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#operation(scope => this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null, effort: request.effort ?? null, approval: request.approval ?? null, sandbox: request.sandbox ?? null, permissions: request.permissions ?? null }, scope, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined));
+    return this.#operation(scope => this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), ...(request.login?{login:request.login}:{}), account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null, effort: request.effort ?? null, approval: request.approval ?? null, sandbox: request.sandbox ?? null, permissions: request.permissions ?? null }, scope, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined, request.secretEnv));
   }
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */
@@ -987,7 +996,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       if (!options.relaunch)
         return { found: false, reason, alive: yield* this.#activeWait(this.#processHost(p).alive(p)) };
       yield* this.#activeWait(this.stop(p, options.resumed));
-      const process_ = yield* this.#activeWait(this.#launch({ ...(p.host !== undefined ? { host: p.host } : {}), account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null, effort: p.effort ?? null, ...options.policy }, scope, true, resumed, options.launchToken, options.authorize));
+      const process_ = yield* this.#activeWait(this.#launch({ ...(p.host !== undefined ? { host: p.host } : {}), ...(p.login?{login:p.login}:{}), account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null, effort: p.effort ?? null, ...options.policy }, scope, true, resumed, options.launchToken, options.authorize, false, p.login ? this.#host.loginKeyEnvironment?.(p.login) : undefined));
       return { found: true, process: process_, state: 'unknown' as SessionState };
     }).call(this), options.resumed ?? untimed);
   }

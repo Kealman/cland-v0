@@ -47,7 +47,7 @@
 // fixture or set FAKE_OPENCODE_TURN_MS explicitly, with a comment naming the race/behaviour.
 import { execFile, spawn } from 'node:child_process';
 import { fixtureEnvironment } from '../../../../test-support/fixture-environment.ts';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createPortServer, type Socket } from 'node:net';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -85,6 +85,11 @@ const readJson = <T>(file: string): T | null => {
 };
 
 async function main(args: string[]): Promise<number> {
+  if (args[0] === 'key-proof' && process.env.FAKE_OPENCODE_KEY_PROOF === '1') {
+    process.stdout.write(createHash('sha256').update(process.env.OPENCODE_API_KEY ?? '').digest('hex') + '\n');
+    setInterval(()=>{},1000);
+    return new Promise<number>(()=>{});
+  }
   if (loginEnabled() && args[0] === 'run') return printTurn('opencode', args[1] ?? '', (flag(args, '--session-id') ?? flag(args, '--session')) ?? 'headless');
   if (loginEnabled() && args[0] === 'auth' && args[1] === 'logout') { if (loginEnabled()) logout('opencode'); return 0; }
   if (args.includes('--version') || args.includes('-v')) {
@@ -578,7 +583,7 @@ async function serve(args: string[]): Promise<number> {
   const url = `http://${hostname}:${typeof address === 'object' && address ? address.port : port}`;
   // cland-allow-child-env: native fake harness signal-resistant descendant has no account or Git operation and inherits its sealed launcher
   const descendant = process.env.FAKE_OPENCODE_CHILD === '1' ? spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], { stdio: 'ignore' }) : null;
-  writeFileSync(join(SERVERS, `${process.pid}.json`), JSON.stringify({ childPid: descendant?.pid ?? null, pid: process.pid, port, url, cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k === 'XDG_DATA_HOME' || k === 'OPENCODE_DB')), config: process.env.OPENCODE_CONFIG ?? null }));
+  writeFileSync(join(SERVERS, `${process.pid}.json`), JSON.stringify({ ...(process.env.FAKE_OPENCODE_KEY_PROOF==='1'?{keyDigest:createHash('sha256').update(process.env.OPENCODE_API_KEY ?? '').digest('hex')}:{}), childPid: descendant?.pid ?? null, pid: process.pid, port, url, cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k === 'XDG_DATA_HOME' || k === 'OPENCODE_DB')), config: process.env.OPENCODE_CONFIG ?? null }));
   if (process.env.FAKE_OPENCODE_UNREADY === '1') process.stderr.write('planted readiness failure: database unavailable\n');
   if (process.env.FAKE_OPENCODE_QUIET !== '1') process.stdout.write(`server listening on ${url}\n`);
 

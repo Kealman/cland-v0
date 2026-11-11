@@ -64,3 +64,12 @@ export function addKeyLogin(root: string, project: string, records: LoginRecords
  records.insert({name:input.name,harness:'opencode',kind:'key',account:input.account ?? input.name,lastSignIn:null});
  return records.transition(input.name,'ready');
 }
+
+/** Re-read on each native generation, including resume; callers persist only the login name. */
+export function loginKeyEnvironment(root:string, project:string, records:LoginRecords, register:(values:readonly string[])=>void, name:string):Record<string,string> {
+ const login=records.get(name);
+ if(!login)throw Error(`login ${name}: unavailable`);
+ if(login.kind!=='key')return {};
+ if(login.harness!=='opencode'||login.state!=='ready')throw Error(`login ${name}: unavailable`);
+ const value=readLoginKey(root,project,name);register([value]);return {OPENCODE_API_KEY:value};
+}

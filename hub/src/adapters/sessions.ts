@@ -83,6 +83,7 @@ function launchIdentityRefusal(launch: LaunchOwnership, id: string, currentIds: 
 }
 
 export type SessionsOptions = {
+  loginKeyEnvironment?: (login:string)=>Record<string,string>;
   /** Hook/poll/injection time domain; native time unless an isolated fixture owns it. */
   transportClock?: Clock;
   /** Native cleanup retries use real time by default; isolated fixtures can own their schedule. */
@@ -122,6 +123,7 @@ export class Sessions {
   readonly #hostCapacity = new Map<string, () => void>();
   readonly #unprovision: () => void;
   readonly #poolRuntime: PoolRuntime | null;
+  readonly #loginKeyEnvironment: SessionsOptions['loginKeyEnvironment'];
   readonly #loginBinder: LoginBinder;
   readonly #loginProviders: HostProviderRegistry;
   readonly #waitingLoginAdmissions = new Map<string,()=>void>();
@@ -808,6 +810,7 @@ export class Sessions {
     this.#hosts = new Map([['local', localHost(this.#env, this.#log)]]);
     for (const host of options.hosts ?? []) this.addHost(host);
     this.#core = options.core;
+    this.#loginKeyEnvironment = options.loginKeyEnvironment;
     this.#loginBinder = new LoginBinder(this.#core.store.hosts.logins);
     this.#loginProviders = new HostProviderRegistry({env:this.#env,now:()=>this.#core.clock.now().getTime(),digitalocean:{root:options.root,clock:this.#core.clock}});
     this.#table = options.table;
@@ -1015,6 +1018,7 @@ export class Sessions {
     return {
       ...fields,
       root: this.#root,
+      ...(this.#loginKeyEnvironment ? {loginKeyEnvironment:this.#loginKeyEnvironment} : {}),
       hostForProcess: process => this.#hostForProcess(process),
       hostForLaunch: request => this.#hostForLaunch(request),
       durableLaunchRecovery: true,
@@ -1860,7 +1864,9 @@ export class Sessions {
         resumed(() => {validate();this.#core.checkAccountLimit(selected.account ?? `default:${harness}`);});
       }
       if (brief) this.#core.recordLaunchBrief(brief, launchToken, clause !== null && adapter.clauseAtSpawn === true);
-      owned = await adapter.spawn({ ...selected, ...(request.host !== undefined ? { host: request.host } : {}), name: request.name, ...(retainedId ? { sessionId: retainedId } : {}), launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, () => { authorize(); this.#core.checkAccountLimit(selected.account ?? `default:${harness}`); });
+      const secretEnv=request.login ? this.#loginKeyEnvironment?.(request.login) : undefined;
+      if(request.login && this.#core.store.hosts.logins.get(request.login)?.kind==='key' && !secretEnv)throw Error(`login ${request.login}: key runtime unavailable`);
+      owned = await adapter.spawn({ ...selected, ...(request.login?{login:request.login}:{}), ...(secretEnv?{secretEnv}:{}), ...(request.host !== undefined ? { host: request.host } : {}), name: request.name, ...(retainedId ? { sessionId: retainedId } : {}), launchToken, role, model, cwd, ...(resumeConversation ? { resumeConversation } : {}), ...(effort ? { effort } : {}), ...(clause !== null ? { clause } : {}), ...(brief && clause !== null ? { brief } : {}), ...(item !== null ? { item } : {}), ...policy }, resumed, () => { authorize(); this.#core.checkAccountLimit(selected.account ?? `default:${harness}`); });
       owned = { ...owned, host: request.host ?? 'local' };
       resumed(() => {
         if (resumeConversation && owned!.harnessSessionId !== resumeConversation) throw new Error(`harness did not retain conversation ${resumeConversation}`);

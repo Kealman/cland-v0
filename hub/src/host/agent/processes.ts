@@ -21,6 +21,7 @@ export type ProcessHooks = {
   beforeNativeClose?: (pid:number,exit:{code:number|null;signal:string|null}) => Promise<void>;
   beforeExitPublication?: (pid:number) => Promise<void>;
   beforeCompletionJoin?: (pid:number) => Promise<void>;
+  beforeBootstrap?: (directory: string) => Promise<void>;
   afterSpawn?: (pid: number, directory: string) => Promise<void>;
   beforeCheckpoint?: (phase: 'spawn' | 'exit' | 'recover') => Promise<void>;
   closeLog?: (close: () => Promise<void>) => Promise<void>;
@@ -200,13 +201,13 @@ export class AgentProcesses {
     await mkdir(directory, { mode: 0o700 }); this.#inflight.add(launchId);
     const fakeEnv = { CLAND_FAKE_HOSTS: this.#env.CLAND_FAKE_HOSTS, CLAND_HOST_BOOT_ID_FILE: this.#env.CLAND_HOST_BOOT_ID_FILE };
     // Admission, argv and environment precede native execution; no environment in argv.
-    await checkpoint(join(directory, 'plan.json'), { launchId, command, args: args.args, cwd: args.cwd, env, fakeEnv });
+    await checkpoint(join(directory, 'plan.json'), { launchId, command, args: args.args, cwd: args.cwd });
     await checkpoint(join(directory, 'admission.json'), { launchId }); this.#admissions.add(launchId);
     let log;
     try { log = preparedLog ?? (typeof args.logFile === 'string' ? await open(args.logFile, 'a', 0o600) : undefined); }
     catch (error) { this.#inflight.delete(launchId); await this.#removeAdmission(launchId); throw error; }
     let child;
-    try { child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', fileURLToPath(new URL('./bootstrap.ts', import.meta.url)), directory], { cwd: args.cwd, env, detached: true, stdio: ['ignore', log?.fd ?? 'ignore', log?.fd ?? 'ignore'] }); }
+    try { await this.#hooks.beforeBootstrap?.(directory); child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', fileURLToPath(new URL('./bootstrap.ts', import.meta.url)), directory], { cwd: args.cwd, env: { ...env, ...fakeEnv }, detached: true, stdio: ['ignore', log?.fd ?? 'ignore', log?.fd ?? 'ignore'] }); }
     catch { this.#inflight.delete(launchId); await log?.close(); await this.#removeAdmission(launchId); throw new Error('spawn refused'); }
     let nativeExit: { code: number | null; signal: string | null } | undefined;
     const nativeClosed = new Promise<{ code: number | null; signal: string | null }>(resolve => child.once('close', (code, signal) => { nativeExit = { code, signal }; resolve(nativeExit); }));

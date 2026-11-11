@@ -13,9 +13,14 @@ import type { SpawnRequest } from '../src/adapters/contract.ts';
 import { OpenCodeClient } from '../src/adapters/opencode/client.ts';
 import { FakeClock } from './fake-clock.ts';
 import { connectUi, projectHub, tempProject } from './harness.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { localHost } from '../src/host/local.ts';
+import { HostMemoryFloorRefusal } from '../src/host/ssh-host.ts';
+import { AccountLimited } from '../src/accounts/limits.ts';
+import { ToolForbidden } from '../src/roles/permissions.ts';
 
 type Rule = { action: string; resource: string; effect: string };
-async function fixture(t: TestContext, unavailable = false) {
+async function fixture(t: TestContext, unavailable: boolean | string = false, spawnFailure?: Error) {
   const root = await tempProject(t);
   const servers: ReturnType<typeof createServer>[] = [];
   const sessions = new Map<string, Record<string, unknown>>();
@@ -36,7 +41,7 @@ async function fixture(t: TestContext, unavailable = false) {
       const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : undefined;
       let data: unknown = {};
       if (req.method === 'POST' && req.url === '/api/session') {
-        if (unavailable) { res.writeHead(400); res.end('Model unavailable'); return; }
+        if (unavailable) { res.writeHead(400); res.end(typeof unavailable==='string' ? unavailable : 'Model unavailable'); return; }
         data = { ...body, id: `ses_${sessions.size}` };
         sessions.set((data as { id: string }).id, data as Record<string, unknown>);
       } else if (req.url?.startsWith('/api/session/ses_')) data = sessions.get(req.url.split('/')[3]!);
@@ -64,7 +69,8 @@ async function fixture(t: TestContext, unavailable = false) {
     return child;
   });
   syncBuiltinESMExports();
-  const adapter = new OpenCodeAdapter({ root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: '', spoke: '', log: entry => { logs.push(entry); }, signal: () => {}, recordPid: () => {}, exited: () => {} }, { bin: 'fake-opencode', env: { HOME: root }, clock: new FakeClock() });
+  const failedHost={...localHost(fixtureEnvironment(root,process.env)),spawn:async()=>{throw spawnFailure;}};
+  const adapter = new OpenCodeAdapter({ ...(spawnFailure?{hostForLaunch:()=>failedHost,hostForProcess:()=>failedHost}:{}), root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: '', spoke: '', log: entry => { logs.push(entry); }, signal: () => {}, recordPid: () => {}, exited: () => {} }, { bin: 'fake-opencode', env: { HOME: root }, clock: new FakeClock() });
   t.after(async () => {
     adapter.close();
     await Promise.all(servers.map(server => new Promise<void>((resolve, reject) => { server.closeAllConnections(); server.close(err => err ? reject(err) : resolve()); })));
@@ -91,6 +97,33 @@ test('an unavailable OpenCode launch names the selected account database and its
     assert.ok(error.message.includes("paid account'\"'\"'s.db"), error.message);
     return true;
   });
+});
+
+test('key spawn environment reaches native spawn but never the returned process or errors', async t=>{
+ const f=await fixture(t,'native spawn failed sentinel-adapter-key');
+ await assert.rejects(f.launch({login:'work-key',secretEnv:{OPENCODE_API_KEY:'sentinel-adapter-key'}}), /login work-key:/);
+ assert.equal(f.launches[0]!.env.OPENCODE_API_KEY,'sentinel-adapter-key');
+ assert.equal(JSON.stringify(f.launches[0]!.args).includes('sentinel-adapter-key'),false);
+});
+
+test('successful key launch returns only login metadata',async t=>{
+ const f=await fixture(t);
+ const launched=await f.launch({login:'work-key',account:'work',accountEnv:{},secretEnv:{OPENCODE_API_KEY:'sentinel-adapter-private'}});
+ assert.equal(f.launches[0]!.env.OPENCODE_API_KEY,'sentinel-adapter-private');
+ assert.equal(launched.process.login,'work-key');
+ assert.deepEqual(launched.process.accountEnv,{});
+ assert.equal(JSON.stringify(launched).includes('sentinel-adapter-private'),false);
+});
+
+for(const kind of ['memory','account','authority','unknown'] as const)test(`key launch preserves ${kind} refusal identity and ownership facts`,async t=>{
+ const error=kind==='memory'?new HostMemoryFloorRefusal('remote',{code:'memory-floor',availableBytes:12,floorBytes:1300000000}):kind==='account'?new AccountLimited('work',null):kind==='authority'?new ToolForbidden('implementer','session.launch','refused'):Object.assign(new Error('outcome unknown'),{code:'CLAND_HOST_OUTCOME_UNKNOWN',token:'operation-owned'});
+ const facts={...error};error.message+=' sentinel-typed-private';
+ const f=await fixture(t,false,error);
+ await assert.rejects(f.launch({login:'work-key',secretEnv:{OPENCODE_API_KEY:'sentinel-typed-private'}}),caught=>{
+  assert.equal(caught,error);assert.deepEqual({...caught as Error},facts);
+  assert.match(error.message,/login work-key:/);assert.equal(error.message.includes('sentinel-typed-private'),false);
+  assert.equal(error.stack?.includes('sentinel-typed-private'),false);return true;
+ });
 });
 
 test('OpenCode launches leave native permissions unset even with explicit launch policy', { timeout: 2000 }, async t => {
