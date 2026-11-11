@@ -1,3 +1,4 @@
+import {removeLogin} from '../host/login-remove.ts';
 import { installLoginRelease } from '../host/login-release.ts';
 import { addKeyLogin } from '../host/login-keys.ts';
 import { projectTag } from '../executor/droplet/droplet.ts';
@@ -2197,6 +2198,7 @@ export class Dispatcher {
           }
           case 'login.add':
           case 'login.signed-in':
+          case 'login.remove':
           case 'login.snapshot':
           case 'login.list':
           case 'login.set':
@@ -2212,6 +2214,16 @@ export class Dispatcher {
             if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, frame.type, `${frame.type} requires the human CLI or Neovim on a local connection`);
             const refusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
             if (refusal) return peer.send(refusal);
+            if(frame.type==='login.remove') {
+              const root=this.#options.control?.status().root;
+              if(this.#closed||!root||!this.loginSnapshots)throw Error('login removal runtime unavailable');
+              const providers=new HostProviderRegistry({env:this.#options.env??process.env,now:()=>core.clock.now().getTime(),digitalocean:{root,clock:core.clock}});
+              const logins=core.store.hosts.logins;
+              const work=removeLogin({root,logins,provider:row=>providers.resolve(row),snapshots:this.loginSnapshots},frame.name);
+              this.#poolPrepares.add(work);
+              void work.finally(()=>this.#poolPrepares.delete(work)).catch(()=>{});
+              return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),error=>Dispatcher.#failure(frame.id,error)));
+            }
             if(frame.type==='login.set')return answer(core.store.hosts.logins.setExclusive(frame.name,frame.exclusive));
             if(frame.type==='login.snapshot') {
               if(!this.loginSnapshots)throw Error('login snapshots unavailable');

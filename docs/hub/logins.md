@@ -349,6 +349,21 @@ Pending bindings defer snapshots until settlement or confirmed rollback.
 
 ## Backup snapshots
 
+The snapshot owner retains every provider admission in the private SQLite
+`logins.snapshot_admission` column, through `LoginRecords.beginSnapshotAdmission`
+and `settleSnapshotAdmission`. It writes the volume identity immediately before
+every provider snapshot admission, including unfrozen ready disks. The existing
+freeze intent identifies a specific mounted Host for thaw and cannot represent
+that unfrozen case. The admission clears only on a confirmed not-sent/refusal or
+in the same transaction that durably captures a matching snapshot receipt and
+its storage lifetime. If accounting persistence fails, the owner retains the
+positive receipt and unsettled admission; receipt recovery repairs accounting
+before clearing admission.
+Failed or lost replies retain it across retries and hub restart. Removal and
+reconciliation only read it through `assertSnapshotSettled`; they never clear it.
+A retained admission refuses deletion of any login storage until its snapshot
+owner positively reconciles it. This private column never enters Login JSON.
+
 `cland login snapshot <name>` requests a backup of a ready or in-use disk login.
 Like list and add, it requires a local human CLI or Neovim connection and local
 administrative authority in users mode. A key login refuses with `key login has
@@ -611,6 +626,41 @@ remains, including cancellation or a change to a host-boot wait. A later
 independent wait can raise a new card. Login metadata changes wake placement
 through PoolRuntime; the existing binder and provisioning owners perform effects.
 See [login wait tests](../agents/tests/hub-test-login-wait.test.ts.md).
+
+## Removing a login
+
+`cland login remove <name>` is restricted to the local human CLI or Neovim.
+Creating logins refuse removal while sign-in runs. Bound logins refuse with the
+host names, including signed-out rows retaining bindings. Pending binding and
+reader outcomes remain fenced by their existing owners.
+
+Removal takes a private durable store claim and marks a ready login signed out
+with reason `removing`. The claim refuses new bindings and sign-in, survives
+restart and is never part of the public Login JSON. `LoginRecords.isRemoving`
+is its single read boundary. The claim is published before sign-out notification,
+including when the login was already signed out. `LoginCards.withdrawRemoving`
+suppresses new sign-in cards/notices and withdraws an existing sign-in card in
+live and startup paths; a previously delivered genuine sign-out notice stays.
+Eligibility follows the claim, never the sign-out reason text. Removal fences snapshots
+through their existing owner and joins accepted snapshot work and thaw before
+provider deletion. Unresolved snapshot outcomes refuse deletion.
+
+For disks, provider-confirmed snapshot deletions precede volume deletion. Each
+`deleted` provider result includes its absence read. Confirmed deletions update
+`LoginRecords.deleteStorage` and remove only the confirmed ids. A missing or
+failed confirmation exits nonzero naming the remaining ids; rerun the same
+command to finish. A captured volume identity persists privately before delete,
+so a lost reply can retry its exact provider operation after restart. Inventory
+absence alone does not settle a deletion without that captured identity.
+
+For keys, removal deletes only `.cland/auth/<name>.key` and its metadata row;
+the shared `[auth]` store key stays. Symlink paths refuse removal. The metadata
+row disappears only after all deletions are confirmed. While a partial row
+remains, confirmed deletions stop accruing storage charges at the store clock's
+receipt time; remaining resources continue accruing. Full removal removes that
+login's storage contribution from host status with its row.
+
+See [removal cases](../agents/tests/hub-test-login-remove.test.ts.md).
 
 ## Dead-login signals
 

@@ -67,6 +67,7 @@ export const WEB_AUTHORITY = {
   'host.create': 'requires the local human CLI or Neovim',
   'host.status': 'requires the local human CLI or Neovim',
   'host.stop': 'requires the local human CLI or Neovim',
+  'login.remove': 'requires the local human CLI or Neovim',
   'login.snapshot': 'requires the local human CLI or Neovim',
   'login.list': 'requires the local human CLI or Neovim',
   'login.set': 'requires the local human CLI or Neovim',

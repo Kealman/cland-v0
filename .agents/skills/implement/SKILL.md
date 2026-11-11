@@ -349,3 +349,8 @@ Ordinary login refusal stays launch-scoped and preserves a healthy host; see
 docs/hub/logins.md, Binding at launch.
 
 Login storage reporting retains provider lifetime receipts on the disk row. Use the existing create/delete owners and LoginRecords storage methods, with the hub Clock; never infer dates from sign-in or reserve storage as host spend. See docs/hub/logins.md.
+
+Project login removal is a local-human CLI/Neovim operation. Use disposable fake
+fixtures when implementing it; partial deletion retains its removal claim and
+remaining ids for `cland login remove <name>` to retry. Never clear that claim
+through another transition. See [login removal](../../../docs/hub/logins.md#removing-a-login).

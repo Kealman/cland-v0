@@ -35,7 +35,21 @@ export class LoginCards {
     for(const row of rows)this.signedOut(row.name);
   }
 
+  /** Shared card admission: a durable removal claim suppresses sign-in, including recovery. */
+  withdrawRemoving(name:string):boolean {
+    if(!this.store.hosts.logins.isRemoving(name))return false;
+    this.store.transaction(()=>{
+      const active=JSON.parse(this.store.meta('login-signin-cards')??'{}') as Record<string,SignInCard>;
+      if(!Object.hasOwn(active,name))return;
+      const previous=active[name]!;
+      if(this.store.ask(previous.id)?.state==='open')this.cards.withdraw(previous.id,'Login removal in progress');
+      delete active[name];this.store.setMeta('login-signin-cards',JSON.stringify(active));
+    });
+    return true;
+  }
+
   signedOut(name:string):void {
+    if(this.withdrawRemoving(name))return;
     const login=this.store.hosts.logins.get(name);
     if(login?.state!=='signed-out')return;
     const episode=this.signOutOptions.episode?.(name)??login.signedOut;

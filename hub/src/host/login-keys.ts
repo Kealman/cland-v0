@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
-import { constants, chmodSync, closeSync, existsSync, fstatSync, fsyncSync, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs';
+import { constants, chmodSync, closeSync, existsSync, fstatSync, fsyncSync, mkdirSync, unlinkSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { symlinkOnPath } from '../init/files.ts';
 import { readSecretsFile, withLoginStoreKey, validateSecretValue } from '../remote/secrets.ts';
@@ -72,4 +72,11 @@ export function loginKeyEnvironment(root:string, project:string, records:LoginRe
  if(login.kind!=='key')return {};
  if(login.harness!=='opencode'||login.state!=='ready')throw Error(`login ${name}: unavailable`);
  const value=readLoginKey(root,project,name);register([value]);return {OPENCODE_API_KEY:value};
+}
+
+/** Remove only the named encrypted envelope; retain the shared auth store key. */
+export function removeLoginKey(root:string,name:string):void {
+ const path=keyPath(root,name);
+ try {unlinkSync(path);} catch(error) {if((error as NodeJS.ErrnoException).code!=='ENOENT')throw Error(`login ${name}: key deletion unconfirmed`);}
+ if(existsSync(path))throw Error(`login ${name}: key deletion unconfirmed`);
 }

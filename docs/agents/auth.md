@@ -75,3 +75,8 @@ A hand edit from users to single is refused at reload, keeping the running mode.
 Run `cland auth reset` directly in that case. If the hub is stopped, set
 `auth.mode = "users"` in `.cland/config.toml`, start the hub, then run
 `cland auth reset`. There is no offline reset path.
+
+Project login removal uses `cland login remove <name>` from the local human CLI
+or Neovim. It deletes only the named key envelope and row, retaining `[auth]`.
+Disk removal and partial-deletion retries are documented in
+[Logins](../hub/logins.md#removing-a-login).

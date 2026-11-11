@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import {randomUUID} from 'node:crypto';
-import type { Machine, Volume } from './provider/provider.ts';
+import type { Machine, Volume, SnapshotVolumeResult } from './provider/provider.ts';
 import {realClock, type Clock} from '../hub/clock.ts';
 
 export type LoginStorageItem = {kind:'volume'|'snapshot';id:string;sizeGiB:number;created:string;deleted:string|null};
@@ -111,6 +111,9 @@ export class LoginRecords {
    create table if not exists login_bindings (login text not null references logins(name), host text not null, role text not null, volume_id text, primary key(login,host));`);
   if(!db.prepare('pragma table_info(logins)').all().some(row=>row.name==='revision'))db.exec("alter table logins add column revision text not null default ''");
   if (!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='phase')) db.exec('alter table login_bindings add column phase text');
+  if(!db.prepare('pragma table_info(logins)').all().some(row=>row.name==='removing'))db.exec('alter table logins add column removing integer not null default 0');
+  if(!db.prepare('pragma table_info(logins)').all().some(row=>row.name==='snapshot_admission'))db.exec('alter table logins add column snapshot_admission text');
+  if(!db.prepare('pragma table_info(logins)').all().some(row=>row.name==='removal_volume'))db.exec('alter table logins add column removal_volume text');
   if(!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='episode'))db.exec("alter table login_bindings add column episode text not null default ''");
   db.exec('create index if not exists login_bindings_pending on login_bindings(login,phase)');
   db.exec("create index if not exists login_reconcile_bindings on login_bindings(login,host) where phase is null or phase='settled'");
@@ -147,6 +150,88 @@ export class LoginRecords {
   }catch(error){db.exec('rollback to login_launch_selection_migration; release login_launch_selection_migration');throw error;}
 
  }
+ /** Snapshot owner only: every provider send retains its volume identity until settled. */
+ beginSnapshotAdmission(name:string,volumeId:string):void {
+  this.assertSnapshotSettled(name);
+  const row=this.required(name);if(row.kind!=='disk'||row.volumeId!==volumeId)throw Error('snapshot volume identity changed');
+  this.db.prepare('update logins set snapshot_admission=? where name=?').run(volumeId,name);
+ }
+ /** The owner supplies a positive non-send or snapshot receipt, never an inventory omission. */
+ settleSnapshotAdmission(name:string,result:SnapshotVolumeResult,volume?:Pick<Volume,'id'|'sizeGiB'>):void {
+  if(result.state==='failed')return;
+  const row=this.required(name);
+  const admitted=this.db.prepare('select snapshot_admission from logins where name=?').get(name)?.snapshot_admission;
+  if(result.state==='snapshotted'){
+   if(row.kind!=='disk'||!volume||volume.id!==row.volumeId||result.snapshot.volumeId!==volume.id||admitted&&admitted!==volume.id)throw Error('snapshot admission identity changed');
+   if(!admitted){
+    if(JSON.stringify(row.backup?.receipt)!==JSON.stringify(result.snapshot))throw Error('snapshot admission missing');
+    // Repair an older retained receipt through the same fenced owner transaction.
+    this.db.prepare('update logins set snapshot_admission=? where name=?').run(volume.id,name);
+   }
+  }else if(!admitted)throw Error('snapshot admission missing');
+  try {
+   this.atomic(()=>{
+    if(result.state==='snapshotted'){
+     const live=this.required(name);if(live.kind!=='disk')throw Error('login has no disk');
+     this.updateBackup(name,{...live.backup,pending:true,receipt:result.snapshot});
+     if(live.storage)this.recordStorage(name,live.storage.pool,{kind:'snapshot',id:result.snapshot.id,sizeGiB:volume!.sizeGiB,created:result.snapshot.created,deleted:null});
+    }
+    this.db.prepare('update logins set snapshot_admission=null where name=?').run(name);
+   });
+  }catch(error){
+   // Failed accounting must retain the positive receipt for owner recovery,
+   // without settling the admission rolled back by the failed transaction.
+   if(result.state==='snapshotted'){
+    const live=this.required(name);if(live.kind==='disk')this.updateBackup(name,{...live.backup,pending:true,receipt:result.snapshot});
+   }
+   throw error;
+  }
+ }
+ /** Shared read fence; removal and reconciliation never settle the snapshot owner's intent. */
+ assertSnapshotSettled(name:string):void {
+  if(this.db.prepare('select snapshot_admission from logins where name=?').get(name)?.snapshot_admission)throw Error('login snapshot outcome requires reconciliation');
+ }
+ /** Removal ownership survives incomplete provider effects and restart. */
+ isRemoving(name:string):boolean {return !!this.db.prepare('select removing from logins where name=?').get(name)?.removing;}
+ assertNotRemoving(name:string):void {
+  if(this.isRemoving(name))throw Error(`login ${name}: removal in progress; retry login remove`);
+ }
+ beginRemove(name:string):Login {
+  return this.atomicValue(()=>{
+   const row=this.required(name),bindings=this.bindings(name);
+   if(bindings.length||row.state==='in-use')throw Error(`login ${name} is in use on host ${bindings.map(b=>b.host).join(', ')||'unknown'}`);
+   if(row.state==='creating')throw Error(`login ${name}: sign-in is running`);
+   if(this.hasPendingBinding(name))throw Error(`login ${name}: pending binding outcome unknown`);
+   this.db.prepare('update logins set removing=1 where name=?').run(name);
+   if(row.state==='ready')this.markSignedOut(name,{reason:'removing',host:null});
+   else this.changed(name);
+   return this.required(name);
+  });
+ }
+ removalVolume(name:string,volume?:Volume):Volume|null {
+  const row=this.required(name);if(row.kind!=='disk')throw Error('login has no disk');
+  if(volume){if(volume.id!==row.volumeId)throw Error('removal volume identity changed');this.db.prepare('update logins set removal_volume=? where name=?').run(JSON.stringify(volume),name);}
+  const retained=this.db.prepare('select removal_volume from logins where name=?').get(name)?.removal_volume;
+  return retained?JSON.parse(String(retained)) as Volume:null;
+ }
+ confirmRemovedResource(name:string,kind:'volume'|'snapshot',id:string):void {
+  this.atomic(()=>{
+   this.deleteStorage(name,kind,id);
+   const row=this.required(name);if(row.kind!=='disk')throw Error('login has no disk');
+   this.save({...row,...(kind==='volume'?{volumeId:null}:{snapshotIds:row.snapshotIds.filter(value=>value!==id)})});
+  });
+ }
+ remove(name:string):void {
+  this.atomic(()=>{
+   const row=this.required(name);
+   if(!this.isRemoving(name))throw Error('login removal claim missing');
+   if(this.bindings(name).length||this.hasPendingBinding(name)||row.state==='creating'||row.state==='in-use')throw Error(`login ${name}: still owned`);
+   this.assertSnapshotSettled(name);
+   if(row.kind==='disk'&&(row.volumeId||row.snapshotIds.length||row.backup?.freeze||row.backup?.receipt))throw Error(`login ${name}: storage remains`);
+   this.db.prepare('delete from logins where name=?').run(name);this.changed(name);
+  });
+ }
+ private atomicValue<T>(work:()=>T):T {let result!:T;this.atomic(()=>{result=work();});return result;}
  get(name: string): Login | null {
   const row = this.db.prepare('select record from logins where name=?').get(name);
   return row ? JSON.parse(String(row.record)) as Login : null;
@@ -191,6 +276,7 @@ export class LoginRecords {
   return this.db.prepare('select record from login_readers where host=? order by harness').all(host).map(row=>JSON.parse(String(row.record)) as ReaderOperation);
  }
  beginReader(operation:ReaderOperation):void {
+  this.assertNotRemoving(operation.login);
   const login=this.required(operation.login);
   if(login.kind!=='disk'||login.exclusive||operation.phase!=='creating'||operation.volume||operation.harness!==login.harness||operation.provider!==login.provider||operation.region!==login.region)throw Error('invalid reader admission');
   this.db.prepare('insert into login_readers values(?,?,?,?,?)').run(operation.login,operation.host,operation.harness,operation.phase,JSON.stringify(operation));this.changed(operation.login);
@@ -277,6 +363,7 @@ export class LoginRecords {
   this.atomic(()=>this.save({...row,state:'signed-out',signedOut:{id:randomUUID(),reason:receipt.reason,host:receipt.host,at:this.clock.now().toISOString()}}));
  }
  transition(name: string, state: LoginState, binding?: Omit<LoginBinding,'login'>): Login {
+  this.assertNotRemoving(name);
   const row = this.required(name);
   if(state==='signed-out')throw Error(`login ${name} from ${row.state}: use markSignedOut for signed-out`);
   if (!transitions[row.state].includes(state)) throw Error(`login ${name} cannot transition from ${row.state} to ${state}`);
@@ -311,6 +398,7 @@ export class LoginRecords {
   });
  }
  private addBinding(row: Login, binding: Omit<LoginBinding,'login'>): void {
+  this.assertNotRemoving(row.name);
   if (!binding.host || !['reader','writer'].includes(binding.role)) throw Error('login binding requires a host and writer or reader role');
   const existing = this.bindings(row.name);
   if (row.kind === 'key' && binding.volumeId !== null) throw new LoginBindingRefused('key-volume','key login bindings have no volume');

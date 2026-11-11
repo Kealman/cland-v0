@@ -162,3 +162,8 @@ exclusive capacity is exhausted; minimum and login-add creation remain exempt.
 See [login placement capacity](../docs/hub/logins.md#placement-capacity).
 
 Login capacity and monthly storage reporting use indexed login metadata and provider-declared storage rates. `login list` text reads additive `host.status` pool capacity; `login list --json` retains its array. Host rows include bound harness/name pairs. Storage is accrued in month spend only and never reserved; see [logins](../docs/hub/logins.md) and [host status](../docs/hub/host-status-stop.md).
+
+`cland login remove <name>` removes an idle project login through the local human
+CLI or Neovim. Provider-confirmed disk deletions and encrypted-key removal precede
+row removal; incomplete deletions retain exact ids for retry and the shared auth
+store key stays. See [removal](../docs/hub/logins.md#removing-a-login).

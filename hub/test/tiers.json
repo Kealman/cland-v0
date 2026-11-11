@@ -437,6 +437,7 @@
     "hub/test/login-reconcile.test.ts": "T2",
     "hub/test/login-records.test.ts": "T1",
     "hub/test/login-release.test.ts": "T2",
+    "hub/test/login-remove.test.ts": "T2",
     "hub/test/login-selection.test.ts": "T2",
     "hub/test/login-signed-out-native.test.ts": "T3",
     "hub/test/login-signed-out.test.ts": "T2",

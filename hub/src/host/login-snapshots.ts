@@ -44,7 +44,7 @@ export async function snapshotLoginDisk(logins:LoginRecords,name:string,target:S
  }
  let result:SnapshotVolumeResult|undefined;
  const recovered=row.backup?.receipt;
- if(recovered)result={state:'snapshotted',snapshot:recovered};
+ if(recovered){result={state:'snapshotted',snapshot:recovered};logins.settleSnapshotAdmission(name,result,target.volume);}
  else {
   authorize();checkpoint(logins,name,{pending:true});
   let thaw:(()=>Promise<void>)|undefined;
@@ -59,11 +59,12 @@ export async function snapshotLoginDisk(logins:LoginRecords,name:string,target:S
     finally {settled.resolve();}
     authorize();
    }
-   authorize();result=await target.provider.snapshotVolume(target.volume,{authorize});
+   authorize();logins.beginSnapshotAdmission(name,target.volume.id);
+   result=await target.provider.snapshotVolume(target.volume,{authorize});
+   logins.settleSnapshotAdmission(name,result,target.volume);
    // A rejected authority check still records the admitted effect's outcome;
    // publication and pruning remain fenced until a current owner reconciles it.
    if(result.state==='snapshotted'&&result.snapshot.volumeId!==target.volume.id)throw Error('snapshot receipt volume mismatch');
-   if(result.state==='snapshotted'){const storage=disk(logins,name).storage;if(storage)logins.recordStorage(name,storage.pool,{kind:'snapshot',id:result.snapshot.id,sizeGiB:target.volume.sizeGiB,created:result.snapshot.created,deleted:null});}
    try {authorize();}
    catch(error) {
     if(disk(logins,name).volumeId===target.volume.id)checkpoint(logins,name,{...(result.state==='snapshotted'?{receipt:result.snapshot}:result.state==='refused'?{retryAt:result.retryAt}:{}),pending:true,outcome:String(error)});throw error;
@@ -180,6 +181,23 @@ export class LoginSnapshots {
   if(running){await running.prepared;if(running.thaw)await running.thaw();}
   else {const target=await this.options.resolve(disk(this.options.logins,name));await recoverThaw(this.options.logins,name,target);}
   if(disk(this.options.logins,name).backup?.freeze)throw Error('login thaw remains unconfirmed');
+ }
+ /** Removal must join accepted snapshot I/O as well as thaw before deleting storage. */
+ async beginRemoval(name:string):Promise<void> {
+  const active=this.work.get(name);
+  await this.beginRelease(name);
+  let unknown=false;
+  if(active)await active.promise.then(result=>{unknown=result.state==='failed';},()=>{unknown=true;});
+  const row=disk(this.options.logins,name);
+  if(unknown&&!row.backup?.receipt)throw Error('login snapshot outcome requires reconciliation');
+  if(row.backup?.freeze)throw Error('login snapshot thaw requires reconciliation');
+  if(row.backup?.receipt){
+   const {receipt,...backup}=row.backup;
+   const target=await this.options.resolve(row);
+   this.options.logins.settleSnapshotAdmission(name,{state:'snapshotted',snapshot:receipt},target.volume);
+   this.options.logins.updateBackup(name,{...backup,releasing:true},[...new Set([...row.snapshotIds,receipt.id])]);
+  }
+  this.options.logins.assertSnapshotSettled(name);
  }
  /** Called after deletion and confirmed detach; does not await snapshot I/O. */
  onReleased(name:string,receipt:{volumeId:string}):void {
