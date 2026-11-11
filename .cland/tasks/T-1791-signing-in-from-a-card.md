@@ -3,7 +3,7 @@ id: T-1791
 kind: task
 title: Signing in from a card
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:12.172Z
-updated: 2026-11-09T12:52:29.796Z
+updated: 2026-11-11T09:03:51.813Z
 ---
 
 ## Summary

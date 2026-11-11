@@ -3,7 +3,7 @@ id: T-1793
 kind: task
 title: Login reconciliation at hub start
 state: open
-status: backlog
+status: planned
 size: S
 criterion_seq: 6
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:12.593Z
-updated: 2026-11-11T04:40:10.232Z
+updated: 2026-11-11T09:03:52.375Z
 ---
 
 ## Summary

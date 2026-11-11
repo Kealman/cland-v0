@@ -3,7 +3,7 @@ id: T-1790
 kind: task
 title: "`cland login signin` in place, and the one-sign-in hint"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:11.998Z
-updated: 2026-11-09T12:44:20.265Z
+updated: 2026-11-11T09:03:51.532Z
 ---
 
 ## Summary

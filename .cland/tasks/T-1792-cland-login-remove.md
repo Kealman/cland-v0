@@ -3,7 +3,7 @@ id: T-1792
 kind: task
 title: "`cland login remove`"
 state: open
-status: backlog
+status: planned
 size: S
 criterion_seq: 6
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:12.424Z
-updated: 2026-11-11T04:40:29.111Z
+updated: 2026-11-11T09:03:52.110Z
 ---
 
 ## Summary

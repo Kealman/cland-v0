@@ -3,7 +3,7 @@ id: T-1794
 kind: task
 title: Relaunch after sign-in, behind a switch
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:12.839Z
-updated: 2026-11-09T12:44:21.928Z
+updated: 2026-11-11T09:03:51.958Z
 ---
 
 ## Summary

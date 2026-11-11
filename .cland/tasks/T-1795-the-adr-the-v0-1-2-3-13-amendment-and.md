@@ -3,7 +3,7 @@ id: T-1795
 kind: task
 title: The ADR, the v0.1.2 §3.13 amendment and the logins notes
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-09T12:44:13.008Z
-updated: 2026-11-09T12:44:22.169Z
+updated: 2026-11-11T09:03:52.522Z
 ---
 
 ## Summary

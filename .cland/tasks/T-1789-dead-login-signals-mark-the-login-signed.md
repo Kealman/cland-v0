@@ -3,7 +3,7 @@ id: T-1789
 kind: task
 title: Dead-login signals mark the login signed out
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T12:44:11.774Z
-updated: 2026-11-09T12:44:19.854Z
+updated: 2026-11-11T09:03:51.374Z
 ---
 
 ## Summary
