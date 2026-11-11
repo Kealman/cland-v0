@@ -2,8 +2,8 @@
 id: T-1793
 kind: task
 title: Login reconciliation at hub start
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1476
 branch: t/T-1793-login-reconciliation-at-hub-start
 created: 2026-11-09T12:44:12.593Z
-updated: 2026-11-11T10:49:16.747Z
+updated: 2026-11-11T12:24:13.828Z
+closed: 2026-11-11T12:24:13.828Z
 ---
 
 ## Summary
@@ -36,17 +37,23 @@ A reconciliation pass after the host-lease reconciliation and before the pool ru
 
 - [x] C1. A fake host deleted by its watchdog while the hub was stopped leaves its login `ready`, with the same volume, after the next start (test).
   - done: impl-1793 · 2026-11-11T09:46:02.785Z
+  - verified: rev-35 [reviewer] · run rev-35-1793-final-1 · 2026-11-11T11:40:10.509Z · commit e3767adfd76507a471ec0d1e1b692e4bb5f42e1a
 - [x] C2. A login bound to a live host stays `in-use` through a restart, and its host's sessions keep using it (test).
   - done: impl-1793 · 2026-11-11T10:24:56.172Z
+  - verified: rev-35 [reviewer] · run rev-35-1793-final-1 · 2026-11-11T11:40:10.509Z · commit e3767adfd76507a471ec0d1e1b692e4bb5f42e1a
 - [x] C3. A reader volume of a gone host is deleted at start with a confirming read (test).
   - done: impl-1793 · 2026-11-11T09:46:03.082Z
+  - verified: rev-35 [reviewer] · run rev-35-1793-final-1 · 2026-11-11T11:40:10.509Z · commit e3767adfd76507a471ec0d1e1b692e4bb5f42e1a
 - [x] C4. A login whose volume the provider no longer lists reads `signed-out` with the reason "volume missing" (test).
   - done: impl-1793 · 2026-11-11T10:28:34.567Z
+  - verified: rev-35 [reviewer] · run rev-35-1793-final-1 · 2026-11-11T11:40:10.509Z · commit e3767adfd76507a471ec0d1e1b692e4bb5f42e1a
 - [x] C5. A failed volume inventory changes no login, is retried, and sends one Agents line (test).
   - done: impl-1793 · 2026-11-11T09:46:03.461Z
+  - verified: rev-35 [reviewer] · run rev-35-1793-final-1 · 2026-11-11T11:40:10.509Z · commit e3767adfd76507a471ec0d1e1b692e4bb5f42e1a
 
-- [ ] C6. The pass leaves pending bindings and reader intents in creating/deleted phases (the T-1778 fence) to their owners' receipts, never clearing them by row edits, and records each confirmed volume deletion through LoginRecords.deleteStorage (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T10:49:16.747Z · note Required native settled-binding consumer cannot reach its ownership assertions: all three initial admissions return outcome unknown because fixture attachment/mount is unestablished.
+- [x] C6. The pass leaves pending bindings and reader intents in creating/deleted phases (the T-1778 fence) to their owners' receipts, never clearing them by row edits, and records each confirmed volume deletion through LoginRecords.deleteStorage (test).
+  - done: impl-1793 · 2026-11-11T11:05:27.128Z
+  - verified: rev-35 [reviewer] · run rev-35-1793-final-1 · 2026-11-11T11:40:10.509Z · commit e3767adfd76507a471ec0d1e1b692e4bb5f42e1a
 ## Blocked by
 
 - T-1779
@@ -184,3 +191,67 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-18658 audits configured a68fbca8/A-18657: all3 host-relaunch variants fail initial launch:90 with exact 'login codex-f1: outcome unknown'. Confirmed missed native fixture boundary (lead a3bff642): detached allocated volume, no actual pre-start attachment/mount, synthetic machines added afterward. Base5701finishes=5698pass3fail/620passfile1failfile; separate235load test/filepasses; completed5936/5933pass3fail. T0/T1/T2exit0; changedT3host-restart passes10.916s once,host-relaunch3fails;Webunexecuted/browsernull. Reconcile22cases eachbase+5pass and priorwaitingconsumerpass retained. C6 mark records incomplete required native ownership-consumer acceptance, not a failure of its positive component cases; no finalcriteria verified. UncachedLinuxx64Node24.21/Nvim0.12.5,966s/$0.0670; advisoriesreport-only. Hold released for positive native volume/machine/mount fixture migration and fresh source review before replacement verify/native slot. No Reviewer experiments/unchangedhead retry/provenance-onlyrerun; allredhistoryretained.
 
 Criteria: C6 failed (Required native settled-binding consumer cannot reach its ownership assertions: all three initial admissions return outcome unknown because fixture attachment/mount is unestablished.).
+
+### impl-1793 · 2026-11-11T10:55:43.236Z
+
+Second enforced-red a68fbca8 native migration fixed: isolated host-relaunch running case reproduced at f1c001fc8 (login codex-f1 outcome unknown, native code1/null signal). Native host-relaunch now opts into shared sshHostFixture FakeHostProvider acquisition, sharing project fake inventory for both exact machines; mountedSettledLogin confirms attach/mount before hub startup and retains original work account/assertions. Provision metadata uses captured native machine births. Shared SSH fixture adds optional provider-acquisition and afterNativeJoin hooks; default provided-host consumers unchanged. Mounted cleanup occurs after native/agent/carrier census join before outer storage removal, and a cleanup callback failure retains the root. Shared helper account option is additive. Transitive contract consumers32known+16unknown conservatively reached; A-18662 records scope/disposition. Full native host-relaunch3/3 passes diagnostic (7.149640/6.054891/5.888818s; code0/null signal), full TMPDIR sets9874→9874 no appeared/disappeared, A-18661. Existing allowances29/24/27s cover projected Linux/headroom ceilings18/15/15, ownerC-216 addedNov11 expiresNov18. No replacement configured run or final reviewed-head native receipts yet.
+
+### rev-35 · 2026-11-11T10:58:28.129Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1793-source-6
+commit: 191e7357eca818fe6af3ced3c015f77d231a8980
+scope: full
+findings: [{"severity":"medium","text":"Standards / rules12,26: the new opt-in nested provider branch places f2 native writers under f1's shared providerRoot, but f2 cleanup's positive census still covers only f2.root. If host/agent close rejects while a captured f2 writer remains in its provider machine directory, cleanup can set joined=true and remove f2 ownership/secret/DB storage before the outer census joins it. Lead93850b70 confirms no earlier closure guarantee. Include the captured f2 machine/children in positive closure, retain f2 metadata on incomplete join, and prove live sibling f1 is untouched; do not scan/signal the whole shared provider root.","file":"hub/test/ssh-host-fixture.ts","line":41}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-18663 complete four-file native-fixture corrective pass: Standards1medium/Spec0additional. Original detached inventory mismatch corrected via actual captured provider machines and positive mounted login before startup; account/generation/control/checkout/relaunch assertions preserved. New providerRoot moves nested f2 writers outside f2.root, but final census only covers f2.root, allowing premature metadata/root disposal after rejected joins (lead93850b70). C6failed; hold released for captured-machine/children closure and adverse/no-sibling control, then fresh source review before configured/native evidence. A-18661 precommit diagnostics/fullTMP sets and existing unchanged allowances remain qualified support; A-18662 shared-fixture32+16unknown joins prior conservative union. No finalcriteria verified/Reviewer experiments/provenance-only or unchangedhead run requested; redhistory and T3/T4/stage split retained.
+
+Criteria: C6 failed (Nested provider fixture can remove ownership storage before captured out-of-root native writers are positively joined on close rejection.).
+
+### impl-1793 · 2026-11-11T11:04:34.314Z
+
+Source6 cleanup correction: opt-in SSH provider fixture captures its exact machine directory at acquisition; native census/join covers own root plus only that directory/descendants, never whole shared provider root. Provider-owner close errors retain ownership metadata/root even after fallback native join. New adverse native test reproduced root deletion (ENOENT on nested root) on prior code, then whole file4/4 and final focused prearmed-native-receipt control passed; sibling worker remains alive. A-18664 preserves raw producer output/code/signal/argv/cwd and full TMPDIR9874→9874 no changes, labelled dirty diagnostic. Existing three allowances29/24/27 cover updated samples7.818/7.182/6.825s; new native control samples3.210/3.114s gets report-mode8s allowance ownerC-216 added2026-11-11 expires2026-11-18 (Linux1.6x projection, not a receipt). Shared fixture consumers/default-options scope unchanged from A-18662. No dev merge/configured replacement or final-head native receipts yet.
+
+### rev-35 · 2026-11-11T11:08:06.319Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1793-source-7
+commit: e3767adfd76507a471ec0d1e1b692e4bb5f42e1a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18665 complete four-file/two-commit focused pass: Standards0/Spec0. Exact acquired machineDirectory joins own-root census with deduplicated captured identities; no shared-parent sweep/sibling signals. Provider close failures retain metadata/root even after fallback joins. Adverse native test prearms exact completion observer, proves retained root/secret and live sibling, then restores/joins owner; original3relaunch assertions unchanged. New8s allowance reports mac samples/unexecuted Linux projection, owner/expiry; no policy/baseline transfer or other duration entry change. Source6 finding resolved; earlier production/source repairs preserved. A-18664 raw dirty-candidate diagnostics/fullTMP sets remain qualified support, notheadproof. Hold released for unchanged-head mode-free verify then six-file exact-head native set after hub result. FinalC1–C6await receipts; union all conservative consumer inventories. Redhistory and broaderT3/T4/after-stageQA split retained. No Reviewer experiments/provenance-only/full-task-head run requested.
+
+### impl-1793 · 2026-11-11T11:34:10.063Z
+
+Final exact-head evidence at e3767adfd76507a471ec0d1e1b692e4bb5f42e1a/tree60e54b9e4f6211ad8960a8a24a87da518a89a94e: configured run98952686/A-18666 exited0, reported6018/6018 pass; T0,T1,fallback-all T2,changed T3 twofiles/fivecases once,Web completed on Linuxx64 6.8.0-147-generic Node24.21.0 c-8/lon1 (1156s,$0.0803). Web used pinned Chrome Headless Shell1248 GoogleChromeForTesting156.0.8078.4; budgets report-only. All22 reconciliation generated case names have six recorded passing observations each (base+5), explicitly checked apart from exitstatus.
+Directed native preservation at same clean head: sixfiles22/22 passed serially on macOSarm64 Node24.21.0, each producer code0/signalnull/spawnErrornull, no browser/local suite gate. A-18667 contains original launcher source/argv/cwd/pid/native closes/TAP and full before/after inventories; slot and per-file TMPDIR9874→9874, appeared/disappearedempty. A-18668 unions all consumer inventories with actual case/file receipts, conservative unknowns and explicit unexecuted dispositions. Secret-pattern scans had positive controls before publication. Existing relaunch29/24/27s allowances sufficient; new adversecontrol8s allowance retained. Prior enforced-redA-18653/A-18658 preserved. Remaining fullT3 belongs to Linux merge batch; broaderT4 and after-stage QA unexecuted/separate. All criteria done; requesting Reviewer final same-head settlement.
+
+### impl-1793 · 2026-11-11T11:37:19.646Z
+
+Final capture disposition per Coordinator dbe5ec1e: A-18667 meets this release's publication rule because the secret scan exited0 with a matched positive control over exactly the declared outputs before publication. Runs were fake-only/sentinel; no real credential was used. The executed capture launcher still lacked a shared write-time redactor; A-18669 preserves that limitation and the original scan facts without relabelling raw TAP. Existing T-1808 tracks the shared evidence publish helper; this capture limitation does not block T-1793. Runtime/source head remains e3767adfd, no rerun or code change.
+
+### rev-35 · 2026-11-11T11:40:10.509Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1793-final-1
+commit: e3767adfd76507a471ec0d1e1b692e4bb5f42e1a
+scope: evidence
+findings: [{"severity":"low","text":"Known nonblocking capture limitation: A-18667 executed runner writes raw TAP without shared write-time token/bearer redaction. A-18669 labels original raw streams and exact9-output positive-control pre-publication scan transcription/limits; no redacted-stream claim. Coordinator dbe5ec1e explicitly accepted this fake-only release publication and tracks the shared guard under open T-1808. No provenance-only rerun or source change requested."}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+A-18670 final same-head settlement. C1–C6verified via source7/current98952686/A-18666 and nativeA-18667. Independent6018base test/673base file pass;235separate load test/file pass,47identities×5. All671manifest lower/Web+all468requiredunion lower files case+file positive; reconciliation22case names eachbase+5; host-restart1+host-relaunch4baseonce, priorwaitingfailure passes. Union721=716tests+5static;470configured+4additionalnative+242deferred(228T3/14T4). A-18668's4582eventrefs checked0discrepancy. Native6files22/22 currenthead darwinarm64kernel27.0.0Node24.21 eachPID/argv/cwd/close0/signalnull/spawnErrornull; allperfile/slotTMPDIR9874unchanged (os.tmpdironly, notall/tmp/globalempty). Git60e54b9e/export17a830cf independentlymatched. UncachedLinuxx64Node24.21/Nvim0.12.5HeadlessShell1248Chrome156.0.8078.4,1156s/$0.0803. Existing/newallowances/report-onlynotices retained. Oneacceptednonblockinglow rawcapture/T1808 disposition explicit, noactualcredential claim beyondpatterns/fake-only. Bothredhistoriesretained. FullremainingLinuxT3/broaderT4/after-stageQA separate; no peritemQA. Holdreleased; no further run/sourcechange/Reviewerexperiment.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-11T12:24:13.828Z
+
+Merged 15ee523432c0b8e2acbab8552b40485eaeec947c onto dev.
