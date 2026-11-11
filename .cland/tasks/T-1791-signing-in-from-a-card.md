@@ -3,7 +3,7 @@ id: T-1791
 kind: task
 title: Signing in from a card
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-1480
 branch: t/T-1791-signing-in-from-a-card
 created: 2026-11-09T12:44:12.172Z
-updated: 2026-11-11T18:46:01.495Z
+updated: 2026-11-11T20:14:05.066Z
 ---
 
 ## Summary
@@ -44,7 +44,7 @@ A sign-in run by the hub on the host, behind the sign-in runner seam T-1777 intr
 - [ ] C5. The pasted code appears in no log line, journal record, history row or remote outcome line (test).
   - failed: rev-35 [reviewer] · 2026-11-11T18:46:01.494Z · note A first-seen code can enter serialized Gateway metadata in clear because no trusted pre-serialization secret-card classifier exists; pre-registered sentinel tests miss it.
 - [ ] C6. A sign-in not finished within 15 minutes of hub-clock time withdraws its card and leaves the login `signed-out` with its volume kept (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T18:46:01.494Z · note Timeout/stop closure validation and all-writer drainage are incomplete; new-login uncertainty must retain mounted creating resources with the approved named outcome.
+  - failed: rev-35 [reviewer] · 2026-11-11T20:09:42.062Z · note Code card stays visibly open at hub-clock expiry while cancellation is held; immediate withdrawal must be independent of close-gated state/disk settlement.
 - [ ] C7. On a messenger whose adapter can delete messages (the test messenger declares it), the human's message carrying the pasted Claude Code code is deleted after the hub reads it; where it cannot be deleted, the hub sends one line saying so (test).
   - failed: rev-35 [reviewer] · 2026-11-11T18:46:01.495Z · note Deletion/fallback has no durable captured-ingress obligation or independent recovery after acknowledgement; cleanup joins can short-circuit.
 
@@ -88,3 +88,41 @@ finding_counts: {"high":1,"medium":9,"low":0}
 A-18842 complete initial injected source1 NOT CLEAR:1high/9medium. Confirmed first-delivery cleartext frame bug (2060c790), fail-fast native/input/deletion joins, missing durable ingress cleanup recovery, no-exit close acceptance, unbounded intent JSON startup, missing T2 droplet facts and late borrowed Store/Gateway teardown, transplanted0.122044 baseline, unknown Create one named-cut gap, missed current QA selectors/source guards. Coordinator2ee94f81 initial injected review authorized; realT1815 binding/native file and T1794 hook integration future delta, not misreported as existing proof. ee8fce50 explicitly defers new-login recovery toT1814 but requires retained creating/mounted disk, named login/host unknown line/card; no second cleanup/fence. Approved dispatcher extraction/raw-sidechannel scope retained. A18823/36 are narrative/raw reach; honest producer excerpts/conservative normalized tier dispositions being preserved, not yet final evidence. No native/configured run or criteria verified; C3/C4 remain unverified for integration. Clean fixed head/read-only review; no Reviewer experiments. Hold released for consolidated fixes/fresh committed source review, no provenance-only reruns or unauthorized dev merge.
 
 Criteria: C1 failed (Uncertain Create one path lacks the approved captured login/host unknown-outcome notice/card cut; real native integration is separately pending.), C2 failed (Malformed no-exit close can authorize cleanup, and fail-fast owner shutdown does not join every input/native writer.), C5 failed (A first-seen code can enter serialized Gateway metadata in clear because no trusted pre-serialization secret-card classifier exists; pre-registered sentinel tests miss it.), C6 failed (Timeout/stop closure validation and all-writer drainage are incomplete; new-login uncertainty must retain mounted creating resources with the approved named outcome.), C7 failed (Deletion/fallback has no durable captured-ingress obligation or independent recovery after acknowledgement; cleanup joins can short-circuit.).
+
+### impl-1791 · 2026-11-11T19:59:26.862Z
+
+Consolidated source2 pushed at cc99293493069b647a4185b7ed402bc86dd36420 (tree ede16dd5c26c7a27d11e16aec6af7f9dba4841e4), addressing all ten A-18842 source1 findings plus the approved card-specific outgoing link exception (decision f861d497). A-18873 contains exact-head retained producer streams/argv/code/signal,25 named new cases,287/287 targeted T2, named static checks, source1 finding dispositions and explicit staged/native limits. Test lint remains report-only122findings/59files/0refusals. Production publication scan positive control succeeded; all11 declared output files scanned,0matches. cf0af1975 T2/T1/static receipts are preserved as prior evidence; A-18843 remains honest earlier transcriptions, never promoted to exact-head evidence.
+
+Rule20 supplement: production transitive graph covers all954 normalized manifest roots,776reached+14unknown(counted reached); union791 retains every prior broad Host candidate and explicit consumer. A-18873 consumers.md gives every root its local-executed/planned-native/deferred-tier disposition. Exact symbol/kind/field sweep lists producer login-card-signin.ts + shared parser/origin policy login-signin-output.ts; stored HubCards.signInLink reader; daemon lookup installation; Gateway/shared registry; scoped signin-link.ts; unchanged generic redaction/old caller fallback; owner/remote/recovery cases and docs. New parsed payload fields are additive internal stored metadata, no wire/client/permission/agent-leaf change. Existing Gateway/Dispatcher/Telegram raw-answer and QA replay migrations remain in A-18843 and source2 findings map. Unknown Create one retains the approved T-1814 cut. The shared #prepareLogin extraction remains unchanged (T-1817 separately filed). Await Coordinator-directed dev merge for T-1815/T-1794 integration, then delta source review and native/verify. No native file, browser, Linux verify, fullT3 or T4/QA receipt claimed; C1–C7 remain unmarked.
+
+### rev-35 · 2026-11-11T20:09:42.062Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1791-source-2
+commit: cc99293493069b647a4185b7ed402bc86dd36420
+scope: full
+findings: [{"severity":"medium","text":"Expiry deactivates input but leaves the code card visibly open until native cancellation settles; the new T2 at login-card-signin-owner.test.ts:163 asserts that wrong boundary. Coordinator aa785a51 requires immediate withdrawal with 'sign-in timed out; closing', then cancellation, while login/disk ownership stays unchanged until matching close. Add immediate-withdrawal, subsequent-input-refusal and held-close ownership controls.","file":"hub/src/host/login-card-signin.ts","line":106}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Complete source2 full pass: A-18879. All ten A-18842 source1 findings are addressed in source. Exact cc9929349/tree ede16dd5 clean; A-18873 independently checked 287/287 positive targeted T2 cases, all25 named controls, recorded native code0/signalnull/no truncation for five producers. Consumer table954 unique roots/conservative791 preserves prior paths. This is the approved injected stage only: real T1815/T1794 integration and directed native/configured evidence remain later; no new criterion verification or readiness. One medium timeout visibility finding remains under Coordinator aa785a51 and lead57643a2a. Full pass complete; release hold for correction, then fresh committed source review.
+
+Criteria: C6 failed (Code card stays visibly open at hub-clock expiry while cancellation is held; immediate withdrawal must be independent of close-gated state/disk settlement.).
+
+### impl-1791 · 2026-11-11T20:12:30.605Z
+
+Source3 timeout correction pushed1920ed2d11aaa9f6ea08346a38cc600c7c982333/tree356e70fe044bc47cccfc9b10c9f0e32f38cdec97. Addresses A-18879's sole remaining medium under aa785a51: expiry disables input, immediately withdraws with exact 'sign-in timed out; closing', then native cancel; login state/disk ownership wait for matching close. T2 shown RED(open vs withdrawn), then exact-head25/25 owner/remote/recovery positive cases incl refusal/zero writes and unchanged exact row while held; typecheck/tier/closed-wording0, report-only lint122/59files/0refusals. A-18880 retains separate streams/argv/close facts and prior-head limits; publication positive control,3declared files0matches. Only5existing files changed; no new imports/test roots/contract consumers, so A-18873's954-root/791conservative sweep stays structurally applicable (not a source3 rerun claim). No dev merge or native/verify/criteria claim; requesting fresh source review at this injected head before authorized real-operation integration.
+
+### rev-35 · 2026-11-11T20:14:05.066Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1791-source-3
+commit: 1920ed2d11aaa9f6ea08346a38cc600c7c982333
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18881: initial injected-stage source3 CLEAR, zero standards/spec findings. Complete five-file correction resolves A-18879 under aa785a51: immediate persisted withdrawal with exact timeout reason before native cancel, refused later input/zero writes, unchanged complete login row/disk while close held, matching close permits signed-out+kept volume. Shared reference/README/per-test guide agree. All ten source1 findings remain addressed. A-18880 independently checked exact-head25/25 positive named T2 cases; five producers code0/signalnull/no spawn error/truncation; report-only lint122 findings/0refusals retained. Prior A-18873 broader287 and954-root/791 graph remain earlier-head support, not source3 execution. Head/tree1920ed2d1/356e70fe clean, one corrective commit/no dev merge. No new criterion verification, final readiness or native/configured evidence claim: Coordinator-authorized initial injected stage only. Release hold; await authorized T1815/T1794 integration, then fresh integrated-head source review before native/configured verification.

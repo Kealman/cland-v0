@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1477
 branch: t/T-1795-the-adr-the-v0-1-2-3-13-amendment-and
 created: 2026-11-09T12:44:13.008Z
-updated: 2026-11-11T18:09:50.360Z
+updated: 2026-11-11T19:37:03.133Z
 ---
 
 ## Summary
@@ -38,6 +38,7 @@ Three documents, with no existing paragraph rewritten:
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-4 · 2026-11-11T14:59:58.342Z · commit 7cdaef877eb12e0212da0059de1bb131233a473d
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-5 · 2026-11-11T16:20:25.408Z · commit acfa3d7f6ff8a45df2334b33a0917c060cd757fe
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-6 · 2026-11-11T18:09:50.359Z · commit cc47bce80c424124d78c40fdaa0310cd240f17da
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-7 · 2026-11-11T19:37:03.133Z · commit 7e8782d583b3c654e1900dd568b0d66b193823e5
 - [x] C2. Spec v0.1.2 §3.13 carries an appended, dated amendment naming logins on hosts and linking the ADR, with no existing paragraph changed.
   - done: impl-1795 · 2026-11-11T09:08:19.464Z
   - verified: rev-35 [reviewer] · run rev-35-1795-source-1 · 2026-11-11T09:14:25.420Z · commit 478f0a97988eed61c1cb5b1c71306ac143d86681
@@ -46,6 +47,7 @@ Three documents, with no existing paragraph rewritten:
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-4 · 2026-11-11T14:59:58.343Z · commit 7cdaef877eb12e0212da0059de1bb131233a473d
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-5 · 2026-11-11T16:20:25.408Z · commit acfa3d7f6ff8a45df2334b33a0917c060cd757fe
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-6 · 2026-11-11T18:09:50.360Z · commit cc47bce80c424124d78c40fdaa0310cd240f17da
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-7 · 2026-11-11T19:37:03.133Z · commit 7e8782d583b3c654e1900dd568b0d66b193823e5
 - [ ] C3. `docs/hub/logins.md` exists and covers login states, binding, release, snapshots, the key store, the login cards and reconciliation.
   - failed: rev-35 [reviewer] · 2026-11-11T12:28:38.293Z · note Current partial as-built notes retain a false startup ownership attribution for pending bindings; remaining planned stage-4 coverage is separately intentional.
 - [x] C4. The closed-item wording lint passes on the three files (test).
@@ -187,5 +189,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-18819 current partial delta CLEAR: Standards0/Spec0. Coordinator9b1ac986 authorized T1790 landed44a2775c9 single merge; inherited runtime/tests/sharedwire/skills/nvim/web/docs-agents byte-identical to reviewed3683b2f7b. Own commit adds26 EOF lines only; prior task/imported sections preserved. Dedicated preparePoolLogin/prepareExistingLoginSignIn, begin/finishSignIn, snapshotHostIdentity, indexed startup recovery and exact-machine deletion settlement/removal fence agree with landed implementation;3 case-guide links resolve. Against landed dev task nontracker diff only3docs/190insertions0deletions (ADR34+spec12+logins144), ADR/spec unchanged fromprior. C1/C2 refreshed. A18818 candidate static-lint narrative qualified,not original/final configured receipt; C4 unverified. C3 deliberately open forT1791/T1794, finalready/exacthead evidence outstanding. Clean fixed head/read-only review; no Reviewer tests/native/browser/provider. Hold released; retain staged sequence.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-35 · 2026-11-11T19:37:03.133Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1795-delta-7
+commit: 7e8782d583b3c654e1900dd568b0d66b193823e5
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18864 current partial delta CLEAR: Standards0/Spec0. Coordinator517ba3d3 authorized T1794 landed6aa8c95df merge; inherited runtime/tests/skills/sharedwire/docs-agents/nvim/web byte-identical to rev36 source/final-cleareddd4650fa7. Append conflict preserves prior task sections and imported Relaunch section;16 new owner lines match post-finishSignIn hook and captured live/unarchived generation admission inside resume lifecycle slot, superseding stop/archive/resume, committed-login failure reporting and no fresh conversation. Task nontracker difference only3docs/206insertions0deletions;ADR/spec unchanged, C1/C2 refreshed. A18861 candidate wording-lint narrative qualified,not final configured proof; C4 unverified. C3 remains open for updated sequence T1815/T1791/T1814, T1795 last. Clean head/read-only review; no Reviewer execution/edit. Hold released; retain staged claim and final evidence boundary.
 
 Criteria: C1 verified, C2 verified.

@@ -2,8 +2,8 @@
 id: T-1815
 kind: task
 title: An agent-owned interactive sign-in operation with input, bounded output and close receipts
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1482
 branch: t/T-1815-an-agent-owned-interactive-sign-in
 created: 2026-11-11T18:09:00.346Z
-updated: 2026-11-11T19:20:07.548Z
+updated: 2026-11-11T21:31:39.978Z
+closed: 2026-11-11T21:31:39.978Z
 ---
 
 ## Summary
@@ -30,18 +31,23 @@ One host-agent operation that runs a harness sign-in command for an admitted log
 - [x] C1. The operation runs a fake harness sign-in on a fake host's agent, delivers an input line written by the hub to the process's stdin, and streams its output to the hub within a fixed byte bound (test).
   - done: impl-1815 · 2026-11-11T18:41:55.642Z
   - verified: rev-35 [reviewer] · run rev-35-1815-final-1 · 2026-11-11T19:20:07.037Z · commit e9389810486f8d15cc158b102cff08d8917f5d01
+  - verified: rev-37 [reviewer] · run rev-37-1815-evidence-1 · 2026-11-11T20:04:12.459Z · commit 2b2add0f218e8f9c957a776bd33731c71856f307
 - [x] C2. The process's exit is reported as a close receipt with its code or signal, pinned to the operation's admission, and a receipt for another admission is refused (test).
   - done: impl-1815 · 2026-11-11T18:41:57.363Z
   - verified: rev-35 [reviewer] · run rev-35-1815-final-1 · 2026-11-11T19:20:07.037Z · commit e9389810486f8d15cc158b102cff08d8917f5d01
+  - verified: rev-37 [reviewer] · run rev-37-1815-evidence-1 · 2026-11-11T20:04:12.459Z · commit 2b2add0f218e8f9c957a776bd33731c71856f307
 - [x] C3. A hub cancel ends the process tree and reports its close receipt; nothing is unmounted before that receipt (test).
   - done: impl-1815 · 2026-11-11T18:49:05.243Z
   - verified: rev-35 [reviewer] · run rev-35-1815-final-1 · 2026-11-11T19:20:07.037Z · commit e9389810486f8d15cc158b102cff08d8917f5d01
+  - verified: rev-37 [reviewer] · run rev-37-1815-evidence-1 · 2026-11-11T20:04:12.459Z · commit 2b2add0f218e8f9c957a776bd33731c71856f307
 - [x] C4. The input bytes appear in no log line, journal record, agent file or receipt (test).
   - done: impl-1815 · 2026-11-11T18:22:35.360Z
   - verified: rev-35 [reviewer] · run rev-35-1815-final-1 · 2026-11-11T19:20:07.037Z · commit e9389810486f8d15cc158b102cff08d8917f5d01
+  - verified: rev-37 [reviewer] · run rev-37-1815-evidence-1 · 2026-11-11T20:04:12.459Z · commit 2b2add0f218e8f9c957a776bd33731c71856f307
 - [x] C5. host-agent-boundary and host-agent-closure pass with the regenerated closure (test).
   - done: impl-1815 · 2026-11-11T18:41:58.232Z
   - verified: rev-35 [reviewer] · run rev-35-1815-final-1 · 2026-11-11T19:20:07.037Z · commit e9389810486f8d15cc158b102cff08d8917f5d01
+  - verified: rev-37 [reviewer] · run rev-37-1815-evidence-1 · 2026-11-11T20:04:12.459Z · commit 2b2add0f218e8f9c957a776bd33731c71856f307
 
 ## Blocked by
 
@@ -150,3 +156,35 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-18856 final CLEAR: Standards0/Spec0,C1–C5 verified. Independent A18854 audit at exact e93898104/normalized e70d18ce:6133 base tests/680 base files,195 separate load tests+195 load-file envelopes (39×5),zero negatives/skips/cancellations;all679 manifest lower/Web files have case+file receipts. All40 A18855 required generated names/line outcomes/durations checked, native5 once, owner4/client6 base+5, boundary/closure/exhaustive Host/canonical guards pass. A18848 parentd79 native4files52 named passes/tool exit0 verified;byte-equal carry authorized7f2b048c,not new-head execution. Raw merged tool capture/no separate signal/full stdout-stderr/write-time redactor limits and existing positive-control prepub scan fact retained; A18815/T1808 fake-only disposition accepted. A18855 exact794 prior union preserved:530 current Linux receipt aggregates checked,3 additional native carries,247 otherT3/14T4 deferred;3 carries still need ordinary Linux batch. Native TMPDIR9885 equality summary/prior cleanup limits preserved,not global-cleanup claim. Linux droplet/browser/executor/modes recorded;report-only advisories not clean-budget claim. Rev36 source2/mixed-run and A18852/53 metadata clear remain intact;clean fixed head, no Reviewer experiments/edits. Hold released; fullT3/T4/after-stageQA separate, no further run requested.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-37 · 2026-11-11T19:39:04.977Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1815-delta-1
+commit: 2b2add0f218e8f9c957a776bd33731c71856f307
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized T-1794 merge delta source clear; Standards0/Spec0. Reviewed all23 changed paths and combined docs resolutions retaining both sections under Coordinator c2f9765c. Canonical signInCommand and existing interrupted/native-close ownership remain intact; agent/client/closure and four directed native test bodies independently byte-equal to e93898104. afterSignIn is forwarded on bound/unbound renewal and invoked only after durable finishSignIn/owner settlement; failure does not undo sign-in. Session relaunch reuses current worktree/conversation and lifecycle owner; post-slot captured-generation/running/archive admission protects queued stop/archive/resume. Shared bool parser/defaultfalse/config/help/golden/docs and deterministic/native tests match. A-18866 graphs all4 native targets reached/unknown0: no native carry across shared runtime merge, fresh four-file receipts still required. Source assessment and limits in A-18869 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-18869-t-1815-t-1794-merge-delta-source-clear-at-2b2add0f2.md). No new C1–C5 verified; runtime criteria await fresh native set and mode-free configured run at exact reviewed head. Preserve prior794 conservative consumers/unknowns plus incoming/new login-relaunch test and reconcile actual named case/file receipts; remaining fullT3/T4/after-stageQA separate. Current progress reports are not completed evidence. Reviewer ran no tests/typecheck/native/browser and made no edits.
+
+### rev-37 · 2026-11-11T20:04:12.459Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1815-evidence-1
+commit: 2b2add0f218e8f9c957a776bd33731c71856f307
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence CLEAR; Standards0/Spec0, C1–C5 verified. Independently streamed A-18875/runbdc78299:6147 base test and682 base file passes;195 separate load-test/195 load-file passes; zero negative/skipped/cancelled finishes. Head/branch/canonical tree1c5aab0ff379f2e89dbfef93b7faad64e78fa027 independently matched, cached:null. All56 required generated names/line outcomes/durations in A-18877 checked against raw log: previous40 plus incoming relaunch/config/native16. Native operation5 Linux passes once; client6/owner4 and redactor/command/optional contract/canonical controls have separate base+5 observations. Boundary3/closure5/exhaustive Host/canonical source guards pass. C1 stdin/hash/bounded output, C2 exact admission/close and refusals, C3 descendant/checkpoint/unmount fences, C4 split-echo/file scan positive control, C5 regenerated closure all established by reviewed assertions and current receipts. A-18870 fresh exact-head macOS arm64 Node24.21 native4=52passes/tool exits0; no runtime carry. Raw merged capture/no separate signal or independent streams/write-time redactor limits and producer positive-control prepub scan fact retained under read CoordinatorA-18815/T1808 disposition. TMPDIR9887 comparison unchanged; /private/tmp14 additions (inventory+13aliases) left intact, no global-cleanup claim. Conservative815 union preserves prior794/unknowns; all134T1/362T2/52Web consumer files have case+file receipts,2/253T3 Linux and3 additional freshMac native files;248otherT3/14T4 deferred. All680 lower/Web manifest files+2selectedT3 files have receipts. Linux dropletc-8lon1/kernel147/Node24.21/Nvim0.12.5/isolatedHeadlessShell1248 Chrome156.0.8078.4; T0/allT1/fallbackallT2/Web/selectedT3 complete, fullremainingT3/T4/after-stageQA separate. Report-only advisories retained, no enforced-budget/totalwall claim. Full criterion/consumer/capture assessment A-18878, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-18878-t-1815-merged-head-final-c1-c5-evidence-review.md. Reviewer performed read-only inspection only.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-11T21:31:39.978Z
+
+Merged 7d2f0a59bc03d2b2e6f07359204d079921d5c7b8 onto dev.
