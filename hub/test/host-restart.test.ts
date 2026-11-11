@@ -104,6 +104,7 @@ test('restart keeps the live host and exits the deleted host, settles spend, and
  const liveLoginPath=`/cland/auth/opencode-${liveBinding.login}/login.json`;
  // C2: read through the Host's loginFilePath validation at the retained native
  // machine generation. No spoke/MCP turn is needed for this persistence proof.
+ await eventually('reopened live host login disk reachable',()=>liveHost.loginDiskReachable?.()===true?true:undefined,SETUP_MS);
  const afterRestart=await liveHost.readFile(liveLoginPath);
  assert.equal(liveHost.loginDiskReachable?.(),true);
  assert.ok(Buffer.from(afterRestart).equals(Buffer.from(rotated.get(live.id)!)),'post-restart mounted disk contains the exact fake-harness rotation');

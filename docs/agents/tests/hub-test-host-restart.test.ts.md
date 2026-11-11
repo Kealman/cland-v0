@@ -54,4 +54,10 @@ login volume returns ready only after detached inventory. The existing fake
 OpenCode CLI rotates each mounted login before restart. After restart the live
 worker/binding and exact machine generation are retained; the Host's validated
 logical login path returns the same rotated bytes and loginDiskReachable is true.
+Before that read, `reopened live host login disk reachable` waits through the
+reopened Host's `loginDiskReachable()` signal with the named `SETUP_MS` bound.
+Hub reopen alone does not prove its asynchronously restored tunnel is up.
+For T-1818, run this case alone five times in fresh Node processes on macOS;
+mode-free verification supplies the Linux changed-T3 receipt. Preserve the
+exact rotated-byte assertion and the terminal `destroyed` transition assertion.
 This Coordinator-approved persistence proof does not require an MCP/spoke turn.
