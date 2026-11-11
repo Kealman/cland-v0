@@ -307,8 +307,8 @@ include phase only when stored, preserving the previous shape for older rows.
 login state is introduced. A pending binding is never reused or offered by
 `free()`. A failed bind unmounts and detaches before removing its binding and
 returning to ready. Missing positive cleanup receipts retain the pending binding
-and fail the launch with the login name and `outcome unknown`. Reconciliation
-at startup (T-1793) owns recovery of pending bindings; ordinary host-stop release must leave them alone. Shutdown joins in-flight binding work to native
+and fail the launch with the login name and `outcome unknown`. Startup login
+reconciliation leaves pending bindings to the binder's own receipts and never clears them by row edits; ordinary host-stop release must leave them alone too. Shutdown joins in-flight binding work to native
 settlement or its existing operation deadline before storage closes. It introduces no raced timeout.
 Abortable volume and login-disk operations are follow-up T-1801.
 
