@@ -102,7 +102,8 @@ test('stage-one login database migrates private binding harness and indexes with
  const rows=old.list(),bindings=old.bindings('old');
  // Schema-only downgrade models stage1; every row was written via public API.
  db.exec('drop trigger if exists login_bindings_capacity_insert; drop trigger if exists login_bindings_capacity_delete; drop trigger if exists login_bindings_capacity_update; drop trigger if exists login_readers_capacity_insert; drop trigger if exists login_readers_capacity_delete; drop trigger if exists login_readers_capacity_update; drop index if exists login_capacity_launch; drop index if exists login_capacity_shared; alter table logins drop column pending_bindings');
- db.exec('drop index if exists login_bindings_launch; drop index if exists login_ready_launch; drop index if exists login_bindings_pending');
+ db.exec('drop index if exists login_bindings_launch; drop index if exists login_ready_launch; drop index if exists login_bindings_pending; drop index if exists login_reconcile_bindings');
+ db.exec('alter table login_bindings drop column episode');
  if(db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='harness'))db.exec('alter table login_bindings drop column harness');
  db.exec('alter table login_bindings drop column phase');
  const exec=db.exec.bind(db);
@@ -111,6 +112,7 @@ test('stage-one login database migrates private binding harness and indexes with
  assert.equal(db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='harness'),false,'failed index creation rolls back private column/backfill');
  assert.deepEqual(old.list(),rows);fault.mock.restore();
  const migrated=new LoginRecords(db);assert.deepEqual(migrated.list(),rows);assert.deepEqual(migrated.bindings('old'),bindings);
+ assert.equal(migrated.bindingEpisode('old','target'),'','legacy binding keeps its private migration episode');
  assert.equal(db.prepare('select harness from login_bindings where login=?').get('old')!.harness,'codex');
  assert.equal(migrated.selectForLaunch({host:'target',harness:'codex',provider:'fake',region:'wanted',account:null}).held[0]!.login.name,'old');
 });

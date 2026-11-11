@@ -147,6 +147,11 @@ Host stop/destroy and lifecycle teardown release settled disk logins before
 transport removal and provider deletion. Lost hosts wait for provider-confirmed
 detachment before reuse. See [login release](../docs/hub/logins.md#releasing-host-disks).
 
+Startup reconciles active login disks before pool scaling, retaining pending
+native ownership and using confirmed detached/deleted provider receipts. Missing
+original volumes record a retained signed-out reason; failed inventories retry
+without changing logins. See [login reconciliation](../docs/hub/logins.md#releasing-host-disks).
+
 Deleted-host session settlement runs before login-volume reconciliation; unreachable
 SSH hosts use the lost-host snapshot fence without a new reconnect wait.
 

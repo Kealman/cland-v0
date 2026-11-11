@@ -82,8 +82,9 @@ text appends bound hosts to the state.
 `HostRecords.logins` constructs `LoginRecords` on the hub database. Names match
 `[a-z0-9][a-z0-9-]{0,31}` and are project-unique. New rows start creating, with
 no bindings and no free capacity. Transitions are creating → ready or signed-out,
-ready → in-use, in-use → ready or signed-out, and signed-out → creating.
-Entering in-use requires a binding; leaving it clears bindings atomically.
+ready → in-use or signed-out, in-use → ready or signed-out, and signed-out → creating.
+Entering in-use requires a binding. `transition()` clears bindings when leaving
+in-use; `markSignedOut()` retains bindings and reader ownership for their release owners.
 Removing the final binding returns the login to ready. Exclusive disks permit
 one writer; non-exclusive disks can retain multiple readers. Bindings and rows
 persist across hub restarts. This store contains metadata only.
@@ -178,6 +179,14 @@ existing database. Callers own admission and native resource receipts.
 
 Each method returns detached values. `updateCreatingDisk(name, update)` publishes
 volume, snapshot and last-sign-in receipts only while a disk row is creating.
+
+`markSignedOut(name, {reason, host})` changes a ready or in-use login to signed-out
+and atomically records optional public `signedOut: {id, reason, host, at}` metadata.
+The UUID id is generated inside the transaction and distinguishes episodes even
+when the store clock has not advanced.
+The time comes from the store clock. This method retains bindings and reader
+operations exactly; their release owners still own cleanup. Starting sign-in
+(`signed-out` → `creating`) clears the receipt. Older rows omit it.
 
 Binding metadata violations throw `LoginBindingRefused` with a stable `code`
 (`disk-volume-required`, `writer-volume-mismatch`, `reader-volume-mismatch`,
@@ -447,6 +456,30 @@ The hub decrypts the key file per native generation, including resume/relaunch, 
 Prepared agent checkpoints preserve nonsecret environment values and hold the key only in lifetime memory. The native bootstrap inherits its environment; `launches/<id>/plan.json` holds no environment values. Restart reconciles native receipts rather than replaying a prepared spawn; a fresh launch reads the encrypted key again. This requires the updated host-agent runtime as well as the hub. Local launches and manually registered non-pool hosts keep account-registry behavior. See [key spawn tests](../agents/tests/hub-test-login-key-spawn.test.ts.md).
 
 ## Releasing host disks
+
+Before pool scaling's first pass, startup reconciles active disks after host-lease
+recovery. Provider inventory must positively report a detached volume before the
+shared release owner clears its binding. Reader clones use the same exact-id
+confirmed-deletion boundary and storage deletion stamps as ordinary release.
+Pending native bindings and reader intents in creating/deleted phases stay with
+their owners. An absent original volume marks the login signed-out with
+`signedOut.reason = 'volume missing'` and retains resource ownership metadata.
+Failed inventory changes no login, sends one Coordinator Agents notice per provider
+in that hub lifetime and retries using the hub clock. Shutdown cancels retries and
+joins inventory work before release/snapshot owners and storage close. Unmatched
+project volumes are logged and left intact for lost-work inspection. These reads
+require provider API availability on real providers; fake tests use directory
+inventory and no network. Indexed pages contain at most 64 active disks or settled
+bindings. The independent binding cursor includes outstanding signed-out readers
+without decoding unbound signed-out history. Candidates and their private store
+revisions are captured before each inventory read and revalidated before effects.
+Settled binding candidates also capture a private admission episode. Rebinding
+the same public login/host/volume values creates a new episode; completion of
+another binding's release never advances that captured authority. The shared
+release/reader owner revalidates it across snapshot and provider waits. Private
+episodes are absent from public binding replies and require no client migration.
+Unresolved unknown/gone-host detachments retry; healthy attached bindings do not
+create a retry loop. Reader deletion preserves the captured native volume birth.
 
 The confirmed host-destroy boundary releases settled disk bindings concurrently,
 including explicit stop/destroy, idle stop, lease expiry and boot-failure cleanup.

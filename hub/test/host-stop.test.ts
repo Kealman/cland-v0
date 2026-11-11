@@ -40,7 +40,7 @@ for(const confirmed of [true,false])test(`C3 stop joins lease renewal and requir
  records.provisions.ready({...records.provisions.get(id)!,state:'ready'});
  const createdVolume=await provider.createVolume({project:root,name:'stop-login',region:'fake',sizeGiB:1});assert.equal(createdVolume.state,'created');if(createdVolume.state!=='created')throw Error('fixture disk');
  assert.equal((await provider.attachVolume(createdVolume.volume,machine)).state,'attached');
- settledLogin(records.logins,id,'codex',{provider:'fake',region:'fake',volumeId:createdVolume.volume.id});
+ await settledLogin(records.logins,id,'codex',{provider:'fake',region:'fake',volumeId:createdVolume.volume.id});
  const launched=await ui.request({type:'session.launch',name:'stop-worker',harness:'codex',host:id,cwd:root});assert.equal(launched.ok,true,launched.error);
  const lease={root,env,clock,leaseMs:30000,caps:{shared:10,hosts:10},pool:'agents',size:'fake',priceHourly:0,billingMinimumMs:0};
  await records.leases.create(id,lease);

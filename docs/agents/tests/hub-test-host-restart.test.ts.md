@@ -33,3 +33,11 @@ without adding a reconnect or changing request streams.
 A missing detached receipt retains a bounded diagnostic of provider-read count,
 provision state/release, deletion receipt presence and binding/backup facts.
 The fixture never infers signal or completion from that diagnostic.
+
+Login reconciliation C1/C2: the production watchdog deletes the fake gone host
+while the hub is stopped and publishes machine/key absence receipts. Its original
+login volume returns ready only after detached inventory. The existing fake
+OpenCode CLI rotates each mounted login before restart. After restart the live
+worker/binding and exact machine generation are retained; the Host's validated
+logical login path returns the same rotated bytes and loginDiskReachable is true.
+This Coordinator-approved persistence proof does not require an MCP/spoke turn.

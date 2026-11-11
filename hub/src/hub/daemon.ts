@@ -3,6 +3,7 @@ import { projectTag } from '../executor/droplet/droplet.ts';
 import { HostHealth, loseHost } from '../host/host-health.ts';
 import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { reconcileHostLeases, restoreHostLeaseOwners } from '../host/host-restart.ts';
+import {LoginReconciliation} from '../host/login-reconcile.ts';
 import { destroyHost } from '../host/provision-host.ts';
 import { restoreProvisionedFakeHosts } from '../host/provision-host.ts';
 import { registerFakeHosts } from '../host/records.ts';
@@ -278,6 +279,7 @@ export async function serveProject(root: string, options: { prepareLogin?: impor
   };
   let sshHosts: Awaited<ReturnType<typeof projectSshHosts>> | null = null;
   let hostHealth: HostHealth | null = null;
+  let loginReconciliation:LoginReconciliation|null=null;
   let unsubscribeHostStatus:(()=>void)|undefined;
   let accountPoller: AccountPoller | null = null;
   let web: WebEdge | null = null;
@@ -586,6 +588,7 @@ export async function serveProject(root: string, options: { prepareLogin?: impor
         await attempt(() => accountPoller?.close());
         unsubscribeHostStatus?.();
         await attempt(() => hostHealth?.close());
+        await attempt(() => loginReconciliation?.close());
         // Both journal and session projections depend on the adapters' open table.
         await attempt(() => hub.core.close());
         await attempt(() => hub.dispatcher.close());
@@ -697,7 +700,12 @@ export async function serveProject(root: string, options: { prepareLogin?: impor
     sshHosts = await projectSshHosts({clock,onAdd: host => adapters?.sessions.addHost(host), onRemove: id => adapters?.sessions.removeHost(id), settle: id => hub.dispatcher.revokeHost(id), onReady:hostReady,root,records:store.hosts,hubSocket:l.socket,spokeSocket:l.spokeSocket,env,log,...(options.hostConfigurations ? {configurations:options.hostConfigurations} : {}),...(options.hosts ? {provided:options.hosts} : {})});
     adapters = projectSessions({loginKeyEnvironment:keyEnvironment, hostPools: () => roles.config().hosts, hosts: [...(options.hosts ?? []), ...sshHosts.hosts], ...(options.transportClock ? { transportClock: options.transportClock } : {}), ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.hostOwner = sshHosts;
-    await hub.dispatcher.restoreSessions(adapters.sessions, () => restoreHostLeaseOwners({root,records:store.hosts,env,clock,log,config:roles.config(),inUse:id=>adapters!.sessions.hostInUse(id),destroy:id=>destroyHost({root,id,records:store.hosts,env,clock,owner:sshHosts!,settleDeleted:(host,read)=>adapters!.sessions.hostDeleted(host,read),log})}));
+    await hub.dispatcher.restoreSessions(adapters.sessions, async () => {
+      await restoreHostLeaseOwners({root,records:store.hosts,env,clock,log,config:roles.config(),inUse:id=>adapters!.sessions.hostInUse(id),destroy:id=>destroyHost({root,id,records:store.hosts,env,clock,owner:sshHosts!,settleDeleted:(host,read)=>adapters!.sessions.hostDeleted(host,read),log})});
+      const providers=new HostProviderRegistry({env,digitalocean:{root,clock},now:()=>clock.now().getTime()});
+      loginReconciliation=new LoginReconciliation({root,records:store.hosts,clock,provider:provider=>providers.resolve({provider}),notice:text=>hub.core.noticeTo('agents',{kind:'report',to:['coordinator'],text}),log});
+      await loginReconciliation.start();
+    });
     const healthProviders=new HostProviderRegistry({env,digitalocean:{root},now:()=>clock.now().getTime()});
     hostHealth=new HostHealth({records:store.hosts,clock,env,
       notice:text=>{hub.core.noticeInTopic('general',{kind:'report',text});},

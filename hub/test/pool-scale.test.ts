@@ -46,7 +46,7 @@ async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof
   await new Promise<void>(resolve=>{gates.push(resolve);if(closing)resolve();options.signal?.addEventListener('abort',()=>resolve(),{once:true});});
   if(options.signal?.aborted)return {...row,state:'failed' as const};
   new HostSecretStore(root,options.records,()=>{}).register({id,address:id,user:'fixture',clientKeyPath:'',knownHosts:''});
-  settledLogin(options.records.logins,id,'codex',{provider:'fake',region:'fake'});
+  await settledLogin(options.records.logins,id,'codex',{provider:'fake',region:'fake',project:root,env,clock});
   const ready={...row,state:'ready' as const};options.records.provisions.ready(ready);return ready;
  })().finally(()=>{completed++;})});
  await writeFile(join(root,'.cland/config.toml'),'# managed by cland\n'+await readFile(join(root,'.cland/config.toml'),'utf8'));

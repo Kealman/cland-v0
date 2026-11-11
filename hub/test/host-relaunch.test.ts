@@ -2,11 +2,11 @@
 // Lifecycle: each sshHostFixture joins agents, carriers, Git and workers before deleting its root.
 import test from 'node:test';
 import {withFixtureStore} from './fixture-store.ts';
-import {settledLogin} from './settled-login-fixture.ts';
+import {mountedSettledLogin} from './settled-login-fixture.ts';
 import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile, readFile, unlink } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, unlink,access } from 'node:fs/promises';
 import { sshHostFixture } from './ssh-host-fixture.ts';
 import { projectHub, eventually, testWaitMs } from './harness.ts';
 import { sessionUi } from './session-credential-fixture.ts';
@@ -25,15 +25,49 @@ import { territoryLockHeld } from '../src/territory-lock-context.ts';
 import { ProcessTable, hostGenerationKey } from '../src/adapters/processes.ts';
 import { setRoleKey } from '../src/roles/editor.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
+const NATIVE_COMPLETION_MS=5000;
+
+test('nested provider cleanup joins its captured machine after close rejection and leaves sibling alive',async t=>{
+ const first=await sshHostFixture(t,{provider:{region:'fake-1'}});
+ let closeNested:(()=>Promise<void>)|undefined,nestedClosed=false;
+ const second=await sshHostFixture({after:close=>{closeNested=close;first.addCleanup(async()=>{if(!nestedClosed){await close();nestedClosed=true;}});}},{provider:{root:first.root,project:first.root,region:'fake-1'}});
+ const spawn=async(f:typeof first)=>{
+  const ready=join(f.fake.home,'cleanup-worker.ready');
+  const child=await f.host.spawn({command:process.execPath,args:['-e',"require('fs').writeFileSync(process.argv[1],'ready');setInterval(()=>{},1000)",ready],cwd:f.fake.home,env:fixtureEnvironment(f.root,f.env)});void child.exited.catch(()=>{});
+  await eventually('captured fixture worker readiness',()=>readFile(ready,'utf8').then(value=>value==='ready'?true:undefined).catch(()=>undefined),testWaitMs());
+  const birth=await f.host.identity(child.pid);assert.ok(birth,'worker has a captured native identity');return {...child,...birth};
+ };
+ const sibling=await spawn(first),target=await spawn(second);
+ const observer=await AgentClient.connect(second.agent.socket,second.secrets.readSecret('f1'));first.addCleanup(()=>observer.close());
+ const original=second.agent.close.bind(second.agent);
+ let cancelCompletion=false;
+ const completion=eventually('captured nested worker native completion receipt',async()=>{
+  if(cancelCompletion)return null;
+  const receipts=await observer.request('native-receipts',{}) as Array<{pid:number}>;return receipts.some(row=>row.pid===target.pid)?true:undefined;
+ },NATIVE_COMPLETION_MS);void completion.catch(()=>{});
+ const fault=t.mock.method(second.agent,'close',async()=>{throw Error('planted native owner close rejection');});
+ try{
+  await assert.rejects(closeNested!(),/SSH fixture cleanup incomplete/);
+  await access(second.root);await access(second.paths.secret);
+  assert.equal(await completion,true);
+  assert.equal(await first.host.alive(sibling),true,'sibling native worker was not a cleanup target');
+ }finally{
+  cancelCompletion=true;await completion.catch(()=>{});fault.mock.restore();await observer.close();await original();
+  const exists=await access(second.root).then(()=>true,()=>false);
+  if(exists)await closeNested!();nestedClosed=true;
+ }
+});
 
 for (const outcome of ['running','refused','no-login'] as const) test(`C2/C3 admitted host relaunch ${outcome} keeps durable native and checkout ownership`, {timeout:testWaitMs(180_000)}, async t => {
   const secrets:string[]=[];
   const describe=(error:unknown):unknown=>error instanceof Error?{name:error.name,message:error.message,...(error instanceof AggregateError?{errors:[...error.errors].map(describe)}:{})}:String(error);
   const context={after:(cleanup:()=>Promise<void>)=>t.after(async()=>{try{await cleanup();}catch(error){t.diagnostic(remoteRedactor(secrets).text(JSON.stringify(describe(error))).slice(-16384));throw error;}})};
-  const f1 = await sshHostFixture(context);
+  const afterNativeJoin:Array<()=>Promise<void>>=[];
+  const f1 = await sshHostFixture(context,{provider:{region:'fake-1'},afterNativeJoin:async()=>{const stack=new AsyncDisposableStack();for(const close of afterNativeJoin)stack.defer(close);await stack.disposeAsync();}});
   // The second fixture is nested: join it before the first root can disappear.
   const nested = { after: (cleanup: () => Promise<void>) => { f1.addCleanup(cleanup); } };
-  const f2 = await sshHostFixture(nested);
+  const f2 = await sshHostFixture(nested,{provider:{root:f1.root,project:f1.root,region:'fake-1'}});
+  assert.ok(f1.machine);assert.ok(f2.machine);
   secrets.push(f1.secrets.readSecret('f1'),f2.secrets.readSecret('f1'));
   const drainPublishers=async()=>{for(const f of [f2,f1]){const client=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1'));try{await client.request('flush',{});}finally{await client.close();}}};
   const git = (cwd:string,args:string[]) => territoryGitAsync(cwd,['-c','gc.auto=0',...args],false,undefined,fixtureEnvironment(f1.root,process.env,f1.env));
@@ -52,8 +86,8 @@ for (const outcome of ['running','refused','no-login'] as const) test(`C2/C3 adm
   await withFixtureStore(join(f1.root,'.cland/hub.db'),close=>f1.addCleanup(close),async store=>{
   await writeFile(join(f1.root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nslots=8\nregion="fake-1"\n');
   for (const {f,name} of machines) {
-    store.hosts.insert({id:name,address:name,user:'agent',clientKeyPath:'unused',knownHosts:'unused'},f.secrets.readSecret('f1'));
-    if(name==='f1'||outcome!=='no-login')settledLogin(store.hosts.logins,name,'codex',{provider:'fake',region:'fake-1',account:'work'});
+    store.hosts.insert({id:name,address:f.machine!.address,user:'agent',clientKeyPath:'unused',knownHosts:'unused'},f.secrets.readSecret('f1'));
+    if(name==='f1'||outcome!=='no-login')await mountedSettledLogin({root:f1.root,env:f1.env,records:store.hosts.logins,host:{...f.host,name},machine:f.machine!,harness:'codex',account:'work',beforeStop:close=>f1.addCleanup(close),afterNativeJoin:close=>afterNativeJoin.push(close)});
   }
   await mkdir(dirname(hostPaths(f1.root,'f2').secret),{recursive:true,mode:0o700});
   await writeFile(hostPaths(f1.root,'f2').secret,f2.secrets.readSecret('f1'),{mode:0o600});
@@ -80,7 +114,7 @@ for (const outcome of ['running','refused','no-login'] as const) test(`C2/C3 adm
     }});
   }]}); f1.addCleanup(()=>hub.stop());
   const placementRecords=new Store(join(f1.root,'.cland/hub.db'));
-  try { for(const {name} of machines){const created=new Date().toISOString();placementRecords.hosts.provisions.ready({id:name,pool:'agents',provider:'fake',size:'fake',region:'fake-1',created,state:'ready',machine:{id:name,address:name,architecture:'x86_64',created}});} } finally {placementRecords.close();}
+  try { for(const {name,f} of machines){placementRecords.hosts.provisions.ready({id:name,pool:'agents',provider:'fake',size:'fake',region:'fake-1',created:f.machine!.created,state:'ready',machine:f.machine!});} } finally {placementRecords.close();}
   const roles=join(f1.root,'.cland/roles.toml'); await writeFile(roles,setRoleKey(await readFile(roles,'utf8'),'implementer','launch','writable_roots',['.']));
   const ui=await sessionUi(t,hub.discovery);
   const created=await ui.request({type:'task.create',size:'M',kind:'task',title:'relaunch'}); assert.equal(created.ok,true,created.error);
@@ -104,8 +138,8 @@ for (const outcome of ['running','refused','no-login'] as const) test(`C2/C3 adm
   const subscriptions=owned.subscriptions(before.sessionId);
   const claim=(await ui.request({type:'task.view',item})).value;
   const down=eventually('f1 carrier down receipt',()=>f1.transport.status().state==='down'||undefined); void down.catch(()=>{});
-  await hostControl('kill-master','f1',f1.env);
-  await hostControl('gone','f1',f1.env);
+  await hostControl('kill-master',f1.machine.address,f1.env);
+  await hostControl('gone',f1.machine.address,f1.env);
   await down;
   const moved=await ui.request({type:'session.resume',session:'worker',relaunch:true,host:'f2'},testWaitMs(60_000));
   if(outcome==='no-login') {

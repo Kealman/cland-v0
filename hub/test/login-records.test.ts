@@ -31,7 +31,7 @@ test('change notifications identify row saves and binding-only mutations for leg
 });
 for (const current of ['creating','ready','in-use','signed-out'] as const) {
  for (const target of ['creating','ready','in-use','signed-out'] as const) {
-  const allowed = {creating:['ready','signed-out'],ready:['in-use'],'in-use':['ready','signed-out'],'signed-out':['creating']}[current];
+  const allowed = {creating:['ready','signed-out'],ready:['in-use','signed-out'],'in-use':['ready','signed-out'],'signed-out':['creating']}[current];
   if ((allowed as readonly string[]).includes(target)) continue;
   test(`refuses login transition from ${current} to ${target} naming current state`, t => {
    const db=new DatabaseSync(':memory:');t.after(()=>db.close());const r=new LoginRecords(db);

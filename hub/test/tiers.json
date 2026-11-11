@@ -433,6 +433,7 @@
     "hub/test/login-keys.test.ts": "T2",
     "hub/test/login-list.test.ts": "T2",
     "hub/test/login-provision-bind.test.ts": "T2",
+    "hub/test/login-reconcile.test.ts": "T2",
     "hub/test/login-records.test.ts": "T1",
     "hub/test/login-release.test.ts": "T2",
     "hub/test/login-selection.test.ts": "T2",

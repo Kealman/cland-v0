@@ -26,7 +26,7 @@ async function fixture(t: test.TestContext, log?: (entry: Record<string, unknown
   const store = new Store(join(root, '.cland/hub.db'));
   onCleanup(t, () => store.close());
   for (const [id, pool] of [['a', 'agents'], ['b', 'agents'], ['c', 'other']] as const) {
-    settledLogin(store.hosts.logins,id,'codex',{provider:'provided-fixture',region:'fake'});
+    await settledLogin(store.hosts.logins,id,'codex',{provider:'provided-fixture',region:'fake'});
     new HostSecretStore(root, store.hosts, () => {}).register({ id, address: id, user: 'fixture', clientKeyPath: '', knownHosts: '' });
     store.hosts.provisions.ready({ id, pool, provider: 'provided-fixture', size: 'fake', region: 'fake', created: new Date().toISOString(), state: 'ready', machine: { id, address: id, architecture: 'x86_64', created: new Date().toISOString() } });
   }

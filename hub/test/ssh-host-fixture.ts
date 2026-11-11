@@ -15,7 +15,10 @@ import { ownDirectory, cleanupOwnedProcesses, fixtureProcessCensus } from './pro
 import { eventually } from './harness.ts';
 import type { Socket } from 'node:net';
 import assert from 'node:assert/strict';
-export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): void }, options: {memoryIntervalMs?:number;beforeRun?:(signal:AbortSignal)=>Promise<void>;afterOperation?:(operation:string,connection:Socket)=>void;startTransport?: boolean; env?:NodeJS.ProcessEnv; processHooks?:import('../src/host/agent/processes.ts').ProcessHooks} = {}) {
+import {FakeHostProvider} from '../src/host/provider/fake.ts';
+import {hostDirectory} from '../../shared/fake-host-directory.ts';
+import type {Machine} from '../src/host/provider/provider.ts';
+export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): void }, options: {provider?:{root?:string;project?:string;region:string};afterNativeJoin?:()=>Promise<void>;memoryIntervalMs?:number;beforeRun?:(signal:AbortSignal)=>Promise<void>;afterOperation?:(operation:string,connection:Socket)=>void;startTransport?: boolean; env?:NodeJS.ProcessEnv; processHooks?:import('../src/host/agent/processes.ts').ProcessHooks} = {}) {
   const root = join(realpathSync('/tmp'), 'cland-suite-' + randomUUID()); await mkdir(root,{mode:0o700});
   const previous = process.cwd(); process.chdir(root);
   const cleanup = ownDirectory(undefined,root);
@@ -27,15 +30,19 @@ export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): v
   let agent: Awaited<ReturnType<typeof serveAgent>> | undefined;
   let transport: SshTransport | undefined;
   let host: ReturnType<typeof sshHost> | undefined;
+  let machine:Machine|undefined;
+  let machineDirectory:string|undefined;
   t.after(async () => {
     const failures:unknown[]=[];
     const attempt=async(work:()=>unknown)=>{try{await work();}catch(error){failures.push(error);}};
     holdSettlement=false;releaseRun?.();host?.quiesce();
     for(const close of [...additional].reverse()) await attempt(close);
     await attempt(()=>host?.close());await attempt(()=>transport?.stop());await attempt(()=>agent?.close());
+    const census=()=>[...new Map([...fixtureProcessCensus(root),...(machineDirectory?fixtureProcessCensus(machineDirectory):[])].map(row=>[row.pid,row])).values()];
     let joined=false;
-    await attempt(async()=>{await cleanupOwnedProcesses(fixtureProcessCensus(root));assert.deepEqual(fixtureProcessCensus(root).filter(p=>p.pid!==process.pid),[],'no fixture writer or cland host serve outlives file');joined=true;});
+    await attempt(async()=>{await cleanupOwnedProcesses(census());assert.deepEqual(census().filter(p=>p.pid!==process.pid),[],'no captured fixture or provider machine writer outlives file');joined=!options.provider||failures.length===0;});
     if(joined) {
+      if(options.afterNativeJoin){const before=failures.length;await attempt(options.afterNativeJoin);if(failures.length!==before)joined=false;}
       const paths=hostPaths(root,'f1');
       await attempt(async()=>{for(const path of [paths.agentSocket,paths.gitSocket,paths.controlSocket])await unlink(path).catch(error=>{if(error.code!=='ENOENT')throw error;});});
       if(!paths.socketDirectory.startsWith(root+'/'))await attempt(()=>rmdir(paths.socketDirectory).catch(error=>{if(error.code!=='ENOENT')throw error;}));
@@ -44,10 +51,19 @@ export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): v
     process.chdir(previous);if(joined)await attempt(cleanup);
     if(failures.length)throw new AggregateError(failures,'SSH fixture cleanup incomplete');
   });
-  const fake = await createFakeHost(root,'f1');
-  const env = fixtureEnvironment(root,process.env,{ CLAND_FAKE_HOSTS:'f1',CLAND_FAKE_HOST_ROOT:root,CLAND_SSH_BIN:new URL('./fakes/fake-ssh.ts',import.meta.url).pathname,CLAND_HOST_BOOT_ID_FILE:fake.bootId,...options.env });
+  const providerRoot=options.provider?.root??root;
+  let fake:Awaited<ReturnType<typeof createFakeHost>>;
+  if(options.provider){
+    const provider=new FakeHostProvider({env:fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:providerRoot})});
+    const acquired=await provider.acquire({project:options.provider.project??root,pool:'agents',region:options.provider.region,architecture:'x86_64'});
+    if(acquired.state!=='created')throw Error('SSH fixture provider acquisition failed');machine=acquired.machine;
+    const directory=hostDirectory(providerRoot,machine.id),home=join(directory,'home');machineDirectory=directory;
+    fake={directory,home,run:join(home,'.cland-host/run'),knownHosts:join(directory,'known_hosts'),bootId:join(directory,'boot-id'),key:(await readFile(join(directory,'host-key.pub'),'utf8')).trim()};
+  }else fake=await createFakeHost(root,'f1');
+  const address=machine?.address??'f1';
+  const env = fixtureEnvironment(root,process.env,{ CLAND_FAKE_HOSTS:address,CLAND_FAKE_HOST_ROOT:providerRoot,CLAND_SSH_BIN:new URL('./fakes/fake-ssh.ts',import.meta.url).pathname,CLAND_HOST_BOOT_ID_FILE:fake.bootId,...options.env });
   const records = new HostRecords(db), secrets = new HostSecretStore(root,records);
-  const record = secrets.register({id:'f1',address:'f1',user:'agent',clientKeyPath:join(fake.directory,'client-key'),knownHosts:`f1 ${fake.key}\n`});
+  const record = secrets.register({id:'f1',address,user:'agent',clientKeyPath:join(fake.directory,'client-key'),knownHosts:`${address} ${fake.key}\n`});
   agent = await serveAgent({runDir:fake.run,secret:secrets.readSecret('f1'),version:'test',env,...(options.memoryIntervalMs===undefined?{}:{memoryIntervalMs:options.memoryIntervalMs}),runStarted:(token,connection,signal)=>{runToken=token;runConnection=connection;return options.beforeRun?.(signal);},beforeRunCancel:async()=>{if(runGate){cancelEntered=true;await runGate;}},cleanupError:error=>cleanupErrors.push(error),afterOperation:(op,connection)=>{if(op==='settle-prepared'&&holdSettlement){settlementAttempts++;connection.destroy();}if(op==='forget-claude'&&dropForgetReply){dropForgetReply=false;connection.destroy();}if(op==='remove-claude'&&dropReleaseReply){dropReleaseReply=false;connection.destroy();}if(op==='run-host'&&dropRunReply){dropRunReply=false;connection.destroy();}if(op==='commit-prepared'&&dropCommitReply){dropCommitReply=false;connection.destroy();}options.afterOperation?.(op,connection);},processHooks:{...options.processHooks,closeLog:async close=>{await close();if(failLogClose)throw new Error('synthetic descriptor close failure');}}});
   await writeFile(join(fake.directory,'ports.json'),JSON.stringify({'12345':join(fake.home,'session.sock')}));
   const supervisor = join(root,'supervisor'); await writeFile(supervisor,'#!/bin/sh\n[ "$1" = --check ]\n',{mode:0o700});
@@ -74,5 +90,5 @@ export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): v
     await write;
     return port;
   };
-  return {root,env,fake,host,transport,layout,faults,cleanupErrors,holdRunCancellation:()=>{cancelEntered=false;runGate=new Promise<void>(resolve=>{releaseRun=resolve;});return {entered:()=>cancelEntered,token:()=>runToken,disconnect:()=>runConnection?.destroy(),release:()=>{releaseRun?.();runGate=undefined;}};},dropNextForgetReply:()=>{dropForgetReply=true;},dropNextReleaseReply:()=>{dropReleaseReply=true;},dropNextCommitReply:()=>{dropCommitReply=true;},dropNextRunReply:()=>{dropRunReply=true;},holdSettlementReplies:()=>{holdSettlement=true;return {attempts:()=>settlementAttempts,release:()=>{holdSettlement=false;}};}, records, secrets, agent, supervisor, addCleanup:(close:()=>Promise<void>)=>additional.push(close), paths:hostPaths(root,'f1')};
+  return {root,env,fake,host,transport,layout,faults,cleanupErrors,machine,holdRunCancellation:()=>{cancelEntered=false;runGate=new Promise<void>(resolve=>{releaseRun=resolve;});return {entered:()=>cancelEntered,token:()=>runToken,disconnect:()=>runConnection?.destroy(),release:()=>{releaseRun?.();runGate=undefined;}};},dropNextForgetReply:()=>{dropForgetReply=true;},dropNextReleaseReply:()=>{dropReleaseReply=true;},dropNextCommitReply:()=>{dropCommitReply=true;},dropNextRunReply:()=>{dropRunReply=true;},holdSettlementReplies:()=>{holdSettlement=true;return {attempts:()=>settlementAttempts,release:()=>{holdSettlement=false;}};}, records, secrets, agent, supervisor, addCleanup:(close:()=>Promise<void>)=>additional.push(close), paths:hostPaths(root,'f1')};
 }

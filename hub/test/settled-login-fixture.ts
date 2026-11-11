@@ -5,18 +5,29 @@ import { lstat, readlink, unlink } from 'node:fs/promises';
 import { hostDirectory } from '../../shared/fake-host-directory.ts';
 import { fakeLoginMountPath } from '../../shared/fake-layout.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import type {Clock} from '../src/hub/clock.ts';
 const loginName=(host:string,harness:string)=>`${harness}-${host}`.slice(0,32);
 /** Placement/lifecycle fixtures start with a settled disk; binding tests own native acquisition. */
-export function settledLogin(records:LoginRecords,host:string,harness:'codex'|'opencode'|'claude-code'='codex',placement:{provider:string;region:string;account?:string;volumeId?:string}={provider:'fake',region:'fake-1'}):void {
+export async function settledLogin(records:LoginRecords,host:string,harness:'codex'|'opencode'|'claude-code'='codex',placement:{provider:string;region:string;account?:string;volumeId?:string;project?:string;env?:NodeJS.ProcessEnv;machine?:Machine;clock?:Clock}={provider:'fake',region:'fake-1'}):Promise<void> {
  const name=loginName(host,harness);
  if(records.get(name))return;
- const volumeId=placement.volumeId ?? `volume-${name}`;
+ let volumeId=placement.volumeId;
+ if(!volumeId&&placement.provider==='fake'){
+  if(!placement.project)throw Error('settled fake login requires its disposable project');
+  const {FakeHostProvider}=await import('../src/host/provider/fake.ts');
+  const provider=new FakeHostProvider({env:fixtureEnvironment(placement.project,placement.env??process.env,{CLAND_FAKE_HOST_ROOT:placement.project}),...(placement.clock?{now:()=>placement.clock!.now().getTime()}: {})});
+  const result=await provider.createVolume({project:placement.project,name,region:placement.region,sizeGiB:1});
+  if(result.state!=='created')throw Error('settled fake login volume allocation failed');
+  volumeId=result.volume.id;
+  if(placement.machine&&(await provider.attachVolume(result.volume,placement.machine)).state!=='attached')throw Error('settled fake login attachment unconfirmed');
+ }
+ volumeId??=`volume-${name}`;
  records.insert({name,harness,account:placement.account ?? `default:${harness}`,kind:'disk',provider:placement.provider,region:placement.region,volumeId,snapshotIds:[],lastSignIn:null});
  records.transition(name,'ready');records.bind(name,{host,role:'writer',volumeId});
 }
 
 /** Native fixture ownership: docs/agents/tests/hub-test-host-destroy-native.test.ts.md. */
-export async function mountedSettledLogin(options:{root:string;env:NodeJS.ProcessEnv;records:LoginRecords;host:Host;machine:Machine;beforeStop:(work:()=>Promise<void>)=>void;afterNativeJoin:(work:()=>Promise<void>)=>void;harness?:'codex'|'opencode'|'claude-code';region?:string}):Promise<void> {
+export async function mountedSettledLogin(options:{root:string;env:NodeJS.ProcessEnv;records:LoginRecords;host:Host;machine:Machine;beforeStop:(work:()=>Promise<void>)=>void;afterNativeJoin:(work:()=>Promise<void>)=>void;harness?:'codex'|'opencode'|'claude-code';region?:string;account?:string}):Promise<void> {
  const {root,records,host,machine}=options,harness=options.harness??'opencode',region=options.region??'fake-1';
  const {FakeHostProvider}=await import('../src/host/provider/fake.ts');
  const provider=new FakeHostProvider({env:fixtureEnvironment(root,options.env,{CLAND_FAKE_HOST_ROOT:root})});
@@ -49,7 +60,7 @@ export async function mountedSettledLogin(options:{root:string;env:NodeJS.Proces
   if(!host.loginDisk)throw Error('fixture host lacks login-disk');
   await host.loginDisk({op:'mount',volume:volume.name,path});
   target=await readlink(mount);
-  settledLogin(records,host.name,harness,{provider:'fake',region,volumeId:volume.id});
+  await settledLogin(records,host.name,harness,{provider:'fake',region,volumeId:volume.id,...(options.account?{account:options.account}:{})});
  })();
  await setup;
 }

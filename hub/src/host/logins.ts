@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import {randomUUID} from 'node:crypto';
 import type { Machine, Volume } from './provider/provider.ts';
 import {realClock, type Clock} from '../hub/clock.ts';
 
@@ -9,7 +10,7 @@ export type ReaderOperation = {login:string;host:string;harness:string;provider:
 
 export type LoginBackup = { initialAt?: string; lastAt?: string; pending: boolean; retryAt?: string; releasing?: boolean; freeze?: {host:string; identity:string; volumeId:string}; receipt?: import('./provider/provider.ts').VolumeSnapshot; outcome?: string };
 export type LoginState = 'creating' | 'ready' | 'in-use' | 'signed-out';
-type Base = { name: string; harness: 'claude-code' | 'codex' | 'opencode'; account: string; state: LoginState; lastSignIn: string | null; storage?:LoginStorage };
+type Base = { name: string; harness: 'claude-code' | 'codex' | 'opencode'; account: string; state: LoginState; lastSignIn: string | null; storage?:LoginStorage; signedOut?:{id:string;reason:string;host:string|null;at:string} };
 export type Login = Base & ({ kind: 'disk'; exclusive: boolean; provider: string; region: string; volumeId: string | null; snapshotIds: string[]; backup?: LoginBackup } | { kind: 'key' });
 export type LoginInput = Omit<Base, 'state'> & ({ kind: 'disk'; exclusive?: boolean; provider: string; region: string; volumeId: string | null; snapshotIds: string[] } | { kind: 'key' });
 export type LoginBinding = { login: string; host: string; role: 'writer' | 'reader'; volumeId: string | null; phase?: 'pending' | 'settled' };
@@ -21,7 +22,7 @@ export class LoginBindingRefused extends Error {
  }
 }
 const transitions: Record<LoginState, readonly LoginState[]> = {
- creating: ['ready', 'signed-out'], ready: ['in-use'], 'in-use': ['ready', 'signed-out'], 'signed-out': ['creating'],
+ creating: ['ready', 'signed-out'], ready: ['in-use','signed-out'], 'in-use': ['ready', 'signed-out'], 'signed-out': ['creating'],
 };
 
 // Shared SQL predicates keep native triggers and admission fences identical.
@@ -35,6 +36,26 @@ const bindingRow = (row:Record<string,unknown>):LoginBinding => ({login:row.logi
 export class LoginRecords {
  private clock:Clock=realClock;
  private clockSet=false;
+ /** Active disks only; retained signed-out history is never decoded at startup. */
+ *reconciliationDisks(after='',limit=64):IterableIterator<Extract<Login,{kind:'disk'}>> {
+  this.pageLimit(limit);
+  for(const row of this.db.prepare("select record from logins indexed by login_reconciliation where name>? and json_extract(record,'$.kind')='disk' and json_extract(record,'$.state') in ('ready','in-use') order by name limit ?").iterate(after,limit))yield JSON.parse(String(row.record));
+ }
+ reconciliationBindings(after={login:'',host:''},limit=64):LoginBinding[]{
+  this.pageLimit(limit);
+  return this.db.prepare("select login,host,role,volume_id as volumeId,phase from login_bindings indexed by login_reconcile_bindings where (phase is null or phase='settled') and (login,host)>(?,?) order by login,host limit ?").all(after.login,after.host,limit).map(bindingRow);
+ }
+ binding(name:string,host:string):LoginBinding|null {
+  const row=this.db.prepare('select login,host,role,volume_id as volumeId,phase from login_bindings where login=? and host=?').get(name,host);return row?bindingRow(row):null;
+ }
+ bindingEpisode(name:string,host:string):string|null {return this.db.prepare('select episode from login_bindings where login=? and host=?').get(name,host)?.episode as string??null;}
+ reconciliationVersion(name:string):string|null {return this.db.prepare('select revision from logins where name=?').get(name)?.revision as string??null;}
+ hasVolume(provider:string,id:string):boolean{
+  return !!this.db.prepare("select 1 from logins indexed by login_volume where json_extract(record,'$.provider')=? and json_extract(record,'$.volumeId')=? limit 1").get(provider,id)
+   ||!!this.db.prepare("select 1 from login_bindings b indexed by login_binding_volume join logins l on l.name=b.login where b.volume_id=? and json_extract(l.record,'$.provider')=? limit 1").get(id,provider)
+   ||!!this.db.prepare("select 1 from login_readers indexed by login_reader_volume where json_extract(record,'$.provider')=? and json_extract(record,'$.volume.id')=? limit 1").get(provider,id);
+ }
+ private pageLimit(limit:number):void{if(!Number.isSafeInteger(limit)||limit<1||limit>64)throw Error('login page limit must be 1..64');}
  useClock(clock:Clock):void {if(this.clockSet&&this.clock!==clock)throw Error('login clock already set');this.clock=clock;this.clockSet=true;}
  recordStorage(name:string,pool:string,item:LoginStorageItem):void {
   const row=this.required(name);if(row.kind!=='disk')throw Error('key login has no storage');
@@ -78,7 +99,7 @@ export class LoginRecords {
  }
  private readonly listeners = new Set<(name:string)=>void>();
  onChange(listener:(name:string)=>void):()=>void { this.listeners.add(listener); return ()=>this.listeners.delete(listener); }
- private changed(name:string):void { for(const listener of this.listeners)listener(name); }
+ private changed(name:string):void { this.db.prepare('update logins set revision=? where name=?').run(randomUUID(),name);for(const listener of this.listeners)listener(name); }
  updateBackup(name:string, backup:LoginBackup, snapshotIds?:string[]):void {
   const row=this.required(name); if(row.kind!=='disk')throw Error('key login has no disk');
   this.save({...row,backup,...(snapshotIds ? {snapshotIds} : {})});
@@ -88,9 +109,14 @@ export class LoginRecords {
   this.db = db;
   db.exec(`create table if not exists logins (name text primary key, record text not null);
    create table if not exists login_bindings (login text not null references logins(name), host text not null, role text not null, volume_id text, primary key(login,host));`);
+  if(!db.prepare('pragma table_info(logins)').all().some(row=>row.name==='revision'))db.exec("alter table logins add column revision text not null default ''");
   if (!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='phase')) db.exec('alter table login_bindings add column phase text');
+  if(!db.prepare('pragma table_info(login_bindings)').all().some(row=>row.name==='episode'))db.exec("alter table login_bindings add column episode text not null default ''");
   db.exec('create index if not exists login_bindings_pending on login_bindings(login,phase)');
+  db.exec("create index if not exists login_reconcile_bindings on login_bindings(login,host) where phase is null or phase='settled'");
+  db.exec("create index if not exists login_reconciliation on logins(name) where json_extract(record,'$.kind')='disk' and json_extract(record,'$.state') in ('ready','in-use')");
   db.exec('create table if not exists login_readers(login text not null,host text not null,harness text not null,phase text not null,record text not null,primary key(login,host)); create unique index if not exists login_readers_host on login_readers(host,harness); create index if not exists login_readers_pending on login_readers(login,phase)');
+  db.exec("create index if not exists login_volume on logins(json_extract(record,'$.provider'),json_extract(record,'$.volumeId')); create index if not exists login_binding_volume on login_bindings(volume_id,login); create index if not exists login_reader_volume on login_readers(json_extract(record,'$.provider'),json_extract(record,'$.volume.id'))");
   db.exec("create index if not exists login_reader_launch on logins(json_extract(record,'$.state'),json_extract(record,'$.kind'),json_extract(record,'$.exclusive'),json_extract(record,'$.harness'),json_extract(record,'$.provider'),json_extract(record,'$.region'),json_extract(record,'$.account'),name)");
   db.exec('savepoint login_launch_selection_migration');
   try {
@@ -242,6 +268,11 @@ export class LoginRecords {
   if(row.state==='in-use')throw Error(`login ${name} is ${row.state}`);
   this.save({...row,exclusive});return this.required(name);
  }
+ markSignedOut(name:string,receipt:{reason:string;host:string|null}):void {
+  const row=this.required(name);
+  if(row.state!=='ready'&&row.state!=='in-use')throw Error(`login ${name} cannot mark signed out from ${row.state}`);
+  this.atomic(()=>this.save({...row,state:'signed-out',signedOut:{id:randomUUID(),reason:receipt.reason,host:receipt.host,at:this.clock.now().toISOString()}}));
+ }
  transition(name: string, state: LoginState, binding?: Omit<LoginBinding,'login'>): Login {
   const row = this.required(name);
   if (!transitions[row.state].includes(state)) throw Error(`login ${name} cannot transition from ${row.state} to ${state}`);
@@ -249,7 +280,8 @@ export class LoginRecords {
   this.atomic(() => {
    if (binding && state === 'in-use') this.addBinding(row,binding);
    if (state !== 'in-use') this.db.prepare('delete from login_bindings where login=?').run(name);
-   this.save({...row,state});
+   const {signedOut,...rest}=row;
+   this.save({...rest,...(state!=='creating'&&signedOut?{signedOut}:{}),state});
   });
   return this.required(name);
  }
@@ -270,7 +302,7 @@ export class LoginRecords {
   this.atomic(() => {
    this.db.prepare('delete from login_bindings where login=? and host=?').run(name,host);
    const row = this.required(name);
-   if (row.state === 'in-use' && !this.bindings(name).length) this.save({...row,state:'ready'});
+   if (row.state === 'in-use' && !this.db.prepare('select 1 from login_bindings where login=? limit 1').get(name)) this.save({...row,state:'ready'});
    else this.changed(name);
   });
  }
@@ -285,7 +317,7 @@ export class LoginRecords {
   }
   if (row.kind === 'disk' && row.exclusive && (existing.length || binding.role !== 'writer')) throw new LoginBindingRefused('exclusive-writer','exclusive login requires a single writer');
   if (binding.role === 'writer' && existing.some(b => b.role === 'writer')) throw new LoginBindingRefused('writer-conflict','login already has a writer');
-  this.db.prepare('insert into login_bindings(login,host,role,volume_id,phase,harness) values (?,?,?,?,?,?)').run(row.name,binding.host,binding.role,binding.volumeId,binding.phase ?? null,row.harness);
+  this.db.prepare('insert into login_bindings(login,host,role,volume_id,phase,harness,episode) values (?,?,?,?,?,?,?)').run(row.name,binding.host,binding.role,binding.volumeId,binding.phase ?? null,row.harness,randomUUID());
  }
  private required(name: string): Login { const row = this.get(name); if (!row) throw Error('unknown login: '+name); return row; }
  private save(row: Login): void { this.db.prepare('update logins set record=? where name=?').run(JSON.stringify(row),row.name); this.changed(row.name); }

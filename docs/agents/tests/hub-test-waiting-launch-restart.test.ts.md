@@ -9,6 +9,10 @@ across two restarts; restored placement on a committed ready provision, pinned
 pool despite changed role defaults, exactly one spawn and no restored placed
 wait; revoked admitted actor grant after restart. Setup uses real time consistently and bounded `eventually` observations.
 The positive process-row publication, rather than the launch reply, proves placement.
+The restored-placement fixture allocates its settled login through the shared
+async `settledLogin` helper using the disposable project. Its fake-provider
+volume is positively attached to the acquired fake machine in the same region
+before restart. A metadata-only synthetic volume cannot survive reconciliation.
 Run `node --test hub/test/waiting-launch-restart.test.ts` on supported Node.
 
 

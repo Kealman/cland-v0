@@ -15036,6 +15036,13 @@
       "added": "2026-11-10",
       "expires": "2026-11-15",
       "reason": "T-1788 composed native key launch and persisted-conversation restart: macOS arm64 Node24.21.0 local fresh-process green samples [2.346074542,2.845154041,2.229101125,1.908541834,1.942492917] seconds. Includes fixture creation, two real fake OpenCode servers, prepared/bootstrap checkpoint assertions, hub and agent restart, key rotation, native close and joined cleanup; excludes test-driver startup and queue wait. Linux 4.5522464656 seconds is an unexecuted 1.6x projection, not evidence; 7 seconds is ceil(1.5x that projection). No browser, real provider or stress. Duration policy stays report mode; reviewed-head Linux verification remains required."
+    },
+    "hub/test/host-relaunch.test.ts::nested provider cleanup joins its captured machine after close rejection and leaves sibling alive": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1793 new native shared-provider cleanup control. macOS arm64 Node24.21.0 serial preservation samples3.210413292s and3.114150458s include two fake SSH/agent fixtures, exact worker readiness, planted owner-close rejection, retained metadata, captured-machine native completion and no-sibling assertion plus joined cleanup; exclude runner startup. Linux1.6x worst projects5.1366612672s (unexecuted); ceil(1.5x projection)=8s. No burner/browser/real provider or product-latency claim; duration gates report mode."
     }
   }
 }

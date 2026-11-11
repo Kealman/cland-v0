@@ -38,7 +38,7 @@ test('C1/C2 status weights sessions and clips live accrual to UTC day/month, exc
  const created='2026-10-31T23:00:00Z';
  for(const id of ['z-host','a-host']){
   new HostSecretStore(root,records,()=>{}).register({id,address:id,user:'fixture',clientKeyPath:'',knownHosts:''});
-  settledLogin(records.logins,id,'codex',{provider:id==='a-host'?'digitalocean':'fake',region:'fake-1'});
+  await settledLogin(records.logins,id,'codex',{provider:id==='a-host'?'digitalocean':'fake',region:'fake-1',project:root,clock});
   records.provisions.ready({id,pool:'agents',provider:id==='a-host'?'digitalocean':'fake',size:'fake',region:'fake-1',created,state:'ready',machine:{id,address:id,architecture:'arm64',created}});
  }
  const gate=Promise.withResolvers<void>();let entered=false;
