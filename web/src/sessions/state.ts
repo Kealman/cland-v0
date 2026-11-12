@@ -1,6 +1,7 @@
 import type { Capabilities, InboxAsk, SnapshotValues, VerificationQueue } from '../../../shared/wire/index.ts';
 
 export type SessionsState = {
+  hosts?: SnapshotValues['sessions']['hosts'];
   sessionAsks?: InboxAsk[];
   archivedSessionRows?: SnapshotValues['sessions']['rows'];
   archivedSessionsError?: string | undefined;
@@ -14,7 +15,7 @@ export type SessionsState = {
 
 export function sessionSnapshot(value: SnapshotValues['sessions'], receivedAt: number): SessionsState {
   return { sessions: value.rows, archivedSessions: value.archived, roles: value.roles,
-    verification: { queue: value.verification, receivedAt } };
+    verification: { queue: value.verification, receivedAt }, hosts: value.hosts };
 }
 
 export function replaceSession(rows: NonNullable<SessionsState['sessions']>, key: string, row: typeof rows[number] | null) {

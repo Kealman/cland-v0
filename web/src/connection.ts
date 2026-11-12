@@ -629,6 +629,9 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
       } else if (frame.type === 'verification.queue') {
         state = { ...state, verification: { queue: frame.queue, receivedAt: Date.now() } };
         changed(state);
+      } else if (frame.type === 'hosts.state') {
+        state = { ...state, hosts: frame.pools };
+        changed(state);
       } else if (frame.type === 'remote.state') {
         state = { ...state, remotes: frame.remotes };
         changed(state);

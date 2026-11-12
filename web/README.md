@@ -142,6 +142,13 @@ cells in registry order. Each cell keeps the worst window's share and meter,
 the limited reset or a dash without data; tapping opens read-only Accounts.
 Groups retain their folds and two-line rows, with actions on the session page.
 
+When host pools are configured, Hosts shows each pool's hosts, slots and logins
+per harness on desktop and phone. Its fold lists host ids, sizes, regions,
+uptime, sessions, hourly prices and today's spend. Tunnel outages and provider
+failures turn the pool summary red. Uptime advances locally; spend and other
+facts come from the hub's pushed host projection. Unknown prices stay unknown.
+With no pools the row is hidden, including when an older hub sends no projection.
+
 The `verify:` summary opens the shared queue in a full-height `BottomSheet`.
 Close or physical Escape dismisses it and restores focus to the summary. Desktop
 verification keeps its in-place queue and saved fold.

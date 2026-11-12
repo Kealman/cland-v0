@@ -7,6 +7,7 @@ import { SessionsHeader } from './SessionsHeader.tsx';
 import { AccountsStrip } from './AccountsStrip.tsx';
 import { VerifyLine } from './VerifyLine.tsx';
 import { RemotesLine } from './RemotesLine.tsx';
+import { HostsLine } from './HostsLine.tsx';
 import { SessionGroups } from './SessionGroups.tsx';
 import { SessionPage } from './SessionPage.tsx';
 
@@ -46,7 +47,7 @@ function SessionsArea(props: AreaContentProps & { page?: boolean }) {
   return <section data-area-module="Sessions" data-area-surface="pane" data-key-context="sessions">
     <SessionsHeader connection={props.connection} archived={archived} toggle={toggle} launching={!!launch} launch={aide => setLaunch(aide ? 'aide' : 'session')} />
     {launchForm}
-    <AccountsStrip {...props} /><VerifyLine {...props} /><RemotesLine {...props} /><SessionGroups {...props} controls={groups} archived={archived} />
+    <AccountsStrip {...props} /><VerifyLine {...props} /><RemotesLine {...props} /><HostsLine {...props} /><SessionGroups {...props} controls={groups} archived={archived} />
   </section>;
 }
 function SessionsPage(props: AreaContentProps) { return <SessionsArea {...props} page />; }
