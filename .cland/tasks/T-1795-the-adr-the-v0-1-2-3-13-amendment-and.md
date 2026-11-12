@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1477
 branch: t/T-1795-the-adr-the-v0-1-2-3-13-amendment-and
 created: 2026-11-09T12:44:13.008Z
-updated: 2026-11-11T21:36:35.812Z
+updated: 2026-11-12T00:18:14.091Z
 ---
 
 ## Summary
@@ -40,6 +40,7 @@ Three documents, with no existing paragraph rewritten:
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-6 · 2026-11-11T18:09:50.359Z · commit cc47bce80c424124d78c40fdaa0310cd240f17da
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-7 · 2026-11-11T19:37:03.133Z · commit 7e8782d583b3c654e1900dd568b0d66b193823e5
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-9 · 2026-11-11T21:36:35.812Z · commit ead9f7b7968ebc8a7f25f849a0bc0a71a6540695
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-10 · 2026-11-12T00:18:14.091Z · commit 1b5b4eeb5a2127413372707187af7367c6e6e124
 - [x] C2. Spec v0.1.2 §3.13 carries an appended, dated amendment naming logins on hosts and linking the ADR, with no existing paragraph changed.
   - done: impl-1795 · 2026-11-11T09:08:19.464Z
   - verified: rev-35 [reviewer] · run rev-35-1795-source-1 · 2026-11-11T09:14:25.420Z · commit 478f0a97988eed61c1cb5b1c71306ac143d86681
@@ -50,6 +51,7 @@ Three documents, with no existing paragraph rewritten:
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-6 · 2026-11-11T18:09:50.360Z · commit cc47bce80c424124d78c40fdaa0310cd240f17da
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-7 · 2026-11-11T19:37:03.133Z · commit 7e8782d583b3c654e1900dd568b0d66b193823e5
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-9 · 2026-11-11T21:36:35.812Z · commit ead9f7b7968ebc8a7f25f849a0bc0a71a6540695
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-10 · 2026-11-12T00:18:14.091Z · commit 1b5b4eeb5a2127413372707187af7367c6e6e124
 - [ ] C3. `docs/hub/logins.md` exists and covers login states, binding, release, snapshots, the key store, the login cards and reconciliation.
   - failed: rev-35 [reviewer] · 2026-11-11T21:35:27.069Z · note New interactive sign-in notes incorrectly apply the renewal interrupted-writer fence to new-login outcomes; qualify existing caller ownership. Later T1791/T1814 sections remain intentionally staged.
 - [x] C4. The closed-item wording lint passes on the three files (test).
@@ -242,5 +244,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-18891 current partial delta CLEAR: Standards0/Spec0. Sole paragraph correction resolves A-18889: renewal retains interrupted writer fence; new-login preparation retains creating row/disk ownership without invented second fence; no cleanup/success authority from elapsed time/carrier closure. One commit/one paragraph only since9f93ee62f; no dev merge/runtime/test changes. Delta8 authorized T1815/T1818 import freshness and remaining as-built notes carry unchanged. ADR/spec unchanged, C1/C2 refreshed. Candidate wording-lint observation qualified, not final exact-head configured evidence. C3 later T1791/T1814 coverage and C4/final evidence/readiness remain open under last-landing sequence. Clean ead9f7b79/tree1bb10cbe; no Reviewer execution. Hold released, retain staged claim.
+
+Criteria: C1 verified, C2 verified.
+
+### hub · 2026-11-12T00:14:17.704Z
+
+Merge-delta assessment (report-only)
+{"reviewed":"ead9f7b7968ebc8a7f25f849a0bc0a71a6540695","head":"106e3f9205b0837bf138c5fda91b14db5881de4a","dev":"91fcb511303389cb84ce9dffb904910916a1855a","mergeBase":"065cf1416ed6487f0103059f1e7aea7dccceca1e","mode":"report","rule":"conservative-runtime-coupling-v1","result":"overlapping","branchPaths":["docs/adr/0009-login-storage-boundary.md","docs/hub/logins.md","docs/spec/v0.1.2.md"],"devPaths":[".agents/skills/implement/CHANGES/T-1791-login-cards.md",".agents/skills/implement/SKILL.md",".cland/tasks/T-1791-signing-in-from-a-card.md",".cland/tasks/T-1795-the-adr-the-v0-1-2-3-13-amendment-and.md","docs/agents/host-agent.md","docs/agents/tests/hub-test-discord-api.test.ts.md","docs/agents/tests/hub-test-hub-cards.test.ts.md","docs/agents/tests/hub-test-login-card-recovery.test.ts.md","docs/agents/tests/hub-test-login-card-signin-owner.test.ts.md","docs/agents/tests/hub-test-login-card-signin-remote.test.ts.md","docs/agents/tests/hub-test-login-card-signin.test.ts.md","docs/agents/tests/hub-test-login-wait.test.ts.md","docs/agents/tests/hub-test-telegram-api.test.ts.md","docs/agents/tests/index.md","docs/hub/asks-and-the-inbox.md","docs/hub/logins.md","docs/hub/ssh-host.md","hub/README.md","hub/src/host/login-add.ts","hub/src/host/login-card-intents.ts","hub/src/host/login-card-signin.ts","hub/src/host/login-signin-output.ts","hub/src/hub/daemon.ts","hub/src/hub/dispatch.ts","hub/src/hub/hub-cards.ts","hub/src/hub/server.ts","hub/src/hub/store.ts","hub/src/remote/discord-api.ts","hub/src/remote/discord.ts","hub/src/remote/gateway.ts","hub/src/remote/ingress.ts","hub/src/remote/secret-answer.ts","hub/src/remote/signin-link.ts","hub/src/remote/state.ts","hub/src/remote/telegram-api.ts","hub/src/remote/telegram-prompts.ts","hub/src/remote/telegram.ts","hub/test/discord-api.test.ts","hub/test/durations.json","hub/test/fakes/discord/fake-api.ts","hub/test/fakes/messenger.ts","hub/test/fakes/telegram/fake-api.ts","hub/test/harness.ts","hub/test/host-create-fixture.ts","hub/test/hub-cards.test.ts","hub/test/login-card-fixture.ts","hub/test/login-card-recovery.test.ts","hub/test/login-card-signin-owner.test.ts","hub/test/login-card-signin-remote.test.ts","hub/test/login-card-signin-trace.ts","hub/test/login-card-signin.test.ts","hub/test/login-wait.test.ts","hub/test/telegram-api.test.ts","hub/test/tiers.json","qa/briefs/E-1535-stage-1.md","qa/briefs/E-1535-stage-3.md"],"overlap":["docs/hub/logins.md"],"dependency":{"status":"known","importers":[]},"patchIdCurrent":true}
+Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove behavioral independence.
+
+### rev-35 · 2026-11-12T00:18:14.091Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1795-delta-10
+commit: 1b5b4eeb5a2127413372707187af7367c6e6e124
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18912 current partial delta CLEAR: Standards0/Spec0. Request cites Coordinator613b1929 single-merge authorization; imported T1791 runtime/tests/skills/QA/shared docs byte-identical to reviewed26b09338a/A18905, landing3cf treeadd45685. Clean merge106e3f920; appended44lines only after imported reference, prior interactive section exact, no duplicate heading. Task nontracker delta only3docs290add/0delete;ADR/spec unchanged,C1/C2 refreshed. Added orchestration/secret-memory-only answer/registry/redaction/deletion obligation+retry+join/expiry/unknown cuts/bounded recovery notes match landed source. ExplicitHTMLmarker reserves T1814; no unlanded recovery claim. A18911 candidate local wording observation qualified727docs/1817items0findings,not finalC4proof. Clean1b5b4eeb5/tree001e8e06;no Reviewer execution. Holdreleased; stagedclaim retained. C3 T1814section and C4/final exact-head evidence/readiness remain open; T1795 lands last.
 
 Criteria: C1 verified, C2 verified.
