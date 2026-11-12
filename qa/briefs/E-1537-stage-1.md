@@ -65,6 +65,12 @@ Each read with `task view <id> --json` at `8a9e0b474` and again at `8913e8ab4` (
 - **Exact strings** are counted by `src.mjs` with `String.split`; tree-wide checks use `git grep` at `$S` through the wrapper, excluding `qa/briefs/` and `.cland/`.
 - **The preservation lock** `/tmp/cland-preserve.lock`: `mkdir` must exit 0, owner file, owner-checked literal-path release; one native file per slot, at most 15 minutes (`std.mjs` exits 124: INCONCLUSIVE); a held lock is BLOCKED for now (retry later; never remove another owner's lock).
 
+### Run 1 corrections (qa-678, A-19085, clear at `88e9f9596`)
+
+- **R-1 (row 99's dead source-worktree receipts).** The brief inferred zero new fixture-owner receipts. The run found 35 dead receipts naming the source worktree (24 `nvim/test/shell.test.ts`, 1 `sessions-lifecycle`, 10 `hub/test/daemon.test.ts`): every owner PID absent, no open handle, fixture roots gone, producers byte-identical to pre-stage BASE `94b73e73c` (A-19083). Row 99 accepts exactly such attributed dead receipts from unchanged producers as low found aside of the T-1676 class; a live, unattributed or later receipt needs its own trace and otherwise stays a finding. Receipts are left in place.
+- **Run-T receipts.** 30 dead receipts inside the run's own T directory came from the unchanged `nvim/test/stub-hub.ts` during row 45 (A-19084); cleanup step 1 removes them by literal path after the evidence is published, and the verdict names them as found aside.
+- **Inventory note.** A per-file snapshot that lists only a receipt directory's top-level name misses receipts added inside an existing directory; list the entries inside receipt directories too.
+
 ## Stage
 
 - Epic: E-1537 (Workbenches, doctor, setup and docs for hosts).
