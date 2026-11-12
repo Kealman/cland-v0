@@ -24,11 +24,15 @@ export class HostsState {
   #at = -Infinity;
   #spendAt = 0;
   #closed = false;
+  #loginDirty = false;
   #unsubscribers: (() => void)[] = [];
   constructor(options: Options) { this.#o = options; }
   read = (): HostsStatePool[] => this.#rows;
   async start(): Promise<void> {
-    this.#unsubscribers = [this.#o.records.provisions.onChange(this.changed), this.#o.records.logins.onChange(this.changed)];
+    this.#unsubscribers = [this.#o.records.provisions.onChange(this.changed), this.#o.records.logins.onChange(() => {
+      this.#loginDirty = true;
+      this.changed();
+    })];
     if (this.#closed) return;
     this.#spendAt=this.#o.clock.now().getTime();
     this.#flush();
@@ -63,7 +67,10 @@ export class HostsState {
         slotsUsed:provisions.reduce((sum,row) => { const usage=o.usage(row.id); return sum+(usage.usedMilli+usage.promisedMilli)/1000; },0),
         slotsTotal:hosts.length*pool.slots,logins:o.records.logins.poolSummary(pool.provider,pool.region,provisions.map(row=>row.id)),alert,hosts};
     });
-    if (isDeepStrictEqual(rows,this.#rows) && this.#at !== -Infinity) return;
+    // Login metadata is read through login.list. Its consumers need this
+    // invalidation even when a binding swap preserves every aggregate count.
+    if (isDeepStrictEqual(rows,this.#rows) && this.#at !== -Infinity && !this.#loginDirty) return;
+    this.#loginDirty = false;
     this.#rows=rows; this.#at=now; o.publish(rows);
   }
   async close(): Promise<void> {

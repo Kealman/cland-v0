@@ -59,4 +59,8 @@ three-minute unreachable state and General notice. Recovery clears that alert.
 Pool creation refusal/rate-limit pause sets a provider alert until successful
 creation; an outage takes display precedence when both exist. Pool configuration,
 placement, session exit and login changes trigger the same publication owner.
+Login mutations publish a coalesced replacement even when the aggregate counts
+are equal, allowing the web's open Hosts view to refresh `login.list` metadata.
+The view confirms Stop with the host name and session count, displays the host
+state, and retains a returned incomplete deletion state and reason on that line.
 Connect and snapshot use cached state; no network or ledger read runs there.

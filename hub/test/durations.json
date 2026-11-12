@@ -12177,6 +12177,27 @@
     "nvim/test/sessions.test.ts::recorded host session names its host on row and selected meta; local omits it": 0.297018
   },
   "allow": {
+    "web/test/hosts-view.test.ts::Hosts login binding swap with equal pool totals renders from the durable mutation within one second": {
+      "seconds": 5.5,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1825 real producer-to-browser equal-total mutation regression; macOS green peak 2.158928s, 5.5s projects at least 2.5x load headroom. Behaviour retains its exact one-second bound."
+    },
+    "web/test/hosts-view.test.ts::Hosts Stop preserves cancellation and reports native deletion outcome: confirmed false": {
+      "seconds": 8.2,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1825 incomplete-deletion control retains the same fake-machine/browser lifecycle as the confirmed Stop sibling; shared fixture peak 3.259630s macOS, 8.2s projects at least 2.5x load headroom."
+    },
+    "web/test/hosts-view.test.ts::Hosts Stop preserves cancellation and reports native deletion outcome: confirmed true": {
+      "seconds": 8.2,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1825 real authenticated web stop plus scratch hub, fake machine and isolated browser lifecycle. Local macOS worst 3.259630 s with adjacent Web file; 8.2 s projects at least 2.5x that sample for Linux/full-suite load."
+    },
     "hub/test/login-resignin-native.test.ts::native bound Codex renews its own dead credential home without replacing the disk": {
       "seconds": 11,
       "owner": "C-216",

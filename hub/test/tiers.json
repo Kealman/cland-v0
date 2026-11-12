@@ -1029,6 +1029,7 @@
     "web/test/events.test.ts": "Web",
     "web/test/folds.test.ts": "Web",
     "web/test/graph.test.ts": "Web",
+    "web/test/hosts-view.test.ts": "Web",
     "web/test/hosts.test.ts": "Web",
     "web/test/inbox.test.ts": "Web",
     "web/test/item-card.test.ts": "Web",
