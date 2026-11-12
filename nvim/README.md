@@ -22,6 +22,14 @@ Neovim's state and `nvim.log` live in `${XDG_STATE_HOME:-~/.local/state}/cland-n
 
 ## The shell
 
+The Sessions panel shows Hosts after Remotes when pools are configured. Each pool
+shows host, slot and harness login counts; an outage or provider failure turns
+its line red and names the cause. `za` on Hosts expands each host's id, size,
+region, uptime, sessions, hourly price and spend today. Unknown prices stay
+unknown. Session rows and selected details name their host, wrapping long identities onto
+continuation lines when needed; local sessions omit it.
+These facts arrive in pushed frames; an older hub without the frame hides Hosts.
+
 For a session on a host, Enter opens the hub's pinned `ssh -t` attach command. The pending note names the session and host; a refused attach displays the hub's reason. `:restart` attaches previously attached host sessions again through the same hub command.
 
 Shell changes use the central panel-home/placement helpers, keeping semantic homes separate from physical-side sizes. Each window retains its own size, mode and reading position; preference extensions validate independently within the area's versioned key and preserve unrelated fields on fallback. Row-count-changing projections publish source-line mappings, and file-backed view caches key by file identity and layout and bypass unsaved buffers (A-8634 R10; T-796, T-1000, T-1001, T-1002, T-1004, T-1005, T-995, T-996, T-997).

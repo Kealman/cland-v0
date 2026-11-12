@@ -346,6 +346,7 @@ local function wire_client(client)
     state.changed()
   end)
   client:on('connected', function()
+    state.S.hosts = nil
     state.S.remotes = nil -- reconnecting to an older hub must not retain stale facts
     state.S.viewer_user_id = nil
     client:request({ type = 'user.list' }, function(err, value)
@@ -411,6 +412,10 @@ local function wire_client(client)
     state.changed()
   end)
   client:on('account', function(event) state.upsert_account(event.account) end)
+  client:on('hosts.state', function(event)
+    state.S.hosts = event.pools
+    state.changed()
+  end)
   client:on('remote.state', function(event)
     state.S.remotes = event.remotes
     state.changed()

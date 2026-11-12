@@ -171,6 +171,7 @@ function M.session_meta_parts(s)
   if type(s.account) == 'string' and s.account ~= '' and not s.account:match('^default:') then
     head[#head + 1] = s.account
   end
+  if type(s.host) == 'string' and s.host ~= '' then head[#head + 1] = s.host end
   local tail = s.stateReason or M.session_words(s)
   local usage = s.live and M.usage_text(s.usage) or nil
   if usage then
@@ -266,11 +267,18 @@ local function session_row(c, s, group)
   elseif type(s.pending) == 'table' and type(s.pending.item) == 'string' then
     item_text = s.pending.item .. ' ' .. s.pending.kind
   end
+  local host = type(s.host) == 'string' and s.host ~= '' and s.host or nil
+  local inline_host = host and sw(' ' .. g .. ' ' .. s.name .. role .. ' · ' .. host) + sw(item_text .. ' ') + 1 <= c.width
   c:add(
-    { { sel and '▎' or ' ', 'ClandBlue' }, { g, ghl }, { ' ' }, { s.name, down and 'ClandDim' or 'ClandBold' }, { role, down and 'ClandDim' or 'ClandTeal' } },
+    { { sel and '▎' or ' ', 'ClandBlue' }, { g, ghl }, { ' ' }, { s.name, down and 'ClandDim' or 'ClandBold' }, { role, down and 'ClandDim' or 'ClandTeal' }, { inline_host and (' · ' .. host) or '', 'ClandDim' } },
     { { item_text .. ' ', item_hl } },
     { session = s.name, group = group }
   )
+  if host and not inline_host then
+    for _, line in ipairs(M.wrap('on ' .. host, math.max(1, c.width - 3))) do
+      c:add({ { '   ' .. line, 'ClandDim' } }, nil, { session = s.name, group = group, detail = true })
+    end
+  end
   if not sel then
     return
   end
@@ -283,7 +291,11 @@ local function session_row(c, s, group)
   tail = M.session_words(s)
   local mhl = down and 'ClandRed' or 'ClandDim'
   local meta = '   ' .. head .. ' · ' .. tail
-  if sw(meta) <= c.width then
+  if host and sw(meta) > c.width then
+    for _, line in ipairs(M.wrap(head .. ' · ' .. tail, math.max(1, c.width - 3))) do
+      c:add({ { '   ' .. line, mhl } }, nil, { session = s.name, group = group, detail = true })
+    end
+  elseif sw(meta) <= c.width then
     c:add({ { meta, mhl } }, nil, { session = s.name, group = group, detail = true })
   else
     -- too wide for the panel: the state words on a line of their own
@@ -328,6 +340,7 @@ local function render_sessions(c)
     end
     c:add({})
   end
+  require('cland.hosts').render(c, wrapped)
   local confirm = state.S.ui.confirm
   if confirm then
     if confirm.kind == 'resume' then
@@ -437,18 +450,18 @@ function M.sessions_cursor(b)
   end
 end
 
---- Accounts fold on their header; all-fold keys affect Background only.
+--- Accounts and Hosts fold on their headers; all-fold keys affect Background only.
 function M.session_fold(b, how)
   local info = M.row_at(b, api.nvim_win_get_cursor(0)[1])
-  if info and info.fold == 'accounts' and how ~= 'all open' and how ~= 'all closed' then
-    state.set_fold('accounts', how == 'toggle' and not state.folded('accounts') or how == 'close')
+  if info and (info.fold == 'accounts' or info.fold == 'hosts') and how ~= 'all open' and how ~= 'all closed' then
+    state.set_fold(info.fold, how == 'toggle' and not state.folded(info.fold) or how == 'close')
     state.changed()
     return
   end
   if how == 'all open' or how == 'all closed' then
     state.set_fold('stopped', how == 'all closed')
   elseif not (info and (info.fold == 'stopped' or info.group == 'background')) then
-    return state.say('za folds Accounts or background sessions: put the cursor on a header')
+    return state.say('za folds Accounts, Hosts or background sessions: put the cursor on a header')
   else
     state.set_fold('stopped', how == 'toggle' and not state.folded('stopped') or how == 'close')
   end
@@ -617,7 +630,7 @@ function M.session_keys(b)
   for lhs, how in pairs({ za = 'toggle', zo = 'open', zc = 'close', zR = 'all open', zM = 'all closed', ['<Tab>'] = 'toggle' }) do
     map(lhs, function()
       M.session_fold(b, how)
-    end, 'accounts or background sessions: ' .. how)
+    end, 'accounts, hosts or background sessions: ' .. how)
   end
   map('A', function()
     state.S.ui.sessions_archive = not state.S.ui.sessions_archive

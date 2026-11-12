@@ -21,6 +21,7 @@ function M.reset(opts)
     adapters = {}, -- harness → capability table
     hub_coordinator = nil, -- { name = <live holder> | nil } once the hub said (hub.status, role.vacant, role.filled)
     crew = nil, -- effective staffing snapshot and summary
+    hosts = nil, -- pushed hosts.state; absent on older hubs
     remotes = nil, -- safe remote.state replacement; nil for an older hub
     verification = nil, -- versioned queue snapshot, from hub.status and verification.queue
     roles = {}, -- role.list's roles: {role, label, exclusive, launch = {harness, model, effort}, holders}
@@ -50,6 +51,7 @@ function M.reset(opts)
       current_release = nil, -- the human's selected open container; nil uses the semver current release
       sessions_sel = nil, -- the cursor-selected session, expanded in the panel
       accounts_folded = false,
+      hosts_folded = true,
       sessions_stopped_folded = true, -- the background layer (legacy key: stopped)
       sessions_archive = false,
       inbox_archive = false,
@@ -168,6 +170,7 @@ function M.sessions(include_archived)
       harness = p.harness,
       model = p.model,
       account = p.account,
+      host = p.host,
       cwd = p.cwd,
       state = live and (p.state or 'unknown') or 'unknown',
       stateReason = live and p.stateReason or nil,
@@ -268,11 +271,13 @@ function M.reliability(s)
 end
 
 function M.folded(key)
+  if key == 'hosts' then return M.S.ui.hosts_folded end
   if key == 'accounts' then return M.S.ui.accounts_folded end
   return key == 'stopped' and M.S.ui.sessions_stopped_folded
 end
 
 function M.set_fold(key, folded)
+  if key == 'hosts' then M.S.ui.hosts_folded = folded end
   if key == 'stopped' then M.S.ui.sessions_stopped_folded = folded end
   if key == 'accounts' then M.S.ui.accounts_folded = folded end
 end

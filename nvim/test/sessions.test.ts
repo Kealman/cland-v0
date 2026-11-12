@@ -226,3 +226,33 @@ test('recorded deaf health renders while older session rows still render idle', 
   assert.ok(screen.includes('· deaf'));
   assert.equal(await c.lua("return require('cland.panels').session_words({live=true, state='busy', stateReason='deaf'})"), 'deaf');
 });
+
+
+test('recorded host session names its host on row and selected meta; local omits it', { skip }, async t => {
+  const host = 'host-12345678-1234-1234-1234-123456789abc';
+  const c = await startSessions(t, s => { s.processes = [{ ...proc('remote-worker', 'implementer', 'idle', 'a-long-model-name'), host, account: 'a-long-account-name' }, proc('local-worker', 'reviewer', 'idle')]; });
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.right)");
+  await c.control({ emit: { type: 'hosts.state', pools: [] } });
+  const rendered = () => c.lua<Array<{text:string;session?:string;detail?:boolean;width:number}>>(`local p=require('cland.panels');local b=p.bufs.sessions;local out={}
+    for r,l in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do local i=p.rows[b][r] or {};out[#out+1]={text=l,session=i.session,detail=i.detail,width=vim.api.nvim_strwidth(l)} end;return out`);
+  for (const width of [40, 30, 100]) {
+    await c.input('<Esc>gg');
+    await c.lua("require('cland.state').S.ui.sessions_sel=nil;vim.api.nvim_win_set_width(0,...);require('cland.state').changed()", width);
+    await c.waitScreen(s => s.includes('remote-worker'), 'rendered remote row', 1000);
+    const rows = await rendered();
+    const rowText = rows.filter(r=>r.session==='remote-worker').map(r=>r.text.trim()).join('').replaceAll(' ', '');
+    assert.ok(rowText.includes(host), `complete host on unselected row at ${width}: ${rowText}`);
+    assert.ok(rows.every(r=>r.width<=width));
+    await c.input('/remote-worker<CR>');
+    await c.waitScreen(s => s.includes('Claude Code'), 'selected meta rendered', 1000);
+    const selected = await rendered();
+    const text = selected.filter(r=>r.session==='remote-worker').map(r=>r.text.trim()).join('').replaceAll(' ', '');
+    assert.equal(text.split(host).length-1, 2, `full identity on row and meta at ${width}: ${text}`);
+    assert.ok(selected.every(r=>r.width<=width));
+    assert.ok(selected.some(r=>r.text.includes('local-worker')&&!r.text.includes('host-')));
+    await c.input('j');
+    assert.equal(await c.lua("return require('cland.panels').row_at(vim.api.nvim_get_current_buf(),vim.api.nvim_win_get_cursor(0)[1]).session"), 'local-worker');
+
+  }
+  assert.equal(await c.lua("for _,s in ipairs(require('cland.state').sessions()) do if s.name=='local-worker' then return require('cland.panels').session_meta(s) end end"), 'Claude Code · opus · idle');
+});

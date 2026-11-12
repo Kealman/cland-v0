@@ -13,3 +13,13 @@ covered in nvim/test/remotes.test.ts, not inferred from replayed pushes.
 
 T-1472 adds an optional stateReason `deaf` row beside a legacy row with no health
 fields. Refresh the same recorded slice; assert the rendered row and words.
+
+
+Host placement keeps the process row's optional host through the client projection.
+The recorded host-session case uses a full host UUID, long model and account at
+40, 30 and 100 columns. It requires the complete host on the unselected row,
+selects it with native search keys and requires it again in the wrapped meta.
+Every rendered line must fit the panel; host continuations retain session row
+metadata and participate in the existing detail-skipping cursor behavior. A local row
+and local meta remain without a host. Regenerate the sessions slice when changing
+these recorded process shapes.

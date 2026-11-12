@@ -15426,6 +15426,13 @@
       "added": "2026-11-12",
       "expires": "2026-11-19",
       "reason": "T-1813 macOS arm64 Node24.21 local fake-only five lone fresh-process green test-seconds [4.910797916000001, 4.586471083, 4.770426542, 5.280245165999999, 5.024243749999999]. Includes native setup, durable signal/renewal assertions and joined cleanup; excludes producer startup and slot wait. Linux 1.6x is an unexecuted projection; allowance ceil(1.5x projection). No real provider, account, browser or stress; duration policy report mode."
+    },
+    "nvim/test/hosts-native.test.ts::fake host tunnel loss renders red within one second and recovery clears the native pool row": {
+      "seconds": 13,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1821 macOS arm64 Node 24.21 native fake-provider and headless Neovim sample 5.211s including setup and joined cleanup; Linux 1.6x is an unexecuted projection, allowance ceil(1.5x projection). No real provider or browser. Duration policy report mode."
     }
   }
 }
