@@ -3,7 +3,7 @@ id: T-1827
 kind: task
 title: Adding a login and signing in again from the hosts view
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-12T10:07:20.982Z
-updated: 2026-11-12T10:07:26.115Z
+updated: 2026-11-12T18:07:56.913Z
 ---
 
 ## Summary

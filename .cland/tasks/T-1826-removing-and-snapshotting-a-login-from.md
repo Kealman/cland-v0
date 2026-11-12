@@ -3,7 +3,7 @@ id: T-1826
 kind: task
 title: Removing and snapshotting a login from the hosts view
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-12T10:07:20.735Z
-updated: 2026-11-12T10:07:25.672Z
+updated: 2026-11-12T18:07:56.645Z
 ---
 
 ## Summary

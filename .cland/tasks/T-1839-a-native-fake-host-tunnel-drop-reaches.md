@@ -3,7 +3,7 @@ id: T-1839
 kind: task
 title: A native fake-host tunnel drop reaches the hosts.state outage alert, and QA can trigger it
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-12T14:10:23.892Z
-updated: 2026-11-12T14:10:31.692Z
+updated: 2026-11-12T18:07:57.581Z
 ---
 
 ## Summary

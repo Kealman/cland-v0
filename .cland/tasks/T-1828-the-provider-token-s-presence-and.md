@@ -3,7 +3,7 @@ id: T-1828
 kind: task
 title: The provider token's presence and fingerprint from the hub's environment
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-12T10:07:21.146Z
-updated: 2026-11-12T10:07:26.351Z
+updated: 2026-11-12T18:07:57.305Z
 ---
 
 ## Summary

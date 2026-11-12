@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T14:47:20.399Z
-updated: 2026-11-04T14:47:20.399Z
+updated: 2026-11-12T18:00:32.067Z
 ---
 
 ## Summary
@@ -34,3 +34,9 @@ Each fixture removes the fallback endpoints, placeholder files and owner receipt
 
 - [ ] C1. After each named file, TMPDIR holds no fallback endpoint, placeholder socket file or owner receipt that the file created (test).
 - [ ] C2. The same holds when a test in those files fails (test).
+
+## Comments
+
+### coord · 2026-11-12T18:00:32.067Z
+
+More evidence (E-1537 stage-1 QA, qa-678, at 88e9f9596, 2026-11-12 18:00Z, A-19083): 35 new dead fixture-owner receipts naming the source worktree, from unchanged producers: 24 nvim/test/shell.test.ts, 1 sessions-lifecycle, 10 hub/test/daemon.test.ts. Every owner PID absent, no open handles, fixture roots gone. The producers (nvim client/stub-hub/harness, shell and lifecycle files, CLI hub.ts, shared/fixture-ownership.ts, harness.ts startDaemon/killDaemon) are byte-identical to pre-stage BASE 94b73e73c. Accepted in that run as found aside (run correction R-1); receipts left in place.

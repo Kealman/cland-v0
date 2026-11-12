@@ -3,7 +3,7 @@ id: T-1825
 kind: task
 title: "The web's hosts view: hosts with `Stop`, and the logins"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-12T10:07:20.571Z
-updated: 2026-11-12T10:07:25.258Z
+updated: 2026-11-12T18:07:56.245Z
 ---
 
 ## Summary
