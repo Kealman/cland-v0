@@ -41,3 +41,27 @@ No wire, native lifecycle, authority or keyboard contract changes. Native T3
 receipts remain with the merge occasion; T4 and real stage QA run on dev under
 the epic brief. Mode-free Linux verification after source review supplies
 T1/selected T2/Web evidence; local targeted macOS results are partial evidence.
+
+`Hosts Remove confirms and cancels disk login deletion` covers C1: a real fake
+volume with a snapshot remains after Cancel and fold/reopen, a fresh confirmation
+names the login and volume/snapshot deletion, and confirmed removal commits an
+empty local-human `login.list` before the DOM row disappears. Provider inventory
+then proves both resources gone. The key variant checks no Snapshot action,
+confirmation of key-file deletion, retained encrypted file after Cancel/folding,
+and removal of that file with an empty `login.list`.
+
+`Hosts Remove hides bound actions and keeps hub refusal on the retained login`
+covers C2: after startup reconciliation completes, the view-boundary fixture
+creates a fake-provider disk and binds it through LoginRecords, keeping the
+FakeClock still. Both current `login.list` state/binding and rendered in-use/host
+text are positively asserted before checking that Remove is absent; a creating login receives the same
+running-sign-in refusal through the web as the local human socket. The login list
+is deep-equal before/after refusal and the row remains rendered.
+
+`Hosts Snapshot reports durable success and provider window refusal on the disk
+line` covers C3/C4: the authenticated web action commits one snapshot id visible
+in `login.list`, the provider confirms that snapshot, and the line names the id.
+A second action inside the fake provider's window displays its `rate limited`
+refusal and retains the exact snapshot id set. The hub and page Date share one
+FakeClock; no real provider or sign-in runs. These four added cases are Web-only;
+no hub producer, connect order, wire shape, authority or native lifecycle changed.

@@ -2,6 +2,8 @@
 import test, { before } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
+import { writeLoginKey } from '../../hub/src/host/login-keys.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { projectHub } from '../../hub/test/harness.ts';
 import { testHost } from '../../hub/src/host/test-host.ts';
@@ -23,7 +25,7 @@ import { Store } from '../../hub/src/hub/store.ts';
 import { webFixture, resizePage } from './harness.ts';
 import { connectUi } from '../../hub/test/harness.ts';
 import type { HubFrame, HostsStatePool } from '../../shared/wire/index.ts';
-import { until } from '../../hub/test/until.ts';
+import { until, testWaitMs } from '../../hub/test/until.ts';
 
 before(() => ensureWebBuild(fileURLToPath(new URL('../../', import.meta.url))));
 
@@ -215,4 +217,147 @@ for (const phone of [false, true]) test(`Hosts view lists login metadata and ref
       });
     });
   }, { phone });
+});
+
+for (const kind of ['disk', 'key'] as const) test(`Hosts Remove confirms and cancels ${kind} login deletion`, async t => {
+  const clock = new FakeClock(Date.now()), processes = fakeLockProcesses().processes;
+  const f = await webFixture(t, { clock, prepare: async root => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    await writeFile(join(root, '.cland/config.toml'), '[hosts.agents]\nprovider="fake"\nregion="fake-1"\nmin_hosts=0\n');
+  }, startHub: (root, env, options) => projectHub(t, root,
+    fixtureEnvironment(root, env, { CLAND_FAKE_HOST_ROOT: root }), { ...options, processes, droplet: { processes } }) });
+  const provider = new FakeHostProvider({ env: f.hub.hostEnvironment, now: () => clock.now().getTime() });
+  const store = new Store(join(f.root, '.cland/hub.db'));
+  let volumeId = '', snapshotId = '';
+  try {
+    if (kind === 'disk') {
+      const made = await provider.createVolume({ project: f.root, name: 'work', region: 'fake-1', sizeGiB: 1 });
+      assert.ok(made.state === 'created'); volumeId = made.volume.id;
+      const snap = await provider.snapshotVolume(made.volume);
+      assert.ok(snap.state === 'snapshotted'); snapshotId = snap.snapshot.id;
+      store.hosts.logins.insert({ name: 'work', kind, harness: 'codex', account: 'work', provider: 'fake', region: 'fake-1', volumeId, snapshotIds: [snapshotId], lastSignIn: null });
+    } else {
+      writeLoginKey(f.root, 'sentinel-project', 'work', 'SENTINEL-web-key');
+      store.hosts.logins.insert({ name: 'work', kind, harness: 'opencode', account: 'work', lastSignIn: null });
+    }
+    store.hosts.logins.transition('work', 'ready');
+  } finally { store.close(); }
+  const cli = await connectUi(t, f.hub.discovery, 'cli');
+  const listed = async () => { const reply = await cli.request({ type: 'login.list' }); assert.equal(reply.ok, true); return reply.value as Array<{ name: string }>; };
+  await f.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    const row = page.locator('[data-login-name="work"]');
+    if (kind === 'key') assert.equal(await row.getByRole('button', { name: 'Snapshot', exact: true }).count(), 0);
+    const remove = row.getByRole('button', { name: 'Remove', exact: true });
+    await remove.click({ timeout: testWaitMs(1500) });
+    const group = row.getByRole('group', { name: 'Confirm Remove work' });
+    assert.match(await group.innerText(), kind === 'disk' ? /work.*volume and snapshots.*deleted/s : /work.*key file.*deleted/s);
+    await group.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await remove.waitFor(); assert.deepEqual((await listed()).map(r => r.name), ['work']);
+    await remove.click();
+    const fold = page.getByRole('button', { name: 'Fold Hosts', exact: true });
+    await fold.click(); await fold.click(); await remove.waitFor();
+    assert.equal(await group.count(), 0);
+    assert.deepEqual((await listed()).map(r => r.name), ['work']);
+    if (kind === 'disk') {
+      assert.equal((await provider.listVolumes({ project: f.root })).state, 'listed');
+      assert.equal((await provider.getSnapshot(snapshotId)).state, 'found');
+    } else assert.equal(existsSync(join(f.root, '.cland/auth/work.key')), true);
+    await remove.click();
+    const removed = until(async () => (await listed()).length === 0, { what: 'login removal committed' });
+    void removed.catch(() => {});
+    try { await group.getByRole('button', { name: 'Confirm', exact: true }).click(); await removed; }
+    finally { await Promise.allSettled([removed]); }
+    await row.waitFor({ state: 'detached' });
+    assert.deepEqual(await listed(), []);
+    if (kind === 'disk') {
+      assert.deepEqual(await provider.listVolumes({ project: f.root }), { state: 'listed', volumes: [] });
+      assert.equal((await provider.getSnapshot(snapshotId)).state, 'failed');
+    } else assert.equal(existsSync(join(f.root, '.cland/auth/work.key')), false);
+  });
+});
+
+test('Hosts Snapshot reports durable success and provider window refusal on the disk line', async t => {
+  const clock = new FakeClock(Date.now()), processes = fakeLockProcesses().processes;
+  const f = await webFixture(t, { clock, prepare: async root => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    await writeFile(join(root, '.cland/config.toml'), '[hosts.agents]\nprovider="fake"\nregion="fake-1"\nmin_hosts=0\n');
+  }, startHub: (root, env, options) => projectHub(t, root,
+    fixtureEnvironment(root, env, { CLAND_FAKE_HOST_ROOT: root }), { ...options, processes, droplet: { processes } }) });
+  const provider = new FakeHostProvider({ env: f.hub.hostEnvironment, now: () => clock.now().getTime() });
+  const made = await provider.createVolume({ project: f.root, name: 'work', region: 'fake-1', sizeGiB: 1 });
+  assert.ok(made.state === 'created');
+  const store = new Store(join(f.root, '.cland/hub.db'));
+  try {
+    store.hosts.logins.insert({ name: 'work', kind: 'disk', harness: 'codex', account: 'work', provider: 'fake', region: 'fake-1', volumeId: made.volume.id, snapshotIds: [], lastSignIn: null });
+    store.hosts.logins.transition('work', 'ready');
+  } finally { store.close(); }
+  const cli = await connectUi(t, f.hub.discovery, 'cli');
+  const listed = async () => { const reply = await cli.request({ type: 'login.list' }); assert.equal(reply.ok, true); return reply.value as Array<{ name: string; snapshotIds: string[] }>; };
+  await f.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    const row = page.locator('[data-login-name="work"]'), snapshot = row.getByRole('button', { name: 'Snapshot', exact: true });
+    await row.waitFor();
+    const committed = until(async () => (await listed())[0]?.snapshotIds.length === 1, { what: 'snapshot committed to login list' });
+    void committed.catch(() => {});
+    try { await snapshot.click({ timeout: testWaitMs(1500) }); await committed; }
+    finally { await Promise.allSettled([committed]); }
+    await row.getByRole('status').waitFor();
+    const after = await listed();
+    assert.equal(after[0]!.snapshotIds.length, 1);
+    const id = after[0]!.snapshotIds[0]!;
+    assert.match(await row.getByRole('status').innerText(), new RegExp('snapshotted: ' + id));
+    assert.equal((await provider.getSnapshot(id)).state, 'found');
+    await snapshot.click();
+    await row.getByRole('alert').waitFor();
+    assert.match(await row.getByRole('alert').innerText(), /refused: rate limited/);
+    assert.deepEqual((await listed())[0]!.snapshotIds, [id]);
+    assert.equal((await provider.getSnapshot(id)).state, 'found');
+  });
+});
+
+test('Hosts Remove hides bound actions and keeps hub refusal on the retained login', async t => {
+  const clock = new FakeClock(Date.now()), processes = fakeLockProcesses().processes;
+  const f = await webFixture(t, { clock, prepare: async root => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    await writeFile(join(root, '.cland/config.toml'), '[hosts.agents]\nprovider="fake"\nregion="fake-1"\nmin_hosts=0\n');
+    const store = new Store(join(root, '.cland/hub.db'));
+    try {
+      for (const name of ['signing']) {
+        store.hosts.logins.insert({ name, kind: 'disk', harness: 'codex', account: name, provider: 'fake', region: 'fake-1', volumeId: 'v-' + name, snapshotIds: [], lastSignIn: null });
+      }
+    } finally { store.close(); }
+  }, startHub: (root, env, options) => projectHub(t, root, fixtureEnvironment(root, env, { CLAND_FAKE_HOST_ROOT: root }), { ...options, processes, droplet: { processes } }) });
+  // Startup reconciliation is complete before this view-boundary fixture is admitted.
+  // A real fake-provider disk avoids a missing-volume state; the clock stays still.
+  const provider = new FakeHostProvider({ env: f.hub.hostEnvironment, now: () => clock.now().getTime() });
+  const made = await provider.createVolume({ project: f.root, name: 'bound', region: 'fake-1', sizeGiB: 1 });
+  assert.ok(made.state === 'created');
+  const store = new Store(join(f.root, '.cland/hub.db'));
+  try {
+    store.hosts.logins.insert({ name: 'bound', kind: 'disk', harness: 'codex', account: 'bound', provider: 'fake', region: 'fake-1', volumeId: made.volume.id, snapshotIds: [], lastSignIn: null });
+    store.hosts.logins.transition('bound', 'ready');
+    store.hosts.logins.bind('bound', { host: 'host-sentinel', role: 'writer', volumeId: made.volume.id });
+  } finally { store.close(); }
+  const cli = await connectUi(t, f.hub.discovery, 'cli');
+  const listed = async () => { const r = await cli.request({ type: 'login.list' }); assert.equal(r.ok, true); return r.value as Array<{ name: string; state: string; bindings: Array<{ host: string }> }>; };
+  const before = await listed();
+  const boundLogin = before.find(row => row.name === 'bound');
+  assert.equal(boundLogin?.state, 'in-use');
+  assert.deepEqual(boundLogin.bindings.map(binding => binding.host), ['host-sentinel']);
+  const refused = await cli.request({ type: 'login.remove', name: 'signing' });
+  assert.equal(refused.ok, false); assert.match(refused.error!, /sign-in.*running/);
+  await f.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    const bound = page.locator('[data-login-name="bound"]'); await bound.waitFor();
+    assert.match(await bound.innerText(), /in-use.*hosts: host-sentinel/s);
+    assert.equal(await bound.getByRole('button', { name: 'Remove', exact: true }).count(), 0);
+    const row = page.locator('[data-login-name="signing"]');
+    await row.getByRole('button', { name: 'Remove', exact: true }).click();
+    await row.getByRole('button', { name: 'Confirm', exact: true }).click();
+    await row.getByRole('alert').waitFor();
+    assert.equal(await row.getByRole('alert').innerText(), refused.error);
+    assert.deepEqual(await listed(), before);
+    assert.equal(await row.count(), 1);
+  });
 });

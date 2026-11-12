@@ -1153,3 +1153,18 @@ these web users. Key adds require local stdin. `login.set`, `login.signed-in`,
 `host.prepare` stay local. Session and messenger ingress remain refused for
 all host/login frames. Audit records and their journal copies use the user id
 resolved from web authentication, never a frame-supplied identity.
+
+## Removing and snapshotting from the web
+
+With a configured host pool, the Sessions area's expanded Hosts view shows
+Remove on unbound logins. Confirmation names the login and deletion of its
+volume and snapshots, or its key file for a key login. Cancel and folding the
+view discard an unconfirmed action. Bound logins offer no Remove; the hub still
+checks removal ownership and running sign-ins when confirming. Its refusal stays
+on the login line, with the login retained.
+
+Disk login lines also offer Snapshot through `login.snapshot`. The line shows
+the confirmed snapshot id or the hub/provider refusal, including the provider's
+snapshot window. Key logins offer Remove only. These actions use the existing
+authenticated web authority (an active admin in users mode), and refresh through
+`login.list` after the hub result.

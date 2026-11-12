@@ -48,6 +48,51 @@ function HostRow({ host, connection, now }: { host: HostsStatePool['hosts'][numb
   </li>;
 }
 
+function LoginRow({ login, connection, refresh }: { login: Login; connection: ConnectionState; refresh: () => Promise<void> }) {
+  const [confirm, setConfirm] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState('');
+  const busy = useRef(false);
+  const removable = login.state !== 'in-use' && login.bindings.length === 0;
+  const remove = async () => {
+    if (!confirm || !removable || !connection.live || !connection.command || busy.current) return;
+    busy.current = true; setPending(true); setError(''); setResult('');
+    try {
+      await connection.command({ type: 'login.remove', name: login.name });
+      setConfirm(false);
+      await refresh();
+    } catch (cause) { setError(message(cause)); setConfirm(false); }
+    finally { busy.current = false; setPending(false); }
+  };
+  const snapshot = async () => {
+    if (!connection.live || !connection.command || busy.current) return;
+    busy.current = true; setPending(true); setError(''); setResult('');
+    try {
+      const outcome = await connection.command<{ state: string; snapshot?: { id: string }; reason?: string; retryAt?: string }>({ type: 'login.snapshot', name: login.name });
+      if (outcome.state === 'snapshotted') setResult(`snapshotted: ${outcome.snapshot?.id ?? 'unknown'}`);
+      else setError(`${outcome.state}: ${outcome.reason ?? 'snapshot not confirmed'}${outcome.retryAt ? `; retry at ${outcome.retryAt}` : ''}`);
+      await refresh();
+    } catch (cause) { setError(message(cause)); }
+    finally { busy.current = false; setPending(false); }
+  };
+  return <li data-login-name={login.name} data-signed-out={login.state === 'signed-out'} className={s.row}>
+    <span title="Login name">{login.name}</span><span title="Harness">{login.harness}</span>
+    <span title="Account">{login.account}</span><span title="Login kind">{login.kind}</span>
+    <span title="Login state">{login.state}</span>
+    <span title="Bound hosts">hosts: {login.bindings.map(binding => binding.host).join(', ') || 'none'}</span>
+    <span title="Last sign-in">last sign-in: {login.lastSignIn ?? 'none'}</span>
+    {removable && (confirm ? <div role="group" aria-label={`Confirm Remove ${login.name}`} className={s.row}>
+      <span>Remove {login.name}? {login.kind === 'disk' ? 'Its volume and snapshots are deleted.' : 'Its key file is deleted.'}</span>
+      <button disabled={!connection.live || pending} onClick={() => { void remove(); }}>Confirm</button>
+      <button disabled={pending} onClick={() => setConfirm(false)}>Cancel</button>
+    </div> : <button disabled={!connection.live || pending} onClick={() => setConfirm(true)}>Remove</button>)}
+    {login.kind === 'disk' && <button disabled={!connection.live || pending} onClick={() => { void snapshot(); }}>Snapshot</button>}
+    {result && <span role="status">{result}</span>}
+    {error && <span role="alert" className={s.error}>{error}</span>}
+  </li>;
+}
+
 export function HostsView({ connection, pools }: { connection: ConnectionState; pools: readonly HostsStatePool[] }) {
   const [now, setNow] = useState(Date.now);
   const [logins, setLogins] = useState<Login[] | null>(null);
@@ -74,13 +119,9 @@ export function HostsView({ connection, pools }: { connection: ConnectionState; 
     <h3 className={s.heading}>Logins</h3>
     {error && <span role="alert" className={s.error}>{error}</span>}
     {logins === null ? <span>Loading logins</span> : logins.length === 0 ? <span>No logins</span> : <ul className={s.rows}>
-      {logins.map(login => <li key={login.name} data-login-name={login.name} data-signed-out={login.state === 'signed-out'} className={s.row}>
-        <span title="Login name">{login.name}</span><span title="Harness">{login.harness}</span>
-        <span title="Account">{login.account}</span><span title="Login kind">{login.kind}</span>
-        <span title="Login state">{login.state}</span>
-        <span title="Bound hosts">hosts: {login.bindings.map(binding => binding.host).join(', ') || 'none'}</span>
-        <span title="Last sign-in">last sign-in: {login.lastSignIn ?? 'none'}</span>
-      </li>)}
+      {logins.map(login => <LoginRow key={login.name} login={login} connection={connection} refresh={async () => {
+        if (command) setLogins(await command<Login[]>({ type: 'login.list' }));
+      }} />)}
     </ul>}
   </div>;
 }
