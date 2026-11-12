@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1485
 branch: t/T-1813-native-fake-host-end-to-end-dead-login
 created: 2026-11-11T13:10:03.001Z
-updated: 2026-11-12T09:45:35.264Z
+updated: 2026-11-12T09:48:17.504Z
 ---
 
 ## Summary
@@ -32,7 +32,7 @@ Make the fake Codex and fake Claude native launches on a fake host complete the 
 - [x] C2. The same holds for a native Claude Code session on a fake host (test).
   - done: impl-1813 · 2026-11-12T09:33:03.047Z
 - [ ] C3. Both cases pass five lone repetitions on macOS, and their duration allowances come from green samples (test).
-  - failed: rev-35 [reviewer] · 2026-11-12T09:42:57.686Z · note Duration allowance does not reconcile the later retained green sample with its stated formula.
+  - verified: rev-35 [reviewer] · run rev-35-1813-source-2 · 2026-11-12T09:48:17.504Z · commit 1ac12020421923db7da95ceb05c401a881d786ad
 - [x] C4. The shared login-signed-out-native fixture passes CLAND_FAKE_HOST_ROOT through fixtureEnvironment's overlays, so loginFilePath resolves the mounted volume path, and a case reads the renewed login file through it (test).
   - done: impl-1813 · 2026-11-12T09:33:03.596Z
 - [x] C5. A native Codex and a native Claude Code session on a fake host keep running through an in-place sign-in of their login, and their next turn uses the renewed login (test).
@@ -66,3 +66,18 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-18960 complete source1 NOT CLEAR,1medium Standards/0additional Spec source defects. Native Codex/Claude dead-login and renewal assertions implement C1/C2/C4/C5; short owned Codexrun, identity-preserving Claude decoration, explicit root mapper, same native session/PID/conversation/volume and fresh post-renewal turn proof inspected. Defaults preserved; shared lifecycle/sealing remains earlier owner, no product change. A18957 local20×returncode0 samples/3+6full positive outputs inspected; A18958 qualifies all as precommit dirty candidate/chronology not runtime Git attestation, lost repetition streams/signal/PID, inferred wholefilezero, rawcapture/T1808 original positiveprepubscan. Inventory covers macOS tempfiledir only; /private/tmp delta and failed Claude attempt's positive drain unknown, no fabricatedzero/closure. A18959 8proven+16unknown24tiered rows/local/planned/deferred; default importers checked, notcoverage. No criteria verified. Clean corrected204ece0af/baseaa14. Holdreleased for consolidated allowance correction/fresh source review; no devmerge,productfix,timing/provenance-only rerun requested. Final exacthead Linux plus qualified Mac evidence/approved native disposition pending; fullT3/T4QA separate. No Reviewer runtime work.
 
 Criteria: C3 failed (Duration allowance does not reconcile the later retained green sample with its stated formula.).
+
+### rev-35 · 2026-11-12T09:48:17.504Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1813-source-2
+commit: 1ac12020421923db7da95ceb05c401a881d786ad
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18969 source2 CLEAR0findings. Onlyduration2add2delete; Claude18s/reason nowreconciles7.158059708retainedworst,otherbaselines/allowances/mode unchanged;clean1ac120204/tree66de06979aa3b15ff5dc17eaed77bf166cf9dbf9,noexecutable/devmerge. A18966 exacthead3/3+6/6 actualpositivecases,recordedargv/cwd/PID/close/code0/signalnull,5runtimeSHA256 independentlymatch. /private/tmp hc11/ct1015setsunchanged;cland-h+12T1806retained,notglobalcensus/oldfailureclosure. A18957fiveMaclonepercase remainsprecommitqualifiedbyA18958chronology; Coordinator04d52d9d explicitlyacceptswithfinalheadfilesandcorrectsa58Linux-repetitionoverreach. C3verifiedincludingcorrectedallowance;noLinux5/customrunrequired. C1/C2/C4/C5/finalruntimeawaitnormalmodefreeverifyexacthead. Priorcapture/rawredactorT1808scanlimits/unknownfailedClaudedrainpreserved;A18959consumer24tieredpathsnotcoverage. Holdreleased;noReviewerexperiments,extranative/provenancererun/devmerge. RemainingT3batch/T4stage/QAseparate.
+
+Criteria: C3 verified.

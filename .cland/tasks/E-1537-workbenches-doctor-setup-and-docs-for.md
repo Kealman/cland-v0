@@ -12,10 +12,10 @@ parent: R-1530
 blocked_by:
   - E-1534
   - E-1535
-topic: null
+topic: topic-1486
 branch: null
 created: 2026-10-31T18:22:04.429Z
-updated: 2026-10-31T18:22:56.261Z
+updated: 2026-11-12T10:07:39.921Z
 ---
 
 ## Goal
@@ -73,3 +73,54 @@ In a scratch project QA runs setup with a scripted terminal through the agent-ho
 - Items: R-1530; the map M-1511; Q-1519 §5; Q-1520 §5; Q-1527 §1 and §3; Q-1522 §4; E-1313 (the v0.3 workbench, setup and docs epic, the model for this one).
 - Code: `web/src/` (the Sessions area and its Remotes row), `nvim/lua/cland/` (the sessions panel), `hub/src/doctor/` (`remotes.ts` as the pattern), `hub/src/setup/`, the onboarding skill in `.claude/skills/onboarding/`; `site/src/content/docs/docs/` (`remote-control.md`, `web-and-phone.mdx`, `cli.md`, `accounts.md`).
 - GLOSSARY: Host, Host pool, Waiting launch, Login, User, Sign-in mode (added for v0.4); Setup (amended).
+
+## Plan
+
+```yaml
+stages:
+  - name: the Hosts row and session rows
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1819
+        - T-1820
+        - T-1821
+      - - T-1822
+      - - T-1823
+      - - T-1824
+  - name: the web's hosts view and waiting launches
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1825
+        - T-1826
+        - T-1827
+      - - T-1828
+  - name: doctor and setup's hosts step
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1829
+      - - T-1830
+        - T-1831
+  - name: the tour and the hosts docs
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1832
+      - - T-1833
+        - T-1834
+  - name: the users stage
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1835
+        - T-1836
+        - T-1838
+      - - T-1837
+```
