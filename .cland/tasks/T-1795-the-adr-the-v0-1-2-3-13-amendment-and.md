@@ -2,8 +2,8 @@
 id: T-1795
 kind: task
 title: The ADR, the v0.1.2 §3.13 amendment and the logins notes
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1477
 branch: t/T-1795-the-adr-the-v0-1-2-3-13-amendment-and
 created: 2026-11-09T12:44:13.008Z
-updated: 2026-11-12T00:18:14.091Z
+updated: 2026-11-12T06:48:28.244Z
+closed: 2026-11-12T06:48:28.244Z
 ---
 
 ## Summary
@@ -31,7 +32,6 @@ Three documents, with no existing paragraph rewritten:
 ## Acceptance criteria
 
 - [x] C1. A new ADR in `docs/adr/` states what cland stores and never stores for logins, and links spec v0.4 §3.7 and §3.12.
-  - done: impl-1795 · 2026-11-11T09:08:19.255Z
   - verified: rev-35 [reviewer] · run rev-35-1795-source-1 · 2026-11-11T09:14:25.420Z · commit 478f0a97988eed61c1cb5b1c71306ac143d86681
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-2 · 2026-11-11T12:33:39.058Z · commit c9c1d69e645bdb50cca5911c47c21cad4b715d25
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-3 · 2026-11-11T14:13:21.749Z · commit 50bb55fe6f9c035cec6c83060ab717c8af823ccb
@@ -41,8 +41,11 @@ Three documents, with no existing paragraph rewritten:
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-7 · 2026-11-11T19:37:03.133Z · commit 7e8782d583b3c654e1900dd568b0d66b193823e5
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-9 · 2026-11-11T21:36:35.812Z · commit ead9f7b7968ebc8a7f25f849a0bc0a71a6540695
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-10 · 2026-11-12T00:18:14.091Z · commit 1b5b4eeb5a2127413372707187af7367c6e6e124
+  - done: impl-1795 · 2026-11-12T02:16:04.878Z
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-12 · 2026-11-12T02:22:06.888Z · commit 4ede548a9bdf95edf26d3eba8f3c157120727e55
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-13 · 2026-11-12T02:44:13.792Z · commit 90410ef27b35fbbb7c21ee306412adc03f80467b
+  - verified: rev-35 [reviewer] · run rev-35-1795-final-1 · 2026-11-12T03:08:04.263Z · commit 90410ef27b35fbbb7c21ee306412adc03f80467b
 - [x] C2. Spec v0.1.2 §3.13 carries an appended, dated amendment naming logins on hosts and linking the ADR, with no existing paragraph changed.
-  - done: impl-1795 · 2026-11-11T09:08:19.464Z
   - verified: rev-35 [reviewer] · run rev-35-1795-source-1 · 2026-11-11T09:14:25.420Z · commit 478f0a97988eed61c1cb5b1c71306ac143d86681
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-2 · 2026-11-11T12:33:39.058Z · commit c9c1d69e645bdb50cca5911c47c21cad4b715d25
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-3 · 2026-11-11T14:13:21.749Z · commit 50bb55fe6f9c035cec6c83060ab717c8af823ccb
@@ -52,10 +55,18 @@ Three documents, with no existing paragraph rewritten:
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-7 · 2026-11-11T19:37:03.133Z · commit 7e8782d583b3c654e1900dd568b0d66b193823e5
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-9 · 2026-11-11T21:36:35.812Z · commit ead9f7b7968ebc8a7f25f849a0bc0a71a6540695
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-10 · 2026-11-12T00:18:14.091Z · commit 1b5b4eeb5a2127413372707187af7367c6e6e124
-- [ ] C3. `docs/hub/logins.md` exists and covers login states, binding, release, snapshots, the key store, the login cards and reconciliation.
-  - failed: rev-35 [reviewer] · 2026-11-11T21:35:27.069Z · note New interactive sign-in notes incorrectly apply the renewal interrupted-writer fence to new-login outcomes; qualify existing caller ownership. Later T1791/T1814 sections remain intentionally staged.
+  - done: impl-1795 · 2026-11-12T02:16:06.227Z
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-12 · 2026-11-12T02:22:06.889Z · commit 4ede548a9bdf95edf26d3eba8f3c157120727e55
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-13 · 2026-11-12T02:44:13.793Z · commit 90410ef27b35fbbb7c21ee306412adc03f80467b
+  - verified: rev-35 [reviewer] · run rev-35-1795-final-1 · 2026-11-12T03:08:04.263Z · commit 90410ef27b35fbbb7c21ee306412adc03f80467b
+- [x] C3. `docs/hub/logins.md` exists and covers login states, binding, release, snapshots, the key store, the login cards and reconciliation.
+  - done: impl-1795 · 2026-11-12T02:21:04.391Z
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-12 · 2026-11-12T02:22:06.889Z · commit 4ede548a9bdf95edf26d3eba8f3c157120727e55
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-13 · 2026-11-12T02:44:13.793Z · commit 90410ef27b35fbbb7c21ee306412adc03f80467b
+  - verified: rev-35 [reviewer] · run rev-35-1795-final-1 · 2026-11-12T03:08:04.263Z · commit 90410ef27b35fbbb7c21ee306412adc03f80467b
 - [x] C4. The closed-item wording lint passes on the three files (test).
-  - done: impl-1795 · 2026-11-11T09:08:20.813Z
+  - done: impl-1795 · 2026-11-12T02:16:06.657Z
+  - verified: rev-35 [reviewer] · run rev-35-1795-final-1 · 2026-11-12T03:08:04.264Z · commit 90410ef27b35fbbb7c21ee306412adc03f80467b
 
 ## Blocked by
 
@@ -267,3 +278,73 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-18912 current partial delta CLEAR: Standards0/Spec0. Request cites Coordinator613b1929 single-merge authorization; imported T1791 runtime/tests/skills/QA/shared docs byte-identical to reviewed26b09338a/A18905, landing3cf treeadd45685. Clean merge106e3f920; appended44lines only after imported reference, prior interactive section exact, no duplicate heading. Task nontracker delta only3docs290add/0delete;ADR/spec unchanged,C1/C2 refreshed. Added orchestration/secret-memory-only answer/registry/redaction/deletion obligation+retry+join/expiry/unknown cuts/bounded recovery notes match landed source. ExplicitHTMLmarker reserves T1814; no unlanded recovery claim. A18911 candidate local wording observation qualified727docs/1817items0findings,not finalC4proof. Clean1b5b4eeb5/tree001e8e06;no Reviewer execution. Holdreleased; stagedclaim retained. C3 T1814section and C4/final exact-head evidence/readiness remain open; T1795 lands last.
 
 Criteria: C1 verified, C2 verified.
+
+### hub · 2026-11-12T02:15:25.208Z
+
+Merge-delta assessment (report-only)
+{"reviewed":"1b5b4eeb5a2127413372707187af7367c6e6e124","head":"78ff7798a0afd118bdc19574ace8ee10d143a351","dev":"99356638a9319380a3e4695d04ccbd7c6dcc2854","mergeBase":"91fcb511303389cb84ce9dffb904910916a1855a","mode":"report","rule":"conservative-runtime-coupling-v1","result":"overlapping","branchPaths":["docs/adr/0009-login-storage-boundary.md","docs/hub/logins.md","docs/spec/v0.1.2.md"],"devPaths":[".cland/tasks/T-1795-the-adr-the-v0-1-2-3-13-amendment-and.md",".cland/tasks/T-1814-login-add-treats-a-dispatcher.md","docs/agents/host-agent.md","docs/agents/tests/hub-test-login-add-component.test.ts.md","docs/agents/tests/hub-test-login-add.test.ts.md","docs/agents/tests/hub-test-login-card-signin-owner.test.ts.md","docs/agents/tests/hub-test-login-host-pin.test.ts.md","docs/agents/tests/hub-test-login-signin.test.ts.md","docs/hub/logins.md","docs/hub/ssh-host.md","hub/README.md","hub/src/host/login-card-signin.ts","hub/src/host/login-signin.ts","hub/src/host/logins.ts","hub/src/hub/dispatch.ts","hub/test/login-add-component.test.ts","hub/test/login-add.test.ts","hub/test/login-card-signin-owner.test.ts","hub/test/login-host-pin.test.ts","hub/test/login-signin.test.ts"],"overlap":["docs/hub/logins.md"],"dependency":{"status":"known","importers":[]},"patchIdCurrent":true}
+Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove behavioral independence.
+
+### rev-35 · 2026-11-12T02:20:13.617Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1795-delta-11
+commit: 47998ff8f0a6ebb7af5385941251f5a1457f9908
+scope: delta
+findings: [{"severity":"medium","text":"Inherited unconditional cleanup-on-authority-change instruction conflicts with landed T1814 post-capture attach/mount/publish interruption and retained disk. New EOF section does not explicitly dispose of it; no historical exception(ff70bae3). Add dated explicit correction distinguishing pre-capture failure from captured exact-machine interruption, respecting no-rewrite constraint.","file":"docs/hub/logins.md","line":119},{"severity":"medium","text":"Inherited pin-only-after-confirmed-cleanup/incomplete-cleanup-retains-pin claim is false after interruption: preparePoolLogin unpins signed-out rows while private exact-machine sign_in retains disk/native authority. No recorded qualification(ff6a72b7). Explicitly correct transient busyHost pin versus durable fence; pin release is not cleanup.","file":"docs/hub/logins.md","line":155},{"severity":"medium","text":"Canonical mountedOpenCodeDatabase owner and exact source-policy allowance moved to host/agent/state-paths.ts; accounts/registry.ts only re-exports it. No prior disposition(403799ce). Explicit dated correction must name canonical edit/policy owner while preserving valid registry-import compatibility guidance.","file":"docs/hub/logins.md","line":128}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+A-18934 delta11 NOT CLEAR: Standards0/Spec3medium, all lead-confirmed. Imported T1814 runtime/tests/shared docs byte-equal reviewedc111a20aa/landing1dcb32ec4; citedCoordinator6f8b2fd2 single-merge78ff7798a, clean47998ff8f/treeb56bcdcd. Own appended shared recovery section matches landed owner; no task production/tests. ADR/spec unchanged since prior source-clear; source C1/C2 intact. Three current inherited descriptions lack explicit dated supersession, violating C3as-built. Hold released for consolidated docs-only correction under no-rewrite constraint/fresh source review; no new merge or runtime/native/provider/QA experiment. A18933 candidate-local wording narrative not final C4; final same-head configured evidence remains pending, staged claim retained.
+
+Criteria: C3 failed (Three inherited current cleanup/pin/canonical-helper ownership claims remain inconsistent with landed as-built implementation.).
+
+### rev-35 · 2026-11-12T02:22:06.889Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1795-delta-12
+commit: 4ede548a9bdf95edf26d3eba8f3c157120727e55
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18936 final-source delta12 CLEAR Standards0/Spec0. Clean4ede548a9/treef73baca461e863597ca6dbe444a0da9da4d664d5; one file25add0delete, no merge/source/test delta. Nearby dated correction explicitly supersedes all three A18934 claims, preserving original paragraphs: post-capture interruption/exact-machine authority, transient busyHost pin versus retained durable fence, canonical agent/state-paths helper/policy versus registry compatibility re-export. Earlier T1814 imported source/tests/shared docs and new shared CLI/card recovery section retained unchanged; no unlanded marker. Unchanged ADR/spec amendmentC1/C2 refreshed; final as-built referenceC3 now source-verified. C4/final exact-head configured evidence pending; candidate-local narrative not substituted. Hold released for mode-free verify at exact head; no native/browser/provider rerun or extra merge requested. Three-doc task, QA affected/after-stage on dev, fullT3batch/T4stage separate; staged claim retained.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-35 · 2026-11-12T02:44:13.793Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1795-delta-13
+commit: 90410ef27b35fbbb7c21ee306412adc03f80467b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18938 delta13 CLEAR Standards0/Spec0. Exact six docs86add2delete, clean90410ef27/treef9c1297e2c3809c039f08088d705304b3608bc3f; citedCoordinatorcf546e55 scope. Four T1 guides checked against actual client6/command1/owner4/redactor1 generated/literal case identities, injected/memory/directory boundaries, final assertions and cleanup. Index4rows eachonce; card-owner native-loss/setup-failure exact suffixes now correct. No tests/runtime/config/manifest/merge changes; ADR/spec/as-built logins including dated corrections unchanged, no marker,C1–C3 refreshed. A18937 candidate-local wording731docs1817items0/index-current qualified; C4/final exact-head configured proof pending. Prior46866833 is4ede-head evidence only. Holdreleased for fresh mode-free verify at90410ef27; no native/provider/browser/QA rerun or extra merge. After-stage QA/fullT3/T4 split and staged last-landing claim retained.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-35 · 2026-11-12T03:08:04.264Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1795-final-1
+commit: 90410ef27b35fbbb7c21ee306412adc03f80467b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18942 FINAL CLEAR allC1–C4,0findings. Source A18936/38 stands: ADR/spec unchanged additive content and links, complete landed reference/no marker, dated cleanup/pin/canonical-owner corrections, exact T1/card guides. Actual same-head df8e426a/A18940 host gate npmcheck T0 exit0: wording fixture diagnostics passed731docs1817items0findings, guide index current. Host gate not repeated on droplet; do not relabel it Linux. Streaming audit6203base test/690base file passes, separate125load test+125load file passes,0negative/skip. Four T1 guides12cases plus2card-owner suffixes positive; A18941 references agree. Manifest218T1/413T2/7T3/52Web full files pass;254T3/17T4 unexecuted task coverage. SelectedT3 20identities onebase49.502s addedwall; notfullsuite. Git treef9c1297e2c3809c039f08088d705304b3608bc3f; normalized5cf18f329f07492aa3379dfd5c863c83cb55a9fc independently rebuilt matchesprovenance; cleanhead. Linuxx64 Node24.21/nvim0.12.5,c8lon1,2workers1101s/$0.0765,HeadlessShell1248 ChromeTesting156.0.8078.4 exactbinary retained. Reportlint122/59+budget/ratchet advisory remain report, notC4failure. Prior46866833/A18939 cancelled143/Webpartial unused. No localnative/provider/browser/Reviewer execution. RemainingT3batch/T4stage/affected-after-stageQA separate; holdreleased, stagedclaim untilnormalmerge.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-12T06:48:28.244Z
+
+Merged a03cd7b970bb18b1dee041d5972cf72a19db2f0b onto dev.
