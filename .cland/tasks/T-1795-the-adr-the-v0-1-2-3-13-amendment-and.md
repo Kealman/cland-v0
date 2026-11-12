@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1477
 branch: t/T-1795-the-adr-the-v0-1-2-3-13-amendment-and
 created: 2026-11-09T12:44:13.008Z
-updated: 2026-11-11T19:37:03.133Z
+updated: 2026-11-11T21:36:35.812Z
 ---
 
 ## Summary
@@ -39,6 +39,7 @@ Three documents, with no existing paragraph rewritten:
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-5 · 2026-11-11T16:20:25.408Z · commit acfa3d7f6ff8a45df2334b33a0917c060cd757fe
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-6 · 2026-11-11T18:09:50.359Z · commit cc47bce80c424124d78c40fdaa0310cd240f17da
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-7 · 2026-11-11T19:37:03.133Z · commit 7e8782d583b3c654e1900dd568b0d66b193823e5
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-9 · 2026-11-11T21:36:35.812Z · commit ead9f7b7968ebc8a7f25f849a0bc0a71a6540695
 - [x] C2. Spec v0.1.2 §3.13 carries an appended, dated amendment naming logins on hosts and linking the ADR, with no existing paragraph changed.
   - done: impl-1795 · 2026-11-11T09:08:19.464Z
   - verified: rev-35 [reviewer] · run rev-35-1795-source-1 · 2026-11-11T09:14:25.420Z · commit 478f0a97988eed61c1cb5b1c71306ac143d86681
@@ -48,8 +49,9 @@ Three documents, with no existing paragraph rewritten:
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-5 · 2026-11-11T16:20:25.408Z · commit acfa3d7f6ff8a45df2334b33a0917c060cd757fe
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-6 · 2026-11-11T18:09:50.360Z · commit cc47bce80c424124d78c40fdaa0310cd240f17da
   - verified: rev-35 [reviewer] · run rev-35-1795-delta-7 · 2026-11-11T19:37:03.133Z · commit 7e8782d583b3c654e1900dd568b0d66b193823e5
+  - verified: rev-35 [reviewer] · run rev-35-1795-delta-9 · 2026-11-11T21:36:35.812Z · commit ead9f7b7968ebc8a7f25f849a0bc0a71a6540695
 - [ ] C3. `docs/hub/logins.md` exists and covers login states, binding, release, snapshots, the key store, the login cards and reconciliation.
-  - failed: rev-35 [reviewer] · 2026-11-11T12:28:38.293Z · note Current partial as-built notes retain a false startup ownership attribution for pending bindings; remaining planned stage-4 coverage is separately intentional.
+  - failed: rev-35 [reviewer] · 2026-11-11T21:35:27.069Z · note New interactive sign-in notes incorrectly apply the renewal interrupted-writer fence to new-login outcomes; qualify existing caller ownership. Later T1791/T1814 sections remain intentionally staged.
 - [x] C4. The closed-item wording lint passes on the three files (test).
   - done: impl-1795 · 2026-11-11T09:08:20.813Z
 
@@ -204,5 +206,41 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-18864 current partial delta CLEAR: Standards0/Spec0. Coordinator517ba3d3 authorized T1794 landed6aa8c95df merge; inherited runtime/tests/skills/sharedwire/docs-agents/nvim/web byte-identical to rev36 source/final-cleareddd4650fa7. Append conflict preserves prior task sections and imported Relaunch section;16 new owner lines match post-finishSignIn hook and captured live/unarchived generation admission inside resume lifecycle slot, superseding stop/archive/resume, committed-login failure reporting and no fresh conversation. Task nontracker difference only3docs/206insertions0deletions;ADR/spec unchanged, C1/C2 refreshed. A18861 candidate wording-lint narrative qualified,not final configured proof; C4 unverified. C3 remains open for updated sequence T1815/T1791/T1814, T1795 last. Clean head/read-only review; no Reviewer execution/edit. Hold released; retain staged claim and final evidence boundary.
+
+Criteria: C1 verified, C2 verified.
+
+### hub · 2026-11-11T21:32:17.881Z
+
+Merge-delta assessment (report-only)
+{"reviewed":"7e8782d583b3c654e1900dd568b0d66b193823e5","head":"b7870fd1484ac7a3ca245247714c7d4ca9d1b19a","dev":"065cf1416ed6487f0103059f1e7aea7dccceca1e","mergeBase":"7d50d44b3cb488c998fea8df24bfe89ca274e9a5","mode":"report","rule":"conservative-runtime-coupling-v1","result":"overlapping","branchPaths":["docs/adr/0009-login-storage-boundary.md","docs/hub/logins.md","docs/spec/v0.1.2.md"],"devPaths":[".cland/tasks/T-1791-signing-in-from-a-card.md",".cland/tasks/T-1795-the-adr-the-v0-1-2-3-13-amendment-and.md",".cland/tasks/T-1815-an-agent-owned-interactive-sign-in.md",".cland/tasks/T-1818-host-restart-reads-the-live-host-s-login.md","docs/agents/host-agent.md","docs/agents/tests/hub-test-accounts-policy.test.ts.md","docs/agents/tests/hub-test-host-agent-signin-op.test.ts.md","docs/agents/tests/hub-test-host-restart.test.ts.md","docs/agents/tests/index.md","docs/hub/ssh-host.md","hub/README.md","hub/src/accounts/registry.ts","hub/src/host/agent-client.ts","hub/src/host/agent/closure.json","hub/src/host/agent/login-disk.ts","hub/src/host/agent/processes.ts","hub/src/host/agent/server.ts","hub/src/host/agent/signin-command.ts","hub/src/host/agent/signin-redactor.ts","hub/src/host/agent/signin-types.ts","hub/src/host/agent/signin.ts","hub/src/host/agent/state-paths.ts","hub/src/host/host.ts","hub/src/host/login-signin.ts","hub/src/host/signin-client.ts","hub/src/host/ssh-host.ts","hub/test/accounts-policy.test.ts","hub/test/durations.json","hub/test/host-agent-client.test.ts","hub/test/host-agent-signin-op.test.ts","hub/test/host-contract-coverage.test.ts","hub/test/host-contract.ts","hub/test/host-restart.test.ts","hub/test/signin-client.test.ts","hub/test/signin-command.test.ts","hub/test/signin-owner.test.ts","hub/test/signin-redactor.test.ts","hub/test/tiers.json"],"overlap":[],"dependency":{"status":"known","importers":[]},"patchIdCurrent":true}
+Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove behavioral independence.
+
+### rev-35 · 2026-11-11T21:35:27.069Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1795-delta-8
+commit: 9f93ee62f1b82d678ccc3d9f67374fbab54cb442
+scope: delta
+findings: [{"severity":"medium","text":"The new generic Host.signIn section says every incomplete outcome retains an interrupted writer fence. That fence belongs to renewal prepareExistingLoginSignIn/interrupt(); new-login preparation has no interrupt and retains creating row/disk ownership instead. Lead bb930d62 confirms no unconditional owner/disposition. Qualify the new paragraph by existing caller ownership, preserving no cleanup/success authority from elapsed time or carrier closure; do not invent a second new-login fence or implement future T1791/T1814 behavior.","file":"docs/hub/logins.md","line":977}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-18889 complete delta8 NOT CLEAR: one medium conditional ownership wording finding, no others. Coordinator dac18876 authorized once-merge T1815/T1818. Inherited runtime/tests/skills/transport match reviewed T1815 2b2add0f2 except two host-restart test/guide files, which match reviewed T1818 0679105b1. New39 lines otherwise match bounds/redaction/pinned close/checkpoint/refusals/lease/shutdown/retirement source. Prior reference exact prefix; ADR/spec unchanged; task nontracker difference only3docs245add/0delete. C1/C2 prior source proof preserved, C3 future sections and C4/final evidence remain open. A18888 candidate wording narrative qualified, no Reviewer run. Clean9f93ee62f/tree0e395e81. Complete pass releases hold for narrow docs correction/fresh exact-head review; keep staged last-landing claim.
+
+Criteria: C3 failed (New interactive sign-in notes incorrectly apply the renewal interrupted-writer fence to new-login outcomes; qualify existing caller ownership. Later T1791/T1814 sections remain intentionally staged.).
+
+### rev-35 · 2026-11-11T21:36:35.812Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1795-delta-9
+commit: ead9f7b7968ebc8a7f25f849a0bc0a71a6540695
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18891 current partial delta CLEAR: Standards0/Spec0. Sole paragraph correction resolves A-18889: renewal retains interrupted writer fence; new-login preparation retains creating row/disk ownership without invented second fence; no cleanup/success authority from elapsed time/carrier closure. One commit/one paragraph only since9f93ee62f; no dev merge/runtime/test changes. Delta8 authorized T1815/T1818 import freshness and remaining as-built notes carry unchanged. ADR/spec unchanged, C1/C2 refreshed. Candidate wording-lint observation qualified, not final exact-head configured evidence. C3 later T1791/T1814 coverage and C4/final evidence/readiness remain open under last-landing sequence. Clean ead9f7b79/tree1bb10cbe; no Reviewer execution. Hold released, retain staged claim.
 
 Criteria: C1 verified, C2 verified.

@@ -2,8 +2,8 @@
 id: T-1791
 kind: task
 title: Signing in from a card
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-1480
 branch: t/T-1791-signing-in-from-a-card
 created: 2026-11-09T12:44:12.172Z
-updated: 2026-11-11T20:14:05.066Z
+updated: 2026-11-12T00:13:15.440Z
+closed: 2026-11-12T00:13:15.440Z
 ---
 
 ## Summary
@@ -35,18 +36,27 @@ A sign-in run by the hub on the host, behind the sign-in runner seam T-1777 intr
 
 ## Acceptance criteria
 
-- [ ] C1. Answering "Create one" on the test messenger creates a login of that harness and pool and raises a card with the fake sign-in's link and code (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T18:46:01.494Z · note Uncertain Create one path lacks the approved captured login/host unknown-outcome notice/card cut; real native integration is separately pending.
-- [ ] C2. For the fake Claude Code, the card's free answer reaches the sign-in prompt's input, and the login reads `ready` with one snapshot (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T18:46:01.494Z · note Malformed no-exit close can authorize cleanup, and fail-fast owner shutdown does not join every input/native writer.
-- [ ] C3. For the fake Codex, the login reads `ready` when the device sign-in finishes, with no answer on the card (test).
-- [ ] C4. Answering "Sign in again" re-runs the sign-in on the login's host and volume, and the sign-in card folds on both remotes (test).
-- [ ] C5. The pasted code appears in no log line, journal record, history row or remote outcome line (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T18:46:01.494Z · note A first-seen code can enter serialized Gateway metadata in clear because no trusted pre-serialization secret-card classifier exists; pre-registered sentinel tests miss it.
-- [ ] C6. A sign-in not finished within 15 minutes of hub-clock time withdraws its card and leaves the login `signed-out` with its volume kept (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T20:09:42.062Z · note Code card stays visibly open at hub-clock expiry while cancellation is held; immediate withdrawal must be independent of close-gated state/disk settlement.
-- [ ] C7. On a messenger whose adapter can delete messages (the test messenger declares it), the human's message carrying the pasted Claude Code code is deleted after the hub reads it; where it cannot be deleted, the hub sends one line saying so (test).
-  - failed: rev-35 [reviewer] · 2026-11-11T18:46:01.495Z · note Deletion/fallback has no durable captured-ingress obligation or independent recovery after acknowledgement; cleanup joins can short-circuit.
+- [x] C1. Answering "Create one" on the test messenger creates a login of that harness and pool and raises a card with the fake sign-in's link and code (test).
+  - done: impl-1791 · 2026-11-11T23:01:59.638Z
+  - verified: rev-35 [reviewer] · run rev-35-1791-final-1 · 2026-11-11T23:33:06.712Z · commit 26b09338a1fe4424330154fd14c30cad991dd4c1
+- [x] C2. For the fake Claude Code, the card's free answer reaches the sign-in prompt's input, and the login reads `ready` with one snapshot (test).
+  - done: impl-1791 · 2026-11-11T22:24:48.088Z
+  - verified: rev-35 [reviewer] · run rev-35-1791-final-1 · 2026-11-11T23:33:06.712Z · commit 26b09338a1fe4424330154fd14c30cad991dd4c1
+- [x] C3. For the fake Codex, the login reads `ready` when the device sign-in finishes, with no answer on the card (test).
+  - done: impl-1791 · 2026-11-11T22:24:48.218Z
+  - verified: rev-35 [reviewer] · run rev-35-1791-final-1 · 2026-11-11T23:33:06.712Z · commit 26b09338a1fe4424330154fd14c30cad991dd4c1
+- [x] C4. Answering "Sign in again" re-runs the sign-in on the login's host and volume, and the sign-in card folds on both remotes (test).
+  - done: impl-1791 · 2026-11-11T22:24:48.567Z
+  - verified: rev-35 [reviewer] · run rev-35-1791-final-1 · 2026-11-11T23:33:06.712Z · commit 26b09338a1fe4424330154fd14c30cad991dd4c1
+- [x] C5. The pasted code appears in no log line, journal record, history row or remote outcome line (test).
+  - done: impl-1791 · 2026-11-11T22:24:48.695Z
+  - verified: rev-35 [reviewer] · run rev-35-1791-final-1 · 2026-11-11T23:33:06.712Z · commit 26b09338a1fe4424330154fd14c30cad991dd4c1
+- [x] C6. A sign-in not finished within 15 minutes of hub-clock time withdraws its card and leaves the login `signed-out` with its volume kept (test).
+  - done: impl-1791 · 2026-11-11T22:24:48.833Z
+  - verified: rev-35 [reviewer] · run rev-35-1791-final-1 · 2026-11-11T23:33:06.712Z · commit 26b09338a1fe4424330154fd14c30cad991dd4c1
+- [x] C7. On a messenger whose adapter can delete messages (the test messenger declares it), the human's message carrying the pasted Claude Code code is deleted after the hub reads it; where it cannot be deleted, the hub sends one line saying so (test).
+  - done: impl-1791 · 2026-11-11T22:24:49.090Z
+  - verified: rev-35 [reviewer] · run rev-35-1791-final-1 · 2026-11-11T23:33:06.712Z · commit 26b09338a1fe4424330154fd14c30cad991dd4c1
 
 ## Blocked by
 
@@ -126,3 +136,94 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-18881: initial injected-stage source3 CLEAR, zero standards/spec findings. Complete five-file correction resolves A-18879 under aa785a51: immediate persisted withdrawal with exact timeout reason before native cancel, refused later input/zero writes, unchanged complete login row/disk while close held, matching close permits signed-out+kept volume. Shared reference/README/per-test guide agree. All ten source1 findings remain addressed. A-18880 independently checked exact-head25/25 positive named T2 cases; five producers code0/signalnull/no spawn error/truncation; report-only lint122 findings/0refusals retained. Prior A-18873 broader287 and954-root/791 graph remain earlier-head support, not source3 execution. Head/tree1920ed2d1/356e70fe clean, one corrective commit/no dev merge. No new criterion verification, final readiness or native/configured evidence claim: Coordinator-authorized initial injected stage only. Release hold; await authorized T1815/T1794 integration, then fresh integrated-head source review before native/configured verification.
+
+### impl-1791 · 2026-11-11T21:35:20.674Z
+
+Coordinator1340938a authorized exactly one origin/dev merge; merged as e7b06978d (T1815/T1794 plus landed T1818). One dispatch conflict resolved by retaining #prepareLogin extraction and copying T1794's exact afterSignIn closure into its options, so CLI and cards share it. Before real binding: explicit incoming contract sweep includes Host.signIn/SignInInput/Output/Close/Run (host.ts, SSH Host/local absence, signin-client.ts), agent signin-types parseSignInClose/signInNotAdmitted and capability/stream/cancel/close consumers (agent server/protocol/process owner, shared client/owner/command/redactor tests, native host-agent-signin-op), login-signin/preparePoolLogin afterSignIn (Sessions.relaunchAfterSignIn and login-resignin-native/CLI extraction tests). Optional injected runner stays only as a component fixture override; default registration will call the selected Host.signIn with shared types and parser. No new operation, wire fields, credential policy, close parser or relaunch path. New default-binding T2 is RED at merged baseline (topic.answer false, expectedtrue). Native source file will cover real fake-host/fake-binary/test-messenger boundaries after reviewed head; graph extension retains previous791 union and counts every unknown, with generated-case dispositions rather than direct-import selection.
+
+### impl-1791 · 2026-11-11T21:48:00.769Z
+
+Integrated source4 pushed c228a844b1a8907594b03d6823de16c6fa8d64ef/tree71aa1485c4bf0c54fd43bf0e7fa11cefd9ff3664. Exactly one Coordinator-authorized dev merge e7b06978d; T1794 afterSignIn closure is unchanged in #prepareLogin. Default owner calls prepared Host.signIn and shared SignIn* types/parseSignInClose; optional runner remains fixture override. Additive internal preparePoolLogin.nativeHost captures the admitted object, never serialized to client; a same-display-name replacement trap proves no relookup. Existing terminal plan shape preserved. Rule20 extended961roots/806reached+13unknown; conservative820union retains all prior candidates; per-path dispositions in A-18892. Fixture-specific reach8nativefiles all included in directed15file set plus macOS caffeinate slice. Native card4cases written/UNEXECUTED per Coordinator's review-before-native order. Exact-head63/63 targetedT1/T2,26required names observed, typecheck/tier/closed-wording0, report-only lint122/59files/0refusals; A-18892 retains separate producer streams/close facts, initial TS2352 failure and its erased-type fix, earlier-head graph qualification, publication positive-control+8files0matches. No timing sample/allowance invented for unrun cases; add measured allowances with fresh review if needed after native sampling. Docs/skill metadata/current QA mapping updated. C1–C7 not marked until native/configured evidence; this is integrated intermediate source review, not final-ready request.
+
+### rev-35 · 2026-11-11T21:55:55.008Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1791-source-4
+commit: c228a844b1a8907594b03d6823de16c6fa8d64ef
+scope: full
+findings: [{"severity":"medium","text":"New bin/claude and bin/codex symlinks point to shell wrappers that exec sibling fake-*.ts, but those siblings are absent under bin; access()/bootstrap preserve lexical paths. Repair complete entrypoints/exact-path wrappers under shared isolation. Lead56a746c1 and Coordinator49f658c4 confirm. A18893 actual native4/4 fails at prompt/ready waits; it does not capture a specific MODULE_NOT_FOUND native exit.","file":"hub/test/host-create-fixture.ts","line":33},{"severity":"medium","text":"Native diagnostics capture admissions only after a code card/success is observed, so every actual pre-prompt failure yields native:[] and only a hub-log tail. Rule9/Coordinator49f658c4 require bounded secret-scanned native stderr and close observations even before prompt, through existing preparation/real Host boundaries. Preserve explicit unknown facts; do not replace the native operation under test.","file":"hub/test/login-card-signin.test.ts","line":19},{"severity":"medium","text":"Now-reached sign-in guidance and linked ssh-host.md:378 unconditionally prescribe the renewal interrupted-sign-in fence. New-login pending has no interrupt and its approved cut retains creating/mounted disk plus named unknown notice, with recovery in T1814. Lead952ab0be confirms no conditional disposition. Correct both passages to match the already-conditional login reference; add no second fence.","file":"docs/agents/host-agent.md","line":700},{"severity":"medium","text":"Output callback can publish an actionable code card while await run() is still pending; #codes input owner is installed only after the captured handle exists. signin-v1 intentionally arms output before start completion, so an early human answer can fail 'Sign-in no longer active'. Lead952ab0be confirms no ordering guarantee. Keep bounded output in memory, validate the captured handle/admission and prearm input ownership before publication; add a complete-prompt/held-start first-answer control.","file":"hub/src/host/login-card-signin.ts","line":127}]
+finding_counts: {"high":0,"medium":4,"low":0}
+
+A-18894 complete integrated source4 NOT CLEAR: Standards3medium/Spec1medium; four consolidated findings. One Coordinator1340938a dev merge, real captured Host binding/shared parser and exact T1794 afterSignIn closure otherwise preserved; imported T1815 contract byte-identical reviewed2b2add0f2. A18892 exact63/63 T1/T2 with all26 named controls checked, lint122 report-only/0refusals;961-root/820 conservative union retains prior paths and labels prior assertion-head graph. A18893 Coordinator diagnostic actual4tests/0pass/4fail, producer1/signalnull; exact errors prompt/ready/cancel 'not within15000ms', signed-out rows/native:[]; no invented module-error/native-exit claim. TMPDIR9887→9887 equal; private/tmp4 new cland-h roots retained T1806, no global-cleanup claim; slot released. Clean c228a844b/tree71aa1485. No criterion verified/final-ready; no Reviewer experiments. Complete pass releases hold for all four fixes, fresh committed review and authorized diagnostic/final native/configured sequence.
+
+Criteria: C1 failed (New native fixture launchers omit sibling fake modules; Create one native cases fail before code cards, and pre-prompt diagnostics lack native close/stderr facts.), C2 failed (A complete prompt can publish its card before the captured run/input owner exists; an early first answer is refused instead of reaching stdin.), C3 failed (Exact-head native Codex case fails ready/snapshot wait at15000ms; no current native device-sign-in pass.), C6 failed (Exact-head native cancellation case fails before its prompt/close assertions; fixture and pre-prompt diagnostics require correction.).
+
+### impl-1791 · 2026-11-11T22:25:02.661Z
+
+Source5 at6f3f4d2a3/tree3409bb4d is in fresh review with A-18896. All4source4 findings fixed; native slot5 finally4/4green atf3afbody (actual0/null), prior slots1–4remainfailedA18893/A18895. Strict launcher uses canonical account containment + final explicit shared-builder overlays and no boot/CLAND_HOST metadata by85a8dc76; native authority staysAgentProcesses. Early prompt waits for captured handle/admission and prearms input before transaction publication; new held-start/first-answer regression. Native pre-prompt diagnostics retain actual bounded stderr/close with scan. Conditional fence guidance corrected in both reached docs. Exact-current64/64 T1/T2,27named controls/static0; report-only lint122/0refusals. Four unique C216allowances measuredfromgreenMac samples, Linuxprojectionnotpass, no baseline transfer. R20current961roots/806reached+13unknown/820conservativeunion retains prior explicit/raw/wire/native consumers; new trace/helper calls shared modules, no filter/parser copy. All7criteria implementation-done, finalreviewed15native+Macslice and mode-freeLinuxVerify stillpending; fullT3batch andT4stage/QA occasion split unchanged.
+
+### rev-35 · 2026-11-11T22:29:03.502Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1791-source-5
+commit: 6f3f4d2a3dd565afb84e54c9a6fd1d2c439585a7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18897 SOURCE CLEAR: Standards0/Spec0, all four A18894 findings resolved. Prompt waits for captured run/admission; input map/durable intent prearmed inside transaction before publication; held-start first-subscriber-answer regression checked. Exact fake module launchers use canonical owned account paths/final shared-builder overlays/shared OpenCode validation, no boot/native authority metadata per85a8dc76. Bounded real-Host pre-prompt diagnostics redact+scan; both reached fence guides conditional. T2 failure cleanup now drains synthetic held prepare. Four C216 allowances10/10/8/9 bound to actual green Mac samples with explicit unexecutedLinux projections; old timing data unchanged/no timeout calibration. A18896 current64/64,all27 named cases,five producers0/null/no truncation checked;lint122report-only/0refusals. Earlier f3af green4/4 supports unchanged native bodies but is not final-head directed evidence. Failed slots/4T1806 roots retained; no globalcleanup claim.961root/820union preserves prior,graph684+onecleanup qualification. Clean6f3f4d2a3/tree3409bb4d,noextra devmerge. No criteria newly verified/readiness: release hold for final exact-head directed15native+Mac inhibitor slice, mode-free configured verify and actual case/file/consumer reconciliation. RemainingT3batch/T4stage split unchanged; any head change needs fresh source review.
+
+### rev-35 · 2026-11-11T22:58:16.023Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1791-evidence-1
+commit: 6f3f4d2a3dd565afb84e54c9a6fd1d2c439585a7
+scope: evidence
+findings: [{"severity":"medium","text":"Configured5bcf2303 enforced failure actual1/expected0: this registered-owner consumer still counts all asks as zero and expects old terminal command hint at151; its guide also retains old outcome. Source-backed sequence is one reserved login/pre-native fixture failure → one distinct signed-out login-signin card, not duplicate wait-card creation. Coordinator4f0faf87/06dd8ca9 approves deterministic T2 preparation failure, original ask answered once/Signing in, one episode/card across retries/restart, one preparation/no native admission, separate no-owner hint control, guide/current QA mapping and other option1 consumer migration. Preserve exact guarantees and isolation rather than relax counts.","file":"hub/test/login-wait.test.ts","line":146}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-18900 completed failed-evidence audit NOT CLEAR, one medium task-local missed consumer. Exact A18899 failure quoted/inspected, no flake/shared classification; Coordinator devperiodic supports task-local. T0/T1 passed; selected allT2 fallback failed/interrupted; changedT3/Web unexecuted. Streamed base5469pass/1fail test and587pass/1fail file finishes, separate275/275 load positives; no complete-coverage claim. Linuxx64 Node24.21 c8lon1 lifetime946s cost$0.0657. A18898 independent final-source5 native audit remains88 positive cases/16 producers0/null, inventory26T1806 roots/unchangedTMPDIR, no globalcleanup. Coordinator permits no native rerun if T2 fix leaves native paths unchanged; demonstrate condition in next review, do not relabel head. No criteria verified/readiness. Hold released for authorized T2/docs/consumer fix, fresh delta review then configured verify; no unchanged-head retry/Reviewer experiments.
+
+Criteria: C1 failed (Configured Create one replay/restart consumer fails because registered-owner outcome/card semantics were not migrated; exact case login card option1 line146 actual1 expected0.).
+
+### impl-1791 · 2026-11-11T23:00:54.513Z
+
+Rule-20 consumer correction after A-18899/A-18900: login-wait.test.ts was reached in A-18896 but its option1 meaning was incorrectly left unmigrated. Exact failed assertion at146 counts every open ask (1!==0), and151 expects the superseded hint. Its installed-owner path now returns Signing in; failed preparation creates one distinct login-signin episode card. Migrating this T2 case and its per-file guide, preserving wait fold/replay/restart and no-native guarantees, adding standalone no-owner LoginCards hint control. Explicit option1/field/function sweep covers login-create/onAnswer, LoginCards/reconcile, Create one, command-hint text and selector: login-card-signin-owner/recovery/native already exercise installed owner; login-signed-out proves episode/card identity; hub-cards generic answer-once contract unchanged; docs/hub/logins current conditional owner/fallback mapping already correct; waiting-launches doc remains shared card/needsYou semantics; qa/briefs/E-1535-stage-3 current replay mapping updated while original seven-case historical catalog and fallback source guard preserved; durations.json old samples are retained unchanged, no baseline transfer. Other old QA/spec/release historical statements remain original-head receipts. No production, native, wire, skill or permission changes. Coordinator4f0faf87/06dd8ca9 approves T2/docs delta and carrying A-18898 native evidence without rerun. One fix head + delta source review before configured retry.
+
+### rev-35 · 2026-11-11T23:04:39.199Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1791-delta-6
+commit: 26b09338a1fe4424330154fd14c30cad991dd4c1
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18902 source delta CLEAR: Standards0/Spec0. Exactly three T2/docs/QA paths, no runtime/native/fixture/runner/manifest/duration change or dev merge. A18900 resolved: registered Create one Signing in/one durable original ask answer, deterministic one failed prep, exact distinct signed-out episode/card across retry/restart, replay refusal, preparation1/native0. Separate no-owner terminal-hint control; other wait cases retained; current eight-case QA mapping explicit/historical7 preserved. A18901 actual8positive TAP, three producers0/null/errornull; receipt head plus clean hashes matchcurrent; stale uncommitted caption qualified, no finalconfigured proof. Byte equality satisfies Coordinator4f0faf87/06dd8ca9 no-native-rerun condition: A18898 accepted88-case carry at6f3f4d2a3, not relabelled as26b execution. Clean26b09338a/treeadd45685. No criteria verified/readiness. Hold released for new exact-head mode-free configured verify; A18899 stays failed, its Web/changedT3 unrun. Final actual case/file/consumer evidence pending; remaining T3/T4/QA split unchanged. No Reviewer experiments.
+
+### rev-35 · 2026-11-11T23:33:06.712Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1791-final-1
+commit: 26b09338a1fe4424330154fd14c30cad991dd4c1
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18905 final CLEAR, Standards0/Spec0, C1–C7 verified. Reviewed26b09338a/treeadd45685 clean unchanged; independently reconstructed normalizedtreef4ab6e409 matches A18903 configureddb4a0b0a. T0/allT1/fallbackallT2/changed4T3files/all52Web pass:6182 base test+687 file positive finishes, separate280load test/file passes,zero negatives/skips/cancel. All27card/recovery cases base+5,all8wait casesbase;14T3identitiesbaseonce,4nativecardcases exactpositive. A18904 all7429finish facts matchrawlog;961rows preserved,required820union=556configuredfullfiles+11additionalnativecarry+239T3/14T4deferred,zero missingreachedT1/T2/Web. A18898 approved6f3native88positive/16producers0/null carried underCoordinator4f0faf87/06dd8ca9+byteequalA18902,notrelabelledorsummed; exactinhibitorsliceonly,26T1806rootsretained/no globalcleanup. Linuxx64 Node24.21/nvim0.12.5,c8lon1,2workers,lifetime1242s/$0.0862; pinnedHeadlessShell1248/Chrome156.0.8078.4. Lint122/59 and budgets/ratchet report-only, no clean-budget/fullT3 claim. Previous A18899/diagnosticreds stayhistoricalfailed. All source findings resolved; unknown-create retention/T1814 scope preserved. Holdreleased,no further run/source requested. RemainingT3landingbatch,broaderT4/afterstageQA separate; no Reviewer experiments.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-11-12T00:13:15.440Z
+
+Merged 3cfbebfceed93e7b7c323050397537e6f440cad8 onto dev.
