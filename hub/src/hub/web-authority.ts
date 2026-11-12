@@ -65,6 +65,7 @@ export const WEB_AUTHORITY = {
   'release': 'publishes a release',
   'resume': true,
   'host.create': 'requires the local human CLI or Neovim',
+  'host.providers': 'requires the local human CLI or Neovim',
   'host.status': 'requires the local human CLI or Neovim',
   'host.stop': true,
   'login.remove': true,

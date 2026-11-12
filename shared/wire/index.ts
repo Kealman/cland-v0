@@ -944,6 +944,7 @@ export type ClientRequest =
   | { type: 'login.signed-in'; id: string; name: string; code: number | null }
   | { type: 'host.list'; id: string }
   | { type: 'host.status'; id: string }
+  | { type: 'host.providers'; id: string }
   | { type: 'host.stop'; id: string; host: string }
   | { type: 'host.prepare'; id: string; pool?: string }
   | { type: 'host.destroy'; id: string; host: string }

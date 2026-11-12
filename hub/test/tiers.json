@@ -310,6 +310,7 @@
     "hub/test/host-provider-digitalocean-volumes.test.ts": "T2",
     "hub/test/host-provider-digitalocean.test.ts": "T2",
     "hub/test/host-provider-fake.test.ts": "T2",
+    "hub/test/host-provider-tokens.test.ts": "T2",
     "hub/test/host-provider-volumes.test.ts": "T2",
     "hub/test/host-provision-gate.test.ts": "T3",
     "hub/test/host-provision-records.test.ts": "T1",

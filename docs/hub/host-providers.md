@@ -1,5 +1,21 @@
 # Host providers
 
+## Provider token diagnostics
+
+The running hub answers `host.providers` for the local human CLI or Neovim
+only. Sessions, web clients and remote ingress cannot request it. It returns
+`{providers: [{provider, tokenNeeded, present, fingerprint}]}` once per distinct
+provider in configured pools, sorted by name (an empty array without pools).
+DigitalOcean needs `DIGITALOCEAN_TOKEN` in the **hub's environment**; an empty or
+missing value reports `present: false` and `fingerprint: null`. A present value
+reports the same 12-character SHA-256 prefix as `cland secret list`. The fake
+provider needs no token and reports `tokenNeeded: false`, `present: false`,
+`fingerprint: null`. An unknown provider refuses rather than claiming no token
+is needed. No token value is returned or persisted, and this request never
+constructs a provider or makes a network call. It does not inspect the caller's
+shell environment. This is a pull-only diagnostic for doctor/setup consumers;
+it does not alter `host.status` or the connect sequence.
+
 `hub/src/host/provider/provider.ts` provisions session machines independently of
 verification's `Executor`. A provider exposes `transport: 'ssh'`, side-effect-free
 `createAdmission()` and acquire,

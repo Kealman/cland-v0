@@ -6,6 +6,7 @@ import { projectTag } from '../executor/droplet/droplet.ts';
 import { onHostSpendChange } from '../executor/droplet/spend.ts';
 import { DigitalOceanHostProvider } from '../host/provider/digitalocean.ts';
 import { HostProviderRegistry } from '../host/provider/registry.ts';
+import { providerTokens } from '../host/provider-tokens.ts';
 import { hostStatus } from '../host/status.ts';
 import { PoolCreationNotAdmitted } from '../host/pool-runtime.ts';
 import { createHost, listHosts, destroyHost } from '../host/provision-host.ts';
@@ -2235,6 +2236,7 @@ export class Dispatcher {
           case 'login.snapshot':
           case 'login.list':
           case 'login.set':
+          case 'host.providers':
           case 'host.status':
           case 'host.stop':
           case 'host.create':
@@ -2309,6 +2311,7 @@ export class Dispatcher {
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));
             }
             if (frame.type === 'login.list') return answer(core.store.hosts.logins.list().map(row => ({...row,bindings:core.store.hosts.logins.bindings(row.name)})));
+            if (frame.type === 'host.providers') return answer(providerTokens(this.#options.projectConfig!().hosts,this.#options.env??process.env));
             if (frame.type === 'host.status') {
               if(this.#closed)throw Error('host status stopped');
               const work=hostStatus(core.store.hosts,this.#options.projectConfig!().hosts,this.#sessions?.list()??[],this.#options.env??process.env,core.clock,this.#options.control?.status().root,id=>this.#sessions?.hostUsage(id)??{usedMilli:0,promisedMilli:0},[...(core.roles?.get().values()??[])].map(role=>role.launch));
