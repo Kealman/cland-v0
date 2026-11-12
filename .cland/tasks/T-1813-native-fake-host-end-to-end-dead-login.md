@@ -2,8 +2,8 @@
 id: T-1813
 kind: task
 title: Native fake-host end-to-end dead-login cases for Codex and Claude Code
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1485
 branch: t/T-1813-native-fake-host-end-to-end-dead-login
 created: 2026-11-11T13:10:03.001Z
-updated: 2026-11-12T09:48:17.504Z
+updated: 2026-11-12T10:54:23.158Z
+closed: 2026-11-12T10:54:23.158Z
 ---
 
 ## Summary
@@ -29,14 +30,20 @@ Make the fake Codex and fake Claude native launches on a fake host complete the 
 
 - [x] C1. A native Codex session on a fake host that emits a dead-login signal marks its login signed-out with that host, the next Codex launch in the pool skips the host, and the first session keeps running (test).
   - done: impl-1813 · 2026-11-12T09:33:02.828Z
+  - verified: rev-35 [reviewer] · run rev-35-1813-final-1 · 2026-11-12T10:12:38.945Z · commit 1ac12020421923db7da95ceb05c401a881d786ad
 - [x] C2. The same holds for a native Claude Code session on a fake host (test).
   - done: impl-1813 · 2026-11-12T09:33:03.047Z
-- [ ] C3. Both cases pass five lone repetitions on macOS, and their duration allowances come from green samples (test).
+  - verified: rev-35 [reviewer] · run rev-35-1813-final-1 · 2026-11-12T10:12:38.945Z · commit 1ac12020421923db7da95ceb05c401a881d786ad
+- [x] C3. Both cases pass five lone repetitions on macOS, and their duration allowances come from green samples (test).
   - verified: rev-35 [reviewer] · run rev-35-1813-source-2 · 2026-11-12T09:48:17.504Z · commit 1ac12020421923db7da95ceb05c401a881d786ad
+  - verified: rev-35 [reviewer] · run rev-35-1813-final-1 · 2026-11-12T10:12:38.945Z · commit 1ac12020421923db7da95ceb05c401a881d786ad
+  - done: impl-1813 · 2026-11-12T10:12:48.384Z
 - [x] C4. The shared login-signed-out-native fixture passes CLAND_FAKE_HOST_ROOT through fixtureEnvironment's overlays, so loginFilePath resolves the mounted volume path, and a case reads the renewed login file through it (test).
   - done: impl-1813 · 2026-11-12T09:33:03.596Z
+  - verified: rev-35 [reviewer] · run rev-35-1813-final-1 · 2026-11-12T10:12:38.945Z · commit 1ac12020421923db7da95ceb05c401a881d786ad
 - [x] C5. A native Codex and a native Claude Code session on a fake host keep running through an in-place sign-in of their login, and their next turn uses the renewed login (test).
   - done: impl-1813 · 2026-11-12T09:33:03.824Z
+  - verified: rev-35 [reviewer] · run rev-35-1813-final-1 · 2026-11-12T10:12:38.945Z · commit 1ac12020421923db7da95ceb05c401a881d786ad
 
 ## Comments
 
@@ -81,3 +88,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-18969 source2 CLEAR0findings. Onlyduration2add2delete; Claude18s/reason nowreconciles7.158059708retainedworst,otherbaselines/allowances/mode unchanged;clean1ac120204/tree66de06979aa3b15ff5dc17eaed77bf166cf9dbf9,noexecutable/devmerge. A18966 exacthead3/3+6/6 actualpositivecases,recordedargv/cwd/PID/close/code0/signalnull,5runtimeSHA256 independentlymatch. /private/tmp hc11/ct1015setsunchanged;cland-h+12T1806retained,notglobalcensus/oldfailureclosure. A18957fiveMaclonepercase remainsprecommitqualifiedbyA18958chronology; Coordinator04d52d9d explicitlyacceptswithfinalheadfilesandcorrectsa58Linux-repetitionoverreach. C3verifiedincludingcorrectedallowance;noLinux5/customrunrequired. C1/C2/C4/C5/finalruntimeawaitnormalmodefreeverifyexacthead. Priorcapture/rawredactorT1808scanlimits/unknownfailedClaudedrainpreserved;A18959consumer24tieredpathsnotcoverage. Holdreleased;noReviewerexperiments,extranative/provenancererun/devmerge. RemainingT3batch/T4stage/QAseparate.
 
 Criteria: C3 verified.
+
+### impl-1813 · 2026-11-12T10:10:10.838Z
+
+Reviewed-head verification6466e5a2 exit0 at1ac12020421923db7da95ceb05c401a881d786ad, Linux x64 droplet c-8 lon1 Node24.21.0.6192passed/0failed/0skipped. T0/T1/all fallbackT2/Web and changedT3 two files9cases once; no Linux repetitions. Headless Shell1248 Chrome for Testing156.0.8078.4 isolated browser. A-18978 log; A-18979 exact native generated-case finishes and24-consumer reconciliation. All9 graphT1/T2 consumers executed; two changedT3 executed; remaining12T3 deferred merge-batch/integrated,1T4 stage/epic. C3 qualified precommit Mac5-lone samplesA18957 plus exact final-head MacfilesA18966 accepted by Coordinator04d52d9d. Final Mac /private/tmp hc/ct names unchanged (preexisting11/1015); cland-h+12 left forT1806. Duration/budget/ratchet report mode; no prior failure cleanup/provenance limit upgraded. Awaiting Reviewer same-head final settlement; Coordinator enqueues after hub ready.
+
+### rev-35 · 2026-11-12T10:12:38.945Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1813-final-1
+commit: 1ac12020421923db7da95ceb05c401a881d786ad
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-18982 FINAL CLEAR allC1–C5,0findings. Same-head6466e5a2/A18978 streaming audit6192base test/685base file passes, separate125load test/file passes,0negative/skip. Allnative9cases/2full files pass once; four new exactcase seconds9.781967753/9.876031488/6.273671314/5.651768638; C1/C2signout+hostskip+liveownership,C4mappedrenewedfile,C5samePID/conversation/volume freshturnassertions retained. A18979all24priorconsumers preserved:9T1/T2+2T3ordinary positive;12T3/1T4deferred,notgraphcoverage. C3 Coordinator04d52d9d acceptedqualifiedprecommitMac5-loneA18957/58+exactfinalMacA18966,notLinux5. Corrected18sallowance sourceA18969 stands. Git66de06979aa3b15ff5dc17eaed77bf166cf9dbf9; normalizedde6eac8154c85aceb9c09b20905f0670e33e3f9e independentlymatchesprovenance;cleanhead. HostT0gate separate; Linuxx64Node24.21/nvim0.12.5,c8lon1,2workers1132s/$0.0786,HeadlessShell1248 ChromeTesting156.0.8078.4 exactbinaryretained;selectedT3twofiles9identities37.410s addedwall1base. Reportlint122/59+budgets/ratchet stayreport. Mac+12T1806prefixroots,T1808rawcapture,precommit/missingstreams/hash/oldfailedClaudeunknownclosurelimits preserved;no globalempty orretroactiveclosureclaim. NoReviewerexperiments. RemainingT3batch/T4stage/integratedQAseparate,qaPolicynone. Holdreleased;claim untilnormalmerge.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-12T10:54:23.158Z
+
+Merged c7978ae308fce04d502da66fbb8e3709b7c97217 onto dev.
