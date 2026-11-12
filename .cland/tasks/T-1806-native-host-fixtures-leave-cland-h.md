@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-12T09:44:50.152Z
+updated: 2026-11-12T18:27:52.318Z
 ---
 
 ## Summary
@@ -48,3 +48,7 @@ Census 2026-11-11 18:17Z (impl-1794): /private/tmp now holds 17,514 `cland-h-*` 
 ### coord · 2026-11-12T09:44:50.152Z
 
 Census 2026-11-12 09:44Z (impl-1813's final-head native slot, /private/tmp on the macOS host): cland-h-* 17,640 (+6 per native login file run, +12 for two files), plus pre-existing ct-* 1,015 and hc-* 11 that no current run added or removed. ct-<32> is the shared fixture-sockets reciprocal alias used by hostDirectory, so these 1,015 are a second accumulated class beside cland-h-*: include it when this item is triaged.
+
+### coord · 2026-11-12T18:27:52.318Z
+
+Attribution for the ct-* class (2026-11-12): /private/tmp ct-* went 1,015 → 1,022 between 10:13Z and 18:27Z. All seven new roots date 16:23–16:35Z, inside the local macOS stage cover 7429dc82 (16:21–17:50Z, A-19081, workers 1, full suite), while every lane's native slot that day showed ct- unchanged. So full local suites leave ct-<32> fixture-sockets aliases behind, and the 1,015 historical ones are most likely the same producer over earlier local covers. Include the full-suite path in C1, not only the single native files.
