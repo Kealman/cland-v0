@@ -697,10 +697,53 @@ See [capacity cases](../agents/tests/hub-test-login-capacity.test.ts.md).
 
 ## Login wait cards
 
+The hub registers the card sign-in owner with its session and secret-registry
+runtime. It runs the prepared Host's `signIn` operation, requiring agent capability
+`signin-v1`; older Hosts/agents refuse before native admission. The optional
+`runLoginSignIn` override is for component fixtures. Preparation captures the Host
+object as internal metadata, so a reused display name cannot redirect the run.
+The owner shares `preparePoolLogin` with the CLI, including existing disk renewal,
+host selection and busy-host pins. It never supplies a second completion or
+relaunch path. A `login-signin-code` card displays the harness link and device
+code; Claude Code's free answer is secret. Codex completes without an answer.
+Output received during native start stays in bounded memory. The owner validates
+the captured run/admission and prearms input in the card transaction before its
+publication; a visible card's first answer can use that owner.
+The remote Gateway preserves only the parsed link for that stored, hub-owned
+card. Its exact origin must occur beside the per-harness patterns in
+`host/login-signin-output.ts`: Claude account/Console, OpenAI sign-in, or the
+existing fake harness origin. Custom origins remain masked. Registered secret
+bytes anywhere in the question keep normal masking. All other URLs, questions
+and values pass through the ordinary output redaction; inbound redaction is
+unchanged. The parser accepts complete Codex device/user-code labels and its
+one-time-code prompt. These text fixtures prove parsing, not a real login.
+The timer is 15 minutes on the hub clock. Expiry stops accepting input, immediately
+withdraws the code card with `sign-in timed out; closing`, then requests
+cancellation. Elapsed time changes visibility only: the login state and disk
+ownership remain unchanged. A matching durable native close permits failed
+completion and disk cleanup. A typed
+`nativeAdmission: 'not-admitted'` refusal also permits failed completion. Unknown
+renewal outcomes use the existing interrupted-sign-in fence. An uncertain new
+login instead retains its `creating` row and its attached, mounted disk. Its
+card withdraws with `sign-in outcome unknown`, and one Agents line names the
+login and host. Those identities persist before the native run starts. This
+conservative cut performs no cleanup or second fence; T-1814 owns subsequent
+shared CLI/card new-login recovery.
+
+Accepted intents are indexed rows with a captured sequence boundary. Recovery
+pages at most 64 rows per event-loop turn outside synchronous startup; later
+admissions are excluded. It withdraws open code cards and reports once, without
+native replay. Every admitted native/input join settles before failures propagate
+and before snapshot/release owners close. See the
+[owner component cases](../agents/tests/hub-test-login-card-signin-owner.test.ts.md)
+and [remote cases](../agents/tests/hub-test-login-card-signin-remote.test.ts.md).
+
 A launch with the placement verdict `waiting for a login <harness>` raises one
 hub-owned `login-create` card in General per pool and harness, shared by every
-matching launch. The options are Create one and Not now. Create one returns
-`cland login add <harness> --pool <pool>`; Not now or decline folds the card
+matching launch. The options are Create one and Not now. Create one starts
+the shared preparation and Host sign-in path when the card owner is installed;
+an older runtime without it returns the terminal command hint
+`cland login add <harness> --pool <pool>`. Not now or decline folds the card
 and keeps launches waiting. Answers and open cards survive hub restart.
 The active-only `login-wait-cards` metadata preserves deduplication without
 scanning retained ask history. A card withdraws when no matching login wait

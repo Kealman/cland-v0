@@ -426,6 +426,12 @@ export class TelegramRemote implements Remote {
     });
   }
 
+  deleteMessage(ingress:RemoteIngress):Promise<boolean>{return this.#track(async()=>{
+    try{return await this.#api.deleteMessage({chat_id:ingress.chatId,message_id:Number(ingress.messageId)});}
+    catch(error){if(error instanceof TelegramError&&error.code===400&&error.description==='Bad Request: message to delete not found')return true;if(error instanceof TelegramError&&[400,403].includes(error.code))return false;throw error;}
+  });}
+  secretAnswerNotice(ingress:RemoteIngress,text:string):Promise<void>{return this.#track(()=>this.#outbox.send({chat_id:ingress.chatId,text},{key:`secret-answer:${ingress.chatId}:${ingress.messageId}`}));}
+
   async #unsupported(update: TgUpdate): Promise<void> {
     const message = update.message;
     if (!message || this.#polling!.store.get(`telegram.command:${message.chat.id}:${message.message_id}`) === null)

@@ -1,4 +1,3 @@
-import { answerTextDigest } from '../remote/redact.ts';
 import { randomUUID } from 'node:crypto';
 import type { AskPort } from './asks.ts';
 import { askOptions } from './asks.ts';
@@ -42,11 +41,18 @@ export class HubCards {
     return message.id;
   }
 
-  /** Digest native replay comparisons without retaining a secret answer. */
-  answerDigest(id: string, text: string | undefined): string | undefined {
-    const a = this.#port.store.ask(id);
-    return a?.from === 'hub' && a.hubKind && a.secret && text !== undefined
-      ? answerTextDigest(text) : undefined;
+  /** Secret replay identity comes from captured native ingress, never code text. */
+  isSecret(id:string):boolean{
+    const a=this.#port.store.ask(id);return a?.from==='hub'&&!!a.hubKind&&a.secret===true;
+  }
+  /** Trusted stored identity and parsed output, never a remote frame's claim. */
+  signInLink(id:string):{question:string;harness:unknown;url:unknown}|undefined{
+    const a=this.#port.store.ask(id);
+    if(a?.from!=='hub'||a.hubKind!=='login-signin-code'||!a.payload||typeof a.payload!=='object')return;
+    const {harness,url}=a.payload as {harness?:unknown;url?:unknown};return {question:a.question,harness,url};
+  }
+  answerDigest(id: string, messageId: string | undefined): string | undefined {
+    return this.isSecret(id) ? messageId : undefined;
   }
 
   answer(a: AskRow, body: string, option: number | undefined, via: HumanActionVia, user?: { id: string; name: string }, declined = false, standIn?: string) {

@@ -5,6 +5,10 @@ Tier T2, Node 24, in-process loopback HTTP only. Run
 No hub, Git operation, child process, filesystem fixture, browser or real platform
 is used. The fabricated token is held in memory and sent only as a Bot header.
 
+`Discord deletes the exact native message and confirms an already absent replay`
+checks deletion against the fake API's retained message set. Only the exact
+Unknown Message error (10008), rather than an arbitrary 404, confirms absence.
+
 The tests cover C1–C4 of T-1396: enforced nonce deduplication and expiry; empty
 mention parsing on every client write; application and gateway facts; exact
 string snowflakes and descending before pages; sanitized provider faults and

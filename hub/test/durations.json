@@ -11524,7 +11524,6 @@
     "hub/test/hub-cards.test.ts::native secret telegram retention probe": 0.293745,
     "hub/test/hub-cards.test.ts::ordinary ask remote replay preserves its existing answer and deduplicates delivery": 0.207378,
     "hub/test/hub-cards.test.ts::pending hub cards survive restart; missing handlers keep them open and withdrawal records its reason": 0.15091,
-    "hub/test/hub-cards.test.ts::secret hub answers reach the handler verbatim and remote replay stores a digest": 0.122044,
     "hub/test/hub-cards.test.ts::users-mode hub decline outcome retains stable user id": 0.160946,
     "hub/test/hub-cards.test.ts::users-mode hub free outcome retains stable user id": 0.151761,
     "hub/test/hub-cards.test.ts::users-mode hub option outcome retains stable user id": 0.158469,
@@ -15080,6 +15079,34 @@
       "added": "2026-11-11",
       "expires": "2026-11-18",
       "reason": "T-1794: macOS arm64 Node24.21 local fake-only full-file green 5.841264625s including setup and joined cleanup. Linux unexecuted projection 1.6x; allowance ceil(1.5x projection). Report mode unchanged; no real provider, credential, network or browser."
+    },
+    "hub/test/login-card-signin.test.ts::native Claude card creates and renews one disk across both remotes with deletion": {
+      "seconds": 10,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1791 native card integration, green whole-file at f3af3d843a853b7b010ddfc46a68746b0a5b614e. macOS arm64 Node24.21 local fake-only sample 4.082666334s includes fixture setup, native agent/fake harness, card/receipt assertions and joined cleanup; Claude cases also include renewal and bounded project-retention scan. Excludes producer startup and slot wait. Linux 6.532266134s is an unexecuted 1.6x projection, not evidence; allowance ceil(1.5x projection). No browser, real provider or stress. Duration policy stays report mode; no baseline sample transferred."
+    },
+    "hub/test/login-card-signin.test.ts::native Claude card creates and renews one disk across both remotes with one fallback": {
+      "seconds": 10,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1791 native card integration, green whole-file at f3af3d843a853b7b010ddfc46a68746b0a5b614e. macOS arm64 Node24.21 local fake-only sample 3.827077125s includes fixture setup, native agent/fake harness, card/receipt assertions and joined cleanup; Claude cases also include renewal and bounded project-retention scan. Excludes producer startup and slot wait. Linux 6.1233234s is an unexecuted 1.6x projection, not evidence; allowance ceil(1.5x projection). No browser, real provider or stress. Duration policy stays report mode; no baseline sample transferred."
+    },
+    "hub/test/login-card-signin.test.ts::native Codex card completes device sign-in without an answer": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1791 native card integration, green whole-file at f3af3d843a853b7b010ddfc46a68746b0a5b614e. macOS arm64 Node24.21 local fake-only sample 3.06524425s includes fixture setup, native agent/fake harness, card/receipt assertions and joined cleanup; Claude cases also include renewal and bounded project-retention scan. Excludes producer startup and slot wait. Linux 4.9043908s is an unexecuted 1.6x projection, not evidence; allowance ceil(1.5x projection). No browser, real provider or stress. Duration policy stays report mode; no baseline sample transferred."
+    },
+    "hub/test/login-card-signin.test.ts::native cancelled Claude card closes its admitted writer before failed disk completion": {
+      "seconds": 9,
+      "owner": "C-216",
+      "added": "2026-11-11",
+      "expires": "2026-11-18",
+      "reason": "T-1791 native card integration, green whole-file at f3af3d843a853b7b010ddfc46a68746b0a5b614e. macOS arm64 Node24.21 local fake-only sample 3.590948625s includes fixture setup, native agent/fake harness, card/receipt assertions and joined cleanup; Claude cases also include renewal and bounded project-retention scan. Excludes producer startup and slot wait. Linux 5.7455178s is an unexecuted 1.6x projection, not evidence; allowance ceil(1.5x projection). No browser, real provider or stress. Duration policy stays report mode; no baseline sample transferred."
     }
   }
 }

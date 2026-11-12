@@ -1,28 +1,33 @@
+import {redactSignInFrame,type SignInLinkLookup} from './signin-link.ts';
 import type { Conversation, Dispatcher } from '../hub/dispatch.ts';
 import { PROTOCOL_VERSION, type HubFrame, type RemoteVia, type RemoteConnection, type TopicMessage } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
-import { remoteRedactor, redactFrame, redactHubFrame, redactValue, type RemoteRedactor } from './redact.ts';
+import { remoteRedactor, redactFrame, redactValue, type RemoteRedactor } from './redact.ts';
 import type { GatewayLease } from './poller-lease.ts';
 import type { PairingCodes } from './pairing.ts';
 import type { Pairing } from './state.ts';
 import { remoteStopCause } from './notices.ts';
 import { gatewayInbox } from './authority.ts';
-import { createHash } from 'node:crypto';
+import {remoteInputId as inputId,type RemoteIngress} from './ingress.ts';
+export type {RemoteIngress} from './ingress.ts';
+import {SecretAnswerCleanupOwner} from './secret-answer.ts';
+import type {RemoteState} from './state.ts';
+import type {Clock} from '../hub/clock.ts';
 
 /** Trusted native identity, carried separately from the frame and scoped by messenger. */
-export type RemoteIngress = { chatId: string; messageId: string; messengerUserId?: string };
 export type RemoteSend = (frame: Record<string, unknown>, ingress?: RemoteIngress, bytes?: readonly Buffer[], identity?: Pairing | null) => void;
 export type RemoteBatch = (write: () => void) => void;
 export type RemoteReceipt = (ingress: RemoteIngress) => TopicMessage | null;
 
-function inputId(via: RemoteVia, ingress: RemoteIngress): string {
-  return `remote-${createHash('sha256').update(JSON.stringify([via, ingress.chatId, ingress.messageId])).digest('hex')}`;
-}
 
 /** One active remote per messenger. The gateway owns its lifetime and frame port. */
 export type Remote = {
   id: string;
   via: RemoteVia;
+  /** Captured ingress only, after the durable secret-answer receipt. False means unsupported. */
+  deleteMessage?: (ingress:RemoteIngress)=>Promise<boolean>;
+  /** Adapters use their existing keyed outbox for this one fallback line. */
+  secretAnswerNotice?: (ingress:RemoteIngress,text:string)=>Promise<void>;
   /** Optional lifetime signal is aborted before the gateway joins an in-flight start. */
   start: (send: RemoteSend, pair?: (identity: Pairing) => string | null, signal?: AbortSignal, receipt?: RemoteReceipt, batch?: RemoteBatch) => void | Promise<void>;
   receive: (frame: HubFrame) => void | Promise<void>;
@@ -53,7 +58,7 @@ export type RemoteStates = {
   };
 };
 
-export type GatewayOptions = { changed?: () => void; pairing?: Pick<PairingCodes, 'issue'>; lease?: GatewayLease; state?: RemoteStates; log?: LogFn; redact?: (text: string) => string };
+export type GatewayOptions = { signInLink?:SignInLinkLookup; secretCard?:(id:string)=>boolean; secretAnswers?:Pick<RemoteState,'forMessenger'>; clock?:Clock; changed?: () => void; pairing?: Pick<PairingCodes, 'issue'>; lease?: GatewayLease; state?: RemoteStates; log?: LogFn; redact?: (text: string) => string };
 
 /** An in-process edge: all remotes share one human dispatcher conversation. */
 export class Gateway {
@@ -63,7 +68,9 @@ export class Gateway {
   readonly #dispatcher: Pick<Dispatcher, 'open'>;
   readonly #remotes: readonly Remote[];
   readonly #started: Remote[] = [];
-  readonly #pending = new Map<string, { remote: Remote; id: string }>();
+  readonly #pending = new Map<string, { remote: Remote; id: string; ingress?:RemoteIngress }>();
+  readonly #secretCleanup:SecretAnswerCleanupOwner|undefined;
+  readonly #secretCard:GatewayOptions['secretCard'];
   readonly #disabled = new Set<Remote>();
   readonly #stops = new Map<Remote, Promise<void>>();
   readonly #work = new Set<Promise<void>>();
@@ -83,6 +90,7 @@ export class Gateway {
 
   constructor(dispatcher: Pick<Dispatcher, 'open'>, remotes: readonly Remote[], options: GatewayOptions = {}) {
     this.#dispatcher = dispatcher;
+    this.#secretCard=options.secretCard;
     this.#changed = options.changed ?? (() => {});
     this.#remotes = [...remotes];
     this.#lease = options.lease;
@@ -97,8 +105,17 @@ export class Gateway {
     const registered = this.#redact as Partial<RemoteRedactor>;
     const text = Object.hasOwn(registered, 'text') && typeof registered.text === 'function' ? registered.text : this.#redact;
     this.#output = input => redactFrame(input, text);
-    this.#hubOutput = frame => redactHubFrame(frame, text);
+    this.#hubOutput = frame => redactSignInFrame(frame, text, options.signInLink, registered.containsSecret?.bind(registered));
     this.#log = entry => options.log?.(redactValue(entry, text));
+    this.#secretCleanup=options.secretAnswers?new SecretAnswerCleanupOwner({state:options.secretAnswers,...(options.clock?{clock:options.clock}:{}),
+      report:()=>this.#log({event:'secret-answer-cleanup-incomplete'}),perform:async(via,ingress)=>{
+        const remote=this.#started.find(remote=>remote.via===via&&!this.#disabled.has(remote));if(!remote)throw Error('secret answer adapter unavailable');
+        const deleted=await remote.deleteMessage?.(ingress)??false;
+        if(!deleted){const text='This messenger could not delete your sign-in code message. Delete it yourself.';
+          if(remote.secretAnswerNotice)await remote.secretAnswerNotice(ingress,text);
+          else throw Error('Secret answer deletion notice unavailable');
+        }
+      }}) : undefined;
   }
 
   start(): Promise<void> {
@@ -127,7 +144,7 @@ export class Gateway {
         await remote.start((frame, ingress, bytes, identity) => {
           if (!this.#open || this.#disabled.has(remote)) throw new Error('gateway is not running');
           const id = `gateway-${++this.#nextId}`;
-          this.#pending.set(id, { remote, id: typeof frame.id === 'string' ? frame.id : '?' });
+          this.#pending.set(id, { remote, id: typeof frame.id === 'string' ? frame.id : '?',...(ingress?{ingress:{...ingress}}:{}) });
           const messageId = ingress ? inputId(remote.via, ingress) : undefined;
           const paired = identity === null ? null : identity || ingress
             ? this.#state.forMessenger(remote.via).pairingFor?.(identity?.chatId ?? ingress!.chatId, identity?.userId ?? ingress?.messengerUserId) : null;
@@ -135,7 +152,14 @@ export class Gateway {
           try {
             const metadata = bytes && frame.type === 'artifact.upload' && Array.isArray(frame.files)
               ? { ...frame, files: frame.files.map(file => { const { data, ...rest } = file as Record<string, unknown>; return rest; }) } : frame;
-            this.#conversation!.receive(JSON.stringify(this.#output({ ...metadata, id })), remote.via, messageId, bytes, userId);
+            const secret=frame.type==='topic.answer'&&typeof frame.ask==='string'&&this.#secretCard?.(frame.ask)===true;
+            const answerInput=secret&&ingress?{
+              ingress:{...ingress},
+              ...(typeof frame.text==='string'?{text:frame.text}:{}),
+              ...(typeof frame.reason==='string'?{reason:frame.reason}:{}),
+            }:undefined;
+            const safe=secret?{...metadata,...(typeof frame.text==='string'?{text:'answered'}:{}),...(typeof frame.reason==='string'?{reason:'answered'}:{})}:metadata;
+            this.#conversation!.receive(JSON.stringify(this.#output({ ...safe, id })), remote.via, messageId, bytes, userId,answerInput);
           }
           catch (error) { this.#disable(remote, error); throw new Error(this.#reason(error)); }
         }, this.#pairing ? identity => {
@@ -172,12 +196,14 @@ export class Gateway {
           if (!pending) return;
           this.#pending.delete(frame.id);
           this.#receive(pending.remote, { ...frame, id: pending.id });
+          if(frame.ok&&pending.ingress)void this.#secretCleanup?.run(pending.remote.via,inputId(pending.remote.via,pending.ingress)).catch(()=>{});
         } else {
           for (const remote of this.#started) this.#receive(remote, frame);
         }
       },
     }, { authenticated: true, edge: 'gateway' });
     this.#open = true;
+    this.#secretCleanup?.start(this.#started.map(remote=>remote.via));
     this.#changed();
     this.#conversation.receive(JSON.stringify({ type: 'hello', protocol: PROTOCOL_VERSION, client: 'human' }));
     for (const remote of this.#started) {
@@ -299,8 +325,9 @@ export class Gateway {
     await this.#starting?.catch(() => {});
     for (const { remote, id } of this.#pending.values()) this.#receive(remote, { type: 'result', id, ok: false, error: 'gateway stopped before the answer' });
     this.#pending.clear();
+    await attempt(()=>this.#secretCleanup?.stop());
     for (const remote of this.#started) await attempt(() => this.#stopRemote(remote));
-    await Promise.all(this.#work);
+    while(this.#work.size){const results=await Promise.allSettled([...this.#work]);for(const result of results)if(result.status==='rejected')failures.push(result.reason);}
     // Incomplete drainage may leave a token consumer; keep its durable owner.
     for (const unsubscribe of this.#unsubscribers.splice(0)) unsubscribe();
     this.#changed();

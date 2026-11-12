@@ -390,6 +390,11 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
           return reply(res, 400, { ok: false, error_code: 400, description: 'Bad Request: query is too old' });
         return reply(res, 200, { ok: true, result: true });
       }
+      if(method==='deleteMessage'){
+        const index=messages.findIndex(message=>String(message.chat.id)===String(params.chat_id)&&message.message_id===Number(params.message_id));
+        if(index<0)return reply(res,400,{ok:false,error_code:400,description:'Bad Request: message to delete not found'});
+        messages.splice(index,1);return reply(res,200,{ok:true,result:true});
+      }
       if (method === 'editMessageText') {
         const message = messages.find(message => message.message_id === params.message_id && String(message.chat.id) === String(params.chat_id));
         if (!message) return reply(res, 400, { ok: false, error_code: 400, description: 'Bad Request: message to edit not found' });

@@ -1,4 +1,5 @@
 import { WAITING_LAUNCH_SCHEMA } from '../adapters/waiting-launches.ts';
+import {LoginCardIntents} from '../host/login-card-intents.ts';
 import type { HostWorktreeRecord } from '../host/task-worktrees.ts';
 import { HostRecords } from '../host/records.ts';
 import { Users } from './users.ts';
@@ -442,6 +443,7 @@ export class Store implements HygieneMemory {
   readonly users: Users;
   readonly hosts: HostRecords;
   readonly #db: DatabaseSync;
+  readonly cardSignIns:LoginCardIntents;
   readonly #statements = new Map<string, StatementSync>();
   #itemResolver: (id: string) => string | null = () => null;
 
@@ -467,6 +469,7 @@ export class Store implements HygieneMemory {
     });
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on;');
     this.#db.exec(SCHEMA);
+    this.cardSignIns=new LoginCardIntents(this.#db);
     // Persisted triggers also maintain the index when an older hub writes meta.
     this.#db.exec(`create trigger if not exists suite_summary_insert after insert on meta when new.key glob 'suite-job:*' begin
       insert into suite_job_summaries select key, ${suiteHistoryProjection} from meta where key = new.key on conflict(key) do update set value = excluded.value;

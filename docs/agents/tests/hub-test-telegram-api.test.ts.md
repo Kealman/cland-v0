@@ -7,6 +7,9 @@ a disposable directory containing only synthetic files and remove it after I/O s
 Run this file alone with `node --test hub/test/telegram-api.test.ts`, subject to
 cover-quiet admission.
 
+`Telegram deletes the exact native message after a confirmed API result`
+checks native deletion against the fake API's retained message set.
+
 `Telegram API override sends to the fake bot` retains `getMe`, the sent message
 and `/control/state` receipts. Provider-refusal controls check every retained
 error field and stack, including the absence of a raw fetch cause. The token

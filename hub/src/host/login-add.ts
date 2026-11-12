@@ -1,4 +1,4 @@
-import { prepareLoginSignIn, prepareExistingLoginSignIn, reserveDiskLogin, loginSignInCommand, type LoginAddInput } from './login-signin.ts';
+import { prepareLoginSignIn, prepareExistingLoginSignIn, reserveDiskLogin, loginSignInCommand, type LoginAddInput, type LoginSignIn } from './login-signin.ts';
 import { HostProviderRegistry } from './provider/registry.ts';
 import { projectTag } from '../executor/droplet/droplet.ts';
 import { sshConnectionArguments } from '../transport/ssh.ts';
@@ -9,7 +9,7 @@ import type { Clock } from '../hub/clock.ts';
 import {snapshotHostIdentity,type LoginSnapshots} from './login-snapshots.ts';
 
 /** Reuse any ready host, including full hosts; join a boot already admitted. */
-export async function preparePoolLogin(o:{root:string;env:NodeJS.ProcessEnv;pools:HostPools['pools'];records:HostRecords;hosts:readonly Host[];clock:Clock;signal:AbortSignal;createHost:(pool:string)=>Promise<unknown>;runner?:typeof prepareLoginSignIn;snapshots?:LoginSnapshots;pinHost?:(id:string)=>()=>void;afterSignIn?:(host:string,harness:LoginAddInput['harness'])=>Promise<void>}, input:LoginAddInput & {signin?:boolean}) {
+export async function preparePoolLogin(o:{root:string;env:NodeJS.ProcessEnv;pools:HostPools['pools'];records:HostRecords;hosts:readonly Host[];clock:Clock;signal:AbortSignal;createHost:(pool:string)=>Promise<unknown>;runner?:typeof prepareLoginSignIn;snapshots?:LoginSnapshots;pinHost?:(id:string)=>()=>void;afterSignIn?:(host:string,harness:LoginAddInput['harness'])=>Promise<void>}, input:LoginAddInput & {signin?:boolean}):Promise<{pending:LoginSignIn;nativeHost?:Host;plan:{name:string;host:string;command:string;args:string[]}}> {
  if(input.signin&&!o.snapshots)throw Error('login snapshots unavailable');
  const existing=input.signin&&input.name?o.records.logins.get(input.name):null;
  if(input.signin&&(!existing||existing.kind!=='disk'))throw Error('sign-in requires an existing disk login');
@@ -80,7 +80,7 @@ export async function preparePoolLogin(o:{root:string;env:NodeJS.ProcessEnv;pool
  pending.complete=code=>complete(code).finally(()=>{if(o.records.logins.get(name)?.state!=='creating')unpin();});
  if(pending.interrupt){const interrupt=pending.interrupt.bind(pending);pending.interrupt=()=>interrupt().finally(()=>{if(o.records.logins.get(name)?.state!=='creating')unpin();});}
  try{authorize();}catch(error){await (pending.interrupt?.()??pending.complete(null));throw error;}
- return {pending,plan:{name:pending.name,host:record.id,command:'ssh',args:[...args,loginSignInCommand(input.harness,pending.path)]}};
+ return {pending,nativeHost:host,plan:{name:pending.name,host:record.id,command:'ssh',args:[...args,loginSignInCommand(input.harness,pending.path)]}};
  } catch(error) {
   if(!nativeStarted&&o.records.logins.get(admitted.name)?.state==='creating')o.records.logins.markSignedOut(admitted.name,{reason:'sign-in failed',host:null});
   if(o.records.logins.get(admitted.name)?.state!=='creating')unpin();

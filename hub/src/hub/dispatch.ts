@@ -8,7 +8,10 @@ import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { hostStatus } from '../host/status.ts';
 import { PoolCreationNotAdmitted } from '../host/pool-runtime.ts';
 import { createHost, listHosts, destroyHost } from '../host/provision-host.ts';
-import { type LoginSignIn } from '../host/login-signin.ts';
+import { type LoginSignIn, type LoginAddInput } from '../host/login-signin.ts';
+import {signInNotAdmitted} from '../host/agent/signin-types.ts';
+import {LoginCardSignIn,type LoginCardSignInOptions} from '../host/login-card-signin.ts';
+import {remoteInputId,sameRemoteIngress,type GatewayAnswerInput} from '../remote/ingress.ts';
 import { LoginSnapshots, snapshotHostIdentity } from '../host/login-snapshots.ts';
 import { preparePoolLogin } from '../host/login-add.ts';
 import { preparePools } from '../host/provider/pool-image.ts';
@@ -161,7 +164,7 @@ export type Conversation = {
   /** Trusted gateway only: synchronous frame work; never accepts an async callback. */
   commitBatch?: (write: () => void) => void;
   /** One frame; only the in-process gateway supplies trusted messenger provenance. */
-  receive: (raw: string, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[], userId?: string) => void;
+  receive: (raw: string, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[], userId?: string, answerInput?: GatewayAnswerInput) => void;
   /** Native gateway recovery only; not an action in the frame protocol. */
   messageReceipt?: (messageId: string, via?: import('../protocol.ts').RemoteVia) => import('../protocol.ts').TopicMessage | null;
   /** Join native upload writers and rollback after closing admission. */
@@ -171,6 +174,7 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  runLoginSignIn?:LoginCardSignInOptions['run'];
   prepareLogin?: typeof preparePoolLogin;
   createHost?: typeof createHost;
   registerHostSecrets?: (values:readonly string[])=>void;
@@ -521,11 +525,13 @@ export class Dispatcher {
   readonly #loginRelease:ReturnType<typeof installLoginRelease>;
   readonly #loginClosers = new Set<() => Promise<unknown>>();
   readonly #loginPins = new Map<string, number>();
+  #cardSignIn:LoginCardSignIn|undefined;
   async close(): Promise<void> {
     this.#closed = true;
     const failures:unknown[]=[];
     const attempt=async(close:()=>unknown|Promise<unknown>)=>{try{await close();}catch(error){failures.push(error);}};
     this.#hostProvisionAbort.abort();
+    await attempt(()=>this.#cardSignIn?.stop());
     await attempt(()=>this.#loginRelease.close());
     await attempt(()=>this.loginSnapshots?.close());
     await attempt(()=>this.#stopHostSpend?.());
@@ -643,8 +649,28 @@ export class Dispatcher {
     }
   }
 
+  #prepareLogin(input:LoginAddInput&{signin?:boolean},signal?:AbortSignal){
+    const core=this.core,root=this.#options.control!.status().root,env=this.#options.env??process.env;
+    return (this.#options.prepareLogin??preparePoolLogin)({afterSignIn:async(host,harness)=>{if(!this.#sessions)throw Error('session runtime unavailable');await this.#sessions.relaunchAfterSignIn(host,harness);},root,env,pools:this.#options.projectConfig!().hosts.pools,records:core.store.hosts,hosts:this.hostOwner!.hosts,clock:core.clock,signal:signal?AbortSignal.any([signal,this.#hostProvisionAbort.signal]):this.#hostProvisionAbort.signal,createHost:pool=>this.#createPoolHost(pool),...(this.loginSnapshots?{snapshots:this.loginSnapshots}:{}),pinHost:id=>{
+      this.#loginPins.set(id,(this.#loginPins.get(id)??0)+1);
+      let released=false;
+      return ()=>{if(released)return;released=true;const n=this.#loginPins.get(id)!-1;if(n)this.#loginPins.set(id,n);else this.#loginPins.delete(id);};
+    }},input);
+  }
+
   useSessions(sessions: Sessions | undefined, startScaling = true): void {
     this.#sessions = sessions;
+    if(sessions&&!this.#cardSignIn&&this.#options.registerHostSecrets){
+      this.#cardSignIn=new LoginCardSignIn({store:this.core.store,cards:this.core.cards,clock:this.core.clock,
+        prepare:async(input,signal)=>{const {pending,plan,nativeHost}=await this.#prepareLogin(input,signal);return {pending,host:plan.host,...(nativeHost?{nativeHost}:{})};},
+        run:this.#options.runLoginSignIn??(async(input,output)=>{
+          const host=input.nativeHost;
+          if(!host?.signIn)throw signInNotAdmitted('CLAND_SIGNIN_UNAVAILABLE','host signin-v1 capability unavailable');
+          return host.signIn({harness:input.harness,path:input.path},output);
+        }),registerSecret:text=>this.#options.registerHostSecrets!([text]),
+        notice:text=>{this.core.noticeTo('agents',{kind:'report',to:['coordinator'],text});},
+      });
+    }
     sessions?.waitingAdmission(async (request,authorize) => {
       if (!request.item) return authorize;
       if (!this.#worktrees) throw new Error('this hub has no tracker: a launch with an item needs a project');
@@ -1974,7 +2000,7 @@ export class Dispatcher {
       }
     };
 
-    const clientRequest = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[]) => {
+    const clientRequest = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[], answerInput?: GatewayAnswerInput) => {
       // Retired frames are outside the protocol, but old clients need a useful refusal.
       if (frame.type === 'inbox.dismiss' || frame.type === 'inbox.dismiss_all') {
         return peer.send({ type: 'result', id: typeof frame.id === 'string' ? frame.id : '?', ok: false,
@@ -2246,16 +2272,11 @@ export class Dispatcher {
                 return answer(addKeyLogin(root,projectTag(root,config.name),core.store.hosts.logins,this.#options.registerHostSecrets,frame));
               }
               if(this.#closed||!this.hostOwner||!this.#options.control) throw Error('host runtime unavailable');
-              const root=this.#options.control.status().root, env=this.#options.env??process.env;
               const existing=frame.type==='login.signin'?core.store.hosts.logins.get(frame.name):null;
               if(frame.type==='login.signin'&&!existing)throw Error('unknown login: '+frame.name);
               const input=frame.type==='login.signin'?{harness:existing!.harness,name:frame.name,signin:true}:frame;
               const work=(async()=>{
-                const {pending,plan}=await (this.#options.prepareLogin??preparePoolLogin)({afterSignIn:async(host,harness)=>{if(!this.#sessions)throw Error('session runtime unavailable');await this.#sessions.relaunchAfterSignIn(host,harness);},root,env,pools:this.#options.projectConfig!().hosts.pools,records:core.store.hosts,hosts:this.hostOwner!.hosts,clock:core.clock,signal:this.#hostProvisionAbort.signal,createHost:pool=>this.#createPoolHost(pool),...(this.loginSnapshots?{snapshots:this.loginSnapshots}:{}),pinHost:id=>{
-                  this.#loginPins.set(id,(this.#loginPins.get(id)??0)+1);
-                  let released=false;
-                  return ()=>{if(released)return;released=true;const n=this.#loginPins.get(id)!-1;if(n)this.#loginPins.set(id,n);else this.#loginPins.delete(id);};
-                }},input);
+                const {pending,plan}=await this.#prepareLogin(input);
                 const close=()=>{loginSignIns.delete(pending.name);return pending.interrupt?.()??pending.complete(null);};
                 this.#loginClosers.add(close);
                 const complete=pending.complete.bind(pending);
@@ -2329,17 +2350,22 @@ export class Dispatcher {
             return answer({ pairing });
           }
           case 'topic.answer': {
-            const apply = () => core.asks.answer(frame.ask, frame.option, frame.text, core.store.users.mode() === 'users' || frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, frame.reason, via ?? (transport.edge === 'web' ? 'web' : 'neovim'), humanUser(frame) ?? undefined);
+            const secret=core.cards.isSecret(frame.ask);
+            if(secret&&answerInput&&(!via||!messageId||remoteInputId(via,answerInput.ingress)!==messageId))throw Error('native answer identity conflict');
+            if(secret&&via&&messageId&&(frame.text!==undefined||frame.reason!==undefined)&&!answerInput)throw Error('secret native answer input unavailable');
+            const apply = () => core.asks.answer(frame.ask, frame.option, secret&&answerInput ? answerInput.text : frame.text, core.store.users.mode() === 'users' || frame.as?.name === 'human' ? undefined : frame.as?.name, frame.declined, secret&&answerInput ? answerInput.reason : frame.reason, via ?? (transport.edge === 'web' ? 'web' : 'neovim'), humanUser(frame) ?? undefined);
             if (!messageId || !via) return answer(apply()); // Previous clients keep the ordinary first-answer gate.
             const state = core.store.remotes.forMessenger(via);
-            const digest = core.cards.answerDigest(frame.ask, frame.text ?? frame.reason);
-            const replayText = digest === undefined ? { text: frame.text, reason: frame.reason } : { digest };
+            const identity = core.cards.answerDigest(frame.ask, messageId);
+            const replayText = identity === undefined ? { text: frame.text, reason: frame.reason } : { identity,...(answerInput?{ingress:answerInput.ingress}:{}) };
             const key = `gateway.answer:${messageId}`;
             const original = state.get(key);
             if (original) {
               const receipt = JSON.parse(original);
-              if (receipt.ask !== frame.ask || receipt.option !== frame.option || (digest === undefined ? receipt.text !== frame.text : receipt.digest !== digest)
-                || receipt.declined !== frame.declined || (digest === undefined && receipt.reason !== frame.reason)) throw new Error('remote answer identity conflict');
+              if (receipt.ask !== frame.ask || receipt.option !== frame.option || (identity === undefined ? receipt.text !== frame.text : receipt.identity !== undefined && receipt.identity !== identity)
+                || receipt.declined !== frame.declined || (identity === undefined && receipt.reason !== frame.reason)) throw new Error('remote answer identity conflict');
+              if(identity&&receipt.ingress&&(!answerInput||!sameRemoteIngress(receipt.ingress,answerInput.ingress)))throw Error('remote answer identity conflict');
+              if(identity&&answerInput)state.transaction(()=>state.admitSecretAnswerCleanup(messageId,answerInput.ingress));
               return answer(receipt.value);
             }
             // Commit the native replay receipt with the hub effect, before the adapter
@@ -2350,6 +2376,7 @@ export class Dispatcher {
               // its outcomes; the first response and every replay must agree.
               const value = JSON.parse(JSON.stringify(applied));
               state.set(key, JSON.stringify({ ask: frame.ask, option: frame.option, ...replayText, declined: frame.declined, value }));
+              if(identity&&answerInput)state.admitSecretAnswerCleanup(messageId,answerInput.ingress);
               return value;
             });
             return answer(value);
@@ -2578,7 +2605,7 @@ export class Dispatcher {
       return again !== null;
     };
 
-    const handle = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[], userId?: string): void => {
+    const handle = (frame: Record<string, unknown>, via?: RemoteVia, messageId?: string, bytes?: readonly Buffer[], userId?: string, answerInput?: GatewayAnswerInput): void => {
         if (hostId) {
           if (core.store.hosts.get(hostId)?.state !== 'registered') return closeHost();
           if (kind !== 'spoke') {
@@ -2940,7 +2967,7 @@ export class Dispatcher {
         }
         if (frame.type === 'merge' && isClientRequest(frame)) return merge(frame as import('../protocol.ts').MergeRequest, caller);
         if (frame.type === 'artifact.upload' && caller) return peer.send(Dispatcher.#failure(String(frame.id), new ToolForbidden(caller.role, 'artifact.upload', 'only the human may upload artifacts')));
-        clientRequest(frame, via, messageId, bytes);
+        clientRequest(frame, via, messageId, bytes, answerInput);
     };
 
     return {
@@ -2962,7 +2989,7 @@ export class Dispatcher {
         const stage = core.store.stage(messageId);
         return message?.topic ? { ...message, topic: message.topic, seq: core.store.messageSeq(messageId), ...(stage ? { stage } : {}) } : null;
       } } : {}),
-      receive: (raw, via, messageId, bytes, userId) => {
+      receive: (raw, via, messageId, bytes, userId, answerInput) => {
         if (done) return;
         const frame = parseFrame(raw);
         if (!frame) return refuse('bad-hello', 'not a frame');
@@ -2976,7 +3003,7 @@ export class Dispatcher {
         }
         // the handler's time on the event loop, against the budget: over it is a `slow-request` in the log
         this.#guard.measure(String(frame.type), kind === 'spoke' ? (name ?? '?') : client, () => handle(frame,
-          transport.edge === 'gateway' ? via : undefined, transport.edge === 'gateway' && via ? messageId : undefined, bytes, transport.edge === 'gateway' ? userId : undefined));
+          transport.edge === 'gateway' ? via : undefined, transport.edge === 'gateway' && via ? messageId : undefined, bytes, transport.edge === 'gateway' ? userId : undefined, transport.edge === 'gateway' ? answerInput : undefined));
       },
       drainUploads: async () => { await Promise.allSettled([...uploads]); },
       closed: () => {

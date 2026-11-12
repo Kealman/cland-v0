@@ -24,6 +24,19 @@ Add subsystem text to its file; keep this index as pointers.
 - [Topics](../docs/hub/topics.md)
 - [Thread runs and fold lines](../docs/hub/thread-runs-and-fold-lines.md)
 - [Asks and the inbox](../docs/hub/asks-and-the-inbox.md), including internal hub cards and synchronous answer handlers; [login wait cards](../docs/hub/logins.md#login-wait-cards) share one prompt per pool/harness shortage
+
+Card sign-in uses the prepared Host's `signin-v1` agent operation. Its owner
+shares CLI preparation and disk completion, handles secret Claude Code input,
+and withdraws the code card at the 15-minute hub-clock limit. Disk ownership
+waits for the exact native cancellation close before failed completion. [The logins reference](../docs/hub/logins.md#login-wait-cards) states the
+registration and capability conditions; component fixtures may override the runner. Secret remote
+answers use native message identity without a code hash; deletion follows the
+durable answer receipt, with one fallback notice when unavailable. Only the parsed
+link of a stored sign-in-code card may pass remote URL masking, on an explicit
+harness sign-in origin and without registered secret bytes; other URLs stay masked.
+Active intent and cleanup records recover in bounded indexed pages outside
+startup. Unknown new-login native outcomes retain the creating row and mounted
+disk, with a named Agents notice; subsequent shared recovery is owned by T-1814.
 - [Roles](../docs/hub/roles.md)
 - [Rulebook](../docs/hub/rulebook.md)
 - [Project logins](../docs/hub/logins.md): terminal disk sign-in, daily and on-demand backup snapshots with per-login scheduling and pending-binding deferral, local human metadata listing, SQLite records, episode-based dead-login sign-out/card recovery and Coordinator notices without stopping running sessions, transitions, provisioning-time attachment for waiting launches and launch-time disk binding, exclusive writers, snapshot-cloned readers, idle exclusive-flag updates and OpenCode keys delivered only in pool-host spawn environments.

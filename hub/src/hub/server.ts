@@ -21,6 +21,7 @@ export type HubBaseOptions = CoreOptions & {
   uploadOpen?: DispatcherOptions['uploadOpen'];
   uploadRedactor?: DispatcherOptions['uploadRedactor'];
   prepareLogin?: DispatcherOptions['prepareLogin'];
+  runLoginSignIn?:DispatcherOptions['runLoginSignIn'];
   createHost?: DispatcherOptions['createHost'];
   registerHostSecrets?: DispatcherOptions['registerHostSecrets'];
   secret: string;
@@ -137,6 +138,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.helloTimeoutMs !== undefined ? { helloTimeoutMs: options.helloTimeoutMs } : {}),
     ...(options.uploadOpen ? { uploadOpen: options.uploadOpen } : {}),
     ...(options.prepareLogin ? {prepareLogin:options.prepareLogin} : {}),
+    ...(options.runLoginSignIn ? {runLoginSignIn:options.runLoginSignIn} : {}),
     ...(options.createHost ? {createHost:options.createHost} : {}),
     ...(options.registerHostSecrets ? {registerHostSecrets:options.registerHostSecrets} : {}),
     ...(options.uploadRedactor ? { uploadRedactor: options.uploadRedactor } : {}),

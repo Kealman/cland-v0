@@ -2,10 +2,18 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Users } from '../hub/users.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import type { RemoteStopCause } from '../protocol.ts';
+import {sameRemoteIngress,type RemoteIngress} from './ingress.ts';
+export type SecretAnswerCleanup={seq:number;id:string;ingress:RemoteIngress;attempts:number;nextAt:number};
 
 // Additive tables on Store's existing hub.db handle. All platform ids are TEXT,
 // including Telegram ids, so no adapter can accidentally round a snowflake.
 const SCHEMA = `
+create table if not exists remote_secret_answer_cleanup (
+ seq integer primary key autoincrement,messenger text not null,id text not null,
+ ingress text not null,attempts integer not null default 0,next_at integer not null default 0,
+ unique(messenger,id)
+);
+create index if not exists remote_secret_answer_cleanup_page on remote_secret_answer_cleanup(messenger,seq);
 create table if not exists remote_state (
   messenger text not null, key text not null, value text not null,
   primary key (messenger, key)
@@ -120,6 +128,27 @@ export class RemoteState {
 
 /** Messenger-scoped records; tokens and keys belong in the secrets file. */
 export class RemoteStore {
+  admitSecretAnswerCleanup(id:string,ingress:RemoteIngress):void{
+    if(!id||!ingress.chatId||!ingress.messageId)throw Error('native cleanup identity required');
+    if(this.get(`gateway.secret-answer:${id}`)==='done')return;
+    const old=this.secretAnswerCleanup(id);
+    if(old&&!sameRemoteIngress(old.ingress,ingress))throw Error('native cleanup identity conflict');
+    if(!old)this.#db.prepare('insert into remote_secret_answer_cleanup(messenger,id,ingress) values(?,?,?)').run(this.#id,id,JSON.stringify(ingress));
+  }
+  secretAnswerCleanup(id:string):SecretAnswerCleanup|null{
+    const row=this.#db.prepare('select seq,id,ingress,attempts,next_at from remote_secret_answer_cleanup where messenger=? and id=?').get(this.#id,id);
+    return row?{seq:Number(row.seq),id:String(row.id),ingress:JSON.parse(String(row.ingress)),attempts:Number(row.attempts),nextAt:Number(row.next_at)}:null;
+  }
+  secretAnswersThrough():number{return Number(this.#db.prepare('select seq from remote_secret_answer_cleanup where messenger=? order by seq desc limit 1').get(this.#id)?.seq??0);}
+  secretAnswersPage(after:number,through:number,limit=64):SecretAnswerCleanup[]{
+    if(!Number.isSafeInteger(limit)||limit<1||limit>64)throw Error('cleanup page limit must be 1..64');
+    return this.#db.prepare('select seq,id,ingress,attempts,next_at from remote_secret_answer_cleanup where messenger=? and seq>? and seq<=? order by seq limit ?').all(this.#id,after,through,limit)
+      .map(row=>({seq:Number(row.seq),id:String(row.id),ingress:JSON.parse(String(row.ingress)),attempts:Number(row.attempts),nextAt:Number(row.next_at)}));
+  }
+  retrySecretAnswer(row:SecretAnswerCleanup,nextAt:number):void{this.#db.prepare('update remote_secret_answer_cleanup set attempts=attempts+1,next_at=? where messenger=? and id=? and seq=?').run(nextAt,this.#id,row.id,row.seq);}
+  finishSecretAnswer(row:SecretAnswerCleanup):void{
+    this.transaction(()=>{const removed=this.#db.prepare('delete from remote_secret_answer_cleanup where messenger=? and id=? and seq=?').run(this.#id,row.id,row.seq);if(removed.changes)this.set(`gateway.secret-answer:${row.id}`,'done');});
+  }
   readonly #db: DatabaseSync;
   readonly #id: string;
   readonly #changed: () => void;

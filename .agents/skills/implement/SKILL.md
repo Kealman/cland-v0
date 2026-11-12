@@ -328,7 +328,11 @@ owner loss joins a completion already admitted with that receipt. Renewal drains
 older snapshot preparation before validating and admitting its own generation.
 Exercise `login.add`, `login.signin` and
 connection-pinned `login.signed-in` only in disposable fake-provider fixtures.
-See [project logins](../../../docs/hub/logins.md).
+Cards use the same preparation/snapshot owners through the captured Host's
+`signin-v1` operation and shared SignIn types/close parser. The CLI commands
+remain local-human only; existing hub cards can be answered from web and remotes.
+At expiry withdraw the code card and stop input; disk settlement still requires
+the exact native close. See [project logins](../../../docs/hub/logins.md).
 
 Pool-host launch binds a project disk login at the shared native spawn boundary,
 after item/role/checkout admission; role accounts select

@@ -1,5 +1,46 @@
 # Stage QA brief: E-1535 stage 1 — fake volumes, the login-disk helper, the login model, fake harness logins and hub cards
 
+**Current secret-card replay mapping.** The stage-1 summaries at lines originally
+158/190, the old `stores a digest` catalog entry, `secret.mjs` digest guards and
+E1535S1-40/E1535S1-07 result descriptions below are historical receipts for their
+named builds. They do not describe the current secret-code identity policy.
+Preserve them when reading past evidence. For current candidates, use the current
+stage's authorized isolated QA setup and its `nt` wrapper, then replay:
+
+```sh
+nt current-secret-cards hub/test/hub-cards.test.ts hub/test/login-card-signin-remote.test.ts hub/test/login-card-recovery.test.ts
+```
+
+The old selector maps to `secret hub answers reach the handler verbatim and remote
+replay stores message identity`. The current C5 mapping also includes fresh
+unregistered first delivery, ordinary-handler isolation, native-message replay,
+captured cleanup ingress before the answer reply, component reopen without another
+native update, retry and all-writer shutdown. A secret answer has no text digest;
+Telegram's non-secret hub answers retain their previous digest policy. The current
+source-policy check replacing the historical `secret.mjs` digest section is:
+
+```sh
+node --input-type=module -e '
+import {readFileSync} from "node:fs";
+const root=process.argv[1],read=path=>readFileSync(root+"/"+path,"utf8");
+const checks=[
+ ["native message identity","hub/src/hub/hub-cards.ts",/return this\.isSecret\(id\) \? messageId : undefined;/],
+ ["suppression before serialization","hub/src/remote/gateway.ts",/const safe=secret\?/],
+ ["captured ingress validation","hub/src/hub/dispatch.ts",/remoteInputId\(via,answerInput\.ingress\)!==messageId/],
+ ["durable cleanup admission","hub/src/hub/dispatch.ts",/state\.admitSecretAnswerCleanup\(messageId,answerInput\.ingress\)/],
+ ["Telegram native identity","hub/src/remote/telegram-prompts.ts",/identity:\{chatId:chat,messageId:String\(message\.message_id\)\}/]
+];
+for(const [label,path,pattern] of checks){if(!pattern.test(read(path)))throw Error(label);console.log("ok "+label);}
+if(/answerTextDigest/.test(read("hub/src/hub/hub-cards.ts")))throw Error("secret text hash retained");
+' "$W"
+```
+
+These are current replay checks, not replacements for the original recorded
+stage-1 observations. The current per-test guides describe the receipt boundaries
+and unexecuted native scope. Do not run the historical exact-name/digest guards
+against a current card-sign-in candidate. This mapping changes neither the
+historical build allowlist nor authorization for a QA occasion.
+
 **Historical build boundary (T-1782 migration).** This stage-1 brief records the
 fixed stage-1 builds named below. Its DigitalOcean unsupported-operation control,
 old volume-pool test title and three unsupported source guards are historical

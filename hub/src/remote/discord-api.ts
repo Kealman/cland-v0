@@ -33,6 +33,10 @@ export type DiscordGatewayBot = { url: string; session_start_limit: DiscordSessi
 export type DiscordChannel = { id: string; guild_id: string; last_message_id: string | null };
 export type DiscordRequestOptions = { signal?: AbortSignal; /** Absolute original-attempt nonce deadline; never renewed by a queue or retry. */ nonceDeadline?: number };
 export class DiscordApi {
+  async deleteMessage(channel:string,message:string,options?:DiscordRequestOptions):Promise<boolean>{
+    try{await this.#request('DELETE',`/channels/${encodeURIComponent(channel)}/messages/${encodeURIComponent(message)}`,'DELETE /channels/:channel/messages/:message',undefined,options);return true;}
+    catch(error){if(error instanceof DiscordError&&error.status===404&&error.code===10008)return true;throw error;}
+  }
   readonly #clock: Clock;
   readonly #timeout: number;
   readonly #routes = new Map<string, string>();

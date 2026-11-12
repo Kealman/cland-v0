@@ -7,6 +7,14 @@ import { DiscordApi, DiscordError } from '../src/remote/discord-api.ts';
 import { FakeClock } from './fake-clock.ts';
 import { discordFixtureOwner, fakeDiscordFixture, DISCORD_TEST_TOKEN } from './fakes/discord/fake-api.ts';
 
+test('Discord deletes the exact native message and confirms an already absent replay',async t=>{
+ const fake=await fakeDiscordFixture(t),api=new DiscordApi(DISCORD_TEST_TOKEN,{apiRoot:fake.url});
+ const message=await api.createMessage(fake.ids.channel,{content:'synthetic code message',nonce:'delete-code'});
+ assert.equal(await api.deleteMessage(fake.ids.channel,message.id),true);
+ assert.equal((await fake.control('state')).messages.some(row=>row.id===message.id),false);
+ assert.equal(await api.deleteMessage(fake.ids.channel,message.id),true);
+});
+
 test('Discord enforced nonce stores one message and creates and edits suppress every mention', async t => {
   const fake = await fakeDiscordFixture(t);
   const api = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url });

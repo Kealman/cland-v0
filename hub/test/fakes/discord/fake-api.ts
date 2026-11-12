@@ -314,6 +314,11 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
       }
       return reply(res, 200, redact.value(message));
     }
+    if(req.method==='DELETE'){
+      const index=state.messages.findIndex(m=>m.id===match[2]&&m.channel_id===channel);
+      if(index<0)return reply(res,404,{code:10008});
+      state.messages.splice(index,1);return reply(res,204,{});
+    }
     if (req.method === 'PATCH') {
       const message = state.messages.find(m => m.id === match[2] && m.channel_id === channel);
       if (!message) return reply(res, 404, { code: 10008 });

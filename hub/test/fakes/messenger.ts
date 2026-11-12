@@ -31,12 +31,16 @@ export function testMessenger(id = 'test', source: RemoteVia | { via?: RemoteVia
   const testLines: Array<{ pairing: Pairing; text: string }> = [];
   const approvals: Pairing[] = [];
   const replacements: Array<{ pairing: Pairing; text: string }> = [];
+  const deleted:RemoteIngress[]=[];
+  const secretNotices=new Set<string>();
   const client = frameClient(line => {
     if (!send || stopped) throw new Error('test messenger is not running');
     send(JSON.parse(line) as Record<string, unknown>);
   }, fn => { receive = fn; }, () => {});
   return {
-    id, via, client, delivery, replacements, approvals, testLines,
+    id, via, client, delivery, replacements, approvals, testLines,deleted,
+    deleteMessage:async(ingress:RemoteIngress)=>{deleted.push({...ingress});return true;},
+    secretAnswerNotice:async(ingress:RemoteIngress,text:string)=>{const key=JSON.stringify([ingress.chatId,ingress.messageId]);if(!secretNotices.has(key)){secretNotices.add(key);testLines.push({pairing:{chatId:ingress.chatId,userId:ingress.messengerUserId??'',guildId:null,name:'human'},text});}},
     upload(frame: Record<string, unknown>, ingress: RemoteIngress, bytes: readonly Buffer[]) {
       if (!send || stopped) throw new Error('test messenger is not running');
       send(frame, ingress, bytes);

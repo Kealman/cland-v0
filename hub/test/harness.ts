@@ -402,6 +402,7 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  runLoginSignIn?: NonNullable<Parameters<typeof serveProject>[1]>['runLoginSignIn'];
   prepareLogin?: NonNullable<Parameters<typeof serveProject>[1]>['prepareLogin'];
   registerHubCards?: (cards: import('../src/hub/hub-cards.ts').HubCards) => void;
   createHost?: NonNullable<Parameters<typeof serveProject>[1]>['createHost'];

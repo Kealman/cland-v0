@@ -65,7 +65,7 @@ test('pending hub cards survive restart; missing handlers keep them open and wit
   assert.equal((await ui.request({ type: 'topic.answer', ask: withdrawn, option: 1 })).ok, false);
 });
 
-test('secret hub answers reach the handler verbatim and remote replay stores a digest', async t => {
+test('secret hub answers reach the handler verbatim and remote replay stores message identity', async t => {
   const root = await tempProject(t), clock = new FakeClock();
   const remote = testMessenger('telegram', 'telegram');
   let cards!: HubCards, received = '', calls = 0;

@@ -141,6 +141,7 @@ export class TelegramApi {
   getMyCommands(params: { scope: TgCommandScope }, options?: TelegramRequestOptions): Promise<TgBotCommand[]> { return this.#call('getMyCommands', params, options); }
   setMyCommands(params: { scope: TgCommandScope; commands: readonly TgBotCommand[] }, options?: TelegramRequestOptions): Promise<boolean> { return this.#call('setMyCommands', params, options); }
   getMe(options?: TelegramRequestOptions): Promise<TgUser> { return this.#call('getMe', {}, options); }
+  deleteMessage(params:{chat_id:string;message_id:number},options?:TelegramRequestOptions):Promise<boolean>{return this.#call('deleteMessage',params,options);}
   setMessageReaction(params: SetMessageReaction, options?: TelegramRequestOptions): Promise<true> { return this.#call('setMessageReaction', params, options); }
   sendMessage(params: SendMessage, options?: TelegramRequestOptions): Promise<TgMessage> { return this.#call('sendMessage', params, options); }
   sendRichMessage(params: SendRichMessage, options?: TelegramRequestOptions): Promise<TgMessage> { return this.#call('sendRichMessage', params, options); }
@@ -152,7 +153,7 @@ export class TelegramApi {
     return this.#call('getUpdates', params, options, Math.max(35_000, (params.timeout + 15) * 1_000));
   }
 
-  async #call<T>(method: 'getFile' | 'sendPhoto' | 'sendDocument' | 'getMe' | 'sendMessage' | 'sendRichMessage' | 'getUpdates' | 'getMyCommands' | 'setMyCommands' | 'setMessageReaction' | 'answerCallbackQuery' | 'editMessageText', params: object, options?: TelegramRequestOptions, timeoutMs = 35_000): Promise<T> {
+  async #call<T>(method: 'deleteMessage' | 'getFile' | 'sendPhoto' | 'sendDocument' | 'getMe' | 'sendMessage' | 'sendRichMessage' | 'getUpdates' | 'getMyCommands' | 'setMyCommands' | 'setMessageReaction' | 'answerCallbackQuery' | 'editMessageText', params: object, options?: TelegramRequestOptions, timeoutMs = 35_000): Promise<T> {
     const deadline = new AbortController();
     const timer = this.#clock.setTimeout(() => deadline.abort(), timeoutMs);
     timer.unref();

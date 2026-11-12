@@ -57,16 +57,37 @@ transcription or audio storage with “Use text to answer this card”; there is
 transcript row or voice echo. Non-secret hub cards, ordinary cards and General
 retain their existing voice behavior.
 The topic answer, stored outcome, inbox archive, journal, log and mirrors contain
-only “answered”; even the handler's returned string is suppressed. Native replay
-receipts store a SHA-256 digest in place of the answer text. Telegram prompt
-snapshots protect all hub-origin cards: they freeze routing and an input digest,
-then hydrate text or a decline reason only from the matching native replay.
+only “answered”; even the handler's returned string is suppressed. Secret native
+replay receipts identify the captured native message, never the answer text or
+its hash. Gateway classifies a secret card from the stored hub identity and
+suppresses first-seen text/reason before serialization. Every resulting frame
+still passes through redaction. An out-of-band
+memory-only argument carries the original input for that receive call; Dispatcher
+reads it only after confirming the stored ask is a secret hub card. Non-secret
+handlers receive the redacted frame input.
+Telegram secret prompt checkpoints freeze chat/message identity and routing;
+non-secret hub prompts retain their input digest. Text or a decline reason is
+hydrated only from the matching native replay and dropped after dispatch.
 Ordinary Coordinator prompt snapshots retain their previous representation. The
 answer result returns the authoritative stored card in its existing optional
 `message.ask` field so Discord interaction updates use the same outcome as hub
 closure edits, including deferred interaction updates. Keep payloads and
 questions free of secrets. The service's secret marker protects answer retention;
-native pasted-message deletion is owned by the login card integration.
+native pasted-message deletion follows the durable secret answer receipt. Its
+exact native ingress and cleanup obligation commit atomically with that answer
+before acknowledgement. The active indexed queue recovers in pages of at most
+64 outside startup, without another native update; concurrent callers share one
+operation. Transient or unknown outcomes retry on the hub clock (1 second,
+exponential backoff capped at 30 seconds). Completed obligations leave the active
+queue and retain their native-identity completion marker.
+An adapter can declare `deleteMessage` for the captured ingress. Telegram and
+Discord use their native delete API; Discord's exact Unknown Message response
+also confirms absence, as does Telegram's exact message-to-delete-not-found
+response. Unsupported or positively refused deletion produces one keyed
+fallback line asking the human to delete their message. Neither code text nor
+its hash is part of a deletion receipt. Shutdown joins these effects before
+stopping the remote adapters. It observes every admitted join even if an earlier
+checkpoint fails, and preserves unfinished obligations for reopening.
 
 ### Answered ask outcomes
 

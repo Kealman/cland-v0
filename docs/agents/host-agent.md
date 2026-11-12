@@ -697,11 +697,15 @@ login path. Input and raw output live in operation memory only; split echoes
 are redacted before bounded output events. The operation reuses native birth,
 bootstrap and descendant ownership from `AgentProcesses`, and retains disk
 mutation admission until its exact close receipt is synced. Cancellation joins
-that receipt. An operation without its own close is owner loss under the
-interrupted sign-in fence, including hub or connection loss; elapsed time grants
-no cleanup authority. See [SSH Host](../hub/ssh-host.md#interactive-sign-in) for
+that receipt. Missing close, including hub or connection loss, is unknown:
+renewal calls interrupt() and retains its captured-machine sign-in fence; a new
+login without interrupt() retains creating/mounted ownership and emits the named
+unknown-login/host notice. Shared new-login recovery belongs to T-1814. Elapsed
+time grants no disk cleanup authority. See [SSH Host](../hub/ssh-host.md#interactive-sign-in) for
 the client contract and [native tests](tests/hub-test-host-agent-signin-op.test.ts.md)
-for fake-only evidence.
+for fake-only evidence. The hub card owner invokes the Host captured by shared
+login preparation, uses the shared close parser, and retains the existing
+afterSignIn success hook. See [card integration cases](tests/hub-test-login-card-signin.test.ts.md).
 
 Before-admission refusals carry `nativeAdmission: 'not-admitted'` and a cause
 code; after-admission failure remains `CLAND_NATIVE_INCOMPLETE` until the

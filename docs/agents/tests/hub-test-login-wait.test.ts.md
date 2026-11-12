@@ -19,8 +19,20 @@ before and after the file; this file leaves no additional roots.
   host.list observes it, the durable wait names it, then readiness publishes the process.
   The injected creator settles a binding; native attach/mount and sign-in are
   covered by login-provision-bind and login-add files, not claimed by this case.
-- `login card option 1 folds once across retries and restart`: Create one returns
-  the local login-add command. No sign-in or native effect is authorized here.
+- `login card option 1 folds once across retries and restart`: the registered
+  card owner answers `Signing in`. Explicit injected preparation reserves one
+  login and fails before native admission, matching the CLI's signed-out result.
+  The count changes from zero open asks to one distinct `login-signin` card for
+  that login's exact signed-out episode. The original `login-create` ask stays
+  answered once, retries refuse, scheduler passes and restart keep that same
+  episode/card identity, and the counters remain one preparation and zero native
+  runner calls. The observer is armed before the answer and waits for the
+  persisted login plus card, rather than elapsed time. No provider or host
+  creation runs in this case.
+- `login create without a sign-in owner keeps the terminal command hint and one wait card`:
+  a separate in-memory LoginCards control preserves the fallback command hint,
+  one answered wait-card identity through reconciliation and service recovery,
+  and no login preparation. The core closes before its store.
 - `login card option 2 folds once across retries and restart`: C5. The test
   messenger answers Not now; both launches remain waiting after restart.
 - `login card option decline folds once across retries and restart`: explicit

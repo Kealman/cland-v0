@@ -1,5 +1,40 @@
 # Stage QA brief: E-1535 stage 3 — capacity, the login wait and its card, exclusive logins and keys at spawn
 
+**Current card-owner replay mapping.** The recorded T-1785 build below answered
+Create one with a terminal command hint. Preserve that historical result, its
+E1535S3-20 catalog and its class-handler source guard. On a current candidate with
+the session/secret-registry runtime installed, the accepted action starts shared
+login preparation and the prepared Host's `signin-v1` operation, returning
+`Signing in`; the legacy LoginCards handler remains for a runtime without that
+owner. Its literal command-hint guard does not prove the registered
+owner. Use the current stage's authorized isolated setup and per-test guides,
+then replay under that setup's `nt` wrapper:
+
+```sh
+nt current-login-cards hub/test/login-wait.test.ts hub/test/login-card-signin-owner.test.ts hub/test/login-card-signin-remote.test.ts hub/test/login-card-recovery.test.ts
+```
+
+The current `login card option 1 folds once across retries and restart` selector
+keeps its original name but now checks the installed owner: `Signing in`, one
+injected failed preparation, no native admission, the original wait ask answered
+once, and one distinct signed-out episode/card preserved across retries and
+restart. Its open-ask count is one rather than the historical zero because that
+new sign-in-again card is legitimate; the login-create card never reopens.
+`login create without a sign-in owner keeps the terminal command hint and one wait card`
+separately proves the old class-handler fallback. Current replay of this file
+therefore expects eight cases; the historical seven-case catalog below remains
+the receipt for its original build. Its literal command-hint source guard covers
+only that fallback, while the installed-owner source guard is
+`context.afterCommit(()=>this.#start(context.id,input));return 'Signing in';`
+in `hub/src/host/login-card-signin.ts`.
+
+Current source checks inspect the shared `#prepareLogin`, its existing host pin,
+owner registration after LoginCards defaults, and owner stop before disk owners.
+The native `login-card-signin.test.ts` cases require a separate directed receipt;
+component runner overrides never supply it. Secret-code policy replay is mapped at the top of the stage-1 brief.
+Do not reinterpret the historical command-hint result as a current sign-in pass.
+This mapping does not change the historical build allowlist or authorize a QA occasion.
+
 Everything the run needs is in this file or in the files it names: whoever runs it cannot ask. Commands are for bash (start `bash` first; zsh reads `$S:q`, `$B:h` or `${B}:hub` as modifiers and does not split unquoted path lists; always brace a variable before `:`; `set -- $pair` does not split in zsh). The run is local, on macOS (BSD `stat`, Node 24 with `node:sqlite`, `uuidgen`, `lsof`, `shasum`, `getconf DARWIN_USER_TEMP_DIR`). A platform skip is a FAIL, not a pass. **No real SSH, host, droplet, volume, snapshot, DigitalOcean API, key, credential, harness login, sudo, mount, Telegram, Discord, speech API, npm registry or network (R-1530's QA rule).** The named files use only their own fakes (the fake host provider and its directory-backed volumes, the scripted fake DigitalOcean API, fake SSH and scp, fake agents on Unix sockets, the fake Claude Code, Codex and OpenCode binaries with their fake login files and the fake OpenCode `key-proof` command, FakeClock, in-memory or temporary SQLite). Key values are fixture sentinels only. The scratch rows start one hub through the real CLI in a disposable project with one fake pool that has no minimum; they create no host and sign in nothing. **No real harness, no browser, no Neovim, no GUI.** Never read, print or log `DIGITALOCEAN_TOKEN` or any key value; no secret is ever an argv element.
 
 **Landing markers filled (at T-1787's landing `427f522ec`).** T-1787 was written from its reviewed head `b0903704b63487d91b2e14f381881c7391d3362e` (rev-35 `rev-35-1787-source-2` and `rev-35-1787-final-1` clear there, C1 to C4 verified; mode-free verify `3e2e79a6-41c8-4e67-8175-0a1877108f80` finished `passed` at that head, A-18578), and its landing `427f522ec88e9ad77d4fa39257a650980c383422` (merge batch 4f0adb73, suite `9b73bc7d-d095-4323-a2c5-ab0ad8f630a4`, A-18585 and A-18586) is byte-identical to that head for every file it changes, with equal own lines against their merge base `26dc219eb` (VERIFIED with `git diff` and the `ownlines` comparison). Every T-1787 line was re-read at the landing; E1535S3-04 expects `open landing markers: 0`.

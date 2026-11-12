@@ -10,7 +10,7 @@ import { remotePublications } from './cards.ts';
 import { mirrorOut } from './mirror.ts';
 import { DiscordOutbox } from './discord-outbox.ts';
 import { randomUUID } from 'node:crypto';
-import type { Remote, RemoteSend, RemoteReceipt } from './gateway.ts';
+import type { Remote, RemoteSend, RemoteReceipt, RemoteIngress } from './gateway.ts';
 import type { Pairing, RemoteStore } from './state.ts';
 import type { Artifact, HubFrame, RemoteConnection } from '../protocol.ts';
 import type { Clock, ClockTimer } from '../hub/clock.ts';
@@ -44,6 +44,7 @@ export class DiscordRemote implements Remote {
   #terminal: Promise<void> | undefined;
   #detachStartup: (() => void) | undefined;
   readonly #socket: DiscordSocket; readonly #abort = new AbortController();
+  readonly #secretDeletes=new Set<Promise<boolean>>();
   readonly #listeners = new Set<() => void>();
   #application: string | undefined; #running: Promise<void> | undefined; #failure: string | undefined;
   constructor(api: DiscordApi, token: string, clock: Clock, options: DiscordRemoteOptions = {}) {
@@ -281,10 +282,22 @@ export class DiscordRemote implements Remote {
       if (pairing) await this.#api.createMessage(pairing.chatId, { content: text, nonce: randomUUID().replaceAll('-', '').slice(0, 25) }, { signal: this.#abort.signal });
     } catch (error) { await this.#failed(this.#fatal ?? error, 'application check failed'); throw error; }
   }
+  deleteMessage(ingress:RemoteIngress):Promise<boolean>{
+    if(this.#abort.signal.aborted)return Promise.reject(Error('Discord adapter stopped'));
+    const work=(async()=>{
+      try{return await this.#api.deleteMessage(ingress.chatId,ingress.messageId,{signal:this.#abort.signal});}
+      catch(error){if(error instanceof DiscordError&&[400,403].includes(error.status))return false;throw error;}
+    })();
+    this.#secretDeletes.add(work);void work.finally(()=>this.#secretDeletes.delete(work)).catch(()=>{});return work;
+  }
+  async secretAnswerNotice(ingress:RemoteIngress,text:string):Promise<void>{
+    if(!this.#outbox)throw Error('Discord outbox unavailable');
+    await this.#outbox.send(ingress.chatId,text,`secret-answer:${ingress.chatId}:${ingress.messageId}`);
+  }
   async pairingApproved(pairing: Pairing): Promise<void> { if (this.#application) await this.#commands.approved(pairing, this.#application).catch(error => this.#outwardError(error)); }
   async pairingReplaced(previous: Pairing, text: string): Promise<void> {
     await this.#api.createMessage(previous.chatId, { content: text, nonce: randomUUID().replaceAll('-', '').slice(0, 25) }, { signal: this.#abort.signal }).catch(error => this.#outwardError(error));
   }
   disable(): void { this.#disabled = true; this.#options.store?.set('discord.session', null); }
-  async stop(): Promise<void> { this.#abort.abort(); this.#clock.clearTimeout(this.#offlineTimer); await this.#terminal; await this.#socket.stop(this.#disabled ? 1000 : 4000); await this.#running?.catch(() => {}); await this.#commands.stop(); await this.#cards?.stop(); await this.#outbox?.stop(); await this.#inbound?.stop(); this.#detachStartup?.(); this.#detachApi?.(); this.#detachExchange?.(); }
+  async stop(): Promise<void> { this.#abort.abort(); this.#clock.clearTimeout(this.#offlineTimer); while(this.#secretDeletes.size)await Promise.allSettled([...this.#secretDeletes]); await this.#terminal; await this.#socket.stop(this.#disabled ? 1000 : 4000); await this.#running?.catch(() => {}); await this.#commands.stop(); await this.#cards?.stop(); await this.#outbox?.stop(); await this.#inbound?.stop(); this.#detachStartup?.(); this.#detachApi?.(); this.#detachExchange?.(); }
 }

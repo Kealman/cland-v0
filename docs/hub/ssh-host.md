@@ -375,15 +375,17 @@ A refusal proven before this operation's native admission carries
 owner's tree closure and a synced operation checkpoint. The disk mutation lease
 remains held through that checkpoint; input and cancellation bypass an unmount
 waiting on the lease. A peer cannot write or cancel another peer's admission.
-Lost transport or missing close is `CLAND_NATIVE_INCOMPLETE`; the card owner
-must use the interrupted sign-in fence, never infer completion from a timer or
-local SSH exit. Operation receipts contain no input or output bytes.
+Lost transport or missing close is `CLAND_NATIVE_INCOMPLETE`. A renewal card
+owner calls interrupt() and retains the captured-machine sign-in fence. A new
+login without interrupt() keeps its creating row and mounted disk and reports
+the named unknown-login/host outcome; shared recovery belongs to T-1814. Neither
+path infers completion from a timer or local SSH exit. Operation receipts contain no input or output bytes.
 
 Both producer and client require an observed exit code or a nonempty native
 signal; null/null is incomplete. Rejected admission after spawn and failed
 close persistence/publication retain the operation and disk mutation hold.
 Already-waiting and later disk operations refuse with `writers-remain`; the
-machine/owner-loss fence is retained. Agent shutdown joins peer-close handlers
+agent's native ownership and disk-mutation hold remain. Agent shutdown joins peer-close handlers
 and reports the incomplete owner. Settled native objects retire after receipt
 persistence; at most 32 receipt-only entries remain per peer for repeat cancel.
 Eviction grants no native authority.

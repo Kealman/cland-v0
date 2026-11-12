@@ -12,7 +12,7 @@ type Request = <T>(type: string, fields: Record<string, unknown>, ingress?: Remo
 type Prompt = { ask: string; chat: string; card: number; question: string; topic: string; mode: 'other' | 'decline'; secret?: true };
 type Target = { ask: string; mode: Prompt['mode'] | 'card' | 'unverified'; prompt?: string; secret?: true }
   | { approval: string; mode: 'approval'; secret?: true };
-type Answer = { fields?: { ask: string; text?: string; option?: number; declined?: true; reason?: string }; prompt?: string; note?: string; stored?: boolean; input?: { field: 'text' | 'reason'; digest: string } };
+type Answer = { fields?: { ask: string; text?: string; option?: number; declined?: true; reason?: string }; prompt?: string; note?: string; stored?: boolean; input?: { field: 'text' | 'reason' } & ({digest:string}|{identity:{chatId:string;messageId:string}}) };
 
 /** Separate, immutable ForceReply messages; only cards belong in the editable ask map. */
 export class TelegramPrompts {
@@ -135,7 +135,9 @@ export class TelegramPrompts {
       } else answer.fields = { ask: ask.id, text: message.text! };
       if (ask?.from === 'hub' && answer.fields) {
         const field = answer.fields.reason !== undefined ? 'reason' : answer.fields.text !== undefined ? 'text' : undefined;
-        if (field) answer.input = { field, digest: answerTextDigest(answer.fields[field]!) };
+        if (field) answer.input = ask.secret
+          ? {field,identity:{chatId:chat,messageId:String(message.message_id)}}
+          : { field, digest: answerTextDigest(answer.fields[field]!) };
       }
       // Hub cards freeze routing and a digest; plaintext remains in the native replay.
       // Ordinary asks freeze the exact fields before dispatch; a lost result
@@ -143,7 +145,9 @@ export class TelegramPrompts {
       persist();
     }
     if (answer.input && answer.fields) {
-      if (answerTextDigest(message.text!) !== answer.input.digest) throw new Error('native answer identity conflict');
+      if ('identity' in answer.input
+        ? answer.input.identity.chatId!==chat||answer.input.identity.messageId!==String(message.message_id)
+        : answerTextDigest(message.text!) !== answer.input.digest) throw new Error('native answer identity conflict');
       answer.fields[answer.input.field] = message.text!;
     }
     if (answer.fields) {
@@ -161,6 +165,7 @@ export class TelegramPrompts {
         answer = { ...(answer.prompt ? { prompt: answer.prompt } : {}), note: 'This ask is already closed.' };
         persist();
       }
+      finally {if(answer.input&&answer.fields)delete answer.fields[answer.input.field];}
     }
     if (voiceTarget) return answer;
     if (answer.prompt && this.#store.get(`telegram.prompt-wait:${chat}`) === answer.prompt) this.#store.set(`telegram.prompt-wait:${chat}`, null);

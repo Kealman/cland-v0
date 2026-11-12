@@ -16,6 +16,14 @@ async function control<T>(root: string, operation: string, params?: object): Pro
   return response.body;
 }
 
+test('Telegram deletes the exact native message after a confirmed API result',async t=>{
+ const fake=await fakeTelegram(t),api=new TelegramApi(TELEGRAM_TEST_TOKEN,{apiRoot:fake.url});
+ const message=await api.sendMessage({chat_id:101,text:'synthetic code message'});
+ assert.equal(await api.deleteMessage({chat_id:'101',message_id:message.message_id}),true);
+ const state=await control<{messages:TgMessage[]}>(fake.url,'state');
+ assert.equal(state.messages.some(row=>row.message_id===message.message_id),false);
+});
+
 test('Telegram fake captures only its declared fictional public origin and still scrubs credential URLs', async t => {
   const origin = 'https://workbench.example.invalid';
   const fake = await fakeTelegram(t, { publicOrigin: origin });

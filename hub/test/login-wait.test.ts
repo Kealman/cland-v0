@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, tempProject, connectUi, eventually } from './harness.ts';
+import { projectHub, tempProject, connectUi, eventually, type ProjectHubOptions } from './harness.ts';
 import { testHost } from '../src/host/test-host.ts';
 import { localHost } from '../src/host/local.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
@@ -14,8 +14,13 @@ import { FakeClock } from './fake-clock.ts';
 import { fakeLockProcesses } from './fakes/lock-processes.ts';
 import { testMessenger } from './fakes/messenger.ts';
 import type { Inbox } from '../src/protocol.ts';
+import type { Login } from '../src/host/logins.ts';
+import { reserveDiskLogin } from '../src/host/login-signin.ts';
+import { Store } from '../src/hub/store.ts';
+import { HubCore } from '../src/hub/core.ts';
+import { LoginCards } from '../src/host/login-cards.ts';
 
-async function fixture(t: test.TestContext, growth = false) {
+async function fixture(t: test.TestContext, growth = false, cardSignIn = false) {
   let cancelled = false;
   const observers: Promise<unknown>[] = [];
   onCleanup(t, async () => { cancelled = true; await Promise.allSettled(observers); });
@@ -32,7 +37,22 @@ async function fixture(t: test.TestContext, growth = false) {
   await writeFile(join(root, '.cland/config.toml'), '# managed by cland\n[hosts.agents]\nprovider="fake"\nslots=1\nmin_hosts=0\n[hosts.other]\nprovider="fake"\nslots=1\nmin_hosts=0\n');
   await writeFile(join(root, '.cland/roles.toml'), '[custom.worker]\nclause="Work."\n[custom.worker.launch]\nharness="codex"\npool="agents"\n[custom.second]\nclause="Work."\n[custom.second.launch]\nharness="codex"\npool="other"\n');
   const remote = testMessenger();
-  const options = { clock: new FakeClock(), processes: fakeLockProcesses().processes, droplet: { processes: fakeLockProcesses().processes }, gatewayRemotes: [remote] };
+  const effects={preparations:0,native:0};
+  const raised:Array<{id:string;kind:string;payload:unknown}>=[];
+  const options = { clock: new FakeClock(), processes: fakeLockProcesses().processes, droplet: { processes: fakeLockProcesses().processes }, gatewayRemotes: [remote],
+    registerHubCards:(cards:import('../src/hub/hub-cards.ts').HubCards)=>{
+      const raise=cards.raise.bind(cards);
+      t.mock.method(cards,'raise',(...args:Parameters<typeof raise>)=>{const id=raise(...args);raised.push({id,kind:args[0],payload:args[5]});return id;});
+    },
+    ...(cardSignIn?{
+      prepareLogin:async(o:Parameters<NonNullable<ProjectHubOptions['prepareLogin']>>[0],input:Parameters<NonNullable<ProjectHubOptions['prepareLogin']>>[1])=>{
+        effects.preparations++;
+        const login=reserveDiskLogin({logins:o.records.logins,...input,providerName:'fake',region:'lon1'});
+        o.records.logins.markSignedOut(login.name,{reason:'sign-in failed',host:null});
+        throw Error('injected preparation refused before native admission');
+      },
+      runLoginSignIn:async()=>{effects.native++;throw Error('native sign-in must not be admitted');},
+    }:{}) };
   const boot = Promise.withResolvers<void>();
   onCleanup(t, () => boot.resolve());
   const local = localHost(fixtureEnvironment(root, process.env));
@@ -62,7 +82,7 @@ async function fixture(t: test.TestContext, growth = false) {
     return reply;
   };
   const inbox = async () => (await ui.request({ type: 'inbox.list' })).value as Inbox;
-  return { root, hub, ui, launch, inbox, options, remote, boot, observe, creates };
+  return { root, hub, ui, launch, inbox, options, remote, boot, observe, creates, effects, raised };
 }
 
 test('login waits share one create card and the final cancellation withdraws it', async t => {
@@ -137,24 +157,64 @@ test('login add ready receipt wakes host growth, changes the reason and places t
 });
 
 for (const option of [1, 2, 'decline'] as const) test(`login card option ${option} folds once across retries and restart`, async t => {
-  const f = await fixture(t);
+  const f = await fixture(t,false,option===1);
   await f.launch('one');
   const id = (await f.inbox()).asks[0]!.id;
+  const signedOut=option===1?f.observe('persisted signed-out login and distinct episode card',async()=>{
+    const rows=(await f.ui.request({type:'login.list'})).value as Login[];
+    const login=rows.find(row=>row.state==='signed-out');
+    const card=(await f.inbox()).asks.find(ask=>ask.id!==id);
+    return login?.signedOut&&card?{login,card}:undefined;
+  }):undefined;
   const result = await f.remote.client.request({type:'topic.answer',ask:id,...(option === 'decline' ? {declined:true,reason:'No login wanted'} : {option})});
   assert.equal(result.ok, true, result.error);
+  const created=await signedOut;
+  if(created){
+    assert.deepEqual(f.raised.map(card=>[card.id,card.kind]),[[id,'login-create'],[created.card.id,'login-signin']]);
+    assert.deepEqual(f.raised[1]!.payload,{login:created.login.name,episode:created.login.signedOut!.id});
+    assert.equal((await f.remote.client.request({type:'topic.answer',ask:id,option:1})).ok,false,'answered wait card cannot start a second preparation');
+  }
   await f.launch('two');
-  assert.equal((await f.inbox()).asks.length, 0);
+  assert.deepEqual((await f.inbox()).asks.map(ask=>ask.id),created?[created.card.id]:[],'the original wait card never reopens');
   assert.equal((await f.inbox()).waitingLaunches?.length, 2);
-  const history = (await f.ui.request({type:'topic.history',topic:'general'})).value as {messages:Array<{id:string;ask?:{outcome?:{text?:string;reason?:string;status?:string}}}>};
+  const history = (await f.ui.request({type:'topic.history',topic:'general'})).value as {messages:Array<{id:string;answerTo?:string;ask?:{outcome?:{text?:string;reason?:string;status?:string}}}>};
   const outcome = history.messages.find(m => m.id === id)?.ask?.outcome;
   if (option === 'decline') assert.equal(outcome?.status, 'declined');
-  assert.equal(option === 'decline' ? outcome?.reason : outcome?.text, option === 1 ? 'cland login add codex --pool agents' : 'Not now');
+  assert.equal(option === 'decline' ? outcome?.reason : outcome?.text, option === 1 ? 'Signing in' : 'Not now');
+  assert.equal(history.messages.filter(message=>message.answerTo===id).length,1,'one durable answer folds the wait card');
   await f.ui.close(); await f.hub.stop();
   const hub = await projectHub(t, f.root, {}, {...f.options, gatewayRemotes:[testMessenger()]});
   const ui = await connectUi(t, hub.discovery, 'cli');
   const inbox = (await ui.request({type:'inbox.list'})).value as Inbox;
-  assert.equal(inbox.asks.length, 0);
+  assert.deepEqual(inbox.asks.map(ask=>ask.id),created?[created.card.id]:[],'restart preserves the same episode card without another wait card');
   assert.equal(inbox.waitingLaunches?.length, 2);
+  if(created){
+    const rows=(await ui.request({type:'login.list'})).value as Login[];
+    assert.equal(rows.length,1);
+    assert.deepEqual(rows[0]!.signedOut,created.login.signedOut);
+    assert.deepEqual(f.effects,{preparations:1,native:0});
+    assert.deepEqual(f.raised.map(card=>card.kind),['login-create','login-signin']);
+    assert.equal((await ui.request({type:'topic.answer',ask:id,option:1})).ok,false);
+    assert.deepEqual(f.effects,{preparations:1,native:0});
+  }
+});
+
+test('login create without a sign-in owner keeps the terminal command hint and one wait card',()=>{
+  const store=new Store(':memory:'),clock=new FakeClock(),core=new HubCore({store,clock});
+  try{
+    const cards=new LoginCards(store,core.cards);
+    const waits=[{name:'one',role:'worker',pool:'agents',reason:'waiting for a login codex',since:clock.now().toISOString()}];
+    cards.reconcile(waits);
+    const before=core.inbox.list().asks[0]!;
+    const result=core.cards.answer(store.ask(before.id)!,'Create one',1,'neovim');
+    assert.equal(result.message.ask.outcome?.status,'answered');
+    assert.equal(result.message.ask.outcome?.status==='answered'?result.message.ask.outcome.text:undefined,'cland login add codex --pool agents');
+    cards.reconcile([...waits,{...waits[0]!,name:'two'}]);
+    new LoginCards(store,core.cards).reconcile(waits);
+    assert.equal(store.ask(before.id)!.state,'answered');
+    assert.equal(core.inbox.list().asks.length,0);
+    assert.equal(store.hosts.logins.list().length,0,'a missing owner performs no preparation');
+  }finally{core.close();store.close();}
 });
 
 test('open login card survives restart and a later independent wait gets a new card', async t => {
