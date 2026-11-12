@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-10T05:16:58.741Z
+updated: 2026-11-12T06:51:51.602Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -554,3 +554,11 @@ This was the second droplet run on the new snapshot cland-v0-35e1dc609f89, prepa
 ### coord · 2026-11-10T05:16:58.741Z
 
 Incident 2026-11-10 05:16Z (T-1777, impl-1777): fakes-only breach during a red fixture run. The existing fake-ssh raw one-shot dispatch passed three new sign-in command forms through to the real claude, codex and opencode binaries found on PATH. HOME was isolated and the input synthetic; no production credential was intentionally supplied. Claude printed a browser sign-in attempt. The implementer stopped pre-fix native runs, joined the children, and installed exact fake routing. Coord checked at 05:17Z: no leftover real sign-in process, no new browser process. Remedy requested: the incident detail on T-1777 (commands, PATH/HOME by name, whether a browser or open was invoked, files outside scratch), a fake-ssh guard so that no test, red demonstrations included, can execute a binary outside the fake set, and a test for that guard. Rule proposal P-impl1777-fakepaths, batch 6.
+
+### human · 2026-11-12T06:51:02.455Z
+
+Coord signed-out by a Claude Code login expiry, 2026-11-12 04:18–06:48Z (2.5 h): coord's terminal showed 'Login reached its time limit · Please run /login' at 04:18Z after its last turn; the daemon reported the job idle/blocked and the hub listed coord as [signed-out]. The stand-in's own session lost its login too and was re-authenticated by the human at ~06:45Z (/login). Recovery per the clean relaunch recipe: 'claude stop df72bd84' (pid 68618 gone in 4 s, zero bridges, no twin) → 'cland session resume coord --relaunch' (new job 2865efff, pid 10113) → 'cland role set coord coordinator'. Hub: session-resumed 06:48:08Z → bridge-connected 06:48:09Z → coordinator-filled 06:48:11Z → first injected 06:48:12Z; one bridge; the new session is signed in and resumed its E-1535 stage-4 durations work. Hub 99476 unaffected (5.5 d up). Nothing queued was lost in the window: only 2 deliveries were acked after 04:18Z and both injected.
+
+### human · 2026-11-12T06:51:51.602Z
+
+Addendum to the 2026-11-12 signed-out incident (from coord's own check of 03:00–06:48Z): nothing was lost beyond delay, but the effective stall was longer than the signed-out window. T-1795 went ready at 03:08Z, an hour before the 04:18Z login expiry; that status event is a digest event and never starts a turn, so T-1795 waited 03:08→06:48Z (3.6 h) for coord's next turn. In the window: periodic dev T3 032d6276 green at 99356638a (03:40Z); soak 45ede42d at 99356638a timed out in Web (exit 124, 8,123 completed, 0 failed, A-18945) — the first soak timeout, coord watches the next one; otherwise heartbeats only. Since 06:48Z: T-1795 landed a03cd7b97, tracker 792c9c301, durations add-only 9c98a5747, all pushed; E-1535 stage 4 fully merged.
