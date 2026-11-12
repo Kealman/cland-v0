@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1486
 branch: null
 created: 2026-10-31T18:22:04.429Z
-updated: 2026-11-12T10:07:39.921Z
+updated: 2026-11-12T10:09:36.136Z
 ---
 
 ## Goal
@@ -26,9 +26,9 @@ The human sees and steers hosts, logins and users from the workbenches, and a ne
 
 - **The Hosts row** (spec §3.9). In the web's Sessions area and Neovim's sessions panel, beside Remotes: per pool "agents 2/4 hosts · 7/16 slots · logins claude 2/3, codex 1/1", red at once for an unreachable host or a provider failure, expanding to the host list (id, size, region, uptime, sessions, price per hour, spend today). Demo: with two fake hosts, both workbenches show the line and the list, and a host made unreachable turns the row red.
 - **The hosts view in the web** (§3.9). The expanded row as a view inside the Sessions area (assumed in the spec): hosts with `stop`, logins with their state, host and last sign-in, and the actions add, sign in again, remove and snapshot, each through the hub's frames with confirmations for destructive ones. Demo: a login added and one removed from the web, read back in `cland login list`.
-- **Session rows and waiting launches** (§3.9, §3.5). Session rows name their host; waiting launches show as status lines with their current reason in both inboxes; a host session's attach from Neovim runs the `ssh -t` attach. Demo: a waiting launch's reason changes from "waiting for a login" to "waiting for host <id> to boot" in both inboxes.
+- **Session rows and waiting launches** (§3.9, §3.5). Session rows name their host; waiting launches show as status lines with their current reason in both inboxes (the inbox lines landed in E-1534’s T-1754; this epic drives them from the web); a host session's attach from Neovim runs the `ssh -t` attach. Demo: a waiting launch's reason changes from "waiting for a login" to "waiting for host <id> to boot" in both inboxes.
 - **Doctor** (§3.9). The provider token's presence and fingerprint (no paid call), each pool's image against its key, free logins per pool and harness, signed-out logins, the hosts' reachability, and the hosts' spend against the sub-cap; each `warn` with its fix. Demo: doctor on a scratch project with a stale pool image, a signed-out login and no token reads each line.
-- **Setup's agent-hosts step** (§3.9). After the remote step and before the Aide, optional and defaulting to No with `--yes`: the provider token's presence in the hub's environment, the `agents` pool with its defaults written to config, `cland host prepare`, and a first login per harness of the roles placed on the pool. Without a terminal it reports what is open. Demo: a scripted terminal walks the step on the fake provider and leaves a pool and a login.
+- **Setup's agent-hosts step** (§3.9). After the remote step and before the Aide, optional and defaulting to No with `--yes`: the provider token's presence in the hub's environment, the `agents` pool with its defaults written to config, `cland host prepare`, and the roles to place on the pool (the Implementer preselected), each paid action on its own yes naming its price, and a first login per harness of the roles placed on the pool. Without a terminal it reports what is open. Demo: a scripted terminal walks the step on the fake provider and leaves a pool and a login.
 - **The onboarding tour** (§3.9). A stage on agent hosts: where the Hosts row is, what a waiting launch means, how to add a login. Demo: the tour's stage text reads against the built workbench.
 - **Docs** (§3.9). Pages on hosts, pools and logins (configuration, commands, the lifecycle and failures, money, the login rules per harness with the Codex one-place warning) and a price table with its check date; the `cland host` and `cland login` commands in the CLI page. Demo: QA follows the hosts page from a fresh reading and configures a pool on the fake provider.
 - **The users stage** (§3.8, §3.9), after "Users and sign-in modes": setup's sign-in mode step (single or users, with the first user's passkey when users is chosen; No with `--yes`); doctor's mode line with the number of users and admins; the user shown on session-launch and approval rows where the hub records it; the users and sign-in modes page and the multi-user section of the web-and-phone page. Demo: setup switches a scratch project to users, and the pages describe what QA then sees.
@@ -45,7 +45,7 @@ Not in this epic: the hub's host, pool and login logic (the epics before it); th
 
 ## Definition of done
 
-QA runs the demo below on `dev` through the `cland` CLI, headless Chromium and a headless Neovim workbench, with the fake host provider, the fake transport and the fake harness in the suite, and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. No real provider is involved.
+QA runs the demo below on `dev` through the `cland` CLI, headless Chromium and a headless Neovim workbench, with the fake host provider, the fake DigitalOcean API, the fake transport and the fake harness binaries in the suite, and records a clear verdict on this epic with each checkbox verified by its id; the epic then closes. No real provider is involved.
 
 In a scratch project QA runs setup with a scripted terminal through the agent-hosts step and the sign-in mode step (choosing users), and reads the pool, the first login and the first user. It launches sessions onto two fake hosts and reads the Hosts row and the expanded list in both workbenches, the host on each session row, and the row turning red when a host is made unreachable. It fills the logins so a launch waits, and reads the reason in both inboxes change as a login is added from the web's hosts view. It removes a login from the web and reads it gone from `cland login list`. It runs doctor with a stale pool image, a signed-out login and the token unset, and reads each line and fix. It walks the tour's hosts stage. From a fresh reading of the hosts page it configures a second pool, and from the users page it invites a user. It reads the price table's check date and the web-and-phone page's multi-user section.
 
@@ -57,8 +57,10 @@ In a scratch project QA runs setup with a scripted terminal through the agent-ho
 - [ ] C6. The onboarding tour has a stage on agent hosts.
 - [ ] C7. The site has pages on hosts, pools and logins and on users and sign-in modes, a price table with its check date, and a multi-user section in the web-and-phone page, each matching the build.
 
+
 ## Constraints
 
+- **Decisions** (ask 81a9293a, the human, 2026-11-12). setup asks which roles to place on the `agents` pool, the Implementer preselected; each paid step (the always-on host, the image build, each first login) has its own yes, default No, naming its price, and `min_hosts = 1` stays; the web shows a sign-in’s link and code inline on the login’s line in the hosts view, the same card staying in the inbox and on the remotes; setup waits for the first user’s passkey, Enter skipping it and leaving the step open with `cland user invite <name>`.
 - **Standing rules.** Every artifact, item, commit and doc in English. Sub-agents never use the hub. Commit on the task branch, push to `origin`, reach `dev` only through `cland merge`; only `cland release` pushes to GitHub. Suites run through `cland verify`. Items through `cland task` only.
 - **The web.** CSS Modules and `var(--token)` from `web/src/tokens.css` (colour values only there), structure copied from `web/src/Shell.tsx`, secondary text at 4.5:1 on ground and selection, no UI library, key bindings only through `web/src/keymap.ts`. Names, counts and facts in the interface; explanations in tooltips, help and docs.
 - **Neovim.** The panel follows the Remotes row's pattern in the sessions panel; no new key binding outside the plugin's key map.
