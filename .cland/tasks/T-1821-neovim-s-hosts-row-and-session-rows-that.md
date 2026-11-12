@@ -2,8 +2,8 @@
 id: T-1821
 kind: task
 title: Neovim's Hosts row, and session rows that name their host
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1492
 branch: t/T-1821-neovim-s-hosts-row-and-session-rows-that
 created: 2026-11-12T10:07:19.751Z
-updated: 2026-11-12T14:04:28.712Z
+updated: 2026-11-12T15:23:21.791Z
+closed: 2026-11-12T15:23:21.791Z
 ---
 
 ## Summary
@@ -30,14 +31,19 @@ The panel reads T-1819's frame into state and draws the Hosts row after the Remo
 
 - [x] C1. Headless Neovim's sessions panel shows the Hosts row after Remotes with one line per pool from the hub's frame, with hosts, slots and logins per harness (test).
   - done: impl-1821 · 2026-11-12T13:52:39.453Z
+  - verified: rev-36 [reviewer] · run rev-36-1821-final-1 · 2026-11-12T14:31:06.830Z · commit 27b1c58d154aad19d946391ebaf48f7b6e9be3f3
 - [x] C2. `za` on the Hosts header expands and folds the host list with id, size, region, uptime, sessions, price per hour and spend today (test).
   - done: impl-1821 · 2026-11-12T13:52:39.648Z
+  - verified: rev-36 [reviewer] · run rev-36-1821-final-1 · 2026-11-12T14:31:06.830Z · commit 27b1c58d154aad19d946391ebaf48f7b6e9be3f3
 - [x] C3. A fake host made unreachable turns its pool's line red within one second and names the host, and the line is plain again on recovery (test).
   - done: impl-1821 · 2026-11-12T13:52:39.963Z
-- [ ] C4. A session on a fake host names its host id on its panel row and in its selected meta line, and a local session names none (test).
-  - failed: rev-36 [reviewer] · 2026-11-12T13:56:51.128Z · note At normal panel widths a provisioned host id can be fully clipped from both session row and selected meta; the wide short-id test misses it.
+  - verified: rev-36 [reviewer] · run rev-36-1821-final-1 · 2026-11-12T14:31:06.830Z · commit 27b1c58d154aad19d946391ebaf48f7b6e9be3f3
+- [x] C4. A session on a fake host names its host id on its panel row and in its selected meta line, and a local session names none (test).
+  - done: impl-1821 · 2026-11-12T14:27:31.383Z
+  - verified: rev-36 [reviewer] · run rev-36-1821-final-1 · 2026-11-12T14:31:06.830Z · commit 27b1c58d154aad19d946391ebaf48f7b6e9be3f3
 - [x] C5. The panel shows no Hosts row when no pool is configured, and the recorded protocol-frame fixtures include `hosts.state` (test).
   - done: impl-1821 · 2026-11-12T13:52:40.468Z
+  - verified: rev-36 [reviewer] · run rev-36-1821-final-1 · 2026-11-12T14:31:06.830Z · commit 27b1c58d154aad19d946391ebaf48f7b6e9be3f3
 
 ## Blocked by
 
@@ -86,3 +92,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Repaired source clear, Standards/Spec zero findings. A-19058 records C4 full-id wrapping, preserved session/detail metadata and cursor semantics, 30/40/100-column controls, and static preservation of all previous fixture records. No reviewer execution. C1–C5 final current-head verification awaits configured mode-free Linux evidence including changed hosts-native T3. Local all-catalog/native evidence retains its source/capture limits; full remaining T3/T4 and affected after-stage QA separate.
+
+### rev-36 · 2026-11-12T14:31:06.830Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1821-final-1
+commit: 27b1c58d154aad19d946391ebaf48f7b6e9be3f3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; C1–C5 verified. A-19066/A-19065 independently reconcile green c7560b81/A-19063: 6242 base cases/688 files, separate ten load outcomes; fold/facts and repaired normal-width C4 base+5 pass, current native parent5.434568413s/child2.235051536s pass once with separate one-second outage assertion. All 50 catalog paths accounted (41 current pass/9 deferred); conservative 77 Neovim/frame-consumer files=48 current pass+29 T3/T4 deferrals, no missing lower tier. Local working-tree/TAP/invocation capture limits and T-1806 inventory preserved. Standards/Spec zero findings. No reviewer execution or further task run; full remaining T3/T4 and affected after-stage QA separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-12T15:23:21.791Z
+
+Merged cb31e4342a20c40e90f72791663385696589c234 onto dev.

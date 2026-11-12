@@ -2,8 +2,8 @@
 id: T-1820
 kind: task
 title: The web's Hosts row in the Sessions area
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1491
 branch: t/T-1820-the-web-s-hosts-row-in-the-sessions-area
 created: 2026-11-12T10:07:19.502Z
-updated: 2026-11-12T14:08:15.709Z
+updated: 2026-11-12T16:07:37.474Z
+closed: 2026-11-12T16:07:37.474Z
 ---
 
 ## Summary
@@ -30,14 +31,19 @@ A Hosts row drawn from T-1819's frame, built as the Remotes row is (the Sessions
 
 - [x] C1. With two fake hosts in one pool, the Sessions area shows the pool's line with hosts, slots and logins per harness as the hub reports them, at desktop and phone widths with no horizontal scroll (test).
   - done: impl-1820 · 2026-11-12T13:48:43.893Z
+  - verified: rev-35 [reviewer] · run rev-35-1820-final-1 · 2026-11-12T14:38:17.287Z · commit 72932d3333cf8a8930634e91dc32f2771c628ab6
 - [x] C2. Opening the row's fold lists each host with id, size, region, uptime, sessions, price per hour and spend today (test).
   - done: impl-1820 · 2026-11-12T13:48:44.087Z
+  - verified: rev-35 [reviewer] · run rev-35-1820-final-1 · 2026-11-12T14:38:17.287Z · commit 72932d3333cf8a8930634e91dc32f2771c628ab6
 - [x] C3. A fake host made unreachable turns its pool's line red within one second and names the host, and the line is plain again when the tunnel returns (test).
   - done: impl-1820 · 2026-11-12T14:04:01.615Z
+  - verified: rev-35 [reviewer] · run rev-35-1820-final-1 · 2026-11-12T14:38:17.287Z · commit 72932d3333cf8a8930634e91dc32f2771c628ab6
 - [x] C4. A project without a host pool shows no Hosts row (test).
   - done: impl-1820 · 2026-11-12T13:48:44.645Z
+  - verified: rev-35 [reviewer] · run rev-35-1820-final-1 · 2026-11-12T14:38:17.287Z · commit 72932d3333cf8a8930634e91dc32f2771c628ab6
 - [x] C5. The typecheck's colour and contrast checks pass, and the hooks check finds no key listener outside the key map (test).
   - done: impl-1820 · 2026-11-12T13:48:44.972Z
+  - verified: rev-35 [reviewer] · run rev-35-1820-final-1 · 2026-11-12T14:38:17.287Z · commit 72932d3333cf8a8930634e91dc32f2771c628ab6
 
 ## Blocked by
 
@@ -90,3 +96,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at pinned correction head; A-19062. All three source1 findings corrected: production health/coalescing/socket/browser loss and recovery, finally-joined observers, before ensureWebBuild. Expanded optional registry seam defaults to identical original owner/options; partial acquisition has earlier parent-root disposal. A-19060/A-19061 preserve 926 paths with correct tiers and honest executed/planned/deferred dispositions. A-19059 committed-head 4/4 local Web excerpts and candidate T2/static evidence retained with explicit raw/browser/TMPDIR limitations. No Reviewer runtime execution; final criteria/readiness remain pending same-head configured positive case/file reconciliation. Hold released; proceed mode-free verification without head changes. Remaining T3/T4 release split unchanged.
+
+### rev-35 · 2026-11-12T14:38:17.287Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1820-final-1
+commit: 72932d3333cf8a8930634e91dc32f2771c628ab6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-19070. Independently streamed A-19068:6210 base test/686 base file pass finishes, separate125 load test/file finishes, no negatives. Exact four Hosts cases plus ordinary file pass; genuine production health/coalescing/browser C3 and C1/C2/C4 assertions inspected in source. Host-gate colour/contrast/hooks checks pass. Normalized tree independently matches eb8c13036681e7d447c48bfd1091b5c7bc4251a6; clean unchanged72932d333. A-19069 preserves926 unique consumers with correct tiers and raw receipt linkage:417 positive file finishes(24T1/340T2/53Web),0 missing required;233T3/14T4 deferred,262 static nonmanifest. Web10/10 file repetition remains separate/report-only, no isolated per-case repeat inference. Linux droplet and exact Headless Shell provenance retained; local capture limitations and advisory budget/lint modes retained. All C1–C5 verified for readiness; evidence hold released. Full T3 merge/integrated and T4/stage split unchanged; retain claim until normal merge handoff.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-12T16:07:37.474Z
+
+Merged 36f700d73665b0f37593925c564444c34de9b840 onto dev.
