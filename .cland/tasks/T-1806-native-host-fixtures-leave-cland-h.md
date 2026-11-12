@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-11T18:17:46.800Z
+updated: 2026-11-12T09:44:50.152Z
 ---
 
 ## Summary
@@ -44,3 +44,7 @@ Further observation, 2026-11-11 12:52Z: impl-1810's T-1810 native slot (host-res
 ### coord · 2026-11-11T18:17:46.800Z
 
 Census 2026-11-11 18:17Z (impl-1794): /private/tmp now holds 17,514 `cland-h-*` names. That's the accumulated scale this item's C2 dead-root cleanup must handle with a census-proven, literal-path receipt, and the reason to land C1 before the v0.4 release run. Separately, a crashed native run (T-1794's slot 1, RangeError) left `cland-account-fixture-VXL3Gi` in the per-user TMPDIR without a fixture-owner receipt; it is retained under rule 12 until its descendants are proved closed. A crash-safe owner receipt for account fixture roots belongs in this item's scope.
+
+### coord · 2026-11-12T09:44:50.152Z
+
+Census 2026-11-12 09:44Z (impl-1813's final-head native slot, /private/tmp on the macOS host): cland-h-* 17,640 (+6 per native login file run, +12 for two files), plus pre-existing ct-* 1,015 and hc-* 11 that no current run added or removed. ct-<32> is the shared fixture-sockets reciprocal alias used by hostDirectory, so these 1,015 are a second accumulated class beside cland-h-*: include it when this item is triaged.
