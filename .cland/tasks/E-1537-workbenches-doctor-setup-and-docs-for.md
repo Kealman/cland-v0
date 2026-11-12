@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1486
 branch: null
 created: 2026-10-31T18:22:04.429Z
-updated: 2026-11-12T10:09:36.136Z
+updated: 2026-11-12T14:10:31.872Z
 ---
 
 ## Goal
@@ -100,6 +100,7 @@ stages:
         - T-1826
         - T-1827
       - - T-1828
+      - - T-1839
   - name: doctor and setup's hosts step
     qa:
       scope: affected
