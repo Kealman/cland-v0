@@ -46,6 +46,17 @@ export class PoolRuntime {
     this.onCapacityChanged = onCapacityChanged; this.settings = () => this.#configuredSettings ?? settings(); this.records = records; this.available = available; this.processes = processes;
   }
 
+  readonly #failures = new Map<string,string>();
+  failure(pool:string):string|null { return this.#failures.get(pool)??null; }
+  recordCreateResult(pool:string,result:unknown):void {
+    if(result instanceof PoolCreationNotAdmitted)return;
+    const row=result as {state?:string;retryAt?:string;reason?:string}|null;
+    if(row?.state==='ready')this.#failures.delete(pool);
+    else if(result instanceof Error||row?.state==='failed'||row?.state==='refused'||row?.retryAt)
+      this.#failures.set(pool,result instanceof HostProviderRetry?result.message:row?.reason??'host create refused');
+    this.onCapacityChanged();
+  }
+
   #create: ((pool: string, authorize: () => void, demand?:()=>readonly ProvisionLoginDemand[]) => Promise<unknown>) | undefined;
   #demand:((pool:string)=>readonly ProvisionLoginDemand[])|undefined;
   #flights = new Map<string, Promise<void>>();
@@ -185,6 +196,7 @@ export class PoolRuntime {
     }),()=>this.#demand?.(name)??[])).then(async result => {
       if (this.#closed) return;
       const row = result as ProvisionRecord & { retryAt?: string };
+      this.recordCreateResult(name,result);
       if (row?.state === 'ready') {
         this.#idleLifecycle?.clock.clearTimeout(this.#retries.get(name)?.timer); this.#retries.delete(name);
       } else if (row?.state === 'failed' || row?.retryAt) {
@@ -211,7 +223,7 @@ export class PoolRuntime {
           if(notice)this.#idleLifecycle?.failed?.(notice);
         } else this.#retry(name,row?.retryAt);
       } else this.#failed.add(name);
-    }, error => { if (!(error instanceof PoolCreationNotAdmitted)) this.#retry(name, error instanceof HostProviderRetry ? error.retryAt : undefined); }).catch(error => { if (!this.#failed.has(name) && !(error instanceof PoolCreationNotAdmitted)) this.#retry(name); }).finally(() => {
+    }, error => { if (!(error instanceof PoolCreationNotAdmitted)) { this.recordCreateResult(name,error); this.#retry(name, error instanceof HostProviderRetry ? error.retryAt : undefined); } }).catch(error => { if (!this.#failed.has(name) && !(error instanceof PoolCreationNotAdmitted)) this.#retry(name); }).finally(() => {
       this.#flights.delete(name);
       if (!this.#closed) { this.reconcile(); this.onCapacityChanged(); }
     });

@@ -121,6 +121,12 @@ test('explicit resume invalidates an existing subscriber captured by in-flight a
   const root = await tempProject(t);
   const { dispatcher } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const control = await dispatcherUi(t, dispatcher, root);
+  const baselineFrames: HubFrame[] = [];
+  const observer = dispatcher.open({ send: frame => baselineFrames.push(frame), close: () => {}, isOpen: () => true }, { authenticated: true, edge: 'socket' });
+  onCleanup(t, () => observer.closed());
+  observer.receive('{"type":"hello","protocol":2,"client":"ui","features":["snapshot"]}');
+  const baseline = await eventually('snapshot end captures the publication baseline', () => baselineFrames.find(frame => frame.type === 'snapshot.end'));
+  observer.closed();
   const received: HubFrame[] = [];
   let later: ReturnType<typeof dispatcher.open>;
   let resumed = false;
@@ -140,6 +146,6 @@ test('explicit resume invalidates an existing subscriber captured by in-flight a
   assert.equal((await control.request({ type: 'task.create', title: 'Published once', size: 'S' })).ok, true);
   const deltas = received.filter(f => 'seq' in f);
   assert.deepEqual(deltas.map(f => f.type), ['task', 'topic']);
-  assert.deepEqual(deltas.map(f => f.seq), [1, 2]);
+  assert.deepEqual(deltas.map(f => f.seq), [Number(baseline.seq) + 1, Number(baseline.seq) + 2]);
   assert.equal(received.filter(f => f.type === 'result' && f.id === 'resume' && f.ok).length, 1);
 });

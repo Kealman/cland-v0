@@ -23,3 +23,10 @@ The CLI diagnostic case keeps a fully stopped process alive deliberately and
 advances only its stop deadline after the shutdown receipt. It expects exit 1
 and `stopped, lock released, process still alive`, with no signal after lock
 release; the unrelated-PID case retains its separate safety assertion.
+
+Raw authenticated Unix client cases assert and drain the additive hosts.state
+projection after remote.state, before requesting hub.status. Keep the wrong
+secret WebSocket/Unix refusals, spoke-role hello/ack/who checks, refusal of human
+client hellos over the spoke WebSocket, and exact successful status facts. The
+connect projection is not a status result. Run the native file alone under the
+project preservation slot and observe its terminal producer completion.

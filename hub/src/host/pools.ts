@@ -74,3 +74,9 @@ export function hostPoolsDocument(hosts: HostPools): Record<string, unknown> {
     ...(hosts.weights === undefined ? {} : { weights: hosts.weights }),
     ...Object.fromEntries(Object.entries(hosts.pools).map(([name, p]) => [name, { provider: p.provider, size: p.size, region: p.region, transport: p.transport, slots: p.slots, min_hosts: p.minHosts, max_hosts: p.maxHosts, idle_stop: p.idleStop, spread: p.spread }])) };
 }
+
+/** Shared default selection for provisioning and its result observer. */
+export function selectHostPool(pools: Readonly<Record<string, unknown>>, requested?: string): string | undefined {
+  const names=Object.keys(pools).sort();
+  return requested??(names.includes('agents')?'agents':names.length===1?names[0]:undefined);
+}

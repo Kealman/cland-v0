@@ -18,3 +18,8 @@ well. Stop the load worker and join every child before releasing
 the granted local load slot. Linux evidence comes from same-head verification.
 
 Open summary paging uses production frames with `paged:true`: traverse multiple numeric cursors, retain all ids exactly once, and keep the legacy response without `next`.
+
+Raw socket cases assert and drain welcome, remote.state and hosts.state before
+sending task or subscription requests. Preserve their exact result ids, task
+index events, verdict contents, reindex and removal receipts. The additive
+connect projection does not replace any task, framing or subscription assertion.

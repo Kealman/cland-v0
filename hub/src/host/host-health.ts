@@ -11,8 +11,9 @@ type Options = {
  status:(id:string)=>Promise<MachineStatus>;
  lost:(id:string)=>Promise<void>;
  error:(error:unknown)=>void;
+ changed?:()=>void;
 };
-type Outage = { warning:ClockTimer; terminal?:ClockTimer; settling?:boolean };
+type Outage = { since:string; warning:ClockTimer; terminal?:ClockTimer; settling?:boolean };
 /** Owns outage timers and provider reads; tunnel loss alone never exits a session. */
 export class HostHealth {
  readonly #o:Options;
@@ -27,9 +28,10 @@ export class HostHealth {
    if(state==='ready'||state==='unreachable')return;
    const outage=this.#outages.get(id);
    options.clock.clearTimeout(outage?.warning);options.clock.clearTimeout(outage?.terminal);
-   this.#outages.delete(id);this.#lastCheck.delete(id);
+   this.#outages.delete(id);this.#lastCheck.delete(id);if(outage)options.changed?.();
   });
  }
+ outageSince(id:string):string|null{return this.#outages.get(id)?.since??null;}
  holds(id:string):boolean{return !this.#closed&&this.#outages.has(id)&&!this.#outages.get(id)!.settling;}
  transition(id:string,up:boolean,at:Date=this.#o.clock.now()):void {
   if(this.#closed)return;
@@ -38,6 +40,7 @@ export class HostHealth {
   if(up){
    if(outage?.settling)return;
    o.clock.clearTimeout(outage?.warning);o.clock.clearTimeout(outage?.terminal);this.#outages.delete(id);
+   if(outage)o.changed?.();
    if(row.state==='unreachable')o.records.provisions.ready({...row,state:'ready'});
    return;
   }
@@ -47,13 +50,13 @@ export class HostHealth {
    return o.env.CLAND_FAKE_HOST_ROOT&&Number.isSafeInteger(value)&&value>0&&value<normal?value:normal;
   };
   const remaining=(duration:number)=>Math.max(1,at.getTime()+duration-o.clock.now().getTime());
-  const current:Outage={warning:o.clock.setTimeout(()=>{
+  const current:Outage={since:at.toISOString(),warning:o.clock.setTimeout(()=>{
    const row=o.records.provisions.get(id);
    if(this.#outages.get(id)!==current||!row||row.state!=='ready')return;
    o.records.provisions.save({...row,state:'unreachable'});
    o.notice(`host ${id} unreachable`);
   },remaining(bound('CLAND_TEST_HOST_UNREACHABLE_MS',180000)))};
-  current.warning.unref();this.#outages.set(id,current);
+  current.warning.unref();this.#outages.set(id,current);o.changed?.();
   const lose=()=>{
    if(this.#closed||this.#outages.get(id)!==current||current.settling)return;
    current.settling=true;o.clock.clearTimeout(current.warning);o.clock.clearTimeout(current.terminal);

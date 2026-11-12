@@ -94,6 +94,22 @@ export class LoginRecords {
   if(shared)return max;
   return this.db.prepare(sql+" and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=? limit ?").all(input.harness,'disk',input.provider,input.region,max).length;
  }
+ /** Aggregate metadata only: no retained login records or private storage identities are decoded. */
+ poolSummary(provider:string,region:string,hosts:readonly string[]):Record<string,{inUse:number;usable:number;signedOut:number}> {
+  const result:Record<string,{inUse:number;usable:number;signedOut:number}>={};
+  for(const harness of ['claude-code','codex','opencode']) {
+   const count=(states:readonly string[])=>Number(this.db.prepare(`select count(*) as n from logins where json_extract(record,'$.harness')=? and
+    json_extract(record,'$.state') in (${states.map(()=>'?').join(',')}) and
+    (json_extract(record,'$.kind')='key' or (json_extract(record,'$.provider')=? and json_extract(record,'$.region')=?))`).get(harness,...states,provider,region)!.n);
+   const names=new Set(hosts.flatMap(host=>this.forHost(host).map(binding=>binding.login)));
+   let inUse=0;
+   for(const name of names){const login=this.get(name);if(login?.harness===harness&&login.state!=='signed-out'&&login.state!=='creating'&&
+    (login.kind==='key'||login.provider===provider&&login.region===region))inUse++;}
+   const usable=count(['ready','in-use']),signedOut=count(['signed-out']);
+   result[harness]={inUse,usable,signedOut};
+  }
+  return result;
+ }
  harnesses():string[] {return ['claude-code','codex','opencode'].filter(harness=>this.db.prepare("select 1 from logins indexed by login_harnesses where json_extract(record,'$.harness')=? limit 1").get(harness)!==undefined);}
  *storageRows(monthStart:string):Generator<Login> {for(const row of this.db.prepare('select record from logins indexed by login_storage_current where storage_through>=?').iterate(monthStart))yield JSON.parse(String(row.record)) as Login;}
  private readerRelease:((name:string,receipt:{volumeId:string})=>void)|undefined;

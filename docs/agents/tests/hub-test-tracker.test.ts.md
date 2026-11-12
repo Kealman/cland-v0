@@ -10,3 +10,8 @@ The 100 ms settling contract is covered with fake time in
 [`tracker-summary.test.ts`](hub-test-tracker-summary.test.ts.md). Do not restore
 elapsed-time assertions or use CLI startup as the watcher completion boundary.
 The fixture's native hub is required for the real filesystem watcher receipt.
+
+The simultaneous hub-write/hand-edit case asserts and drains hosts.state after
+remote.state on its pre-opened Unix client. Preserve the exact hand title,
+hub-added label, item readback, final filesystem bytes and both conflict-winner
+log assertions. The extra connect projection must not satisfy task.edit's reply.

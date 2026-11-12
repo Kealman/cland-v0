@@ -1,3 +1,4 @@
+import { selectHostPool } from './pools.ts';
 import { releaseHostLogins, trackLoginRelease } from './login-release.ts';
 import {settleLoginSignInsForHost} from './login-signin.ts';
 import { hasLoginReleaseObligation } from './login-release-policy.ts';
@@ -64,7 +65,7 @@ export async function createHost(o:{onConnecting?:(record:ProvisionRecord,signal
  const hostConfig=projectConfig.hosts;
  const pools=o.settings ? {[o.pool??'agents']:o.settings} : hostConfig.pools;
  const names=Object.keys(pools).sort();
- const pool=o.pool??(names.includes('agents')?'agents':names.length===1?names[0]:undefined);
+ const pool=selectHostPool(pools,o.pool);
  if(!pool||!Object.hasOwn(pools,pool))throw Error(`choose a configured pool: ${names.join(', ')||'none'}`);
  parsePoolName(pool);
  const config=pools[pool]!;

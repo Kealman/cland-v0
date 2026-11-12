@@ -67,9 +67,9 @@ test('hello negotiates model features and legacy clients keep their existing wel
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const legacy = await client(t, discovery);
-  await legacy.waitFor(frame => frame.type === 'remote.state');
+  await legacy.waitFor(frame => frame.type === 'hosts.state');
   assert.deepEqual(legacy.frames[0], { type: 'welcome', name: 'ui', presence: [] });
-  assert.deepEqual(legacy.frames.map(frame => frame.type), ['welcome', 'remote.state']);
+  assert.deepEqual(legacy.frames.map(frame => frame.type), ['welcome', 'remote.state', 'hosts.state']);
   const ui = await client(t, discovery, ['snapshot', 'numbered-deltas', 'slim-frames', 'unknown', 'snapshot']);
   assert.deepEqual(ui.frames[0]!.features, ['snapshot', 'numbered-deltas', 'slim-frames']);
   const end = await ui.waitFor(f => f.type === 'snapshot.end');
@@ -79,10 +79,10 @@ test('hello negotiates model features and legacy clients keep their existing wel
   assert.ok(Number.isSafeInteger(end.seq));
   assert.ok(snapshots.every(f => f.type === 'snapshot' && f.epoch === end.epoch && f.seq === end.seq));
   assert.equal((await legacy.request({ type: 'topic.list' })).ok, true);
-  assert.equal(legacy.frames.length, 2);
+  assert.equal(legacy.frames.length, 3);
   const unknown = await client(t, discovery, ['future-extension']);
   assert.equal((await unknown.request({ type: 'topic.list' })).ok, true);
-  assert.deepEqual(unknown.frames.map(f => [f.type, f.features]), [['welcome', []], ['remote.state', undefined]]);
+  assert.deepEqual(unknown.frames.map(f => [f.type, f.features]), [['welcome', []], ['remote.state', undefined], ['hosts.state', undefined]]);
   const again = await client(t, discovery, ['snapshot']);
   const next = await again.waitFor(f => f.type === 'snapshot.end');
   assert.equal(next.epoch, end.epoch);

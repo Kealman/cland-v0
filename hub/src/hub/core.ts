@@ -712,6 +712,10 @@ export class HubCore {
     this.#emit({ type: 'event', row });
   }
 
+  #readHostsState: () => import('../protocol.ts').HostsStatePool[] = () => [];
+  useHostsState(read: () => import('../protocol.ts').HostsStatePool[]): void { this.#readHostsState = read; }
+  hostsState(): import('../protocol.ts').HostsStatePool[] { return this.#readHostsState(); }
+  publishHostsState(pools: import('../protocol.ts').HostsStatePool[]): void { this.#emit({ type: 'hosts.state', pools }); }
   #readRemoteState: () => import('../protocol.ts').RemoteStateRow[] = () => [];
   useRemoteState(read: () => import('../protocol.ts').RemoteStateRow[]): void { this.#readRemoteState = read; }
   remoteState(): import('../protocol.ts').RemoteStateRow[] { return this.#readRemoteState(); }

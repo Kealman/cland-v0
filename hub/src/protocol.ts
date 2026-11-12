@@ -289,6 +289,7 @@ export type EventsPage = { rows: EventRow[]; before: string | null; more: boolea
 export type HubEvent =
   | { type: 'event'; row: EventRow }
   | { type: 'verification.queue'; queue: VerificationQueue }
+  | { type: 'hosts.state'; pools: HostsStatePool[] }
   | { type: 'remote.state'; remotes: RemoteStateRow[] }
   | { type: 'visibility' }
   | { type: 'crew'; config: import('./crew.ts').CrewConfig; summary: string }
@@ -593,7 +594,7 @@ export type HumanMarks = { events: string | null; plans: Record<string, string>;
 export type SnapshotValues = {
   tracker: { levels: string[]; ladder: string[][]; prefixes: Record<string, string> };
   items: { items: import('./tracker/tracker.ts').ExplorerSummary[]; done_items?: number };
-  sessions: { rows: SessionRow[]; processes: HarnessProcessView[]; presence: Presence[]; archived: number; roles: RoleList; crew: { config: import('./crew.ts').CrewConfig; summary: string }; coordinator: string | null; verification: VerificationQueue | null; remotes?: RemoteStateRow[] };
+  sessions: { rows: SessionRow[]; processes: HarnessProcessView[]; presence: Presence[]; archived: number; roles: RoleList; crew: { config: import('./crew.ts').CrewConfig; summary: string }; coordinator: string | null; verification: VerificationQueue | null; remotes?: RemoteStateRow[]; hosts?: HostsStatePool[] };
   topics: { topics: Topic[]; marks: HumanMarks };
   inbox: Inbox & { needsYou: number };
   events: EventsPage;
@@ -675,6 +676,15 @@ export type WebSessionsResult = { sessions: WebSession[] };
 export type WebRevokeResult = { revoked: string };
 
 /** Safe workbench projection. Local status retains credential and routing facts separately. */
+export type HostsStatePool = {
+  name: string; provider: string; region: string;
+  hostCount: number; maxHosts: number; slotsUsed: number; slotsTotal: number;
+  logins: Record<string, { inUse: number; usable: number; signedOut: number }>;
+  alert: { kind: 'outage'; host: string; since: string } | { kind: 'provider'; reason: string } | null;
+  hosts: { id: string; size: string; region: string; state: string; created: string;
+    sessions: string[]; priceHourly: number | null; spendToday: number | null }[];
+};
+
 export type RemoteStateRow = {
   messenger: RemoteVia;
   enabled: boolean;

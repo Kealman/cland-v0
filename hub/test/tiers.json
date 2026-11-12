@@ -357,6 +357,7 @@
     "hub/test/host-watchdog-identity.test.ts": "T1",
     "hub/test/host-watchdog-loop.test.ts": "T2",
     "hub/test/host-watchdog.test.ts": "T3",
+    "hub/test/hosts-state.test.ts": "T2",
     "hub/test/hub-cards-authority.test.ts": "T1",
     "hub/test/hub-cards-voice.test.ts": "T2",
     "hub/test/hub-cards.test.ts": "T2",

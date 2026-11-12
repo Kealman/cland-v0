@@ -27,7 +27,10 @@ export class HostLeases {
  readonly #db:DatabaseSync;
  readonly #expiries=new Set<Promise<void>>();
  readonly #owners=new Map<string,{stop():void;done:Promise<void>}>();
- constructor(db:DatabaseSync){this.#db=db;db.exec('create table if not exists host_leases(id text primary key,pool text not null,created text not null,deadline text not null,released text); create table if not exists host_lease_watchdogs(id text primary key, identity text not null)');}
+ constructor(db:DatabaseSync){this.#db=db;db.exec('create table if not exists host_leases(id text primary key,pool text not null,created text not null,deadline text not null,released text); create table if not exists host_lease_watchdogs(id text primary key, identity text not null); create table if not exists host_lease_billing(id text primary key, price_hourly real not null check(price_hourly>=0))');}
+ /** Admitted declaration checkpoint, independent of provider registry instances. Old rows stay unknown. */
+ price(id:string):number|null {return this.#db.prepare('select price_hourly from host_lease_billing where id=?').get(id)?.price_hourly as number??null;}
+ #checkpointPrice(id:string,price:number):void {this.#db.prepare('insert into host_lease_billing(id,price_hourly) values(?,?) on conflict(id) do nothing').run(id,price);}
  get(id:string):HostLease|null{const row=this.#db.prepare('select id,pool,created,deadline from host_leases where id=?').get(id) as HostLease|undefined;if(!row)return null;const identity=this.#db.prepare('select identity from host_lease_watchdogs where id=?').get(id);return identity?{...row,watchdog:JSON.parse(String(identity.identity))}:row;}
  currentAdmission(id:string):HostLease|null {const row=this.#db.prepare('select released from host_leases where id=?').get(id);return row&&row.released===null?this.get(id):null;}
  *active():Iterable<HostLease>{for(const row of this.#db.prepare('select id from host_leases order by id').iterate()){const lease=this.get(String(row.id));if(lease)yield lease;}}
@@ -44,6 +47,7 @@ export class HostLeases {
   const created=o.clock.now().toISOString(),deadline=new Date(o.clock.now().getTime()+o.leaseMs).toISOString();
   await reserveHostSpend({project:o.root,lease:id,pool:o.pool,size:o.size,priceHourly:o.priceHourly,billingMinimumMs:o.billingMinimumMs,created,deadline},o.caps,o.env,o.processes?{clock:o.clock,processes:o.processes}:{clock:o.clock});
   this.#db.prepare('insert into host_leases(id,pool,created,deadline) values(?,?,?,?)').run(id,o.pool,created,deadline);
+  this.#checkpointPrice(id,o.priceHourly);
   this.#mirror(o.root,{id,pool:o.pool,created,deadline});
  }
  async renew(id:string,o:LeaseOptions):Promise<void>{
@@ -56,6 +60,7 @@ export class HostLeases {
  }
  arm(id:string,o:LeaseOptions,inUse:()=>boolean,onError:(error:unknown)=>void=error=>{console.error(error);},onExpired:()=>Promise<void>=async()=>{}):void{
   if(this.#owners.has(id))throw Error('host renewal already armed');
+  this.#checkpointPrice(id,o.priceHourly);
   let publicationPending=false,stopped=false,timer:ClockTimer|undefined,expiryTimer:ClockTimer|undefined,due=o.clock.now().getTime()+Math.min(3600000,o.leaseMs/4);
   const owner={stop:()=>{stopped=true;o.clock.clearTimeout(timer);o.clock.clearTimeout(expiryTimer);},done:Promise.resolve()};
   const expire=()=>{if(stopped)return;owner.stop();const work=onExpired().catch(onError).finally(()=>this.#expiries.delete(work));this.#expiries.add(work);};

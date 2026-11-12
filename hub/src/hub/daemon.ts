@@ -1,3 +1,4 @@
+import { HostsState } from '../host/hosts-state.ts';
 import { loginKeyEnvironment } from '../host/login-keys.ts';
 import { projectTag } from '../executor/droplet/droplet.ts';
 import { HostHealth, loseHost } from '../host/host-health.ts';
@@ -280,6 +281,8 @@ export async function serveProject(root: string, options: { prepareLogin?: impor
   };
   let sshHosts: Awaited<ReturnType<typeof projectSshHosts>> | null = null;
   let hostHealth: HostHealth | null = null;
+  let hostsState: HostsState | null = null;
+  let unsubscribeHostFrames: (()=>void) | undefined;
   let loginReconciliation:LoginReconciliation|null=null;
   let unsubscribeHostStatus:(()=>void)|undefined;
   let accountPoller: AccountPoller | null = null;
@@ -589,6 +592,8 @@ export async function serveProject(root: string, options: { prepareLogin?: impor
         await attempt(() => sweep);
         await attempt(() => accountPoller?.close());
         unsubscribeHostStatus?.();
+        unsubscribeHostFrames?.();
+        await attempt(() => hostsState?.close());
         await attempt(() => hostHealth?.close());
         await attempt(() => loginReconciliation?.close());
         // Both journal and session projections depend on the adapters' open table.
@@ -713,11 +718,22 @@ export async function serveProject(root: string, options: { prepareLogin?: impor
       recoverLoginSignIns(store.hosts);
     });
     const healthProviders=new HostProviderRegistry({env,digitalocean:{root},now:()=>clock.now().getTime()});
-    hostHealth=new HostHealth({records:store.hosts,clock,env,
+    hostHealth=new HostHealth({records:store.hosts,clock,env,changed:()=>hostsState?.changed(),
       notice:text=>{hub.core.noticeInTopic('general',{kind:'report',text});},
       error:error=>log({event:'host-health-failed',error:String(error)}),
       status:async id=>{const row=store.hosts.provisions.get(id);if(!row?.machine)return {state:'failed',reason:'host machine unavailable'};return healthProviders.resolve(row).status(row.machine);},
       lost:async id=>{await loseHost({root,id,records:store.hosts,env,clock,owner:sshHosts!,inUse:host=>adapters!.sessions.hostInUse(host),settleDeleted:(host,read)=>adapters!.sessions.hostDeleted(host,read),log});}});
+    hostsState = new HostsState({clock,records:store.hosts,settings:()=>roles.config().hosts,
+      processes:()=>adapters!.sessions.list(),usage:id=>adapters!.sessions.hostUsage(id),
+      price:row=>store.hosts.leases.price(row.id),
+      outage:id=>hostHealth!.outageSince(id),failure:pool=>adapters!.sessions.hostPoolFailure(pool),
+      publish:rows=>hub.core.publishHostsState(remoteOutput.value(rows))});
+    hub.core.useHostsState(()=>remoteOutput.value(hostsState!.read()));
+    adapters.sessions.hostStateChanged=hostsState.changed;
+    unsubscribeHostFrames=hub.core.subscribe(event=>{
+      if(event.type==='session.process'||event.type==='session.state'||event.type==='crew')hostsState?.changed();
+    });
+    await hostsState.start();
     adapters.sessions.hostOutageHold(id=>hostHealth!.holds(id));
     unsubscribeHostStatus=sshHosts.subscribeStatus((id,up,at)=>{hostHealth!.transition(id,up,at);adapters!.sessions.capacityChanged();});
 

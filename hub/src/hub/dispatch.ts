@@ -1,3 +1,4 @@
+import { selectHostPool } from '../host/pools.ts';
 import {removeLogin} from '../host/login-remove.ts';
 import { installLoginRelease } from '../host/login-release.ts';
 import { addKeyLogin } from '../host/login-keys.ts';
@@ -613,9 +614,13 @@ export class Dispatcher {
       if(this.core.store.hosts.provisions.occupied(name)>=pool.maxHosts)throw new Error(`pool ${name} reached max_hosts ${pool.maxHosts}`);
       } catch(error) { throw new PoolCreationNotAdmitted((error as Error).message,{cause:error}); }
     }});
-    this.#poolPrepares.add(work);
-    void work.finally(() => this.#poolPrepares.delete(work)).catch(() => {});
-    return work;
+    const name=selectHostPool(this.#options.projectConfig?.().hosts.pools??{},pool);
+    const observed=work.then(result=>{if(name)this.#sessions?.recordHostCreateResult(name,result);return result;},error=>{
+      if(name)this.#sessions?.recordHostCreateResult(name,error);throw error;
+    });
+    this.#poolPrepares.add(observed);
+    void observed.finally(() => this.#poolPrepares.delete(observed)).catch(() => {});
+    return observed;
   }
 
   async restoreSessions(sessions: Sessions, restoreHosts: () => Promise<void>): Promise<void> {
@@ -1826,6 +1831,7 @@ export class Dispatcher {
         if (frame.resume && !features.includes('numbered-deltas')) return refuse('bad-hello', 'resume requires numbered-deltas');
         peer.send({ type: 'welcome', name: humanUser(frame)?.name ?? client, presence: core.presence(), ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
         if (!hostId && !features.includes('snapshot') && !frame.resume) peer.send({ type: 'remote.state', remotes: core.remoteState() });
+        if (!hostId && !features.includes('snapshot') && !frame.resume) peer.send({ type: 'hosts.state', pools: core.hostsState() });
         if (frame.resume) resumeModel(frame.resume);
         else if (features.includes('snapshot')) startSnapshot();
         else if (features.includes('numbered-deltas') || transport.edge === 'gateway') subscribeModel();

@@ -162,12 +162,15 @@ export class Sessions {
         }};
       }));
   }
+  hostStateChanged: () => void = () => {};
+  recordHostCreateResult(pool:string,result:unknown):void { this.#poolRuntime?.recordCreateResult(pool,result); }
+  hostPoolFailure(pool:string):string|null { return this.#poolRuntime?.failure(pool)??null; }
   hostUsage(id: string): {usedMilli:number;promisedMilli:number} { return this.#poolRuntime?.usage(id)??{usedMilli:0,promisedMilli:0}; }
   #outageHold:(host:string)=>boolean=()=>false;
   hostOutageHold(held:(host:string)=>boolean):void {this.#outageHold=held;}
   hostInUse(id: string): boolean { return this.#poolRuntime?.inUse(id) ?? false; }
   configurePools(config?: import('../init/config.ts').ProjectConfig): void { this.#poolRuntime?.configure(config?.hosts); this.capacityChanged(); }
-  capacityChanged(): void { this.#poolRuntime?.reconcile(); this.#waiting.capacityChanged(); }
+  capacityChanged(): void { this.hostStateChanged(); this.#poolRuntime?.reconcile(); this.#waiting.capacityChanged(); }
   async cancelWaiting(name: string, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<WaitingLaunch | null> {
     const current=this.#table.waitingLaunch(name);
     if(current)this.#waitingLoginAdmissions.delete(current.id);

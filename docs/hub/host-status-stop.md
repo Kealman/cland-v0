@@ -33,3 +33,30 @@ invoke either frame. Implementers use sealed disposable fixtures; they gain no l
 management permission. `host list` and `host destroy` retain their previous shapes.
 Manual `host create` shares scheduler admission and counts creating, live,
 destroying and unresolved acquisitions toward `max_hosts`.
+
+## Pushed workbench host state
+
+The hub sends `hosts.state` with `{ pools }` on a non-snapshot workbench hello;
+featured snapshots include the same projection in optional `sessions.hosts`.
+Subscribed clients receive replacements at most once per second. Older clients
+ignore the additive event and older hubs may omit the optional snapshot field.
+No configured pool tables means an empty pool list.
+
+Each configured pool includes its provider, region, host count/maxHosts, weighted
+slots used/total, and per-harness login counts (`inUse`, `usable`, `signedOut`).
+Logins are scoped to the pool's provider and region; key logins are portable.
+Signed-out logins count separately. Each host exposes id, size, region, state,
+creation time, running session names, admitted declared hourly price including address
+charges, and today's UTC live accrual. Rates come from the indexed lease billing checkpoint, populated after spend reservation
+and by a renewal owner for older leases; no new provider read is needed. Older
+rows without that checkpoint keep price/spend unknown (null) while a machine is
+live. Pre-acquisition and positively deleted machines contribute zero live spend. Spend
+sampling occurs at most once a minute while inventory is live. The projection
+never includes addresses, SSH identities, native volume identifiers or tokens.
+
+Tunnel loss sets an outage alert with its host and start time before the existing
+three-minute unreachable state and General notice. Recovery clears that alert.
+Pool creation refusal/rate-limit pause sets a provider alert until successful
+creation; an outage takes display precedence when both exist. Pool configuration,
+placement, session exit and login changes trigger the same publication owner.
+Connect and snapshot use cached state; no network or ledger read runs there.

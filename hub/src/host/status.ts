@@ -1,3 +1,4 @@
+import { liveHostAccrual } from './live-accrual.ts';
 import {FAKE_STORAGE_PRICES} from './provider/fake.ts';
 import {DIGITALOCEAN_STORAGE_PRICES} from './provider/digitalocean.ts';
 import type { Clock } from '../hub/clock.ts';
@@ -39,13 +40,10 @@ export async function hostStatus(records:HostRecords, settings:HostPools, proces
    const priceHourly=billing[row.id]??null;
    const created=row.machine?Date.parse(row.machine.created):null;
    const uptime=created===null?null:Math.max(0,(now-created)/1000);
-   if(created!==null&&priceHourly!==null&&!row.machineDeletionRead){
-    const day=Date.parse(clock.now().toISOString().slice(0,10)+'T00:00:00Z');
-    const month=Date.parse(clock.now().toISOString().slice(0,7)+'-01T00:00:00Z');
-    if(spend.today!==null)spend.today+=Math.max(0,now-Math.max(created,day))/3600000*priceHourly;
-    if(spend.month!==null)spend.month+=Math.max(0,now-Math.max(created,month))/3600000*priceHourly;
-   }
-   if(created!==null&&priceHourly===null&&!row.machineDeletionRead){spend.today=null;spend.month=null;}
+   const day=Date.parse(clock.now().toISOString().slice(0,10)+'T00:00:00Z');
+   const todayLive=liveHostAccrual(row,priceHourly,now,day),monthLive=liveHostAccrual(row,priceHourly,now,month);
+   spend.today=spend.today===null||todayLive===null?null:spend.today+todayLive;
+   spend.month=spend.month===null||monthLive===null?null:spend.month+monthLive;
    const capacity=usage(row.id);
    const logins=records.logins.forHost(row.id).map(binding=>({harness:records.logins.get(binding.login)!.harness,name:binding.login}));
    return {logins,id:row.id,size:row.size,region:row.region,state:row.state,uptime,sessions:sessions.map(p=>p.name),priceHourly,slotsUsed:(capacity.usedMilli+capacity.promisedMilli)/1000,...(capacity.promisedMilli?{slotsPromised:capacity.promisedMilli/1000}:{}),slotsTotal:settings.pools[name]?.slots??0};
