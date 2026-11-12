@@ -1,0 +1,7 @@
+# nvim/test/host-attach.test.ts
+
+`nvim/test/host-attach.test.ts` is T3. Run it with the pinned headless Neovim through `node --test nvim/test/host-attach.test.ts`, with inherited `CLAND_*` removed and the release's native preservation slot held.
+
+The case `Enter attaches through pinned SSH, names the host, reattaches after restart and shows revocation` covers T-1823 C1–C3. A disposable projectHub uses an in-process fake adapter and a directory-backed fake host. The production terminal command builder supplies pinned `ssh -t`; PATH selects the existing fake SSH, whose remote fake CLI validates `host attach worker` and its run directory before printing its terminal receipt. No provider, network, login or real harness is used. Neovim Enter opens the terminal; the note buffer names worker and f1. Editor `:restart` must produce that receipt again with the same command. Stopping the attach client and revoking the fixture's terminal command makes the next view show the hub's exact refusal. The fake CLI remains attached to stdin; Neovim's fixture owner joins native descendants before deleting roots.
+
+The local macOS receipt covers only this native file and the existing shell restart regression. Mode-free task verification supplies Linux T0/T1/selected T2 and changed T3; remaining T3 belongs to the merge batch, T4 to stage/epic occasions. There is no browser in this test. No frame shape changes, so recordings do not need regeneration.

@@ -964,6 +964,7 @@
     "nvim/test/explorer.test.ts": "T3",
     "nvim/test/graph-layout.test.ts": "T3",
     "nvim/test/graph.test.ts": "T2",
+    "nvim/test/host-attach.test.ts": "T3",
     "nvim/test/hub-read-component.test.ts": "T2",
     "nvim/test/human-marks-component.test.ts": "T2",
     "nvim/test/inbox-actions.test.ts": "T2",

@@ -161,7 +161,14 @@ function M.show_in(win, name, opts)
     api.nvim_win_set_buf(win, t.buf)
     return t.buf
   end
-  local note = note_buf(name, 'attaching to ' .. name .. '…')
+  local target = name
+  for _, process in ipairs(state.S.processes) do
+    if process.name == name and type(process.host) == 'string' and process.host ~= '' and process.host ~= 'local' then
+      target = name .. ' on ' .. process.host
+      break
+    end
+  end
+  local note = note_buf(name, 'attaching to ' .. target .. '…')
   api.nvim_win_set_buf(win, note)
   attach_command(name, function(err, command)
     if M.term(name) then
