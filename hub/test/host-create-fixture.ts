@@ -17,7 +17,7 @@ import { stopHostWatchdog, type HostWatchdogIdentity } from '../src/host/host-wa
 import { fakeHarness } from './fakes/harness.ts';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
 const SETUP_MS=testWaitMs(60000);
-export async function fixture(t:test.TestContext,options:{lease?:string; fakeCodex?:boolean; loginRoles?:boolean;cardSignIn?:Pick<import('./harness.ts').ProjectHubOptions,'gatewayRemotes'|'registerHubCards'|'prepareLogin'>}={}) {
+export async function fixture(t:test.TestContext,options:{lease?:string; fakeCodex?:boolean; adapters?:import('../src/adapters/index.ts').AdapterFactory[]; loginRoles?:boolean;cardSignIn?:Pick<import('./harness.ts').ProjectHubOptions,'gatewayRemotes'|'registerHubCards'|'prepareLogin'>}={}) {
  const root=await tempProject(t,'hc-','/tmp');
  const beforeStop:Array<()=>Promise<void>>=[],afterNativeJoin:Array<()=>Promise<void>>=[],handles:Array<()=>unknown>=[];
  onCleanup(t,async()=>{
@@ -59,7 +59,7 @@ clause="Work."
 pool="agents"
 harness="opencode"
 `);
- const hub=await projectHub(t,root,env as Record<string,string>,{...options.cardSignIn,adapters:[...(options.fakeCodex ? [((host:import('../src/adapters/contract.ts').AdapterHost,clock:import('../src/hub/clock.ts').Clock)=>fakeHarness('codex',{host,clock}))] : []),boundary=>new OpenCodeAdapter(boundary,{bin:new URL('./fakes/opencode/opencode',import.meta.url).pathname,env:fixtureEnvironment(root,env),stopGraceMs:50})]});
+ const hub=await projectHub(t,root,env as Record<string,string>,{...options.cardSignIn,adapters:[...(options.adapters??[]),...(options.fakeCodex ? [((host:import('../src/adapters/contract.ts').AdapterHost,clock:import('../src/hub/clock.ts').Clock)=>fakeHarness('codex',{host,clock}))] : []),boundary=>new OpenCodeAdapter(boundary,{bin:new URL('./fakes/opencode/opencode',import.meta.url).pathname,env:fixtureEnvironment(root,env),stopGraceMs:50})]});
  const stops=[()=>hub.stop()];
  let safeToRemove=false;
  guardDirectoryRemoval(root,()=>{if(!safeToRemove)throw Error('fixture writer closure unconfirmed; root retained');});

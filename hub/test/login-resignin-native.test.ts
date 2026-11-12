@@ -8,10 +8,10 @@ import {FakeHostProvider} from "../src/host/provider/fake.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {join} from 'node:path';
-import {writeFile,readFile,open} from 'node:fs/promises';
+import {writeFile,readFile,open,mkdir} from 'node:fs/promises';
 import {assertPublishable} from '../../.agents/skills/qa/qa-demo-policy.ts';
 import {nativeLoginEnvironment} from './login-native-environment.ts';
-import {fixture} from './host-create-fixture.ts';
+import {fixture} from './login-native-fixture.ts';
 import {cland,connectUi,eventually,testWaitMs} from './harness.ts';
 import {Store} from '../src/hub/store.ts';
 import {ProcessTable} from '../src/adapters/processes.ts';
@@ -22,6 +22,8 @@ import {loginFilePath} from '../src/host/agent/fake-login-mount.ts';
 
 const cases=[
  ['opencode','provider.auth'],
+ ['codex','refresh_token_reused'],
+ ['claude-code','authentication_failed'],
 ] as const;
 
 test('native bound Codex renews its own dead credential home without replacing the disk',async t=>{
@@ -55,7 +57,7 @@ test('native sign-in of unbound Claude, Codex and OpenCode disks reuses and deta
  }
 });
 
-for(const [harness,reason] of cases)for(const relaunch of [false,true])test(`native ${harness} sign-in renews the mounted writer with relaunch ${relaunch}`,async t=>{
+for(const [harness,reason] of cases)for(const relaunch of (harness==='opencode'?[false,true]:[false]))test(`native ${harness} sign-in renews the mounted writer with relaunch ${relaunch}`,async t=>{
  const f=await fixture(t,{loginRoles:true}),store=f.own(new Store(join(f.root,'.cland/hub.db'))),table=f.own(new ProcessTable(join(f.root,'.cland/hub.db')));
  const hosts:import('../src/host/host.ts').Host[]=[];
  const stops:string[]=[],homes:string[]=[],loginHomes:string[]=[];let complete=false;
@@ -69,19 +71,27 @@ for(const [harness,reason] of cases)for(const relaunch of [false,true])test(`nat
   const binding=store.hosts.logins.forHost(host.name)[0]!,path=`/cland/auth/${harness}-${binding.login}`;
   await host.writeFile(join(path,'login.json'),Buffer.from(JSON.stringify({name:binding.login,token:'SENTINEL-native-login',generation:0,signIn:{at:new Date().toISOString(),host:host.name},lastRotation:null,dead:false,turns:[]})),{mode:0o600});
   const directory=hostDirectory(f.root,record.machine.id),home=join(directory,'home');homes.push(home);
+  // The shared ct- alias plus the remote run suffix exceeds Codex's socket cap.
+  // Keep only this matrix's launch files in a short directory inside the owned host home.
+  const layout=host.layout.bind(host),runDirectory=join(home,'r');await mkdir(runDirectory);
+  if(harness==='codex')Object.defineProperty(host,'layout',{value:(boundary:Parameters<typeof host.layout>[0])=>({...layout(boundary),runDirectory})});
   const hostEnv=fixtureEnvironment(f.root,f.env,{CLAND_FAKE_HOST_ROOT:f.root,CLAND_FAKE_HOSTS:record.machine.id,CLAND_HOST_BOOT_ID_FILE:join(directory,'boot-id')});
   const loginHome=await loginFilePath(path,hostEnv);
   loginHomes.push(loginHome);
   let generation=0;
   host.freePort=async()=>{const port=12345+generation++;await writeFile(join(directory,'ports.json'),JSON.stringify({[port]:join(home,`session-${port}.sock`)}));return port;};
   const spawn=host.spawn.bind(host),stop=host.stop.bind(host);
-  host.spawn=(command,options)=>spawn({...command,env:nativeLoginEnvironment(command.env,{FAKE_LOGIN_HOME:loginHome,FAKE_LOGIN_ENABLED:'1',FAKE_LOGIN_HOST:host.name,FAKE_OPENCODE_HOME:join(home,'native'),FAKE_OPENCODE_SOCKET:join(home,`session-${12344+generation}.sock`),FAKE_OPENCODE_TURN_MS:'1'})},options);
+  const decorate=(env:NodeJS.ProcessEnv)=>nativeLoginEnvironment(env,{FAKE_CODEX_HOME:join(home,'codex'),FAKE_CODEX_TURN_MS:'30',FAKE_CLAUDE_HOME:join(home,'claude'),FAKE_CLAUDE_TURN_MS:'30',FAKE_LOGIN_HOME:loginHome,FAKE_LOGIN_ENABLED:'1',FAKE_LOGIN_HOST:host.name,FAKE_OPENCODE_HOME:join(home,'native'),FAKE_OPENCODE_SOCKET:join(home,`session-${12344+generation}.sock`),FAKE_OPENCODE_TURN_MS:'1'});
+  host.spawn=(command,options)=>spawn({...command,env:decorate(command.env)},options);
+  // sshHost keys Claude admission by command identity; retain that object.
+  const run=host.run.bind(host);host.run=command=>run(Object.assign(command,{env:decorate(command.env)}));
+  const launchClaude=host.launchClaude?.bind(host);if(launchClaude)host.launchClaude=(command,generation)=>launchClaude({...command,env:decorate(command.env)},generation);
   host.stop=(...args)=>{stops.push(host.name);return stop(...args);};
  }
  const ui=await connectUi(t,f.hub.discovery,'cli');
  const launched=await ui.request({type:'session.launch',name:'first',role:'login-source',host:hosts[0]!.name,harness,cwd:homes[0]!,model:harness==='opencode'?'opencode/fake-paid':undefined},testWaitMs());assert.equal(launched.ok,true,launched.error);
  const first=await eventually('native first session durably persisted',()=>{const row=table.get('first');return row?.status==='running'&&row.pid&&row.harnessSessionId?row:undefined;});
- await eventually('native OpenCode subscribed to its event stream',async()=>{try{return (await readFile(join(homes[0]!,'native',`server-${first.pid}.log`),'utf8')).includes('event stream subscribed')?true:undefined;}catch{return undefined;}});
+ if(harness==='opencode')await eventually('native OpenCode subscribed to its event stream',async()=>{try{return (await readFile(join(homes[0]!,'native',`server-${first.pid}.log`),'utf8')).includes('event stream subscribed')?true:undefined;}catch{return undefined;}});
  if(relaunch){const configPath=join(f.root,'.cland/config.toml');await writeFile(configPath,'# managed by cland\n'+await readFile(configPath,'utf8'));const configured=await ui.request({type:'config.set',key:'hosts.relaunch_after_signin',value:true});assert.equal(configured.ok,true,configured.error);assert.deepEqual(configured.value,{key:'hosts.relaunch_after_signin',value:true,applies:'now'});}
  const bindings=store.hosts.logins.bindings(first.login!);
  const sent=await ui.request({type:'topic.send',topic:'general',to:['first'],text:'DEAD-LOGIN'});assert.equal(sent.ok,true,sent.error);
@@ -91,7 +101,7 @@ for(const [harness,reason] of cases)for(const relaunch of [false,true])test(`nat
  const before=await new FakeHostProvider({env:f.env}).listVolumes({project:f.root});
  const owners=loginFixtureOwners(t);
  const child=spawn(process.execPath,[new URL('../bin/cland.ts',import.meta.url).pathname,'login','signin',first.login!],{cwd:f.root,env:fixtureEnvironment(f.root,f.env,{CLAND_FAKE_HOST_ROOT:f.root,CLAND_FAKE_HOSTS:store.hosts.get(hosts[0]!.name)!.address})});
- const joined=loginChild(owners,child);let output='',error='';child.stdout.on('data',bytes=>{output+=String(bytes);});child.stderr.on('data',bytes=>{error+=String(bytes);});child.stdin.end();
+ const joined=loginChild(owners,child);let output='',error='';child.stdout.on('data',bytes=>{output+=String(bytes);});child.stderr.on('data',bytes=>{error+=String(bytes);});child.stdin.end(harness==='claude-code'?'SENTINEL-code\n':undefined);
  assert.equal(await joined(),0,error);assert.match(output,/ready/);
  const resumed=table.get('first')!;assert.equal(resumed.harnessSessionId,first.harnessSessionId);assert.equal(resumed.cwd,first.cwd);assert.equal(resumed.sessionId,first.sessionId);assert.equal(resumed.status,'running');if(relaunch)assert.notEqual(resumed.pid,first.pid);else assert.equal(resumed.pid,first.pid);
  const renewed=store.hosts.logins.get(first.login!)!;assert.equal(renewed.state,'in-use');assert.ok(renewed.lastSignIn);assert.deepEqual(store.hosts.logins.bindings(first.login!),bindings);

@@ -15399,6 +15399,34 @@
       "added": "2026-11-11",
       "expires": "2026-11-18",
       "reason": "T-1791 native card integration, green whole-file at f3af3d843a853b7b010ddfc46a68746b0a5b614e. macOS arm64 Node24.21 local fake-only sample 3.590948625s includes fixture setup, native agent/fake harness, card/receipt assertions and joined cleanup; Claude cases also include renewal and bounded project-retention scan. Excludes producer startup and slot wait. Linux 5.7455178s is an unexecuted 1.6x projection, not evidence; allowance ceil(1.5x projection). No browser, real provider or stress. Duration policy stays report mode; no baseline sample transferred."
+    },
+    "hub/test/login-signed-out-native.test.ts::native codex refresh_token_reused signs out without stopping existing sessions": {
+      "seconds": 17,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1813 macOS arm64 Node24.21 local fake-only five lone fresh-process green test-seconds [6.057234459, 6.9997655420000005, 6.288945249999999, 6.315498375, 6.201380917000001]. Includes native setup, durable signal/renewal assertions and joined cleanup; excludes producer startup and slot wait. Linux 1.6x is an unexecuted projection; allowance ceil(1.5x projection). No real provider, account, browser or stress; duration policy report mode."
+    },
+    "hub/test/login-signed-out-native.test.ts::native claude-code authentication_failed signs out without stopping existing sessions": {
+      "seconds": 18,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1813 macOS arm64 Node24.21 local fake-only five lone fresh-process green test-seconds [7.034002375, 6.656729125, 6.482574334, 6.57101825, 6.704716040999999]. Includes native setup, durable signal/renewal assertions and joined cleanup; excludes producer startup and slot wait. Final whole-file green sample 7.158059708s is the retained worst; all earlier samples included. Linux 1.6x is an unexecuted projection; allowance ceil(1.5x projection). No real provider, account, browser or stress; duration policy report mode."
+    },
+    "hub/test/login-resignin-native.test.ts::native codex sign-in renews the mounted writer with relaunch false": {
+      "seconds": 12,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1813 macOS arm64 Node24.21 local fake-only five lone fresh-process green test-seconds [4.180387667, 4.136120083, 4.162098917000001, 3.939811834, 4.807007125]. Includes native setup, durable signal/renewal assertions and joined cleanup; excludes producer startup and slot wait. Linux 1.6x is an unexecuted projection; allowance ceil(1.5x projection). No real provider, account, browser or stress; duration policy report mode."
+    },
+    "hub/test/login-resignin-native.test.ts::native claude-code sign-in renews the mounted writer with relaunch false": {
+      "seconds": 13,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1813 macOS arm64 Node24.21 local fake-only five lone fresh-process green test-seconds [4.910797916000001, 4.586471083, 4.770426542, 5.280245165999999, 5.024243749999999]. Includes native setup, durable signal/renewal assertions and joined cleanup; excludes producer startup and slot wait. Linux 1.6x is an unexecuted projection; allowance ceil(1.5x projection). No real provider, account, browser or stress; duration policy report mode."
     }
   }
 }

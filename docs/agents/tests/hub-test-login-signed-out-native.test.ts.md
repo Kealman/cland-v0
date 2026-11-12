@@ -2,14 +2,13 @@
 
 `hub/test/login-signed-out-native.test.ts` is T3. Each generated case creates two
 fake provider hosts, joins their real fake SSH agents and launches the existing
-fake OpenCode executable. It requires no provider account,
+fake OpenCode, Codex and Claude Code executables. It requires no provider account,
 real login, browser or network service. Run serially under the release's native
-preservation-slot protocol, after source review. Stop between files when asked.
+preservation-slot protocol, once before source review. Stop between files when asked.
 
 The generated `native <harness> <reason> signs out without stopping existing
-sessions` case covers OpenCode provider.auth. Component tests cover every listed
-Claude Code, Codex and OpenCode signal variant. Native Claude and Codex
-end-to-end coverage is tracked in T-1813 following the Coordinator's scope decision.
+sessions` case covers OpenCode provider.auth, Codex refresh_token_reused and Claude Code
+authentication_failed. Component tests cover the other signal variants.
 
 
 After the successful DEAD-LOGIN send receipt, the test awaits the exact persisted
@@ -39,3 +38,18 @@ The first session holds the fixture login-source role and the next session holds
 login-worker. Project spoke admission requires a held role; a roleless native
 launch can leave input queued and cannot prove the error-turn boundary. Both
 roles route through the same pool, without transferring or stopping the first.
+
+T-1813 adds explicit native fake adapter factories through login-native-fixture.
+Codex uses host home/r for launch files: the standard ct- socket alias plus
+.cland-host/run exceeds its 104-byte socket budget. The directory stays inside
+the fake SSH home containment and is removed only after fixture writer joins.
+Claude keeps its standard run directory because agent generation validation owns
+that exact path. Decorate launchClaude as well as spawn/run with fake login
+knobs; run retains the admitted command object used as the Claude generation key.
+The mounted login path is resolved with CLAND_FAKE_HOST_ROOT in overlays.
+
+For C3, run each new generated case alone five times in fresh Node processes
+using --test-name-pattern with its exact title. Record green test durations,
+whole TMPDIR name sets and deltas at each producer close, Node/platform and tree.
+Duration allowances include setup and joined teardown, exclude runner startup,
+and describe Linux projections separately from executed evidence.
