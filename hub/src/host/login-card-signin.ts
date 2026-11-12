@@ -1,3 +1,4 @@
+import {randomUUID} from 'node:crypto';
 import type {Store} from '../hub/store.ts';
 import type {HubCards} from '../hub/hub-cards.ts';
 import type {Clock} from '../hub/clock.ts';
@@ -63,6 +64,19 @@ export class LoginCardSignIn {
    return 'Code received';
   });
  }
+ /** Resolve on the durable link card, independently of native completion. */
+ start(input:Input):Promise<{name:string;card:string}>{
+  this.#admit();
+  if(input.kind==='key')throw Error('key logins require stdin on the local CLI');
+  if(input.signin){
+   const row=input.name?this.#o.store.hosts.logins.get(input.name):null;
+   if(row?.kind!=='disk'||row.state!=='signed-out'||this.#o.store.hosts.logins.isRemoving(row.name))throw Error('Sign-in episode unavailable');
+  }
+  const id=randomUUID(),receipt=Promise.withResolvers<{name:string;card:string}>();
+  this.#setIntent(id,{input,at:this.#o.clock.now().getTime()});
+  this.#track(this.#execute(id,input,receipt));
+  return receipt.promise;
+ }
  #admit(){if(this.#stopped)throw Error('Sign-in stopped');}
  async #recover(through:number):Promise<void>{
   const o=this.#o;let after=0;await yieldLoop();
@@ -93,7 +107,7 @@ export class LoginCardSignIn {
   if(this.#stopped)return;
   this.#track(this.#execute(id,input));
  }
- async #execute(id:string,input:Input):Promise<void>{
+ async #execute(id:string,input:Input,receipt?:{resolve:(value:{name:string;card:string})=>void;reject:(reason:unknown)=>void}):Promise<void>{
   const o=this.#o,controller=new AbortController();
   const admitted=o.store.cardSignIns.get(id)!,accepted=admitted.at;
   let pending:LoginSignIn|undefined,run:Run|undefined,card:string|undefined,expired=false,cancelling=false,completionStarted=false,retire=false;
@@ -119,6 +133,7 @@ export class LoginCardSignIn {
     this.#codes.set(card,{run:handle,cancel,acceptsInput:input.harness==='claude-code'});
     this.#setIntent(id,{input,at:accepted,card,login:name,host:hostName!});
    });
+   receipt?.resolve({name,card:card!});
   };
   const active={cancel};this.#active.add(active);
   const timer=o.clock.setTimeout(()=>cancel('sign-in timed out; closing'),Math.max(1,accepted+limitMs-o.clock.now().getTime()));
@@ -141,6 +156,7 @@ export class LoginCardSignIn {
    withdraw();
    completionStarted=true;await pending.complete(!expired&&!closed.outcome&&closed.signal===null?closed.code:null);retire=true;
   }catch(error){
+   receipt?.reject(error);
    const notAdmitted=!run&&(error as {nativeAdmission?:string})?.nativeAdmission==='not-admitted';
    const unknown=pending&&!completionStarted&&!notAdmitted&&!input.signin;
    // Never infer writer closure from transport rejection or a deadline.
@@ -154,7 +170,7 @@ export class LoginCardSignIn {
     o.notice?.(unknown?`Login ${pending!.name} on host ${hostName}: sign-in outcome unknown`:'Sign-in incomplete; inspect the login before retrying');
     o.store.cardSignIns.remove(id,admitted.seq);
    });
-  }finally{o.clock.clearTimeout(timer);this.#active.delete(active);if(retire)o.store.cardSignIns.remove(id,admitted.seq);}
+  }finally{receipt?.reject(Error('Sign-in ended before its link card was published'));o.clock.clearTimeout(timer);this.#active.delete(active);if(retire)o.store.cardSignIns.remove(id,admitted.seq);}
  }
  async idle():Promise<void>{await this.#recovery;while(this.#work.size)await Promise.allSettled([...this.#work]);if(this.#failures.size)throw new AggregateError([...this.#failures],'card sign-in drainage failed');}
  async stop():Promise<void>{this.#stopped=true;for(const active of this.#active)active.cancel();await this.idle();}

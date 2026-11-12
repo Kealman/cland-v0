@@ -58,7 +58,7 @@ test('login list text and JSON expose rows and hosts, retained across hub restar
  const bad=await cland(root,'login','list','--yaml');assert.equal(bad.code,1);assert.match(bad.stderr,/usage/);
 });
 
-test('login list refuses session, web and remote edges like host list',async t=>{
+test('login frames retain session and remote refusals with selective web authority',async t=>{
  const root=await tempProject(t);
  const hub=await projectHub(t,root,{}, {clock:new FakeClock(Date.now()),processes:fakeLockProcesses().processes,droplet:{processes:fakeLockProcesses().processes}});
  for(const edge of ['web','gateway']) {
@@ -67,7 +67,14 @@ test('login list refuses session, web and remote edges like host list',async t=>
   const client=frameClient(line=>conversation.receive(line.trimEnd()),fn=>{receive=fn;},()=>{open=false;conversation.closed();},root);
   t.after(()=>client.close());client.send({type:'hello',protocol:2,client:'cli'});
   await client.waitFor(f=>f.type==='welcome');
-  for(const type of ['host.list','login.list','login.remove','login.set','login.snapshot','login.add','login.signin','login.signed-in']){const r=await client.request({type,harness:'codex',name:'work',exclusive:false,code:0});assert.equal(r.ok,false);assert.match(r.error!,edge==='web'?/CLI and Neovim/:/gateway/);}
+  for(const type of ['host.list','login.list','login.remove','login.set','login.snapshot','login.add','login.signin','login.signed-in']){
+   const r=await client.request({type,harness:'codex',name:'work',exclusive:false,code:0});
+   if(edge==='web'&&['login.list','login.remove','login.snapshot','login.add','login.signin'].includes(type)){
+    if(type==='login.list'){assert.equal(r.ok,true);assert.deepEqual(r.value,[]);}
+    else {assert.equal(r.ok,false);assert.doesNotMatch(r.error!,/CLI and Neovim/);}
+   }else {assert.equal(r.ok,false);assert.match(r.error!,edge==='web'?/CLI and Neovim/:/gateway/);}
+  }
+  if(edge==='web'){const key=await client.request({type:'login.add',harness:'opencode',kind:'key'});assert.equal(key.ok,false);assert.match(key.error!,/stdin/);}
  }
  const spoke=await inProcessSpoke(t,{cwd:root,discover:true,name:'worker',sessionId:'login-worker',role:'implementer'});
  const result=await spoke.call('session.list',{});assert.ok(result);

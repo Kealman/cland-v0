@@ -39,7 +39,7 @@ startup. Unknown new-login native outcomes use the shared interrupted-sign-in ad
 retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Roles](../docs/hub/roles.md)
 - [Rulebook](../docs/hub/rulebook.md)
-- [Project logins](../docs/hub/logins.md): terminal disk sign-in, daily and on-demand backup snapshots with per-login scheduling and pending-binding deferral, local human metadata listing, SQLite records, episode-based dead-login sign-out/card recovery and Coordinator notices without stopping running sessions, transitions, provisioning-time attachment for waiting launches and launch-time disk binding, exclusive writers, snapshot-cloned readers, idle exclusive-flag updates and OpenCode keys delivered only in pool-host spawn environments.
+- [Project logins](../docs/hub/logins.md): terminal disk sign-in, daily and on-demand backup snapshots with per-login scheduling and pending-binding deferral, human metadata listing (local CLI/Neovim or authenticated web), SQLite records, episode-based dead-login sign-out/card recovery and Coordinator notices without stopping running sessions, transitions, provisioning-time attachment for waiting launches and launch-time disk binding, exclusive writers, snapshot-cloned readers, idle exclusive-flag updates and OpenCode keys delivered only in pool-host spawn environments.
 - [Host providers](../docs/hub/host-providers.md): validated pool configuration and pure weighted placement decisions, provider contracts, pool image keys and local human `cland host prepare [pool]`, `host create [pool]`, `host list` and `host destroy <id>`; pool settings apply on reload or `cland config set`, init creates no pools; fake hosts create to ready, DigitalOcean prepares with executor builder controls and requires E-1534 admission for production creation.
 - [SSH transport](../docs/hub/ssh-transport.md)
 - [Host revocation settlement](../docs/agents/host-agent.md#settlement-before-host-revocation): bounded pre-cut cleanup, changed-boot closure receipts and named unresolved generations.
@@ -184,7 +184,7 @@ See [login placement capacity](../docs/hub/logins.md#placement-capacity).
 Login capacity and monthly storage reporting use indexed login metadata and provider-declared storage rates. `login list` text reads additive `host.status` pool capacity; `login list --json` retains its array. Host rows include bound harness/name pairs. Storage is accrued in month spend only and never reserved; see [logins](../docs/hub/logins.md) and [host status](../docs/hub/host-status-stop.md).
 
 `cland login remove <name>` removes an idle project login through the local human
-CLI or Neovim. Provider-confirmed disk deletions and encrypted-key removal precede
+CLI/Neovim or authenticated web user. Provider-confirmed disk deletions and encrypted-key removal precede
 row removal; incomplete deletions retain exact ids for retry and the shared auth
 store key stays. See [removal](../docs/hub/logins.md#removing-a-login).
 Interactive harness sign-in uses the agent's optional `signin-v1` capability,
@@ -198,3 +198,5 @@ Login renewal can relaunch live sessions of the renewed harness on its host when
 and reload apply it immediately. The shared CLI/card success hook commits sign-in
 before using the existing same-conversation relaunch; stopped sessions remain
 stopped. See [login renewal](../docs/hub/logins.md#relaunch-after-sign-in).
+
+Authenticated web host/login actions and direct card sign-in replies are described in [web-started sign-in](../docs/hub/logins.md#web-started-sign-in). Users mode requires an active admin; sessions and remotes stay refused.

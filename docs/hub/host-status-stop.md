@@ -26,9 +26,10 @@ A failed deletion reports `destroying`/`incomplete` and CLI exit 1, keeps the ho
 out of placement and leaves renewal stopped; the watchdog retains its deadline.
 Pool minimum/demand reconciliation may create a replacement within `max_hosts`.
 
-Both frames require the local human CLI or Neovim (Unix socket, or Neovim stdio).
-Authenticated sessions, host-forwarded clients, web and messenger remotes cannot
-invoke them. Implementers use sealed disposable fixtures; they gain no live host
+Status requires the local human CLI or Neovim (Unix socket, or Neovim stdio).
+Stop also accepts an authenticated web user (an active admin in users mode).
+Authenticated sessions, host-forwarded clients and messenger remotes cannot
+invoke either frame. Implementers use sealed disposable fixtures; they gain no live host
 management permission. `host list` and `host destroy` retain their previous shapes.
 Manual `host create` shares scheduler admission and counts creating, live,
 destroying and unresolved acquisitions toward `max_hosts`.

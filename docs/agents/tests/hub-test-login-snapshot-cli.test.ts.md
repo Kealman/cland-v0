@@ -8,4 +8,4 @@ C5 through the real local socket and CLI: stdout confirms the backup, a subseque
 store read sees one id, the key refusal names its absent disk, and command help
 lists the syntax. Snapshot scheduling and in-use freeze/thaw are covered by
 login-snapshots.test.ts. login-list.test.ts retains the previous wire-row shape
-regression and covers session/web/gateway refusal for the new command too.
+regression and covers session/gateway refusals and web admission for snapshot. Authenticated-web success is in web-hosts-authority.test.ts.

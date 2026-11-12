@@ -11609,7 +11609,6 @@
     "hub/test/hub-cards.test.ts::users-mode hub decline outcome retains stable user id": 0.160946,
     "hub/test/hub-cards.test.ts::users-mode hub free outcome retains stable user id": 0.151761,
     "hub/test/hub-cards.test.ts::users-mode hub option outcome retains stable user id": 0.158469,
-    "hub/test/login-list.test.ts::login list refuses session, web and remote edges like host list": 0.187904,
     "hub/test/login-list.test.ts::login list text and JSON expose rows and hosts, retained across hub restart": 0.843108,
     "hub/test/pool-spend-cap.test.ts::80 percent General warning survives restart and repeats only on a new UTC day": 0.301638,
     "hub/test/pool-spend-cap.test.ts::admitted host renews beyond hosts sub-cap while shared cap still applies": 0.026194,

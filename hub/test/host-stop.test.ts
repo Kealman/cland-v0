@@ -1,3 +1,4 @@
+import {authenticatedWeb} from './web-frame-client.ts';
 import {settledLogin} from './settled-login-fixture.ts';
 // T2: explicit human stop through a projectHub and directory-only fake provider.
 import test from 'node:test';
@@ -16,7 +17,7 @@ import type { Machine, ReleaseObserver } from '../src/host/provider/provider.ts'
 import { FakeClock } from './fake-clock.ts';
 import { FakeHostProvider } from '../src/host/provider/fake.ts';
 
-for(const confirmed of [true,false])test(`C3 stop joins lease renewal and requires confirmed destroy: ${confirmed}`,async t=>{
+for(const web of [false,true])for(const confirmed of [true,false])test(`C3 ${web?'web stop':'stop'} joins lease renewal and requires confirmed destroy: ${confirmed}`,async t=>{
  const root=await tempProject(t),clock=new FakeClock(Date.now());
  await mkdir(join(root,'.cland'),{recursive:true});
  await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nslots=4\nmin_hosts=0\n');
@@ -54,7 +55,8 @@ for(const confirmed of [true,false])test(`C3 stop joins lease renewal and requir
   confirm?.({resource:'machine',read:'machine absent'});confirm?.({resource:'key',read:'key absent'});
   return {state:'released' as const};
  });
- const result=await ui.request({type:'host.stop',host:id});assert.equal(result.ok,true,result.error);
+ const client=web?await authenticatedWeb(t,ui):ui;
+ const result=await client.request({type:'host.stop',host:id});assert.equal(result.ok,true,result.error);
  assert.equal((result.value as {state:string}).state,confirmed?'destroyed':'destroying');
  assert.deepEqual(diskOps,['umount']);
  const volumes=await provider.listVolumes({project:root});assert.ok(volumes.state==='listed');assert.equal(volumes.volumes[0]?.attachedTo,null);

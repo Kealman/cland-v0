@@ -2238,7 +2238,8 @@ export class Dispatcher {
           case 'host.revoke': {
             const local = transport.edge === 'socket' && (client === 'nvim' || client === 'cli')
               || transport.edge === 'stdio' && client === 'nvim';
-            if (!local || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, frame.type, `${frame.type} requires the human CLI or Neovim on a local connection`);
+            const web = transport.edge === 'web' && !webAuthorityRefusal(frame);
+            if ((!local && !web) || kind === 'spoke' || this.#asSession(frame) || hostId || Object.hasOwn(frame, 'as')) throw new ToolForbidden(null, frame.type, `${frame.type} requires the local human CLI or Neovim or an authorized authenticated web user`);
             const refusal = userAuthorityRefusal(core.store.users, humanUser(frame)?.id, frame);
             if (refusal) return peer.send(refusal);
             if(frame.type==='login.remove') {
@@ -2266,6 +2267,13 @@ export class Dispatcher {
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));
             }
             if(frame.type==='login.add'||frame.type==='login.signin') {
+              if(web){
+                if(!this.#cardSignIn)throw Error('card sign-in runtime unavailable');
+                const row=frame.type==='login.signin'?core.store.hosts.logins.get(frame.name):null;
+                if(frame.type==='login.signin'&&!row)throw Error('unknown login: '+frame.name);
+                const input=frame.type==='login.signin'?{name:frame.name,harness:row!.harness,signin:true}:{harness:frame.harness,...(frame.kind!==undefined?{kind:frame.kind}:{}),...(frame.name!==undefined?{name:frame.name}:{}),...(frame.account!==undefined?{account:frame.account}:{}),...(frame.pool!==undefined?{pool:frame.pool}:{})};
+                return later(frame.type,this.#cardSignIn.start(input).then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),error=>Dispatcher.#failure(frame.id,error)));
+              }
               if(frame.type==='login.add'&&frame.kind==='key') {
                 const root=this.#options.control?.status().root, config=this.#options.projectConfig?.();
                 if(!root||!config||!this.#options.registerHostSecrets)throw Error('key login runtime unavailable');

@@ -150,9 +150,10 @@ Remote sessions use `CLAND_HUB_FILE` to find the host-local forwarded sockets. T
 
 ## Login metadata
 
-`login.list`, `login.set`, `login.snapshot`, `login.remove`, `login.add`, `login.signin` and `login.signed-in` require a local human CLI or Neovim
-connection, like `host.list`. Sessions, web clients and remotes are refused.
-Users mode also checks the local user's administrative authority. Implementers
+`login.set`, key `login.add`, `login.signed-in` and host provisioning require a local
+human CLI or Neovim connection. Authenticated web users can list, snapshot and
+remove logins, stop hosts, and start disk add/renewal through the card runner.
+Users mode requires an active admin. Sessions and remotes remain refused. Implementers
 exercise this boundary only in isolated fixtures. See [project logins](../hub/logins.md).
 
 `cland login add` keeps its authenticated connection through terminal sign-in.

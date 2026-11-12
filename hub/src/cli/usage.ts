@@ -47,7 +47,7 @@ export const HOST_USAGE = `  host create [pool] human-only local CLI: create a p
                   five-minute boot gate; automatic retries back off 1–30 minutes; provider retry times pause the pool
                   unknown acquisition retains its slot; failures notify Coordinator in Agents
   host status [--json] human-only local CLI: pool slots, UTC spend including monthly login storage; bound logins
-  host stop <id> human-only local CLI: stop renewal and destroy host with confirming reads
+  host stop <id> human CLI/Neovim or authenticated web: stop renewal and destroy with confirming reads
   host list [--json] human-only local CLI: id, pool, provider, size, region, state, uptime, USD/hour
   host prepare [pool] human-only local CLI: prepare one or all configured pool images
                   pool: 1–64 letters, digits and hyphens; first character letter or digit

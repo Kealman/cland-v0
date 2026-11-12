@@ -313,8 +313,10 @@ Role host pool settings use `[<role>.launch] pool` (default `local`) or
 [role pool defaults](../../../docs/hub/roles.md#role-host-pool-defaults).
 
 For project login work, use `HostRecords.logins` and isolated SQLite or projectHub
-fixtures. `cland login list`, `cland login set`, `cland login snapshot` and terminal disk `cland login add` are local human
-CLI/Neovim only; sessions, web and remotes are refused. `cland login signin <name>`
+fixtures. Authenticated web users can list, snapshot and remove logins, stop hosts,
+and start disk sign-ins through the card runner; users mode requires an admin.
+Login set, key adds and terminal completion stay local human CLI/Neovim only;
+sessions and remotes remain refused. `cland login signin <name>`
 renews a signed-out disk through the same terminal owner, preserving live bindings
 and sessions. Use beginSignIn/finishSignIn rather than the generic creating
 transition; refuse unresolved binding, snapshot, release and removal ownership.
@@ -329,8 +331,9 @@ older snapshot preparation before validating and admitting its own generation.
 Exercise `login.add`, `login.signin` and
 connection-pinned `login.signed-in` only in disposable fake-provider fixtures.
 Cards use the same preparation/snapshot owners through the captured Host's
-`signin-v1` operation and shared SignIn types/close parser. The CLI commands
-remain local-human only; existing hub cards can be answered from web and remotes.
+`signin-v1` operation and shared SignIn types/close parser. Web disk starts
+return the persisted link/code card; terminal completion stays connection-owned.
+Existing hub cards can be answered from web and remotes.
 At expiry withdraw the code card and stop input; disk settlement still requires
 the exact native close. See [project logins](../../../docs/hub/logins.md).
 
@@ -366,7 +369,7 @@ docs/hub/logins.md, Binding at launch.
 
 Login storage reporting retains provider lifetime receipts on the disk row. Use the existing create/delete owners and LoginRecords storage methods, with the hub Clock; never infer dates from sign-in or reserve storage as host spend. See docs/hub/logins.md.
 
-Project login removal is a local-human CLI/Neovim operation. Use disposable fake
+Project login removal accepts local-human CLI/Neovim or authenticated web users. Use disposable fake
 fixtures when implementing it; partial deletion retains its removal claim and
 remaining ids for `cland login remove <name>` to retry. Never clear that claim
 through another transition. See [login removal](../../../docs/hub/logins.md#removing-a-login).

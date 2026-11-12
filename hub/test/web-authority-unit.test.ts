@@ -93,3 +93,11 @@ test('message ownership uses ids, preserves single mode and limits unattributed 
   assert.equal(ownsHumanMessage(message, null), false);
   assert.equal(ownsHumanMessage({ ...message, fromKind: 'agent' }, { id: 'author', role: 'admin' }), false);
 });
+
+ test('web host and disk-login actions are admitted while provisioning and keys stay local', () => {
+  for (const type of ['login.list','login.remove','login.snapshot','host.stop','login.add','login.signin'])
+   assert.equal(webAuthorityRefusal({type,id:'web',pool:'agents',harness:'codex'}),null,type);
+  assert.match(webAuthorityRefusal({type:'login.add',kind:'key'})!.error,/stdin/);
+  for (const type of ['host.create','host.destroy','host.revoke','host.prepare','login.set','login.signed-in','host.list','host.status'])
+   assert.equal(webAuthorityRefusal({type})?.code,'cli-neovim-only',type);
+ });

@@ -81,9 +81,9 @@ through an expiry index; reads and startup scan no retained sign-out history.
 See [renewal cases](../agents/tests/hub-test-login-resignin-native.test.ts.md).
 
 `cland login list [--json]` reads project login metadata from `hub.db`. It is
-available only through a local human CLI or Neovim connection. Sessions, web
-clients and remotes cannot list logins. In users mode the local user must also
-have administrative authority. The command never reads the user-level accounts
+available through a local human CLI or Neovim connection or an authenticated
+web user. Sessions and remotes cannot list logins. In users mode the acting user
+must have administrative authority. The command never reads the user-level accounts
 registry, harness files or key material, and creates no logins.
 
 Text output ends with `capacity <pool>/<harness>: <n>` from `host.status`.
@@ -203,7 +203,7 @@ persist across hub restarts. This store contains metadata only.
 ## Store API
 
 `cland login set <name> --exclusive true|false` changes an idle disk login.
-It requires the same local human CLI/Neovim administrative authority as list.
+It requires local human CLI/Neovim administrative authority; web requests stay refused.
 In-use logins refuse changes; key logins have no exclusive flag.
 Disk logins default to exclusive. An exclusive login already bound elsewhere
 is unavailable; an attached-elsewhere provider refusal rolls back the attempted
@@ -476,8 +476,8 @@ A retained admission refuses deletion of any login storage until its snapshot
 owner positively reconciles it. This private column never enters Login JSON.
 
 `cland login snapshot <name>` requests a backup of a ready or in-use disk login.
-Like list and add, it requires a local human CLI or Neovim connection and local
-administrative authority in users mode. A key login refuses with `key login has
+Like list, it accepts local human CLI/Neovim and authenticated web requests,
+with administrative authority in users mode. A key login refuses with `key login has
 no disk`. The command reports a confirmed snapshot, a provider retry time, or a
 failure; a queued retry is not a completed backup. Real providers require API
 access and mounted snapshots require the authenticated writer Host.
@@ -574,7 +574,7 @@ volume. A missing registration callback must refuse admission.
 `cland login add opencode --kind key [--name <name>] [--account <account>]`
 uses this key path. It needs a running local hub, but no host pool, prepared image,
 provider API, terminal SSH or network. The local human CLI/Neovim admission and
-users-mode administrator check match disk add. Claude Code and Codex key requests
+users-mode administrator check apply; web key adds stay refused. Claude Code and Codex key requests
 refuse with the 0.4.x limitation. The hub requires its redactor registration hook,
 decrypts before inserting metadata and returns the ready key row. `login.add`
 carries harness, kind, name and account only; no key material or ciphertext. See the
@@ -855,7 +855,7 @@ change reran their runtime coverage.
 
 ## Removing a login
 
-`cland login remove <name>` is restricted to the local human CLI or Neovim.
+`login.remove` accepts the local human CLI/Neovim or an authenticated web user.
 Creating logins refuse removal while sign-in runs. Bound logins refuse with the
 host names, including signed-out rows retaining bindings. Pending binding and
 reader outcomes remain fenced by their existing owners.
@@ -892,8 +892,8 @@ See [removal cases](../agents/tests/hub-test-login-remove.test.ts.md).
 `LoginRecords` instance and login name. `beginRemove` is the store's admission
 boundary before provider work; callers must not infer eligibility from the
 public state or reason alone. The dispatcher tracks admitted removal work
-through shutdown. In users mode the local human also needs administrative
-authority; sessions, web clients, remotes and host-origin connections cannot
+through shutdown. In users mode the acting user needs administrative
+authority; sessions, remotes and host-origin connections cannot
 invoke `login.remove`.
 
 `LoginSnapshots.beginRemoval` joins accepted snapshot work and thaw through the
@@ -1133,3 +1133,23 @@ See [new-login component cases](../agents/tests/hub-test-login-add-component.tes
 for shared-owner interruption and unchanged close-confirmed cleanup. These
 references describe landed tests; this documentation item makes no new native
 execution claim.
+
+## Web-started sign-in
+
+Authenticated web users can request `login.add` for a disk or `login.signin`
+for a signed-out disk. Users mode requires an active admin. Both enter the
+existing card runner directly, without answering a create/renew card. The reply
+is `{name, card}`, where `card` identifies the persisted `login-signin-code`
+card carrying the link and code; it does not wait for sign-in completion.
+Preparation or native failure before a link card returns an error. The runner
+owns the operation through web disconnect, hub shutdown and its 15-minute bound.
+Codex completes device sign-in without an answer; Claude Code receives the
+secret card answer on the captured input handle. The same pool preparation,
+disk fences, snapshot and native close receipts apply as for card answers.
+
+`login.list`, `login.snapshot`, `login.remove` and `host.stop` also accept
+these web users. Key adds require local stdin. `login.set`, `login.signed-in`,
+`host.status`, `host.list`, `host.create`, `host.destroy`, `host.revoke` and
+`host.prepare` stay local. Session and messenger ingress remain refused for
+all host/login frames. Audit records and their journal copies use the user id
+resolved from web authentication, never a frame-supplied identity.
