@@ -168,9 +168,18 @@
       "A-18931",
       "A-18943",
       "A-18948",
-      "A-18952"
+      "A-18952",
+      "A-19010",
+      "A-19023",
+      "A-19043",
+      "A-19045",
+      "A-19071",
+      "A-19075",
+      "A-19026",
+      "A-19051",
+      "A-19073"
     ],
-    "commit": "e2eb555d48e87313a5d3734fcd0b9960646b1bc7"
+    "commit": "5b056beb4328b18b284151b0f8240c471558925b"
   },
   "budget": {
     "testSeconds": 5,
@@ -4043,6 +4052,26 @@
     "hub/test/signin-redactor.test.ts": {
       "seconds": 0.001487,
       "tests": 1
+    },
+    "hub/test/hosts-state.test.ts": {
+      "seconds": 0.954593,
+      "tests": 9
+    },
+    "hub/test/web-hosts-authority.test.ts": {
+      "seconds": 1.597037,
+      "tests": 10
+    },
+    "nvim/test/host-attach.test.ts": {
+      "seconds": 1.372575,
+      "tests": 1
+    },
+    "nvim/test/hosts-native.test.ts": {
+      "seconds": 7.670835,
+      "tests": 1
+    },
+    "web/test/hosts.test.ts": {
+      "seconds": 8.566703,
+      "tests": 4
     }
   },
   "tests": {
@@ -12102,7 +12131,42 @@
     "hub/test/signin-owner.test.ts::settled native objects retire and only a bounded receipt cache remains": 0.022028,
     "hub/test/signin-owner.test.ts::uncertain rejection after native admission retains the operation and disk hold": 0.007885,
     "hub/test/signin-redactor.test.ts::registered input is hidden across every output split and at close": 0.001487,
-    "hub/test/telegram-api.test.ts::Telegram deletes the exact native message after a confirmed API result": 0.06629
+    "hub/test/telegram-api.test.ts::Telegram deletes the exact native message after a confirmed API result": 0.06629,
+    "hub/test/host-stop.test.ts::C3 web stop joins lease renewal and requires confirmed destroy: false": 0.233657,
+    "hub/test/host-stop.test.ts::C3 web stop joins lease renewal and requires confirmed destroy: true": 0.28535,
+    "hub/test/hosts-state.test.ts::host projection allows only public facts and coalesces changes within one second": 0.008003,
+    "hub/test/hosts-state.test.ts::hosts state connects with empty pools on previous and featured wire shapes": 0.273058,
+    "hub/test/hosts-state.test.ts::manual create refusal alerts and unrelated outage recovery cannot settle it": 0.145372,
+    "hub/test/hosts-state.test.ts::placement, exit, login state and hot pool settings push socket replacements": 0.250192,
+    "hub/test/hosts-state.test.ts::pool create stays alerted through backoff and clears after success: rate limit=false": 0.05872,
+    "hub/test/hosts-state.test.ts::pool create stays alerted through backoff and clears after success: rate limit=true": 0.057894,
+    "hub/test/hosts-state.test.ts::pre-acquisition and confirmed machine deletion never accrue live spend": 0.005426,
+    "hub/test/hosts-state.test.ts::tunnel loss alerts before unreachable and clears on recovery": 0.006974,
+    "hub/test/hosts-state.test.ts::workbench prices come from the admitted DigitalOcean declaration checkpoint": 0.148954,
+    "hub/test/login-list.test.ts::login frames retain session and remote refusals with selective web authority": 0.228364,
+    "hub/test/login-resignin-native.test.ts::native claude-code sign-in renews the mounted writer with relaunch false": 8.627557,
+    "hub/test/login-resignin-native.test.ts::native codex sign-in renews the mounted writer with relaunch false": 7.147339,
+    "hub/test/login-signed-out-native.test.ts::native claude-code authentication_failed signs out without stopping existing sessions": 11.926509,
+    "hub/test/login-signed-out-native.test.ts::native codex refresh_token_reused signs out without stopping existing sessions": 11.017567,
+    "hub/test/web-authority-unit.test.ts::web host and disk-login actions are admitted while provisioning and keys stay local": 0.000304,
+    "hub/test/web-hosts-authority.test.ts::every host and login frame refuses sessions and messenger ingress": 0.1603,
+    "hub/test/web-hosts-authority.test.ts::users-mode web host actions audit the transport-resolved user in log and journal": 0.18993,
+    "hub/test/web-hosts-authority.test.ts::web add claude-code returns its persisted card before completion": 0.14078,
+    "hub/test/web-hosts-authority.test.ts::web add codex returns its persisted card before completion": 0.254654,
+    "hub/test/web-hosts-authority.test.ts::web add projects declared fields with hidden renewal mode: existing false": 0.141385,
+    "hub/test/web-hosts-authority.test.ts::web add projects declared fields with hidden renewal mode: existing true": 0.136676,
+    "hub/test/web-hosts-authority.test.ts::web login reads reach local handlers and forbidden host and key frames name their rule": 0.146159,
+    "hub/test/web-hosts-authority.test.ts::web signin claude-code returns its persisted card before completion": 0.147641,
+    "hub/test/web-hosts-authority.test.ts::web signin codex returns its persisted card before completion": 0.132408,
+    "hub/test/web-hosts-authority.test.ts::web snapshot and removal retain the local success shapes and durable storage receipts": 0.147104,
+    "nvim/test/host-attach.test.ts::Enter attaches through pinned SSH, names the host, reattaches after restart and shows revocation": 1.372575,
+    "nvim/test/hosts-native.test.ts::fake host tunnel loss renders red within one second and recovery clears the native pool row": 7.670835,
+    "web/test/hosts.test.ts::Sessions hides Hosts for an empty pool list and a previous hub snapshot": 1.500751,
+    "web/test/hosts.test.ts::Sessions Hosts consumes the fake provider inventory snapshot and configuration push": 2.347591,
+    "web/test/hosts.test.ts::Sessions Hosts renders pushed facts and alert recovery (desktop)": 2.329521,
+    "web/test/hosts.test.ts::Sessions Hosts renders pushed facts and alert recovery (phone)": 2.38884,
+    "web/test/phone-sessions.test.ts::phone session page names a remote host and omits the local host": 1.622037,
+    "web/test/sessions.test.ts::Sessions remote host fact names its host with a tooltip on ground and selection": 2.289699
   },
   "allow": {
     "hub/test/login-resignin-native.test.ts::native bound Codex renews its own dead credential home without replacing the disk": {
