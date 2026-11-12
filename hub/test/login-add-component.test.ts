@@ -13,7 +13,7 @@ import { frameClient, type FrameClient } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { join } from 'node:path';
 import {loginMetadataOwners} from './login-metadata-owners.ts';
-import {prepareExistingLoginSignIn,type LoginSignIn} from '../src/host/login-signin.ts';
+import {settleLoginSignInsForHost,recoverLoginSignIns,prepareLoginSignIn,prepareExistingLoginSignIn,type LoginSignIn} from '../src/host/login-signin.ts';
 import type {Host} from '../src/host/host.ts';
 import type {HostProvider} from '../src/host/provider/provider.ts';
 
@@ -50,6 +50,43 @@ for(const outcome of ['disconnect','hub stop','interrupt','exit success','exit f
  const row=r.get('work')!;assert.deepEqual(r.bindings('work'),bindings);
  if(outcome.startsWith('exit')||success){assert.equal(r.signInFenceReason('work'),'');if(success){assert.ok(row.lastSignIn);assert.deepEqual(events,['freeze','snapshot','thaw']);}else {assert.equal(row.signedOut?.reason,'sign-in failed');assert.ok(r.beginSignIn('work'),'native close permits the next signer');}}
  else {assert.equal(row.signedOut?.reason,'sign-in interrupted');assert.equal(row.signedOut?.host,'writer');assert.throws(()=>r.beginSignIn('work'),/may still be running on host writer/);assert.deepEqual(events,[],'owner loss performs no native cleanup or snapshot');}
+});
+
+for(const outcome of ['disconnect','hub stop','recovery','exit success','exit failure','exit null'] as const)test(`new login terminal ${outcome} retains disk until owner close or exact machine deletion`,async t=>{
+ const root=await tempProject(t),owners=loginMetadataOwners(t,root),clock=new FakeClock(Date.now()),processes=fakeLockProcesses().processes,events:string[]=[];
+ const volume={id:'v',name:'disk',project:root,region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:null},machine={id:'m',address:'fake',architecture:'x86_64' as const,created:volume.created};
+ const host={name:'writer',loginDisk:async({op}:{op:string})=>{events.push(op);}} as unknown as Host;
+ const provider={createVolume:async()=>({state:'created',volume}),attachVolume:async()=>({state:'attached'}),detachVolume:async()=>{events.push('detach');return {state:'detached'};},snapshotVolume:async()=>{events.push('snapshot');return {state:'snapshotted',snapshot:{id:'s',volumeId:'v',created:clock.now().toISOString()}};}} as unknown as HostProvider;
+ const hub=await owners.start(()=>projectHub(t,root,{}, {clock,processes,droplet:{processes},prepareLogin:async o=>({pending:await prepareLoginSignIn({logins:o.records.logins,host,provider,machine,project:root,tag:'fixture',region:'fake-1',providerName:'fake',harness:'claude-code',name:'new-login',clock}),plan:{name:'new-login',host:'writer',command:'ssh',args:[]}})}));
+ const store=owners.store(new Store(join(root,'.cland/hub.db'))),r=store.hosts.logins;r.useClock(clock);
+ const terminal=await connectUi(t,hub.discovery,'cli'),other=await connectUi(t,hub.discovery,'cli');
+ assert.equal((await terminal.request({type:'login.add',harness:'claude-code'})).ok,true);
+ assert.equal((await other.request({type:'login.signed-in',name:'new-login',code:0})).ok,false);
+ if(outcome==='disconnect')terminal.close();else if(outcome==='hub stop')await hub.stop();else if(outcome==='recovery'){recoverLoginSignIns(store.hosts);assert.equal((await terminal.request({type:'login.signed-in',name:'new-login',code:0})).ok,false);}else assert.equal((await terminal.request({type:'login.signed-in',name:'new-login',code:outcome==='exit success'?0:outcome==='exit failure'?1:null})).ok,true);
+ await eventually('new login durable outcome',()=>r.get('new-login')?.state===(outcome==='exit success'?'ready':'signed-out')||undefined,testWaitMs());
+ if(outcome.startsWith('exit')){assert.equal(r.signInFenceReason('new-login'),'');assert.deepEqual(events,outcome==='exit success'?['mount','umount','snapshot','detach']:['mount','umount','detach']);}
+ else {
+  assert.equal(r.get('new-login')?.signedOut?.reason,'sign-in interrupted');assert.equal(r.get('new-login')?.signedOut?.host,'writer');assert.deepEqual(events,['mount']);
+  assert.throws(()=>r.beginSignIn('new-login'),/may still be running/);
+  const provision={id:'writer',pool:'agents',provider:'fake',size:'fake',region:'fake-1',created:machine.created,state:'destroyed' as const,machine};
+  store.hosts.provisions.save(provision);settleLoginSignInsForHost(store.hosts,'writer');assert.throws(()=>r.beginSignIn('new-login'),/may still be running/,'destroyed without receipt is insufficient');
+  store.hosts.provisions.save({...provision,machine:{...machine,created:'replacement'},machineDeletionRead:'replacement receipt'});settleLoginSignInsForHost(store.hosts,'writer');assert.throws(()=>r.beginSignIn('new-login'),/may still be running/);
+  store.hosts.provisions.save({...provision,machineDeletionRead:'exact machine receipt'});settleLoginSignInsForHost(store.hosts,'writer');assert.equal(r.signInFenceReason('new-login'),'');assert.ok(r.beginSignIn('new-login'));assert.deepEqual(events,['mount']);
+ }
+});
+
+for(const rejected of [true,false])for(const loss of ['peer close','hub stop'] as const)test(`${rejected?'rejected':'held'} new-login preparation records interruption after ${loss}`,async t=>{
+ const root=await tempProject(t),owners=loginMetadataOwners(t,root),clock=new FakeClock(Date.now()),processes=fakeLockProcesses().processes,entered=Promise.withResolvers<void>(),gate=Promise.withResolvers<void>(),events:string[]=[];
+ onCleanup(t,()=>gate.resolve());let admittedSignal:AbortSignal|undefined,attachmentEntered=false;
+ const volume={id:'v',name:'disk',project:root,region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:null},machine={id:'m',address:'fake',architecture:'arm64' as const,created:volume.created};
+ const host={name:'writer',loginDisk:async()=>{events.push('disk');}} as unknown as Host;
+ const provider={createVolume:async()=>({state:'created',volume}),attachVolume:async()=>{attachmentEntered=true;entered.resolve();await gate.promise;if(rejected)throw Error('attachment outcome unknown');return {state:'attached'};},detachVolume:async()=>{events.push('detach');return {state:'detached'};}} as unknown as HostProvider;
+ const hub=await owners.start(()=>projectHub(t,root,{}, {clock,processes,droplet:{processes},prepareLogin:async o=>{admittedSignal=o.signal;return {pending:await prepareLoginSignIn({logins:o.records.logins,host,provider,machine,project:root,tag:'fixture',region:'fake-1',providerName:'fake',harness:'claude-code',name:'work',clock,authorize:()=>o.signal.throwIfAborted()}),plan:{name:'work',host:'writer',command:'ssh',args:[]}};}}));
+ const store=owners.store(new Store(join(root,'.cland/hub.db'))),terminal=await connectUi(t,hub.discovery,'cli');
+ terminal.send({type:'login.add',id:'held-add',harness:'claude-code'});await eventually('admitted attach entered',()=>attachmentEntered||undefined,testWaitMs());
+ let stopping:Promise<void>|undefined;if(loss==='peer close')terminal.close();else stopping=hub.stop();await eventually('preparation owner abort observed',()=>admittedSignal?.aborted||undefined,testWaitMs());gate.resolve();await stopping;
+ await eventually('preparation interruption persisted',()=>store.hosts.logins.get('work')?.signedOut?.reason==='sign-in interrupted'||undefined,testWaitMs());
+ assert.equal(store.hosts.logins.get('work')?.signedOut?.host,'writer');assert.throws(()=>store.hosts.logins.beginSignIn('work'),/may still be running/);assert.deepEqual(events,[]);
 });
 
 for(const outcome of ['disconnect','failure','success'] as const) test(`login add ${outcome} settles only its admitted connection`,async t=>{

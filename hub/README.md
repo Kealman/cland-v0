@@ -4,9 +4,9 @@ Subsystem reference and implementation guidance live in `docs/hub/`.
 The [logins reference](../docs/hub/logins.md) also covers terminal renewal of an
 existing disk with `cland login signin`, binding-preserving admission and the
 24-hour one-sign-in hint.
-Peer loss and hub shutdown interrupt renewal without disk cleanup; a completion
+Peer loss and hub shutdown interrupt new adds and renewal without disk cleanup; a completion
 on its owning connection follows the CLI's positive SSH-close receipt.
-Interrupted renewal uses exact-machine deletion receipts to release its native
+Interrupted sign-in uses exact-machine deletion receipts to release its native
 fence, with retained snapshot obligations left to their existing owner.
 Add subsystem text to its file; keep this index as pointers.
 
@@ -35,8 +35,8 @@ durable answer receipt, with one fallback notice when unavailable. Only the pars
 link of a stored sign-in-code card may pass remote URL masking, on an explicit
 harness sign-in origin and without registered secret bytes; other URLs stay masked.
 Active intent and cleanup records recover in bounded indexed pages outside
-startup. Unknown new-login native outcomes retain the creating row and mounted
-disk, with a named Agents notice; subsequent shared recovery is owned by T-1814.
+startup. Unknown new-login native outcomes use the shared interrupted-sign-in admission,
+retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Roles](../docs/hub/roles.md)
 - [Rulebook](../docs/hub/rulebook.md)
 - [Project logins](../docs/hub/logins.md): terminal disk sign-in, daily and on-demand backup snapshots with per-login scheduling and pending-binding deferral, local human metadata listing, SQLite records, episode-based dead-login sign-out/card recovery and Coordinator notices without stopping running sessions, transitions, provisioning-time attachment for waiting launches and launch-time disk binding, exclusive writers, snapshot-cloned readers, idle exclusive-flag updates and OpenCode keys delivered only in pool-host spawn environments.

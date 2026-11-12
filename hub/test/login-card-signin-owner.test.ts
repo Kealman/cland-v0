@@ -69,27 +69,33 @@ test('Create one offers the Claude link and its secret answer completes one snap
  assert.equal(JSON.stringify(store.ask(codeCard!)).includes('SENTINEL-pasted-code'),false);
 });
 
-test('unknown Create one outcome retains its mounted disk and reports the captured login and host once',async t=>{
+for(const failure of ['native loss','setup failure'] as const)test(`unknown Create one outcome retains its mounted disk and reports the captured login and host once: ${failure}`,async t=>{
  const store=new Store(':memory:'),clock=new FakeClock(),core=new HubCore({store,clock}),waits=new LoginCards(store,core.cards),notices:string[]=[];
- const lost=Promise.withResolvers<never>();let cleanup=0,mounted=true,attached='h',create='';
+ const lost=Promise.withResolvers<never>();void lost.promise.catch(()=>{});let cleanup=0,mounted=false,attached='',create='';
+ store.hosts.logins.useClock(clock);
+ const machine={id:'m',address:'fake',architecture:'arm64' as const,created:clock.now().toISOString()},volume={id:'kept',name:'disk',project:'/fixture',region:'fake-1',sizeGiB:1,created:machine.created,attachedTo:null};
+ const host={name:'h',loginDisk:async({op}:{op:string})=>{if(op==='mount')mounted=true;else {cleanup++;mounted=false;}}} as unknown as Host;
+ const provider={createVolume:async()=>({state:'created',volume}),attachVolume:async()=>{attached='m';return {state:'attached'};},detachVolume:async()=>{cleanup++;attached='';return {state:'detached'};}} as unknown as HostProvider;
  const options={store,cards:core.cards,clock,registerSecret:()=>{},notice:(text:string)=>notices.push(text),prepare:async()=>{
-  store.hosts.logins.insert({name:'new-login',harness:'claude-code',account:'new-login',kind:'disk',provider:'fake',region:'fake-1',volumeId:'kept',snapshotIds:[],lastSignIn:null});
-  return {host:'h',pending:{name:'new-login',path:'/cland/auth/new-login',complete:async()=>{cleanup++;mounted=false;attached='';return {} as never;}}};
+  return {host:'h',pending:await prepareLoginSignIn({logins:store.hosts.logins,provider,host,machine,project:'/fixture',tag:'fixture',providerName:'fake',region:'fake-1',harness:'claude-code',name:'new-login',clock})};
  },run:async(_input:unknown,output:(value:{admission:string;stream:'stdout';text:string})=>void)=>{
   const intent=store.cardSignIns.get(create)!;assert.equal(intent.login,'new-login');assert.equal(intent.host,'h');
   output({admission:'a',stream:'stdout',text:'https://login.example.test/claude\n'});
   return {admission:'a',closed:lost.promise,write:async()=>{},cancel:()=>lost.promise};
  }};
- const owner=new LoginCardSignIn(options);t.after(async()=>{await owner.stop();store.close();});
+ const owner=new LoginCardSignIn(options),stop=async()=>{lost.reject(Error('fixture owner closing'));await owner.stop();};t.after(async()=>{await stop();store.close();});
  waits.reconcile([{pool:'agents',reason:'waiting for a login claude-code'} as never]);create=JSON.parse(store.meta('login-wait-cards')!)[JSON.stringify(['agents','claude-code'])].id;
  core.cards.answer(store.ask(create)!,'Create one',1,'neovim');
  await until(()=>store.openAsks().some(card=>card.hubKind==='login-signin-code'),{what:'persisted code card before native loss'});
  const card=store.openAsks().find(card=>card.hubKind==='login-signin-code')!;
- lost.reject(Object.assign(Error('synthetic native loss'),{code:'CLAND_NATIVE_INCOMPLETE'}));await owner.idle();
- assert.equal(cleanup,0);assert.equal(mounted,true);assert.equal(attached,'h');
- const row=store.hosts.logins.get('new-login')!;assert.equal(row.state,'creating');assert.equal(row.kind==='disk'&&row.volumeId,'kept');
+ if(failure==='setup failure')await assert.rejects((async()=>{try{throw Error('synthetic setup assertion');}finally{await stop();}})(),/synthetic setup assertion/);
+ else {lost.reject(Object.assign(Error('synthetic native loss'),{code:'CLAND_NATIVE_INCOMPLETE'}));await owner.idle();}
+ assert.equal(cleanup,0);assert.equal(mounted,true);assert.equal(attached,'m');
+ const row=store.hosts.logins.get('new-login')!;assert.equal(row.state,'signed-out');assert.equal(row.signedOut?.reason,'sign-in interrupted');assert.equal(row.signedOut?.host,'h');assert.throws(()=>store.hosts.logins.beginSignIn('new-login'),/may still be running/);assert.equal(row.kind==='disk'&&row.volumeId,'kept');
  assert.deepEqual(notices,['Login new-login on host h: sign-in outcome unknown']);const outcome=store.ask(card.id)!.outcome;assert.equal(outcome?.status==='answered'&&outcome.text,'sign-in outcome unknown');
  const reopened=new LoginCardSignIn(options);await reopened.idle();await reopened.stop();assert.equal(notices.length,1);
+ store.hosts.logins.settleSignInHost('h',{...machine,created:'replacement'});assert.throws(()=>store.hosts.logins.beginSignIn('new-login'),/may still be running/);
+ store.hosts.logins.settleSignInHost('h',machine);assert.equal(store.hosts.logins.signInFenceReason('new-login'),'');assert.equal(cleanup,0);
 });
 
 test('card shutdown joins a held second native writer after the first writer fails',async t=>{
@@ -111,7 +117,7 @@ test('card shutdown joins a held second native writer after the first writer fai
 
 test('a close without a native exit fact interrupts rather than authorizing disk cleanup',async t=>{
  const store=new Store(':memory:'),clock=new FakeClock(),core=new HubCore({store,clock}),waits=new LoginCards(store,core.cards);let completed=0,interrupted=0;
- const owner=new LoginCardSignIn({store,cards:core.cards,clock,registerSecret:()=>{},prepare:async()=>({host:'h',pending:{name:'work',path:'/cland/auth/work',complete:async()=>{completed++;return {} as never;},interrupt:async()=>{interrupted++;return {} as never;}}}),
+ const owner=new LoginCardSignIn({store,cards:core.cards,clock,registerSecret:()=>{},notice:()=>{},prepare:async()=>({host:'h',pending:{name:'work',path:'/cland/auth/work',complete:async()=>{completed++;return {} as never;},interrupt:async()=>{interrupted++;return {} as never;}}}),
   run:async()=>({admission:'a',closed:Promise.resolve({admission:'a',state:'closed',code:null,signal:null}),write:async()=>{},cancel:async()=>{throw Error('unexpected cancel');}})});
  t.after(async()=>{await owner.stop();store.close();});
  waits.reconcile([{pool:'agents',reason:'waiting for a login codex'} as never]);
@@ -137,7 +143,7 @@ test('accepted card intent interrupted before follow-up reports once on owner re
 for(const admitted of [false,true])test(`runner refusal ${admitted?'without proof interrupts':'with not-admitted proof completes failed'}`,async t=>{
  const store=new Store(':memory:'),clock=new FakeClock(),core=new HubCore({store,clock}),waits=new LoginCards(store,core.cards);
  let completed=0,interrupted=0;
- const owner=new LoginCardSignIn({store,cards:core.cards,clock,registerSecret:()=>{},prepare:async input=>{
+ const owner=new LoginCardSignIn({store,cards:core.cards,clock,registerSecret:()=>{},notice:()=>{},prepare:async input=>{
   const row=store.hosts.logins.insert({name:'refused',harness:input.harness,account:'refused',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});
   return {host:'h',pending:{name:row.name,path:'/cland/auth/refused',complete:async code=>{assert.equal(code,null);completed++;store.hosts.logins.markSignedOut(row.name,{reason:'sign-in failed',host:null});return store.hosts.logins.get(row.name)!;},interrupt:async()=>{interrupted++;store.hosts.logins.markSignedOut(row.name,{reason:'sign-in interrupted',host:'h'});return store.hosts.logins.get(row.name)!;}}};
  },run:async()=>{throw Object.assign(Error('unavailable'),admitted?{}:{nativeAdmission:'not-admitted',code:'CLAND_SIGNIN_UNAVAILABLE'});}});

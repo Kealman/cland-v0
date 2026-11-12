@@ -20,3 +20,5 @@ credential, browser or external network is involved.
 Stage QA runs the case on dev. T1/T2/Web and changed T3 are Linux mode-free
 verification evidence; local native checks name macOS separately; complete T3
 belongs to the merge batch and T4 to stage/epic occasions.
+
+The terminal disconnect segment asserts the durable `sign-in interrupted` episode and captured host, the exact volume attachment and its mounted symlink. It does not infer SSH closure from socket loss. Native success and failure remain owned by the CLI post-close frame.

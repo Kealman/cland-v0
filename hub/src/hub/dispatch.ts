@@ -2276,7 +2276,11 @@ export class Dispatcher {
               if(frame.type==='login.signin'&&!existing)throw Error('unknown login: '+frame.name);
               const input=frame.type==='login.signin'?{harness:existing!.harness,name:frame.name,signin:true}:frame;
               const work=(async()=>{
-                const {pending,plan}=await this.#prepareLogin(input);
+                const preparing=new AbortController(),abortPreparing=()=>preparing.abort(Error('terminal disconnected during sign-in preparation'));
+                onClose.push(abortPreparing);
+                let prepared:Awaited<ReturnType<typeof preparePoolLogin>>;
+                try{prepared=await this.#prepareLogin(input,preparing.signal);}finally{const index=onClose.indexOf(abortPreparing);if(index>=0)onClose.splice(index,1);}
+                const {pending,plan}=prepared;
                 const close=()=>{loginSignIns.delete(pending.name);return pending.interrupt?.()??pending.complete(null);};
                 this.#loginClosers.add(close);
                 const complete=pending.complete.bind(pending);

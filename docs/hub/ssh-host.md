@@ -375,10 +375,11 @@ A refusal proven before this operation's native admission carries
 owner's tree closure and a synced operation checkpoint. The disk mutation lease
 remains held through that checkpoint; input and cancellation bypass an unmount
 waiting on the lease. A peer cannot write or cancel another peer's admission.
-Lost transport or missing close is `CLAND_NATIVE_INCOMPLETE`. A renewal card
-owner calls interrupt() and retains the captured-machine sign-in fence. A new
-login without interrupt() keeps its creating row and mounted disk and reports
-the named unknown-login/host outcome; shared recovery belongs to T-1814. Neither
+Lost transport or missing close is `CLAND_NATIVE_INCOMPLETE`. Renewal and new-login card
+owners call interrupt() and retain the same captured-machine sign-in fence and
+mounted disk. A new login reports the named unknown-login/host outcome. Explicit
+legacy injected preparations without interrupt retain creating ownership;
+production preparation always supplies the shared interrupted-sign-in owner. Neither
 path infers completion from a timer or local SSH exit. Operation receipts contain no input or output bytes.
 
 Both producer and client require an observed exit code or a nonempty native

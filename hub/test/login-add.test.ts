@@ -2,7 +2,7 @@
 // and harness sign-in. Native children close before the owned fixture root drains.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFile, readFile, readdir, unlink, realpath } from 'node:fs/promises';
+import { writeFile, readFile, readdir, unlink, realpath, readlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { fixture } from './host-create-fixture.ts';
@@ -64,9 +64,11 @@ test('terminal disk logins create a host, reuse it and retain only public metada
  const stranger=await connectUi(t,daemon.discovery,'cli');
  const forged=await stranger.request({type:'login.signed-in',name:'disconnected',code:0});assert.equal(forged.ok,false);
  terminal.close();
- await eventually('disconnect cleanup durable signed-out receipt',async()=>{
+ await eventually('disconnect durable interrupted receipt',async()=>{
   const rows=JSON.parse((await cland(f.root,'login','list','--json')).stdout);
   return rows.find((row:{name:string;state:string})=>row.name==='disconnected'&&row.state==='signed-out');
  },testWaitMs());
- const after=await provider.listVolumes({project:f.root});assert.equal(after.state,'listed');if(after.state==='listed')assert.ok(after.volumes.every(v=>v.attachedTo===null));
+ const interrupted=JSON.parse((await cland(f.root,'login','list','--json')).stdout).find((row:{name:string})=>row.name==='disconnected');assert.equal(interrupted.signedOut.reason,'sign-in interrupted');assert.equal(interrupted.signedOut.host,hosts[0].id);
+ const after=await provider.listVolumes({project:f.root});assert.equal(after.state,'listed');if(after.state==='listed'){assert.equal(after.volumes.find(v=>v.id===during.volumeId)?.attachedTo,hosts[0].machine.id);}
+ assert.equal(await readlink(join(machine,'cland/auth/codex-disconnected')),join(f.root,'volumes',during.volumeId+'.contents'));
 });

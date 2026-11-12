@@ -34,8 +34,9 @@ Generated cases:
 - `a close without a native exit fact interrupts rather than authorizing disk cleanup`
   rejects a null-code/null-signal close at the card boundary.
 - `unknown Create one outcome retains its mounted disk and reports the captured login and host once`
-  checks the Coordinator's conservative cut, including identities persisted before
-  the native run and the exact withdrawal reason. T-1814 owns later shared recovery.
+  checks shared interrupted-sign-in recovery, including identities persisted before
+  the native run and the exact withdrawal reason. Native-loss and synthetic
+  setup-assertion variants both drain the prearmed fake owner before storage closes.
 - `card shutdown joins a held second native writer after the first writer fails`
   proves an earlier rejection cannot release shutdown before the second close.
 
@@ -44,3 +45,5 @@ remote platform delivery. Native sign-in evidence belongs in the companion
 integration file; stage QA also runs the existing renewal and login-card cases.
 Indexed restart/cleanup work budgets and failed-notice recovery live in
 `hub/test/login-card-recovery.test.ts`.
+
+`unknown Create one outcome retains its mounted disk and reports the captured login and host once` uses real new-login preparation with injected Host/provider effects. Rejected native closure interrupts through the shared admission, retains mount and attachment, refuses retry and rejects replacement-machine settlement. Exact captured machine deletion settles the fence without disk effects. The card withdraws with one identity notice; reopening does not repeat it.

@@ -134,8 +134,14 @@ native exit code on the same authenticated connection. Exit zero unmounts,
 requests a backup, detaches, records the last sign-in and marks the login ready.
 A provider rate refusal retains the pending backup and retry time while sign-in
 finishes ready; other snapshot failures keep the disk signed out.
-A nonzero exit or connection close unmounts and detaches the kept disk, then
-marks it signed out. A missing native cleanup receipt retains creating state
+A post-close nonzero exit unmounts and detaches the kept disk, then
+marks it signed out. Peer close or hub shutdown instead interrupts the add through
+the shared sign-in owner: the disk stays mounted and attached, and the signed-out
+row records `sign-in interrupted` with the captured host. The existing private
+sign-in admission fences retries and removal until that exact machine has a
+persisted deletion receipt. Startup recovers lost new-login admissions through
+the same indexed recovery as renewals; elapsed time and detached inventory grant
+no settlement authority. A missing native cleanup receipt retains creating state
 and its resource fence. While a newly added login is creating, it has no bindings or free
 capacity. No step logs out a harness. Provider API access and terminal SSH
 connectivity are required on real hosts; fake-provider tests use no network.
@@ -724,11 +730,11 @@ ownership remain unchanged. A matching durable native close permits failed
 completion and disk cleanup. A typed
 `nativeAdmission: 'not-admitted'` refusal also permits failed completion. Unknown
 renewal outcomes use the existing interrupted-sign-in fence. An uncertain new
-login instead retains its `creating` row and its attached, mounted disk. Its
+login uses that same owner and exact-machine fence, records `sign-in interrupted`
+and retains its attached, mounted disk. Its
 card withdraws with `sign-in outcome unknown`, and one Agents line names the
-login and host. Those identities persist before the native run starts. This
-conservative cut performs no cleanup or second fence; T-1814 owns subsequent
-shared CLI/card new-login recovery.
+login and host. Those identities persist before the native run starts. The shared CLI/card owner performs no native cleanup or second fence on owner
+loss; its exact-machine deletion settlement is the same as renewal recovery.
 
 Accepted intents are indexed rows with a captured sequence boundary. Recovery
 pages at most 64 rows per event-loop turn outside synchronous startup; later

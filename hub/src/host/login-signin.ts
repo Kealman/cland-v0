@@ -90,7 +90,8 @@ export async function prepareLoginSignIn(o: {
  if(o.admission&&(!o.snapshots||!o.identity))throw Error('renewal snapshot owner identity required');
  const admitted=o.admitted??reserveDiskLogin(o),name=admitted.name;
  if(admitted.state!=='creating'||admitted.kind!=='disk'||(admitted.volumeId!==null&&!o.admission)||admitted.harness!==o.harness||JSON.stringify(o.logins.get(name))!==JSON.stringify(admitted))throw Error('login admission changed before sign-in');
- const authorize=()=>o.authorize?.();
+ let addAdmission:string|undefined;
+ const authorize=()=>{o.authorize?.();if(addAdmission)o.logins.assertSignInAdmission(name,addAdmission);};
  const path=`/cland/auth/${o.harness}-${name}`;
  let volume:Volume|undefined, attached=false, mountAttempted=false, uncertain=false;
  const cleanup=async()=>{
@@ -114,6 +115,7 @@ export async function prepareLoginSignIn(o: {
    if(o.pool)o.logins.recordStorage(name,o.pool,{kind:'volume',id:volume.id,sizeGiB:volume.sizeGiB,created:volume.created,deleted:null});
   }
   authorize();
+  if(!o.admission)addAdmission=o.logins.beginAddSignIn(name,{id:o.host.name,machine:o.machine,...(o.identity?{identity:o.identity}:{})});
   uncertain=true;
   const attachment=await o.provider.attachVolume(volume,o.machine);
   uncertain=attachment.state==='failed';
@@ -126,26 +128,36 @@ export async function prepareLoginSignIn(o: {
   if(!o.admission&&o.harness==='codex'&&!await o.host.publishFile(path+'/config.toml',Buffer.from('cli_auth_credentials_store = "file"\n'),{mode:0o600})) throw Error('Codex sign-in requires a new file-store config');
   authorize();
  } catch(error) {
-  if(!uncertain){await cleanup();o.logins.markSignedOut(name,{reason:'sign-in failed',host:null});}
+  if(addAdmission&&(uncertain||attached||mountAttempted)){
+   // Rejected or abandoned preparation owns the same captured-machine fence,
+   // even when no terminal plan could be returned to the dispatcher.
+   o.logins.interruptSignIn(name,addAdmission);
+  }else if(!uncertain){await cleanup();o.logins.markSignedOut(name,{reason:'sign-in failed',host:null});}
   throw error;
  }
  if(o.admission){
   if(!o.snapshots)throw Error('login snapshots unavailable');
   return prepareExistingLoginSignIn({logins:o.logins,name,provider:o.provider,host:o.host,volume:{...volume!,attachedTo:o.machine.id},machine:o.machine,identity:o.identity!,clock:o.clock,snapshots:o.snapshots,authorize,...(o.authorizeCleanup?{authorizeCleanup:o.authorizeCleanup}:{}),admission:o.admission,cleanup,...(o.afterSignIn?{afterSignIn:o.afterSignIn}:{})});
  }
+ const authorizeCompletion=()=>{o.logins.assertSignInAdmission(name,addAdmission!);(o.authorizeCleanup??o.authorize)?.();};
  let completion:Promise<Login>|undefined;
- return {name,path,complete(code) {
+ return {name,path,interrupt(){return completion??=Promise.resolve().then(()=>{
+  o.logins.interruptSignIn(name,addAdmission);return o.logins.get(name)!;
+ });},complete(code) {
   return completion??= (async()=>{
+   authorizeCompletion();
    await o.host.loginDisk!({op:'umount',volume:volume!.name,path});
+   authorizeCompletion();
    let failure:Error|undefined;
    if(code===0) {
-    const snapshot=await snapshotLoginDisk(o.logins,name,{provider:o.provider,volume:volume!,authorize},o.clock);
+    const snapshot=await snapshotLoginDisk(o.logins,name,{provider:o.provider,volume:volume!,authorize:authorizeCompletion},o.clock);
     if(snapshot.state!=='snapshotted'&&snapshot.state!=='refused') failure=Error(`login snapshot ${snapshot.state}: ${snapshot.reason}`);
    }
+   authorizeCompletion();
    const detached=await o.provider.detachVolume(volume!,o.machine);
+   authorizeCompletion();
    if(detached.state!=='detached') throw Error(`login detach ${detached.state}`);
-   if(code===0&&!failure) o.logins.updateCreatingDisk(name!,{lastSignIn:o.clock.now().toISOString()});
-   if(code===0&&!failure)o.logins.transition(name!,'ready');else o.logins.markSignedOut(name!,{reason:'sign-in failed',host:null});
+   if(code===0&&!failure)o.logins.finishSignIn(name,addAdmission!,o.clock.now().toISOString());else o.logins.markSignedOut(name!,{reason:'sign-in failed',host:null});
    const row=o.logins.get(name!)!;
    if(failure) throw failure;
    return row;

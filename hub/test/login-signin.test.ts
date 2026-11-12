@@ -11,6 +11,30 @@ import type { HostProvider } from '../src/host/provider/provider.ts';
 import { FakeClock } from './fake-clock.ts';
 import {LoginSnapshots,snapshotHostIdentity} from '../src/host/login-snapshots.ts';
 
+for(const boundary of ['attach','umount'] as const)test(`new login revalidates recovered admission after held ${boundary}`,async t=>{
+ const db=new DatabaseSync(':memory:'),logins=new LoginRecords(db),clock=new FakeClock(),entered=Promise.withResolvers<void>(),gate=Promise.withResolvers<void>(),events:string[]=[];
+ const volume={id:'v',name:'disk',project:'/project',region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:null},machine={id:'m',address:'fake',architecture:'arm64' as const,created:volume.created};
+ const hold=async(op:string)=>{events.push(op);if(op===boundary){entered.resolve();await gate.promise;}};
+ const host={name:'writer',loginDisk:async({op}:{op:string})=>hold(op)} as unknown as Host;
+ const provider={createVolume:async()=>({state:'created',volume}),attachVolume:async()=>{await hold('attach');return {state:'attached'};},detachVolume:async()=>{await hold('detach');return {state:'detached'};},snapshotVolume:async()=>{await hold('snapshot');throw Error('stale snapshot');}} as unknown as HostProvider;
+ let work:Promise<unknown>|undefined;t.after(async()=>{gate.resolve();await work?.catch(()=>{});db.close();});
+ const preparing=prepareLoginSignIn({logins,provider,host,machine,project:'/project',tag:'fixture',region:'fake-1',providerName:'fake',harness:'claude-code',name:'work',clock});
+ work=preparing;void work.catch(()=>{});
+ if(boundary==='umount'){const pending=await preparing;work=pending.complete(0);void work.catch(()=>{});}
+ await entered.promise;logins.interruptSignIn('work');gate.resolve();await assert.rejects(work);
+ assert.deepEqual(events,boundary==='attach'?['attach']:['attach','mount','umount']);assert.equal(logins.get('work')?.signedOut?.reason,'sign-in interrupted');assert.throws(()=>logins.beginSignIn('work'),/may still be running/);
+});
+
+for(const failure of ['refused attach','unknown mount'] as const)test(`new login preparation distinguishes ${failure}`,async t=>{
+ const db=new DatabaseSync(':memory:'),logins=new LoginRecords(db),clock=new FakeClock(),events:string[]=[];t.after(()=>db.close());
+ const volume={id:'v',name:'disk',project:'/project',region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:null};
+ const host={name:'writer',loginDisk:async()=>{events.push('mount');throw Error('mount outcome unknown');}} as unknown as Host;
+ const provider={createVolume:async()=>({state:'created',volume}),attachVolume:async()=>failure==='refused attach'?{state:'refused',reason:'fixture refusal'}:{state:'attached'},detachVolume:async()=>{events.push('detach');return {state:'detached'};}} as unknown as HostProvider;
+ await assert.rejects(prepareLoginSignIn({logins,provider,host,machine:{id:'m',address:'fake',architecture:'arm64',created:volume.created},project:'/project',tag:'fixture',region:'fake-1',providerName:'fake',harness:'claude-code',name:'work',clock}));
+ assert.equal(logins.get('work')?.signedOut?.reason,failure==='refused attach'?'sign-in failed':'sign-in interrupted');assert.deepEqual(events,failure==='refused attach'?[]:['mount']);
+ if(failure==='refused attach')assert.equal(logins.signInFenceReason('work'),'');else assert.throws(()=>logins.beginSignIn('work'),/may still be running/);
+});
+
 test('unbound renewal interruption retains its native fence without invoking disk cleanup',async()=>{
  const db=new DatabaseSync(':memory:'),r=new LoginRecords(db),clock=new FakeClock(),events:string[]=[];r.useClock(clock);
  r.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});r.markSignedOut('work',{reason:'fixture signed out',host:null});

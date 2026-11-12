@@ -32,3 +32,5 @@ not. The rate-refusal regression proves native success publishes ready with a
 pending backup and retryAt, then the shared owner's scheduled attempt snapshots.
 The unbound interruption control supplies a cleanup callback and proves owner
 loss invokes no disk cleanup, retains the admitted host and refuses another signer.
+
+`new login revalidates recovered admission after held attach/umount` interrupts the durable admission while its exact effect is held and proves no later mount/snapshot/detach. `new login preparation distinguishes refused attach/unknown mount` keeps positive provider refusal separate from an unknown native outcome: refusal records failure without an interrupted host fence; unknown mount retains that fence and performs no cleanup.

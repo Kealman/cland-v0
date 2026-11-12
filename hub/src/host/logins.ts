@@ -390,6 +390,15 @@ export class LoginRecords {
    this.save({...row,state:'signed-out',signedOut:{id:randomUUID(),reason:receipt.reason,host:receipt.host,at:this.clock.now().toISOString(),...(oneSignIn?{oneSignIn:true}:{})}});
   });
  }
+ /** New disk acquisition joins the same terminal owner after its volume is persisted. */
+ beginAddSignIn(name:string,host:SignInHost):string {
+  let admission='';
+  this.atomic(()=>{
+   const row=this.required(name);this.assertSignInSettled(name);this.assertNotSigningIn(name);
+   if(row.kind!=='disk'||!row.volumeId||row.state!=='creating'||this.hasBindings(name))throw Error('new sign-in requires an unbound creating disk');
+   admission=randomUUID();this.saveSignIn(name,{id:admission,state:'active',volumeId:row.volumeId,binding:this.signInBinding(name),host});
+  });return admission;
+ }
  /** Sign-in owns a durable admission without releasing existing disk users. */
  beginSignIn(name:string):string {
   let admission='';

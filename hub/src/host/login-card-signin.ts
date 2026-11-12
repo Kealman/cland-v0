@@ -142,7 +142,7 @@ export class LoginCardSignIn {
    completionStarted=true;await pending.complete(!expired&&!closed.outcome&&closed.signal===null?closed.code:null);retire=true;
   }catch(error){
    const notAdmitted=!run&&(error as {nativeAdmission?:string})?.nativeAdmission==='not-admitted';
-   const unknown=pending&&!completionStarted&&!notAdmitted&&!pending.interrupt&&!input.signin;
+   const unknown=pending&&!completionStarted&&!notAdmitted&&!input.signin;
    // Never infer writer closure from transport rejection or a deadline.
    if(pending&&!completionStarted){
     if(notAdmitted)await pending.complete(null);

@@ -6,6 +6,8 @@ import { mkdtemp, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HostRecords, HostSecretStore } from '../src/host/records.ts';
+import { settleLoginSignInsForHost } from '../src/host/login-signin.ts';
+import type { CreateVolumeOptions, Volume, Machine } from '../src/host/provider/provider.ts';
 import { preparePoolLogin } from '../src/host/login-add.ts';
 import { PoolRuntime } from '../src/host/pool-runtime.ts';
 import { readHostPools } from '../src/host/pools.ts';
@@ -16,7 +18,7 @@ import { ownDirectory, onCleanup } from './process-cleanup.ts';
 import { fakeLockProcesses } from './fakes/lock-processes.ts';
 import type { Host } from '../src/host/host.ts';
 
-async function fixture(t:test.TestContext) {
+async function fixture(t:test.TestContext,actualMachine=false) {
  const allocated=await mkdtemp(join(tmpdir(),'login-pin-'));ownDirectory(t,allocated);const root=await realpath(allocated);
  const db=new DatabaseSync(':memory:'),clock=new FakeClock(Date.now());
  let records:HostRecords|undefined;
@@ -29,12 +31,13 @@ async function fixture(t:test.TestContext) {
   if(failures.length)throw new AggregateError(failures,'pin fixture cleanup failed');
  });
  records=new HostRecords(db);
- const machine={id:'machine-a',address:'fake-a',architecture:'arm64' as const,created:clock.now().toISOString()};
+ const env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root}),provider=new FakeHostProvider({env,now:()=>clock.now().getTime()});
+ let machine:Machine={id:'machine-a',address:'fake-a',architecture:'arm64',created:clock.now().toISOString()};
+ if(actualMachine){const acquired=await provider.acquire({project:root,pool:'agents',architecture:'arm64',region:'lon1'});assert.equal(acquired.state,'created');if(acquired.state!=='created')throw Error('fixture machine unavailable');machine=acquired.machine;}
  new HostSecretStore(root,records).register({id:'host-a',address:machine.address,user:'runner',clientKeyPath:'scratch-key',knownHosts:'scratch-pin'});
  records.provisions.ready({id:'host-a',pool:'agents',provider:'fake',size:'fake',region:'fake-1',created:machine.created,state:'ready',machine});
  const settings=readHostPools({agents:{provider:'fake',slots:1,min_hosts:0,idle_stop:'1m'}});
- const env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root});
- return {root,records,clock,settings,env,defer:(close:()=>unknown|Promise<unknown>)=>owners.push(close)};
+ return {root,records,clock,settings,env,provider,machine,defer:(close:()=>unknown|Promise<unknown>)=>owners.push(close)};
 }
 for(const code of [0,1,null])test(`terminal outcome ${code} holds its host through cleanup and releases the pin`,async t=>{
  const f=await fixture(t),pins=new Set<string>();
@@ -73,22 +76,38 @@ test('a pinned host renews its lease and idle-stop waits for unpinning',async t=
 });
 
 for(const boundary of ['create','attach','mount','publish','replacement'] as const)test(`sign-in revalidates captured host authority after ${boundary}`,async t=>{
- const f=await fixture(t),effects:string[]=[];let pinned=false;
+ const f=await fixture(t,true),effects:string[]=[];let pinned=false;
+ const provider=f.provider,machine=f.machine,provision=f.records.provisions.get('host-a')!;
  const change=(at:string)=>{
   effects.push(at);
   if(at===boundary)f.records.provisions.save({...f.records.provisions.get('host-a')!,state:'destroying'});
   if(boundary==='replacement'&&at==='create'){const row=f.records.provisions.get('host-a')!;f.records.provisions.ready({...row,state:'ready',machine:{...row.machine!,created:new Date(Date.parse(row.machine!.created)+1).toISOString()}});}
  };
- const volume={id:'volume-a',project:f.root,name:'sentinel-disk',region:'lon1',sizeGiB:1,created:f.clock.now().toISOString(),attachedTo:null};
- t.mock.method(FakeHostProvider.prototype,'createVolume',async()=>{change('create');return {state:'created',volume};});
- t.mock.method(FakeHostProvider.prototype,'attachVolume',async()=>{change('attach');return {state:'attached'};});
- t.mock.method(FakeHostProvider.prototype,'detachVolume',async()=>{effects.push('detach');return {state:'detached'};});
+ const create=FakeHostProvider.prototype.createVolume,attach=FakeHostProvider.prototype.attachVolume,detach=FakeHostProvider.prototype.detachVolume;
+ t.mock.method(FakeHostProvider.prototype,'createVolume',async function(this:FakeHostProvider,input:CreateVolumeOptions){const result=await create.call(this,input);change('create');return result;});
+ t.mock.method(FakeHostProvider.prototype,'attachVolume',async function(this:FakeHostProvider,volume:Volume,machine:Machine){const result=await attach.call(this,volume,machine);change('attach');return result;});
+ t.mock.method(FakeHostProvider.prototype,'detachVolume',async function(this:FakeHostProvider,volume:Volume,machine:Machine){effects.push('detach');return detach.call(this,volume,machine);});
  const host={name:'host-a',loginDisk:async({op}:{op:string})=>{change(op);},publishFile:async()=>{change('publish');return true;}} as unknown as Host;
  await assert.rejects(preparePoolLogin({...f,pools:f.settings.pools,hosts:[host],signal:new AbortController().signal,createHost:async()=>{throw Error('unexpected host');},pinHost:()=>{pinned=true;return()=>{pinned=false;};}},{harness:'codex',name:'work'}),/readiness or identity changed/);
  assert.equal(f.records.logins.get('work')?.state,'signed-out');assert.equal(pinned,false);
  assert.deepEqual(effects,{
-  create:['create'],replacement:['create'],attach:['create','attach','detach'],mount:['create','attach','mount','umount','detach'],publish:['create','attach','mount','publish','umount','detach'],
+  create:['create'],replacement:['create'],attach:['create','attach'],mount:['create','attach','mount'],publish:['create','attach','mount','publish'],
  }[boundary]);
+ const row=f.records.logins.get('work')!;assert.equal(row.kind,'disk');if(row.kind!=='disk')throw Error('fixture disk missing');
+ const inventory=await provider.listVolumes({project:f.root});assert.equal(inventory.state,'listed');if(inventory.state!=='listed')throw Error('volume inventory unavailable');
+ if(boundary==='create'||boundary==='replacement'){
+  assert.equal(row.signedOut?.reason,'sign-in failed');assert.equal(f.records.logins.signInFenceReason('work'),'');assert.equal(inventory.volumes.find(v=>v.id===row.volumeId)?.attachedTo,null);
+ }else{
+  assert.equal(row.signedOut?.reason,'sign-in interrupted');assert.equal(row.signedOut?.host,'host-a');assert.equal(inventory.volumes.find(v=>v.id===row.volumeId)?.attachedTo,machine.id);
+  assert.throws(()=>f.records.logins.beginSignIn('work'),/may still be running/);
+  f.records.provisions.save({...provision,state:'destroyed'});settleLoginSignInsForHost(f.records,'host-a');assert.throws(()=>f.records.logins.beginSignIn('work'),/may still be running/,'no deletion receipt');
+  f.records.provisions.save({...provision,state:'destroyed',machine:{...machine,created:new Date(Date.parse(machine.created)+1).toISOString()},machineDeletionRead:'replacement receipt'});settleLoginSignInsForHost(f.records,'host-a');assert.throws(()=>f.records.logins.beginSignIn('work'),/may still be running/,'different birth');
+  let deletionRead:string|undefined;
+  const released=await provider.release(machine,receipt=>{if(receipt.resource==='machine')deletionRead=receipt.read;});assert.equal(released.state,'released');assert.ok(deletionRead);
+  f.records.provisions.save({...provision,state:'destroyed',machineDeletionRead:deletionRead});settleLoginSignInsForHost(f.records,'host-a');
+  const after=await provider.listVolumes({project:f.root});assert.equal(after.state,'listed');if(after.state!=='listed')throw Error('settled volume inventory unavailable');assert.equal(after.volumes.find(v=>v.id===row.volumeId)?.attachedTo,null);
+  assert.equal(f.records.logins.signInFenceReason('work'),'');const settled=f.records.logins.get('work');assert.equal(settled?.state,'signed-out');assert.equal(settled?.kind==='disk'&&settled.volumeId,row.volumeId);assert.ok(f.records.logins.beginSignIn('work'));
+ }
 });
 
 

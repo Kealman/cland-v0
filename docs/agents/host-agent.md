@@ -698,9 +698,10 @@ are redacted before bounded output events. The operation reuses native birth,
 bootstrap and descendant ownership from `AgentProcesses`, and retains disk
 mutation admission until its exact close receipt is synced. Cancellation joins
 that receipt. Missing close, including hub or connection loss, is unknown:
-renewal calls interrupt() and retains its captured-machine sign-in fence; a new
-login without interrupt() retains creating/mounted ownership and emits the named
-unknown-login/host notice. Shared new-login recovery belongs to T-1814. Elapsed
+renewal and new-login preparation call interrupt() and retain the same
+captured-machine sign-in fence and mounted disk. A new login emits the named
+unknown-login/host notice. Only the owning close or exact-machine deletion
+receipt can settle ownership. Elapsed
 time grants no disk cleanup authority. See [SSH Host](../hub/ssh-host.md#interactive-sign-in) for
 the client contract and [native tests](tests/hub-test-host-agent-signin-op.test.ts.md)
 for fake-only evidence. The hub card owner invokes the Host captured by shared
