@@ -79,6 +79,11 @@ Each read with `task view` at writing (VERIFIED; all `backlog` with `needs-triag
 - **Exact strings** are counted by `src.mjs` with `String.split`; tree-wide checks use `git grep` at `$S`, excluding `qa/briefs/` and `.cland/`.
 - **The preservation lock** `/tmp/cland-preserve.lock`: `mkdir` must exit 0, owner file, owner-checked literal-path release; one native file per slot, at most 15 minutes (`std.mjs` exits 124: INCONCLUSIVE); a held lock is BLOCKED for now.
 
+### Run 1 corrections (qa-678, A-18954, clear at `e2eb555d4`)
+
+- **R-1 (s06's census Git call is sealed).** The batch-candidate census in `s06` called `execFileSync("git", …)` from its embedded Node script with the inherited environment, outside the shared seal (rule 15). Run it through the same wrapper as every other Git call, built with `fixtureEnvironment` + `scratchGitEnvironment`; every argument, count and the positive control stay as written (`merge-batch candidates naming T-1814: 1; T-1795: 0`). The original and replacement lines are in A-18954 `corrections.md`. Any brief reusing `s06` applies R-1.
+- **Documentary.** The out-of-scope Neovim bullet said `nvim/test/remotes.test.ts` was included; it is not run (no Neovim), as the opening and the case table say. Fixed in the text above.
+
 ## Stage
 
 - Epic: E-1535 (Logins).
@@ -893,7 +898,7 @@ Before requesting QA, run `node hub/bin/cland.ts qa lint qa/briefs/E-1535-stage-
 
 - The real DigitalOcean API, droplets, volumes, snapshots, keys, tokens and any network; real harness sign-in, browser sign-in links and real terminals; real remotes (T-1791 uses the test messenger).
 - Native Codex and Claude Code dead-login and next-turn renewal (T-1813); the product fixes of T-1812, T-1816 and T-1817.
-- Neovim and web consumers (no stage path under `nvim/` or `web/`, VERIFIED at `9c98a5747`; `nvim/test/remotes.test.ts`, a T3 importer of the edited test messenger, included).
+- Neovim and web consumers (no stage path under `nvim/` or `web/`, VERIFIED at `9c98a5747`; `nvim/test/remotes.test.ts`, a T3 importer of the edited test messenger, is not run: no Neovim).
 - Linux and container runs, the stage covers, the merge batches, the members' mode-free verifies and loaded repetitions: their evidence is read in E1535S4-06.
 - Duration allowances as pass conditions; T-1731 and T-1770 as bugs; T-1801, T-1802, T-1804, T-1805, T-1806, T-1808, T-1809, T-1812, T-1813, T-1816, T-1817 and T-1676 as fixes (recorded if seen).
 - Any `cland login …`, `cland secret …`, `cland config set`, `cland role launch`, `cland session …`, `cland hub …` or `cland host …` on the live project.
