@@ -158,6 +158,31 @@ through `Sessions.startPoolScaling`, counts these owners alongside sessions
 for idle-stop and lease renewal. Incomplete cleanup retains the pin and reports
 the failure. Consumers creating login operations reuse this seam.
 
+**Ownership correction, 2026-11-12.** This correction supersedes three claims in
+the original add/sign-in paragraphs above while preserving their historical text.
+The sentence that changed captured authority triggers cleanup is not authority
+to unmount or detach after admitted attachment, mount or terminal-plan
+publication. Those authority-loss paths interrupt the shared sign-in owner,
+record `sign-in interrupted` and retain the captured machine/disk admission.
+Only a positively admitted native close/completion or that exact machine's
+persisted deletion receipt supplies settlement authority. A refusal before
+native ownership is captured follows the ordinary failed-admission path.
+
+The cleanup-only pin-release description above is also superseded.
+`preparePoolLogin` releases its transient `busyHost` pin when interruption
+changes the row from creating to signed-out; the private exact-machine sign-in
+fence independently retains disk authority and refuses retries/removal. A pin
+release is not a cleanup receipt. A row still creating retains its pin, including
+when completion has no confirmed cleanup result.
+
+The canonical mounted OpenCode path helper is now
+`hub/src/host/agent/state-paths.ts`'s `mountedOpenCodeDatabase`, which the agent
+sign-in command imports directly. Its exact path-construction allowance is
+covered by the accounts-policy guard. `accounts/registry.ts` re-exports that
+helper for existing callers; import-through-registry guidance remains valid,
+but the earlier statement assigning canonical ownership to the registry is
+superseded. Neither path permits reading a login database's contents.
+
 Rows show name, harness, account, kind, state and last sign-in. Disk rows also
 show exclusive (default true), provider, region, volume id and snapshot ids.
 Key rows have none of those disk properties and support OpenCode only. Text
@@ -758,6 +783,76 @@ independent wait can raise a new card. Login metadata changes wake placement
 through PoolRuntime; the existing binder and provisioning owners perform effects.
 See [login wait tests](../agents/tests/hub-test-login-wait.test.ts.md).
 
+## Storage boundary
+
+[ADR 0009](../adr/0009-login-storage-boundary.md) records the split between
+project login metadata, encrypted human-entered keys and harness-owned disk
+contents. The [v0.1.2 amendment](../spec/v0.1.2.md#313-accounts-and-limits)
+preserves the local names-and-paths account registry. A pool launch uses
+`LoginRecords` and `LoginBinder`; it never resolves a disk login through that
+local registry. Local launches and manually registered non-pool hosts retain
+their existing registry behavior.
+
+Agents must reuse the owners described above. `LoginRecords` owns state and
+indexed eligibility; `LoginBinder.prepare` and its finish/rollback own native
+binding; the sign-in owner pins the host through `busyHost`; the release owner
+and snapshot scheduler share `beginRelease`/`onReleased`, including `hostLost`.
+A provider response or an absent inventory row cannot replace the exact native
+cleanup receipt. Pending bindings and reader intents stay with their admitted
+owner, and a missing receipt retains the admission fence across restart.
+
+Use `mountedOpenCodeDatabase` to construct a mounted database path and the
+agent's `loginFilePath` for fake-host path translation. Neither helper permits
+reading login bytes from the hub. Tests use the existing fake harness binaries
+to rotate sentinel login files, the fake provider and transport, and the hub
+clock. They never use a real login, key, volume or network provider. The
+[write-back case](../agents/tests/hub-test-login-write-back.test.ts.md) proves
+that a later host receives the rotated file through the retained volume;
+metadata, binding and capacity tests make no native-harness claim.
+
+## Startup reconciliation owner
+
+`LoginReconciliation` in `host/login-reconcile.ts` is installed by the daemon
+inside session restoration, after `restoreHostLeaseOwners` and before the
+first pool-scaling pass. Its `start()` joins an existing pass rather than
+starting another. A pass captures candidates before reading project volume
+inventory, pages active disks and settled bindings independently at 64 rows,
+and delegates detached binding settlement to `releaseDetachedLoginBinding`.
+That shared release boundary validates project, region, exact volume and the
+captured binding episode; writers use the lost-host snapshot fence and readers
+use their existing deletion owner. A missing release owner retains the binding.
+
+The independent binding cursor reaches signed-out readers even when the original
+disk is missing. Pending native bindings and reader operations in creating or
+deleted phases stay fenced. Detached inventory is a positive release receipt;
+host disappearance or list omission alone cannot free a binding. A retained
+reader deletion intent still requires its exact-id provider deletion receipt.
+An attached volume remains bound. Unknown or gone hosts with unresolved volume
+inventory schedule another pass; a healthy attached binding needs no retry loop.
+
+Missing original volumes on active disk rows use `markSignedOut(name,
+{reason: 'volume missing', host: null})`. The `signedOut` UUID and store-clock
+timestamp identify that episode without removing its resource ownership.
+Private row revisions and binding episodes reject inventory captured before a
+new sign-in or rebind, including replacements with identical public values at
+the same clock time. Reconciliation does not create a login or run sign-in.
+
+Unavailable provider inventory leaves rows unchanged and emits one Coordinator
+Agents notice per provider in that hub lifetime. Retryable work uses a 1 s hub
+Clock timer; `close()` cancels that timer and joins the admitted pass before
+dispatcher release/snapshot owners and storage close. Unmatched project volumes
+produce `login-reconcile-unmatched-volume` diagnostics and remain intact.
+
+See [reconciliation cases](../agents/tests/hub-test-login-reconcile.test.ts.md)
+for T2 inventory, receipt, stale-episode and indexed-work assertions, and
+[host restart cases](../agents/tests/hub-test-host-restart.test.ts.md) for the
+native watchdog/deferred-detach and retained mounted-login proofs. Fixtures
+using `settledLogin` await its fake-provider volume allocation, supply their
+disposable project and shared clock, and attach to the captured machine when
+testing an attached login; invented volume ids cannot model restart persistence.
+These are references to the landed cases, not a claim that this documentation
+change reran their runtime coverage.
+
 ## Removing a login
 
 `cland login remove <name>` is restricted to the local human CLI or Neovim.
@@ -793,6 +888,30 @@ login's storage contribution from host status with its row.
 
 See [removal cases](../agents/tests/hub-test-login-remove.test.ts.md).
 
+`removeLogin` in `host/login-remove.ts` joins concurrent calls for the same
+`LoginRecords` instance and login name. `beginRemove` is the store's admission
+boundary before provider work; callers must not infer eligibility from the
+public state or reason alone. The dispatcher tracks admitted removal work
+through shutdown. In users mode the local human also needs administrative
+authority; sessions, web clients, remotes and host-origin connections cannot
+invoke `login.remove`.
+
+`LoginSnapshots.beginRemoval` joins accepted snapshot work and thaw through the
+existing release fence. If a positive snapshot receipt survived a failed
+accounting write, that owner repairs its storage lifetime and captures the
+snapshot id before checking `assertSnapshotSettled`. An unknown admission
+without a positive receipt remains fenced. The removal owner never clears
+`snapshot_admission` itself or treats an inventory omission as snapshot success.
+`confirmRemovedResource` joins each confirmed resource-id removal and
+`deleteStorage` stamp in one store transaction; final `remove` rechecks the
+claim, bindings, snapshot admission and retained storage before deleting the row.
+
+Removal also narrows the sign-out card behavior described below: a durable
+removal claim suppresses episode publication and withdraws the existing card,
+including on startup. A genuine sign-out whose reason happens to be `removing`
+still has normal card eligibility when no removal claim exists. The sign-out
+reason is diagnostic metadata, never removal authority.
+
 ## Dead-login signals
 
 On pool hosts the adapters report Claude Code `authentication_failed`,
@@ -818,6 +937,56 @@ card nor the notice contains native diagnostic bodies or login contents.
 See [component cases](../agents/tests/hub-test-login-signed-out.test.ts.md) and
 [native fake-harness cases](../agents/tests/hub-test-login-signed-out-native.test.ts.md).
 
+`deadLoginReason` in `host/login-signals.ts` classifies native error fields and
+returns a bounded signal name. Ordinary output or unrelated failures do not
+authorize sign-out. `Sessions` resolves callbacks by the admitted native session
+id and processes them only for a running row. `LoginSignals.report` requires a
+non-local host, the selected login and matching harness; a disk also needs that
+host's settled binding. A reader can report death of the shared login. Missing,
+unrelated, pending-binding and already-signed-out selections cause no new episode.
+
+All sign-outs, including a failed sign-in, use the store's `markSignedOut` receipt
+path. Its atomic UUID distinguishes episodes even at the same store-clock time;
+it preserves bindings and reader operations for their receipt owners. Callers
+must not substitute `transition(name, 'signed-out')`, which refuses. The creating
+state is also admitted by `markSignedOut` for failed sign-in settlement; a new
+sign-in clears the old receipt when it transitions to creating.
+
+`LoginCards` recovers publications from indexed `signedOutRows()` and uses
+`login-signin-cards` active metadata to retain each episode's card identity and
+notice receipt. A row lacking its episode id refuses recovery explicitly.
+Repeated reports do not reopen an answered or declined card. Not now or decline
+keeps the login signed-out; it grants no sign-in operation. The card's presence
+is not a native sign-in receipt. These signal and publication cases preserve
+running sessions; they make no claim that a live harness picks up refreshed
+login files without relaunch.
+
+## Sign-in owner entry points
+
+Renewal enters `preparePoolLogin` with `signin: true`; it uses the captured writer's
+pool and ready host, or the existing disk's storage pool for an unbound login.
+`prepareExistingLoginSignIn` owns mounted-writer completion and is also reused
+after the ordinary preparation path mounts an unbound existing volume. It
+requires the captured Machine and `snapshotHostIdentity` before native work.
+Use these entry points with `beginSignIn`/`finishSignIn`, rather than a generic
+state transition or a second mount/sign-in path. `busyHost` pins the same owner.
+
+`recoverLoginSignIns` runs after volume reconciliation and before scaling,
+using indexed active admissions and host cursors. It invalidates orphaned
+completion authority without restarting a terminal. `settleLoginSignInsForHost`
+uses the release owner's persisted `machineDeletionRead` and captured Machine;
+it cannot borrow a replacement host's deletion or a detached inventory reading.
+`assertNotSigningIn` also guards `beginRemove`, so a temporarily mounted unbound
+login still refuses removal while that interrupted writer fence stands.
+
+See [sign-in cases](../agents/tests/hub-test-login-signin.test.ts.md),
+[restart recovery cases](../agents/tests/hub-test-login-signin-recovery.test.ts.md)
+and [native renewal cases](../agents/tests/hub-test-login-resignin-native.test.ts.md).
+The native cases use the existing fake harnesses and directory provider; they
+prove native close, binding preservation and snapshot settlement, not live
+subscription behavior. References here describe landed coverage; this
+documentation change does not rerun those runtime cases.
+
 ## Relaunch after sign-in
 
 `[hosts] relaunch_after_signin` is a boolean defaulting to false. `cland init`
@@ -835,3 +1004,132 @@ fallback is requested. Real hosts still require their native harness, SSH and
 provider availability; tests use only fake hosts and adapters.
 
 See [relaunch cases](../agents/tests/hub-test-login-relaunch.test.ts.md).
+
+The sign-in owner calls `afterSignIn(host, harness)` after committing
+`finishSignIn`, rather than relaunching from a CLI result or card publication.
+`Sessions.relaunchAfterSignIn` captures the active rows on that host, then
+revalidates session id, harness conversation and host for each candidate.
+Its admission callback runs inside the existing resume lifecycle slot before
+directory or native work and requires the same host generation, running state
+and no archive. A queued stop, archive or newer resume can supersede the
+automatic operation. The relaunch owner does not turn that supersession into
+a request to start a stopped session.
+
+Use the shared hook and resume owner for every renewal front end. A relaunch
+failure can make the command report an error after durable sign-in success;
+inspect the committed login and named failed sessions rather than inferring
+that the sign-in itself rolled back. The disabled setting requires no native
+process replacement, and no relaunch here requests a fresh conversation.
+
+## Agent-owned interactive sign-in
+
+An SSH Host's optional `signIn({harness, path}, onOutput)` uses the authenticated
+agent operation advertised by `signin-v1`. It shares the terminal flow's public
+harness command grammar; it does not accept arbitrary command arguments. Older
+agents and Hosts without this method refuse before native work. See the
+[transport contract](ssh-host.md#interactive-sign-in) for the wire operations.
+
+`SignInRun` pins one connection and admission. Its `write(text)` registers input
+with both agent-side in-memory stream redactors before writing stdin. Output
+callbacks carry admission, stdout/stderr and text, bounded to 4096 UTF-8 bytes
+per chunk and 64 KiB total. Raw or rendered output overflow stops the owned
+tree and reports `outcome: 'output-limit'`. Input never enters argv; raw input
+and output are absent from persisted agent operation receipts and history.
+
+The `closed` promise and `cancel()` require the matching admission's native
+tree-close receipt, with an exit code or signal and a synced operation
+checkpoint. Null code and null signal are incomplete. The disk mutation lease
+is held through persistence, so an unmount cannot race a live sign-in writer.
+Input and cancellation remain available while an unmount waits. Each peer owns
+only its own admissions; a replacement connection cannot inherit them.
+
+Only proven pre-native refusal carries `nativeAdmission: 'not-admitted'`:
+`CLAND_SIGNIN_UNAVAILABLE` for missing capability, `CLAND_SIGNIN_REFUSED` for
+validation/writer admission, or `CLAND_SIGNIN_SPAWN_REFUSED` for a pre-native
+spawn refusal. Other failures, lost transport and missing close are incomplete
+native outcomes. They grant no cleanup or success authority. Renewal and
+new-login creation share the interrupted sign-in owner and exact-machine fence;
+both retain disk ownership without unmount or detach on owner loss. Elapsed
+time or local SSH closure cannot substitute for this agent operation's receipt.
+
+Failed close persistence/publication retains the operation and disk lease;
+disk mutations refuse with `writers-remain`. Agent shutdown joins all admitted
+peer work and reports incomplete owners. Completed native objects retire only
+after checkpointing; at most 32 receipt-only entries per peer support repeated
+cancel without granting process authority. See
+[interactive sign-in cases](../agents/tests/hub-test-host-agent-signin-op.test.ts.md)
+for native fake-harness and T1 companion coverage. These links describe landed
+cases; this documentation change does not rerun them or perform a real login.
+
+## Sign-in from a card: secret answers and expiry
+
+`LoginCardSignIn` owns card orchestration around `preparePoolLogin` and the
+captured Host's `signIn` operation. Card handlers persist the accepted intent
+with the answer and start work only after commit. Renewal rechecks the stored
+sign-out episode and removal claim. Parsed native output publishes the code card
+only after its admission matches the returned run; input ownership is armed in
+that publication transaction. There is no second disk completion or relaunch
+owner behind the card.
+
+Claude Code's text answer is registered with the project redactor before input
+is sent; the agent separately registers it before stdin. The secret hub-card
+path carries raw text only in a memory-only dispatch argument after checking
+the stored hub identity. Persisted answers, handler outcomes, journal and mirrors
+contain only `answered`, including when a handler returns its input. Secret
+voice replies refuse before download or transcription. See
+[secret hub-card answers](asks-and-the-inbox.md#hub-cards) for the shared path.
+
+The captured native message identity and deletion obligation commit with the
+secret answer before acknowledgement. `SecretAnswerCleanupOwner` recovers the
+indexed obligations without needing the message text or its hash. It joins
+duplicate work, retries transient or unknown deletion outcomes on the hub clock
+from 1 s up to 30 s, and joins admitted work before adapter shutdown. Telegram
+and Discord delete the exact message where supported; unsupported or positively
+refused deletion yields one keyed line asking the human to delete it. Native
+absence confirmation settles cleanup; a sent request alone does not.
+
+The 15-minute deadline begins at accepted intent time and includes preparation.
+Expiry immediately closes input and withdraws the code card, then asks the native
+owner to cancel. Only the matching native close or a typed pre-native refusal
+permits failed completion and disk cleanup. Unknown renewal and new-login
+creation use the shared interrupted sign-in fence, retaining the attached/mounted
+disk. Unknown new-login creation withdraws its card and reports the persisted
+login/host identities once; it performs no cleanup or second fence. Recovery pages accepted intents at
+64 per event-loop turn through a captured sequence boundary and never replays
+native sign-in.
+
+See [owner cases](../agents/tests/hub-test-login-card-signin-owner.test.ts.md),
+[remote secret cases](../agents/tests/hub-test-login-card-signin-remote.test.ts.md)
+and [intent recovery cases](../agents/tests/hub-test-login-card-recovery.test.ts.md).
+These are landed component references, not runtime executions by this change.
+
+## Shared new-login interruption and recovery
+
+New disk sign-ins from the CLI and a card's Create one enter the same private
+sign-in admission as renewal. After the volume is persisted,
+`LoginRecords.beginAddSignIn` captures the unbound creating disk and exact Host
+machine/identity before attach and mount. `prepareLoginSignIn` now returns the
+shared `interrupt()` boundary as well as `complete()`. This supersedes the
+earlier new-login cut that retained only a creating row on unknown native outcome.
+
+Peer loss, hub shutdown or an uncertain card run interrupts that owner without
+unmounting or detaching. `markSignedOut` records `sign-in interrupted` and its
+captured host, and the retained admission refuses another sign-in or removal.
+The disk remains attached until this owner confirms its own native close and
+cleanup, or the release owner observes that exact machine's persisted deletion
+receipt. An already-admitted close-confirmed completion is joined rather than
+replaced by interruption; after interruption invalidates the token, a late
+completion cannot acquire cleanup authority.
+
+Startup uses the existing indexed `recoverLoginSignIns` and exact-machine
+settlement path for both adds and renewals. No timer, missing inventory row or
+replacement machine grants recovery authority. A post-child-close CLI frame on
+its pending connection or the matching card operation's native close remains
+the completion receipt; a dispatcher-synthesized null result is not one.
+
+See [new-login component cases](../agents/tests/hub-test-login-add-component.test.ts.md),
+[host-pin cases](../agents/tests/hub-test-login-host-pin.test.ts.md) and
+[card-owner cases](../agents/tests/hub-test-login-card-signin-owner.test.ts.md)
+for shared-owner interruption and unchanged close-confirmed cleanup. These
+references describe landed tests; this documentation item makes no new native
+execution claim.
