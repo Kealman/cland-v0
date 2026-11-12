@@ -11,4 +11,12 @@ facts, page-only metadata and absent list actions.
 
 T-1472 adds the actual Sessions row's `deaf` rendering after held human input
 ages beyond five minutes, then observes the injection receipt and rendered idle
-row. Use the isolated Headless Shell; build current web/dist first.
+row. Use the isolated Headless Shell. The file's prerequisite ensures a current
+web bundle before cases run; a pre-existing `web/dist` is not required.
+
+`Sessions remote host fact names its host with a tooltip on ground and selection`
+launches fake Codex sessions through `session.launch` on a registered `testHost`
+and on `local`. It reads the remote id and tooltip from the desktop row, checks
+the inherited contrast-checked muted colour before and after selection, and
+checks that the local row has no host fact. Native operations on the fake host
+refuse; directory admission is synthetic. No provider or external network runs.

@@ -15,8 +15,15 @@ group: the test observes the expanded group and focused row for both Back paths.
 Stop and Archive confirm in place, cancellation leaves the page open, and scratch CLI receipts
 prove their persisted outcomes; all four lifecycle/capability controls and
 confirmation buttons meet 44 px. No live hub, real harness or GUI browser runs.
-Build first; run phone*.test.ts, sessions.test.ts, session-actions.test.ts,
+The file ensures a current web bundle before running; it needs no prebuilt
+`web/dist`. Run phone*.test.ts, sessions.test.ts, session-actions.test.ts,
 session-launch.test.ts, accounts.test.ts and key-contexts.test.ts targeted.
 After any resize, observe `data-phone` before measuring. New passing Web
 identities reaching four seconds need a dated E-880 allowance with the run and
 about 1.5× its worst passing sample.
+
+`phone session page names a remote host and omits the local host` launches fake
+Codex sessions on a registered `testHost` and `local`, taps each actual row and
+reads its page. The remote page shows the host id with its tooltip; the local
+page omits that fact. Directory admission is synthetic, and native host operations
+refuse. The test uses no provider or external network.

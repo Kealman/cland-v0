@@ -19,6 +19,7 @@ export function SessionPage({ connection, selected, controls, closePage, childre
         <dt>Harness</dt><dd>{row.harness ?? '—'}</dd>
         <dt>Model</dt><dd>{row.model ?? '—'}</dd>
         <dt>Account</dt><dd>{row.account ?? '—'}</dd>
+        {row.host && row.host !== 'local' && <><dt>Host</dt><dd title="Host the session runs on">{row.host}</dd></>}
         <dt>State</dt><dd>{row.live ? row.stateReason ?? row.state : row.status}</dd>
         <dt>Usage</dt><dd>{usage ? `${usage.totalTokens} tok${usage.cost === undefined ? '' : ` · $${usage.cost.toFixed(2)}`}` : '—'}</dd>
       </dl>

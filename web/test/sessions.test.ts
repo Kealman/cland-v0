@@ -8,6 +8,34 @@ import type { HarnessProcessView } from '../../shared/wire/index.ts';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { resizePage, pageUntil, webFixture } from './harness.ts';
+import { sessionHostFixture } from './session-host-fixture.ts';
+
+test('Sessions remote host fact names its host with a tooltip on ground and selection', async t => {
+  const fixture = await sessionHostFixture(t);
+  const ui = await connectUi(t, fixture.hub.discovery);
+  for (const [name, host] of [['remote-worker', 'fake-host'], ['local-worker', 'local']] as const) {
+    const reply = await ui.request({ type: 'session.launch', name, host, harness: 'codex' });
+    assert.equal(reply.ok, true, reply.error);
+  }
+  await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    const row = page.locator('[data-object-id="remote-worker"]');
+    await row.waitFor();
+    const host = row.getByTitle('Host the session runs on', { exact: true });
+    assert.equal(await host.textContent(), 'fake-host');
+    assert.equal(await host.isVisible(), true);
+    const color = await host.evaluate(node => getComputedStyle(node).color);
+    assert.equal(color, 'rgb(138, 148, 163)', 'host inherits the contrast-checked muted token');
+    await row.click();
+    assert.equal(await row.getAttribute('aria-pressed'), 'true');
+    assert.equal(await host.evaluate(node => getComputedStyle(node).color), color);
+    assert.equal(await host.isVisible(), true);
+    const local = page.locator('[data-object-id="local-worker"]');
+    await local.waitFor();
+    assert.equal(await local.getByText('local-worker', { exact: true }).textContent(), 'local-worker');
+    assert.equal(await local.getByTitle('Host the session runs on', { exact: true }).count(), 0);
+  });
+});
 
 test('Sessions groups count fake sessions and remember folds without hub requests', async t => {
   const fixture = await webFixture(t);

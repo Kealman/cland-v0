@@ -50,6 +50,7 @@ export function SessionRow({ row, selected, groupOpen, select, connection, now, 
         <span className={s.meta} title={[row.harness, row.model, row.account].filter(Boolean).join(' · ')}>
           <span>{row.harness ? harnesses[row.harness] ?? row.harness : '—'}</span>
           <span className={s.pageFact}>{row.model ?? '—'}</span><span className={s.pageFact}>{row.account ?? '—'}</span>
+          {row.host && row.host !== 'local' && <span className={s.pageFact} title="Host the session runs on">{row.host}</span>}
         </span>
         <span className={s.item} data-item-requested={row.itemRequested} title={row.holds.map(hold => `${hold.item} ${hold.role}`).join(', ')}>
           {row.item ?? 'free'}{row.itemKind && row.itemKind !== 'item' ? ` ${row.itemKind}` : ''}{row.additionalHolds > 0 ? ` +${row.additionalHolds}` : ''}

@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { cland, connectUi } from '../../hub/test/harness.ts';
 import type { HarnessProcessView } from '../../shared/wire/index.ts';
 import { pageUntil, webFixture } from './harness.ts';
+import { sessionHostFixture } from './session-host-fixture.ts';
 
 test('phone Sessions shows counts, one account row and two-line sessions without row actions', async t => {
   const fixture = await webFixture(t, { accountReader: async account => account.name === 'empty' ? [] : [
@@ -207,5 +208,30 @@ test('phone verify line opens the shared queue in a full-height sheet and Close 
     await page.keyboard.press('Escape');
     assert.equal(await sheet.count(), 0);
     assert.equal(await line.evaluate(node => node === document.activeElement), true);
+  }, undefined, { phone: true });
+});
+test('phone session page names a remote host and omits the local host', async t => {
+  const fixture = await sessionHostFixture(t);
+  const ui = await connectUi(t, fixture.hub.discovery);
+  for (const [name, host] of [['remote-worker', 'fake-host'], ['local-worker', 'local']] as const) {
+    const reply = await ui.request({ type: 'session.launch', name, host, harness: 'codex' });
+    assert.equal(reply.ok, true, reply.error);
+  }
+  await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).tap();
+    for (const name of ['remote-worker', 'local-worker']) {
+      await page.locator(`[data-object-id="${name}"]`).tap();
+      const detail = page.locator('[data-area-module="Sessions"][data-area-surface="page"]');
+      await detail.locator('dl').waitFor();
+      const identity = detail.locator('dt').filter({ hasText: /^Session$/ }).locator('+ dd');
+      await identity.filter({ hasText: new RegExp(`^${name}$`) }).waitFor();
+      assert.equal(await identity.textContent(), name);
+      const host = detail.getByTitle('Host the session runs on', { exact: true });
+      if (name === 'remote-worker') {
+        assert.equal(await host.textContent(), 'fake-host');
+        assert.equal(await host.isVisible(), true);
+      } else assert.equal(await host.count(), 0);
+      await page.getByRole('button', { name: 'Back to Sessions', exact: true }).tap();
+    }
   }, undefined, { phone: true });
 });
