@@ -41,7 +41,7 @@ inventory and ownership records must report failed/incomplete, never released.
 
 QA can run this file in stage 1 without real SSH or a cloud account. Read the
 individual case receipts rather than treating a zero exit as proof of all cases.
-No CLI or browser demonstration is shipped by this item. Existing SSH lifecycle
+The test-only native tunnel control below supplies a CLI scratch demonstration; it opens no browser. Existing SSH lifecycle
 regressions exercise the unchanged createFakeHost signature and directory shape;
 heavy runs take the Coordinator's preservation lock.
 
@@ -71,3 +71,36 @@ requests. Production DigitalOcean refusal parity with acquire is covered in
 host-provider-digitalocean-prepare and the public create CLI admission test.
 `fake provider refuses underscore pools consistently with config` proves direct
 acquire and reap reject `agents_1` using the shared pool grammar.
+
+
+## Scratch hub tunnel outage control
+
+QA must use a disposable fake-provider project and its sealed fixture environment,
+with `CLAND_FAKE_HOST_ROOT` set to that exact scratch root. Set up fake SSH/SCP,
+prepare the fake pool and start the hub through the CLI as in
+[host-tunnel-outage-native.test.ts](hub-test-host-tunnel-outage-native.test.ts.md).
+Use the provisioned host id from `cland host create agents`, not a PID or address.
+The exact repository-relative commands (replace both placeholders with literal
+scratch paths/ids in the brief) are:
+
+```sh
+node hub/test/fakes/host-tunnel-control.ts /absolute/scratch/root host-id down
+node hub/test/fakes/host-tunnel-control.ts /absolute/scratch/root host-id up
+```
+
+Run these through `fixtureEnvironment(root, base, overlays)` with
+`CLAND_FAKE_HOST_ROOT: root` in overlays. Never inherit accounts, provider
+credentials or Git variables. `down` writes only the fake transport's
+`tunnel-down` fence, then asks its authenticated live master to terminate itself.
+The fake provider still reports ready. `up` removes that fence; the hub's normal
+reconnect clears the outage. A successful command acknowledges the control;
+QA must separately observe the named host's outage alert and its cleared frame
+(or rendered row). The native test names a 3000 ms end-to-end outage bound,
+including control process startup and publication throttling, and a separate
+setup-style recovery bound. Neither changes the three-minute General warning.
+
+The control refuses a mismatched root opt-in, missing/non-fake provision,
+non-fake configured pool, foreign canonical storage, mismatched provider project/pool, and foreign/stale master owner. Existing marker files also refuse a new down operation before any master request. It never reads a PID
+as signal authority and never sends a native signal: the authenticated fake
+master owns termination. The control script is test support only, with no
+production command, protocol or role permission. Do not use it on real hosts.

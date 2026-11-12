@@ -23,9 +23,16 @@ export async function fakeHost(env: NodeJS.ProcessEnv, name: string) {
   const directory = hostDirectory(env.CLAND_FAKE_HOST_ROOT, name);
   fakeHostSocketPath(join(directory, 'home'));
   await access(join(directory, 'host-key.pub'));
-  try { await access(join(directory, 'gone')); } catch { return { directory, home: join(directory, 'home') }; }
-  throw new Error('unreachable fake host');
+  for (const marker of ['gone', 'tunnel-down']) {
+    try { await access(join(directory, marker)); } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      throw error;
+    }
+    throw new Error('unreachable fake host');
+  }
+  return { directory, home: join(directory, 'home') };
 }
+
 export async function hostPath(home: string, path: string): Promise<string> {
   const root = await realpath(home);
   const input = path.replace(/^~\//, '');

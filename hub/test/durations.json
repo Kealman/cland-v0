@@ -15505,6 +15505,13 @@
       "added": "2026-11-12",
       "expires": "2026-11-19",
       "reason": "T-1821 macOS arm64 Node 24.21 native fake-provider and headless Neovim sample 5.211s including setup and joined cleanup; Linux 1.6x is an unexecuted projection, allowance ceil(1.5x projection). No real provider or browser. Duration policy report mode."
+    },
+    "hub/test/host-tunnel-outage-native.test.ts::native tunnel outage pushes host alert and CLI scratch control restores it": {
+      "seconds": 22,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1839 macOS arm64 Node 24.21 native fake-only lone green 5.699 s includes CLI hub creation, control startup, pushed receipts and joined cleanup. 22 s projects at least 2.5x lone worst for full-suite Linux load; Linux projection is unexecuted. No browser or real provider; duration policy report mode."
     }
   }
 }
