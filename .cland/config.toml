@@ -41,7 +41,9 @@ test_component = "node hub/test/run-suite.ts --tier T2"
 test_integration = "node hub/test/run-suite.ts --tier T3"
 # test_soak runs at occasions and in the nightly soak (T4).
 test_soak = "node hub/test/run-suite.ts --tier T4"
-executor = "droplet"
+# Human decision 2026-11-13 14:33Z (ask cbf7f06f): run verification locally on the Mac while droplet SSH delivery
+# fails in every region (T-1842); switch back to "droplet" once delivery works.
+executor = "local"
 # Allow default droplet requests to use the local slot when remote is unavailable.
 local_fallback = false
 # Concurrent machine test files; the free shard always uses one worker.
