@@ -1168,3 +1168,21 @@ the confirmed snapshot id or the hub/provider refusal, including the provider's
 snapshot window. Key logins offer Remove only. These actions use the existing
 authenticated web authority (an active admin in users mode), and refresh through
 `login.list` after the hub result.
+
+The Hosts view offers Add per pool. Its harness list combines the pool's role
+harnesses and actual eligible login harnesses (keys, or disks matching the pool’s provider and region); all-zero summary keys contribute no choice. Name is optional. Add sends `login.add`, and
+Sign in again on a signed-out disk sends `login.signin`. Both use the hub's
+card runner. The returned card appears inline on the login line with its link
+and device code, alongside its existing inbox and remote copies. The hub adds optional `signInLogin` metadata to its sign-in card and flattened inbox projection, derived only from its persisted hub card payload. It contains the login name and no native admission, URL or answer. The view matches open cards by that authoritative name, including when it folds or reloads before the initiating request returns. It also keeps captured login/card IDs in tab sessionStorage for older hubs that lack the optional field; that fallback restores only associations already received. Known terminal IDs are pruned. No answer is stored there. Claude's inline
+Sign-in code field sends `topic.answer` on that card and clears before the
+request. It keeps no draft in React state or browser storage. Answering elsewhere
+folds the same card; expiry stops input and the login line reads the hub's state
+and signed-out reason after native settlement. Login changes wake waiting launches;
+the inbox names the current login or boot wait until placement commits.
+
+Web `login.add` and `login.signin` wait up to 16 minutes for the card receipt:
+this includes cold-host preparation and the sign-in owner's 15-minute lifetime,
+plus one minute for its receipt. Other web commands keep their 10-second default.
+While the request is pending the initiating control remains disabled. A missing
+receipt remains unknown; the client neither declares native failure nor resends
+the request. The hub's sign-in expiry and exact native close rules are unchanged.

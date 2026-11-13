@@ -15526,6 +15526,77 @@
       "added": "2026-11-12",
       "expires": "2026-11-19",
       "reason": "T-1839 macOS arm64 Node 24.21 native fake-only lone green 5.699 s includes CLI hub creation, control startup, pushed receipts and joined cleanup. 22 s projects at least 2.5x lone worst for full-suite Linux load; Linux projection is unexecuted. No browser or real provider; duration policy report mode."
+    },
+    "web/test/hosts-view.test.ts::Hosts native codex Add completes the fake harness disk sign-in": {
+      "seconds": 35,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1827 macOS arm64 Node24.21 local native Web fake-only Add plus renewal retained samples: precommit 9.951764084 s Codex/9.446631875 s Claude, source1 final 8.947637541 s Codex/9.870653208 s Claude, causal correction 6.887749167 s Codex/6.598312167 s Claude. 35 s exceeds 2.5x worst 9.951764084 s for full-suite Linux load. Includes setup, browser and joined native cleanup. Linux projection unexecuted; duration policy report mode."
+    },
+    "web/test/hosts-view.test.ts::Hosts native claude-code Add completes the fake harness disk sign-in": {
+      "seconds": 35,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1827 macOS arm64 Node24.21 local native Web fake-only Add plus renewal retained samples: precommit 9.951764084 s Codex/9.446631875 s Claude, source1 final 8.947637541 s Codex/9.870653208 s Claude, causal correction 6.887749167 s Codex/6.598312167 s Claude. 35 s exceeds 2.5x worst 9.951764084 s for full-suite Linux load. Includes setup, browser and joined native cleanup. Linux projection unexecuted; duration policy report mode."
+    },
+    "web/test/hosts-view.test.ts::Hosts Add shows the shared codex card and clears sent input after slow preparation": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1827 delayed receipt Web regression, macOS arm64 Node24.21 lone samples 3.231382541s Add and 2.060452958s renewal including browser setup/cleanup. Bound advances 10.001s only on aligned hub/browser clocks, not real time. 8s covers Linux 1.6x unexecuted projection with 1.5x headroom; duration policy report mode."
+    },
+    "web/test/hosts-view.test.ts::Hosts renew shows the shared codex card and clears sent input after slow preparation": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1827 delayed receipt Web regression, macOS arm64 Node24.21 lone samples 3.231382541s Add and 2.060452958s renewal including browser setup/cleanup. Bound advances 10.001s only on aligned hub/browser clocks, not real time. 8s covers Linux 1.6x unexecuted projection with 1.5x headroom; duration policy report mode."
+    },
+    "web/test/hosts-view.test.ts::Hosts Add shows the shared codex card and clears sent input at previous wire shape": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1827 authoritative identity Web control; macOS arm64 Node24.21 precommit worst 2.737118333s (old-shape) and 2.137309792s (held remount/reload), setup/cleanup included. 8s covers Linux 1.6x unexecuted projection with1.5x headroom; hub/browser clocks aligned, no real10s sleep; duration policy report mode."
+    },
+    "web/test/hosts-view.test.ts::Hosts Add shows the shared codex card and clears sent input after slow preparation before receipt fold": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1827 authoritative identity Web control; macOS arm64 Node24.21 precommit worst 2.737118333s (old-shape) and 2.137309792s (held remount/reload), setup/cleanup included. 8s covers Linux 1.6x unexecuted projection with1.5x headroom; hub/browser clocks aligned, no real10s sleep; duration policy report mode."
+    },
+    "web/test/hosts-view.test.ts::Hosts Add shows the shared codex card and clears sent input after slow preparation before receipt reload": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1827 authoritative identity Web control; macOS arm64 Node24.21 precommit worst 2.737118333s (old-shape) and 2.137309792s (held remount/reload), setup/cleanup included. 8s covers Linux 1.6x unexecuted projection with1.5x headroom; hub/browser clocks aligned, no real10s sleep; duration policy report mode."
+    },
+    "web/test/hosts-view.test.ts::Hosts renew shows the shared codex card and clears sent input after slow preparation before receipt fold": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1827 authoritative identity Web control; macOS arm64 Node24.21 precommit worst 2.737118333s (old-shape) and 2.137309792s (held remount/reload), setup/cleanup included. 8s covers Linux 1.6x unexecuted projection with1.5x headroom; hub/browser clocks aligned, no real10s sleep; duration policy report mode."
+    },
+    "web/test/hosts-view.test.ts::Hosts renew shows the shared codex card and clears sent input after slow preparation before receipt reload": {
+      "seconds": 8,
+      "owner": "C-216",
+      "added": "2026-11-12",
+      "expires": "2026-11-19",
+      "reason": "T-1827 authoritative identity Web control; macOS arm64 Node24.21 precommit worst 2.737118333s (old-shape) and 2.137309792s (held remount/reload), setup/cleanup included. 8s covers Linux 1.6x unexecuted projection with1.5x headroom; hub/browser clocks aligned, no real10s sleep; duration policy report mode."
+    },
+    "web/test/hosts-view.test.ts": {
+      "file": true,
+      "seconds": 96,
+      "owner": "C-216",
+      "added": "2026-11-13",
+      "expires": "2026-11-20",
+      "reason": "T-1827 aggregates 26 isolated Web cases, including fake native Add/renew, card recovery, secrecy and real pool/inbox placement, with setup and joined cleanup. Linux x64 droplet Node24.21.0 samples: A-19151 run f15148a2 at 9376e892a measured 58.606977699s; A-19157 batch e8e3f2ee at 35fbcd8e45 (same normalized tree) measured 63.436127674s, all 26 assertions passed in each. Both retained samples replay through checkDurations. Coordinator authorized this file-only allowance; 96s rounds up 1.5x the worst Linux sample (95.154191511s) for full-suite timing variation. Individual test allowances and report-mode tier budgets remain unchanged."
     }
   }
 }

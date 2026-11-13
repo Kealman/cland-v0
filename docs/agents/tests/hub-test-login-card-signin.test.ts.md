@@ -37,10 +37,14 @@ date is introduced in this native fixture.
 
 An observer calls real preparePoolLogin unchanged and wraps only the prepared
 Host operation for diagnostics before start. It records bounded output in memory
-and observes its actual close, including before any prompt. On incomplete cases,
-full bounded streams are redacted and secret-scanned before taking a 3000-character
-tail; missing close stays explicitly incomplete. The operation, output bytes,
-input and native ownership are forwarded unchanged.
+and observes its actual close, including before any prompt. It redacts each full
+bounded stream before taking a 3000-character tail; missing close stays explicitly
+incomplete. The native test reporter secret-scans the entire selected publication
+(trace, receipt metadata, hub-log tail and login states) before emitting it, and
+withholds the entire diagnostic on a scan refusal. The observer itself has no QA
+skill dependency, so the Web compiler-input closure can include it without pulling
+skill files into linked compiler fixtures. The operation, output bytes, input and
+native ownership are forwarded unchanged.
 
 Setup observations use `eventually`/`testWaitMs`. Missing receipts fail explicitly;
 test-producer termination is never substituted for the native operation receipt.
@@ -50,8 +54,8 @@ at a time, with inherited `CLAND_*` stripped and a between-file stop file. Allow
 for measured cases at or above the platform threshold must accompany the final
 head; do not transfer another case's timing baseline.
 
-This guide describes the cases. The new file runs diagnostically before source
-review; final directed native evidence runs at the source-cleared head. Actual
-receipts and failed attempts stay in the item evidence. Component parsing/refusal/recovery controls
+Local targeted runs provide partial evidence; final directed native evidence
+names its committed head. Actual receipts and failed attempts stay in the item
+evidence. Component parsing/refusal/recovery controls
 are in the owner/remote/recovery guides. Full T3 is the merge-queue batch and T4
 belongs to the stage/epic occasion.

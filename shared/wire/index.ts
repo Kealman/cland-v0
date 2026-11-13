@@ -177,6 +177,8 @@ export type AskOutcome = { userId?: string; by: string; at: string; via?: Via | 
 
 // hub/src/protocol.ts
 export type AskCard = {
+  /** Login name from trusted persisted hub sign-in metadata; absent on older hubs. */
+  signInLogin?: string;
   question: string;
   /** The numbered options, 1 first; may be empty when only a free answer makes sense. */
   options: string[];
@@ -252,7 +254,7 @@ export type ThreadRun = {
 };
 
 // hub/src/protocol.ts
-export type InboxAsk = { secret?: true; layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; fromRole?: string; label: string; ts: string; since: string };
+export type InboxAsk = { signInLogin?: string; secret?: true; layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; fromRole?: string; label: string; ts: string; since: string };
 
 // hub/src/protocol.ts
 export type ApprovalChoice = 'once' | 'always' | 'deny';

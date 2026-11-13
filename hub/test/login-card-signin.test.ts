@@ -16,6 +16,7 @@ import {hostDirectory} from '../../shared/fake-host-directory.ts';
 import {parseSignInClose} from '../src/host/agent/signin-types.ts';
 import {nativeSignInTrace,NATIVE_CARD_INPUT} from './login-card-signin-trace.ts';
 import {remoteRedactor} from '../src/remote/redact.ts';
+import {assertPublishable} from '../../.agents/skills/qa/qa-demo-policy.ts';
 
 function diagnostic(t:test.TestContext,f:Awaited<ReturnType<typeof fixture>>,store:Store,trace:ReturnType<typeof nativeSignInTrace>){
  let complete=false;const captured:Array<{directory:string;admission:string}>=[];
@@ -27,7 +28,9 @@ function diagnostic(t:test.TestContext,f:Awaited<ReturnType<typeof fixture>>,sto
   }));
   let tail='log unavailable';
   try{const file=await open(join(f.root,'.cland/log/hub.log'),'r');try{const info=await file.stat(),bytes=Buffer.alloc(Math.min(3000,info.size));await file.read(bytes,0,bytes.length,Math.max(0,info.size-bytes.length));tail=remoteRedactor([NATIVE_CARD_INPUT]).text(bytes.toString());}finally{await file.close();}}catch{}
-  t.diagnostic(JSON.stringify({outcome:'native card integration incomplete',native:trace.diagnostics(),receiptFiles:native,logTail:tail,logins:store.hosts.logins.list().map(row=>({name:row.name,state:row.state}))}));
+  const publication={outcome:'native card integration incomplete',native:trace.diagnostics(),receiptFiles:native,logTail:tail,logins:store.hosts.logins.list().map(row=>({name:row.name,state:row.state}))};
+  try{assertPublishable(publication);t.diagnostic(JSON.stringify(publication));}
+  catch{t.diagnostic(JSON.stringify({outcome:'native card integration incomplete',reason:'diagnostic withheld by secret scan'}));}
  });
  return {capture:(directory:string,admission:string)=>captured.push({directory,admission}),complete:()=>{complete=true;}};
 }
@@ -83,7 +86,7 @@ for(const deletion of [true,false])test(`native Claude card creates and renews o
  assert.equal(ready.volumeId,volume);assert.ok(ready.lastSignIn);
  const firstClose=JSON.parse(await readFile(join(runs,firstAdmission+'.json'),'utf8'));
  assert.deepEqual(parseSignInClose(firstClose,firstAdmission),{admission:firstAdmission,state:'closed',code:0,signal:null});
- for(const {frames} of [telegram,discord])await eventually('exact first code card folded on remote',()=>frames.some(frame=>frame.type==='ask'&&frame.ask===code.id&&frame.card.state==='answered')?true:undefined);
+ for(const {frames} of [telegram,discord]){await eventually('exact first code card folded on remote',()=>frames.some(frame=>frame.type==='ask'&&frame.ask===code.id&&frame.card.state==='answered')?true:undefined);const projected=frames.find(frame=>frame.type==='ask'&&frame.ask===code.id&&frame.card.state==='answered');assert.equal(projected?.type==='ask'&&projected.card.signInLogin,creating.name);}
  await eventually('native first secret-message effect observed',()=>deletion?telegram.remote.deleted.length===1:telegram.remote.testLines.length===1);
  assert.deepEqual(telegram.remote.deleted,deletion?[{chatId:'101',messageId:'native-first'}]:[]);
  assert.equal(telegram.remote.testLines.length,deletion?0:1);
@@ -126,6 +129,7 @@ test('native Codex card completes device sign-in without an answer',{timeout:tes
  const ready=await eventually('native Codex ready and snapshot persisted',()=>{const row=store.hosts.logins.get('codex-1');return row?.state==='ready'&&row.kind==='disk'&&row.snapshotIds.length===1?row:undefined;});
  const delivered=await eventually('native Codex link and device code delivered',()=>telegram.frames.find(frame=>frame.type==='message'&&frame.message.text.includes('https://login.example.test/codex')&&frame.message.text.includes('FAKE-1234')));
  assert.equal(delivered.type,'message');if(delivered.type!=='message')throw Error('missing exact Codex card');
+ assert.equal(delivered.message.ask?.signInLogin,'codex-1');
  const card=store.ask(delivered.message.id)!;assert.equal(card.hubKind,'login-signin-code');assert.equal(card.secret,false);assert.equal(card.state,'withdrawn');
  const host=store.hosts.provisions.list()[0]!,admission=(card.payload as {admission:string}).admission;
  evidence.capture(join(hostDirectory(f.root,host.machine!.id),'home/.cland-host/run/signins'),admission);

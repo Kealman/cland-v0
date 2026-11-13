@@ -13,7 +13,7 @@ An **ask** is a question the Coordinator puts to the human inside a topic (spec 
 - **Withdrawn and cancelled.** `resolve` (the Coordinator's tool or the human's `topic.resolve`) withdraws the topic's open asks; when the human withdrew them, each asker gets a hub note in the topic (a notice of kind `ask-closed`, through `noticeInTopic`). Closing the topic (`topic.close`) or its bound item cancels its open asks, and each asker gets a hub note (`cland hub: your ask "…" was cancelled: T-1 was closed`). A note does not reopen the topic.
 - **Events.** The `message` event of an ask carries `message.ask` (`AskCard`, below); every change of an ask's state is an `ask` event, `{"type":"ask","topic","ask":"<id>","card":AskCard}`. `topic.history` returns each ask with its card and each answer with `answerTo`. The log and the journal record `ask`, `ask-answered`, `ask-withdrawn`, `ask-cancelled`; Agents records none of it (asks and answers are the human's, not agent-to-agent traffic).
 
-`AskCard` is `{"question","options":[…],"free","state":"open|answered|withdrawn|cancelled","answer"?:"<message id>","option"?:n}`.
+`AskCard` is `{"question","options":[…],"free","state":"open|answered|withdrawn|cancelled","answer"?:"<message id>","option"?:n,"signInLogin"?:"<login name>"}`.
 
 ### Hub cards
 
@@ -23,10 +23,10 @@ message id; `withdraw(id, reason)` folds it with that reason; and
 `onAnswer(kind, handler)` registers its owner. This is an internal service, with
 no new remote request or authority. The existing inbox and ask frames show
 `from: hub`, with the same options and first-answer gate as Coordinator asks.
-Kind and JSON payload stay in the asks store. Secret hub cards additionally
+Raw kind and JSON payload stay private in the asks store. A trusted hub-owned `login-signin-code` card additionally projects only its persisted payload’s login name as optional `signInLogin` on AskCard and flattened InboxAsk; client fields and display prose cannot supply that association. Native admission, URL payload and secret answers are not copied. Secret hub cards additionally
 carry optional `secret: true` on InboxAsk so remotes can refuse voice before
 acquisition; ordinary cards and older shapes omit the key entirely. The
-thread AskCard shape is unchanged.
+thread AskCard gains only that optional login identity; ordinary cards retain their previous shape, and older hubs omit the field. The Web connection maintains an active login/card index as live, inbox and recovered card deltas arrive; the Hosts view does one indexed lookup per login and does not scan retained terminal/history cards on its uptime tick. Connect ordering is unchanged.
 
 Register handlers on each startup before admitting answers. A pending card keeps
 its kind and payload across restart. A missing handler logs its card id and kind,

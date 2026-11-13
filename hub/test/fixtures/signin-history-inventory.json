@@ -1,0 +1,7 @@
+{
+  "source": "Plain synthetic retained-card inventory for a deterministic work-count control; no live database or API data",
+  "states": {
+    "answered": 2000,
+    "cancelled": 8
+  }
+}

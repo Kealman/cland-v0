@@ -1,3 +1,4 @@
+import { updateSignInIndex } from './signin-index.ts';
 import { PROTOCOL_VERSION, EVENT_KINDS, type AskCard, type ApprovalRecord, type Artifact, type Capabilities, type ClientHello, type EventsPage, type EventsFilter, type EventRow, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type SessionListRows, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
 import { replaceSession, sessionSnapshot, type SessionsState } from './sessions/state.ts';
 import { replaceAccount, type AccountsState } from './accounts/state.ts';
@@ -11,6 +12,14 @@ import { TopicThreads, type ThreadPage } from './topic-threads.ts';
 
 export type ObjectRow = { id: string; title: string };
 type Command<T> = T extends unknown ? Omit<T, 'id'> : never;
+
+/** Disk sign-in includes cold-host setup and the owner's 15-minute lifetime.
+ * The extra minute allows its receipt to arrive; expiry still means unknown,
+ * never native failure or permission to retransmit the admitted request. */
+function commandReceiptTimeout(type: WorkbenchRequest['type']): number {
+  return type === 'login.add' || type === 'login.signin' ? 16 * 60 * 1000 : 10_000;
+}
+
 export type PlanStages = Array<{ name: string; state: 'open' | 'closed'; items: string[]; qa: { scope: string; when: string } }>;
 
 /** Task deltas retain full verdict history; snapshots already carry the compact projection. */
@@ -59,6 +68,8 @@ export type ConnectionState = SessionsState & AccountsState & ArtifactsState & {
   recoveringApprovals?: ReadonlySet<string>;
   approvalCards?: ReadonlyMap<string, ApprovalRecord>;
   askCards?: ReadonlyMap<string, AskCard>;
+  /** Current active sign-in card id per login, updated only at card ingestion. */
+  signInCards?: ReadonlyMap<string, string>;
   recoverAsk?: (id: string, topic: string) => Promise<void>;
   needsYou?: number;
   approvals?: number;
@@ -125,7 +136,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
     for (const pending of commands.values()) { clearTimeout(pending.timer); pending.reject(new Error('Connection lost; check topic history before retrying')); }
     commands.clear();
   }
-  async function command<T>(frame: Command<WorkbenchRequest>, timeoutMs = 10_000): Promise<T> {
+  async function command<T>(frame: Command<WorkbenchRequest>, timeoutMs = commandReceiptTimeout(frame.type)): Promise<T> {
     if (!state.live || socket.readyState !== WebSocket.OPEN) throw new Error('Hub offline');
     const inboxAtStart = inboxGeneration;
     return new Promise<T>((resolve, reject) => {
@@ -134,6 +145,10 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
       commands.set(id, { resolve: value => { if ((frame.type === 'inbox.decline' || frame.type === 'inbox.read') && inboxAtStart === inboxGeneration) inbox(value as Inbox); resolve(value as T); }, reject, timer });
       request({ ...frame, id } as WorkbenchRequest);
     });
+  }
+  function applyAskCard(id: string, card: AskCard) {
+    const signInCards = updateSignInIndex(state.signInCards, id, state.askCards?.get(id), card);
+    state = { ...state, askCards: new Map(state.askCards).set(id, card), signInCards };
   }
   const askTopics = new Map<string, string>();
   const missingSnapshotApprovals = new Set<string>();
@@ -150,7 +165,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
     const card = page.messages.find(row => row.id === id)?.ask;
     if (card && card.state !== 'open') {
       // Merge only the requested record: a history read cannot replace newer live rows/counts.
-      state = { ...state, askCards: new Map(state.askCards).set(id, card) };
+      applyAskCard(id, card);
       changed(state);
     }
   }
@@ -415,11 +430,18 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
     const recoveryErrors = new Map(state.approvalRecoveryErrors);
     for (const row of value.approvals) { approvals.set(row.id, row); recovering.delete(row.id); recoveryErrors.delete(row.id); }
     const cards = new Map(state.askCards);
+    let signInCards = state.signInCards;
     for (const row of value.asks) {
       askTopics.set(row.id, row.topic.id);
-      if (!cards.has(row.id)) cards.set(row.id, { question: row.question, options: row.options, free: row.free, state: 'open' });
+      const known = cards.get(row.id);
+      if (!known || row.signInLogin !== undefined && known.signInLogin !== row.signInLogin) {
+        const card = { ...(known ?? { question: row.question, options: row.options, free: row.free, state: 'open' as const }),
+          ...(row.signInLogin === undefined ? {} : { signInLogin: row.signInLogin }) };
+        cards.set(row.id, card);
+        signInCards = updateSignInIndex(signInCards, row.id, known, card);
+      }
     }
-    state = { ...state, inbox: value, askCards: cards, approvalCards: approvals, recoveringApprovals: recovering, approvalRecoveryErrors: recoveryErrors, sessionAsks: value.asks, needsYou: value.needsYou, approvals: value.approvals.length,
+    state = { ...state, inbox: value, askCards: cards, ...(signInCards === undefined ? {} : { signInCards }), approvalCards: approvals, recoveringApprovals: recovering, approvalRecoveryErrors: recoveryErrors, sessionAsks: value.asks, needsYou: value.needsYou, approvals: value.approvals.length,
       plans: value.plans.length, waitingTopics: value.waiting.length };
     rows('Inbox', [
       ...value.asks.map(row => ({ id: row.id, title: row.question })),
@@ -463,8 +485,12 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
       sessionThreads.apply(frame);
       if (frame.type === 'ask') askTopics.set(frame.ask, frame.topic);
       if (frame.type === 'message' && frame.message.ask) askTopics.set(frame.message.id, frame.topic.id);
-      if (frame.type === 'ask') state = { ...state, askCards: new Map(state.askCards).set(frame.ask, frame.card) };
-      if (frame.type === 'message' && frame.message.ask && !frame.message.ask.to && !state.askCards?.has(frame.message.id)) state = { ...state, askCards: new Map(state.askCards).set(frame.message.id, frame.message.ask) };
+      if (frame.type === 'ask') applyAskCard(frame.ask, frame.card);
+      if (frame.type === 'message' && frame.message.ask && !frame.message.ask.to) {
+        const known = state.askCards?.get(frame.message.id);
+        if (!known) applyAskCard(frame.message.id, frame.message.ask);
+        else if (known.signInLogin === undefined && frame.message.ask.signInLogin !== undefined) applyAskCard(frame.message.id, { ...known, signInLogin: frame.message.ask.signInLogin });
+      }
       if (frame.type === 'result' && commands.has(frame.id)) {
         const pending = commands.get(frame.id)!;
         commands.delete(frame.id); clearTimeout(pending.timer);

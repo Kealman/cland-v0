@@ -147,3 +147,15 @@ test('waiting launches render facts and replace reasons without needs-you or dep
   await render(); // An older hub omits the additive field.
   assert.equal(await c.lua("return require('cland.state').needs_you()"), 0);
 });
+
+test('inbox retains optional sign-in login identity while rendering the existing card facts', { skip }, async t => {
+  const root = await tempProject(t), now = new Date().toISOString();
+  const scenario = { inbox: { asks: [{ id: 'signin-identity', topic: { id: 'general', title: 'General' }, question: 'Open the device link', options: ['Cancel'], free: false, from: 'hub', label: 'hub', ts: now, since: now, signInLogin: 'metadata-only-login' }] } };
+  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario) });
+  await waitInitialSnapshots(c);
+  assert.equal(await c.lua("return require('cland.state').S.inbox.asks[1].signInLogin"), 'metadata-only-login');
+  await c.input('<Esc> N');
+  const screen = await c.waitScreen(value => value.includes('Open the device link'), 'existing sign-in card facts rendered');
+  assert.match(screen, /Open the device link/);
+  assert.doesNotMatch(screen, /metadata-only-login/);
+});

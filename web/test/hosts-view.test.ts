@@ -12,7 +12,7 @@ import { fixtureEnvironment } from '../../hub/test/fixture-environment.ts';
 import { FakeHostProvider } from '../../hub/src/host/provider/fake.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { HostSecretStore, type HostRecords } from '../../hub/src/host/records.ts';
-import { ownDirectory } from '../../hub/test/process-cleanup.ts';
+import { ownDirectory, onCleanup } from '../../hub/test/process-cleanup.ts';
 import { hostDirectory } from '../../shared/fake-host-directory.ts';
 import { settledLogin } from '../../hub/test/settled-login-fixture.ts';
 import { hostGenerationKey } from '../../hub/src/adapters/processes.ts';
@@ -22,7 +22,7 @@ import { projectSshHosts } from '../../hub/src/host/registry.ts';
 import { join } from 'node:path';
 import { ensureWebBuild } from '../../hub/test/web-build.ts';
 import { Store } from '../../hub/src/hub/store.ts';
-import { webFixture, resizePage } from './harness.ts';
+import { webFixture, resizePage, pausePageClock } from './harness.ts';
 import { connectUi } from '../../hub/test/harness.ts';
 import type { HubFrame, HostsStatePool } from '../../shared/wire/index.ts';
 import { until, testWaitMs } from '../../hub/test/until.ts';
@@ -359,5 +359,316 @@ test('Hosts Remove hides bound actions and keeps hub refusal on the retained log
     assert.equal(await row.getByRole('alert').innerText(), refused.error);
     assert.deepEqual(await listed(), before);
     assert.equal(await row.count(), 1);
+  });
+});
+
+for (const harness of ['codex', 'claude-code'] as const) for (const renewal of [false, true]) for (const elsewhere of harness === 'claude-code' && renewal ? [false, true] : [false]) for (const slow of harness === 'codex' ? [false, true] : [false]) for (const boundary of slow ? ['held', 'fold', 'reload'] : ['held']) for (const legacy of !slow && harness === 'codex' && !renewal ? [false, true] : [false]) test(`Hosts ${renewal ? 'renew' : 'Add'} shows the shared ${harness} card and ${harness === 'claude-code' && !renewal ? 'expires without input' : 'clears sent input'}${elsewhere ? ' from another surface' : ''}${slow ? ' after slow preparation' : ''}${boundary === 'held' ? '' : ` before receipt ${boundary}`}${legacy ? ' at previous wire shape' : ''}`, async t => {
+  const clock = new FakeClock(Date.now()), processes = fakeLockProcesses().processes;
+  const closed = Promise.withResolvers<import('../../hub/src/host/host.ts').SignInClose>();
+  let received = '', prepares = 0;
+  const allowed = Promise.withResolvers<void>();
+  onCleanup(t, () => allowed.resolve());
+  const sent: string[] = [];
+  const receipts: Array<{ name: string; card: string }> = [];
+  let records!: HostRecords;
+  const f = await webFixture(t, { clock, prepare: async root => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    await writeFile(join(root, '.cland/config.toml'), '[hosts.agents]\nprovider="fake"\nregion="fake-1"\nmin_hosts=0\n');
+    await writeFile(join(root, '.cland/roles.toml'), `[implementer.launch]\npool="agents"\nharness="${harness}"\n`);
+  }, startHub: (root, env, options) => projectHub(t, root, fixtureEnvironment(root, env), {
+    ...options, processes, droplet: { processes },
+    prepareLogin: async (o, input) => {
+      prepares++;
+      if (slow) await allowed.promise;
+      const name = input.name ?? 'web-login';
+      records = o.records;
+      if (!input.signin) o.records.logins.insert({ name, harness: input.harness, account: name, kind: 'disk', provider: 'fake', region: 'fake-1', volumeId: 'v', snapshotIds: [], lastSignIn: null });
+      const admission = input.signin ? o.records.logins.beginSignIn(name) : null;
+      return { plan: { name, host: 'fake-host', command: 'ssh', args: [] }, pending: { name, path: '/cland/auth/' + name, complete: async code => {
+        if (code === 0) return admission ? o.records.logins.finishSignIn(name, admission, clock.now().toISOString()) : o.records.logins.transition(name, 'ready');
+        o.records.logins.markSignedOut(name, { host: null, reason: 'fixture closed' }); return o.records.logins.get(name)!;
+      } } };
+    }, runLoginSignIn: async (_input, output) => {
+      output({ admission: 'web-run', stream: 'stdout', text: `https://login.example.test/${harness} Device code: FAKE-1234\n` });
+      return { admission: 'web-run', closed: closed.promise, write: async text => { received = text; closed.resolve({ admission: 'web-run', state: 'closed', code: 0, signal: null }); }, cancel: async () => {
+        const receipt = { admission: 'web-run', state: 'closed' as const, code: null, signal: 'SIGTERM' }; closed.resolve(receipt); return receipt;
+      } };
+    },
+  }) });
+  const cli = await connectUi(t, f.hub.discovery, 'cli');
+  if (renewal) {
+    const store = new Store(join(f.root, '.cland/hub.db'));
+    try {
+      store.hosts.logins.insert({ name: 'web-login', harness, account: 'web-login', kind: 'disk', provider: 'fake', region: 'fake-1', volumeId: 'v', snapshotIds: [], lastSignIn: null });
+      store.hosts.logins.markSignedOut('web-login', { host: null, reason: 'fixture signout' });
+    } finally { store.close(); }
+  }
+  await f.pageCase(t, async page => {
+    const output: string[] = []; page.on('console', m => output.push(m.text()));
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    const pool = page.getByRole('region', { name: 'Hosts in agents' });
+    if (renewal) await page.locator('[data-login-name="web-login"]').getByRole('button', { name: 'Sign in again' }).click();
+    else {
+    await pool.getByRole('button', { name: 'Add', exact: true }).click({ timeout: testWaitMs(1500) });
+    await pool.getByLabel('Harness').selectOption(harness);
+    await pool.getByLabel('Name').fill('web-login');
+    await pool.getByRole('button', { name: 'Start sign-in' }).click();
+    }
+    if (slow) {
+      await until(() => prepares === 1, { what: 'one sign-in preparation admitted before deadline advance' });
+      await clock.advance(10_001); await page.clock.runFor(10_001);
+      const submit = renewal ? page.locator('[data-login-name="web-login"]').getByRole('button', { name: 'Sign in again' }) : pool.getByRole('button', { name: 'Start sign-in' });
+      assert.equal(await submit.isDisabled(), true, 'pending sign-in stays fenced past the generic deadline');
+      const bounds = await submit.boundingBox(); assert.ok(bounds);
+      await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+      assert.equal(prepares, 1);
+      assert.equal(sent.filter(type => type === (renewal ? 'login.signin' : 'login.add')).length, 1);
+      if (boundary === 'fold') {
+        const fold = page.getByRole('button', { name: 'Fold Hosts', exact: true }); await fold.click(); await fold.click();
+      } else if (boundary === 'reload') await page.reload();
+      allowed.resolve();
+    }
+    const row = page.locator('[data-login-name="web-login"]');
+    await row.getByRole('link', { name: `https://login.example.test/${harness}` }).waitFor({ timeout: testWaitMs(2000) });
+    const originalCard = await row.locator('[data-signin-card]').getAttribute('data-signin-card');
+    if (boundary === 'reload') assert.deepEqual(receipts, [], 'reload destroyed the old result callback before capture');
+    else assert.deepEqual(receipts, [{ name: 'web-login', card: originalCard }]);
+    const persisted = new Store(join(f.root, '.cland/hub.db'));
+    try { assert.equal(persisted.openAsks().find(ask => ask.hubKind === 'login-signin-code' && (ask.payload as {login?:string}).login === 'web-login')?.id, originalCard); }
+    finally { persisted.close(); }
+    const fold = page.getByRole('button', { name: 'Fold Hosts', exact: true });
+    await fold.click(); await fold.click();
+    await row.getByRole('link', { name: `https://login.example.test/${harness}` }).waitFor({ timeout: testWaitMs(1000) });
+    assert.equal(await row.locator('[data-signin-card]').getAttribute('data-signin-card'), originalCard);
+    await page.reload();
+    await row.getByRole('link', { name: `https://login.example.test/${harness}` }).waitFor({ timeout: testWaitMs(2000) });
+    assert.equal(await row.locator('[data-signin-card]').getAttribute('data-signin-card'), originalCard);
+    if (harness === 'claude-code' && !renewal) {
+      await clock.advance(15 * 60 * 1000);
+      await until(async () => { const reply = await cli.request({ type: 'login.list' }); return (reply.value as Array<{state:string}>)[0]?.state === 'signed-out'; }, { what: 'expired writer closed and login signed out' });
+      await clock.advance(1000);
+      await until(async () => /signed-out/.test(await row.innerText()), { what: 'expired login rendered signed-out' });
+      assert.match(await row.innerText(), /fixture closed/);
+      assert.equal(await row.getByLabel('Sign-in code').count(), 0);
+      assert.equal(received, ''); return;
+    }
+    if (harness === 'codex') {
+      assert.match(await row.innerText(), /FAKE-1234/);
+      closed.resolve({ admission: 'web-run', state: 'closed', code: 0, signal: null });
+    } else {
+      await row.getByLabel('Sign-in code').fill('SENTINEL-inline-code');
+      if (elsewhere) {
+        const answer = await cli.request({ type: 'topic.answer', ask: originalCard!, text: 'SENTINEL-inline-code' });
+        assert.equal(answer.ok, true, answer.error);
+        await row.getByLabel('Sign-in code').waitFor({ state: 'detached' });
+      } else await row.getByRole('button', { name: 'Send code' }).click();
+    }
+    await until(async () => { const r = await cli.request({ type: 'login.list' }); return (r.value as Array<{state:string}>)[0]?.state === 'ready'; }, { what: 'login.list durable ready' });
+    await clock.advance(1000); if (slow) await page.clock.runFor(1000);
+    await until(async () => /ready/.test(await row.innerText()), { what: 'ready login rendered' });
+    assert.equal(records.logins.get('web-login')?.kind === 'disk' && (records.logins.get('web-login') as {volumeId:string}).volumeId, 'v');
+    assert.equal(received, harness === 'claude-code' ? 'SENTINEL-inline-code\n' : '');
+    assert.equal((await page.locator('body').innerText()).includes('SENTINEL-inline-code'), false);
+    assert.equal(await page.evaluate(() => JSON.stringify([localStorage, sessionStorage]).includes('SENTINEL-inline-code')), false);
+    assert.equal(output.join('\n').includes('SENTINEL-inline-code'), false);
+    assert.equal(prepares, 1);
+    assert.equal(sent.filter(type => type === (renewal ? 'login.signin' : 'login.add')).length, 1);
+  }, async page => {
+    if (slow) await pausePageClock(page, clock.now());
+    if (legacy) await page.routeWebSocket('**/ws', route => {
+      const server = route.connectToServer();
+      const previousShape = (value: unknown): unknown => Array.isArray(value) ? value.map(previousShape) : value && typeof value === 'object'
+        ? Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'signInLogin').map(([key, child]) => [key, previousShape(child)])) : value;
+      server.onMessage(message => route.send(JSON.stringify(previousShape(JSON.parse(String(message))))));
+    });
+    page.on('websocket', socket => {
+      socket.on('framesent', event => { const frame = JSON.parse(String(event.payload)) as { type: string }; sent.push(frame.type); });
+      socket.on('framereceived', event => {
+        const frame = JSON.parse(String(event.payload)) as HubFrame;
+        if (frame.type !== 'result' || !frame.ok) return;
+        const value = frame.value as { name?: string; card?: string } | undefined;
+        if (typeof value?.name === 'string' && typeof value.card === 'string') receipts.push({ name: value.name, card: value.card });
+      });
+    });
+  });
+});
+
+test('Hosts Add moves the real inbox login wait through booting to placed', async t => {
+  const clock = new FakeClock(Date.now()), processes = fakeLockProcesses().processes;
+  const closed = Promise.withResolvers<import('../../hub/src/host/host.ts').SignInClose>();
+  let records!: HostRecords;
+  const booted = Promise.withResolvers<void>();
+  onCleanup(t, () => booted.resolve());
+  const f = await webFixture(t, { clock, prepare: async root => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    await writeFile(join(root, '.cland/config.toml'), '[hosts.agents]\nprovider="fake"\nregion="fake-1"\nslots=1\nmin_hosts=0\n');
+    await writeFile(join(root, '.cland/roles.toml'), '[implementer.launch]\npool="agents"\nharness="codex"\n');
+  }, startHub: (root, env, options) => {
+    const sealed = fixtureEnvironment(root, env, { CLAND_FAKE_HOST_ROOT: root }), local = localHost(sealed);
+    const host = { ...testHost('waiting-host', () => {}), layout: local.layout, realpath: local.realpath,
+      statDirectory: async () => ({ refusal: null, identity: null }), loginDisk: async () => {}, listFolder: async () => [] };
+    return projectHub(t, root, sealed, { ...options, processes, droplet: { processes }, hosts: [host],
+      createHostRegistry: async options => { records = options.records; return projectSshHosts(options); },
+      createHost: async o => {
+        const provider = new FakeHostProvider({ env: sealed, now: () => clock.now().getTime() });
+        const acquired = await provider.acquire({ project: root, pool: 'agents', architecture: 'arm64', region: 'fake-1' });
+        assert.equal(acquired.state, 'created'); if (acquired.state !== 'created') throw Error('fixture machine');
+        ownDirectory(t, hostDirectory(root, acquired.machine.id));
+        const row = { id: host.name, pool: 'agents', provider: 'fake', size: 'small', region: 'fake-1', state: 'booting' as const, created: clock.now().toISOString(), machine: acquired.machine };
+        new HostSecretStore(root, o.records, () => {}).register({ id: host.name, address: acquired.machine.address, user: 'fixture', clientKeyPath: '', knownHosts: '' });
+        o.records.provisions.save(row); await booted.promise; return { ...row, state: 'ready' as const };
+      },
+      prepareLogin: async (o, input) => {
+        const provider = new FakeHostProvider({ env: sealed, now: () => clock.now().getTime() });
+        const made = await provider.createVolume({ project: root, name: 'web-login', region: 'fake-1', sizeGiB: 1 });
+        assert.equal(made.state, 'created'); if (made.state !== 'created') throw Error('fixture volume');
+        o.records.logins.insert({ name: 'web-login', harness: input.harness, account: 'web-login', kind: 'disk', provider: 'fake', region: 'fake-1', volumeId: made.volume.id, snapshotIds: [], lastSignIn: null });
+        return { plan: { name: 'web-login', host: host.name, command: 'ssh', args: [] }, pending: { name: 'web-login', path: '/cland/auth/web-login', complete: async code => {
+          assert.equal(code, 0); return o.records.logins.transition('web-login', 'ready');
+        } } };
+      }, runLoginSignIn: async (_input, output) => {
+        output({ admission: 'waiting-signin', stream: 'stdout', text: 'https://login.example.test/codex Device code: FAKE-1234\n' });
+        return { admission: 'waiting-signin', closed: closed.promise, write: async () => {}, cancel: async () => {
+          const receipt = { admission: 'waiting-signin', state: 'closed' as const, code: null, signal: 'SIGTERM' }; closed.resolve(receipt); return receipt;
+        } };
+      },
+    });
+  } });
+  const cli = await connectUi(t, f.hub.discovery, 'cli');
+  const launch = await cli.request({ type: 'session.launch', name: 'waiting-worker', role: 'implementer', harness: 'codex', cwd: f.root });
+  assert.equal(launch.ok, true, launch.error);
+  assert.equal((launch.value as { waiting: { reason: string } }).waiting.reason, 'waiting for a login codex');
+  await f.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    await page.getByRole('region', { name: 'Hosts in agents' }).getByRole('button', { name: 'Add', exact: true }).click();
+    await page.getByRole('button', { name: 'Start sign-in' }).click();
+    await page.locator('[data-signin-card]').waitFor();
+    await page.getByRole('button', { name: 'Inbox', exact: true }).click();
+    await page.locator('[data-waiting-launch="waiting-worker"] [data-waiting-reason]').filter({ hasText: 'waiting for a login codex' }).waitFor();
+    closed.resolve({ admission: 'waiting-signin', state: 'closed', code: 0, signal: null });
+    await until(() => records.provisions.get('waiting-host')?.state === 'booting', { what: 'pool runtime persisted booting host' });
+    await clock.advance(1000);
+    await page.locator('[data-waiting-launch="waiting-worker"] [data-waiting-reason]').filter({ hasText: 'waiting for host waiting-host to boot' }).waitFor();
+    records.provisions.ready({ ...records.provisions.get('waiting-host')!, state: 'ready' });
+    booted.resolve();
+    await clock.advance(1000);
+    await until(async () => {
+      const reply = await cli.request({ type: 'session.list' });
+      return (reply.value as { processes: Array<{ name: string; host: string }> }).processes.some(row => row.name === 'waiting-worker' && row.host === 'waiting-host');
+    }, { what: 'pool launch committed process on waiting-host', timeoutMs: 3000 });
+    await clock.advance(1000);
+    await page.locator('[data-waiting-launch="waiting-worker"] [data-waiting-reason]').filter({ hasText: 'waiting for host waiting-host to boot' }).waitFor({ state: 'detached' });
+    const inbox = await cli.request({ type: 'inbox.list' });
+    assert.deepEqual((inbox.value as { waitingLaunches: unknown[] }).waitingLaunches, []);
+    assert.equal(f.hub.fakes.codex!.spawns.length, 1);
+  });
+});
+
+for (const harness of ['codex', 'claude-code'] as const) test(`Hosts native ${harness} Add completes the fake harness disk sign-in`, { timeout: testWaitMs(60000) }, async t => {
+  const { fixture } = await import('../../hub/test/login-native-fixture.ts');
+  const { nativeSignInTrace } = await import('../../hub/test/login-card-signin-trace.ts');
+  const trace = nativeSignInTrace();
+  let records!: HostRecords;
+  const plans: Array<{ name: string; host: string; signin: boolean }> = [];
+  const prepare: typeof trace.prepare = async (options, input) => {
+    records = options.records;
+    const prepared = await trace.prepare(options, input);
+    plans.push({ name: prepared.plan.name, host: prepared.plan.host, signin: input.signin === true });
+    return prepared;
+  };
+  const native = await fixture(t, { cardSignIn: { prepareLogin: prepare } });
+  let readyPublished = false, signedOutPublished = false;
+  const f = await webFixture(t, { project: async () => ({ root: native.root }), startHub: async () => native.hub });
+  const cli = await connectUi(t, native.hub.discovery, 'cli');
+  const configured = await cli.request({ type: 'role.launch', role: 'implementer', fields: { harness, pool: 'agents' } });
+  assert.equal(configured.ok, true, configured.error);
+  await f.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    const pool = page.getByRole('region', { name: 'Hosts in agents' });
+    await pool.getByRole('button', { name: 'Add', exact: true }).click();
+    await pool.getByLabel('Harness').selectOption(harness);
+    await pool.getByLabel('Name').fill('native-web');
+    await pool.getByRole('button', { name: 'Start sign-in' }).click();
+    const row = page.locator('[data-login-name="native-web"]');
+    if (harness === 'claude-code') {
+      await row.getByRole('link', { name: 'https://login.example.test/claude', exact: true }).waitFor({ timeout: testWaitMs(15000) });
+      await row.getByLabel('Sign-in code').fill('SENTINEL-native-web');
+      await row.getByRole('button', { name: 'Send code' }).click();
+    }
+    await until(async () => {
+      const reply = await cli.request({ type: 'login.list' });
+      return (reply.value as Array<{ name: string; state: string }>).some(login => login.name === 'native-web' && login.state === 'ready');
+    }, { what: 'native fake harness committed ready disk', timeoutMs: testWaitMs(15000) });
+    await until(async () => /ready/.test(await row.innerText()), { what: 'native ready disk rendered' });
+    assert.equal((await page.locator('body').innerText()).includes('SENTINEL-native-web'), false);
+    const store = native.own(new Store(join(native.root, '.cland/hub.db')));
+    const login = store.hosts.logins.get('native-web')!;
+    assert.equal(login.kind, 'disk');
+    if (login.kind !== 'disk') throw Error('fixture disk');
+    assert.equal(login.snapshotIds.length, 1);
+    assert.ok(login.lastSignIn);
+    const hosts = store.hosts.provisions.list().map(host => host.id);
+    assert.equal(hosts.length, 1);
+    await until(() => readyPublished, { what: 'prior ready coalesced hosts.state observed by browser', timeoutMs: testWaitMs(3000) });
+    assert.equal(readyPublished, true);
+    const path = join(native.root, 'volumes', login.volumeId! + '.contents/login.json');
+    const { readFile } = await import('node:fs/promises');
+    const stamp = JSON.parse(await readFile(path, 'utf8'));
+    await writeFile(path, JSON.stringify({ ...stamp, dead: true }));
+    records.logins.markSignedOut(login.name, { host: null, reason: 'native renewal control' });
+    await until(() => signedOutPublished, { what: 'hub-owned sign-out published independently', timeoutMs: testWaitMs(3000) });
+    await until(async () => /signed-out.*native renewal control/s.test(await row.innerText()), { what: 'hub-owned sign-out rendered before renewal' });
+    assert.match(await row.innerText(), /signed-out.*native renewal control/s);
+    await row.getByRole('button', { name: 'Sign in again' }).click({ timeout: testWaitMs(5000) });
+    if (harness === 'claude-code') {
+      await row.getByLabel('Sign-in code').waitFor({ timeout: testWaitMs(15000) });
+      await row.getByLabel('Sign-in code').fill('SENTINEL-native-renew');
+      await row.getByRole('button', { name: 'Send code' }).click();
+    }
+    await until(() => store.hosts.logins.get(login.name)?.state === 'ready', { what: 'native renewed disk ready', timeoutMs: testWaitMs(15000) });
+    await until(async () => /ready/.test(await row.innerText()), { what: 'native renewed ready rendered' });
+    const renewed = store.hosts.logins.get(login.name)!;
+    assert.equal(renewed.kind === 'disk' && renewed.volumeId, login.volumeId);
+    assert.deepEqual(store.hosts.provisions.list().map(host => host.id), hosts);
+    assert.deepEqual(plans, [{ name: login.name, host: hosts[0], signin: false }, { name: login.name, host: hosts[0], signin: true }]);
+    assert.equal(JSON.parse(await readFile(path, 'utf8')).dead, false);
+    assert.deepEqual(trace.diagnostics().runs.map(run => ({ status: run.status, close: 'close' in run ? run.close : null })).map(run => [run.status, run.close && 'code' in run.close ? run.close.code : null]), [['closed', 0], ['closed', 0]]);
+    t.diagnostic(JSON.stringify({ admittedPlans: plans, nativeCloses: trace.diagnostics().runs.map(run => 'close' in run ? run.close : null), volumeBefore: login.volumeId, volumeAfter: renewed.kind === 'disk' ? renewed.volumeId : null, priorReadyPublished: readyPublished, signedOutPublished }));
+    assert.equal(await page.evaluate(() => JSON.stringify([localStorage, sessionStorage]).includes('SENTINEL-native-renew')), false);
+    assert.equal((await page.locator('body').innerText()).includes('SENTINEL-native-renew'), false);
+  }, async page => {
+    // Observe real frames before navigation/action; no carrier or fabricated push.
+    page.on('websocket', socket => socket.on('framereceived', event => {
+      const frame = JSON.parse(String(event.payload)) as HubFrame;
+      if (frame.type !== 'hosts.state') return;
+      const login = frame.pools.find(pool => pool.name === 'agents')?.logins[harness];
+      if (login?.usable === 1 && login.signedOut === 0) readyPublished = true;
+      if (login?.signedOut === 1 && login.usable === 0) signedOutPublished = true;
+    }));
+  });
+});
+
+for (const actual of [false, true]) test(`Hosts Add harness choices use only pool roles and actual logins: actual ${actual}`, async t => {
+  const f = await webFixture(t, { prepare: async root => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    await writeFile(join(root, '.cland/config.toml'), '[hosts.agents]\nprovider="fake"\nregion="fake-1"\nmin_hosts=0\n[hosts.empty]\nprovider="fake"\nregion="empty-region"\nmin_hosts=0\n[hosts.logins]\nprovider="fake"\nregion="login-region"\nmin_hosts=0\n');
+    await writeFile(join(root, '.cland/roles.toml'), '[implementer.launch]\npool="agents"\nharness="codex"\n');
+    const store = new Store(join(root, '.cland/hub.db'));
+    try {
+      for (const [name, harness, region] of [['other', 'claude-code', 'other-region'], ['login-only', 'claude-code', 'login-region'], ...(actual ? [['actual', 'opencode', 'fake-1']] : [])]) {
+        store.hosts.logins.insert({ name: name!, harness: harness as 'claude-code' | 'opencode', account: name!, kind: 'disk', provider: 'fake', region: region!, volumeId: 'v-' + name, snapshotIds: [], lastSignIn: null });
+        store.hosts.logins.markSignedOut(name!, { host: null, reason: 'fixture signed out' });
+      }
+    } finally { store.close(); }
+  } });
+  await f.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    const pool = page.getByRole('region', { name: 'Hosts in agents' });
+    await pool.getByRole('button', { name: 'Add', exact: true }).click();
+    assert.deepEqual(await pool.getByLabel('Harness').locator('option').allTextContents(), actual ? ['codex', 'opencode'] : ['codex']);
+    assert.equal(await page.getByRole('region', { name: 'Hosts in empty' }).getByRole('button', { name: 'Add', exact: true }).isDisabled(), true);
+    const loginPool = page.getByRole('region', { name: 'Hosts in logins' });
+    await loginPool.getByRole('button', { name: 'Add', exact: true }).click();
+    assert.deepEqual(await loginPool.getByLabel('Harness').locator('option').allTextContents(), ['claude-code']);
   });
 });

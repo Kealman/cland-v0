@@ -226,27 +226,10 @@ export type AskOutcome = { userId?: string; by: string; at: string; via?: Via | 
 );
 
 /** An ask as its message carries it: the question is the message's text. */
-export type AskCard = {
-  question: string;
-  /** The numbered options, 1 first; may be empty when only a free answer makes sense. */
-  options: string[];
-  /** Whether a free answer is welcome beside the options. */
-  free: boolean;
-  state: AskState;
-  /** Agent recipient; absent for a human ask. */
-  to?: string;
-  /** The unchanged ask forwarded to the next level. */
-  forwarded?: string;
-  /** The answer's message id, once answered. */
-  answer?: string;
-  /** The option the human chose (1-based), absent for a free answer. */
-  option?: number;
-  /** Present once an answer is recorded, independent of the answer message's retention. */
-  outcome?: AskOutcome;
-} & Partial<AnswerAttribution>;
+export type AskCard = import('../../shared/wire/index.ts').AskCard;
 
 /** An open ask as the inbox lists it. */
-export type InboxAsk = { secret?: true; layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; fromRole?: string; label: string; ts: string; since: string };
+export type InboxAsk = import('../../shared/wire/index.ts').InboxAsk;
 
 /** The harness choices and durable outcome shared by approval records and their departures. */
 export type ApprovalChoice = 'once' | 'always' | 'deny';

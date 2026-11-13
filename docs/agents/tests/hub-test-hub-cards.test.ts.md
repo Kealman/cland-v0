@@ -20,3 +20,16 @@ Native-path regressions added after source review:
 - `users-mode hub option outcome retains stable user id`, `free`, and `decline` check both stored outcome and inbox archive, prune the retained answer message after shutdown, and check the independent departure still identifies the admitted user.
 
 The first three native cases and all three attribution cases were red before the revision, then green. Ordinary Coordinator preservation is covered by the complete existing Telegram and Discord card files, rather than only the gateway fake.
+
+`trusted sign-in login identity survives inbox history and closure without native
+payload fields` raises trusted persisted code-card metadata before connecting a
+fresh Neovim protocol client. It checks signInLogin in flattened inbox and
+persisted thread history, absence on an ordinary card with a login payload,
+and absence of native admission text. It subscribes before arming the exact
+terminal ask observer, withdraws the card, and asserts the same identity on its
+withdrawn frame. Both process-lock dependencies and the hub Clock are fake.
+
+The identity closure observer is armed before withdrawal and joined with
+Promise.allSettled in finally, including when withdrawal throws. Its bounded
+waiter settles before socket/hub/directory teardown; early rejection is observed
+without removing the final closure assertions.

@@ -1,3 +1,4 @@
+import { signInCardIdentity } from './signin-card-identity.ts';
 import { WAITING_LAUNCH_SCHEMA } from '../adapters/waiting-launches.ts';
 import {LoginCardIntents} from '../host/login-card-intents.ts';
 import type { HostWorktreeRecord } from '../host/task-worktrees.ts';
@@ -359,6 +360,7 @@ const toAsk = (row: Row): AskRow => ({
 
 /** The card an ask's message carries. */
 export const cardOf = (a: AskRow): AskCard => ({
+  ...signInCardIdentity(a),
   question: a.question,
   options: a.options,
   free: a.free,

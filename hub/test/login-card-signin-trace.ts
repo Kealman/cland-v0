@@ -1,7 +1,6 @@
 import {preparePoolLogin} from '../src/host/login-add.ts';
 import type {Host,SignInClose} from '../src/host/host.ts';
 import {remoteRedactor} from '../src/remote/redact.ts';
-import {assertPublishable} from '../../.agents/skills/qa/qa-demo-policy.ts';
 
 export const NATIVE_CARD_INPUT='SENTINEL-native-card-input';
 
@@ -42,7 +41,8 @@ export function nativeSignInTrace(){
   const facts=runs.map(record=>({harness:record.harness,admission:record.admission??'unknown',status:record.status,
    close:record.close??{state:'incomplete',reason:'native close receipt unavailable'},errorCode:record.errorCode??null,
    stderrTail:redact.text(record.stderr).slice(-3000),stdoutTail:redact.text(record.stdout).slice(-3000),truncated:record.truncated}));
-  const result={runs:facts.length?facts:[{status:'incomplete',reason:'no native operation observed'}],dropped};
-  try{assertPublishable(result);return result;}catch{return {runs:[{status:'incomplete',reason:'diagnostic withheld by secret scan'}],dropped};}
+  // This is an unpublished snapshot. The diagnostic reporter scans the complete
+  // selected publication, including its other fields, before emitting any bytes.
+  return {runs:facts.length?facts:[{status:'incomplete',reason:'no native operation observed'}],dropped};
  }};
 }

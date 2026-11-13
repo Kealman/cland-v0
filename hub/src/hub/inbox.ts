@@ -1,3 +1,4 @@
+import { signInCardIdentity } from './signin-card-identity.ts';
 import type { ApprovalRequest } from '../adapters/contract.ts';
 import { approvalSubject } from './approval-subject.ts';
 import { realClock, type Clock, type ClockTimer } from './clock.ts';
@@ -280,6 +281,7 @@ export class InboxBoard {
       const fromRole = p.store.roleOf(a.from);
       return p.visibility.place('inbox', {
         id: a.id,
+        ...signInCardIdentity(a),
         ...(a.from === 'hub' && a.hubKind && a.secret ? { secret: true as const } : {}),
         topic: { id: a.topic, title: t?.title ?? a.topic, ...(t?.item ? { item: t.item } : {}) },
         question: a.question,

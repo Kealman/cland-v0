@@ -2,6 +2,9 @@
 // T1: connectHub's public callback over a scripted browser socket; no network or real clock.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { signInCardId } from '../../web/src/signin-index.ts';
+import type { AskCard } from '../../shared/wire/index.ts';
 import { connectHub, type ConnectionState } from '../../web/src/connection.ts';
 import type { AccountView, Artifact, Capabilities, HubFrame, RemoteStateRow, SessionRow, SnapshotValues, Topic, VerificationQueue, WorkbenchRequest } from '../../shared/wire/index.ts';
 
@@ -201,4 +204,60 @@ test('artifact inventory pages retain live replacements and discard replies from
   await old;
   assert.deepEqual(client.state.artifacts?.map(a => a.title), ['Replacement']);
   assert.equal(client.state.artifactsBefore, undefined);
+});
+
+test('active sign-in identities update incrementally across live inbox message and terminal cards', async t => {
+  const client = scripted(t);
+  const card = { question: 'Sign in', options: [], free: true, state: 'open' as const, signInLogin: 'work' };
+  client.socket.receive({ type: 'ask', ask: 'first', topic: 'general', card });
+  const index = () => (client.state as ConnectionState & { signInCards?: ReadonlyMap<string, string> }).signInCards;
+  assert.equal(index()?.get('work'), 'first');
+  client.socket.receive({ type: 'ask', ask: 'newer', topic: 'general', card });
+  client.socket.receive({ type: 'ask', ask: 'first', topic: 'general', card: { ...card, state: 'answered' } });
+  assert.equal(index()?.get('work'), 'newer', 'an older terminal receipt cannot remove the newer active card');
+  client.socket.receive({ type: 'ask', ask: 'newer', topic: 'general', card: { ...card, state: 'withdrawn' } });
+  assert.equal(index()?.has('work'), false);
+  const ts = new Date().toISOString();
+  const message = { id: 'message-card', from: 'hub', fromKind: 'hub' as const, via: 'hub' as const, to: [], text: 'Sign in', ts, topic: 'general', seq: 2, ask: { ...card, signInLogin: 'message-login' } };
+  client.socket.receive({ type: 'message', topic: { id: 'general', title: 'General', unread: 0, lastMessageAt: ts }, message });
+  assert.equal(index()?.get('message-login'), message.id);
+  client.socket.receive({ type: 'inbox', inbox: { asks: [{ id: 'inbox-card', topic: { id: 'general', title: 'General' }, question: 'Sign in', options: [], free: true, from: 'hub', label: 'hub', ts, since: ts, signInLogin: 'inbox-login' }], approvals: [], plans: [], requests: [], messages: [], waiting: [], needsYou: 1 } });
+  assert.equal(index()?.get('inbox-login'), 'inbox-card');
+  client.socket.receive({ type: 'result', id: 'connection-status', ok: true, value: { root: '/scratch' } });
+  const recovered = client.state.recoverAsk!(message.id, 'general');
+  let request = client.socket.sent.at(-1)!;
+  if (request.type === 'topic.history' && typeof request.before === 'string') {
+    client.socket.receive({ type: 'result', id: request.id, ok: true, value: { messages: [{ ...message, id: 'predecessor', seq: 1, ask: undefined }], runs: [] } });
+    await Promise.resolve();
+    request = client.socket.sent.at(-1)!;
+  }
+  assert.equal(request.type, 'topic.history');
+  client.socket.receive({ type: 'result', id: request.id, ok: true, value: { messages: [{ ...message, ask: { ...message.ask, state: 'answered' } }], runs: [] } });
+  await recovered;
+  assert.equal(index()?.has('message-login'), false, 'positive recovered terminal card removes its active identity');
+  assert.equal(client.state.askCards?.get(message.id)?.state, 'answered');
+});
+
+test('active sign-in row lookup reads no retained history on a synthetic card inventory', t => {
+  const client = scripted(t);
+  const inventory = JSON.parse(readFileSync(new URL('./fixtures/signin-history-inventory.json', import.meta.url), 'utf8')) as { states: Record<'answered' | 'cancelled', number> };
+  class MeasuredCards extends Map<string, AskCard> {
+    iterations = 0; reads = 0;
+    override [Symbol.iterator]() { this.iterations++; return super[Symbol.iterator](); }
+    override get(id: string) { this.reads++; return super.get(id); }
+  }
+  client.socket.receive({ type: 'hosts.state', pools: [] });
+  const history = new MeasuredCards();
+  for (const [state, count] of Object.entries(inventory.states)) for (let n = 0; n < count; n++) history.set(`${state}-${n}`, { question: 'Synthetic retained card', options: [], free: false, state: state as 'answered' | 'cancelled' });
+  assert.equal(history.size, 2008, 'plain synthetic state inventory; no live database data');
+  [...history]; assert.equal(history.iterations, 1, 'positive control observes history iteration'); history.iterations = 0;
+  client.state.askCards = history;
+  client.socket.receive({ type: 'ask', topic: 'general', ask: 'active', card: { question: 'Sign in', options: [], free: true, state: 'open', signInLogin: 'work' } });
+  assert.equal(history.iterations, 1, 'T-1840: existing retained-map publication copy excluded; no new active-index scan');
+  const rendered = new MeasuredCards(client.state.askCards);
+  client.state.askCards = rendered;
+  for (let row = 0; row < 1000; row++) assert.equal(signInCardId(client.state, 'work'), 'active');
+  assert.equal(rendered.iterations, 0, 'render/uptime row lookup never iterates retained cards');
+  assert.equal(rendered.reads, 0, 'identity lookup uses only the active index');
+  assert.equal(client.state.signInCards?.size, 1);
 });

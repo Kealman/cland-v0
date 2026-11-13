@@ -39,7 +39,7 @@ startup. Unknown new-login native outcomes use the shared interrupted-sign-in ad
 retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Roles](../docs/hub/roles.md)
 - [Rulebook](../docs/hub/rulebook.md)
-- [Project logins](../docs/hub/logins.md): terminal disk sign-in, daily and on-demand backup snapshots with per-login scheduling and pending-binding deferral, human metadata listing (local CLI/Neovim or authenticated web), SQLite records, episode-based dead-login sign-out/card recovery and Coordinator notices without stopping running sessions, transitions, provisioning-time attachment for waiting launches and launch-time disk binding, exclusive writers, snapshot-cloned readers, idle exclusive-flag updates and OpenCode keys delivered only in pool-host spawn environments.
+- [Project logins](../docs/hub/logins.md): terminal disk sign-in, daily and on-demand backup snapshots with per-login scheduling and pending-binding deferral, human metadata listing (local CLI/Neovim or authenticated web), web Hosts Add and Sign in again with inline shared sign-in cards, SQLite records, episode-based dead-login sign-out/card recovery and Coordinator notices without stopping running sessions, transitions, provisioning-time attachment for waiting launches and launch-time disk binding, exclusive writers, snapshot-cloned readers, idle exclusive-flag updates and OpenCode keys delivered only in pool-host spawn environments.
 - [Host providers](../docs/hub/host-providers.md): local-only `host.providers` reports configured provider token presence and fingerprints from the running hub environment without provider calls; validated pool configuration and pure weighted placement decisions, provider contracts, pool image keys and local human `cland host prepare [pool]`, `host create [pool]`, `host list` and `host destroy <id>`; pool settings apply on reload or `cland config set`, init creates no pools; fake hosts create to ready, DigitalOcean prepares with executor builder controls and requires E-1534 admission for production creation.
 - [SSH transport](../docs/hub/ssh-transport.md)
 - [Host revocation settlement](../docs/agents/host-agent.md#settlement-before-host-revocation): bounded pre-cut cleanup, changed-boot closure receipts and named unresolved generations.
@@ -200,3 +200,13 @@ before using the existing same-conversation relaunch; stopped sessions remain
 stopped. See [login renewal](../docs/hub/logins.md#relaunch-after-sign-in).
 
 Authenticated web host/login actions and direct card sign-in replies are described in [web-started sign-in](../docs/hub/logins.md#web-started-sign-in). Users mode requires an active admin; sessions and remotes stay refused.
+
+Web disk Add/sign-in commands allow 16 minutes for the card receipt including
+cold-host setup; other commands default to 10 seconds. Pending controls prevent
+repeat submission, and missing receipts remain unknown without automatic retry.
+The hub's 15-minute card lifetime is unchanged; see [logins](../docs/hub/logins.md).
+
+Sign-in code cards project an optional login-name identity from persisted hub
+metadata into live/history cards and inbox rows. This restores the inline Hosts
+card across a fold or reload before its start receipt; no native secret or connect
+ordering changes. Older replies retain the captured-id browser fallback.

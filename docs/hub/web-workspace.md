@@ -82,3 +82,20 @@ patch-id freshness and merge gates stay unchanged. Rule 11 still requires the
 responsible item lead to obtain merge-delta review before the next verification.
 Enforcing finer disjointness rules requires the separate T-1486 replay rollout.
 
+
+### Login preparation receipts
+
+The web connection gives `login.add` and `login.signin` a 16-minute receipt
+window, covering cold-host setup and the hub owner's 15-minute lifetime with a
+minute of receipt headroom. The default for other commands is 10 seconds. The
+pending control stays disabled; no receipt reports uncertainty and causes no
+automatic retransmission or native-failure inference. These client waits do not
+extend the hub's sign-in lifetime or authorize cleanup.
+
+The optional `AskCard.signInLogin` / `InboxAsk.signInLogin` identifies the login
+of a hub-owned sign-in code card, projected from trusted persisted hubKind and
+payload only. The Hosts view uses the authoritative open-card identity when a
+request is still pending across fold/reopen or page reload. Fresh inbox state and
+live/history cards share the same projector; native metadata and secret answers
+are never copied. Connect frame order is unchanged. Older hubs omit the field;
+the new client retains its captured-id tab fallback for those previous replies.

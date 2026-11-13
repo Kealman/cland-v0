@@ -298,3 +298,32 @@ function observe<T>(t: TestContext, pending: Promise<T>): Promise<T> {
   t.after(() => pending.then(() => {}, () => {}));
   return pending;
 }
+
+test('trusted sign-in login identity survives inbox history and closure without native payload fields', async t => {
+  const root = await tempProject(t), processes = fakeLockProcesses().processes;
+  let cards!: HubCards;
+  const hub = await projectHub(t, root, {}, { clock: new FakeClock(Date.now()), processes, droplet: { processes }, registerHubCards: service => { cards = service; } });
+  const id = cards.raise('login-signin-code', 'general', 'Device sign-in', ['Cancel'], false, { login: 'work', admission: 'NATIVE-PRIVATE', url: 'https://example.test/signin' });
+  const ordinary = cards.raise('test', 'general', 'Ordinary card', ['Use'], false, { login: 'not-a-signin' });
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const listed = await ui.request({ type: 'inbox.list' });
+  assert.equal(listed.ok, true);
+  const rows = (listed.value as import('../src/protocol.ts').Inbox).asks;
+  assert.equal(rows.find(row => row.id === id)?.signInLogin, 'work');
+  assert.equal(Object.hasOwn(rows.find(row => row.id === ordinary)!, 'signInLogin'), false);
+  assert.equal(JSON.stringify(listed.value).includes('NATIVE-PRIVATE'), false);
+  const history = await ui.request({ type: 'topic.history', topic: 'general' });
+  assert.equal(history.ok, true);
+  const message = (history.value as { messages: import('../src/protocol.ts').TopicMessage[] }).messages.find(row => row.id === id)!;
+  assert.equal(message.ask?.signInLogin, 'work');
+  assert.equal(JSON.stringify(message).includes('NATIVE-PRIVATE'), false);
+  const closed = ui.waitFor(frame => frame.type === 'ask' && frame.ask === id);
+  void closed.catch(() => {});
+  try {
+    cards.withdraw(id, 'Sign-in ended');
+    const frame = await closed as import('../src/protocol.ts').HubEvent;
+    assert.equal(frame.type, 'ask');
+    if (frame.type === 'ask') { assert.equal(frame.card.signInLogin, 'work'); assert.equal(frame.card.state, 'withdrawn'); }
+  } finally { await Promise.allSettled([closed]); }
+});

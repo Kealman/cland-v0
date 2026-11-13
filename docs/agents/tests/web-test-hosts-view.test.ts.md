@@ -65,3 +65,109 @@ A second action inside the fake provider's window displays its `rate limited`
 refusal and retains the exact snapshot id set. The hub and page Date share one
 FakeClock; no real provider or sign-in runs. These four added cases are Web-only;
 no hub producer, connect order, wire shape, authority or native lifecycle changed.
+
+T-1827 adds the following generated Web cases:
+
+- `Hosts Add shows the shared codex card and clears sent input`
+- `Hosts renew shows the shared codex card and clears sent input`
+- `Hosts Add shows the shared claude-code card and expires without input`
+- `Hosts renew shows the shared claude-code card and clears sent input`
+- `Hosts Add moves the real inbox login wait through booting to placed`
+- `Hosts native codex Add completes the fake harness disk sign-in`
+- `Hosts native claude-code Add completes the fake harness disk sign-in`
+
+The first four use projectHub's real web/card handlers and injected preparation
+and interactive input/close owners. The FakeClock also sets browser Date. They
+prove inline links/codes, disk renewal, ready metadata via the local-human
+`login.list`, exact Claude input, expiry, and no submitted input in page text,
+storage or console. Expiry observes signed-out state after the injected close.
+The waiting case uses the actual pool runtime, a directory-backed fake volume
+and machine, in-process Codex adapter and real inbox frames; no socket carrier is
+injected. Its waiting line must show the login wait, then the named host boot
+wait, then leave after session.list contains the exact process/host and the
+inbox list is empty. The injected creator stays held until the readiness trigger,
+and its release is registered before hub construction for failure cleanup.
+
+The two native cases use login-native-fixture, fake SSH/SCP, FakeHostProvider
+and the fake Codex/Claude binaries. Each adds a disk from the browser, observes
+ready and one snapshot, expires the retained fake credential, clicks Sign in
+again, and proves the same volume and host plus two native closed/code-0 receipts.
+They never authenticate a real account. Run this file under the epic's native
+preservation slot, one file at a time; inventory hc-, ct- and cland-h- entries in
+/private/tmp before and after, retaining known cland-h residue. No GUI browser.
+The shared observer returns bounded redacted snapshots without importing the QA
+skill policy. These Web cases select only native close receipts for publication;
+the native integration reporter separately scans its entire diagnostic. The
+unchanged `hub/test/typecheck.test.ts` proves the Web compiler inputs still work
+in a scratch linked worktree whose commit contains the workspace closure.
+
+Neovim's half uses the unchanged inbox frame and renderer; the pool/inbox
+producer is exercised here and the existing Neovim waiting-launch regressions
+cover its rendering (`nvim/test/inbox-sections.test.ts`, generated case `waiting launches render facts and replace reasons without needs-you or departure rows`).
+No new Neovim action or wire shape is introduced. Linux mode-free verification
+supplies T1/selected T2/Web; local native results name their exact head; remaining
+T3/T4 and integrated Neovim QA belong to their stage/epic occasions.
+
+Source-review correction controls: every injected sign-in case now captures the
+returned card id, folds/reopens and reloads, and requires the same id/link/input.
+`Hosts renew shows the shared claude-code card and clears sent input from another
+surface` keeps an inline draft, answers the captured card from the local-human
+socket, then checks the folded input, ready metadata and secret absence. Only
+captured login/card ids enter tab sessionStorage; answers never do. Terminal
+cards are pruned. The existing hub/wire replies remain unchanged.
+
+`Hosts Add harness choices use only pool roles and actual logins: actual false`
+and `actual true` assert the exact role-only or role-plus-disk choices, exclude an
+unrelated regional login, prove a pool with no relevant role/login has disabled
+Add, and prove a login-only pool contributes its harness. The all-zero summary
+still carries all three keys and must contribute no choice.
+
+Native cases configure the pool role through real `role.launch` hot-apply before
+opening the browser. Their preparation wrapper captures the actual hub-owned
+HostRecords and every returned plan's host/name/renewal flag. Before renewal,
+the browser observes the real prior ready `hosts.state` publication (one usable
+login, none signed out), so the previous coalescer callback has completed. The
+fixture changes the credential file and marks signed-out through that captured
+hub owner; a separately observed signed-out publication and the anchored DOM
+state/reason precede the renewal click. Both admitted plan.host receipts must
+match the sole host. The separate Store is read-only for assertions; no fabricated
+push or cross-Store invalidation is used. Real socket observers arm before page
+navigation and the Add trigger. Native close/same-volume assertions remain.
+
+`Hosts Add shows the shared codex card and clears sent input after slow preparation`
+and `Hosts renew shows the shared codex card and clears sent input after slow
+preparation` hold the injected preparation before card publication. Setup observes
+one admitted preparation, then advances the hub FakeClock and paused browser
+clock together by exactly 10,001ms. The control must remain disabled beyond the
+old generic command deadline. A real mouse click on that disabled control must
+leave exactly one outgoing Add/renew request and one preparation. Releasing the
+registered gate produces a real hub result; its captured name/card must match
+the inline card before and after fold/reload, then the durable ready login.
+The gate's failure release is registered before hub construction. The red
+controls failed with an enabled control at the old deadline. No wall-clock
+10-second sleep is used; both clocks stay aligned and native fixture cleanup is
+joined. Other web commands retain the 10-second default; only these two command
+types receive the named 16-minute receipt window. Missing receipt is unknown,
+never an automatic resend or a native failure receipt.
+
+Authoritative association controls add `before receipt fold` and `before receipt
+reload` to both slow Codex Add and renewal cases. They remount or reload while
+preparation is still held, then release it and assert the inline id equals the
+persisted trusted code card. The reload case explicitly has no captured result
+callback. A second post-publication reload proves flattened InboxAsk restoration.
+`Hosts Add shows the shared codex card and clears sent input at previous wire
+shape` strips only the optional signInLogin field from real frames to exercise
+new-client/older-hub compatibility for already captured receipts. It does not
+claim pre-receipt recovery against an older hub with no authoritative metadata.
+The T1 signin-card-identity control proves only persisted hub metadata can project
+the login name and retains the exact ordinary previous shape. The hub-cards T2
+control proves fresh inbox, persisted history and terminal frames retain that
+identity without native payload fields. Native login-card-signin remote frames
+assert the new safe identity; secret-answer rules remain unchanged.
+
+The connection maintains the active sign-in index incrementally at every live,
+inbox, message and recovered-card ingestion point. Hosts rows use the production
+constant-time selector and react to index identity changes. The one-second
+uptime render does not enumerate retained terminal/history cards. The T1
+synthetic work-count control and legacy T-1840 exclusion are documented in
+hub-test-web-area-state.test.ts.md.

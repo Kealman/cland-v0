@@ -698,6 +698,7 @@
     "hub/test/setup-trust.test.ts": "T1",
     "hub/test/shared-defects-report.test.ts": "T3",
     "hub/test/shared-defects.test.ts": "T1",
+    "hub/test/signin-card-identity.test.ts": "T1",
     "hub/test/signin-client.test.ts": "T1",
     "hub/test/signin-command.test.ts": "T1",
     "hub/test/signin-owner.test.ts": "T1",

@@ -5,3 +5,8 @@
 .row[data-signed-out="true"] { color: var(--needs-human); }
 .error { color: var(--failed); }
 .row button { font: inherit; color: var(--text); background: var(--control); border: 1px solid var(--control-border); border-radius: 6px; padding: 4px 8px; }
+
+.card { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; min-width: 0; color: var(--text); }
+.card span, .card a { overflow-wrap: anywhere; max-width: 100%; }
+.card a { color: var(--link); }
+.row input, .row select { max-width: 100%; min-width: 0; color: var(--text); background: var(--control); border: 1px solid var(--control-border); }
