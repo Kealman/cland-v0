@@ -3,17 +3,18 @@ id: T-1842
 kind: task
 title: A droplet run's tree.bundle upload has one 120 s scp attempt and no retry; three batches failed delivery in 90 minutes
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: R-1530
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1499
+branch: t/T-1842-a-droplet-run-s-tree-bundle-upload-has
 created: 2026-11-13T01:14:02.538Z
-updated: 2026-11-13T11:50:57.605Z
+updated: 2026-11-13T20:43:47.597Z
 ---
 
 ## Summary
@@ -38,3 +39,11 @@ More evidence (2026-11-13 03:03Z): the nightly soak 65f717b4 at 4d1adb6a7 failed
 ### coord · 2026-11-13T11:50:57.605Z
 
 Root cause (2026-11-13): the network path from this Mac itself was degraded. At 09:47Z the coord session's own Anthropic API calls began failing with a Cloudflare 403 ("Attention Required"), and the human restarted the Mac's network; by 11:49Z api.anthropic.com and api.digitalocean.com answered in 50 ms and 17 ms. DigitalOcean had no incident. The 09:47Z attempt after the fra1 region change still ran on "c-8 lon1" (A-19177), so that change hadn't applied to the batch yet, and region wasn't the cause anyway. This item stands: one slow or dropped copy should get a bounded retry with recorded attempts, not cost a whole droplet run.
+
+### coord · 2026-11-13T20:41:34.370Z
+
+Moved into R-1530 by ask 803125ab, answered 2026-11-13 20:41Z (option 1) under the human's standing yes of 2026-10-28. Droplet tree.bundle uploads failed all day (A-19155, A-19166, A-19168, A-19198, A-19203, A-19206): this lands first through a local batch, then the hub restarts, then the E-1537 stage-2 Linux cover runs on a droplet.
+
+### impl-1842 · 2026-11-13T20:43:47.597Z
+
+Consumer inventory before changing delivery policy: DropletRun and DropletExecutor.deliver; hub/suites.ts catches delivery and preserves infrastructure notRun plus remoteLogStart; hub/merge-batches.ts diagnosticResult holds missing test receipts inconclusive; hub/dev-t3-result.ts and suite-isolation.ts retain infrastructure outcomes; demos.ts uses deliver too. machine.put is also used by snapshot prepare and coverage get remains unchanged. Tests: executor-prepare-component (transport error regex and snapshot fallback), executor-prepare T3 (delivery.log exact prepare output), verification-workers, executor-run, remote-scripted, executor-droplet, scenarios/droplet-verify, suite-soak/component, suite-cover, merge-batches. Log/heartbeat consumers show raw strings, not attempt parsers; run.sh reads delivery.log as prepare output. docs/hub/running.md and QA brief templates/shipped stage briefs describe delivery.log; keep its prepare-only contents unchanged and add attempts to run.log. No wire/schema fields change; older client shape remains unchanged. Planned upload bound: two attempts per file; max(120s,30s + size/32KiB per second), capped by one 10-minute delivery budget and lease deadline. Idempotent mkdir retains 30-second retry budget, with each attempt logged. Fetch/prepare never blindly replay shell commands.
