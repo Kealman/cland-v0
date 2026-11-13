@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1497
 branch: t/T-1827-adding-a-login-and-signing-in-again-from
 created: 2026-11-12T10:07:20.982Z
-updated: 2026-11-13T00:57:23.368Z
+updated: 2026-11-13T13:41:41.450Z
 ---
 
 ## Summary
@@ -35,26 +35,32 @@ The login reads `ready` when the hub reports it. A sign-in withdrawn after its 1
 - [x] C1. `Add` for a pool and the codex harness starts a sign-in through the hub, and the new login's line shows the sign-in card's link and code (test).
   - done: impl-1827 · 2026-11-13T00:55:06.650Z
   - verified: rev-35 [reviewer] · run rev-35-1827-duration-final-1 · 2026-11-13T00:57:22.862Z · commit bac216bee8662af959eec209800682884f45a508
+  - verified: rev-35 [reviewer] · run rev-35-1827-compiler-final-1 · 2026-11-13T13:41:41.208Z · commit 7fc85d707a2d5ed5705f99f274c909a830178bb9
 - [x] C2. For the fake Codex the login reads `ready` in the view and in `cland login list` when the device sign-in finishes, with nothing typed (test).
   - done: impl-1827 · 2026-11-12T21:49:25.066Z
   - verified: rev-35 [reviewer] · run rev-35-1827-final-1 · 2026-11-12T23:41:15.467Z · commit 9376e892a2f4b2ce9a9dd1bb2a9c2dd2ee82e2ac
   - verified: rev-35 [reviewer] · run rev-35-1827-duration-final-1 · 2026-11-13T00:57:22.862Z · commit bac216bee8662af959eec209800682884f45a508
+  - verified: rev-35 [reviewer] · run rev-35-1827-compiler-final-1 · 2026-11-13T13:41:41.208Z · commit 7fc85d707a2d5ed5705f99f274c909a830178bb9
 - [x] C3. For the fake Claude Code the code typed into the line's card reaches the sign-in prompt, and the login reads `ready` (test).
   - done: impl-1827 · 2026-11-12T21:49:25.194Z
   - verified: rev-35 [reviewer] · run rev-35-1827-final-1 · 2026-11-12T23:41:15.467Z · commit 9376e892a2f4b2ce9a9dd1bb2a9c2dd2ee82e2ac
   - verified: rev-35 [reviewer] · run rev-35-1827-duration-final-1 · 2026-11-13T00:57:22.862Z · commit bac216bee8662af959eec209800682884f45a508
+  - verified: rev-35 [reviewer] · run rev-35-1827-compiler-final-1 · 2026-11-13T13:41:41.208Z · commit 7fc85d707a2d5ed5705f99f274c909a830178bb9
 - [x] C4. `Sign in again` on a signed-out login re-runs the sign-in on its host and volume, and the login reads `ready` (test).
   - done: impl-1827 · 2026-11-12T23:05:02.821Z
   - verified: rev-35 [reviewer] · run rev-35-1827-final-1 · 2026-11-12T23:41:15.467Z · commit 9376e892a2f4b2ce9a9dd1bb2a9c2dd2ee82e2ac
   - verified: rev-35 [reviewer] · run rev-35-1827-duration-final-1 · 2026-11-13T00:57:22.862Z · commit bac216bee8662af959eec209800682884f45a508
+  - verified: rev-35 [reviewer] · run rev-35-1827-compiler-final-1 · 2026-11-13T13:41:41.208Z · commit 7fc85d707a2d5ed5705f99f274c909a830178bb9
 - [x] C5. With a launch waiting for a codex login, adding one from the view changes the web inbox's waiting line from "waiting for a login codex" to "waiting for host <id> to boot", and the line leaves when the launch is placed (test).
   - done: impl-1827 · 2026-11-12T21:49:25.578Z
   - verified: rev-35 [reviewer] · run rev-35-1827-final-1 · 2026-11-12T23:41:15.467Z · commit 9376e892a2f4b2ce9a9dd1bb2a9c2dd2ee82e2ac
   - verified: rev-35 [reviewer] · run rev-35-1827-duration-final-1 · 2026-11-13T00:57:22.863Z · commit bac216bee8662af959eec209800682884f45a508
+  - verified: rev-35 [reviewer] · run rev-35-1827-compiler-final-1 · 2026-11-13T13:41:41.208Z · commit 7fc85d707a2d5ed5705f99f274c909a830178bb9
 - [x] C6. After the Claude Code code is sent, it appears in no page text, browser storage or console output (test).
   - done: impl-1827 · 2026-11-12T21:49:25.749Z
   - verified: rev-35 [reviewer] · run rev-35-1827-final-1 · 2026-11-12T23:41:15.467Z · commit 9376e892a2f4b2ce9a9dd1bb2a9c2dd2ee82e2ac
   - verified: rev-35 [reviewer] · run rev-35-1827-duration-final-1 · 2026-11-13T00:57:22.863Z · commit bac216bee8662af959eec209800682884f45a508
+  - verified: rev-35 [reviewer] · run rev-35-1827-compiler-final-1 · 2026-11-13T13:41:41.208Z · commit 7fc85d707a2d5ed5705f99f274c909a830178bb9
 
 ## Blocked by
 
@@ -232,5 +238,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final current-head C1–C6 clear A-19164 after sole Coordinator-authorized retry1cd8d664/A-19162. Independently recomputed normalizeddcaeeef4fad155983ae3e26ad3de808eea50bbc3 matches source-clearbac216bee;6,254 base test/692 base file positives,separate150/150 load passes,zero negatives/skips. All83 required ordinary identities and26Hosts cases pass;five identity controls base1+5fresh load;exact new native plans/volume/distinct0-null closes/pub facts retained. Hosts66.356038196s<authorized96s;missingbaseline/reportlint/otheroverages/ratchet stayadvisory. Heartbeat case/file nowpositive1984/1987;firstdafa/A-19160 remainsfailed/incomplete underT-1841,accounting885s/$0.0615. A-19163's130 exports/raw fields and869paths/16unknowns checked;514freshselectedconsumerfilespositive,0missing. Prior68-file native/directed carry remains explicit old-head under2e8bd507 withcapture/T-1806/T-1840 limits;remainingT3/T4/stage split unchanged. Hold released for normalready/enqueue. No further run/source action or Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-1827 · 2026-11-13T13:03:23.407Z
+
+Item-specific compiler regression reproduced locally: node --test hub/test/typecheck.test.ts failed 1/1 in 5.23s with exact TS2307 for qa-demo-policy.ts in linked scratch worktree. Path: web/tsconfig.tools.json includes web/test → hosts-view native cases → login-card-signin-trace → .agents QA policy. Minimal dependency cut leaves observer/redaction/native bytes and all test assertions unchanged: move the canonical assertPublishable import/gate from shared observer to existing native diagnostic reporter, which now scans the entire selected publication before t.diagnostic. No copied policy, no compiler/config/exclusion change and no change to typecheck.test.ts. Same unchanged regression passes 1/1 locally in 9.89s after fix (macOS arm64 Node24.21). Direct/helper consumers: native login-card-signin.test.ts and Web hosts-view.test.ts; compiler closure consumer typecheck.test.ts. Existing 869-path/16-unknown wire consumer accounting is preserved; no wire/production contract changes. QA policy consumers unchanged apart from import relocation; targeted QA-policy T1 plus both native-driving files will run at the committed final head.
+
+### rev-35 · 2026-11-13T13:12:23.712Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1827-compiler-source-1
+commit: 7fc85d707a2d5ed5705f99f274c909a830178bb9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Compiler-closure dependency delta clear, A-19183. Four-file change cuts the QA skill import from the shared trace and uses the unchanged canonical scanner at the native reporter's complete selected publication, with whole-diagnostic withholding. Web selects status/close fields, not tails. No compiler fixture/config, production/wire, assertion or duration change. Original batch TS2307 and unchanged compiler red/green are retained; A-19182 final-head directed native 4 + Web 26 + compiler 1 + policy 5 outcomes all pass, producers 0/null, zero withheld lines. Launcher redaction/caps/drainage and full prefix inventories audited; ten T-1806 aliases retained. Lead confirmed original positive-control/every-leaf scan exit 0 before publication. Hold released for mode-free verification at exact 7fc85d707; C1–C6 await fresh configured evidence. Preserve 869 prior paths/16 unknowns and add current helper/QA-policy identities in final normalized accounting. No extra execution or Reviewer runtime work requested; broader T3/T4/stage and historical limits remain.
+
+### rev-35 · 2026-11-13T13:41:41.208Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1827-compiler-final-1
+commit: 7fc85d707a2d5ed5705f99f274c909a830178bb9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1–C6 clear, A-19186. Independent A-19184 audit matches source-clear 7fc85d707 and recomputed normalized tree d461f0c51ea99e11d0aa90921ed725e4a58cf73c: 6,254 base test/692 file passes, separate 150/150 load passes, zero negatives/skips. All 83 prior required identities and 26 Hosts cases pass; five new identity controls have base 1 + load 5. Exact native plans, same volume, distinct 0/null closes and publication facts pass. A-19185's 141 exported records match raw receipts with one unrelated policy title masked; all 872 paths and 16 unknown flags preserved, 515 selected consumer files positive and none missing. Fresh A-19182 local native 4/Web 26/compiler 1/policy 5 is audited; compiler Linux T3 batch remains outstanding, not claimed here. Hosts 64.972s is within 96s; report-only lint/overages/missing baseline/ratchet and capture, synthetic/T-1840, T-1806 and historical failure limits remain explicit. Droplet Linux Node 24.21, Chrome 156/revision 1248, 1,318s/$0.0916. Hold released for readiness/enqueue; broader T3/T4/stage split unchanged. No extra run/source action or Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

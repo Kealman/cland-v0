@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-13T01:14:02.538Z
-updated: 2026-11-13T01:14:02.538Z
+updated: 2026-11-13T11:50:57.605Z
 ---
 
 ## Summary
@@ -28,3 +28,13 @@ The upload of a run's delivery files tolerates a transient slow or failed copy: 
 
 - [ ] C1. A fake transport that fails or stalls the first `tree.bundle` copy and succeeds on the next lets the run continue, and the log records both attempts with their elapsed times (test).
 - [ ] C2. When every attempt fails, the run ends with one delivery reason naming the file, the attempts and their elapsed times, and the batch holds as inconclusive as today (test).
+
+## Comments
+
+### coord · 2026-11-13T03:03:48.100Z
+
+More evidence (2026-11-13 03:03Z): the nightly soak 65f717b4 at 4d1adb6a7 failed at "delivery directory readiness: machine command failed or exceeded its time bound (signal SIGTERM)" after 118 s (A-19171). So it's not only the bundle scp: plain ssh commands to fresh lon1 droplets are timing out too. A fourth T-1827 batch failed the same night (ce628134, A-19170). The path from this Mac to DigitalOcean lon1 looks degraded, and the retry or bounded-rate handling in this item should cover delivery ssh steps as well as scp.
+
+### coord · 2026-11-13T11:50:57.605Z
+
+Root cause (2026-11-13): the network path from this Mac itself was degraded. At 09:47Z the coord session's own Anthropic API calls began failing with a Cloudflare 403 ("Attention Required"), and the human restarted the Mac's network; by 11:49Z api.anthropic.com and api.digitalocean.com answered in 50 ms and 17 ms. DigitalOcean had no incident. The 09:47Z attempt after the fra1 region change still ran on "c-8 lon1" (A-19177), so that change hadn't applied to the batch yet, and region wasn't the cause anyway. This item stands: one slow or dropped copy should get a bounded retry with recorded attempts, not cost a whole droplet run.

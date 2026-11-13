@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-13T00:40:13.375Z
+updated: 2026-11-13T15:32:09.124Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -566,3 +566,19 @@ Addendum to the 2026-11-12 signed-out incident (from coord's own check of 03:00�
 ### coord · 2026-11-13T00:40:13.375Z
 
 Incident 2026-11-12/13 (coord): periodic dev-t3 run b33e7940-f94b-4916-9181-13c0dec731f7 started 23:02:11Z on droplet cland-v0-58c69f29 (ETA 0 s at 23:39Z) and ended without a posted result; the 00:39Z heartbeat lists it as stale. No artifact named b33e7940 exists. Around the same time, T-1827's merge-batch run 9039a267 failed its droplet bundle upload (tree.bundle copy exceeded its time bound, A-19154/5). Both look like droplet delivery or collection trouble; the next periodic run will cover dev.
+
+### human · 2026-11-13T11:51:07.172Z
+
+Network-path incident, 2026-11-13 ~01:00–11:50Z: from this Mac, SSH/scp delivery to DigitalOcean droplets failed in lon1 (six T-1827 merge batches + the 03:03Z nightly soak: 'delivery upload tree.bundle: machine copy failed', 'Connection timed out during banner exchange') and, after coord reordered regions to fra1 first (ecd886c75, ask a2cabc60), the fra1 run 5564c80e failed the same way at 09:47Z. In the same minute coord's API call got '403 Attention Required | Cloudflare'; Claude Code printed 'Please run /login' and the hub listed coord [signed-out] (daemon: blocked) for 2 h, with no deliveries held. The DO API and general connectivity stayed reachable from the Mac throughout. The human restarted the network; at 11:49Z api.anthropic.com answered in 50 ms and a cross-session probe message started a coord turn at 11:50:20Z — coord recovered without a relaunch. Distinguish from the 11-12 login expiry by the pane text (403/Cloudflare vs 'Login reached its time limit'). Follow-ups are coord's: T-1842 (delivery retry + size-scaled bound) and re-enqueuing T-1827.
+
+### human · 2026-11-13T11:51:16.613Z
+
+Correction to the 2026-11-13 network-path entry (from coord): run 5564c80e at 09:47Z still ran on a lon1 droplet (the region reorder had not applied to that admission), so the fra1 path was NOT tested by it; the region change is first exercised by the T-1827 re-enqueue at ~11:52Z after the network restart. Coord recovered at 11:50:20Z on the stand-in's probe message, no relaunch.
+
+### human · 2026-11-13T12:06:22.325Z
+
+Hub restart #71 (2026-11-13 12:02:33Z, stand-in, launchd). Reason: ask 9785f667, human option 1 — pick up [verification.droplet] regions fra1-first (ecd886c75); the executor reads regions only at hub start, so coord's hub reload after ecd886c75 still sent admissions to lon1 (unreachable from this Mac since ~01:00Z, T-1842). Gate: droplets 0, merge queue only held batch 0b11e6a8 (T-1827, inconclusive, coord accepted), no verify run, dev=origin/dev=ecd886c75, load 2.1. Stop: launchctl remove cland-hub-r70 → hub 99476 gone in 2 s (graceful, stopping logged 12:02:33.5Z). Serve: launchctl submit cland-hub-r71 → listening 12:02:47Z, serving 12:03:35Z (startup replay 48 s). Gap stop→serve 62 s. New hub 10760, port 49352, web 56935, nice 0, ppid 1, env check 2 (8 GB heap + DO token), one launchd job. Coord 66570 (job 2865efff): bridge-closed 12:02:33Z → bridge-connected 12:03:35Z → session-resumed → coordinator-filled 12:04:04Z → injected 12:04:05Z; one bridge. Hub RSS 1.12 GB, footprint 1.10 GB at +3 min. cland merge queue: T-1827 re-enqueued by coord 12:04:38Z (fra1 test run). doctor 35 ok 3 warn 0 fail.
+
+### human · 2026-11-13T15:32:09.124Z
+
+Hub restart #72 (2026-11-13 15:31:19Z, stand-in, launchd). Reason: [verification] workers = 1 (350a4b6ff, human's answer on ask 608c9b13 at 15:30Z: keep local, one worker); hub reload refused with 'verification.workers changed: restart required'. Gate: merge queue empty, no local run, droplets 0, dev=origin/dev=350a4b6ff, load 1.6. Stop: launchctl remove cland-hub-r71 → hub 10760 gone in 3 s (graceful). Serve: launchctl submit cland-hub-r72 → listening 15:31:32Z, serving 15:31:41Z. Gap stop→serve 23 s. New hub 9819, port 60518, web 56935, nice 0, ppid 1, env check 2, one launchd job. Coord 66570: bridge-closed 15:31:19Z → bridge-connected 15:31:42Z → session-resumed → coordinator-filled 15:31:50Z → injected 15:31:51Z; one bridge. Ghost b33e7940 (T-1843) still listed in verify queue after the restart.
