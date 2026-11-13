@@ -179,9 +179,13 @@
       "A-19051",
       "A-19073",
       "A-19077",
-      "A-19081"
+      "A-19081",
+      "A-19116",
+      "A-19120",
+      "A-19131",
+      "A-19216"
     ],
-    "commit": "88e9f95968bb206c3578519eec5fdcf329ea4f1f"
+    "commit": "d2240269c3872ccdf7e49b99aaaa08451b5df9d4"
   },
   "budget": {
     "testSeconds": 5,
@@ -4078,6 +4082,22 @@
     "nvim/test/hosts.test.ts": {
       "seconds": 0.427417,
       "tests": 1
+    },
+    "hub/test/host-tunnel-outage-native.test.ts": {
+      "seconds": 7.265143,
+      "tests": 1
+    },
+    "hub/test/merge-batch-dependencies.test.ts": {
+      "seconds": 0.930563,
+      "tests": 2
+    },
+    "hub/test/signin-card-identity.test.ts": {
+      "seconds": 0.000613,
+      "tests": 1
+    },
+    "web/test/hosts-view.test.ts": {
+      "seconds": 59.973471,
+      "tests": 26
     }
   },
   "tests": {
@@ -12174,7 +12194,41 @@
     "web/test/phone-sessions.test.ts::phone session page names a remote host and omits the local host": 1.622037,
     "web/test/sessions.test.ts::Sessions remote host fact names its host with a tooltip on ground and selection": 2.289699,
     "nvim/test/hosts.test.ts::Hosts follows Remotes, wraps pool facts, folds with za and clears pushed alerts": 0.427417,
-    "nvim/test/sessions.test.ts::recorded host session names its host on row and selected meta; local omits it": 0.297018
+    "nvim/test/sessions.test.ts::recorded host session names its host on row and selected meta; local omits it": 0.297018,
+    "hub/test/host-tunnel-outage-native.test.ts::native tunnel outage pushes host alert and CLI scratch control restores it": 7.265143,
+    "hub/test/merge-batch-dependencies.test.ts::batch checkout shares dependencies and removal preserves the root install": 0.41261,
+    "hub/test/merge-batch-dependencies.test.ts::periodic probe checkout shares dependencies and removal preserves the root install": 0.517953,
+    "hub/test/merge-batches.test.ts::missing @modelcontextprotocol/sdk holds dependency preparation inconclusive with members queued": 0.038538,
+    "hub/test/merge-batches.test.ts::missing node_modules holds dependency preparation inconclusive with members queued": 0.038535,
+    "hub/test/signin-card-identity.test.ts::sign-in card projection exposes only the persisted hub login identity": 0.000613,
+    "hub/test/web-area-state.test.ts::active sign-in identities update incrementally across live inbox message and terminal cards": 0.001581,
+    "hub/test/web-area-state.test.ts::active sign-in row lookup reads no retained history on a synthetic card inventory": 0.001124,
+    "web/test/hosts-view.test.ts::Hosts Add harness choices use only pool roles and actual logins: actual false": 1.031062,
+    "web/test/hosts-view.test.ts::Hosts Add harness choices use only pool roles and actual logins: actual true": 0.735853,
+    "web/test/hosts-view.test.ts::Hosts Add moves the real inbox login wait through booting to placed": 1.03024,
+    "web/test/hosts-view.test.ts::Hosts Add shows the shared claude-code card and expires without input": 1.227457,
+    "web/test/hosts-view.test.ts::Hosts Add shows the shared codex card and clears sent input": 1.209727,
+    "web/test/hosts-view.test.ts::Hosts Add shows the shared codex card and clears sent input after slow preparation": 1.740661,
+    "web/test/hosts-view.test.ts::Hosts Add shows the shared codex card and clears sent input after slow preparation before receipt fold": 2.21429,
+    "web/test/hosts-view.test.ts::Hosts Add shows the shared codex card and clears sent input after slow preparation before receipt reload": 1.680662,
+    "web/test/hosts-view.test.ts::Hosts Add shows the shared codex card and clears sent input at previous wire shape": 1.035813,
+    "web/test/hosts-view.test.ts::Hosts login binding swap with equal pool totals renders from the durable mutation within one second": 2.004272,
+    "web/test/hosts-view.test.ts::Hosts native claude-code Add completes the fake harness disk sign-in": 10.609453,
+    "web/test/hosts-view.test.ts::Hosts native codex Add completes the fake harness disk sign-in": 14.139046,
+    "web/test/hosts-view.test.ts::Hosts Remove confirms and cancels disk login deletion": 1.819645,
+    "web/test/hosts-view.test.ts::Hosts Remove confirms and cancels key login deletion": 1.603207,
+    "web/test/hosts-view.test.ts::Hosts Remove hides bound actions and keeps hub refusal on the retained login": 1.192124,
+    "web/test/hosts-view.test.ts::Hosts renew shows the shared claude-code card and clears sent input": 1.29445,
+    "web/test/hosts-view.test.ts::Hosts renew shows the shared claude-code card and clears sent input from another surface": 1.255191,
+    "web/test/hosts-view.test.ts::Hosts renew shows the shared codex card and clears sent input": 1.311973,
+    "web/test/hosts-view.test.ts::Hosts renew shows the shared codex card and clears sent input after slow preparation": 1.535905,
+    "web/test/hosts-view.test.ts::Hosts renew shows the shared codex card and clears sent input after slow preparation before receipt fold": 2.098059,
+    "web/test/hosts-view.test.ts::Hosts renew shows the shared codex card and clears sent input after slow preparation before receipt reload": 1.410382,
+    "web/test/hosts-view.test.ts::Hosts Snapshot reports durable success and provider window refusal on the disk line": 1.202871,
+    "web/test/hosts-view.test.ts::Hosts Stop preserves cancellation and reports native deletion outcome: confirmed false": 1.811601,
+    "web/test/hosts-view.test.ts::Hosts Stop preserves cancellation and reports native deletion outcome: confirmed true": 1.70203,
+    "web/test/hosts-view.test.ts::Hosts view lists login metadata and refreshes pushed changes (desktop)": 1.513056,
+    "web/test/hosts-view.test.ts::Hosts view lists login metadata and refreshes pushed changes (phone)": 1.564441
   },
   "allow": {
     "web/test/hosts-view.test.ts::Hosts login binding swap with equal pool totals renders from the durable mutation within one second": {
