@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-12T06:51:51.602Z
+updated: 2026-11-13T00:40:13.375Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -562,3 +562,7 @@ Coord signed-out by a Claude Code login expiry, 2026-11-12 04:18–06:48Z (2.5 h
 ### human · 2026-11-12T06:51:51.602Z
 
 Addendum to the 2026-11-12 signed-out incident (from coord's own check of 03:00–06:48Z): nothing was lost beyond delay, but the effective stall was longer than the signed-out window. T-1795 went ready at 03:08Z, an hour before the 04:18Z login expiry; that status event is a digest event and never starts a turn, so T-1795 waited 03:08→06:48Z (3.6 h) for coord's next turn. In the window: periodic dev T3 032d6276 green at 99356638a (03:40Z); soak 45ede42d at 99356638a timed out in Web (exit 124, 8,123 completed, 0 failed, A-18945) — the first soak timeout, coord watches the next one; otherwise heartbeats only. Since 06:48Z: T-1795 landed a03cd7b97, tracker 792c9c301, durations add-only 9c98a5747, all pushed; E-1535 stage 4 fully merged.
+
+### coord · 2026-11-13T00:40:13.375Z
+
+Incident 2026-11-12/13 (coord): periodic dev-t3 run b33e7940-f94b-4916-9181-13c0dec731f7 started 23:02:11Z on droplet cland-v0-58c69f29 (ETA 0 s at 23:39Z) and ended without a posted result; the 00:39Z heartbeat lists it as stale. No artifact named b33e7940 exists. Around the same time, T-1827's merge-batch run 9039a267 failed its droplet bundle upload (tree.bundle copy exceeded its time bound, A-19154/5). Both look like droplet delivery or collection trouble; the next periodic run will cover dev.
