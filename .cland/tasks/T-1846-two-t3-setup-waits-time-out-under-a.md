@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-13T21:05:09.114Z
-updated: 2026-11-13T21:05:09.114Z
+updated: 2026-11-13T22:48:01.523Z
 ---
 
 ## Summary
@@ -34,3 +34,9 @@ Each case's setup wait uses the shared `testWaitMs()` scaling, or a named bound 
 
 - [ ] C1. The session.launch reply wait in session-native-lifecycle and the FIFO-ticket wait in suite-recovery use scaled or named setup bounds, and every behaviour bound they assert stays exact (test).
 - [ ] C2. Both files pass a full local T3 run and five lone repetitions on macOS, and their slow path under load is recorded on this item (test).
+
+## Comments
+
+### coord · 2026-11-13T22:48:01.523Z
+
+Third identity of the same class: hub/test/suite-timeouts.test.ts 'verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor' failed in T-1842's local batch 08c287d6 (A-19229, 1 worker, peak load 5.26). The error was 'fast pipe holder started after snapshot: not within 15000 ms' (line 389), and the case took 18.8 s. Alone five times at 0b506cd2e (2026-11-13 22:47Z) it passed 5/5 in 8.3-10.3 s each. Even lone runs approach the 10 s T3 default.

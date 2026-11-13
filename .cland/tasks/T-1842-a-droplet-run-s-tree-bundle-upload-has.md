@@ -2,8 +2,8 @@
 id: T-1842
 kind: task
 title: A droplet run's tree.bundle upload has one 120 s scp attempt and no retry; three batches failed delivery in 90 minutes
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1499
 branch: t/T-1842-a-droplet-run-s-tree-bundle-upload-has
 created: 2026-11-13T01:14:02.538Z
-updated: 2026-11-13T21:45:36.716Z
+updated: 2026-11-13T23:49:36.308Z
+closed: 2026-11-13T23:49:36.308Z
 ---
 
 ## Summary
@@ -114,3 +115,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final C1/C2 verified on fresh same-head b6d41756/A-19226. A-19227 records independent positive finish audit:6,254 base tests/691 base files, separately135 load test/file passes, zero negatives/skips. Required bundle retry/exhaustion and four-variant recovery controls each base+5 pass; normal remote census base passes; all three ordinary files positive. All973 conservative consumers retained:219 T1+418 T2+54 Web executed,265 T3+17 T4 explicitly deferred. Local darwin arm64 Node24.21/nvim0.12.5, actual Headless Shell1248/Chrome156.0.8078.4; T0/T1/T2/Web exit0. Report-mode budget/lint and development-capture limits preserved. Coordinator246a9715 accepts targeted zero-delta bar and dispositions configured13,118→13,402 fixture entries as existing T-1806/full-suite residue; untouched, no global-cleanup claim. Linux/full T3/T4/stage remain separate unexecuted evidence. Source clean and unchanged; no remaining findings. Reviewer read-only.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-13T23:49:36.308Z
+
+Merged f84b990143f7d460ad4fd072f5213c8d4037ccc0 onto dev.
