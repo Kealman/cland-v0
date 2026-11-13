@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1497
 branch: t/T-1827-adding-a-login-and-signing-in-again-from
 created: 2026-11-12T10:07:20.982Z
-updated: 2026-11-13T19:14:31.923Z
+updated: 2026-11-13T19:16:47.942Z
 closed: 2026-11-13T19:14:31.923Z
 ---
 
