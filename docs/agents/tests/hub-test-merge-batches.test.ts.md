@@ -1,5 +1,13 @@
 # hub/test/merge-batches.test.ts
 
+Dependency-preparation cases use the real worktreeInstall policy via
+prepareBatchDependencies against suiteUnit's disposable root. Missing
+node_modules and a missing locked SDK package must persist an inconclusive
+preparation reason, retain all three queued members across reopen, and admit no
+suite. These are T1 filesystem/controller assertions without native Git or a
+worker. Native checkout/link/removal evidence is in
+merge-batch-dependencies.test.ts.
+
 T-1232 injects independent candidate-preparation and blocked-report failures.
 Start the controller, join its in-flight tick, assert resolution and the failure
 log, then reopen to prove both `failed` and `reportError` remain durable without

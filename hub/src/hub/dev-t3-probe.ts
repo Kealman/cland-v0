@@ -9,7 +9,7 @@ import type { DevT3Result } from './dev-t3-result.ts';
 import type { Platform } from '../executor/executor.ts';
 import type { PlatformSkip, ProbeVerdict, ProbeReceipt } from './dev-t3-search.ts';
 import { diagnosticResult, type BatchCandidate } from './merge-batches.ts';
-import { removeMergeBatch, type BatchRepository } from './merge-batch-territory.ts';
+import { prepareBatchDependencies, removeMergeBatch, type BatchRepository } from './merge-batch-territory.ts';
 import { committedTreeOrThrow } from '../verification-tree.ts';
 import { suiteProgress } from '../suite-progress.ts';
 import { quarantineResults } from '../suite-quarantine.ts';
@@ -44,7 +44,7 @@ export class DevT3Probes {
             const status = await territoryGitAsync(candidate.cwd, ['status', '--porcelain=v1', '--untracked-files=no'], false, undefined, env);
             return head === candidate.head && !status;
           })().catch(() => false);
-          if (complete) return;
+          if (complete) { await prepareBatchDependencies(root, candidate.cwd); return; }
           await removeWorktreeWithFixtures(candidate.cwd, () => rm(candidate.cwd, { recursive: true, force: true }));
           gitFile = null;
         }
@@ -55,6 +55,7 @@ export class DevT3Probes {
         }
         const head = await territoryGitAsync(candidate.cwd, ['rev-parse', 'HEAD'], false, undefined, env);
         if (head !== candidate.head) throw new Error('existing probe checkout differs from its durable head');
+        await prepareBatchDependencies(root, candidate.cwd);
       },
       remove: async candidate => {
         const gitFile = await stat(join(candidate.cwd, '.git')).catch(error => {

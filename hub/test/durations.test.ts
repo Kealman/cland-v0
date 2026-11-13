@@ -379,6 +379,9 @@ for (const preparation of ['legacy worktree', 'interrupted clone', 'interrupted 
   await writeFile(owner, '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: closed\n---\n');
   await git('add', '.'); await git('commit', '-qm', 'Close live owner');
   await assert.rejects(lintHubShards(f.root), /closed owner E-677/);
+  // This synthetic project has no packages; still provide the root install
+  // directory required by native probe preparation, without running npm.
+  await mkdir(join(f.root, 'node_modules'), { recursive: true });
   const probes = new DevT3Probes(f.store, f.suites, f.root, f.env);
   const candidate = { base: head, head, tree, cwd: join(f.root, '.cland/run/merge-batches/historical-probe'), budgetLines: [] };
   t.after(() => probes.repository.remove(candidate));

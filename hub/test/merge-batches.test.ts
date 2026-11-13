@@ -12,7 +12,7 @@ import { MergeBatches, BatchRefusal, BatchRebuild, diagnosticResult, batchIntera
 import type { MergeQueueEntry } from '../src/protocol.ts';
 import type { TopicNotice } from '../src/hub/core.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
-import { prepareMergeBatch, batchRebuildReason, type BatchRepository } from '../src/hub/merge-batch-territory.ts';
+import { prepareBatchDependencies, prepareMergeBatch, batchRebuildReason, type BatchRepository } from '../src/hub/merge-batch-territory.ts';
 import { recordBatchFlakes } from '../src/hub/batch-flakes.ts';
 import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
@@ -77,6 +77,26 @@ const failureLog = 'suite test failures [{"file":"hub/test/example.test.ts","nam
 const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/example.test.ts","name":"rejects stale input","at":1,"nesting":0,"outcome":"pass","seconds":0.01}\nsuite test failures []\n# tests 1\n# pass 1\n';
 const t0Green = 'tier T0: exit 0; duration 1 s; output tail: static checks passed\n';
 const t0Red = 'tier T0: exit 2; duration 1 s; output tail: error TS2344\n';
+
+for (const missing of ['node_modules', '@modelcontextprotocol/sdk']) test(`missing ${missing} holds dependency preparation inconclusive with members queued`, async t => {
+  const state = await fixture(t);
+  const { f, boundary, entries, dropped } = state;
+  await writeFile(join(f.root, 'package.json'), '{}');
+  await writeFile(join(f.root, 'package-lock.json'), JSON.stringify({ packages: { 'node_modules/@modelcontextprotocol/sdk': { version: '1.0.0' } } }));
+  if (missing !== 'node_modules') await mkdir(join(f.root, 'node_modules'), { recursive: true });
+  boundary.checkout = () => prepareBatchDependencies(f.root, f.root);
+  await state.runner.tick();
+  const held = state.runner.snapshot()!;
+  assert.match(held.failed!, /dependency preparation inconclusive/);
+  assert.ok(held.failed!.includes(missing), held.failed);
+  assert.equal(held.run, undefined);
+  assert.equal(entries.length, 3);
+  assert.deepEqual(dropped, []);
+  await state.reopen(); await state.runner.tick();
+  assert.equal(state.runner.snapshot()!.failed, held.failed);
+  assert.equal(entries.length, 3);
+  assert.deepEqual(dropped, []);
+});
 
 for (const restart of [false, true]) test(`all-terminal blocked batch clears ${restart ? 'at startup' : 'after manual merge'} and batches the next entry`, async t => {
   const state = await fixture(t);

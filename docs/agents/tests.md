@@ -521,6 +521,16 @@ T0 first through the candidate's resolved `[verification] check` command, then
 identities absent from the last green batch or stage receipt. It uses the configured executor and Coordinator
 priority, occupying one suite slot.
 
+Before admission, batch checkouts and periodic diagnostic clones share the
+root's node_modules using the same link/lockfile validation as task worktrees.
+Local verification uses this existing install; it never runs prepare or npm.
+A missing or stale install holds preparation as inconclusive with the dependency
+reason and keeps the members queued. Restore the root install only after shared
+readers stop, then have the Coordinator retry the held batch. Removal drains
+fixture writers and removes the candidate link without following it into the
+root install. Droplet delivery still runs the configured prepare command in its
+delivered checkout before execution.
+
 T0 is mandatory whenever a check command is configured, regardless of
 `batch_tiers`. This repository's `npm run check` runs typecheck, the Web build
 and the T0 static/test lints on the combined candidate checkout. Local workers

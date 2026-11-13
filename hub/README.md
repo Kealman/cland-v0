@@ -61,7 +61,7 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [The project's hub](../docs/hub/the-projects-hub.md)
 - [Adapters and sessions](../docs/hub/adapters-and-sessions.md): managed Claude Bash guard refuses computed and unquoted-glob rm/rmdir targets.
 - [The tracker](../docs/hub/the-tracker.md)
-- [Running](../docs/hub/running.md): executor API endpoint declarations and per-token request budgets.
+- [Running](../docs/hub/running.md): executor API endpoint declarations, per-token request budgets and shared dependency preparation for local batch/probe checkouts.
 - [Artifacts](../docs/hub/artifacts.md)
 - [Coordinator account refusal procedure](../docs/hub/coordinator-account-refusal-procedure.md)
 - [Coordinator session procedure](../docs/hub/coordinator-session-procedure.md)

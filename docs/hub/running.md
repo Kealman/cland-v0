@@ -1314,6 +1314,12 @@ failing files or the failed T0/Web step on leave-one-out trees: `merge-bisected`
 (or a red singleton). Without a unique green removal, one original-tree repeat
 can supply green proof; otherwise `merge-bisect-unresolved` rejects every member
 and notifies the Coordinator. Inconclusive runs hold the batch for its decision.
+Batch checkouts and periodic diagnostic clones link the root dependency install
+through task worktrees' shared install policy before admission. Missing or stale
+dependencies hold preparation as inconclusive, naming the install or locked
+package, without dropping members. Local runs never invoke prepare or npm;
+droplet delivery retains its configured prepare step. Candidate removal drains
+fixture writers and removes the link without deleting the root's node_modules.
 Results name T0 and Web with their measured durations, including a red host check before
 droplet creation. Step bisection and file-only recovery of Web-containing plans
 select a candidate for the original pinned

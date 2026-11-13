@@ -1,5 +1,10 @@
 # hub/test/durations.test.ts
 
+Historical probe fixtures provide an empty root node_modules directory before
+native clone checkout. Their synthetic manifests declare no dependencies;
+production probe preparation links that directory without invoking npm. This
+keeps the historical duration-owner assertion independent of dependency setup.
+
 The T-1244 historical probe regression needs native Git because linked-worktree
 project discovery caused the defect. Use suiteUnit's sealed environment and
 scratch root. Commit an open allowance owner, close it on live dev, and first

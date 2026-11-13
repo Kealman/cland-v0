@@ -27,20 +27,20 @@ export async function worktreeInstall(root: string, worktreePath: string, author
     const installed = await readPackages(join(modules, '.package-lock.json'));
     const applicable = (targets: string[] | undefined, host: string): boolean => !targets
       || !targets.includes(`!${host}`) && (targets.every(target => target.startsWith('!')) || targets.includes(host) || targets.includes('any'));
-    let stale = false;
+    let stale: string | undefined;
     if (expected) for (const [path, pkg] of Object.entries(expected)) {
       if (!path.includes('node_modules/') || pkg.link) continue;
       // npm legitimately omits optional packages, notably other platforms' bindings.
       if (pkg.optional && (!installed?.[path] || !applicable(pkg.os, process.platform) || !applicable(pkg.cpu, process.arch))) continue;
       if (!installed?.[path] || installed[path].version !== pkg.version || installed[path].integrity !== pkg.integrity
-        || path.startsWith('/') || path.split('/').some(part => part === '..' || part === '.')) { stale = true; break; }
+        || path.startsWith('/') || path.split('/').some(part => part === '..' || part === '.')) { stale = path; break; }
       try {
         const actual = JSON.parse(await readFile(join(worktreePath, path, 'package.json'), 'utf8'));
-        if (pkg.version !== undefined && actual.version !== pkg.version) { stale = true; break; }
-      } catch { stale = true; break; }
+        if (pkg.version !== undefined && actual.version !== pkg.version) { stale = path; break; }
+      } catch { stale = path; break; }
     }
     if (stale || !installation.isSymbolicLink() && !expected) {
-      warning = `stale worktree install: ${worktreePath} holds ${installation.isSymbolicLink() ? 'a node_modules link' : 'its own node_modules'}; dependencies out of date or unverified. Update the root with npm install only when shared readers are stopped; preserve any own install until it can safely be replaced with a root link.`;
+      warning = `stale worktree install: ${worktreePath} holds ${installation.isSymbolicLink() ? 'a node_modules link' : 'its own node_modules'}; dependencies out of date or unverified${stale ? ` (${stale})` : ''}. Update the root with npm install only when shared readers are stopped; preserve any own install until it can safely be replaced with a root link.`;
     }
   }
   if (!installation && await stat(join(root, 'package.json')).then(() => true, () => false)) {

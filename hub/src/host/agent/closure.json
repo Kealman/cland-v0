@@ -170,7 +170,7 @@
     },
     {
       "path": "hub/src/host/agent/worktree-install.ts",
-      "sha256": "a28dbae56ed7fb2e00e05efefdaf358bb66a5dcaba75e5d9c2287653c30dde26"
+      "sha256": "514615545a25dbdb2716b6ee7031c54eca7ed062d6900f95f6d0179bbe6a5da9"
     },
     {
       "path": "hub/src/host/agent/worktrees.ts",

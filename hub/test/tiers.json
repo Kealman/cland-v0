@@ -460,6 +460,7 @@
     "hub/test/login-wait.test.ts": "T2",
     "hub/test/login-write-back.test.ts": "T3",
     "hub/test/measure-memory.test.ts": "T3",
+    "hub/test/merge-batch-dependencies.test.ts": "T3",
     "hub/test/merge-batches.test.ts": "T1",
     "hub/test/merge-budget.test.ts": "T1",
     "hub/test/merge-checkout-lifecycle.test.ts": "T3",

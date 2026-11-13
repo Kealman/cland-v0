@@ -11,6 +11,17 @@ import { committedTreeOrThrow } from '../verification-tree.ts';
 import { BatchRefusal, type BatchCandidate } from './merge-batches.ts';
 import { checkQueuedMerge } from './merge-queue-preflight.ts';
 import { refusedOverridePaths } from '../merge-override.ts';
+import { worktreeInstall } from '../host/agent/worktree-install.ts';
+
+/** Share the root install before suite admission; never run an installer. */
+export async function prepareBatchDependencies(root: string, cwd: string): Promise<void> {
+  try {
+    const warning = await worktreeInstall(root, cwd);
+    if (warning) throw new Error(warning);
+  } catch (error) {
+    throw new Error(`dependency preparation inconclusive: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  }
+}
 
 /** Git/object and immutable-tree reads, replaceable by an in-process repository provider. */
 export type BatchRepository = {
@@ -101,9 +112,11 @@ export async function checkoutMergeBatch(root: string, candidate: BatchCandidate
   if (exists) {
     const head = await territoryGitAsync(candidate.cwd, ['rev-parse', 'HEAD'], false, undefined, env);
     if (head !== candidate.head) throw new Error('existing batch checkout differs from its durable head');
+    await prepareBatchDependencies(root, candidate.cwd);
     return;
   }
   await territoryGitAsync(root, ['worktree', 'add', '--detach', candidate.cwd, candidate.head], false, undefined, env);
+  await prepareBatchDependencies(root, candidate.cwd);
 }
 
 /** Workers have a final collected receipt before the controller calls this. */
