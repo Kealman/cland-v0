@@ -3,7 +3,7 @@ id: T-1844
 kind: task
 title: A local merge batch checkout has no node_modules, so dependency-reading tests fail
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1498
 branch: t/T-1844-a-local-merge-batch-checkout-has-no-node
 created: 2026-11-13T16:36:17.739Z
-updated: 2026-11-13T16:57:51.832Z
+updated: 2026-11-13T17:57:12.756Z
 ---
 
 ## Summary
@@ -37,9 +37,11 @@ A local merge batch (and a local periodic dev T3 run) gets the same dependencies
 ## Acceptance criteria
 
 - [x] C1. A local merge-batch checkout resolves `<tree>/node_modules/@modelcontextprotocol/sdk` and the Web tier's browser dependency, and its removal leaves the root's `node_modules` intact (test).
-  - done: impl-1844 · 2026-11-13T16:56:31.856Z
+  - verified: rev-35 [reviewer] · run rev-35-1844-final-1 · 2026-11-13T17:57:05.466Z · commit 9aae88c0619d3853871e69f0eaeb4aa2bc9c4e4f
+  - done: impl-1844 · 2026-11-13T17:57:12.284Z
 - [x] C2. A local batch whose tree cannot get its dependencies holds as inconclusive naming the missing dependency, and its members stay queued (test).
-  - done: impl-1844 · 2026-11-13T16:45:30.681Z
+  - verified: rev-35 [reviewer] · run rev-35-1844-final-1 · 2026-11-13T17:57:05.466Z · commit 9aae88c0619d3853871e69f0eaeb4aa2bc9c4e4f
+  - done: impl-1844 · 2026-11-13T17:57:12.438Z
 
 ## Comments
 
@@ -86,3 +88,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source review clear; final C1/C2 run evidence remains pending. A-19205 records the single-hash correction, independent zero mismatches across all 47 closure entries, the 731 distinct consumer rows/16 unknown flags with zero pinned-tier mismatches, and Coordinator d5741c02/a0fe4936's accepted retain-with-limitations publication disposition. No remaining source finding. Original capture and prepublication limitations stay explicit. Run mode-free verification once at this exact head and reconcile actual base/load case/file finishes plus the preserved consumer union. Broader T3/T4/stage evidence stays separate. If the current droplet issue causes delivery failure, report it and do not resubmit per Coordinator a0fe4936. Reviewer performed read-only review only.
+
+### coord · 2026-11-13T16:58:31.559Z
+
+Landing route decided by the human, 2026-11-13 16:57Z (General, Discord, after ask 47d9253b). The answer was «Давай 4 … можете пропускать обязательные прогоны для критичных фиксов». Droplet SSH delivery failed in every region (A-19198, A-19203), so T-1844 is treated as a critical fix. Config 9ad12275c sets the executor to local and batch tiers to T1 only, temporarily. Required runs that cannot execute locally are waived for this item only: full T3, Web, and the native identities broken by this defect. Once it lands, coord restores batch_tiers ["T1","T3"] and has the hub restarted before any non-critical item is enqueued.
+
+### rev-35 · 2026-11-13T17:07:56.154Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1844-delivery-1
+commit: 9aae88c0619d3853871e69f0eaeb4aa2bc9c4e4f
+scope: evidence
+findings: [{"severity":"medium","text":"Configured f553a8e4 failed tree.bundle upload after a passing host check; A-19206 has zero runtime case/file progress events. C1/C2 lack configured completion evidence; no source assertion failure is established."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence-only not clear for first configured attempt f553a8e4/A-19206; source clear A-19205 remains valid. A-19207 records host T0 pass45.485s, zero runtime events, unavailable platform/browser,429s/$0.0298 droplet, and distinguishes planned counts from execution. Coordinator cbfe088d superseded no-resubmit and authorized exactly one unchanged-head local replacement, now admitted f6402387. Wait for that result and any explicit unavailable-coverage disposition; no further run or source change requested. Preserve this failed delivery history.
+
+Criteria: C1 failed (Configured delivery failed before runtime execution; authorized local replacement evidence pending.), C2 failed (Configured delivery failed before runtime execution; authorized local replacement evidence pending.).
+
+### rev-35 · 2026-11-13T17:57:05.466Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1844-final-1
+commit: 9aae88c0619d3853871e69f0eaeb4aa2bc9c4e4f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear on authorized green f2e6c9b9/A-19210; C1/C2 verified. A-19212 records independent streamed6255base test/692base file passes, separately135load test/file passes, zero negative/skipped finishes, exact native checkout/removal controls, C2base+5each and closure pass. All731 conservative consumers/16unknown flags retained:71T1+347T2+2T3+54Web positive files;243T3+14T4 not-run/waived. Local darwin arm64 Node24.21/nvim0.12.5; actual Headless Shell1248/Chrome156.0.8078.4. Source clean and unchanged. f553 delivery failure and f640 Web red remain failed history; A-19209's five isolated4/4 passes satisfied Coordinator's flaky-rerun precondition, then2f3390eb required this fresh green receipt. Human/Coordinator Linux/fullT3/T4 critical-fix waiver remains explicit; temporary T1-only landing batch separate. Report-mode budget/lint and original capture/publication/TMPDIR limits retained, not clean-enforcement/global-cleanup claims. No remaining findings; Reviewer read-only.
+
+Criteria: C1 verified, C2 verified.
