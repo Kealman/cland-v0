@@ -93,13 +93,13 @@ image = "ubuntu-24-04-x64"
 
 [merge]
 # Queue reviewed code heads for batch landing. Documentation and human overrides land immediately.
-queue = true
+# TEMPORARY 2026-11-13 18:05Z (human 16:57Z, General: skip required runs for critical fixes): off for the single
+# landing of T-1844 (review clear, green same-head verify A-19210); turn back on right after. init-config pins true.
+queue = false
 # Human decision 2026-11-02 09:39Z (Discord): up to five reviewed heads in one batch.
 batch = 5
 # Human decision 2026-11-02 09:39Z (Discord): batches run T1 and T3 (rule 6).
-# TEMPORARY 2026-11-13 16:57Z (human, General): T1 only while the critical fixes T-1844/T-1842 land without
-# droplet delivery; restore ["T1", "T3"] before any non-critical item is enqueued.
-batch_tiers = ["T1"]
+batch_tiers = ["T1", "T3"]
 # Start a partial batch after this wait from its oldest request.
 batch_wait = "120s"
 
