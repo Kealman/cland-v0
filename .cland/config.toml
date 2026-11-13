@@ -93,7 +93,9 @@ image = "ubuntu-24-04-x64"
 
 [merge]
 # Queue reviewed code heads for batch landing. Documentation and human overrides land immediately.
-queue = true
+# TEMPORARY 2026-11-13 23:50Z (human 16:57Z waiver for critical fixes): off for the single landing of T-1842;
+# both full T3 batches failed only on T-1846 flakes proven red on dev without it (A-19218). init-config pins true.
+queue = false
 # Human decision 2026-11-02 09:39Z (Discord): up to five reviewed heads in one batch.
 batch = 5
 # Human decision 2026-11-02 09:39Z (Discord): batches run T1 and T3 (rule 6).
