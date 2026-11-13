@@ -15436,13 +15436,6 @@
       "expires": "2026-11-18",
       "reason": "T-1778: provisional report-mode allowance for the new destination-no-login native lifecycle case. Related running-path baseline is 10.83787 seconds in this manifest; Linux cost is projected at 1.6x, then 1.5x headroom (ceil=27s). This is a budget projection, not a receipt or passing measurement of the new case. Prior new-case early refusal at 2.962588s did not reach the intended boundary and is not calibration coverage. Includes setup and joined cleanup; no browser or product latency claim. Final reviewed-head native/Linux receipts remain required. Renewed 2026-11-11 by the Coordinator (was due 2026-11-15); re-measure at the E-1535 stage-3 close."
     },
-    "hub/test/login-key-spawn.test.ts::composed key launches on two hosts resume a persisted conversation after hub and agent restart": {
-      "seconds": 7,
-      "owner": "C-216",
-      "added": "2026-11-10",
-      "expires": "2026-11-15",
-      "reason": "T-1788 composed native key launch and persisted-conversation restart: macOS arm64 Node24.21.0 local fresh-process green samples [2.346074542,2.845154041,2.229101125,1.908541834,1.942492917] seconds. Includes fixture creation, two real fake OpenCode servers, prepared/bootstrap checkpoint assertions, hub and agent restart, key rotation, native close and joined cleanup; excludes test-driver startup and queue wait. Linux 4.5522464656 seconds is an unexecuted 1.6x projection, not evidence; 7 seconds is ceil(1.5x that projection). No browser, real provider or stress. Duration policy stays report mode; reviewed-head Linux verification remains required."
-    },
     "hub/test/host-relaunch.test.ts::nested provider cleanup joins its captured machine after close rejection and leaves sibling alive": {
       "seconds": 8,
       "owner": "C-216",
