@@ -82,7 +82,8 @@ size = "c-8"
 prepare_size = "c-8"
 # Human decision 2026-11-13 09:35Z (ask a2cabc60): lon1 SSH/scp delivery timed out from this Mac since ~01:00Z
 # (seven runs, no DigitalOcean incident); the Coordinator chose fra1 first. Acquire takes the first available region.
-regions = ["fra1","ams3","lon1","nyc1","sfo2","blr1"]
+# 2026-11-13 13:51Z: lon1 removed after a ninth lon1 delivery failure (ams3 run 8d8a6cf7 delivered fine); re-add once lon1 SSH works.
+regions = ["fra1","ams3","nyc1","sfo2","blr1"]
 image = "ubuntu-24-04-x64"
 
 [merge]
