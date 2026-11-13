@@ -41,9 +41,9 @@ test_component = "node hub/test/run-suite.ts --tier T2"
 test_integration = "node hub/test/run-suite.ts --tier T3"
 # test_soak runs at occasions and in the nightly soak (T4).
 test_soak = "node hub/test/run-suite.ts --tier T4"
-# Human decision 2026-11-13 16:37Z (ask be0eec54): back to droplets; local merge batches cannot pass until T-1844
-# (the local batch checkout has no node_modules).
-executor = "droplet"
+# Human decision 2026-11-13 16:57Z (General, Discord): droplet SSH delivery fails again (A-19198, A-19203); land the
+# critical fix T-1844 locally and skip required runs for critical fixes; back to "droplet" once delivery works.
+executor = "local"
 # Allow default droplet requests to use the local slot when remote is unavailable.
 local_fallback = false
 # Concurrent machine test files; the free shard always uses one worker.
@@ -97,7 +97,9 @@ queue = true
 # Human decision 2026-11-02 09:39Z (Discord): up to five reviewed heads in one batch.
 batch = 5
 # Human decision 2026-11-02 09:39Z (Discord): batches run T1 and T3 (rule 6).
-batch_tiers = ["T1", "T3"]
+# TEMPORARY 2026-11-13 16:57Z (human, General): T1 only while the critical fixes T-1844/T-1842 land without
+# droplet delivery; restore ["T1", "T3"] before any non-critical item is enqueued.
+batch_tiers = ["T1"]
 # Start a partial batch after this wait from its oldest request.
 batch_wait = "120s"
 
