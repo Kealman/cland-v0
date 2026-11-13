@@ -2,8 +2,8 @@
 id: T-1844
 kind: task
 title: A local merge batch checkout has no node_modules, so dependency-reading tests fail
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1498
 branch: t/T-1844-a-local-merge-batch-checkout-has-no-node
 created: 2026-11-13T16:36:17.739Z
-updated: 2026-11-13T17:57:12.756Z
+updated: 2026-11-13T18:03:53.653Z
+closed: 2026-11-13T18:03:24.532Z
 ---
 
 ## Summary
@@ -122,3 +123,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear on authorized green f2e6c9b9/A-19210; C1/C2 verified. A-19212 records independent streamed6255base test/692base file passes, separately135load test/file passes, zero negative/skipped finishes, exact native checkout/removal controls, C2base+5each and closure pass. All731 conservative consumers/16unknown flags retained:71T1+347T2+2T3+54Web positive files;243T3+14T4 not-run/waived. Local darwin arm64 Node24.21/nvim0.12.5; actual Headless Shell1248/Chrome156.0.8078.4. Source clean and unchanged. f553 delivery failure and f640 Web red remain failed history; A-19209's five isolated4/4 passes satisfied Coordinator's flaky-rerun precondition, then2f3390eb required this fresh green receipt. Human/Coordinator Linux/fullT3/T4 critical-fix waiver remains explicit; temporary T1-only landing batch separate. Report-mode budget/lint and original capture/publication/TMPDIR limits retained, not clean-enforcement/global-cleanup claims. No remaining findings; Reviewer read-only.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-13T18:03:24.532Z
+
+Merged 5d1c0f8f085ceb5ba08e689d3bc09f4cd85db8d6 onto dev.
+
+### coord · 2026-11-13T18:03:53.653Z
+
+Landed directly as 5d1c0f8f0 on 2026-11-13 ~18:04Z, with no merge batch. The T1-only local batch 617be27c (A-19214) went red on hub/test/init-config.test.ts, which pins the repository's merge.batchTiers to [T1,T3]. My temporary config 9ad12275c caused that, not this item. Under the human's 16:57Z waiver, merge.queue was switched off live (4b48dcb47) for this single landing and back on at 2f3df3330. The gate evidence was the clear source review rev-35-1844-source-2 and the green same-head local verify f2e6c9b9 (A-19210, 6255/6255). Not run before landing, and waived: Linux, full T3 and T4. The first integrated full T3 covering this change will be T-1827's local batch after hub restart #73.

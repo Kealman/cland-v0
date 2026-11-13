@@ -2,8 +2,8 @@
 id: T-1827
 kind: task
 title: Adding a login and signing in again from the hosts view
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1497
 branch: t/T-1827-adding-a-login-and-signing-in-again-from
 created: 2026-11-12T10:07:20.982Z
-updated: 2026-11-13T13:41:41.450Z
+updated: 2026-11-13T19:14:31.923Z
+closed: 2026-11-13T19:14:31.923Z
 ---
 
 ## Summary
@@ -272,3 +273,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final C1–C6 clear, A-19186. Independent A-19184 audit matches source-clear 7fc85d707 and recomputed normalized tree d461f0c51ea99e11d0aa90921ed725e4a58cf73c: 6,254 base test/692 file passes, separate 150/150 load passes, zero negatives/skips. All 83 prior required identities and 26 Hosts cases pass; five new identity controls have base 1 + load 5. Exact native plans, same volume, distinct 0/null closes and publication facts pass. A-19185's 141 exported records match raw receipts with one unrelated policy title masked; all 872 paths and 16 unknown flags preserved, 515 selected consumer files positive and none missing. Fresh A-19182 local native 4/Web 26/compiler 1/policy 5 is audited; compiler Linux T3 batch remains outstanding, not claimed here. Hosts 64.972s is within 96s; report-only lint/overages/missing baseline/ratchet and capture, synthetic/T-1840, T-1806 and historical failure limits remain explicit. Droplet Linux Node 24.21, Chrome 156/revision 1248, 1,318s/$0.0916. Hold released for readiness/enqueue; broader T3/T4/stage split unchanged. No extra run/source action or Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-13T19:14:31.923Z
+
+Merged 5964ecccb158c5fe26d907f02fa820a58ca2ee7e onto dev.

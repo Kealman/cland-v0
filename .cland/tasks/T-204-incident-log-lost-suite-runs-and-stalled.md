@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-13T15:32:09.124Z
+updated: 2026-11-13T18:06:09.026Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -582,3 +582,7 @@ Hub restart #71 (2026-11-13 12:02:33Z, stand-in, launchd). Reason: ask 9785f667,
 ### human · 2026-11-13T15:32:09.124Z
 
 Hub restart #72 (2026-11-13 15:31:19Z, stand-in, launchd). Reason: [verification] workers = 1 (350a4b6ff, human's answer on ask 608c9b13 at 15:30Z: keep local, one worker); hub reload refused with 'verification.workers changed: restart required'. Gate: merge queue empty, no local run, droplets 0, dev=origin/dev=350a4b6ff, load 1.6. Stop: launchctl remove cland-hub-r71 → hub 10760 gone in 3 s (graceful). Serve: launchctl submit cland-hub-r72 → listening 15:31:32Z, serving 15:31:41Z. Gap stop→serve 23 s. New hub 9819, port 60518, web 56935, nice 0, ppid 1, env check 2, one launchd job. Coord 66570: bridge-closed 15:31:19Z → bridge-connected 15:31:42Z → session-resumed → coordinator-filled 15:31:50Z → injected 15:31:51Z; one bridge. Ghost b33e7940 (T-1843) still listed in verify queue after the restart.
+
+### human · 2026-11-13T18:06:09.026Z
+
+Hub restart #73 (2026-11-13 18:04:27Z, stand-in, launchd). Reason: T-1844 fix (local merge-batch checkouts get node_modules) needs a hub restart; the human chose option 4 on ask 47d9253b at 16:57Z via Discord («Давай 4 … можете пропускать обязательные прогоны для критичных фиксов»); coord landed T-1844 directly as 5d1c0f8f0 with the merge queue off and turned it back on at 2f3df3330. Gate: merge queue empty, no run, droplets 0, dev=origin/dev=2f3df3330, load 2.3. Stop: launchctl remove cland-hub-r72 → hub 9819 gone in 3 s. Serve: launchctl submit cland-hub-r73 → listening 18:04:40Z, serving 18:05:00Z. Gap stop→serve 34 s. New hub 57881, port 60104, web 56935, nice 0, ppid 1, env check 2, one launchd job. Coord 66570: bridge-closed 18:04:28Z → bridge-connected 18:05:00Z → session-resumed → coordinator-filled 18:05:29Z → injected 18:05:34Z; one bridge. doctor 34 ok 4 warn 0 fail. Note: coord's post-restart census saw my restart shell (pid 57697, nice 5) matching 'hub serve' because the launchctl command text contains it; it was not a hub and exited with the script.
