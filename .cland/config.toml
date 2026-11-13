@@ -41,9 +41,9 @@ test_component = "node hub/test/run-suite.ts --tier T2"
 test_integration = "node hub/test/run-suite.ts --tier T3"
 # test_soak runs at occasions and in the nightly soak (T4).
 test_soak = "node hub/test/run-suite.ts --tier T4"
-# Human decision 2026-11-13 14:33Z (ask cbf7f06f): run verification locally on the Mac while droplet SSH delivery
-# fails in every region (T-1842); switch back to "droplet" once delivery works.
-executor = "local"
+# Human decision 2026-11-13 16:37Z (ask be0eec54): back to droplets; local merge batches cannot pass until T-1844
+# (the local batch checkout has no node_modules).
+executor = "droplet"
 # Allow default droplet requests to use the local slot when remote is unavailable.
 local_fallback = false
 # Concurrent machine test files; the free shard always uses one worker.
@@ -87,7 +87,8 @@ prepare_size = "c-8"
 # Human decision 2026-11-13 09:35Z (ask a2cabc60): lon1 SSH/scp delivery timed out from this Mac since ~01:00Z
 # (seven runs, no DigitalOcean incident); the Coordinator chose fra1 first. Acquire takes the first available region.
 # 2026-11-13 13:51Z: lon1 removed after a ninth lon1 delivery failure (ams3 run 8d8a6cf7 delivered fine); re-add once lon1 SSH works.
-regions = ["fra1","ams3","nyc1","sfo2","blr1"]
+# 2026-11-13 16:37Z (ask be0eec54): ams3 first, it delivered at 12:06Z and 12:58Z.
+regions = ["ams3","fra1","nyc1","sfo2","blr1"]
 image = "ubuntu-24-04-x64"
 
 [merge]
