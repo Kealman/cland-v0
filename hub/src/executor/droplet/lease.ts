@@ -26,7 +26,7 @@ export type DropletLease = Lease & {
   deletions?: DeletionTracking;
   snapshot?: import('./prepare.ts').Snapshot;
   demo?: { epic: string; commit: string; ready?: boolean; commands?: import('../../verification-commands.ts').VerificationCommands };
-  execution?: { head: string; delivered?: boolean; started?: boolean; startedAt?: string; unreachableSince?: string };
+  execution?: { head: string; delivered?: boolean; deliveryLogEnd?: number; started?: boolean; startedAt?: string; unreachableSince?: string };
   watchdog?: { pid: number; startedUtc: string; pidIdentity?: string };
 };
 export type WatchdogReceipt = { fired: string; deleted: number[]; confirmedAt: string; deleteStarted: string };

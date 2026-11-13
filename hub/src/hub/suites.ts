@@ -896,8 +896,22 @@ export class Suites {
     let remotePreExecution = false;
     try {
       if(job.hostSource){if(!job.hostSnapshot)throw new Error('host snapshot ownership receipt unavailable');await validateHostVerifyWorktree(this.#root,job.cwd,job.hostSnapshot,this.#env);}
+      // Hydrate the durable remote prefix before any local launch diagnostics.
+      // The job can predate delivery's lease checkpoint, including no offset.
+      if (job.executor === 'droplet' && !job.shards) {
+        if (job.lease) job.lease = await readLease(leaseDir(this.#root, job.lease as DropletLease));
+        else {
+          const restored = (await readLeases(this.#root)).find(lease => lease.run === job.id && lease.state !== 'released');
+          if (restored) job.lease = restored;
+        }
+        const execution = (job.lease as DropletLease | undefined)?.execution;
+        if (execution?.delivered) job.remoteLogStart = execution.deliveryLogEnd ?? job.remoteLogStart ?? (await stat(job.log)).size;
+      }
       // Share admission cleanup across concurrent shard launches; never scan on startup.
-      await this.#rawCoverage.sweep(async line => { await appendFile(job.log, line); });
+      await this.#rawCoverage.sweep(async line => {
+        if (job.executor === 'droplet' && job.remoteLogStart !== undefined) this.#options.log?.({ event: 'verification-admission-cleanup', id: job.id, message: line });
+        else await appendFile(job.log, line);
+      });
       if (job.shards) { await this.#launchShards(job); return; }
       // Once remote collection starts, local bytes would count as remote output.
       // Pending delivery/start receipts can re-enter launch with that boundary set.
@@ -907,12 +921,6 @@ export class Suites {
       // root commits. Its check runs remotely against that detached commit.
       const committedOnly = job.occasion === 'dev-t3';
       if (job.executor === 'droplet') {
-        // lease.json owns delivery/admission facts; hub.db may predate the SSH reply.
-        if (job.lease) job.lease = await readLease(leaseDir(this.#root, job.lease as DropletLease));
-        else {
-          const restored = (await readLeases(this.#root)).find(lease => lease.run === job.id && lease.state !== 'released');
-          if (restored) job.lease = restored;
-        }
         // Undelivered leases cannot have submitted a worker. A restored delivered
         // lease may have lost its start acknowledgement, so remains uncertain.
         remotePreExecution = !job.lease || !(job.lease as DropletLease).execution?.delivered;
@@ -949,16 +957,21 @@ export class Suites {
               this.#fallback(job, error instanceof Error ? error.message : 'provider unavailable'); return;
             }
           }
-          job.remoteLogStart ??= (await stat(job.log)).size;
-          this.#save(job);
-          try { await this.#droplet.deliver(job.lease as DropletLease, run, committedOnly); }
+          try {
+            await this.#droplet.deliver(job.lease as DropletLease, run, committedOnly);
+            // Replace an older hub's pre-delivery checkpoint on a retried lease.
+            job.remoteLogStart = (await stat(job.log)).size;
+          }
           catch (error) {
             if (committedOnly || job.parentRun) job.outcome = { code: 1, cause: error instanceof Error ? error.message : String(error), notRun: 'infrastructure' };
             throw error;
           }
         }
         const lease = job.lease as DropletLease;
-        job.remoteLogStart ??= (await stat(job.log)).size;
+        // Delivery can append local attempt diagnostics. Remote byte zero starts
+        // only after those writes have settled, including after restored delivery.
+        if (lease.execution?.deliveryLogEnd !== undefined) job.remoteLogStart = lease.execution.deliveryLogEnd;
+        else job.remoteLogStart ??= (await stat(job.log)).size;
         this.#save(job);
         if (job.cancelled) throw new Error('cancelled');
         remotePreExecution = false; // From this call onward a failed reply cannot prove non-execution.

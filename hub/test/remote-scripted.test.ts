@@ -7,6 +7,7 @@ import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { join } from 'node:path';
 import type { Message } from '../src/protocol.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
+import { appendFile, readFile } from 'node:fs/promises';
 
 for (const cap of [12000, 768, 384]) test(`selection fallback is visible before summaries at the ${cap}-byte result cap`, async t => {
   const f = await fixture(t, { machine: 'scripted', config: `[hygiene]\nmax_text_bytes = ${cap}\n` });
@@ -26,6 +27,14 @@ for (const cap of [12000, 768, 384]) test(`selection fallback is visible before 
 
 test('scripted remote verification acquires, delivers, starts, collects and releases on the hub clock', async t => {
   const f = await fixture(t, { machine: 'scripted' });
+  const transport = f.dependencies.run!;
+  const deliver = transport.deliver.bind(transport);
+  let logPath = '';
+  t.mock.method(transport, 'deliver', async (...args: Parameters<typeof transport.deliver>) => {
+    logPath = args[1].log;
+    await appendFile(args[1].log, `delivery upload tree.bundle attempt 1: succeeded; elapsed 250 ms; timeout 318000 ms\n`);
+    await deliver(...args);
+  });
   assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);
   const submitted = await f.launch('--executor', 'droplet');
   assert.equal(typeof submitted.id, 'string', JSON.stringify(submitted));
@@ -38,6 +47,9 @@ test('scripted remote verification acquires, delivers, starts, collects and rele
   assert.match(report.text, /exit 0/);
   assert.match(report.text, /linux/);
   assert.match(report.text, /tests 1; pass 1/);
+  const log = await readFile(logPath, 'utf8');
+  assert.match(log, /delivery upload tree.bundle attempt 1/);
+  assert.match(log, /# tests 1\n# pass 1/);
   const steps = f.machine.calls.filter(call => call.run === submitted.id).map(call => call.step);
   for (const step of ['ready', 'deliver', 'start', 'status', 'log', 'release']) assert.ok(steps.includes(step), `${step} crossed its boundary`);
   assert.ok(steps.indexOf('deliver') < steps.indexOf('start'));

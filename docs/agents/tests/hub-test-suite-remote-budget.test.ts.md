@@ -9,6 +9,19 @@ delivery facts, `FakeClock` advances acquisition, run and wait time, and
 is the slot count under test; leave provider POST counts to assertions that a
 queued waiter acquired nothing.
 
+The restored-delivery case seeds a durable delivered lease with `deliveryLogEnd`
+and a stale pre-delivery job offset, then reopens the scheduler. It observes the
+restored running receipt before finishing. Keep the complete remote census and
+local diagnostics, with exactly one census prefix. A second seed already has
+collected remote bytes: recovery must use the durable prefix, never current file
+size, so those bytes are neither replayed nor skipped. Existing fake leases
+without the optional field exercise the prior persisted shape unchanged.
+The absent-offset seed models a crash before any suite-job remote offset was
+saved: hydration must precede the local Workers admission line. The legacy
+seed omits the new lease field and keeps its correct job offset. Recovery-side
+cleanup diagnostics go to the hub journal once a remote prefix exists, so they
+cannot be mistaken for mirrored remote bytes.
+
 Lease controls belong to the fixture root, not the live project: write a durable
 lease with `writeLease(root, …)` (the `leasedOnly` helper writes a `creating`
 lease with no suite job behind it) to model preparation or an unconfirmed cleanup

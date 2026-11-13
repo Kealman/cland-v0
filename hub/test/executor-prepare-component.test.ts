@@ -17,6 +17,7 @@ import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { keyHash, readSnapshot, snapshotPath, type Snapshot } from '../src/executor/droplet/prepare.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 import { Machine } from '../src/executor/droplet/machine.ts';
+import { diagnosticResult } from '../src/hub/merge-batches.ts';
 
 async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
   const root = await tempProject(t);
@@ -407,6 +408,69 @@ test('delivery retries initial SSH setup within its bound and names failed trans
       if (consumeTimeout) assert.deepEqual(setupTimeouts, [10000, 10000, 6000]);
       if (step === 'setup') assert.equal(uploads, 0, 'failed setup never reaches upload');
       assert.equal(prepares, step === 'prepare' ? 1 : 0, 'prepare is never replayed');
+    }
+  } finally { await drive(f, executor.release(lease)); }
+  assert.deepEqual(f.api.droplets, []);
+});
+
+test('delivery retries a failed bundle with timed attempts and keeps exhausted delivery inconclusive', async t => {
+  const f = await fixture(t);
+  await f.stop();
+  const snapshot: Snapshot = { image: 900, name: 'ready', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'], sizeGb: 1, minDiskSize: 10, created: f.clock.now().toISOString() };
+  await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+  await writeFile(snapshotPath(f.root), JSON.stringify(snapshot));
+  const { run: _scriptedRun, ...dependencies } = f.dependencies;
+  let failAll = false;
+  let stall = false;
+  const bounds: number[] = [];
+  const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, {
+    ...dependencies,
+    runBundle: async (_run, path) => { await writeFile(path, Buffer.alloc(9 * 1024 * 1024)); },
+    machine: { ...dependencies.machine,
+      put: async (_lease, _path, remote, options) => {
+        if (!remote.endsWith('/tree.bundle')) return;
+        bounds.push(options?.timeoutMs ?? 120000);
+        f.clock.block(stall ? options!.timeoutMs : bounds.length === 1 ? 125000 : 250);
+        if (failAll || bounds.length === 1) throw new Error('machine copy failed (exit 255): connection reset');
+      },
+    },
+  });
+  const lease = await drive(f, executor.acquire({ id: 'delivery-retry' }, new Date(f.clock.now().getTime() + 1200000).toISOString()));
+  try {
+    const dir = join(f.root, '.cland/run/delivery-retry');
+    await mkdir(dir, { recursive: true });
+    const run = { id: lease.run, cwd: f.root, head: 'e'.repeat(40), mode: 'auto', log: join(dir, 'log'), result: join(dir, 'result'), gate: join(dir, 'gate'), commands: { check: '', prepare: '', test: '' } };
+    await executor.deliver(lease, run);
+    assert.equal(lease.execution?.delivered, true);
+    assert.deepEqual(bounds, [318000, 318000]);
+    let log = await readFile(run.log, 'utf8');
+    assert.equal((await readLeases(f.root)).find(row => row.run === run.id)!.execution?.deliveryLogEnd, Buffer.byteLength(log));
+    assert.match(log, /delivery upload tree.bundle attempt 1: failed; elapsed 125000 ms; timeout 318000 ms/);
+    assert.match(log, /delivery upload tree.bundle attempt 2: succeeded; elapsed 250 ms; timeout 318000 ms/);
+    failAll = true; bounds.length = 0; delete lease.execution;
+    await writeFile(run.log, '');
+    let cause = '';
+    await assert.rejects(executor.deliver(lease, run), (error: Error) => {
+      cause = error.message;
+      assert.match(cause, /delivery upload tree.bundle: 2 attempts failed.*1=125000 ms.*2=250 ms.*exit 255/);
+      return true;
+    });
+    assert.equal(lease.execution, undefined);
+    log = await readFile(run.log, 'utf8');
+    assert.equal(log.split('\n').filter(line => line.includes('attempt ') && line.includes('failed;')).length, 2);
+    assert.equal(diagnosticResult({ state: 'finished', outcome: { code: 1, cause, notRun: 'infrastructure' } }, log).result, 'inconclusive');
+    stall = true;
+    for (const row of [
+      { lifetime: 1200000, bounds: [318000, 282000], elapsed: 600000 },
+      { lifetime: 180000, bounds: [180000], elapsed: 180000 },
+    ]) {
+      bounds.length = 0;
+      const started = f.clock.now().getTime();
+      lease.deadline = new Date(started + row.lifetime).toISOString();
+      await assert.rejects(executor.deliver(lease, run), /delivery upload tree.bundle: .*attempts failed.*delivery deadline reached/);
+      assert.deepEqual(bounds, row.bounds);
+      assert.equal(f.clock.now().getTime() - started, row.elapsed);
+      assert.equal(lease.execution, undefined);
     }
   } finally { await drive(f, executor.release(lease)); }
   assert.deepEqual(f.api.droplets, []);

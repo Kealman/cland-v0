@@ -5,6 +5,16 @@ I/O and `FakeClock`. No real provider, SSH, native harness or browser is involve
 Keep builder release, snapshot and accounting assertions on their existing
 durable status/journal receipts.
 
+Delivery upload retries use the real `DropletRun.deliver` policy through the
+injected machine transport and `FakeClock`, with bundle bytes written only in
+the disposable fixture. The 9 MiB sample has a 318000 ms attempt allowance.
+The first failed copy consumes 125000 simulated ms; the next successful copy
+consumes 250 ms. Assert the persisted delivered lease and both timed run-log
+attempts. Exhaustion must leave delivery unset and supply no failing-test
+receipt to `diagnosticResult`, which must remain inconclusive. These simulated
+durations are policy checks, not network throughput measurements. No real
+provider, key, SSH process or network transfer is used.
+
 For prepare report routing, submit without `report` and observe the completed
 snapshot report in Agents before asserting empty General history and artifact
 list (including no log chip). Prepare currently emits a report without creating

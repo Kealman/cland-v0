@@ -476,6 +476,32 @@ checkout while preserving `node_modules` and `.cache`, then runs the recorded
 prepare command on every delivery with `CLAND_PREPARE_KEY` as JSON. It rejects
 changed HEAD, tracked edits and unignored output before starting the worker.
 
+Delivery file uploads retry the failed file once after the transport has
+settled. Each attempt allows the larger of 120 seconds or 30 seconds plus the
+file size at 32 KiB/s; this is a conservative transfer allowance, not a measured
+network rate. All delivery steps share a ten-minute deadline starting before
+bundling, capped by the droplet lifetime. The attempt receives only the remaining
+budget. For 9 MiB the allowance is 318 seconds; after a full first timeout,
+the ten-minute window leaves at most 282 seconds for the retry (less time already
+spent on setup). A faster first failure leaves the full allowance for retry.
+Idempotent directory readiness retains its thirty-second retry window;
+fetch and checkout/prepare are not blindly replayed after SSH errors. Every
+directory and upload attempt records its timeout, elapsed milliseconds and
+outcome in the local run log. Exhausted uploads name the file, attempted copies
+and their elapsed times in one terminal delivery reason. They remain
+infrastructure failures without a test receipt, so merge batches hold as
+inconclusive. `delivery.log` keeps the remote fetch/prepare output consumed by
+the runner; attempt diagnostics live in the run log. Local verification has no
+droplet transfer policy.
+The delivered lease checkpoints the local log prefix as `execution.deliveryLogEnd`
+before the hub starts collection. Restart uses that durable byte boundary even
+when the suite-job checkpoint still carries the pre-delivery offset. Already
+collected remote bytes remain relative to that same boundary. Older delivered
+leases without the optional field retain their existing job offset.
+Launch recovery loads this boundary before writing admission diagnostics;
+cleanup messages after the boundary go to the hub journal rather than the
+mirrored stream.
+
 Cland's own prepare script (`node hub/bin/verify-prepare.ts`) runs `npm ci` and
 seeds the Neovim pin when needed. It skips only when the snapshot inputs and a
 successful-install marker (`node_modules/.cland-prepare-key`) match. Existing

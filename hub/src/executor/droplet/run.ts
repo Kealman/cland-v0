@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { appendFile, readFile, writeFile, rename } from 'node:fs/promises';
+import { appendFile, readFile, writeFile, rename, stat } from 'node:fs/promises';
 import { parseConfig, defaultConfig } from '../../init/config.ts';
 import { basename } from 'node:path';
 import { recordedCommands } from '../../verification-commands.ts';
@@ -61,24 +61,51 @@ export class DropletRun {
     try { return await work(); }
     catch (error) { throw new Error(`delivery ${name}: ${error instanceof Error ? error.message : 'machine request failed'}`); }
   }
-  async #directory(lease: DropletLease, dir: string): Promise<void> {
-    const limit = Math.min(Date.parse(lease.deadline), this.#clock.now().getTime() + 30000);
-    if (this.#clock.now().getTime() >= limit) throw new Error('machine readiness deadline reached');
-    for (;;) {
+  async #upload(lease: DropletLease, run: RunRef, local: string, remote: string, name: string, deadline: number): Promise<void> {
+    const bytes = (await stat(local)).size;
+    const allowance = Math.max(120000, 30000 + Math.ceil(bytes * 1000 / 32768));
+    const attempts: string[] = [];
+    let failure = 'delivery deadline reached';
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const started = this.#clock.now().getTime();
+      const timeoutMs = Math.min(allowance, deadline - started);
+      if (timeoutMs <= 0) break;
+      let succeeded = false;
       try {
-        await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs: Math.min(10000, limit - this.#clock.now().getTime()) });
-        return;
-      } catch (error) {
-        // Only this idempotent setup command may be retried after an ambiguous
-        // SSH failure. Upload, fetch and prepare retain their own failure policy.
-        if (this.#clock.now().getTime() >= limit) throw error;
-        const delay = Math.min(2000, limit - this.#clock.now().getTime());
-        await (this.#dependencies.wait?.(delay) ?? pause(delay, this.#clock));
-        if (this.#clock.now().getTime() >= limit) throw error;
-      }
+        // put settles its native copy before rejecting; overwrite the same
+        // private file only after that writer has closed, never race a copy.
+        await this.#machine.put(lease, local, remote, { timeoutMs });
+        succeeded = true;
+      } catch (error) { failure = error instanceof Error ? error.message : 'machine request failed'; }
+      const elapsed = this.#clock.now().getTime() - started;
+      attempts.push(`${attempt}=${elapsed} ms`);
+      await appendFile(run.log, `delivery upload ${name} attempt ${attempt}: ${succeeded ? 'succeeded' : 'failed'}; elapsed ${elapsed} ms; timeout ${timeoutMs} ms\n`);
+      if (succeeded) return;
+    }
+    throw new Error(`delivery upload ${name}: ${attempts.length} attempts failed (${attempts.join(', ')}); ${failure}${this.#clock.now().getTime() >= deadline ? '; delivery deadline reached' : ''}`);
+  }
+  async #directory(lease: DropletLease, dir: string, run: RunRef, deadline: number): Promise<void> {
+    const limit = Math.min(deadline, this.#clock.now().getTime() + 30000);
+    if (this.#clock.now().getTime() >= limit) throw new Error('machine readiness deadline reached');
+    let attempt = 0;
+    for (;;) {
+      const started = this.#clock.now().getTime();
+      const timeoutMs = Math.min(10000, limit - started);
+      let failure: unknown;
+      try {
+        await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs });
+      } catch (error) { failure = error; }
+      await appendFile(run.log, `delivery directory readiness attempt ${++attempt}: ${failure ? 'failed' : 'succeeded'}; elapsed ${this.#clock.now().getTime() - started} ms; timeout ${timeoutMs} ms\n`);
+      if (!failure) return;
+      // Only idempotent setup is replayed after an ambiguous SSH failure.
+      if (this.#clock.now().getTime() >= limit) throw failure;
+      const delay = Math.min(2000, limit - this.#clock.now().getTime());
+      await (this.#dependencies.wait?.(delay) ?? pause(delay, this.#clock));
+      if (this.#clock.now().getTime() >= limit) throw failure;
     }
   }
   async deliver(lease: DropletLease, run: RunRef, committedOnly = false): Promise<void> {
+    const deadline = Math.min(Date.parse(lease.deadline), this.#clock.now().getTime() + 600000);
     const snapshot = lease.snapshot ?? await readSnapshot(this.#root);
     if (!snapshot) throw new Error('prepared snapshot disappeared');
     const local = dirname(run.result);
@@ -86,7 +113,7 @@ export class DropletRun {
     const buildBundle = this.#dependencies.runBundle ?? runBundle;
     await buildBundle(run, bundle, snapshot.key.base, committedOnly, this.#env);
     const dir = remoteDir(lease);
-    await this.#step('directory readiness', () => this.#directory(lease, dir));
+    await this.#step('directory readiness', () => this.#directory(lease, dir, run, deadline));
     const transport = selectionTransport(run.selection, join(local, 'selection.json'));
     if (transport.file) await writeFile(join(local, 'selection.json'), transport.file, { mode: 0o600 });
     const selectionEnv = transport.file ? `unset CLAND_SUITE_SELECTION\nexport CLAND_SUITE_SELECTION_FILE=${dir}/selection.json` : `unset CLAND_SUITE_SELECTION_FILE\nexport CLAND_SUITE_SELECTION=${quote(transport.env.CLAND_SUITE_SELECTION!)}`;
@@ -128,9 +155,14 @@ git write-tree
       .replace('@RUN_TIMEOUT@', String(testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', config.verification.runTimeoutMs, this.#env) / 1000));
     await writeFile(join(local, 'run.sh'), script, { mode: 0o600 });
     for (const file of ['health.ts', 'temp.sh']) await writeFile(join(local, file), await readFile(fileURLToPath(new URL(`./${file}`, import.meta.url))));
-    for (const file of ['tree.bundle', 'env', 'run.sh', 'health.ts', 'temp.sh', ...(transport.file ? ['selection.json'] : [])]) await this.#step(`upload ${file}`, () => this.#machine.put(lease, join(local, file), `runs/${lease.run}/${file}`));
+    const upload = (file: string, name = file) => this.#upload(lease, run, join(local, file), `runs/${lease.run}/${file}`, name, deadline);
+    for (const file of ['tree.bundle', 'env', 'run.sh', 'health.ts', 'temp.sh', ...(transport.file ? ['selection.json'] : [])]) await upload(file);
     const prepare = lines.prepare ? `CLAND_PREPARE_KEY=${quote(JSON.stringify(snapshot.key))} /bin/sh -c ${quote(lines.prepare)} 2>&1 || { prepare_exit=$?; echo "prepare failed (exit $prepare_exit)"; exit "$prepare_exit"; }` : "echo 'prepare: not set'";
-    const timeout = () => Math.max(1, Date.parse(lease.deadline) - this.#clock.now().getTime() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env));
+    const timeout = () => {
+      const remaining = Math.min(deadline, Date.parse(lease.deadline) - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env)) - this.#clock.now().getTime();
+      if (remaining <= 0) throw new Error('delivery deadline reached');
+      return remaining;
+    };
     const fetch = () => this.#step('fetch', () => this.#machine.result(lease, `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}`, timeout()));
     let fetched = await fetch();
     let output = fetched.stdout + fetched.stderr;
@@ -139,7 +171,7 @@ git write-tree
     if (fetched.code !== 0 && /Repository lacks these prerequisite commits/.test(output)) {
       output += '\nSnapshot base unavailable on machine; retrying with a full bundle.\n';
       await buildBundle(run, bundle, undefined, committedOnly, this.#env);
-      await this.#step('upload full tree.bundle', () => this.#machine.put(lease, bundle, `runs/${lease.run}/tree.bundle`));
+      await upload('tree.bundle', 'full tree.bundle');
       fetched = await fetch();
       output += fetched.stdout + fetched.stderr;
     }
@@ -156,11 +188,14 @@ git write-tree
       await appendFile(run.log, output);
       throw new Error(`delivery checkout/prepare failed (exit ${result.code}): ${output.trim()}`);
     }
-    await this.#step('upload delivery.log', () => this.#machine.put(lease, join(local, 'delivery.log'), `runs/${lease.run}/delivery.log`));
+    await upload('delivery.log');
     // Root SSH is already owned by the lease. Failure is a recorded disk fallback,
     // never a dependency on passwordless sudo or a changed prepared image.
-    await this.#machine.exec(lease, `bash /home/runner/runs/${lease.run}/temp.sh`, { user: 'root', timeoutMs: 8000 }).catch(() => {});
-    lease.execution = { head: run.head, delivered: true };
+    await this.#machine.exec(lease, `bash /home/runner/runs/${lease.run}/temp.sh`, { user: 'root', timeoutMs: Math.min(8000, timeout()) }).catch(() => {});
+    timeout();
+    // Persist the local prefix with delivery itself. A hub crash before its job
+    // checkpoint must not count these diagnostics as collected remote bytes.
+    lease.execution = { head: run.head, delivered: true, deliveryLogEnd: (await stat(run.log)).size };
     await writeLease(this.#root, lease);
   }
   async start(lease: DropletLease): Promise<void> {

@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 import { readLeases, writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { until, testWaitMs } from './until.ts';
 
 type Fixture = Awaited<ReturnType<typeof suiteUnit>>;
 async function running(f: Fixture, id: string) {
@@ -18,6 +19,36 @@ const remote = (f: Fixture, require = true) => f.launch(require ? { executor: 'd
 // A lease persisted by preparation or an unconfirmed cleanup owns a remote slot
 // without any suite job behind it.
 const leasedOnly = (f: Fixture, lease = 'preparation-only'): DropletLease => ({ kind: 'droplet', provider: 'digitalocean', run: 'preparation', lease, name: `cland-${lease}`, tags: ['cland'], size: 'c-8', region: 'lon1', priceHourly: 0.25, keyName: lease, created: f.clock.now().toISOString(), deadline: new Date(f.clock.now().getTime() + 6600000).toISOString(), state: 'creating', resource: 777, keyId: null });
+
+test('restored delivered leases use the durable delivery prefix without replaying collected bytes', { timeout: testWaitMs() }, async t => {
+  const f = await suiteUnit(t, { executor: 'droplet' });
+  for (const variant of ['absent', 'stale', 'partial', 'legacy'] as const) {
+    const collected = variant === 'partial' ? '# tests 1\n' : '';
+    const run = await remote(f); await running(f, run.id);
+    const job = (await f.jobs()).find(job => job.id === run.id)!;
+    const original = await readFile(job.log, 'utf8');
+    const prefix = `${original}delivery upload tree.bundle attempt 1: succeeded; elapsed 250 ms; timeout 318000 ms\n`;
+    const lease = (await readLeases(f.root)).find(lease => lease.run === run.id)!;
+    Object.assign(lease.execution!, { deliveryLogEnd: Buffer.byteLength(prefix) });
+    if (variant === 'legacy') delete lease.execution!.deliveryLogEnd;
+    await writeLease(f.root, lease);
+    // Crash after durable delivered receipt, before the job's offset save. The
+    // second seed already collected bytes and must neither replay nor skip them.
+    job.state = 'launching';
+    job.remoteLogStart = collected || variant === 'legacy' ? Buffer.byteLength(prefix) : Buffer.byteLength(original);
+    if (variant === 'absent') delete job.remoteLogStart;
+    await writeFile(job.log, prefix + collected);
+    await f.reopen([job]);
+    await f.tick();
+    await until(() => f.status(run.id)?.state === 'running', { what: 'restored delivered run is running' });
+    await f.suites.settled();
+    await f.finish(run.id, 0, '# tests 1\n# pass 1\n');
+    const log = await readFile(job.log, 'utf8');
+    assert.ok(log.startsWith(prefix + '# tests 1\n# pass 1\n'), log);
+    assert.equal(log.split('# tests 1\n').length - 1, 1);
+    assert.deepEqual(f.status(run.id).outcome, { code: 0, cause: '' });
+  }
+});
 
 for (const alreadyAnnounced of [false, true]) test(`fallback notice and log occur once across 20 ticks and restart (already announced: ${alreadyAnnounced})`, async t => {
   let inspections = 0;
