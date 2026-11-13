@@ -47,7 +47,9 @@ executor = "local"
 # Allow default droplet requests to use the local slot when remote is unavailable.
 local_fallback = false
 # Concurrent machine test files; the free shard always uses one worker.
-workers = 4
+# Human decision 2026-11-13 15:30Z (ask 608c9b13): one local worker while executor is local (native tests
+# timed out under 4 workers in batch 35865a52); restore 4 when executor returns to "droplet".
+workers = 1
 # Extra load-gate lanes; repetitions of one new test stay sequential.
 load_gate_workers = 2
 # Local admission stays capped at one, behind the compatibility leases.
