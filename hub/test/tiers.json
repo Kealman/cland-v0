@@ -180,6 +180,7 @@
     "hub/test/discord-users.test.ts": "T2",
     "hub/test/doctor-cli.test.ts": "T3",
     "hub/test/doctor-harness-probe.test.ts": "T1",
+    "hub/test/doctor-hosts.test.ts": "T2",
     "hub/test/doctor-isolation.test.ts": "T3",
     "hub/test/doctor-remotes.test.ts": "T2",
     "hub/test/doctor-run.test.ts": "T2",

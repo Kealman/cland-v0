@@ -94,6 +94,13 @@ export class LoginRecords {
   if(shared)return max;
   return this.db.prepare(sql+" and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=? limit ?").all(input.harness,'disk',input.provider,input.region,max).length;
  }
+ /** Actual eligible identities, independent of the host admission limit. */
+ freeCount(input:{harness:string;provider:string;region:string}):number {
+  const sql=`select count(*) as n from logins indexed by login_capacity_launch where ${capacityEligibleSql} and json_extract(record,'$.harness')=? and json_extract(record,'$.kind')=?`;
+  const keys=this.db.prepare(sql+" and json_extract(record,'$.provider') is null and json_extract(record,'$.region') is null").get(input.harness,'key')!;
+  const disks=this.db.prepare(sql+" and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=?").get(input.harness,'disk',input.provider,input.region)!;
+  return Number(keys.n)+Number(disks.n);
+ }
  /** Aggregate metadata only: no retained login records or private storage identities are decoded. */
  poolSummary(provider:string,region:string,hosts:readonly string[]):Record<string,{inUse:number;usable:number;signedOut:number}> {
   const result:Record<string,{inUse:number;usable:number;signedOut:number}>={};

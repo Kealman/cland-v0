@@ -240,6 +240,7 @@ export class Dispatcher {
 
   /** Project lifecycle owner; providers register durable records before add. */
   hostOwner: Awaited<ReturnType<typeof import('../host/registry.ts').projectSshHosts>> | undefined;
+  hostOutageSince: (id: string) => string | null = () => null;
 
   hostAdmission(secret: string) { return this.core.store.hosts.identify(secret); }
 
@@ -2320,7 +2321,7 @@ export class Dispatcher {
             if (frame.type === 'host.providers') return answer(providerTokens(this.#options.projectConfig!().hosts,this.#options.env??process.env));
             if (frame.type === 'host.status') {
               if(this.#closed)throw Error('host status stopped');
-              const work=hostStatus(core.store.hosts,this.#options.projectConfig!().hosts,this.#sessions?.list()??[],this.#options.env??process.env,core.clock,this.#options.control?.status().root,id=>this.#sessions?.hostUsage(id)??{usedMilli:0,promisedMilli:0},[...(core.roles?.get().values()??[])].map(role=>role.launch));
+              const work=hostStatus(core.store.hosts,this.#options.projectConfig!().hosts,this.#sessions?.list()??[],this.#options.env??process.env,core.clock,this.#options.control?.status().root,id=>this.#sessions?.hostUsage(id)??{usedMilli:0,promisedMilli:0},[...(core.roles?.get().values()??[])].map(role=>role.launch),this.hostOutageSince);
               this.#poolPrepares.add(work);
               void work.finally(()=>this.#poolPrepares.delete(work)).catch(()=>{});
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));

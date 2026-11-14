@@ -36,7 +36,7 @@ async function prepare(root: string, pool: string | undefined, env: NodeJS.Proce
     const path = join(root, '.cland/run/hosts', name + '-image.json');
     const old = await optional(path);
     const record = old ? JSON.parse(old.toString()) as { key: PoolImageKey } : null;
-    const changed = record ? [...staleParts(record, key), ...(JSON.stringify(record.key.harnesses) === JSON.stringify(harnesses) ? [] : ['harnesses'])] : ['node', 'lock', 'recipe', 'provision', 'harnesses'].filter(part => Object.hasOwn(key, part));
+    const changed = record ? poolImageChanges(record.key, key) : ['node', 'lock', 'recipe', 'provision', 'harnesses'].filter(part => Object.hasOwn(key, part));
     const result = await registry.resolve(pools[name]!).prepare({ pool: name, key });
     if (result.state === 'failed') throw new Error(`${name}: ${result.reason}`);
     await mkdir(join(root, '.cland/run/hosts'), { recursive: true, mode: 0o700 });
@@ -56,7 +56,12 @@ export async function poolImageKey(root: string, env: NodeJS.ProcessEnv, provide
 }
 
 export function samePoolImageKey(a: PrepareKey, b: PrepareKey): boolean {
-  return staleParts({ key: a }, b).length === 0 && JSON.stringify((a as PoolImageKey).harnesses) === JSON.stringify((b as PoolImageKey).harnesses);
+  return poolImageChanges(a, b).length === 0;
+}
+
+/** Shared by preparation, admission and read-only doctor reports. */
+export function poolImageChanges(a: PrepareKey, b: PrepareKey): string[] {
+  return [...staleParts({ key: a }, b), ...(JSON.stringify((a as PoolImageKey).harnesses) === JSON.stringify((b as PoolImageKey).harnesses) ? [] : ['harnesses'])];
 }
 
 export function poolSnapshotStorage(root: string, pool: string): SnapshotStorage {

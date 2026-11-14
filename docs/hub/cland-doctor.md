@@ -1,10 +1,37 @@
 ## cland doctor
 
+For configured host pools, doctor adds `host <provider> token`, `host <pool> image`,
+`host <pool> <harness> logins`, `host login <name>`, host reachability and `host spend`
+checks in the same text/JSON report. Token presence and its 12-character fingerprint
+come from the running hub's environment; doctor never reads the provider token or
+calls a provider. An absent DigitalOcean token names `DIGITALOCEAN_TOKEN` in the
+hub environment and `cland hub stop && cland hub start`. Image checks read the local
+pool image record and use preparation's key and changed-part comparison; missing,
+stale or unreadable records name `cland host prepare <pool>`.
+
+`host.status.freeLogins` supplies indexed regional eligible login counts for the
+harnesses of roles placed on each configured pool. Reusable keys/shared disks
+count once, and exclusive counts are not capped by `max_hosts`. The separate
+admission `capacity` is not a count. Removed pools retain host/spend reporting but
+get no free-login rows. An older hub without counts prints `free login count
+unavailable` and names restart commands. `host.status` also supplies current host inventory and
+today's settled plus live host spend. Zero free logins names `cland login add <harness>
+--pool <pool>`; signed-out metadata from `login.list` names `cland login signin <name>`.
+Unreachable hosts name `cland host destroy <id>`; other non-ready states name
+`cland host stop <id>`. An observed outage includes its start; an older hub without
+that field prints `outage since unknown`. Spend warns at 80 percent of
+`[hosts] daily_spend_usd` and names `cland config set hosts.daily_spend_usd <n>`;
+unknown spend stays unknown. Warnings do not change the exit code. With no running
+hub the hub-backed checks say `hub not running`, fixed by `cland hub start`;
+local image checks remain available. With no pool there is one `ok` row,
+`hosts: no host pool`. Older hubs refusing provider diagnostics produce a status
+unavailable warning with restart commands, never a fabricated token result.
+
 Doctor requires only the harnesses used by `.cland/roles.toml`: each role's launch harness (omitted roles or harness keys take the built-in defaults), plus every named account's harness. Other missing or signed-out harnesses have informational `ok` rows; a signed-out row still names its login command. Without a project or `roles.toml`, no particular harness is required, but a machine with none installed gets one failure, `cland needs at least one harness`, with installers. `gh` and its login are checked only when the root has a remote named `github`; otherwise a single `ok` row says `not needed: no github remote`. The exported `harnessesInUse` in `src/roles/harnesses.ts` supplies the same requirements to setup's installer and login steps.
 
 Hub lifecycle readers classify the lock’s hostname, boot id and PID namespace before local PID probes or socket requests. `hub start` refuses a fresh foreign holder and names its hostname, PID and heartbeat age; only a heartbeat older than 60 seconds allows guarded takeover. Missing/invalid heartbeat stays held. `hub status` and doctor describe a lapsed foreign holder as startable; status JSON adds `foreign`, `hostname`, `heartbeatAgeMs` (null when unknown) and `startable` on that path. `hub stop` refuses every foreign holder, including a lapsed one, and retains discovery and lock without local signals. The orphan sweep excludes foreign holder PIDs from local reservation matching. Offline `task migrate` takes the hub-aware synchronous lock in the CLI, renews its heartbeat every 10 seconds through completion and cleanup, and revalidates ownership before publishing files or index updates. Lost ownership fences further publication; renewal stops before lock release. It shares the startup freshness rule; generic asynchronous locks remain host-unaware. Mixed hub versions on a shared volume are unsupported.
 
-`cland doctor [dir]` checks the machine and the project (`dir`, else the one around the current directory) and prints one line per check: `ok`, `warn` or `fail`, what it found, and for a `warn` or `fail` the fix after `— fix:`. The text is plain, to paste into an item comment; the verdict is coloured only on a terminal (never with `NO_COLOR`). `--json` prints `{root, version, checks: [{name, verdict, detail, fix?}], summary: {ok, warn, fail}}`. The exit code is 1 when any check fails, else 0: a warning never fails it. It starts nothing; the hub is only asked `hub.status` and `remote.status` over its local Unix socket. Remote token presence uses the existing private-file resolver (including tightening file permissions), never a platform check. Every probe runs with a deadline (20 s for a tool, 3 s for the `ps` that tells whether the hub lock's holder is still the process that took it; `CLAND_DOCTOR_PROBE_TIMEOUT_MS` overrides both, for tests) in its own process group: past the deadline the whole group is killed and its pipes closed. The probe waits for the child and native handles to close before returning. If the child still has not closed one second after SIGKILL (also applied on a spawn error), the report returns an explicit `cleanup incomplete` failure rather than waiting indefinitely; termination is unconfirmed in that case. A `ps` that does not answer in time counts as "cannot tell", and the live lock holder is kept.
+`cland doctor [dir]` checks the machine and the project (`dir`, else the one around the current directory) and prints one line per check: `ok`, `warn` or `fail`, what it found, and for a `warn` or `fail` the fix after `— fix:`. The text is plain, to paste into an item comment; the verdict is coloured only on a terminal (never with `NO_COLOR`). `--json` prints `{root, version, checks: [{name, verdict, detail, fix?}], summary: {ok, warn, fail}}`. The exit code is 1 when any check fails, else 0: a warning never fails it. It starts nothing; the hub is asked `hub.status`, `remote.status`, `host.providers`, `host.status` and `login.list` over its Unix socket. Remote token presence uses the existing private-file resolver (including tightening file permissions), never a platform check. Every probe runs with a deadline (20 s for a tool, 3 s for the `ps` that tells whether the hub lock's holder is still the process that took it; `CLAND_DOCTOR_PROBE_TIMEOUT_MS` overrides both, for tests) in its own process group: past the deadline the whole group is killed and its pipes closed. The probe waits for the child and native handles to close before returning. If the child still has not closed one second after SIGKILL (also applied on a spawn error), the report returns an explicit `cleanup incomplete` failure rather than waiting indefinitely; termination is unconfirmed in that case. A `ps` that does not answer in time counts as "cannot tell", and the live lock holder is kept.
 
 | Check | `ok` when | Otherwise |
 | --- | --- | --- |

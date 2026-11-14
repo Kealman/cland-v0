@@ -7,7 +7,7 @@ import { beforeDirectories } from '../process-cleanup.ts';
 import { abortable, within } from '../../src/executor/droplet/deadline.ts';
 import { realClock, type Clock } from '../../src/hub/clock.ts';
 
-type Options = { clock?: Clock; signal?: AbortSignal; publishListening?: boolean; legacyStatus?: boolean; remoteStatus?: () => unknown };
+type Options = { clock?: Clock; signal?: AbortSignal; publishListening?: boolean; legacyStatus?: boolean; remoteStatus?: () => unknown; hostStatus?: () => unknown };
 
 // Literal previous wire shape: no stopCause field, including for a stopped remote.
 const LEGACY_STATUS = { remotes: [{
@@ -52,7 +52,9 @@ export function legacyRemoteHubFixture(t: TestContext, root: string, options: Op
         if (frame.type === 'hello') peer.write(JSON.stringify({ type: 'welcome', name: 'cli', presence: [] }) + '\n');
         else {
           requests.push(frame.type);
-          peer.write(JSON.stringify(frame.type === 'remote.status' && options.remoteStatus
+          peer.write(JSON.stringify(frame.type === 'host.status' && options.hostStatus
+            ? { type: 'result', id: frame.id, ok: true, value: options.hostStatus() }
+            : frame.type === 'remote.status' && options.remoteStatus
             ? { type: 'result', id: frame.id, ok: true, value: options.remoteStatus() }
             : frame.type === 'remote.status' && options.legacyStatus
             ? { type: 'result', id: frame.id, ok: true, value: LEGACY_STATUS }

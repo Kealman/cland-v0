@@ -1,5 +1,10 @@
 # Project secrets
 
+For host provider diagnostics, doctor reads `host.providers` from the running hub.
+It never resolves `DIGITALOCEAN_TOKEN` itself. Set that variable in the hub's
+environment, then run `cland hub stop && cland hub start`; the diagnostic exposes
+presence and fingerprint only. See [doctor hosts tests](tests/hub-test-doctor-hosts.test.ts.md).
+
 Use the [local secret commands](../hub/project-secrets.md#project-secrets) to manage
 the project's messenger tokens and speech keys. Values enter through stdin or
 a hidden terminal prompt. Only names and SHA-256 fingerprint prefixes belong in

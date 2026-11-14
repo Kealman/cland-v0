@@ -1,5 +1,18 @@
 # Host status and explicit stop
 
+`host.status` host rows optionally include `outageSince` from the health owner.
+It is absent when no outage is observed and on older hubs. Clients must treat
+absence as unknown when the host is unreachable. Healthy ready rows without an
+observed outage retain their shape. During the three-minute outage grace period,
+a still-ready row may already carry `outageSince`.
+Doctor reads this timestamp without initiating a health or provider probe.
+
+Pool `freeLogins` maps harnesses of roles placed on that configured pool to actual
+eligible login counts. A reusable key or shared disk counts once, and exclusive
+counts are not capped at `max_hosts`. It shares the store's indexed eligibility
+predicate with `capacity`, which retains its admission semantics. Older replies
+without `freeLogins` mean the count is unavailable, not zero or `capacity`.
+
 `cland host status [--json]` reads current provision inventory. Each pool shows
 host count, occupied weighted slots (including retained generations and placement promises) against declared capacity, and USD
 spend for the current UTC day and month. Settled `hosts` ledger costs from this project count in

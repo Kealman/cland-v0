@@ -739,6 +739,7 @@ export async function serveProject(root: string, options: { createHostRegistry?:
       error:error=>log({event:'host-health-failed',error:String(error)}),
       status:async id=>{const row=store.hosts.provisions.get(id);if(!row?.machine)return {state:'failed',reason:'host machine unavailable'};return healthProviders.resolve(row).status(row.machine);},
       lost:async id=>{await loseHost({root,id,records:store.hosts,env,clock,owner:sshHosts!,inUse:host=>adapters!.sessions.hostInUse(host),settleDeleted:(host,read)=>adapters!.sessions.hostDeleted(host,read),log});}});
+    hub.dispatcher.hostOutageSince = id => hostHealth!.outageSince(id);
     hostsState = new HostsState({clock,records:store.hosts,settings:()=>roles.config().hosts,
       processes:()=>adapters!.sessions.list(),usage:id=>adapters!.sessions.hostUsage(id),
       price:row=>store.hosts.leases.price(row.id),

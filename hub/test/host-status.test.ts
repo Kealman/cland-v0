@@ -18,7 +18,7 @@ test('C1 status includes configured empty pools and zero settled spend',async t=
  assert.equal(reply.ok,true,reply.error);
  const cli=await cland(root,'host','status','--json');assert.equal(cli.code,0,cli.stderr);assert.deepEqual(JSON.parse(cli.stdout),reply.value);
  const text=await cland(root,'host','status');assert.match(text.stdout,/agents: 0 hosts.*slots 0\/0/);
- assert.deepEqual(reply.value,{pools:[{name:'agents',capacity:{},storage:0,hosts:[],hostCount:0,slotsUsed:0,slotsTotal:0,spend:{today:0,month:0}}]});
+ assert.deepEqual(reply.value,{pools:[{name:'agents',capacity:{},freeLogins:{},storage:0,hosts:[],hostCount:0,slotsUsed:0,slotsTotal:0,spend:{today:0,month:0}}]});
 });
 
 test('C1/C2 status weights sessions and clips live accrual to UTC day/month, excluding reservations',async t=>{
