@@ -185,9 +185,12 @@
       "A-19131",
       "A-19216",
       "A-19318",
-      "A-19362"
+      "A-19362",
+      "A-19395",
+      "A-19409",
+      "A-19429"
     ],
-    "commit": "c2fca8086eebfff5286f75ffc6bbcea5c5245611"
+    "commit": "8d243a419638b2ca1401d7f44566d2320fe9de1c"
   },
   "budget": {
     "testSeconds": 5,
@@ -12241,7 +12244,10 @@
     "hub/test/git-daemon-stop.test.ts::close joins exiting daemon after stop returns false": 0.000087,
     "hub/test/git-daemon-stop.test.ts::live daemon with no identity fails bounded close": 0.000383,
     "hub/test/git-daemon-stop.test.ts::live daemon with refused stop fails bounded close": 0.000099,
-    "hub/test/opencode-policy.test.ts::fake OpenCode session publication keeps a complete record during a partial write": 0.000609
+    "hub/test/opencode-policy.test.ts::fake OpenCode session publication keeps a complete record during a partial write": 0.000609,
+    "hub/test/login-terminal.test.ts::setup terminal runner captures hub-assigned login with held completion cleanup": 0.101327,
+    "hub/test/login-terminal.test.ts::setup terminal runner captures hub-assigned login with success": 0.112744,
+    "hub/test/setup-flow.test.ts::C1 agent hosts runs after remote steps and before the Aide": 0.003288
   },
   "allow": {
     "hub/test/demo-release.test.ts::the detached demo watchdog confirms an active droplet losing tags during its delete": {
