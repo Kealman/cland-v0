@@ -7,12 +7,15 @@ import { randomUUID } from 'node:crypto';
 import cp from 'node:child_process';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { clandWithEnv, eventually, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { initialised, toolchain, check, notOk, NVIM_VERSION } from './doctor-fixture.ts';
 import { run, type RunResult } from '../src/doctor/report.ts';
 import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
 import { beforeDirectories, ownProcess } from './process-cleanup.ts';
+import { runDoctor } from '../src/cli/doctor.ts';
+import { captureCli } from './cli-in-process.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 const doctor = (root: string, env: Record<string, string>, ...args: string[]) => clandWithEnv(root, env, 'doctor', ...args);
 const report = async (root: string, env: Record<string, string>) => {
   const result = await doctor(root, env, '--json');
@@ -72,7 +75,7 @@ test('doctor CLI reports a startable no-hub warning with exit 0', async (t) => {
 /** An executable that never answers: it records its own pid and a grandchild's, which holds its stdout open. */
 async function hanging(dir: string, name: string, pids: string): Promise<string> {
   const path = join(dir, name);
-  await writeFile(path, `#!/bin/sh\necho $$ >> '${pids}'\nsleep 60 &\necho $! >> '${pids}'\nwait\n`);
+  await writeFile(path, `#!/bin/sh\nsleep 60 &\nchild=$!\nprintf '%s\\n%s\\n' $$ $child > "\${CLAND_TEST_PROBE_RECEIPT:-${pids}}"\nwait\n`);
   await chmod(path, 0o755);
   return path;
 }
@@ -166,17 +169,89 @@ test('a probe that never answers is cut at its deadline: the lock probe and a ha
   const root = await initialised(t, tools.env);
   await projectHub(t, root);
   const dir = await tempProject(t, 'cland-doctor-hang-');
-  const pids = join(dir, 'pids');
-  await hanging(dir, 'ps', pids);
-  const claude = await hanging(dir, 'claude-hangs', pids);
-  const { report: r } = await report(root, { ...tools.env, PATH: `${dir}:${tools.env.PATH}`, CLAND_CLAUDE_BIN: claude, CLAND_DOCTOR_PROBE_TIMEOUT_MS: '1000' });
+  await hanging(dir, 'ps', join(dir, 'ps.pids'));
+  const claude = await hanging(dir, 'claude-hangs', join(dir, 'claude-hangs.pids'));
+  const env = fixtureEnvironment(dir, tools.env, { PATH: `${dir}:${tools.env.PATH}`, CLAND_CLAUDE_BIN: claude, CLAND_DOCTOR_PROBE_TIMEOUT_MS: '1000' });
+  const recorded: number[] = [];
+  const expired: string[] = [];
+  let sequence = 0;
+  const active = new Set<Promise<RunResult>>();
+  let accepting = true;
+  const drain = async () => {
+    accepting = false;
+    await Promise.allSettled([...active]);
+    assert.equal(active.size, 0, 'all admitted probe work drained before disposal');
+  };
+  beforeDirectories(t, drain);
+  const executeProbe: typeof run = async (bin, args, childEnv, timeoutMs = 1000) => {
+    const name = basename(bin);
+    if (name !== 'ps' && name !== 'claude-hangs') return run(bin, args, childEnv, timeoutMs, false, t.signal, 'utf8', dir);
+    const receipt = join(dir, `${name}-${sequence++}.pids`);
+    let deadline: (() => void) | undefined;
+    // run registers its deadline synchronously. Hold only that timer; readiness,
+    // cleanup and the test's outer bound keep their native clocks.
+    const timer = t.mock.method(globalThis, 'setTimeout', (callback: () => void, ms: number) => {
+      assert.equal(ms, 1000);
+      assert.equal(deadline, undefined);
+      deadline = callback;
+      return setTimeoutNative(() => {}, 60_000);
+    });
+    const nativeSpawn = cp.spawn;
+    const launch = t.mock.method(cp, 'spawn', (...options: Parameters<typeof cp.spawn>) => {
+      // cland-allow-child-env: ownership spy forwards production run's fixtureEnvironment-sealed launch unchanged
+      const child = nativeSpawn(...options);
+      ownProcess(t, child.pid);
+      return child;
+    });
+    syncBuiltinESMExports();
+    let pending: Promise<RunResult>;
+    try { pending = run(bin, args, fixtureEnvironment(dir, childEnv, { ...childEnv, CLAND_TEST_PROBE_RECEIPT: receipt }), timeoutMs, false, t.signal, 'utf8', dir); }
+    finally { timer.mock.restore(); launch.mock.restore(); syncBuiltinESMExports(); }
+    // Always join the production owner, including a readiness failure.
+    try {
+      const pids = await eventually(`${name} persists its own and its grandchild's PID before deadline delivery`, async () => {
+        try {
+          const values = (await readFile(receipt, 'utf8')).trim().split('\n').map(Number);
+          return values.length === 2 && values.every(pid => Number.isInteger(pid) && pid > 0) ? values : undefined;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+          return undefined;
+        }
+      }, 5000);
+      pids.forEach(pid => ownProcess(t, pid));
+      assert.ok(pids.every(alive), `${name}: both recorded processes are alive before the cut`);
+      recorded.push(...pids);
+      expired.push(name);
+    } finally {
+      assert.ok(deadline, `${name} registered its deadline`);
+      deadline();
+      await pending;
+    }
+    return pending;
+  };
+  const controlledProbe: typeof run = (...args) => {
+    if (!accepting) return Promise.reject(new Error('doctor probe admission closed'));
+    const work = executeProbe(...args);
+    active.add(work);
+    void work.then(() => active.delete(work), () => active.delete(work));
+    return work;
+  };
+  const setTimeoutNative = globalThis.setTimeout;
+  const result = await captureCli(write => runDoctor(['--json'], root, env, write, controlledProbe, {
+    remotes: async () => [],
+    project: { started: async pid => { await controlledProbe('ps', ['-o', 'lstart=', '-p', String(pid)], env, 1000); return null; } },
+    findOrphans: async () => [],
+    webBundle: async () => ({ name: 'web bundle', verdict: 'ok', detail: 'fixture bundle' }),
+  })).finally(drain);
+  assert.equal(result.stderr, '');
+  const r = JSON.parse(result.stdout);
   const c = check(r, 'claude-code');
   assert.equal(c.verdict, 'fail');
   assert.match(c.detail, /no answer within 1 s/);
   // `ps` could not tell the holder's start time: the live lock holder is still the hub
   assert.equal(check(r, 'hub').verdict, 'ok');
-  const recorded = (await readFile(pids, 'utf8')).split('\n').filter(Boolean).map(Number);
-  assert.ok(recorded.length >= 4, `the ps probe and the claude probe each ran, with a grandchild: ${recorded.join(' ')}`);
+  assert.deepEqual(expired.sort(), ['claude-hangs', 'claude-hangs', 'ps', 'ps']);
+  assert.equal(recorded.length, 8, 'both lock observations, harness version and harness auth persisted two PIDs before their deadline fired');
   await eventually('all timed-out probe processes are gone', () => {
     assert.deepEqual(recorded.filter(alive), []);
     return true;
