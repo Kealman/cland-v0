@@ -2,8 +2,8 @@
 id: T-1855
 kind: task
 title: A pool's merge leaves a writer in territory.git at teardown (ENOTEMPTY in session-native-lifecycle)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1508
 branch: t/T-1855-a-pool-s-merge-leaves-a-writer-in
 created: 2026-11-14T09:54:49.415Z
-updated: 2026-11-14T11:25:17.077Z
+updated: 2026-11-14T12:22:31.247Z
+closed: 2026-11-14T12:22:31.247Z
 ---
 
 ## Summary
@@ -178,3 +179,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards 0 / Spec 0. A-19360 reconciles exact-head de718a00/A-19359: 6270 base test passes, 692 file passes; 160 load test/file passes separate. T0/T1/all fallback T2/changed T3 9/9/Web 290 all exit 0. Target OpenCode case passes 5.122617667s; all six shutdown controls and atomic-publication control each base + five load passes. Current-head Mac5/pair7/7 A-19357 and actual equal 16185-name inventories A-19358 inspected with native/capture limits. C1 forced delayed-writer red/current joined cleanup and C2 required campaign/configured evidence established. Exact local darwin arm64 Node24.21/Neovim0.12.5/HeadlessShell1248-CfT156 provenance read; report-mode advisories retained. Prior configured red and pre-enqueue refusal preserved. Accepted post-exit orphan/stale-lock/respawn risk remains T-1856. No Linux/full remaining T3/T4/QA pass claimed; QA none. No Reviewer execution.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-14T12:22:31.247Z
+
+Merged 46036702459fb751b4a16a83a05e4c13315926fe onto dev.

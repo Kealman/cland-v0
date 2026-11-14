@@ -2,8 +2,8 @@
 id: T-1854
 kind: task
 title: Closing a host git daemon reports 'termination incomplete' for a daemon that already exited (Linux)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1507
 branch: t/T-1854-closing-a-host-git-daemon-reports
 created: 2026-11-14T09:48:29.281Z
-updated: 2026-11-14T10:35:20.534Z
+updated: 2026-11-14T12:22:16.307Z
+closed: 2026-11-14T12:22:16.307Z
 ---
 
 ## Summary
@@ -91,3 +92,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1/C2 verified. A-19347 records independent audit of A-19334 controlled Linux red/fixed 20 controlled+20 normal passes, replacement exclusive-slot Mac5 A-19337 native return0 and named-case passes, and exact-head configured f2043f79/A-19344. Five T1 controls each pass base plus5 load; 6259 ordinary test/692 ordinary file passes, separate150 load test/file positives, no negative finishes. All selected consumers positive:31T1+342T2+54Web;679 census paths/17unknowns retained. Captured child close remains required; live/no-close refuses. Earlier Mac overlap, Docker/candidate/raw-capture limits remain explicit, not retroactively repaired. Broader T3/full Linux stage/T4 unexecuted; budget/lint remain report-only. Clean unchanged head; Reviewer read-only.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-14T12:22:16.307Z
+
+Merged 66bc409fb093ef002e8fc80aada3fbdee66cd4fd onto dev.
