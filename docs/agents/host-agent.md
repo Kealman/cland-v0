@@ -721,3 +721,18 @@ The hub's optional `[hosts] relaunch_after_signin` (boolean, default false, hot
 applied, omitted by init) renews live sessions through their existing relaunch
 owner only after durable sign-in success. It preserves worktrees and conversations;
 stopped sessions stay stopped. This adds no agent permission or native command.
+
+## Setup's agent-host offer
+
+Setup's optional agent-host step uses the local-human `host.providers` metadata
+query with `provider: "digitalocean"` before any pool exists. This filter returns
+presence and fingerprint only, makes no provider call and leaves the unfiltered
+reply unchanged. Restart the running hub after installing this capability before
+using setup against it. `--yes` takes No; paid-pool creation needs its separate
+confirmation. Role placement uses the persisted `role.launch` setter. See
+[setup](../hub/cland-setup.md#agent-hosts-in-setup).
+
+For readiness setup opts in to `host.status roleLogins: true`, using the shared
+account-aware `LoginRecords.freeCount` projection. A missing map from an older
+hub is unknown/open. A DigitalOcean pool also needs the token in the hub's
+environment before it can report `ok`.

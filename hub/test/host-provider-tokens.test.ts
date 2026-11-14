@@ -12,6 +12,17 @@ import {onCleanup} from './process-cleanup.ts';
 import {testMessenger} from './fakes/messenger.ts';
 import {authenticatedWeb} from './web-frame-client.ts';
 
+test('setup reads unconfigured DigitalOcean token with additive filter and no provider calls', async t => {
+ const root=await tempProject(t),processes=fakeLockProcesses().processes;
+ const hub=await projectHub(t,root,{}, {clock:new FakeClock(Date.now()),processes,droplet:{processes}});
+ const local=await connectUi(t,hub.discovery,'cli');
+ const reply=await local.request({type:'host.providers',provider:'digitalocean'});
+ assert.equal(reply.ok,true,reply.error);
+ assert.deepEqual(reply.value,{providers:[{provider:'digitalocean',tokenNeeded:true,present:false,fingerprint:null}]});
+ const old=await local.request({type:'host.providers'});
+ assert.deepEqual(old.value,{providers:[]});
+});
+
 test('C1/C3 provider diagnostics expose only the hub token fingerprint without provider requests', async t => {
  const root=await tempProject(t),clock=new FakeClock(Date.now()),processes=fakeLockProcesses().processes;
  const token='cland-test-provider-diagnostics';

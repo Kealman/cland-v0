@@ -59,6 +59,11 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Remote commands](../docs/hub/remote-commands.md)
 - [Config preservation](../docs/hub/cland-init-and-cland-update.md): managed settings, auth, init/update and setup writers retain host tables and unknown TOML fields.
 - [cland setup](../docs/hub/cland-setup.md)
+  offers agent hosts after remotes and before the Aide, default No; `--yes` skips
+  this step. Nonterminal untouched hosts skip; partial pools stay open, with
+  exact commands in the detail and no writes. Token
+  presence comes from the hub environment; paid-pool confirmation names the
+  recorded size, minimum hosts and hourly price.
 - [cland init and cland update](../docs/hub/cland-init-and-cland-update.md)
 - [Prebuilt Web release assets](../docs/hub/prebuilt-web-release-assets.md)
 - [cland doctor](../docs/hub/cland-doctor.md): toolchain, remote readiness and read-only hosts diagnostics.

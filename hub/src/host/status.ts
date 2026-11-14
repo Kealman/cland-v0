@@ -6,6 +6,14 @@ import type { HostRecords } from './records.ts';
 import type { HostPools } from './pools.ts';
 import { inspectHostSpendSnapshot } from '../executor/droplet/spend.ts';
 
+/** Setup opts in to role/account-scoped eligibility; counts share freeLogins' indexed predicate. */
+export function roleLoginReadiness(records: HostRecords, settings: HostPools, roles: readonly { role: string; launch: { pool: string; harness: string; account: string | null } }[]): Record<string, boolean> {
+ return Object.fromEntries(roles.filter(role=>role.launch.pool!=='local').map(role=>{
+  const pool=settings.pools[role.launch.pool];
+  return [role.role,!!pool&&records.logins.freeCount({harness:role.launch.harness,provider:pool.provider,region:pool.region,account:role.launch.account})>0];
+ }));
+}
+
 /** Current inventory only; retained terminal provision history is not read. */
 export async function hostStatus(records:HostRecords, settings:HostPools, processes:readonly {name:string;host?:string;harness:string;status:string}[], env:NodeJS.ProcessEnv, clock:Clock, project?:string, usage:(host:string)=>{usedMilli:number;promisedMilli:number}=()=>({usedMilli:0,promisedMilli:0}), roles:readonly {pool:string;harness:string}[]=[], outage:(host:string)=>string|null=()=>null) {
  const now=clock.now().getTime();

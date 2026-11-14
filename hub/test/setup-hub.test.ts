@@ -122,7 +122,7 @@ test('the ordered setup flow reruns without starting another hub or Aide', async
   ] });
   const first = await setup({ ...options, harness: 'codex' });
   assert.equal(first.code, 0, JSON.stringify(first.report.steps));
-  assert.deepEqual(first.report.steps.slice(-5).map(s => [s.name, s.verdict]), [['hub', 'done'], ['remote telegram', 'skip'], ['remote discord', 'skip'], ['speech', 'ok'], ['aide', 'done']]);
+  assert.deepEqual(first.report.steps.slice(-6).map(s => [s.name, s.verdict]), [['hub', 'done'], ['remote telegram', 'skip'], ['remote discord', 'skip'], ['speech', 'ok'], ['agent hosts', 'skip'], ['aide', 'done']]);
   assert.deepEqual(calls, ['start', { name: 'aide-1', role: 'aide', harness: 'codex', brief: "Run the onboarding skill; project: empty; harnesses: claude-code, codex; human's harness: codex" }]);
   client.running = async () => ({ pid: 42 });
   client.session = async () => ({ status: 'running' });

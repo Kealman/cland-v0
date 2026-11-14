@@ -2,6 +2,12 @@
 
 ## Provider token diagnostics
 
+The optional `provider: "digitalocean"` request filter returns that provider's
+metadata even before any pool uses it, for setup's first-pool offer. Without the
+filter the reply stays limited to configured providers. Neither form instantiates
+a provider or makes an API call. Older hubs may ignore the filter and return an
+empty list; setup then leaves the step open.
+
 The running hub answers `host.providers` for the local human CLI or Neovim
 only. Sessions, web clients and remote ingress cannot request it. It returns
 `{providers: [{provider, tokenNeeded, present, fingerprint}]}` once per distinct

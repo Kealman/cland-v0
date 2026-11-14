@@ -8,6 +8,17 @@ metadata:
 
 Implement the work described by the user in the spec or tickets.
 
+Setup's optional agent-host offer uses the hub's metadata-only `host.providers`
+filter before a pool exists; it never reads the caller's provider token. Keep
+`--yes` at No and require the separate paid-pool confirmation. Untouched
+nonterminal hosts skip with exact commands in the detail; partial pools remain
+open. Keep existing successful unattended setup exit assertions. Persist pool keys
+through `config.set` and role pools through `role.launch`, then reload. Preserve
+the unfiltered provider reply for older clients. See docs/hub/cland-setup.md.
+Setup readiness also opts in to account-aware `host.status roleLogins`; an older
+reply without that map stays unknown/open. Use `LoginRecords.freeCount` for both
+pool counts and per-role eligibility, including the optional account filter.
+
 ## Merge-delta advisory comments
 
 The hosting hub records clean reviewed-head/dev merges as report-only item

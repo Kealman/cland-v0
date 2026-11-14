@@ -7,7 +7,7 @@ import { onHostSpendChange } from '../executor/droplet/spend.ts';
 import { DigitalOceanHostProvider } from '../host/provider/digitalocean.ts';
 import { HostProviderRegistry } from '../host/provider/registry.ts';
 import { providerTokens } from '../host/provider-tokens.ts';
-import { hostStatus } from '../host/status.ts';
+import { hostStatus, roleLoginReadiness } from '../host/status.ts';
 import { PoolCreationNotAdmitted } from '../host/pool-runtime.ts';
 import { createHost, listHosts, destroyHost } from '../host/provision-host.ts';
 import { type LoginSignIn, type LoginAddInput } from '../host/login-signin.ts';
@@ -2318,10 +2318,12 @@ export class Dispatcher {
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));
             }
             if (frame.type === 'login.list') return answer(core.store.hosts.logins.list().map(row => ({...row,bindings:core.store.hosts.logins.bindings(row.name)})));
-            if (frame.type === 'host.providers') return answer(providerTokens(this.#options.projectConfig!().hosts,this.#options.env??process.env));
+            if (frame.type === 'host.providers') return answer(providerTokens(this.#options.projectConfig!().hosts,this.#options.env??process.env,frame.provider));
             if (frame.type === 'host.status') {
               if(this.#closed)throw Error('host status stopped');
-              const work=hostStatus(core.store.hosts,this.#options.projectConfig!().hosts,this.#sessions?.list()??[],this.#options.env??process.env,core.clock,this.#options.control?.status().root,id=>this.#sessions?.hostUsage(id)??{usedMilli:0,promisedMilli:0},[...(core.roles?.get().values()??[])].map(role=>role.launch),this.hostOutageSince);
+              const roles=[...(core.roles?.get().values()??[])],settings=this.#options.projectConfig!().hosts;
+              const roleLogins=frame.roleLogins?roleLoginReadiness(core.store.hosts,settings,roles):undefined;
+              const work=hostStatus(core.store.hosts,settings,this.#sessions?.list()??[],this.#options.env??process.env,core.clock,this.#options.control?.status().root,id=>this.#sessions?.hostUsage(id)??{usedMilli:0,promisedMilli:0},roles.map(role=>role.launch),this.hostOutageSince).then(status=>roleLogins?{...status,roleLogins}:status);
               this.#poolPrepares.add(work);
               void work.finally(()=>this.#poolPrepares.delete(work)).catch(()=>{});
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));

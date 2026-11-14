@@ -6,6 +6,10 @@ scratch-owned through `tempProject` and `fixtureEnvironment`. Harness launches
 use the in-process fake adapters; the workbench launcher is an injected no-op.
 No native browser, real platform, token, Git probe or harness child is used.
 
+The ordered suffix now includes agent hosts between speech and the Aide. Under
+--yes it is skip. Keep the Telegram ordered-output regex and Discord suffix in
+step with this row while preserving token, pairing and native drainage checks.
+
 The terminal flow proves BotFather guidance, the hidden question, private stored
 input and persisted enabling, then uses the reload completion and loaded remote
 status receipts. The unpaired row contains the bot link and approve command and

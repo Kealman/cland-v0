@@ -11,10 +11,11 @@ import { remotes } from './steps/remotes.ts';
 import { discord } from './steps/discord.ts';
 import { speech } from './steps/speech.ts';
 import { aide } from './steps/aide.ts';
+import { hosts } from './steps/hosts.ts';
 import type { SetupLine, SetupOptions, SetupStep, SetupVerdict } from './types.ts';
 
 // Workbench hand-over follows this report.
-const STEPS: readonly SetupStep[] = [project, harnesses, logins, accounts, favourite, trust, hub, remotes, discord, speech, aide];
+const STEPS: readonly SetupStep[] = [project, harnesses, logins, accounts, favourite, trust, hub, remotes, discord, speech, hosts, aide];
 export type SetupReport = {
   root: string;
   version: string;

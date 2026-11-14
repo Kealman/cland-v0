@@ -1,5 +1,13 @@
 # Host status and explicit stop
 
+Setup requests `host.status` with optional `roleLogins: true`. Only that opt-in
+reply adds a top-level `roleLogins` map: each role placed on a nonlocal pool maps
+to whether it has an eligible login matching the pool's provider/region and the
+role's optional account pin. It shares `LoginRecords.freeCount` with pool
+`freeLogins`; no client copies the eligibility policy. Plain status replies keep
+their shape. Older hubs omit the map, which means unknown readiness, never `ok`.
+This is metadata only and does not bind a login or contact the provider.
+
 `host.status` host rows optionally include `outageSince` from the health owner.
 It is absent when no outage is observed and on older hubs. Clients must treat
 absence as unknown when the host is unreachable. Healthy ready rows without an

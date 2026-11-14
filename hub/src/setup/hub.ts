@@ -6,6 +6,9 @@ import type { Pairing } from '../remote/state.ts';
 import type { HarnessId } from '../doctor/ranges.ts';
 
 export type SetupHub = {
+  providers?(provider: 'digitalocean'): Promise<{ providers: { provider: string; present: boolean; fingerprint: string | null }[] }>;
+  hostStatus?(): Promise<{ pools: { name: string; capacity: Record<string, number> }[]; roleLogins?: Record<string, boolean> }>;
+  placeRole?(role: string, pool: string): Promise<void>;
   /** Optional read budget; old injected clients may ignore it and are still joined. */
   remotes?(timeoutMs?: number): Promise<RemoteStatusResult>;
   pairings?(): Promise<InboxPairing[]>;
@@ -35,6 +38,9 @@ export function setupHub(root: string, env: NodeJS.ProcessEnv): SetupHub {
   };
   return {
     running,
+    providers: async provider => await request({ type: 'host.providers', provider }) as { providers: { provider: string; present: boolean; fingerprint: string | null }[] },
+    hostStatus: async () => await request({ type: 'host.status', roleLogins: true }) as { pools: { name: string; capacity: Record<string, number> }[]; roleLogins?: Record<string, boolean> },
+    async placeRole(role, pool) { await request({ type: 'role.launch', role, fields: { pool } }, 10_000); },
     remotes: async timeoutMs => await request({ type: 'remote.status' }, timeoutMs ?? 3000) as RemoteStatusResult,
     pairings: async () => (await request({ type: 'inbox.list' }) as Inbox).pairings ?? [],
     approve: async (messenger, code) => (await request({ type: 'pairing.approve', messenger, code }) as { pairing: Pairing }).pairing,

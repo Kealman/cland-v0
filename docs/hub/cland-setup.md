@@ -82,6 +82,35 @@ secret CLI preflight and hidden reader, stores privately and prints `done`.
 `command` and empty providers print one `ok` line and ask nothing. Setup makes no
 provider call. Apply a stored key to a running hub with `cland hub reload`.
 
+### Agent hosts in setup
+
+After the remote and speech steps, before the Aide, setup offers “Set up agent
+hosts?” with No as the default. `--yes` skips this optional step. Without a
+terminal it writes nothing. An untouched project with no agents pool prints
+`skip`; a partial pool prints `open`. The detail includes the exact missing
+`cland config set` and `cland role launch <role> --pool agents` commands and
+`cland hub reload`, preserving existing settings and placed roles.
+A configured agents pool is `ok` only with usable logins matching each placed
+role's account selection and, for DigitalOcean, the token in the hub environment.
+An older hub without role eligibility evidence leaves readiness open. Guidance
+for an existing pool preserves its settings and placed roles; unreadable settings
+leave `cland setup in a terminal` as the repair path rather than pool defaults.
+
+On acceptance, setup reads only token presence and fingerprint from the hub's
+environment. A missing token leaves `open`: set `DIGITALOCEAN_TOKEN` in that
+environment and restart the hub. Setup never requests or stores that token.
+It offers eligible roles individually, with Implementer preselected; Coordinator
+and Aide stay local. A separate default-No confirmation names the size,
+`min_hosts` and the recorded spec price ($0.0714/h without VAT for s-4vcpu-8gb,
+2026-10-31). Declining leaves `open` with manual commands and writes nothing.
+An unpriced size also stays `open`. Confirmation uses a recorded declaration,
+never a provider catalog request; actual spend uses runtime provider declarations.
+Price editing and price storage are outside this step.
+
+Acceptance writes the pool defaults through `config.set`, persists role pools
+through the existing `role.launch` setter, then reloads. Existing pool settings
+are preserved. Pool images and first-login offers are separate work.
+
 ### Discord in setup
 
 Setup offers Discord after Telegram, before speech and the Aide, default No even
