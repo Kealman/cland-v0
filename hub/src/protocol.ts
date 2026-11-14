@@ -31,6 +31,7 @@ export const REPLACED_CLOSE_CODE = 4002;
 export const UPDATE_HINT = 'update cland and restart the session';
 
 export type FromKind = 'human' | 'agent' | 'hub';
+export type { LoginMetadataRow } from '../../shared/wire/index.ts';
 export type RemoteVia = 'telegram' | 'discord';
 export type HumanActionVia = 'neovim' | 'web' | RemoteVia;
 export type Via = 'session' | 'hub' | RemoteVia;
@@ -704,7 +705,7 @@ export type ClientRequest =
   | { type: 'host.create'; id: string; pool?: string }
   | { type: 'login.remove'; id: string; name: string }
   | { type: 'login.snapshot'; id: string; name: string }
-  | { type: 'login.list'; id: string }
+  | { type: 'login.list'; id: string; name?: string }
   | { type: 'login.signin'; id: string; name:string }
   | { type: 'login.set'; id: string; name: string; exclusive: boolean }
   | ({ type: 'login.add'; id: string } & import('./host/login-signin.ts').LoginAddInput)
@@ -1144,7 +1145,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return typeof f.name === 'string' && /^[a-z0-9][a-z0-9-]{0,31}$/.test(f.name) && typeof f.exclusive === 'boolean';
     case 'login.signed-in':
       return typeof f.name === 'string' && (f.code === null || Number.isSafeInteger(f.code) && Number(f.code) >= 0 && Number(f.code) <= 255);
-    case 'login.list':
+    case 'login.list': return f.name === undefined || typeof f.name === 'string' && /^[a-z0-9][a-z0-9-]{0,31}$/.test(f.name);
     case 'host.providers': return f.provider === undefined || f.provider === 'digitalocean';
     case 'host.status': return f.roleLogins === undefined || typeof f.roleLogins === 'boolean';
     case 'host.list': return true;

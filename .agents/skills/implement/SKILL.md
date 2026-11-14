@@ -18,6 +18,16 @@ the unfiltered provider reply for older clients. See docs/hub/cland-setup.md.
 Setup readiness also opts in to account-aware `host.status roleLogins`; an older
 reply without that map stays unknown/open. Use `LoginRecords.freeCount` for both
 pool counts and per-role eligibility, including the optional account filter.
+Image and first-login offers each require separate default-No consent. Name the
+configured builder and its declared price; leave unpriced builders open. A failed
+terminal login retains its signin command and continues to the Aide. See setup's
+per-test guide for simulated terminal receipts versus native stage QA evidence.
+Configured readiness also requires the shared doctor image-key receipt. Setup
+uses the terminal owner's hub-assigned name and named login.list readback;
+before admission retain add guidance. Older unfiltered replies stay compatible.
+Named metadata omits binding inventory; absence is unknown, not an empty list.
+After paid yes, re-read displayed terms and leave changes open. T-1858 tracks
+shared admission pinning beyond the one-human interactive setup trust model.
 
 ## Merge-delta advisory comments
 

@@ -2317,7 +2317,14 @@ export class Dispatcher {
               void work.finally(()=>this.#poolPrepares.delete(work)).catch(()=>{});
               return later(frame.type,work.then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),err=>Dispatcher.#failure(frame.id,err)));
             }
-            if (frame.type === 'login.list') return answer(core.store.hosts.logins.list().map(row => ({...row,bindings:core.store.hosts.logins.bindings(row.name)})));
+            if (frame.type === 'login.list') {
+              if (frame.name === undefined) return answer(core.store.hosts.logins.list().map(row => ({...row,bindings:core.store.hosts.logins.bindings(row.name)})));
+              const row = core.store.hosts.logins.get(frame.name);
+              if (!row) return answer([]);
+              const base = { name: row.name, harness: row.harness, account: row.account, state: row.state };
+              const metadata: import('../protocol.ts').LoginMetadataRow = row.kind === 'disk' ? { ...base, kind: 'disk', provider: row.provider, region: row.region } : { ...base, kind: 'key' };
+              return answer([metadata]);
+            }
             if (frame.type === 'host.providers') return answer(providerTokens(this.#options.projectConfig!().hosts,this.#options.env??process.env,frame.provider));
             if (frame.type === 'host.status') {
               if(this.#closed)throw Error('host status stopped');

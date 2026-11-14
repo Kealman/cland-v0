@@ -735,4 +735,14 @@ confirmation. Role placement uses the persisted `role.launch` setter. See
 For readiness setup opts in to `host.status roleLogins: true`, using the shared
 account-aware `LoginRecords.freeCount` projection. A missing map from an older
 hub is unknown/open. A DigitalOcean pool also needs the token in the hub's
-environment before it can report `ok`.
+environment and a current local image before it can report `ok`. Doctor and setup
+share the read-only image-key comparison; no provider call is made.
+
+Setup offers image preparation and first terminal logins separately after pool
+placement. Each paid action needs its own default-No confirmation; builder
+pricing follows the configured prepare size. Unpriced builders remain open.
+Failed sign-ins retain `cland login signin <name>` guidance and continue to the
+Aide. The existing local-human authority applies; this adds no role permissions.
+The shared CLI terminal owner publishes the admitted login name to setup.
+Named `login.list` reads avoid retained-inventory scans; older unfiltered replies
+remain compatible. Recheck role eligibility after each successful login.

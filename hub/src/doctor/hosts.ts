@@ -1,6 +1,5 @@
 import { basename, join } from 'node:path';
-import { readFile } from 'node:fs/promises';
-import { poolImageChanges, poolImageKey, type PoolImageKey } from '../host/provider/pool-image.ts';
+import { inspectPoolImage } from '../host/provider/pool-image.ts';
 import { readText } from '../init/files.ts';
 import { defaultConfig, parseConfig } from '../init/config.ts';
 import { hubDiscovery, readDiscovery, pidAlive } from '../project.ts';
@@ -21,14 +20,8 @@ export async function checkHosts(root: string, env: NodeJS.ProcessEnv): Promise<
   const out: Check[] = [];
   for (const [pool, settings] of Object.entries(config.hosts.pools).sort(([a], [b]) => a.localeCompare(b))) {
     const name = `host ${pool} image`, fix = `cland host prepare ${pool}`;
-    try {
-      const key = await poolImageKey(root, env, settings.provider);
-      let record;
-      try { record = JSON.parse(await readFile(join(root, '.cland/run/hosts', pool + '-image.json'), 'utf8')) as { key: PoolImageKey }; }
-      catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') { out.push(warn(name, 'absent', fix)); continue; } throw error; }
-      const changed = poolImageChanges(record.key, key);
-      out.push(changed.length ? warn(name, `stale: ${changed.join(', ')}`, fix) : ok(name, 'current'));
-    } catch { out.push(warn(name, 'image key unavailable', fix)); }
+    const image = await inspectPoolImage(root, env, pool, settings.provider);
+    out.push(image.state === 'current' ? ok(name, 'current') : warn(name, image.state === 'stale' ? `stale: ${image.changed!.join(', ')}` : image.state === 'unavailable' ? 'image key unavailable' : 'absent', fix));
   }
   for (const provider of [...new Set(Object.values(config.hosts.pools).map(p => p.provider))].sort()) {
     const name = `host ${provider} token`;

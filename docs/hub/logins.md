@@ -86,6 +86,14 @@ web user. Sessions and remotes cannot list logins. In users mode the acting user
 must have administrative authority. The command never reads the user-level accounts
 registry, harness files or key material, and creates no logins.
 
+The `login.list` frame accepts an optional `name` for an indexed, single-login
+metadata read. It returns zero or one `LoginMetadataRow` with name, harness,
+account, state, kind and disk provider/region. This row has no `bindings` field;
+its absence says nothing about binding inventory. An unfiltered request keeps
+the exact prior `ListedLogin[]` reply including all bindings. Setup uses the admitted name from
+the terminal add reply for one bounded readback; an older hub that ignores the
+filter can return the prior full array, which setup filters by that exact name.
+
 Text output ends with `capacity <pool>/<harness>: <n>` from `host.status`.
 It lists login harnesses and the harnesses of roles bound to each pool. Capacity
 is the smaller of max_hosts and eligible exclusive disks in the pool provider

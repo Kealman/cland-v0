@@ -90,7 +90,7 @@ terminal it writes nothing. An untouched project with no agents pool prints
 `skip`; a partial pool prints `open`. The detail includes the exact missing
 `cland config set` and `cland role launch <role> --pool agents` commands and
 `cland hub reload`, preserving existing settings and placed roles.
-A configured agents pool is `ok` only with usable logins matching each placed
+A configured agents pool is `ok` only with a current local pool image and usable logins matching each placed
 role's account selection and, for DigitalOcean, the token in the hub environment.
 An older hub without role eligibility evidence leaves readiness open. Guidance
 for an existing pool preserves its settings and placed roles; unreadable settings
@@ -109,7 +109,33 @@ Price editing and price storage are outside this step.
 
 Acceptance writes the pool defaults through `config.set`, persists role pools
 through the existing `role.launch` setter, then reloads. Existing pool settings
-are preserved. Pool images and first-login offers are separate work.
+are preserved. Setup then offers `cland host prepare agents` through the same
+hub operation as that command, followed by `cland login add <harness> --pool agents`
+in the terminal for each placed harness without an eligible login. Account-pinned
+roles keep their account selection. Each offer defaults to No and names the paid
+machine. The image question uses `verification.droplet.prepare_size`: the declared
+builder prices are $0.25/h for c-8 and $0.50/h for c-16 (see Running); another size
+stays `open` with the prepare command and starts nothing.
+
+Image completion reports `prepared` or `current` from the hub receipt. Login
+completion uses the existing CLI terminal owner and requires both native success
+and a named ready-login receipt in the pool's provider and region. The hub assigns
+the readable name; setup never scans retained inventory to choose one. It refreshes
+account-aware eligibility before later offers, so a new pinned login can satisfy
+an unpinned role. Declines print `skip` with the command; without a terminal,
+these offers print `open` with commands and run nothing. A failed or abandoned
+sign-in with an admitted name prints `open` with `cland login signin <name>`;
+before admission it retains the add command. Setup continues to the
+Aide. In JSON mode the login terminal's output goes to stderr.
+Configured nonterminal pools retain these commands even under `--yes` or when
+hub metadata reads fail. Doctor and setup share the same read-only image-key
+comparison, including absent/stale/current states, without provider calls.
+
+Immediately after a paid yes, setup re-reads the displayed pool and builder
+terms. A change leaves the action `open`, naming the changed term and exact
+command, and starts nothing. Interactive setup assumes one human owns the
+project configuration during the run. The remaining gap between this re-read
+and the hub effect, and shared admission pinning/CAS, are tracked in T-1858.
 
 ### Discord in setup
 

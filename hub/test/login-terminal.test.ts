@@ -11,6 +11,8 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { loginFixtureOwners, loginChild } from './login-fixture-owners.ts';
 import { until, testWaitMs, waitTimeoutMs } from './until.ts';
 import { processIdentityAsync } from '../src/process-identity.ts';
+import { setupMachine } from '../src/setup/machine.ts';
+import { readFileSync } from 'node:fs';
 
 function nativeExited(pid:number):boolean{try{process.kill(pid,0);return false;}catch(error){return (error as NodeJS.ErrnoException).code==='ESRCH';}}
 
@@ -19,6 +21,50 @@ const JOIN_MS=waitTimeoutMs(testWaitMs()); // loginChild's native close receipt
 const NATIVE_EXIT_MS=2000;
 const CLEANUP_MS=waitTimeoutMs(testWaitMs()+5000); // owned native cleanup plus its close observation
 const PHASE_ENVELOPE_MS=SETUP_MS+JOIN_MS+NATIVE_EXIT_MS+CLEANUP_MS;
+
+for (const mode of ['success', 'held completion cleanup'] as const) test(`setup terminal runner captures hub-assigned login with ${mode}`, { timeout: PHASE_ENVELOPE_MS }, async t => {
+ const owners=loginFixtureOwners(t),root=await mkdtemp(join(tmpdir(),'setup-login-term-'));owners.directory(root);
+ const bin=join(root,'bin'),receipt=join(root,'native.json');await mkdir(bin);await mkdir(join(root,'.cland'));
+ await writeFile(join(bin,'ssh'),`#!${process.execPath}\nimport{writeFileSync,renameSync}from'node:fs';writeFileSync(${JSON.stringify(receipt+'.tmp')},JSON.stringify({pid:process.pid}));renameSync(${JSON.stringify(receipt+'.tmp')},${JSON.stringify(receipt)});\n`,{mode:0o700});
+ const discoveryFile=join(root,'chosen-hub.json');
+ const env=fixtureEnvironment(root,process.env,{PATH:bin+':/usr/bin:/bin',CLAND_HUB_FILE:discoveryFile}),sockets=new Set<Socket>();
+ let admitted:string|undefined,completion:{code:unknown;ended:boolean}|undefined;
+ const server=createServer(socket=>{
+  sockets.add(socket);socket.on('error',()=>{});socket.once('close',()=>sockets.delete(socket));let buffer='';
+  socket.on('data',bytes=>{buffer+=String(bytes);let nl:number;while((nl=buffer.indexOf('\n'))>=0){const frame=JSON.parse(buffer.slice(0,nl));buffer=buffer.slice(nl+1);
+   if(frame.type==='hello')socket.write(JSON.stringify({type:'welcome',protocol:2})+'\n');
+   else if(frame.type==='login.add'){
+    assert.equal(frame.name,undefined,'setup leaves readable naming to the hub');
+    socket.write(JSON.stringify({type:'result',id:frame.id,ok:true,value:{name:'codex-7',host:'fake',command:'ssh',args:[]}})+'\n');
+   }else if(frame.type==='login.signed-in'){
+    const {pid}=JSON.parse(readFileSync(receipt,'utf8'));
+    completion={code:frame.code,ended:nativeExited(pid)};
+    if(mode==='success')socket.write(JSON.stringify({type:'result',id:frame.id,ok:true,value:{state:'ready'}})+'\n');
+   }
+  }});
+ });
+ owners.defer(()=>new Promise<void>(resolve=>server.close(()=>resolve())));
+ owners.defer(async()=>{await Promise.all([...sockets].map(socket=>new Promise<void>(resolve=>{socket.once('close',()=>resolve());socket.destroy();})));});
+ const socket=join(root,'hub.sock');await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(socket,resolve);});
+ await writeFile(discoveryFile,JSON.stringify({root,socket,secret:'synthetic',port:0,pid:process.pid,version:'test'}));
+ const ambient=process.env.CLAND_HUB_FILE;
+ process.env.CLAND_HUB_FILE=join(root,'absent-ambient-discovery.json');
+ owners.defer(()=>{if(ambient===undefined)delete process.env.CLAND_HUB_FILE;else process.env.CLAND_HUB_FILE=ambient;});
+ const work=setupMachine(root,env).addLogin!({harness:'codex',pool:'agents'},name=>{admitted=name;},{stdout:'stderr'});
+ const outcome=work.then(code=>({code,error:undefined}),error=>({code:undefined,error:String(error)}));
+ owners.defer(async()=>{
+  const closed=Promise.all([...sockets].map(socket=>new Promise<void>(resolve=>{socket.once('close',()=>resolve());socket.destroy();})));
+  await closed;await outcome;
+ });
+ if(mode==='success')assert.equal((await outcome).code,0);
+ else {
+  await until(()=>completion!==undefined,{what:'held terminal completion request receipt'});
+  await owners.disposeAsync();
+  assert.match((await outcome).error??'',/disconnected/);
+ }
+ assert.equal(admitted,'codex-7');
+ assert.deepEqual(completion,{code:0,ended:true},'completion follows the captured native process exit');
+});
 
 for(const interruption of ['hub disconnect','CLI cancellation'] as const)test(`terminal sign-in joins native SSH after ${interruption}`,{timeout:PHASE_ENVELOPE_MS},async t=>{
  const owners=loginFixtureOwners(t),root=await mkdtemp(join(tmpdir(),'login-term-'));owners.directory(root);

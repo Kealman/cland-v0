@@ -7,6 +7,15 @@
 // hub/src/protocol.ts
 export type FromKind = 'human' | 'agent' | 'hub';
 
+/** Named login.list metadata projection. Binding inventory is deliberately absent,
+ * not a claim that this login has no bindings. Unfiltered replies keep full rows. */
+export type LoginMetadataRow = {
+  name: string;
+  harness: 'claude-code' | 'codex' | 'opencode';
+  account: string;
+  state: 'creating' | 'ready' | 'in-use' | 'signed-out';
+} & ({ kind: 'disk'; provider: string; region: string } | { kind: 'key' });
+
 // hub/src/protocol.ts
 export type RemoteVia = 'telegram' | 'discord';
 export type HumanActionVia = 'neovim' | 'web' | RemoteVia;
@@ -940,7 +949,7 @@ export type ClientRequest =
   | { type: 'login.remove'; id: string; name: string }
   | { type: 'login.snapshot'; id: string; name: string }
   | { type: 'login.signin'; id: string; name: string }
-  | { type: 'login.list'; id: string }
+  | { type: 'login.list'; id: string; name?: string }
   | { type: 'login.set'; id: string; name: string; exclusive: boolean }
   | { type: 'login.add'; id: string; harness: 'claude-code'|'codex'|'opencode'; kind?: 'disk'|'key'; name?: string; account?: string; pool?: string }
   | { type: 'login.signed-in'; id: string; name: string; code: number | null }

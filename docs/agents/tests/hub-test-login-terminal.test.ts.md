@@ -9,6 +9,19 @@ then retains the final positive ESRCH check for the exact SSH PID. Cancellation
 must report null exit only after native exit. No installed SSH, harness,
 provider, credential, browser or external network is used.
 
+`setup terminal runner captures hub-assigned login with success` and its
+`held completion cleanup` variant
+uses the production setupMachine.addLogin default with the same terminal owner.
+The stub hub assigns codex-7 (setup sends no name); the scratch SSH executable
+atomically publishes a PID receipt and exits. The hub's completion observation
+and final assertion require that exact PID gone. The supplied fixture environment
+chooses its own discovery while ambient CLAND_HUB_FILE points at an absent
+scratch sentinel. The held result case explicitly disposes owners: disconnect
+sockets first, join terminal work, then close the server and remove the root.
+This covers the native default
+and admission callback, while setup-hosts supplies the durable ready-row/Aide
+component evidence. Its stdout routing exercises JSON-safe stderr output.
+
 Run with supported Node 24 and inherited `CLAND_*` stripped, in the release
 preservation slot. The owner stack registers each root immediately, joins
 the CLI group and sockets, then closes the server and removes the root.

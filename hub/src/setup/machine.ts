@@ -8,6 +8,9 @@ import type { SetupMachine } from './types.ts';
 import { harnessesInUse } from '../roles/harnesses.ts';
 import { readText, symlinkNote, symlinkOnPath, writeAtomic } from '../init/files.ts';
 import { terminalCommand } from './terminal.ts';
+import { inspectPoolImage } from '../host/provider/pool-image.ts';
+import { terminalLogin } from '../cli/login-terminal.ts';
+import { hubDiscovery, readDiscovery } from '../project.ts';
 
 /** Machine effects and facts shared by the setup steps in one run.
  * An action invalidates its cached receipt before the later steps consume it.
@@ -17,6 +20,12 @@ export function setupMachine(root: string, env: NodeJS.ProcessEnv): SetupMachine
   // PATH grows during setup; the shell advice still describes the user's original PATH.
   const shellEnv = { ...env };
   return {
+    async addLogin(input, onAdmitted, output) {
+      const discovery = readDiscovery(hubDiscovery(root, env));
+      if (!discovery) throw Error('no hub running');
+      return terminalLogin(discovery, input, env, { onAdmitted, ...output });
+    },
+    image: (pool, provider) => inspectPoolImage(root, env, pool, provider),
     requiredHarnesses: () => harnessesInUse(root, env),
     async projectExists() {
       try { return (await stat(join(root, '.cland'))).isDirectory(); }

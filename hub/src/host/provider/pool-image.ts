@@ -12,6 +12,18 @@ import { HostProviderRegistry } from './registry.ts';
 // base is deliberately constant: project code is delivered at ready, not baked.
 export type PoolImageKey = PrepareKey & { harnesses: HarnessPins };
 export type PoolPrepared = { pool: string; state: 'current' | 'prepared'; changed: string[] };
+export type PoolImageState = { state: 'current' | 'absent' | 'stale' | 'unavailable'; changed?: string[] };
+/** Read-only local key comparison shared by doctor and setup; no provider calls. */
+export async function inspectPoolImage(root: string, env: NodeJS.ProcessEnv, pool: string, provider: string): Promise<PoolImageState> {
+  try {
+    const key = await poolImageKey(root, env, provider);
+    let record: { key: PoolImageKey };
+    try { record = JSON.parse(await readFile(join(root, '.cland/run/hosts', pool + '-image.json'), 'utf8')); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { state: 'absent' }; throw error; }
+    const changed = poolImageChanges(record.key, key);
+    return changed.length ? { state: 'stale', changed } : { state: 'current' };
+  } catch { return { state: 'unavailable' }; }
+}
 const pending = new Map<string, Promise<PoolPrepared[]>>();
 export function preparePools(root: string, pool: string | undefined, env: NodeJS.ProcessEnv): Promise<PoolPrepared[]> {
   // Serialize all pool requests for one project, including overlapping all/single calls.

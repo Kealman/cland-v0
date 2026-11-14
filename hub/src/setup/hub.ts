@@ -4,8 +4,12 @@ import { startProjectHub } from '../cli/hub.ts';
 import type { HarnessProcessView, HubStatus, Inbox, InboxPairing, RemoteStatusResult, RemoteVia } from '../protocol.ts';
 import type { Pairing } from '../remote/state.ts';
 import type { HarnessId } from '../doctor/ranges.ts';
+import type { ListedLogin } from '../cli/login.ts';
+import type { LoginMetadataRow } from '../protocol.ts';
 
 export type SetupHub = {
+  preparePool?(pool: string): Promise<{ pool: string; state: string }[]>;
+  login?(name: string): Promise<LoginMetadataRow | ListedLogin | undefined>;
   providers?(provider: 'digitalocean'): Promise<{ providers: { provider: string; present: boolean; fingerprint: string | null }[] }>;
   hostStatus?(): Promise<{ pools: { name: string; capacity: Record<string, number> }[]; roleLogins?: Record<string, boolean> }>;
   placeRole?(role: string, pool: string): Promise<void>;
@@ -38,6 +42,9 @@ export function setupHub(root: string, env: NodeJS.ProcessEnv): SetupHub {
   };
   return {
     running,
+    preparePool: async pool => await request({ type: 'host.prepare', pool }, 1_200_000) as { pool: string; state: string }[],
+    // Older hubs ignore the additive filter and return the previous full array.
+    login: async name => (await request({ type: 'login.list', name }) as (LoginMetadataRow | ListedLogin)[]).find(row => row.name === name),
     providers: async provider => await request({ type: 'host.providers', provider }) as { providers: { provider: string; present: boolean; fingerprint: string | null }[] },
     hostStatus: async () => await request({ type: 'host.status', roleLogins: true }) as { pools: { name: string; capacity: Record<string, number> }[]; roleLogins?: Record<string, boolean> },
     async placeRole(role, pool) { await request({ type: 'role.launch', role, fields: { pool } }, 10_000); },

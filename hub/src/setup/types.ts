@@ -8,6 +8,8 @@ import type { TerminalOutput } from './terminal.ts';
 export type SetupVerdict = 'ok' | 'done' | 'skip' | 'open' | 'fail';
 export type SetupLine = { name: string; verdict: SetupVerdict; detail: string; fix?: string };
 export type SetupMachine = {
+  addLogin?(input: import('../host/login-signin.ts').LoginAddInput, onAdmitted: (name: string) => void, output?: TerminalOutput): Promise<number>;
+  image?(pool: string, provider: string): Promise<import('../host/provider/pool-image.ts').PoolImageState>;
   projectExists(): Promise<boolean>;
   requiredHarnesses(): Promise<readonly string[]>;
   harness(id: HarnessId, fresh?: boolean): Promise<HarnessProbe>;
