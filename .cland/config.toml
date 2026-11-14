@@ -41,13 +41,14 @@ test_component = "node hub/test/run-suite.ts --tier T2"
 test_integration = "node hub/test/run-suite.ts --tier T3"
 # test_soak runs at occasions and in the nightly soak (T4).
 test_soak = "node hub/test/run-suite.ts --tier T4"
-# 2026-11-14 (ask 803125ab, option 1): back to droplets after T-1842 (bounded upload retries) landed; the E-1537
-# stage-2 Linux cover is the first delivery test of it. Fall back to "local" only by a new decision.
-executor = "droplet"
+# Human decision 2026-11-14 01:16Z (ask 96990fef): SSH from this Mac to droplets stalls even with T-1842's retries
+# (stage cover e58f3080, A-19232); land T-1846/T-1847 locally; back to "droplet" after the network check.
+executor = "local"
 # Allow default droplet requests to use the local slot when remote is unavailable.
 local_fallback = false
 # Concurrent machine test files; the free shard always uses one worker.
-workers = 4
+# One local worker while executor is local: 4 workers timed out native tests (batch 35865a52, A-19192).
+workers = 1
 # Extra load-gate lanes; repetitions of one new test stay sequential.
 load_gate_workers = 2
 # Local admission stays capped at one, behind the compatibility leases.
