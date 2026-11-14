@@ -2,8 +2,8 @@
 id: T-1845
 kind: task
 title: The Hosts view test waits 1000 ms of real time for uptime to advance
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1506
 branch: t/T-1845-the-hosts-view-test-waits-1000-ms-of
 created: 2026-11-13T17:28:32.927Z
-updated: 2026-11-14T07:07:13.128Z
+updated: 2026-11-14T08:36:42.779Z
+closed: 2026-11-14T08:36:42.779Z
 ---
 
 ## Summary
@@ -72,3 +73,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards 0 / Spec 0. A-19314 independently reconciles A-19313 same-head run a38f820f: T0/T1/fallback-all-T2/Web exit 0; 6254 base test passes, 691 file passes, separate 125 load test/file passes. All four Hosts named cases and file completion pass; desktop 0.963832209s, phone 0.872669708s. C1 controlled-clock/slowed-timer red and C2 five macOS file repetitions established with A-19304/A-19305/A-19306 qualifications retained. Exact local darwin arm64 Node24.21/Neovim0.12.5 and Headless Shell1248/CfT156 provenance read. Report-only advisories retained; whole-interval +10 root growth/campaign-parent exit1 and uncaptured per-run fields remain explicit. No Linux/T3/T4/QA execution claimed; full T3 landing separate, QA none.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-14T08:36:42.779Z
+
+Merged 4339df5716df163a2cf6edc9596be1d9d27cb961 onto dev.

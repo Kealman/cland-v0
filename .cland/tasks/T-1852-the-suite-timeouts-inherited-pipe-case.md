@@ -2,8 +2,8 @@
 id: T-1852
 kind: task
 title: The suite-timeouts inherited-pipe case still routes the hub's admission probes through its ps wrapper
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1851
 topic: topic-1504
 branch: t/T-1852-the-suite-timeouts-inherited-pipe-case
 created: 2026-11-14T05:51:47.424Z
-updated: 2026-11-14T06:45:44.685Z
+updated: 2026-11-14T08:36:23.203Z
+closed: 2026-11-14T08:36:23.203Z
 ---
 
 ## Summary
@@ -76,3 +77,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final C1/C2 verified on authorized same-head a4968c82/A-19308. A-19309 records independent6,273 base test/692 file positives, separate125 load test/file positives, zero negatives/skips. Both required fast-exit cases positive@32739/32759, all19 file cases positive with file@32792; source-hashed controlled reds and five lone+serial paired passes per case retained. First33cf40be/A-19301 stays red T-1845 history under item-specific Coordinator938ea9b1; this final verdict uses the new green receipt. T0/T1/fallback-all T2/changed T3/Web all exit0; local darwin arm64 Node24.21/nvim0.12.5, actual Headless Shell1248/Chrome156.0.8078.4. Advisory budget/capture/targeted-inventory limits preserved; full remaining T3/T4/Linux/stage separate. Source clean and unchanged, no findings; Reviewer read-only.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-14T08:36:23.203Z
+
+Merged a6d8e538534933d80db4c7eb9e71c1f1b96a759c onto dev.

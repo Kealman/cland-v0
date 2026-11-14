@@ -2,8 +2,8 @@
 id: T-1853
 kind: task
 title: The demo watchdog test's fake machine readiness deadline expires under a loaded macOS full run
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1505
 branch: t/T-1853-the-demo-watchdog-test-s-fake-machine
 created: 2026-11-14T05:51:47.591Z
-updated: 2026-11-14T07:29:01.572Z
+updated: 2026-11-14T08:36:56.102Z
+closed: 2026-11-14T08:36:56.102Z
 ---
 
 ## Summary
@@ -86,3 +87,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards 0 / Spec 0. A-19316 independently reconciles same-head 2251d829/A-19315: 6256 base test passes,692 base file passes;125 load test/file passes separate. T0/T1/all fallback T2/changed T3 once/Web exit0. Watchdog named finish passes6.696931083s,archived stop3.855080917s; repaired guide membership and all lower-tier shared-helper consumers positively pass. C1 source/controlled red and C2 five lone plus11/11 pair retained in A-19310; index-only final delta changes no executable bytes. Exact local darwin arm64/Node24.21/Neovim0.12.5/HeadlessShell1248-CfT156 provenance read. Report-mode advisories and native/source/inventory limitations remain explicit; no Linux/fullT3/T4/QA execution claim, fullT3 landing separate.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-14T08:36:56.102Z
+
+Merged 65814140f8f74f5e8c88e96a96783bc3eea22148 onto dev.
