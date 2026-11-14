@@ -3,7 +3,7 @@ id: T-1833
 kind: task
 title: The hosts, pools and logins page
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -15,9 +15,9 @@ blocked_by:
   - T-1829
   - T-1831
 topic: null
-branch: null
+branch: t/T-1833-the-hosts-pools-and-logins-page
 created: 2026-11-12T10:07:22.211Z
-updated: 2026-11-14T22:16:37.259Z
+updated: 2026-11-14T22:18:22.604Z
 ---
 
 ## Summary

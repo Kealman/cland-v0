@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-14T18:00:01.740Z
+updated: 2026-11-14T22:17:27.687Z
 ---
 
 ## Summary
@@ -60,3 +60,7 @@ More evidence (2026-11-14): the unchanged hub/test/host-status.test.ts (and doct
 ### coord · 2026-11-14T18:00:01.740Z
 
 More evidence (T-1831, 2026-11-14 17:59Z): hub/test/login-add.test.ts alone leaves one cland-h-* directory per run, both at the T-1831 candidate (cland-h-b7c1524e37085057fd7e) and at an isolated origin/dev baseline (cland-h-9b7a2b13ce5894e77b4c), so the leak predates T-1831. Both left in place.
+
+### coord · 2026-11-14T22:17:27.687Z
+
+Occurrence in E-1537 stage-3 QA at 932f3018c (run qa-e1537s3-2026-11-14-qa678-1, evidence A-19436, rows 63/81/88 and the R-6 setup replay). Six dead fallback socket directories come from `hub/src/host/records.ts:66–76`: one native login-add directory, two original qa hosts, two replay qa hosts and one agents login host. None has an open PID, and all six were left untouched. Per-path attribution: A-19436 residue-trace.json. The scratch fake-host runs leak too, not only native fixtures.
