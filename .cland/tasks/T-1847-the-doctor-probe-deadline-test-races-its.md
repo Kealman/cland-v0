@@ -2,8 +2,8 @@
 id: T-1847
 kind: task
 title: The doctor probe-deadline test races its hanging probes' pid writes (red 1 in 5 alone)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1501
 branch: t/T-1847-the-doctor-probe-deadline-test-races-its
 created: 2026-11-14T01:15:21.748Z
-updated: 2026-11-14T02:18:22.374Z
+updated: 2026-11-14T03:50:49.835Z
+closed: 2026-11-14T03:50:49.835Z
 ---
 
 ## Summary
@@ -93,3 +94,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final C1/C2 verified at unchanged source-clear head on67f9c3f5/A-19252. A-19253 records independent6,263 base test/692 base file positives, separate125 load test/file positives, zero negatives/skips. Exact deadline case pass@32737, doctor-cli file pass@32740; all nine parent/nested test finishes pass, six top-level timing identities, one changed-T3 execution. A-19245's20 lone macOS passes complete C2 with this configured receipt; prior mutation/capture/candidate limits remain explicit, not relabelled as a fresh mutation. T0/T1/fallback-all T2/changed T3/Web all exit0; darwin arm64 Node24.21/nvim0.12.5, actual Headless Shell1248/Chrome156.0.8078.4. Report-only budgets and targeted-only inventory limits retained. Broader T3/T4/Linux/stage evidence separate/unexecuted. Source clean, no remaining findings; Reviewer read-only.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-14T03:50:49.835Z
+
+Merged 4029fda05864e0ff0f719bcd4e96c5dd30a839a2 onto dev.

@@ -2,8 +2,8 @@
 id: T-1846
 kind: task
 title: Two T3 setup waits time out under a loaded macOS full run (session-native-lifecycle, suite-recovery)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1500
 branch: t/T-1846-two-t3-setup-waits-time-out-under-a
 created: 2026-11-13T21:05:09.114Z
-updated: 2026-11-14T02:43:15.926Z
+updated: 2026-11-14T03:50:35.882Z
+closed: 2026-11-14T03:50:35.882Z
 ---
 
 ## Summary
@@ -134,3 +135,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; C1–C2 verified. A-19255 independently records6293 base passes/694 file passes, separate125 load outcomes and all39 affectedT3 identities/three file finishes. Named OpenCode true/false,FIFO and repaired fast-exit all pass; supporting5/5 native receipts/source linkage and qualified inventories assessed in A-19239/A-19242/A-19250. C2 done restored/current. Source proof remains A-19251; claimant final reconciliation A-19256 agrees. Local darwinarm64 Node24.21/Nvim0.12.5,isolated HeadlessShell1248/CfT156 attested; T0/T1/fallbackT2/changedT3/Web green,report-only advisories retained. A-19248 stays red,original fast-exit cause inferred,T-1848 separate. Full remainingT3/T4/Linux unexecuted; Coordinator landing/per-itemQA-none boundaries retained. No reviewer execution or further run requested.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-14T03:50:35.882Z
+
+Merged 7fbbf283a96622892bb95f2875e7a037ea29dea7 onto dev.
