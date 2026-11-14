@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-12T18:27:52.318Z
+updated: 2026-11-14T15:55:23.891Z
 ---
 
 ## Summary
@@ -52,3 +52,7 @@ Census 2026-11-12 09:44Z (impl-1813's final-head native slot, /private/tmp on th
 ### coord · 2026-11-12T18:27:52.318Z
 
 Attribution for the ct-* class (2026-11-12): /private/tmp ct-* went 1,015 → 1,022 between 10:13Z and 18:27Z. All seven new roots date 16:23–16:35Z, inside the local macOS stage cover 7429dc82 (16:21–17:50Z, A-19081, workers 1, full suite), while every lane's native slot that day showed ct- unchanged. So full local suites leave ct-<32> fixture-sockets aliases behind, and the 1,015 historical ones are most likely the same producer over earlier local covers. Include the full-suite path in C1, not only the single native files.
+
+### coord · 2026-11-14T15:55:23.891Z
+
+More evidence (2026-11-14): the unchanged hub/test/host-status.test.ts (and doctor-remotes in a combined run) adds two cland-h-* directories per run on macOS. Seen by impl-1829 at 14:30Z and 14:41Z (A-19382) and impl-1830 at 15:55Z; lone runs of the new doctor-hosts and setup-hosts cases had delta 0. T-1806 should land before the v0.4 release run.

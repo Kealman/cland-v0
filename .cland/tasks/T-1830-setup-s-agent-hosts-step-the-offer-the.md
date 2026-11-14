@@ -3,7 +3,7 @@ id: T-1830
 kind: task
 title: "Setup's agent-hosts step: the offer, the roles and the `agents` pool"
 state: open
-status: in progress
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1510
 branch: t/T-1830-setup-s-agent-hosts-step-the-offer-the
 created: 2026-11-12T10:07:21.555Z
-updated: 2026-11-14T14:42:39.343Z
+updated: 2026-11-14T16:43:32.334Z
 ---
 
 ## Summary
@@ -38,16 +38,22 @@ T-1831 adds the image and the first logins.
 
 - [x] C1. With a scripted prompter, the agent-hosts step runs after the remote steps and before the Aide, and its offer defaults to No (test).
   - done: impl-1830 · 2026-11-14T14:33:37.094Z
-- [ ] C2. `--yes`, with or without a terminal, leaves the step `skip` with no pool written, and without a terminal and without `--yes` the step writes nothing and prints `open` with the exact `cland config set` commands (test).
-  - failed: rev-36 [reviewer] · 2026-11-14T14:41:29.252Z · note Nonterminal/exception repair commands can overwrite existing pool/role settings with defaults rather than preserve the configured project.
+  - verified: rev-36 [reviewer] · run rev-36-1830-final-1 · 2026-11-14T16:43:32.086Z · commit a02ba45be50118d3fdd309977c76eaab5de1a776
+- [x] C2. `--yes`, with or without a terminal, leaves the step `skip` with no pool written. Without a terminal and without `--yes`, a project with no `agents` pool prints `skip` with the exact `cland config set` commands in its detail (as the optional Discord step does), and a partly configured pool prints `open` with them; neither writes anything (test).
+  - done: impl-1830 · 2026-11-14T16:16:08.598Z
+  - verified: rev-36 [reviewer] · run rev-36-1830-final-1 · 2026-11-14T16:43:32.086Z · commit a02ba45be50118d3fdd309977c76eaab5de1a776
 - [x] C3. On yes with the token present in the hub's environment, the step shows the fingerprint, writes `[hosts.agents]` with its defaults and `[<role>.launch] pool = "agents"` for the chosen roles, and reloads the hub (test).
   - done: impl-1830 · 2026-11-14T14:33:37.639Z
+  - verified: rev-36 [reviewer] · run rev-36-1830-final-1 · 2026-11-14T16:43:32.086Z · commit a02ba45be50118d3fdd309977c76eaab5de1a776
 - [x] C4. The pool is written only after a yes that names its size, `min_hosts` and declared price per hour, and a no there writes nothing (test).
   - done: impl-1830 · 2026-11-14T14:33:37.849Z
-- [ ] C5. With the token absent, the step prints `open` naming `DIGITALOCEAN_TOKEN` and the hub restart, writes nothing, and no line, narration or `--json` report contains a token (test).
-  - failed: rev-36 [reviewer] · 2026-11-14T14:41:29.252Z · note Configured pool plus ready-capacity branch bypasses missing hub token detection and incorrectly reports ok.
-- [ ] C6. A project whose `agents` pool is configured and whose placed roles have ready logins prints `ok` and asks nothing (test).
-  - failed: rev-36 [reviewer] · 2026-11-14T14:41:29.252Z · note Aggregate harness capacity can report ready despite the placed role's pinned account being missing or signed out.
+  - verified: rev-36 [reviewer] · run rev-36-1830-final-1 · 2026-11-14T16:43:32.087Z · commit a02ba45be50118d3fdd309977c76eaab5de1a776
+- [x] C5. With the token absent, the step prints `open` naming `DIGITALOCEAN_TOKEN` and the hub restart, writes nothing, and no line, narration or `--json` report contains a token (test).
+  - done: impl-1830 · 2026-11-14T15:57:04.254Z
+  - verified: rev-36 [reviewer] · run rev-36-1830-final-1 · 2026-11-14T16:43:32.087Z · commit a02ba45be50118d3fdd309977c76eaab5de1a776
+- [x] C6. A project whose `agents` pool is configured and whose placed roles have ready logins prints `ok` and asks nothing (test).
+  - done: impl-1830 · 2026-11-14T15:57:04.459Z
+  - verified: rev-36 [reviewer] · run rev-36-1830-final-1 · 2026-11-14T16:43:32.087Z · commit a02ba45be50118d3fdd309977c76eaab5de1a776
 
 ## Blocked by
 
@@ -87,3 +93,63 @@ Criteria: C2 failed (Nonterminal/exception repair commands can overwrite existin
 ### impl-1830 · 2026-11-14T14:42:39.343Z
 
 Review-fix contract sweep (before change): host.status opt-in roleLogins true adds roleLogins map; T-1829 adds freeLogins per pool. Shared eligibility is LoginRecords.freeCount in host/logins.ts, optional account extended here after T-1829 landing. Consumers: hub CLI host/login; setupHub; host/status.ts and dispatch/protocol/web-authority; shared/wire; host-secret-admission, host-spend/status/stop, login-capacity-list/login-remove, web-authority-unit/authority/web-hosts-authority tests; web hosts/hosts-view tests. QA briefs E-1532-stage-6, E-1533/stage-3, E-1534/stage-1/2/3, E-1535/stage-1/2/3/4, E-1537-stage-1/2; docs host-provider/status-stop/logins/host-agent and per-test guides. No Neovim production caller of host.status found. Plain request/reply stays unchanged by roleLogins; older opt-in reply without map stays unknown/open. All unaffected callers retain default request; new setup consumer opts in. Previous-shape regression retained. Broader consumers deferred unless executed in named receipt.
+
+### rev-36 · 2026-11-14T16:03:30.989Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1830-source-2
+commit: a2506e8b84657d3da75f639bde030aef84aecc9e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear after the Coordinator-authorized dev merge and consolidated C2/C5/C6 corrections. Standards: 0 findings. Spec: 0 findings. Existing-pool guidance preserves settings, hub token presence precedes configured-ready success, and role-account readiness reuses shared account-aware freeCount through an opt-in host.status map while preserving plain replies. A-19397 records the complete review and A-19396 candidate execution/inventory limits, including the Coordinator-accepted T-1806 residue. All criteria remain unverified pending exact-head mode-free verification and named completion receipts. No Reviewer execution; affected QA remains after-stage on dev.
+
+### rev-36 · 2026-11-14T16:10:44.601Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1830-evidence-1
+commit: a2506e8b84657d3da75f639bde030aef84aecc9e
+scope: evidence
+findings: [{"severity":"medium","text":"Configured run ed27164e fails two aggregate exit assertions (lines 164/184: actual 1, expected 0) and setup-remotes.test.ts:99's old ordered suffix. Migrate existing setup consumers to intentional nonterminal agent-hosts=open/exit 1 and the added step while preserving favourite/install/trust/secret assertions. Include the identified unexecuted component/scenario consumers; obtain fresh source review and same-head verification.","file":"hub/test/setup-favourite.test.ts","line":164}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Final evidence not clear. A-19398 has three named T1 failures; T0 passed, T1 failed, later T2/T3/Web unexecuted. A-19399 records exact failures, claimant-confirmed migration, additional unexecuted consumer scope, platform/report-only distinctions and retained source/candidate limits. C2 failed; no criteria verified. Source clearance A-19397 remains historical source evidence, not configured success. Release pin for consolidated test-only correction, fresh committed source review and same-head verification. No Reviewer execution; affected QA remains after-stage on dev.
+
+Criteria: C2 failed (Configured integration evidence is red: existing setup consumers retain old no-open exit and step-order assumptions. T2/T3/Web were not completed.).
+
+### coord · 2026-11-14T16:10:56.518Z
+
+C2 amended by the Coordinator 2026-11-14 16:11Z (recommended-behaviour choice under the human's standing yes): an unconfigured optional step without a terminal prints skip, not open, matching the Discord step (hub/src/setup/steps/discord.ts:32). Otherwise every unattended cland setup would exit 1 (runner.ts:44 counts open as incomplete). Found by verify ed27164e (favourite tests expected exit 0).
+
+### rev-36 · 2026-11-14T16:18:07.863Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1830-source-3
+commit: a02ba45be50118d3fdd309977c76eaab5de1a776
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear under amended C2 / Coordinator 573f205e: untouched nonterminal hosts skip with exact commands in detail; partial pools remain open; no writes. Original favourite exit-zero assertions remain unchanged. Ordered T1/T2/PTY consumers include the added default-No hosts step while retaining all existing secret/product/lifecycle assertions. Standards 0 / Spec 0. A-19402 records the consolidated source review, A-19401 candidate completion/source limits and seven exact zero-delta inventory pairs. Previous configured run A-19398 remains red; A-19400 supersedes A-19399's old repair advice. No criteria verified until fresh same-head mode-free verification with named criterion and changed-T3 receipts. Full remaining T3/T4 and affected after-stage QA remain separate. No Reviewer execution.
+
+### rev-36 · 2026-11-14T16:43:32.087Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1830-final-1
+commit: a02ba45be50118d3fdd309977c76eaab5de1a776
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; C1–C6 verified. A-19403 / cbe2ae48 passed 6290/6290 with zero fail/cancel/skip/todo; independently checked named base/load outcomes, repaired favourite/remotes/component consumers and changed native setup scenario (one base pass, 14.375862916 s). Existing E-880 27.4 s allowance covers that scenario per Coordinator b7bd002c; report-only notices retained. A-19406 records full criterion/source/native/provenance limits; A-19405 conservatively reconciles all 976 manifest paths: 695 positive base file receipts, 264 T3 and 17 T4 deferred, no missing lower/Web. Linux x64 Node24.21, Headless Shell1248/CfT156.0.8078.4; no cache/skips; billing unavailable/T-1857. Previous red A-19398 and qualified local A-19401/T-1806 evidence retained. Full remaining T3/T4 and affected after-stage QA on dev are separate. No Reviewer execution; hub/Coordinator owns ready and landing.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
