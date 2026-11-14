@@ -3,7 +3,7 @@ id: T-1829
 kind: task
 title: Doctor's hosts block
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-12T10:07:21.390Z
-updated: 2026-11-12T10:07:26.761Z
+updated: 2026-11-14T14:20:41.705Z
 ---
 
 ## Summary

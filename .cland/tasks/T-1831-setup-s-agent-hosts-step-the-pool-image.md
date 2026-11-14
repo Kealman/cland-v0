@@ -3,7 +3,7 @@ id: T-1831
 kind: task
 title: "Setup's agent-hosts step: the pool image and the first logins"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-12T10:07:21.799Z
-updated: 2026-11-12T10:07:27.582Z
+updated: 2026-11-14T14:20:42.110Z
 ---
 
 ## Summary
