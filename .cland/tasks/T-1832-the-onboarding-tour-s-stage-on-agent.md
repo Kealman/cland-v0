@@ -3,7 +3,7 @@ id: T-1832
 kind: task
 title: The onboarding tour's stage on agent hosts
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-12T10:07:21.965Z
-updated: 2026-11-12T10:07:28.177Z
+updated: 2026-11-14T22:16:37.114Z
 ---
 
 ## Summary

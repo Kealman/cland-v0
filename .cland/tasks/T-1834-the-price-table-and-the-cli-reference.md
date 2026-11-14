@@ -3,7 +3,7 @@ id: T-1834
 kind: task
 title: The price table and the CLI reference for `cland host` and `cland login`
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-12T10:07:22.374Z
-updated: 2026-11-12T10:07:28.993Z
+updated: 2026-11-14T22:16:37.516Z
 ---
 
 ## Summary
