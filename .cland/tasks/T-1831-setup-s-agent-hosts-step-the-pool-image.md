@@ -2,8 +2,8 @@
 id: T-1831
 kind: task
 title: "Setup's agent-hosts step: the pool image and the first logins"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1511
 branch: t/T-1831-setup-s-agent-hosts-step-the-pool-image
 created: 2026-11-12T10:07:21.799Z
-updated: 2026-11-14T19:00:45.621Z
+updated: 2026-11-14T19:50:29.769Z
+closed: 2026-11-14T19:50:29.769Z
 ---
 
 ## Summary
@@ -194,3 +195,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1–C5 verified. A-19427 independently audits A-19425: all33 setup base cases,21 new identities each5 load passes, all4 changed native terminal cases once, all9 doctor cases, and both repaired README cases base+5 pass. Full finish audit6314 ordinary tests/695 files and230 separate load test/file positives, no negatives. All976 conservative paths preserved:220T1+420T2+54Web+1changedT3 ordinary file passes, zero selected missing;264T3+17T4 deferred. Exact reviewed head/tree and Linux droplet Node24.21/HeadlessShell1248 Chrome156 provenance match. Report-only advisories, candidate/raw-stream/early-isolation/T-1806 limits remain explicit; final billed lifetime/cost unavailable in inspected receipt. Both prior failed runs remain failed. Accepted local consent bar met; residual shared admission/CAS is T-1858. Full remaining native scenarios/T3/T4 and after-stage QA remain separate. Clean unchanged head; Reviewer read-only.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1831 · 2026-11-14T19:01:16.310Z
+
+Hub status ready confirmed at3712d045c132975b815a13ffd823a78f7d9db87b; C1-C5 verified by rev-35-1831-final-1, A19427. Exact-head run01aaf92f/A19425 passed6314/6314 across T0/allT1/allT2/changedT3/Web;695selected file receipts,281unchangedT3/T4 deferred. Claim retained; Coordinator owns enqueue/merge and after-stageQA. Ready-note qualifications: early empty-env fixture risk was corrected and Coordinator assessment8bdd3f06 found no live trust/config changes; explicit scratch-path and hostile-ambient regressions now pass. Two native residue entries matched origin/dev baseline and remain trackedT1806. Accepted shared-admission/CAS gap remainsT1858. Prior failed receipts retained; worktree clean, no source changes after review.
+
+### coord · 2026-11-14T19:50:29.769Z
+
+Merged acb4d0af1950627219daf9a1b993ce218119a0ab onto dev.
