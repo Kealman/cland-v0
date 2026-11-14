@@ -13,6 +13,9 @@ import { fileURLToPath } from 'node:url';
 import { nativeProjectHub as projectHub, spawnSpoke, clandWithEnv, withDiscoveredPid, cland, connectUi, eventually, testWaitMs, fakeClaude, fakeCodex, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, SessionUsage } from '../src/protocol.ts';
+import { TaskWorktrees } from '../src/hub/worktrees.ts';
+import { TaskMerges } from '../src/hub/merge.ts';
+import { beforeDirectories } from './process-cleanup.ts';
 const CODEX_LAUNCH_MS = 30_000;
 // Setup includes Git worktree creation and native harness discovery under load.
 const POOL_LAUNCH_SETUP_MS = testWaitMs(30_000);
@@ -55,7 +58,40 @@ test(`an Implementer pool moves to the next task worktree after merge (${harness
   const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
   await copyPreparedProject(root);
   const fake = await pooledHarness(t, harness);
+  // Hold the background prune after its worktree disappears, while it still
+  // owns territory writes. The merge reply and removed path cannot join it.
+  let delayedPrune: Promise<void> | undefined;
+  let writerFinished = false;
+  let releaseWriter = false;
+  if (harness === 'opencode' && keepContext) {
+    const prune = TaskWorktrees.prototype.pruneMerged;
+    t.mock.method(TaskWorktrees.prototype, 'pruneMerged', async function (this: TaskWorktrees, ...args: Parameters<TaskWorktrees['pruneMerged']>) {
+      const result = await prune.apply(this, args);
+      if (!result.failed.length) {
+        delayedPrune = (async () => {
+          while (!releaseWriter) {
+            await writeFile(join(root, '.cland/territory.git/delayed-prune'), 'writer');
+            await new Promise<void>(resolve => setImmediate(resolve));
+          }
+          await new Promise<void>(resolve => setImmediate(resolve));
+          writerFinished = true;
+        })();
+        await delayedPrune;
+      }
+      return result;
+    });
+    const stop = TaskMerges.prototype.stop;
+    t.mock.method(TaskMerges.prototype, 'stop', function (this: TaskMerges) {
+      releaseWriter = true;
+      return stop.call(this);
+    });
+  }
   const { discovery } = await projectHub(t, root, fake.env);
+  beforeDirectories(t, async () => {
+    try {
+      if (harness === 'opencode' && keepContext) assert.equal(writerFinished, true, `hub stop joins the delayed territory prune writer (started=${!!delayedPrune})`);
+    } finally { releaseWriter = true; await delayedPrune; }
+  });
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   for (const [key, value] of [['implementer.policy', 'pool'], ['implementer.keep_context', keepContext]] as const)
@@ -196,6 +232,7 @@ test(`an Implementer pool moves to the next task worktree after merge (${harness
   if (harness === 'opencode') {
     const session = JSON.parse(await readFile(join(fake.home, 'sessions', `${two.process.harnessSessionId}.json`), 'utf8')) as { directory: string };
     assert.equal(session.directory, two.worktree.path, 'stored native location moves before brief delivery');
+    if (keepContext) await eventually('delayed territory prune writer started', () => delayedPrune ? true : undefined);
   }
   if (harness === 'codex') {
     await eventually('second native turn finishes', async () => {

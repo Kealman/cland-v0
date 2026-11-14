@@ -4,7 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import type { TestContext } from 'node:test';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
-import { TaskMerges } from '../src/hub/merge.ts';
+import { TaskMerges, joinMergeCleanup } from '../src/hub/merge.ts';
 import type { TaskWorktrees } from '../src/hub/worktrees.ts';
 import type { Git } from '../src/tracker/verdict-git.ts';
 import { Store } from '../src/hub/store.ts';
@@ -96,7 +96,7 @@ export async function componentProject(t: TestContext, options: { start?: typeof
     const attempt = async (work: () => unknown) => { try { await work(); } catch (error) { errors.push(error); } };
     // A cancelled test can reach teardown while startup still owns a pending socket acquisition.
     const hub = await opening?.catch(() => undefined);
-    await attempt(() => ownedMerges?.stop());
+    await attempt(() => ownedMerges && joinMergeCleanup(ownedMerges));
     if (hub && !hubClosed) await attempt(async () => { await hub.close(); hubClosed = true; });
     await attempt(() => ownedTracker?.stop());
     // Also own handles acquired by a constructor that threw before returning its object.

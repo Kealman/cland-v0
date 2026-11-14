@@ -379,7 +379,7 @@ async function serve(root: string, stdio: boolean, listen: boolean, io: Io, star
   if (cleanupExpired) io.err('cland: tracker storage failure: shutdown deadline expired; exiting with code 1 before cleanup completed\n');
   // A native operation can retain the event loop after bounded storage abandonment.
   // Normal cleanup flushes shutdown logs; the fatal deadline also bounds stalled cleanup.
-  if (daemon.storageAbandoned) process.exit(1);
+  if (daemon.storageAbandoned || daemon.cleanupIncomplete) process.exit(1);
   return 0;
 }
 

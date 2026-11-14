@@ -10,6 +10,9 @@ Interrupted sign-in uses exact-machine deletion receipts to release its native
 fence, with retained snapshot obligations left to their existing owner.
 Add subsystem text to its file; keep this index as pointers.
 
+Background merge-prune shutdown joins and its bounded incomplete outcome are
+documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merge-cleanup-shutdown).
+
 - [Prerequisite and packaging reports](../docs/hub/prerequisite-and-packaging-reports.md)
 - [Start a project with cland](../docs/hub/start-a-project-with-cland.md)
 - [Web workspace](../docs/hub/web-workspace.md)

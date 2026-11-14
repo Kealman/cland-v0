@@ -22,16 +22,60 @@ import { ToolForbidden } from '../roles/permissions.ts';
 type LandedResult = { dependencies?: DependencyInstall; item: string; commit: string; base: string; cleanup: string; budgetLines?: string[]; followUp?: { step: string; error: string } };
 
 type MergeResult = LandedResult | { item: string; queued: number };
+// Report bound: 30 s for an ordinary Git command plus close headroom. A whole
+// prune can exceed it; its settlement retains ownership instead of authorizing disposal.
+export const MERGE_CLEANUP_STOP_MS = 35_000;
+export type MergeCleanupStop = { status: 'complete' } | { status: 'incomplete'; items: string[]; settled: Promise<void> };
+export class MergeCleanupIncomplete extends Error {
+  readonly settled: Promise<void>;
+  constructor(outcome: Extract<MergeCleanupStop, { status: 'incomplete' }>) {
+    super(`merge cleanup incomplete: ${outcome.items.join(', ')}; storage and lock retained`);
+    this.settled = outcome.settled;
+  }
+}
+/** Fixture owners must join retained work, even when bounded production stop returns incomplete. */
+export async function joinMergeCleanup(owner: Pick<TaskMerges, 'stop'>): Promise<void> {
+  const outcome = await owner.stop();
+  if (outcome.status === 'incomplete') await outcome.settled;
+}
+/** Retry the same retained daemon owner only after its writer has positively settled. */
+export async function settleRetainedMergeStop(stop: () => Promise<void>): Promise<void> {
+  for (;;) {
+    try { await stop(); return; }
+    catch (error) {
+      if (!(error instanceof MergeCleanupIncomplete)) throw error;
+      await error.settled;
+    }
+  }
+}
 
 export class TaskMerges {
   readonly #env: NodeJS.ProcessEnv;
   #stopped = false;
   readonly #cleanupTimers = new Set<NodeJS.Timeout>();
+  readonly #cleanupWork = new Map<Promise<unknown>, string>();
+  #cleanupSettlement: Promise<void> | undefined;
 
-  stop(): void {
+  async stop(): Promise<MergeCleanupStop> {
     this.#stopped = true;
     for (const timer of this.#cleanupTimers) clearTimeout(timer);
     this.#cleanupTimers.clear();
+    if (!this.#cleanupWork.size) return { status: 'complete' };
+    const settled = this.#cleanupSettlement ??= Promise.allSettled([...this.#cleanupWork.keys()]).then(() => {});
+    let deadline: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        settled.then(() => ({ status: 'complete' as const })),
+        new Promise<MergeCleanupStop>(resolve => {
+          deadline = setTimeout(() => {
+            const items = [...new Set(this.#cleanupWork.values())];
+            const error = `merge cleanup incomplete after ${MERGE_CLEANUP_STOP_MS} ms: ${items.join(', ')}`;
+            try { this.log({ event: 'merge-cleanup-stop-incomplete', items, error }); } catch { /* diagnostic failure cannot release ownership */ }
+            resolve({ status: 'incomplete', items, settled });
+          }, MERGE_CLEANUP_STOP_MS);
+        }),
+      ]);
+    } finally { clearTimeout(deadline); }
   }
 
   readonly tracker: Tracker;
@@ -110,6 +154,7 @@ export class TaskMerges {
   }
 
   merge(id: string, actor: Actor, resumed: Resumed, override?: string, authorize: () => void = () => {}, queuedCandidate?: { head: string; base: string }): Promise<MergeResult> {
+    if (this.#stopped) return Promise.reject(new Error('merge owner stopped'));
     id = this.tracker.resolveId(id) ?? id;
     return this.worktrees.serial(async (): Promise<MergeResult> => {
       const state: { landed: { commit: string; base: string; budgetLines?: string[] } | null } = { landed: null };
@@ -297,9 +342,12 @@ export class TaskMerges {
         if (this.#stopped) return;
         const timer = setTimeout(() => {
           this.#cleanupTimers.delete(timer);
-          void this.#cleanup(id, resumed).catch((err: unknown) => {
-            resumed(() => this.log({ event: 'merge-cleanup-failed', id, error: err instanceof Error ? err.message : String(err) }));
+          // Register the owner before any retry can enter the worktree queue.
+          const work = Promise.resolve().then(() => this.#cleanup(id, resumed)).catch((err: unknown) => {
+            try { resumed(() => this.log({ event: 'merge-cleanup-failed', id, error: err instanceof Error ? err.message : String(err) })); } catch { /* joining is independent of diagnostics */ }
           });
+          this.#cleanupWork.set(work, id);
+          void work.finally(() => this.#cleanupWork.delete(work)).catch(() => {});
         }, 500);
         this.#cleanupTimers.add(timer);
         timer.unref();

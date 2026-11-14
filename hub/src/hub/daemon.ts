@@ -66,6 +66,7 @@ import { hubPriority } from './priority.ts';
 import { maintainProjectGit } from '../git-maintenance.ts';
 import { MaintenanceRecoveryRequired, maintenanceRecoveryReporter, readMaintenanceOwner } from '../git-maintenance-owner.ts';
 import { refreshTerritoryHook, withTerritoryLockAsync } from '../territory.ts';
+import { MergeCleanupIncomplete } from './merge.ts';
 
 /**
  * Whether the hub binds its listeners (the WebSocket for spokes, the Unix socket for the UI and the CLI):
@@ -81,12 +82,14 @@ export type Daemon = {
   hub: HubBase;
   /** Production process log: asynchronous file appends; shared by every edge. */
   log: LogFn;
-  /** Resolves once the daemon has stopped (by `stop`, or by a client's `hub.stop`). */
+  /** Terminal stop attempt; cleanupIncomplete distinguishes retained native work from complete shutdown. */
   stopped: Promise<void>;
   /** Fatal serving-time storage failure: the CLI must bound cleanup and exit non-zero. */
   storageFailed: Promise<void>;
   /** The CLI must exit rather than await an abandoned native storage operation. */
   readonly storageAbandoned: boolean;
+  /** Bounded stop retained resources for an unsettled merge writer; the CLI exits non-zero. */
+  readonly cleanupIncomplete: boolean;
   reload: () => Promise<import('./configuration.ts').ConfigReloadResult>;
   stop: () => Promise<void>;
 };
@@ -520,6 +523,7 @@ export async function serveProject(root: string, options: { createHostRegistry?:
   let resolveStopped!: () => void;
   const stopped = new Promise<void>((resolve) => (resolveStopped = resolve));
   let stopping: Promise<void> | null = null;
+  let mergeCleanupRetained = false;
   let deliberateStop = false;
   let sweep: Promise<void> | null = null;
   let heartbeatTimer: ClockTimer | null = null;
@@ -568,10 +572,20 @@ export async function serveProject(root: string, options: { createHostRegistry?:
   const stop = (): Promise<void> => {
     stopping ??= (async () => {
       const failures: unknown[] = [];
+      let retain = false;
       const attempt = async (cleanup: () => unknown) => {
         try { await cleanup(); } catch (error) { failures.push(error); }
       };
       try {
+        // This owner must settle before any destructive shutdown phase, including
+        // core projections and the lock's finally path. A later stop can retry.
+        const mergeCleanup = await hub.dispatcher.stopMergeCleanup();
+        if (mergeCleanup.status === 'incomplete') {
+          retain = mergeCleanupRetained = true;
+          try { log({ event: 'hub-stop-retained', items: mergeCleanup.items, reason: 'merge cleanup incomplete; storage, discovery and lock retained (T-1856)' }); } catch { /* retain regardless of sink failure */ }
+          throw new MergeCleanupIncomplete(mergeCleanup);
+        }
+        mergeCleanupRetained = false;
         hub.dispatcher.stopWaitMetrics();
         await attempt(() => log({ event: 'stopping' }));
         clock.clearTimeout(heartbeatTimer);
@@ -614,13 +628,15 @@ export async function serveProject(root: string, options: { createHostRegistry?:
         await attempt(() => log({ event: 'stopped' }));
         await attempt(closeLogs);
       } finally {
-        await attempt(() => { if (deliberateStop) markHubStop(root); });
-        await attempt(() => lock.release());
+        if (!retain) {
+          await attempt(() => { if (deliberateStop) markHubStop(root); });
+          await attempt(() => lock.release());
+        }
         resolveStopped();
       }
       if (failures.length === 1) throw failures[0];
       if (failures.length) throw new AggregateError(failures, 'hub cleanup failed', { cause: failures[0] });
-    })();
+    })().catch(error => { stopping = null; throw error; });
     return stopping;
   };
 
@@ -697,7 +713,7 @@ export async function serveProject(root: string, options: { createHostRegistry?:
     hub.dispatcher.startExecutorRecovery();
     tracker.resumeReadyChecks();
     lintWarmer.request(devTip);
-    return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; } };
+    return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; }, get cleanupIncomplete() { return mergeCleanupRetained; } };
   }
 
   log({ event: 'hub-startup-step', step: 'binding web listener', pid: process.pid });
@@ -777,5 +793,5 @@ export async function serveProject(root: string, options: { createHostRegistry?:
     const fixtures = await sweepOrphans(root, log, 'fixture', { pending: () => stopping !== null, ...(env.CLAND_TEST_ORPHAN_ROOT ? { hubScopeRoot: env.CLAND_TEST_ORPHAN_ROOT } : {}) });
     log({ event: 'orphan-sweep-completed', ended: [...ended, ...fixtures].map(p => p.process.pid) });
   }).catch(err => log({ event: 'orphan-sweep-failed', reason: err instanceof Error ? err.message : 'OS process inspection failed; unverified candidates were preserved' }));
-  return { layout: l, discovery, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; } };
+  return { layout: l, discovery, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; }, get cleanupIncomplete() { return mergeCleanupRetained; } };
 }

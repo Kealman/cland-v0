@@ -187,6 +187,39 @@ QA-by: qa-12 (qa-run-id)
 
 `cland merge T-12 --override "<reason>"` is for the human's own shell only, including when the Coordinator would otherwise be allowed to merge. It skips verdict and criteria checks, keeps conflict and root safety checks, omits verdict trailers, and records the reason on the item, in Agents and in the journal. Skipped incomplete criteria are named in `merge-criteria-overridden` journal events. The shipped `merge` skill forbids delegating a merge to a sub-agent: one in the Coordinator's shell would inherit its authority.
 
+### Merge cleanup shutdown
+
+Hub shutdown cancels future background prune timers and joins retries already
+running before tracker/storage closure. `TaskMerges.stop()` returns a typed
+`complete` or `incomplete` result. Its `MERGE_CLEANUP_STOP_MS` deadline is 35
+seconds, allowing an ordinary native Git command's 30-second deadline and close
+headroom; multiple commands or a hung child can exceed it. Expiry logs
+`merge-cleanup-stop-incomplete` with outstanding item ids and returns their
+still-running `settled` promise. This is incomplete cleanup, never successful
+drainage. Diagnostic sink failures do not interrupt joins or the deadline.
+
+Dispatcher/daemon shutdown checks that owner before destructive phases. An
+incomplete result retains core, adapters, tracker, storage, discovery and lock,
+logs `hub-stop-retained` and lets the CLI exit non-zero without deleting them.
+The in-process owner remains retryable: fixture teardown joins the same
+settlement, then retries stop before root removal. Every direct merge fixture
+owner uses `joinMergeCleanup`; embedded daemon fixtures use
+`settleRetainedMergeStop` and a root-removal guard. A removed worktree path does
+not prove that its territory branch/config writes finished.
+
+Native cancellation is outside this retained-owner boundary. A hung prune Git
+child may outlive hub process exit; T-1856 tracks cancellation through owned
+native identities and exit receipts. Leftover roots and Git locks are retained,
+not silently removed by shutdown.
+
+A live hub lock holder refuses another `serve`. After `serve` exits 1, its PID
+is dead: an external supervisor (including an operator-owned `launchctl submit`
+job) may respawn it, and stale-PID recovery can reclaim `hub.lock` or
+`territory.lock` while an orphan prune still writes. Retained lock files provide
+no post-exit fence. This accepted respawn/stale-lock limitation is also T-1856.
+Shipped workbench autostart and stdio reconnect treat serve exit 0 and 1 through
+the same connection/retry paths; status does not restart a hub.
+
 ### Root dev push
 
 `cland push [--json]` fast-forwards the local territory’s `dev` to the root’s committed `dev`, under the shared territory queue and lock. The Coordinator commits tracker and docs changes on the root’s `dev`, then runs this command from its own shell; the human may also run it. During onboarding, the generated Codex Aide cannot commit at the project root under workspace-write with no extra writable roots, so the Coordinator commits and publishes on root `dev`. The Aide launches or contacts the Coordinator on the human's ok, including with only a map; the Coordinator publishes first, then starts the approved release or waits for the first epic. An Aide with current root Git write access commits and runs `cland push` itself. Both roles need the `push` grant; existing projects with explicit `[coordinator.permissions] tools` or `[aide.permissions] tools` add `"push"` to the corresponding list. Implementer, Reviewer, QA and Lead shells are refused, even if their environment claims Coordinator. It has no spoke tool. Identity comes from the shell’s session id: sub-agents inheriting a Coordinator or Aide shell inherit its authority, so the responsible role performs this command itself.

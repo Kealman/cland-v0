@@ -1,5 +1,25 @@
 # hub/test/session-native-lifecycle.test.ts
 
+T-1855 holds the OpenCode keep-context pool's background `pruneMerged` writer
+after native worktree removal, continuing writes in `territory.git` on immediate
+turns until stop begins. This deterministic gate uses no sleep allowance. The
+shared `beforeDirectories` owner checks completion after hub stop, then always
+releases and joins the injected writer in `finally` before root removal, including
+early assertion failure. Keep the writer-start receipt and final completion
+assertion: path absence precedes remaining branch/config writes. The original
+400 ms probe produced both incomplete-writer assertion and `ENOTEMPTY` on the
+unfixed shutdown; the final gated probe retains an independent cleanup owner.
+Never add removal retries. Five fresh-process lone runs and a sequential paired
+run with the merge recovery component file prove teardown on macOS within the
+default 10 s T3 test budget. Incomplete production shutdown retains its writer;
+fixture teardown awaits the same settlement. Native cancellation is T-1856.
+
+The fake OpenCode session publisher writes a unique temporary file and renames
+it onto `sessions/<id>.json`; API listings exclude temporary entries. The T1
+partial-write control is in opencode-policy.test.ts. Keep the final native
+session JSON.parse and directory assertion unchanged: publication guarantees a
+complete record, with no reader retry masking partial bytes.
+
 T-1846 gives the initial pooled launch reply a named `POOL_LAUNCH_SETUP_MS`
 (`testWaitMs(30_000)`) budget for Git worktree creation and native discovery.
 The reply completes setup; PID discovery, persisted native directory/history,

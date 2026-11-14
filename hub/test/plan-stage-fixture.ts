@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { Tracker, type Actor } from '../src/tracker/tracker.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
-import { TaskMerges } from '../src/hub/merge.ts';
+import { TaskMerges, joinMergeCleanup } from '../src/hub/merge.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { Store } from '../src/hub/store.ts';
 import { Journal } from '../src/hub/journal.ts';
@@ -170,7 +170,7 @@ export async function planStageHub(t: TestContext, root: string, facts = new Pla
       if (value === null) throw new Error(`missing plan fixture Git fact: ${args.join(' ')}`);
       return value;
     }, facts.read);
-    owners.push(() => merges.stop());
+    owners.push(() => joinMergeCleanup(merges));
     const merge = async (id: string) => {
       try {
         const result = await merges.merge(id, human, work => work());

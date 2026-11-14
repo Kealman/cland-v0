@@ -31,12 +31,13 @@ import { WebSocket } from 'ws';
 import { z } from 'zod';
 import type { Dispatcher } from '../src/hub/dispatch.ts';
 import { serveProject } from '../src/hub/daemon.ts';
+import { settleRetainedMergeStop } from '../src/hub/merge.ts';
 import { Journal } from '../src/hub/journal.ts';
 import { hubResources } from './hub-resources.ts';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { beforeDirectories, afterCleanup, onCleanup, captureProcess, cleanupOwnedProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses, type ProcessIdentity } from './process-cleanup.ts';
+import { beforeDirectories, afterCleanup, onCleanup, captureProcess, cleanupOwnedProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses, guardDirectoryRemoval, type ProcessIdentity } from './process-cleanup.ts';
 
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
@@ -529,7 +530,9 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   }
   options.registerHubCards?.(daemon.hub.core.cards);
   assert.ok(daemon.discovery, 'projectHub must bind both real edges');
-  beforeDirectories(t, async () => { try { await daemon.stop(); } finally { await processLog.close(); } });
+  const stopFixtureHub = async () => { await settleRetainedMergeStop(() => daemon.stop()); await processLog.close(); };
+  guardDirectoryRemoval(root, stopFixtureHub);
+  beforeDirectories(t, stopFixtureHub);
   afterCleanup(t, () => resources.check());
   const dispatcher: Pick<Dispatcher, 'open'> = {
     open: (peer, transport) => resources.run(() => {

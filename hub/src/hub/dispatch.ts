@@ -118,7 +118,7 @@ import { MergeQueue } from './merge-queue.ts';
 import { taskTierEvidence, type SuiteDryRun } from '../suite-tier-report.ts';
 import { MergeBatches, BatchRefusal, BatchRebuild } from './merge-batches.ts';
 import { prepareMergeBatch, checkoutMergeBatch, removeMergeBatch, batchRebuildReason } from './merge-batch-territory.ts';
-import { TaskMerges } from './merge.ts';
+import { TaskMerges, MergeCleanupIncomplete, type MergeCleanupStop } from './merge.ts';
 import { Releases } from './releases.ts';
 import { PushError } from '../territory-push.ts';
 import { ReleaseError } from '../release.ts';
@@ -528,8 +528,15 @@ export class Dispatcher {
   readonly #loginClosers = new Set<() => Promise<unknown>>();
   readonly #loginPins = new Map<string, number>();
   #cardSignIn:LoginCardSignIn|undefined;
+  stopMergeCleanup(): Promise<MergeCleanupStop> {
+    this.#closed = true;
+    return this.#merges?.stop() ?? Promise.resolve({ status: 'complete' });
+  }
+
   async close(): Promise<void> {
     this.#closed = true;
+    const mergeCleanup = await this.stopMergeCleanup();
+    if (mergeCleanup.status === 'incomplete') throw new MergeCleanupIncomplete(mergeCleanup);
     const failures:unknown[]=[];
     const attempt=async(close:()=>unknown|Promise<unknown>)=>{try{await close();}catch(error){failures.push(error);}};
     this.#hostProvisionAbort.abort();
@@ -555,7 +562,6 @@ export class Dispatcher {
     this.#workImmediate = null;
     await attempt(()=>this.#devT3Search?.close(this.#options.core.clock));
     await attempt(()=>this.#batches?.close());
-    await attempt(()=>this.#merges?.stop());
     await attempt(()=>this.#mergeQueue?.stop());
     await attempt(()=>this.#mergeQueueReady);
     await attempt(()=>this.#models?.close());

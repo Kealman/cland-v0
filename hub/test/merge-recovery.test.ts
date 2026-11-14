@@ -6,12 +6,116 @@ import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { until, startHub } from './harness.ts';
+import { until, startHub, projectHub, tempProject } from './harness.ts';
 import { componentProject, human } from './merge-component-support.ts';
 import { lifecycleNotice } from '../src/hub/agents-topic.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { review } from './merge-support.ts';
+import { MERGE_CLEANUP_STOP_MS, TaskMerges, MergeCleanupIncomplete, settleRetainedMergeStop, joinMergeCleanup } from '../src/hub/merge.ts';
+
+for (const timeout of [false, true]) for (const throwingLog of [false, true]) test(`merge stop retains every prune writer (timeout=${timeout}, throwingLog=${throwingLog})`, async t => {
+  const f = await componentProject(t);
+  const work = await f.ticket();
+  await review(f.rev, work.id);
+  const other = await f.ticket();
+  await review(f.rev, other.id);
+  let entered = false;
+  const release = Promise.withResolvers<void>();
+  let calls = 0;
+  // Install independent release ownership before admitting the retry, including
+  // an assertion failing before stop has begun.
+  onCleanup(t, async () => { release.resolve(); await joinMergeCleanup(f.merges); });
+  const log = f.merges.log;
+  let otherCalls = 0;
+  t.mock.method(f.merges.worktrees, 'pruneMerged', async (id: string) => {
+    if (id === other.id) {
+      if (++otherCalls > 1) throw new Error('planted second writer failure');
+      return { removed: [], failed: [{ item: id, error: 'implementer stands inside its worktree' }] };
+    }
+    if (++calls === 1) return { removed: [], failed: [{ item: work.id, error: 'implementer stands inside its worktree' }] };
+    entered = true;
+    await release.promise;
+    return { removed: [], failed: [] };
+  });
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let stopping: ReturnType<TaskMerges['stop']> | undefined;
+  try {
+    await f.merge(work);
+    await f.merge(other);
+    if (throwingLog) t.mock.method(f.merges, 'log', (row: Record<string, unknown>) => { log(row); throw new Error('planted diagnostic failure'); });
+    t.mock.timers.tick(500);
+    await Promise.resolve();
+    assert.equal(entered, true, 'the timer entered prune before stop');
+    let stopped = false;
+    stopping = f.merges.stop().then(result => { stopped = true; return result; });
+    await Promise.resolve(); await Promise.resolve();
+    assert.equal(stopped, false, 'stop must retain the in-flight prune owner');
+    if (timeout) {
+      t.mock.timers.tick(MERGE_CLEANUP_STOP_MS);
+      const result = await stopping;
+      assert.equal(result.status, 'incomplete');
+      assert.ok('settled' in result);
+      let settled = false;
+      void result.settled.then(() => { settled = true; });
+      await Promise.resolve();
+      assert.equal(settled, false, 'bounded return retains the still-running settlement');
+      assert.ok(f.records.some(row => row.event === 'merge-cleanup-stop-incomplete'));
+    }
+  } finally { release.resolve(); await stopping; }
+  assert.equal((await f.merges.stop()).status, 'complete');
+  t.mock.timers.tick(500);
+  assert.equal(calls, 2, 'stop admits no later retries');
+});
+
+for (const earlyFailure of [false, true]) test(`daemon retains storage and lock until a timed-out prune settles (earlyFailure=${earlyFailure})`, async t => {
+  const f = await componentProject(t);
+  const root = await tempProject(t);
+  const databases: DatabaseSync[] = [];
+  const hub = await projectHub(t, root, {}, {
+    openDatabase: path => { const db = new DatabaseSync(path); databases.push(db); return db; },
+    log: row => { if (row.event === 'hub-stop-retained') throw new Error('planted retained diagnostic failure'); },
+  });
+  assert.ok(databases.length > 0, 'the real daemon opened storage');
+  const work = await f.ticket();
+  await review(f.rev, work.id);
+  const release = Promise.withResolvers<void>();
+  let calls = 0, finished = false;
+  onCleanup(t, async () => { release.resolve(); await joinMergeCleanup(f.merges); });
+  t.mock.method(f.merges.worktrees, 'pruneMerged', async () => {
+    if (++calls === 1) return { removed: [], failed: [{ item: work.id, error: 'implementer stands inside its worktree' }] };
+    await release.promise;
+    finished = true;
+    return { removed: [], failed: [] };
+  });
+  // Exercise the real Dispatcher/daemon stop path with the real held merge owner.
+  const stop = TaskMerges.prototype.stop;
+  t.mock.method(TaskMerges.prototype, 'stop', () => stop.call(f.merges));
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const scenario = async () => { try {
+    await f.merge(work);
+    t.mock.timers.tick(500);
+    await Promise.resolve();
+    assert.equal(calls, 2);
+    const stopping = hub.stop();
+    const incomplete = assert.rejects(stopping, error => error instanceof MergeCleanupIncomplete);
+    t.mock.timers.tick(MERGE_CLEANUP_STOP_MS);
+    await incomplete;
+    assert.equal(finished, false);
+    assert.ok(databases.every(db => db.isOpen), 'storage is retained while the writer is pending');
+    assert.ok(existsSync(join(root, '.cland/hub.json')), 'discovery remains');
+    assert.ok(existsSync(join(root, '.cland/hub.lock')), 'lock remains');
+    if (earlyFailure) assert.fail('planted early assertion');
+  } finally {
+    release.resolve();
+    await settleRetainedMergeStop(hub.stop);
+  } };
+  if (earlyFailure) await assert.rejects(scenario, /planted early assertion/); else await scenario();
+  assert.equal(finished, true);
+  assert.ok(databases.every(db => !db.isOpen), 'storage closes only after settlement');
+  assert.equal(existsSync(join(root, '.cland/hub.json')), false);
+  assert.equal(existsSync(join(root, '.cland/hub.lock')), false);
+});
 
 test('dependency-changing landings require a root install and keep the shared tree intact', async t => {
   for (const file of ['package-lock.json', 'package.json', 'hub/package.json', 'README.md']) await t.test(file, async t => {

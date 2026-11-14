@@ -47,8 +47,9 @@
 // fixture or set FAKE_OPENCODE_TURN_MS explicitly, with a comment naming the race/behaviour.
 import { execFile, spawn } from 'node:child_process';
 import { fixtureEnvironment } from '../../../../test-support/fixture-environment.ts';
+import { writeSessionRecord as publishSessionRecord, isSessionRecord } from '../session-record.ts';
 import { randomBytes, createHash } from 'node:crypto';
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, renameSync } from 'node:fs';
 import { createServer as createPortServer, type Socket } from 'node:net';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { join } from 'node:path';
@@ -69,6 +70,11 @@ type SessionInfo = { id: string; title: string; model: ModelRef; directory: stri
 type McpServer = { type: string; command?: string[]; environment?: Record<string, string> };
 
 const rid = (prefix: string) => `${prefix}_${randomBytes(10).toString('hex')}`;
+const writeSessionRecord = (path: string, value: unknown) => publishSessionRecord(path, value, {
+  temporary: path => `${path}.${process.pid}.${rid('record')}.tmp`,
+  write: writeFileSync,
+  rename: renameSync,
+});
 const flag = (args: string[], ...names: string[]) => {
   for (const n of names) {
     const i = args.indexOf(n);
@@ -431,7 +437,7 @@ async function serve(args: string[]): Promise<number> {
         });
       if (url.pathname === '/api/mcp' && method === 'GET') return send(res, 200, { data: [...mcp.keys()].map((name) => ({ name, status: { status: 'connected' } })) });
       if (url.pathname === '/api/session/active' && method === 'GET') return send(res, 200, { data: Object.fromEntries([...runs.keys()].map((id) => [id, { type: 'running' }])) });
-      if (url.pathname === '/api/session' && method === 'GET') return send(res, 200, { data: readdirSync(SESSIONS).map((f) => readJson<SessionInfo>(join(SESSIONS, f))).filter(Boolean), cursor: {} });
+      if (url.pathname === '/api/session' && method === 'GET') return send(res, 200, { data: readdirSync(SESSIONS).filter(isSessionRecord).map((f) => readJson<SessionInfo>(join(SESSIONS, f))).filter(Boolean), cursor: {} });
       if (url.pathname === '/api/session' && method === 'POST') {
         if (existsSync(join(HOME, 'hold-session'))) {
           writeFileSync(join(HOME, 'session-running'), 'ready');
@@ -448,7 +454,7 @@ async function serve(args: string[]): Promise<number> {
           directory: (body.location as { directory?: string } | null)?.directory ?? process.cwd(),
           created: Date.now(),
         };
-        writeFileSync(sessionFile(id), JSON.stringify(info));
+        writeSessionRecord(sessionFile(id), info);
         void loadLocation();
         return send(res, 200, { data: info });
       }
@@ -460,7 +466,7 @@ async function serve(args: string[]): Promise<number> {
         if (existsSync(join(HOME, 'lose-instructions-response'))) {
           if (method === 'PUT' && parts[6]) {
             session.instructions = { ...session.instructions, [parts[6]]: (await readBody(req)).value };
-            writeFileSync(sessionFile(session.id), JSON.stringify(session));
+            writeSessionRecord(sessionFile(session.id), session);
             return new Promise(() => {});
           }
           return send(res, 404, { message: 'not found' });
@@ -472,13 +478,13 @@ async function serve(args: string[]): Promise<number> {
         if (method === 'DELETE' && parts[6]) {
           if (existsSync(join(HOME, 'fail-instructions-delete'))) return send(res, 500, { message: 'instruction deletion failed' });
           delete session.instructions?.[parts[6]];
-          writeFileSync(sessionFile(session.id), JSON.stringify(session));
+          writeSessionRecord(sessionFile(session.id), session);
           return send(res, 204, undefined);
         }
         if (method === 'PUT' && parts[6]) {
           if (existsSync(join(HOME, 'fail-instructions'))) return send(res, 404, { message: 'experimental instructions unavailable' });
           session.instructions = { ...session.instructions, [parts[6]]: (await readBody(req)).value };
-          writeFileSync(sessionFile(session.id), JSON.stringify(session));
+          writeSessionRecord(sessionFile(session.id), session);
           return send(res, 204, undefined);
         }
       }
@@ -493,7 +499,7 @@ async function serve(args: string[]): Promise<number> {
           send(res, 204, undefined);
           await sleep(100); // Admission precedes the location change at the delivery boundary.
           session.directory = String(body.directory);
-          writeFileSync(sessionFile(sid), JSON.stringify(session));
+          writeSessionRecord(sessionFile(sid), session);
           return;
         }
         if (parts[3] === 'prompt' && method === 'POST') {

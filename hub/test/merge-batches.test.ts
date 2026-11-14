@@ -2,7 +2,7 @@
 import { join } from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { Tracker } from '../src/tracker/tracker.ts';
-import { TaskMerges } from '../src/hub/merge.ts';
+import { TaskMerges, joinMergeCleanup } from '../src/hub/merge.ts';
 import { MergeError } from '../src/merge.ts';
 import { TerritoryGitError } from '../src/territory.ts';
 import { MergeQueue } from '../src/hub/merge-queue.ts';
@@ -832,7 +832,7 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
       assert.notEqual(value, null, `missing Git fact: ${args.join(' ')}`);
       return value!;
     });
-  t.after(() => merges.stop());
+  t.after(() => joinMergeCleanup(merges));
   const land = boundary.land;
   boundary.isLanded = entry => tracker.summary(entry.item)?.state === 'closed' && !!tracker.mergeReceipt(entry.item);
   boundary.land = async (entry, candidate) => {
@@ -913,7 +913,7 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
     assert.ok(mergeLogs.some(log => log.event === 'merge-follow-up-failed' && log.id === 'T-1' && log.step === 'stop sessions'));
     assert.match(reports.join('\n'), /T-1: merged, follow-up failed: stop sessions: cannot inspect the OS process table: ps failed or timed out/);
   }
-  queue.stop(); merges.stop(); await tracker.stop();
+  queue.stop(); await joinMergeCleanup(merges); await tracker.stop();
 }
 
 test('manual merge finishes a failed landed follow-up and the retained batch admits the next heads', t => queuedLanding(t, 'manual-follow-up'));
