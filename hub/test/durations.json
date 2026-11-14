@@ -12231,6 +12231,13 @@
     "web/test/hosts-view.test.ts::Hosts view lists login metadata and refreshes pushed changes (phone)": 1.564441
   },
   "allow": {
+    "hub/test/demo-release.test.ts::the detached demo watchdog confirms an active droplet losing tags during its delete": {
+      "seconds": 16,
+      "owner": "E-880",
+      "added": "2026-11-14",
+      "expires": "2026-11-21",
+      "reason": "T-1853: real fake-SSH readiness regression includes an intentional 2.3 s marker delay. macOS arm64 lone peak 10.373260 s during an adjacent verify; 16 s projects 1.5x headroom. Linux unexecuted. Watchdog receipt retains its exact 8 s bound; budget remains report mode."
+    },
     "web/test/hosts-view.test.ts::Hosts login binding swap with equal pool totals renders from the durable mutation within one second": {
       "seconds": 5.5,
       "owner": "C-216",

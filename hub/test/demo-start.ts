@@ -33,9 +33,22 @@ export async function startDemo(t: TestContext, root: string, ui: FrameClient, f
     return lease.state === 'active' && lease.execution?.delivered === true && lease.demo?.ready === true;
   }, { what: `demo.start ${frame.epic}: new active, delivered, ready lease`, timeoutMs: remoteWaitMs() });
   ui.send({ type: 'demo.start', ...frame, id });
-  await ready;
-  const failed = result();
-  if (failed) assert.equal(failed.ok, true, String(failed.error));
+  try {
+    await ready;
+    const failed = result();
+    if (failed) assert.equal(failed.ok, true, String(failed.error));
+  } catch (error) {
+    // Failure-only, bounded facts from the durable record; never dump credentials
+    // or the lease's command plan. Release may already have changed its state.
+    const latest = (await readLeases(root)).find(l => l.demo?.epic === frame.epic && !previous.has(l.lease));
+    const stage = latest?.demo?.ready ? 'demo ready' : latest?.execution?.delivered ? 'delivery persisted'
+      : latest?.snapshot ? 'snapshot persisted; image readiness unconfirmed'
+      : latest?.resource !== null && latest?.resource !== undefined ? 'provider resource persisted'
+      : latest ? 'lease persisted' : 'no lease persisted';
+    t.diagnostic(`demo.start incomplete ${JSON.stringify({ epic: frame.epic, stage, state: latest?.state ?? null,
+      observedMs: Object.fromEntries(Object.entries(observed).map(([key, value]) => [key, Math.round(value)])) })}`);
+    throw error;
+  }
   assert.ok(lease);
   observed.ready = performance.now() - began;
   // The client buffers result frames from connection time. Only reporting/reply
