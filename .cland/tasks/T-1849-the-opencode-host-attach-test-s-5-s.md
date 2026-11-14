@@ -2,8 +2,8 @@
 id: T-1849
 kind: task
 title: The opencode host-attach test's 5 s close deadline fails under a loaded macOS full run
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1502
 branch: t/T-1849-the-opencode-host-attach-test-s-5-s
 created: 2026-11-14T03:43:39.067Z
-updated: 2026-11-14T04:44:03.227Z
+updated: 2026-11-14T05:51:30.020Z
+closed: 2026-11-14T05:51:30.020Z
 ---
 
 ## Summary
@@ -76,3 +77,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; C1–C2 verified. Independently read A-19282:6259 base passes/692 file passes,separate125 load passes; all5 host-attach identities/file finish plus3 routing identities/file finish pass,OpenCode1.854873875s. A-19278 retained delayed-start old-bound red/configured green and held-client1500ms missing-close red establish bounded failure; five normal macOS lone passes and tool/source limits accepted. Source proof A-19279 unchanged. T0/T1/fallbackT2/changedT3 once/Web green,localdarwinarm64 Node24.21/Nvim0.12.5/HeadlessShell1248 CfT156 attested. Report-only advisories retained; names-only inventory excludes ha/account roots,original loaded stage unknown. Full remainingT3/T4/Linux unexecuted,QA-none; no reviewer execution/further run requested.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-14T05:51:30.020Z
+
+Merged f4f4689ee03c08e1a9990d779098ccc2e5473f39 onto dev.

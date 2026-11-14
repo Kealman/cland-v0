@@ -2,8 +2,8 @@
 id: T-1851
 kind: task
 title: The suite-timeouts fast-exit fixture's ps wrapper intercepts the hub's own admission probes
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1846
 topic: topic-1503
 branch: t/T-1851-the-suite-timeouts-fast-exit-fixture-s
 created: 2026-11-14T03:50:52.949Z
-updated: 2026-11-14T04:22:57.415Z
+updated: 2026-11-14T05:51:42.517Z
+closed: 2026-11-14T05:51:42.517Z
 ---
 
 ## Summary
@@ -78,3 +79,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final C1/C2 verified on same-head5a47a4f2/A-19280. A-19281 records independent6,273 base test/692 file positives, separate125 load test/file positives, zero negatives/skips. Exact fast-exit case pass@32762(8.197671583s); whole suite-timeouts file pass@32795, all19 cases pass once, product assertions retained. A-19274's source-hashed controlled global-PATH red, five lone passes and serial paired pass support C1/C2 with actual-error/launch/capture qualifications. T0/T1/fallback-all T2/changed T3/Web exit0; local darwin arm64 Node24.21/nvim0.12.5, actual Headless Shell1248/Chrome156.0.8078.4. Advisory budget/lint and targeted-only inventory scope retained; broader T3/T4/Linux/stage remain separate. Clean unchanged source, no findings; Reviewer read-only.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-14T05:51:42.517Z
+
+Merged ab672226fb7b2de69f8ccfc99ac33114512a60eb onto dev.
