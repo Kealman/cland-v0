@@ -2,8 +2,8 @@
 id: T-1830
 kind: task
 title: "Setup's agent-hosts step: the offer, the roles and the `agents` pool"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1510
 branch: t/T-1830-setup-s-agent-hosts-step-the-offer-the
 created: 2026-11-12T10:07:21.555Z
-updated: 2026-11-14T16:43:32.334Z
+updated: 2026-11-14T17:33:06.935Z
+closed: 2026-11-14T17:33:06.935Z
 ---
 
 ## Summary
@@ -153,3 +154,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; C1–C6 verified. A-19403 / cbe2ae48 passed 6290/6290 with zero fail/cancel/skip/todo; independently checked named base/load outcomes, repaired favourite/remotes/component consumers and changed native setup scenario (one base pass, 14.375862916 s). Existing E-880 27.4 s allowance covers that scenario per Coordinator b7bd002c; report-only notices retained. A-19406 records full criterion/source/native/provenance limits; A-19405 conservatively reconciles all 976 manifest paths: 695 positive base file receipts, 264 T3 and 17 T4 deferred, no missing lower/Web. Linux x64 Node24.21, Headless Shell1248/CfT156.0.8078.4; no cache/skips; billing unavailable/T-1857. Previous red A-19398 and qualified local A-19401/T-1806 evidence retained. Full remaining T3/T4 and affected after-stage QA on dev are separate. No Reviewer execution; hub/Coordinator owns ready and landing.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-14T17:33:06.935Z
+
+Merged 22a8d60c33ff70d51a914e3e727f4f289279f4e0 onto dev.
