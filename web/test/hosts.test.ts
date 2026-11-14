@@ -6,7 +6,7 @@ import { projectSshHosts } from '../../hub/src/host/registry.ts';
 import assert from 'node:assert/strict';
 import type { HubFrame, HostsStatePool } from '../../shared/wire/index.ts';
 import { until } from '../../hub/test/until.ts';
-import { webFixture, pageUntil, resizePage } from './harness.ts';
+import { webFixture, pageUntil, resizePage, pausePageClock } from './harness.ts';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { readHostPools } from '../../hub/src/host/pools.ts';
@@ -96,8 +96,9 @@ test('Sessions Hosts consumes the fake provider inventory snapshot and configura
 });
 
 for (const phone of [false, true]) test(`Sessions Hosts renders pushed facts and alert recovery (${phone ? 'phone' : 'desktop'})`, async t => {
-  const f = await webFixture(t);
-  const created = new Date(Date.now() - 3_600_000).toISOString();
+  const clock = new FakeClock(Date.now());
+  const f = await webFixture(t, { clock });
+  const created = new Date(clock.now().getTime() - 3_600_000).toISOString();
   const pools: HostsStatePool[] = [{ name: 'agents', provider: 'fake', region: 'fake-1', hostCount: 2, maxHosts: 4,
     slotsUsed: 7, slotsTotal: 16, logins: { 'claude-code': { inUse: 2, usable: 3, signedOut: 1 }, codex: { inUse: 1, usable: 1, signedOut: 0 } }, alert: null,
     hosts: ['fake-1', 'fake-2'].map(id => ({ id, size: 's-4vcpu-8gb', region: 'fake-1', state: 'ready', created,
@@ -123,13 +124,16 @@ for (const phone of [false, true]) test(`Sessions Hosts renders pushed facts and
     assert.equal(await section.locator('[data-host-id="fake-1"]').isVisible(), false);
     await fold.click();
     const hostText = await section.locator('[data-host-id="fake-1"]').innerText();
-    await page.clock.install();
-    const aged = until(async () => await section.locator('[data-host-id="fake-1"]').innerText() !== hostText, { what: 'uptime advances without a push', timeoutMs: 1000 });
-    await observed(aged, () => page.clock.runFor(2000));
+    // The clock owns the interval from before navigation. Skip past its next
+    // tick without spending real seconds or racing the observer against it.
+    await clock.advance(2000);
+    await page.clock.fastForward(2000);
+    await pageUntil(page, () => document.querySelector('[data-host-id="fake-1"]')?.textContent?.includes('1h 0m 2s') === true, 'uptime advances without a push');
+    assert.notEqual(await section.locator('[data-host-id="fake-1"]').innerText(), hostText);
     assert.match(await section.locator('[data-host-id="fake-1"]').innerText(), /\$1.50 today/);
     const red = until(() => line.evaluate(n => /fake-1 unreachable/.test(n.textContent ?? '') && getComputedStyle(n).color === 'rgb(255, 123, 114)'), { what: 'pushed outage rendered within one second', timeoutMs: 1000, loadFactor: 1 });
     await observed(red, async () => {
-      pools[0]!.alert = { kind: 'outage', host: 'fake-1', since: new Date().toISOString() };
+      pools[0]!.alert = { kind: 'outage', host: 'fake-1', since: clock.now().toISOString() };
       push({ type: 'hosts.state', pools });
     });
     assert.equal(await line.evaluate(n => getComputedStyle(n).color), 'rgb(255, 123, 114)');
@@ -154,6 +158,7 @@ for (const phone of [false, true]) test(`Sessions Hosts renders pushed facts and
     assert.equal(await section.count(), 0);
     assert.equal(reads.includes('host.status'), false);
   }, async page => {
+    await pausePageClock(page, clock.now());
     if (phone) await resizePage(page, { width: 320, height: 844 });
     await page.routeWebSocket('**/ws', route => {
       push = frame => route.send(JSON.stringify(frame));
