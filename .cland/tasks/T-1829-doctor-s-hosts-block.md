@@ -2,8 +2,8 @@
 id: T-1829
 kind: task
 title: Doctor's hosts block
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1509
 branch: t/T-1829-doctor-s-hosts-block
 created: 2026-11-12T10:07:21.390Z
-updated: 2026-11-14T15:12:12.122Z
+updated: 2026-11-14T15:51:58.972Z
+closed: 2026-11-14T15:51:58.972Z
 ---
 
 ## Summary
@@ -137,3 +138,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1–C7 verified. A-19393 independently audits A-19392: all 9 required doctor identities pass once ordinary plus 5 load repetitions each; ordinary file pass at 14591. All 6,275 ordinary test / 693 ordinary file finishes pass, with 170 load test/file positives separately and no negatives. All 975 conservative consumer paths retained: 220 T1, 419 T2 and 54 Web ordinary file passes, zero selected missing; 265 T3 and 17 T4 deferred. Exact head/normalized tree match reviewed source; Linux x64 droplet, Node 24.21.0, isolated Headless Shell 1248 / Chrome 156.0.8078.4. Capture/candidate limits and corrected combined +2 versus isolated delta0 inventory remain explicit; report-only advisories are not clean-enforce proof. Prior C3 failures resolved by reviewed actual-count/scope fixes. Broader T3/T4 and after-stage QA remain separate. Head clean/unchanged; Reviewer read-only.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-11-14T15:51:58.972Z
+
+Merged 3ecb6a24dd2ef55e289647fc554ea4e85ca77df0 onto dev.
