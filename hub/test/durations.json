@@ -184,9 +184,10 @@
       "A-19120",
       "A-19131",
       "A-19216",
-      "A-19318"
+      "A-19318",
+      "A-19362"
     ],
-    "commit": "e10b1a799870d21a1d90f4ca39f9ad9439642baf"
+    "commit": "c2fca8086eebfff5286f75ffc6bbcea5c5245611"
   },
   "budget": {
     "testSeconds": 5,
@@ -4099,6 +4100,10 @@
     "web/test/hosts-view.test.ts": {
       "seconds": 59.973471,
       "tests": 26
+    },
+    "hub/test/git-daemon-stop.test.ts": {
+      "seconds": 0.001131,
+      "tests": 5
     }
   },
   "tests": {
@@ -12230,7 +12235,13 @@
     "web/test/hosts-view.test.ts::Hosts Stop preserves cancellation and reports native deletion outcome: confirmed true": 1.70203,
     "web/test/hosts-view.test.ts::Hosts view lists login metadata and refreshes pushed changes (desktop)": 1.513056,
     "web/test/hosts-view.test.ts::Hosts view lists login metadata and refreshes pushed changes (phone)": 1.564441,
-    "hub/test/suite-remote-budget.test.ts::restored delivered leases use the durable delivery prefix without replaying collected bytes": 0.404686
+    "hub/test/suite-remote-budget.test.ts::restored delivered leases use the durable delivery prefix without replaying collected bytes": 0.404686,
+    "hub/test/git-daemon-stop.test.ts::close delivered during a refused stop settles the captured child": 0.000097,
+    "hub/test/git-daemon-stop.test.ts::close joins exiting daemon after identity returns null": 0.000465,
+    "hub/test/git-daemon-stop.test.ts::close joins exiting daemon after stop returns false": 0.000087,
+    "hub/test/git-daemon-stop.test.ts::live daemon with no identity fails bounded close": 0.000383,
+    "hub/test/git-daemon-stop.test.ts::live daemon with refused stop fails bounded close": 0.000099,
+    "hub/test/opencode-policy.test.ts::fake OpenCode session publication keeps a complete record during a partial write": 0.000609
   },
   "allow": {
     "hub/test/demo-release.test.ts::the detached demo watchdog confirms an active droplet losing tags during its delete": {
