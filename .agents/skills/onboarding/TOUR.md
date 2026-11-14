@@ -68,3 +68,13 @@ After Telegram, setup offers Discord. Create its application with Install Link a
 A voice note reaches General with its audio and a 🎤 transcript when transcription is configured; after the messenger offers, setup can read the ElevenLabs key at its hidden prompt, or you can store it in your own terminal with `cland secret set speech.elevenlabs_key` and apply it with `cland hub reload`.
 
 Look now: the Remotes row in the sessions panel.
+
+## 10. Agent hosts
+
+Agent hosts are machines where the crew's sessions run; a pool groups them with limits on hosts and spending. In Neovim's sessions panel and the web's Sessions area, the Hosts row sits beside Remotes when pools are configured. Each pool shows hosts, slots and logins in use; expand Hosts to see the machines, their sessions, hourly prices and today's spend. An unreachable host or provider failure turns the row red. In the web, expanding Hosts opens the hosts view, with hosts and logins, their state and actions.
+
+A waiting launch is a status line in the inbox, not an ask. Its current reason says "waiting for a host", "waiting for a login <harness>" or "waiting for host <id> to boot"; the placeholders name the harness or host, for example "waiting for a login claude-code". It retries when capacity changes. Missing logins also bring a separate "Not enough <harness> logins. Create one?" card. To add one yourself, run `cland login add <harness> --pool <pool>` in your own terminal, choosing claude-code, codex or opencode and your pool's name; disk sign-in needs a prepared pool image. Or use the pool’s Add button in the web's hosts view: the supplied harness sign-in prompts, including any link or code, appear inline on the login row and on the inbox card. In users mode, these web actions require an admin.
+
+To set hosts up, run `cland setup` in your terminal: after remotes and speech, before the Aide, it offers agent hosts with No as the default; `--yes` skips the optional offer and grants no paid consent. It guides pool configuration, role placement, image preparation and the first logins; each paid step asks separately. Setup declares prices for the default DigitalOcean pool size and the c-8/c-16 image builders; an unpriced builder leaves preparation open, while custom pool sizes may have no recorded price in the login prompt. Without a terminal it leaves commands for unfinished work. For manual configuration, use `cland config set` for pool settings, `cland role launch <role> --pool <pool>` for placement, `cland hub reload` to apply them and `cland host prepare <pool>` for the image before adding logins. If no pool is configured yet, the Hosts row appears after setup.
+
+Look now: the Hosts row in the sessions panel.

@@ -129,7 +129,7 @@ Once the Coordinator runs (with only a map, once the research runs), ask, in the
 
 The tour happens in the workbench. If the human talks to you outside it (`cland setup` attaches your terminal alone), tell them it opens with `cland` in their terminal, where they find you again among their sessions.
 
-On yes, teach the nine stages of `TOUR.md` one stage per round, in your own words, tied to what is on the human's screen now: this project's release, sessions and rules. End each stage with its "look now" and one question: the next stage, or stop here? Recommend the next. On stop, say the rest waits for whenever they ask.
+On yes, teach the ten stages of `TOUR.md` one stage per round, in your own words, tied to what is on the human's screen now: this project's release, sessions and rules. End each stage with its "look now" and one question: the next stage, or stop here? Recommend the next. On stop, say the rest waits for whenever they ask.
 
 ## The end
 

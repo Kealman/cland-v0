@@ -80,20 +80,30 @@ test('onboarding verification instructions are independent of npm', async () => 
 });
 
 // T1: the tour's stage structure is source-only, without a hub or CLI process.
-test('the onboarding tour has nine stages ending with Look now', async () => {
+test('the onboarding tour has ten stages ending with Look now', async () => {
   const markdown = await readFile(new URL('TOUR.md', SKILL), 'utf8');
   const stages = markdown.split(/^## /m).slice(1);
-  assert.equal(stages.length, 9);
+  assert.equal(stages.length, 10);
   assert.match(stages[8]!, /^9\. Remote control\n/);
   assert.match(stages[8]!, /^Look now: the Remotes row in the sessions panel\./m);
   const skill = await readFile(new URL('SKILL.md', SKILL), 'utf8');
-  assert.match(skill, /nine stages/);
+  assert.match(stages[9]!, /^10\. Agent hosts\n/);
+  assert.match(stages[9]!, /^Look now: the Hosts row in the sessions panel\.$/m);
+  assert.match(skill, /ten stages/);
   for (const [index, stage] of stages.entries()) {
     assert.match(stage, new RegExp(`^${index + 1}\\. `));
     const paragraphs = stage.trim().split(/\n\s*\n/);
     assert.match(paragraphs.at(-1)!, /^Look now: /);
     assert.equal((stage.match(/^Look now: /gm) ?? []).length, 1);
   }
+  const hosts = stages[9]!;
+  for (const text of [
+    'Neovim', 'web', 'Sessions', 'Hosts row', 'hosts view',
+    'waiting for a host', 'waiting for a login <harness>', 'waiting for host <id> to boot',
+    'Create one?', 'cland login add <harness> --pool <pool>', 'cland setup', 'cland config set',
+  ]) assert.ok(hosts.includes(text), `agent hosts stage includes ${text}`);
+  assert.match(hosts, /status line in the inbox, not an ask/);
+  assert.deepEqual(commandProblems(hosts), []);
 });
 
 // T1: source guidance uses the shipped settings commands instead of file edits.
@@ -316,7 +326,7 @@ test('the onboarding Aide plans imported open GitHub issues in its first release
 
 // T1: the remote tour's speech instructions use shipped commands.
 test('remote tour explains voice notes and the hidden speech key command', async () => {
-  const tour = (await readFile(new URL('TOUR.md', SKILL), 'utf8')).split('## 9. Remote control')[1]!;
+  const tour = (await readFile(new URL('TOUR.md', SKILL), 'utf8')).split('## 9. Remote control')[1]!.split('## 10.')[0]!;
   assert.ok(tour.includes('cland secret set speech.elevenlabs_key'));
   assert.match(tour, /voice note/i);
   assert.deepEqual(commandProblems(tour), []);
