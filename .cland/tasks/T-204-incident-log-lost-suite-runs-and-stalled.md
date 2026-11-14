@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-13T23:54:50.124Z
+updated: 2026-11-14T01:22:50.606Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -590,3 +590,7 @@ Hub restart #73 (2026-11-13 18:04:27Z, stand-in, launchd). Reason: T-1844 fix (l
 ### human · 2026-11-13T23:54:50.124Z
 
 Hub restart #74 (2026-11-13 23:51:24Z, stand-in, launchd). Reason: T-1842 (bounded tree.bundle upload retries) landed as f84b99014 under the human's 16:57Z critical-fix waiver, config restored by ddb014636 (merge queue on, executor droplet, 4 workers) per ask 803125ab option 1; hub reload refused 'verification.workers changed: restart required'. Gate: merge queue empty, no run, droplets 0, dev=origin/dev=ae0a2c2b9, load 2.4. Stop: launchctl remove cland-hub-r73 → hub 57881 gone in 3 s. Serve: launchctl submit cland-hub-r74 → listening 23:51:36Z, serving 23:52:28Z (replay 52 s). Gap stop→serve 64 s; the coord bridge still reconnected. New hub 95226, port 62053, web 56935, nice 0, ppid 1, env check 2, one launchd job, one hub serve process. Coord 66570: bridge-connected → session-resumed 23:52:32Z → coordinator-filled 23:52:55Z → injected 23:52:56Z; one bridge. doctor 35 ok 3 warn 0 fail. Next: E-1537 stage-2 cover pair, Linux on a droplet as the first delivery test of T-1842.
+
+### human · 2026-11-14T01:22:50.606Z
+
+Hub restart #75 (2026-11-14 01:17:14Z, stand-in, launchd). Reason: human's answer on ask 96990fef at 01:16Z via Discord (option 1: land T-1846 and T-1847 locally, rerun the stage-2 macOS cover, hold the Linux cover until the human checks the network to DigitalOcean; even with T-1842's retries SSH to droplets stalled on upload and mkdir, A-19232). Config 2a51b98af: executor local, workers 1; reload refused 'verification.workers changed: restart required'. Gate: both stage covers finished, merge queue empty, no run, droplets 0, no live implementers, dev=origin/dev=f4542153b, load 2.1. Stop: launchctl remove cland-hub-r74 → hub 95226 gone in 3 s. Serve: launchctl submit cland-hub-r75 → listening 01:17:27Z, serving 01:17:33Z. Gap stop→serve 20 s. New hub 5828, port 53112, web 56935, nice 0, ppid 1, env check 2, one launchd job. Coord 66570: bridge-closed 01:17:14Z → bridge-connected 01:17:34Z → session-resumed → coordinator-filled 01:17:45Z → injected 01:17:46Z; one bridge. doctor 35 ok 3 warn 0 fail.

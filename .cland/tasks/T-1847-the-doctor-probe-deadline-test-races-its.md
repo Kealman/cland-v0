@@ -3,7 +3,7 @@ id: T-1847
 kind: task
 title: The doctor probe-deadline test races its hanging probes' pid writes (red 1 in 5 alone)
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - flaky
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: R-1530
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1501
+branch: t/T-1847-the-doctor-probe-deadline-test-races-its
 created: 2026-11-14T01:15:21.748Z
-updated: 2026-11-14T01:16:18.758Z
+updated: 2026-11-14T01:20:24.730Z
 ---
 
 ## Summary

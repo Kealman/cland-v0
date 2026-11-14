@@ -3,7 +3,7 @@ id: T-1846
 kind: task
 title: Two T3 setup waits time out under a loaded macOS full run (session-native-lifecycle, suite-recovery)
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - flaky
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: R-1530
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1500
+branch: t/T-1846-two-t3-setup-waits-time-out-under-a
 created: 2026-11-13T21:05:09.114Z
-updated: 2026-11-14T01:16:17.930Z
+updated: 2026-11-14T01:20:18.711Z
 ---
 
 ## Summary
