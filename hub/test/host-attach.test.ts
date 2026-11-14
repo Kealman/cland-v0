@@ -69,7 +69,12 @@ for (const [label, Adapter] of Object.entries({ 'claude-code': ClaudeCodeAdapter
     await eventually('held attach durable output',async()=>{try{return (await readFile(marker,'utf8')).includes('conversation')||undefined;}catch{return undefined;}},testWaitMs());
     await assert.rejects(async()=>{try {throw new Error('forced attach failure');} finally {await stopAttach();await attachClosed;}},/forced attach failure/);
   }
-  const [code,signal] = await within(attachClosed,5000,undefined,()=>new Error('attach close incomplete; stderr: '+stderr.slice(-1000)));
+  // This includes fresh CLI startup and exec, not just harness shutdown.
+  const [code,signal] = await within(attachClosed,testWaitMs(),undefined,()=>new Error(`attach close incomplete; code: ${attach.exitCode}; signal: ${attach.signalCode}; stderr: ${stderr.slice(-1000)}`)).catch(async error => {
+    const receiptContains = async (path:string, value:string) => { try { return (await readFile(path,'utf8')).includes(value); } catch { return false; } };
+    const stage = await receiptContains(marker,harness === 'claude-code' ? p.harnessId! : p.harnessSessionId!) ? 'harness receipt written' : await receiptContains(join(root,'stty'),'susp undef') ? 'stty receipt written' : 'no usable stty or harness receipt';
+    throw new Error(`${error.message}; last durable stage: ${stage}`, {cause:error});
+  });
   if (held) {assert.equal(code,null);assert.ok(signal);} else {assert.equal(code,0,stderr);assert.equal(signal,null);}
   if (harness === 'opencode') assert.equal(await localHost(env).fileType(envCapture),'missing','no intermediate native env argv receives the password');
   assert.equal(await readFile(join(root,'stty'),'utf8'),'susp undef');
