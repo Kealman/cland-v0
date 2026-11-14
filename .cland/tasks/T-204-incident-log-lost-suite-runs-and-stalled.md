@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-13T18:06:09.026Z
+updated: 2026-11-13T23:54:50.124Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -586,3 +586,7 @@ Hub restart #72 (2026-11-13 15:31:19Z, stand-in, launchd). Reason: [verification
 ### human · 2026-11-13T18:06:09.026Z
 
 Hub restart #73 (2026-11-13 18:04:27Z, stand-in, launchd). Reason: T-1844 fix (local merge-batch checkouts get node_modules) needs a hub restart; the human chose option 4 on ask 47d9253b at 16:57Z via Discord («Давай 4 … можете пропускать обязательные прогоны для критичных фиксов»); coord landed T-1844 directly as 5d1c0f8f0 with the merge queue off and turned it back on at 2f3df3330. Gate: merge queue empty, no run, droplets 0, dev=origin/dev=2f3df3330, load 2.3. Stop: launchctl remove cland-hub-r72 → hub 9819 gone in 3 s. Serve: launchctl submit cland-hub-r73 → listening 18:04:40Z, serving 18:05:00Z. Gap stop→serve 34 s. New hub 57881, port 60104, web 56935, nice 0, ppid 1, env check 2, one launchd job. Coord 66570: bridge-closed 18:04:28Z → bridge-connected 18:05:00Z → session-resumed → coordinator-filled 18:05:29Z → injected 18:05:34Z; one bridge. doctor 34 ok 4 warn 0 fail. Note: coord's post-restart census saw my restart shell (pid 57697, nice 5) matching 'hub serve' because the launchctl command text contains it; it was not a hub and exited with the script.
+
+### human · 2026-11-13T23:54:50.124Z
+
+Hub restart #74 (2026-11-13 23:51:24Z, stand-in, launchd). Reason: T-1842 (bounded tree.bundle upload retries) landed as f84b99014 under the human's 16:57Z critical-fix waiver, config restored by ddb014636 (merge queue on, executor droplet, 4 workers) per ask 803125ab option 1; hub reload refused 'verification.workers changed: restart required'. Gate: merge queue empty, no run, droplets 0, dev=origin/dev=ae0a2c2b9, load 2.4. Stop: launchctl remove cland-hub-r73 → hub 57881 gone in 3 s. Serve: launchctl submit cland-hub-r74 → listening 23:51:36Z, serving 23:52:28Z (replay 52 s). Gap stop→serve 64 s; the coord bridge still reconnected. New hub 95226, port 62053, web 56935, nice 0, ppid 1, env check 2, one launchd job, one hub serve process. Coord 66570: bridge-connected → session-resumed 23:52:32Z → coordinator-filled 23:52:55Z → injected 23:52:56Z; one bridge. doctor 35 ok 3 warn 0 fail. Next: E-1537 stage-2 cover pair, Linux on a droplet as the first delivery test of T-1842.
