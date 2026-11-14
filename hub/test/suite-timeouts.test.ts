@@ -234,47 +234,105 @@ setTimeout(()=>process.exit(0),3000);`);
   assert.match((await eventually('successor after exited-parent stall', async () => (await f.results()).find(m => m.id === `suite:${next.id}`))).text, /exit 0/);
 });
 
-test('verify reaps fast-exit inherited-pipe writers and preserves unrelated processes', async t => {
+// T3: both controls need a native parent exit and a product-owned post-exit census.
+async function fastExitFixture(t: import('node:test').TestContext, denyCensus: boolean) {
+  const PIPE_HOLDER_SETUP_MS = testWaitMs();
+  const ADMISSION_PROBE_DELAY_MS = 3500;
+  const STALL_TIMEOUT = '3s';
   // T3: real parent exit/reparenting determines whether the worker can prove pipe ownership.
   const bin = await tempProject(t, 'cland-fast-exit-ps-');
+  const preArmProbe = join(bin, 'pre-arm-ps');
   // cland-allow-child-env: read-only which lookup for the process-table wrapper; no account or Git operation
   const ps = (await promisify(execFile)('which', ['ps'])).stdout.trim();
+  const preload = join(bin, 'deny-endpoint.mjs');
+  const denied = join(bin, 'endpoint-denied');
   const armed = join(bin, 'armed'); const snapshot = join(bin, 'snapshot');
+  await writeFile(preload, `import cp from 'node:child_process'; import {syncBuiltinESMExports} from 'node:module'; import {existsSync,writeFileSync} from 'node:fs';
+const original=cp.spawn;
+cp.spawn=(bin,args,options)=>{
+  const inspector=${denyCensus} && bin==='/usr/bin/perl' && args?.[0]==='-e' && options?.stdio?.length===5 && options.stdio[3]?.readable && options.stdio[4]?.readable;
+  if(inspector) writeFileSync(${JSON.stringify(denied)},'denied');
+  const observing=bin==='ps' && process.argv[1]?.endsWith('/hub/suite-worker.ts') && existsSync(${JSON.stringify(armed)});
+  return original(observing ? ${JSON.stringify(join(bin,'ps'))} : bin, inspector ? ['-e','exit 1'] : args, options);
+};
+syncBuiltinESMExports();`);
   await writeFile(join(bin, 'ps'), `#!${process.execPath}
-import {spawnSync} from 'node:child_process'; import {existsSync,readFileSync,writeFileSync} from 'node:fs';
-import {until} from ${JSON.stringify(new URL('./until.ts', import.meta.url).href)};
+import {spawnSync} from 'node:child_process'; import {existsSync,readFileSync,writeFileSync,renameSync} from 'node:fs';
 import {pidAlive} from ${JSON.stringify(new URL('../src/project.ts', import.meta.url).href)};
 import {parseProcessTable} from ${JSON.stringify(new URL('../src/process-table.ts', import.meta.url).href)};
-// Match the native cleanup probe's buffer: ps eww includes every process's
-// environment, which exceeds spawnSync's 1 MiB default on a busy Mac.
-const result=spawnSync(${JSON.stringify(ps)}, process.argv.slice(2), {encoding:'utf8',maxBuffer:32*1024*1024});
-if (process.argv.includes('-e') && existsSync(${JSON.stringify(armed)}) && !existsSync(${JSON.stringify(snapshot)})) {
-  const parent=Number(readFileSync(${JSON.stringify(armed)},'utf8'));
-  if (result.status===0 && parseProcessTable(result.stdout).some(row=>row.pid===parent)) {
-    writeFileSync(${JSON.stringify(snapshot)},'captured');
-    // Keep this pre-child snapshot in flight until ancestry is gone. Otherwise a
-    // later capture can own the child while its parent yields in writeFile below.
-    await until(()=>!pidAlive(parent),{what:'fast parent exited before ownership observation resumes'});
-  }
+const args=process.argv.slice(2);
+const requested=args[0]==='--fixture-snapshot'; if(requested) args.shift();
+// A deliberate pre-admission trap: this wrapper must never serve the executor's
+// non-self identity probe, whose production deadline is 3s.
+if (!existsSync(${JSON.stringify(armed)}) && args.includes('pid=,lstart=') && args.at(-1)!==String(process.ppid)) {
+  writeFileSync(${JSON.stringify(preArmProbe)},JSON.stringify({pid:process.pid,parent:process.ppid,args}));
+  await new Promise(resolve=>setTimeout(resolve,${ADMISSION_PROBE_DELAY_MS}));
 }
-process.stdout.write(result.stdout ?? ''); process.stderr.write(result.stderr ?? '');
-process.exitCode=result.status ?? 1;`, {mode:0o700});
-  const f = await fixture(t, `${process.execPath} fast-parent.mjs`, undefined, { text: '[hygiene]\nloop_breaker_max=2\n', verification: 'stall_timeout="3s"' }, {PATH:`${bin}:${process.env.PATH ?? ''}`});
+const frozen=existsSync(${JSON.stringify(snapshot)}) ? JSON.parse(readFileSync(${JSON.stringify(snapshot)},'utf8')) : null;
+// Only setup uses a frozen pre-child table. After native parent exit all product
+// cleanup/census calls see fresh rows, including the real reparented writer.
+if (!requested && args.includes('-e') && frozen && pidAlive(frozen.parent)) {
+  process.stdout.write(frozen.stdout);
+} else {
+  const result=spawnSync(${JSON.stringify(ps)},args,{encoding:'utf8',maxBuffer:32*1024*1024});
+  if(requested) {
+    const parent=Number(readFileSync(${JSON.stringify(armed)},'utf8'));
+    if(result.status!==0 || !parseProcessTable(result.stdout).some(row=>row.pid===parent)) throw new Error('fixture pre-child snapshot missing parent');
+    writeFileSync(${JSON.stringify(snapshot + '.prepared')},JSON.stringify({parent,stdout:result.stdout}));
+    renameSync(${JSON.stringify(snapshot + '.prepared')},${JSON.stringify(snapshot)});
+  }
+  process.stdout.write(result.stdout ?? ''); process.stderr.write(result.stderr ?? '');
+  process.exitCode=result.status ?? 1;
+}`, {mode:0o700});
+  const f = await fixture(t, `${process.execPath} fast-parent.mjs`, undefined, { text: '[hygiene]\nloop_breaker_max=2\n', verification: `stall_timeout="${STALL_TIMEOUT}"` }, {NODE_OPTIONS:`--import=${preload}`});
   const marker = join(f.root, 'fast-pids.json');
-  await writeFile(join(f.root, 'fast-parent.mjs'), `import {spawn} from 'node:child_process'; import {writeFile} from 'node:fs/promises'; import {existsSync} from 'node:fs';
-import {until} from ${JSON.stringify(new URL('./until.ts', import.meta.url).href)};
-const heartbeat=setInterval(()=>console.log('waiting for ownership snapshot'),100);
-await writeFile(${JSON.stringify(armed)}, String(process.pid));
-await until(()=>existsSync(${JSON.stringify(snapshot)}),{what:'ownership snapshot captured before pipe holder starts'});
-const child=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{detached:true,stdio:'inherit'});
-await writeFile(${JSON.stringify(marker)},JSON.stringify({parent:process.pid,child:child.pid}));
-clearInterval(heartbeat);process.exit(0);`);
+  await writeFile(join(f.root, 'fast-parent.mjs'), `import {spawn,execFile} from 'node:child_process'; import {writeFileSync} from 'node:fs'; import {promisify} from 'node:util';
+import {fixtureEnvironment} from ${JSON.stringify(new URL('./fixture-environment.ts', import.meta.url).href)};
+import {processTableArgs} from ${JSON.stringify(new URL('../src/process-table.ts', import.meta.url).href)};
+const heartbeat=setInterval(()=>console.log('preparing fixture ownership snapshot'),100);
+try {
+writeFileSync(${JSON.stringify(armed)},String(process.pid));
+// This explicit setup receipt does not depend on the periodic product observer.
+await promisify(execFile)(${JSON.stringify(join(bin,'ps'))},['--fixture-snapshot',...processTableArgs()],{env:fixtureEnvironment(${JSON.stringify(f.root)},process.env),timeout:${PIPE_HOLDER_SETUP_MS},maxBuffer:32*1024*1024});
+const child=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{env:fixtureEnvironment(${JSON.stringify(f.root)},process.env),detached:true,stdio:'inherit'});
+writeFileSync(${JSON.stringify(marker)},JSON.stringify({parent:process.pid,child:child.pid}));
+} finally {clearInterval(heartbeat);}
+process.exit(0);`);
+  return {f, marker, preArmProbe, denied, armed, snapshot};
+}
+
+async function fastExitPids(owner: Awaited<ReturnType<typeof fastExitFixture>>, job: {id: string}) {
+  const {f, marker, preArmProbe, armed, snapshot} = owner;
+  const PIPE_HOLDER_SETUP_MS = testWaitMs();
+  return await eventually('fast pipe holder started after snapshot', () => readFile(marker,'utf8').then(text=>JSON.parse(text) as {parent:number;child:number},()=>undefined), PIPE_HOLDER_SETUP_MS).catch(async error => {
+    // Preserve bounded producer facts before fixture disposal removes them.
+    const tail = async (path: string) => {
+      const file = await open(path, 'r').catch(() => undefined);
+      if (!file) return 'missing';
+      try {
+        const size = (await file.stat()).size;
+        const bytes = Buffer.alloc(Math.min(size, 4096));
+        const { bytesRead } = await file.read(bytes, 0, bytes.length, Math.max(0, size - bytes.length));
+        return bytes.subarray(0, bytesRead).toString('utf8').replace(/(Bearer\s+)\S+|((?:token|secret|api[_-]?key)\s*[=:]\s*)\S+/gi, '$1$2<REDACTED>');
+      } finally { await file.close(); }
+    };
+    const run = join(f.root, '.cland/run/suites', job.id);
+    const status = await f.ui.request({type:'hub.status',history:true});
+    const diagnostics = { job: job.id, admission: (status.value as HubStatus).suites?.find(row=>row.id===job.id), gatePublished: await stat(join(run,'ready')).then(()=>true,()=>false), preArmProbe: await tail(preArmProbe), armed: await tail(armed), snapshotPublished: await stat(snapshot).then(() => true, () => false), nativeCompletion: await tail(join(run,'result.json')), logTail: await tail(join(run,'suite.log')), hubLogTail: await tail(join(f.root,'.cland/log/hub.log')) };
+    throw new Error(`${error.message}; incomplete pipe-holder setup: ${JSON.stringify(diagnostics)}`, { cause: error });
+  });
+}
+
+test('verify reaps fast-exit inherited-pipe writers and preserves unrelated processes', async t => {
+  const owner = await fastExitFixture(t, false);
+  const {f, preArmProbe} = owner;
   const foreign = spawn(process.execPath, ['-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], { env: fixtureEnvironment(f.root, process.env),cwd:f.root, detached:true, stdio:'ignore'});
   ownProcess(t, foreign.pid);
   const job = await f.launch();
-  const pids = await eventually('fast pipe holder started after snapshot', () => readFile(marker,'utf8').then(text=>JSON.parse(text) as {parent:number;child:number},()=>undefined));
+  const pids = await fastExitPids(owner, job);
   ownProcess(t,pids.parent);ownProcess(t,pids.child);
   await eventually('fast parent exited with its unverified pipe holder alive',()=>!pidAlive(pids.parent)&&pidAlive(pids.child)?true:undefined);
+  await assert.rejects(stat(preArmProbe), {code:'ENOENT'}, 'fixture wrapper never intercepted worker admission');
   const result = await eventually('fast-exit writer reaped before terminal result', async () => (await f.results()).find(m => m.id === `suite:${job.id}`), 30000);
   assert.match(result.text, /exit 1.*stalled:/);
   assert.equal(pidAlive(pids.child), false, 'kernel-proven writer is reaped despite lost ancestry');
@@ -338,91 +396,15 @@ test('native stdio census proves a writer and refuses changed birth', async t =>
 });
 
 test('verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor', async t => {
-  const PIPE_HOLDER_SETUP_MS = testWaitMs();
-  const ADMISSION_PROBE_DELAY_MS = 3500;
-  const STALL_TIMEOUT = '3s';
+  const owner = await fastExitFixture(t, true);
+  const {f, preArmProbe, denied} = owner;
   const CLEANUP_RECEIPT_MS = 30_000;
   const RESULT_RECEIPT_MS = 20_000;
-  // T3: real parent exit/reparenting determines whether the worker can prove pipe ownership.
-  const bin = await tempProject(t, 'cland-fast-exit-ps-');
-  const preArmProbe = join(bin, 'pre-arm-ps');
-  // cland-allow-child-env: read-only which lookup for the process-table wrapper; no account or Git operation
-  const ps = (await promisify(execFile)('which', ['ps'])).stdout.trim();
-  const preload = join(bin, 'deny-endpoint.mjs');
-  const denied = join(bin, 'endpoint-denied');
-  const armed = join(bin, 'armed'); const snapshot = join(bin, 'snapshot');
-  await writeFile(preload, `import cp from 'node:child_process'; import {syncBuiltinESMExports} from 'node:module'; import {existsSync,writeFileSync} from 'node:fs';
-const original=cp.spawn;
-cp.spawn=(bin,args,options)=>{
-  const inspector=bin==='/usr/bin/perl' && args?.[0]==='-e' && options?.stdio?.length===5 && options.stdio[3]?.readable && options.stdio[4]?.readable;
-  if(inspector) writeFileSync(${JSON.stringify(denied)},'denied');
-  const observing=bin==='ps' && process.argv[1]?.endsWith('/hub/suite-worker.ts') && existsSync(${JSON.stringify(armed)});
-  return original(observing ? ${JSON.stringify(join(bin,'ps'))} : bin, inspector ? ['-e','exit 1'] : args, options);
-};
-syncBuiltinESMExports();`);
-  await writeFile(join(bin, 'ps'), `#!${process.execPath}
-import {spawnSync} from 'node:child_process'; import {existsSync,readFileSync,writeFileSync,renameSync} from 'node:fs';
-import {pidAlive} from ${JSON.stringify(new URL('../src/project.ts', import.meta.url).href)};
-import {parseProcessTable} from ${JSON.stringify(new URL('../src/process-table.ts', import.meta.url).href)};
-const args=process.argv.slice(2);
-const requested=args[0]==='--fixture-snapshot'; if(requested) args.shift();
-// A deliberate pre-admission trap: this wrapper must never serve the executor's
-// non-self identity probe, whose production deadline is 3s.
-if (!existsSync(${JSON.stringify(armed)}) && args.includes('pid=,lstart=') && args.at(-1)!==String(process.ppid)) {
-  writeFileSync(${JSON.stringify(preArmProbe)},JSON.stringify({pid:process.pid,parent:process.ppid,args}));
-  await new Promise(resolve=>setTimeout(resolve,${ADMISSION_PROBE_DELAY_MS}));
-}
-const frozen=existsSync(${JSON.stringify(snapshot)}) ? JSON.parse(readFileSync(${JSON.stringify(snapshot)},'utf8')) : null;
-// Only setup uses a frozen pre-child table. After native parent exit all product
-// cleanup/census calls see fresh rows, including the real reparented writer.
-if (!requested && args.includes('-e') && frozen && pidAlive(frozen.parent)) {
-  process.stdout.write(frozen.stdout);
-} else {
-  const result=spawnSync(${JSON.stringify(ps)},args,{encoding:'utf8',maxBuffer:32*1024*1024});
-  if(requested) {
-    const parent=Number(readFileSync(${JSON.stringify(armed)},'utf8'));
-    if(result.status!==0 || !parseProcessTable(result.stdout).some(row=>row.pid===parent)) throw new Error('fixture pre-child snapshot missing parent');
-    writeFileSync(${JSON.stringify(snapshot + '.prepared')},JSON.stringify({parent,stdout:result.stdout}));
-    renameSync(${JSON.stringify(snapshot + '.prepared')},${JSON.stringify(snapshot)});
-  }
-  process.stdout.write(result.stdout ?? ''); process.stderr.write(result.stderr ?? '');
-  process.exitCode=result.status ?? 1;
-}`, {mode:0o700});
-  const f = await fixture(t, `${process.execPath} fast-parent.mjs`, undefined, { text: '[hygiene]\nloop_breaker_max=2\n', verification: `stall_timeout="${STALL_TIMEOUT}"` }, {NODE_OPTIONS:`--import=${preload}`});
-  const marker = join(f.root, 'fast-pids.json');
-  await writeFile(join(f.root, 'fast-parent.mjs'), `import {spawn,execFile} from 'node:child_process'; import {writeFileSync} from 'node:fs'; import {promisify} from 'node:util';
-import {fixtureEnvironment} from ${JSON.stringify(new URL('./fixture-environment.ts', import.meta.url).href)};
-import {processTableArgs} from ${JSON.stringify(new URL('../src/process-table.ts', import.meta.url).href)};
-const heartbeat=setInterval(()=>console.log('preparing fixture ownership snapshot'),100);
-try {
-writeFileSync(${JSON.stringify(armed)},String(process.pid));
-// This explicit setup receipt does not depend on the periodic product observer.
-await promisify(execFile)(${JSON.stringify(join(bin,'ps'))},['--fixture-snapshot',...processTableArgs()],{env:fixtureEnvironment(${JSON.stringify(f.root)},process.env),timeout:${PIPE_HOLDER_SETUP_MS},maxBuffer:32*1024*1024});
-const child=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{env:fixtureEnvironment(${JSON.stringify(f.root)},process.env),detached:true,stdio:'inherit'});
-writeFileSync(${JSON.stringify(marker)},JSON.stringify({parent:process.pid,child:child.pid}));
-} finally {clearInterval(heartbeat);}
-process.exit(0);`);
   const foreign = spawn(process.execPath, ['-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], { env: fixtureEnvironment(f.root, process.env),cwd:f.root, detached:true, stdio:'ignore'});
   ownProcess(t, foreign.pid);
   for (let n=0;n<3;n++) await f.spoke.call('send',{to:['rev'],topic:f.topic,text:`seed ${n}`});
   const job = await f.launch();
-  const pids = await eventually('fast pipe holder started after snapshot', () => readFile(marker,'utf8').then(text=>JSON.parse(text) as {parent:number;child:number},()=>undefined), PIPE_HOLDER_SETUP_MS).catch(async error => {
-    // Preserve bounded producer facts before fixture disposal removes them.
-    const tail = async (path: string) => {
-      const file = await open(path, 'r').catch(() => undefined);
-      if (!file) return 'missing';
-      try {
-        const size = (await file.stat()).size;
-        const bytes = Buffer.alloc(Math.min(size, 4096));
-        const { bytesRead } = await file.read(bytes, 0, bytes.length, Math.max(0, size - bytes.length));
-        return bytes.subarray(0, bytesRead).toString('utf8').replace(/(Bearer\s+)\S+|((?:token|secret|api[_-]?key)\s*[=:]\s*)\S+/gi, '$1$2<REDACTED>');
-      } finally { await file.close(); }
-    };
-    const run = join(f.root, '.cland/run/suites', job.id);
-    const status = await f.ui.request({type:'hub.status',history:true});
-    const diagnostics = { job: job.id, admission: (status.value as HubStatus).suites?.find(row=>row.id===job.id), gatePublished: await stat(join(run,'ready')).then(()=>true,()=>false), preArmProbe: await tail(preArmProbe), armed: await tail(armed), snapshotPublished: await stat(snapshot).then(() => true, () => false), nativeCompletion: await tail(join(run,'result.json')), logTail: await tail(join(run,'suite.log')), hubLogTail: await tail(join(f.root,'.cland/log/hub.log')) };
-    throw new Error(`${error.message}; incomplete pipe-holder setup: ${JSON.stringify(diagnostics)}`, { cause: error });
-  });
+  const pids = await fastExitPids(owner, job);
   ownProcess(t,pids.parent);ownProcess(t,pids.child);
   await eventually('fast parent exited with its unverified pipe holder alive',()=>!pidAlive(pids.parent)&&pidAlive(pids.child)?true:undefined);
   await assert.rejects(stat(preArmProbe), {code:'ENOENT'}, 'fixture wrapper never intercepted worker admission');

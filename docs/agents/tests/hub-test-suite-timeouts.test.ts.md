@@ -17,6 +17,11 @@ The original A-19248 stopping point is inferred, not proven: its fixture content
 were already removed. The repair removes the observation dependency without
 classifying the failed 48.705-second case as a passing latency sample.
 
+Both fast-exit cases use the shared `fastExitFixture` and `fastExitPids` setup
+and bounded failure diagnostics. The native-census case allows the endpoint
+inspector; the denied-census case refuses it. Both retain their product-owned
+post-exit observations and assertions.
+
 The fixture leaves the hub and worker launch `PATH` unchanged. Its preload
 redirects `ps` only in the suite worker after the parent's armed receipt; the
 parent requests its snapshot through the wrapper's absolute path. A controlled
@@ -58,8 +63,8 @@ runner uses `runnerFixtureEnvironment` after its final control overlay.
 The phase-sweep backstop is covered separately in
 [suite-runner.test.ts](hub-test-suite-runner.test.ts.md).
 
-The fast-exit writer regression holds a pre-child ps snapshot until the parent
-exits, preventing ancestry capture. The exact verifier result precedes assertions
+The fast-exit writer regressions serve the explicit pre-child ps snapshot while
+the parent lives, preventing ancestry capture. The exact verifier result precedes assertions
 of native writer death and unrelated same-cwd process survival.
 Run on macOS and on a Linux droplet. The denied-census control preloads a sealed
 spawn wrapper that fails only the endpoint inspector; it retains the incomplete
