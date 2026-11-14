@@ -1,5 +1,14 @@
 # hub/test/suite-recovery.test.ts
 
+T-1846's racing-hand-holder case pauses the worker immediately before creation
+of its compatibility queue directory, using a fixture-only preload. Do not hold
+its native self-identity probe: that probe has a production 3-second deadline,
+so a delayed fixture release can prevent ticket publication altogether.
+The pause receipt and FIFO ticket use `FIFO_SETUP_MS = testWaitMs(45_000)`.
+The ticket remains the positive acquisition receipt; cancellation still requires
+the exact job result, empty queue, dead worker, retained hand lock, absent command
+marker and one result. The release is in `finally` and the preload hold is bounded.
+
 T3 owns crashed-worker and package-runner recovery. The recreated-root scenario
 kills the runner, then lets its fake child create a different inode at the
 recorded path. Retain the original directory to prevent inode reuse. Require

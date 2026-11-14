@@ -14095,32 +14095,32 @@
       "reason": "Retains nine native lifecycle cases for child parsing, pool cwd/thread/history migration, merge process stops and real-hub restart usage/progress persistence pending T-707/T-708. Measured 65.366899003 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation. raised for load headroom (T-929)"
     },
     "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (claude-code, keep_context=false)": {
-      "seconds": 14.240521,
-      "owner": "E-880",
-      "added": "2026-10-20",
-      "expires": "2026-11-19",
-      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 6.502511 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh. raised for load headroom (T-929)"
+      "seconds": 19,
+      "owner": "C-216",
+      "added": "2026-11-14",
+      "expires": "2026-11-21",
+      "reason": "T-1846: worst retained passing sample 7.570495666s; ceil(2.5x) per Coordinator native/ordinary brief. All 3 passing samples, source heads/argv/hash limitations and production checker replay in A-19250 (plus A-19242/A-19248). Includes setup/joined cleanup, excludes Node startup/slot wait. Qualified three-file deviation retained for maxima only, excluded from paired coverage. darwin arm64 Node24.21, local; Linux unexecuted; no browser/provider. Duration policy report mode."
     },
     "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (claude-code, keep_context=true)": {
-      "seconds": 12.7,
-      "owner": "E-880",
-      "added": "2026-10-24",
-      "expires": "2026-11-23",
-      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 7.010713 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh. D71/D72 enforce migration: observed peak 10.136178817 s in A-6792; cap 12.7 s provides 25% headroom rounded up to 0.1 s. Renewed on 2026-10-24 under D72 (legacy owner E-880, at most 31 days): it was still unfixed at expiry, and the v0.2.0 release covers must plan shards."
+      "seconds": 25,
+      "owner": "C-216",
+      "added": "2026-11-14",
+      "expires": "2026-11-21",
+      "reason": "T-1846: worst retained passing sample 9.990024833s; ceil(2.5x) per Coordinator native/ordinary brief. All 3 passing samples, source heads/argv/hash limitations and production checker replay in A-19250 (plus A-19242/A-19248). Includes setup/joined cleanup, excludes Node startup/slot wait. Qualified three-file deviation retained for maxima only, excluded from paired coverage. darwin arm64 Node24.21, local; Linux unexecuted; no browser/provider. Duration policy report mode."
     },
     "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (opencode, keep_context=false)": {
-      "seconds": 7.880564,
-      "owner": "E-880",
-      "added": "2026-10-20",
-      "expires": "2026-11-19",
-      "reason": "Retains real OpenCode server, reset native session, moved cwd, merge cleanup and artifact-brief delivery proofs pending T-708. Measured 5.906562081 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation. raised for load headroom (T-929)"
+      "seconds": 20,
+      "owner": "C-216",
+      "added": "2026-11-14",
+      "expires": "2026-11-21",
+      "reason": "T-1846: worst retained passing sample 7.6382924999999995s; ceil(2.5x) per Coordinator native/ordinary brief. All 10 passing samples, source heads/argv/hash limitations and production checker replay in A-19250 (plus A-19242/A-19248). Includes setup/joined cleanup, excludes Node startup/slot wait. Qualified three-file deviation retained for maxima only, excluded from paired coverage. darwin arm64 Node24.21, local; Linux unexecuted; no browser/provider. Duration policy report mode."
     },
     "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (opencode, keep_context=true)": {
-      "seconds": 9.222696,
-      "owner": "E-880",
-      "added": "2026-10-20",
-      "expires": "2026-11-19",
-      "reason": "Retains real OpenCode server, native-session cwd, history retention, merge cleanup and brief delivery proofs pending T-708. Measured 6.967526643 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation. raised for load headroom (T-929)"
+      "seconds": 29,
+      "owner": "C-216",
+      "added": "2026-11-14",
+      "expires": "2026-11-21",
+      "reason": "T-1846: worst retained passing sample 11.525390250000001s; ceil(2.5x) per Coordinator native/ordinary brief. All 9 passing samples, source heads/argv/hash limitations and production checker replay in A-19250 (plus A-19242/A-19248). Includes setup/joined cleanup, excludes Node startup/slot wait. Qualified three-file deviation retained for maxima only, excluded from paired coverage. darwin arm64 Node24.21, local; Linux unexecuted; no browser/provider. Duration policy report mode."
     },
     "hub/test/session-native-lifecycle.test.ts::codex: three progress notes start no turn, one ordered digest reaches the next report, including across restart": {
       "seconds": 11.536899,
@@ -14664,11 +14664,11 @@
       "reason": "T-410 fast-exit inherited-pipe writer census: 3 s silence watchdog plus TERM/KILL/native receipts; A-14101 measured 9.727 s on Linux c-8 with 2 workers, rounded 1.5x headroom. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 15.194117459 s; A-15983 12.129831572 s; A-15991 10.91273525 s; A-15995 10.828477958 s. Cap 22.792 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
     },
     "hub/test/suite-timeouts.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": {
-      "seconds": 16.939424,
-      "owner": "E-880",
-      "added": "2026-10-20",
-      "expires": "2026-11-19",
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries. raised for load headroom (T-923)"
+      "seconds": 22,
+      "owner": "C-216",
+      "added": "2026-11-14",
+      "expires": "2026-11-21",
+      "reason": "T-1846: worst retained passing sample 14.623164625s; ceil(1.5x) per Coordinator native/ordinary brief. All 15 passing samples, source heads/argv/hash limitations and production checker replay in A-19250 (plus A-19242/A-19248). Includes setup/joined cleanup, excludes Node startup/slot wait. Qualified three-file deviation retained for maxima only, excluded from paired coverage. darwin arm64 Node24.21, local; Linux unexecuted; no browser/provider. Duration policy report mode."
     },
     "hub/test/suite-wait-metrics.test.ts::verify queue and hub status expose matching windows, configured target, and cache counts": {
       "seconds": 2.296081,
@@ -15651,6 +15651,27 @@
       "added": "2026-11-13",
       "expires": "2026-11-20",
       "reason": "T-1827 aggregates 26 isolated Web cases, including fake native Add/renew, card recovery, secrecy and real pool/inbox placement, with setup and joined cleanup. Linux x64 droplet Node24.21.0 samples: A-19151 run f15148a2 at 9376e892a measured 58.606977699s; A-19157 batch e8e3f2ee at 35fbcd8e45 (same normalized tree) measured 63.436127674s, all 26 assertions passed in each. Both retained samples replay through checkDurations. Coordinator authorized this file-only allowance; 96s rounds up 1.5x the worst Linux sample (95.154191511s) for full-suite timing variation. Individual test allowances and report-mode tier budgets remain unchanged."
+    },
+    "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (codex, keep_context=true)": {
+      "seconds": 19,
+      "owner": "C-216",
+      "added": "2026-11-14",
+      "expires": "2026-11-21",
+      "reason": "T-1846: worst retained passing sample 7.568320292s; ceil(2.5x) per Coordinator native/ordinary brief. All 3 passing samples, source heads/argv/hash limitations and production checker replay in A-19250 (plus A-19242/A-19248). Includes setup/joined cleanup, excludes Node startup/slot wait. Qualified three-file deviation retained for maxima only, excluded from paired coverage. darwin arm64 Node24.21, local; Linux unexecuted; no browser/provider. Duration policy report mode."
+    },
+    "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (codex, keep_context=false)": {
+      "seconds": 17,
+      "owner": "C-216",
+      "added": "2026-11-14",
+      "expires": "2026-11-21",
+      "reason": "T-1846: worst retained passing sample 6.713797292000001s; ceil(2.5x) per Coordinator native/ordinary brief. All 3 passing samples, source heads/argv/hash limitations and production checker replay in A-19250 (plus A-19242/A-19248). Includes setup/joined cleanup, excludes Node startup/slot wait. Qualified three-file deviation retained for maxima only, excluded from paired coverage. darwin arm64 Node24.21, local; Linux unexecuted; no browser/provider. Duration policy report mode."
+    },
+    "hub/test/suite-recovery.test.ts::cancel removes an admitted worker’s compatibility FIFO ticket without releasing a racing hand holder": {
+      "seconds": 6,
+      "owner": "C-216",
+      "added": "2026-11-14",
+      "expires": "2026-11-21",
+      "reason": "T-1846: worst retained passing sample 3.840148166s; ceil(1.5x) per Coordinator native/ordinary brief. All 10 passing samples, source heads/argv/hash limitations and production checker replay in A-19250 (plus A-19242/A-19248). Includes setup/joined cleanup, excludes Node startup/slot wait. Qualified three-file deviation retained for maxima only, excluded from paired coverage. darwin arm64 Node24.21, local; Linux unexecuted; no browser/provider. Duration policy report mode."
     }
   }
 }

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, realpath, stat, rm, readdir, utimes } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, testWaitMs, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
 import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
@@ -305,37 +305,39 @@ process.exitCode = await runSuite([], ${JSON.stringify({ cwd: f.root, lockDirs: 
 });
 
 test('cancel removes an admitted worker’s compatibility FIFO ticket without releasing a racing hand holder', async t => {
+  const FIFO_SETUP_MS = testWaitMs(45_000);
   const bin = await tempProject(t, 'cland-worker-lease-race-');
-  // cland-allow-child-env: read-only OS identity/tool-discovery probe; no account, provider or Git operation
-  const ps = (await promisify(execFile)('which', ['ps'])).stdout.trim();
-  const hold = join(bin, 'hold-worker');
   const entered = join(bin, 'worker-held');
   const release = join(bin, 'release-worker');
-  await writeFile(join(bin, 'ps'), `#!${process.execPath}
-import { existsSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
-import { setTimeout as pause } from 'node:timers/promises';
-const args = process.argv.slice(2);
-// Startup no longer warms the hub's async self probe. Hold only the worker's
-// self probe, so admission can still read the hub's own identity.
-const parent = spawnSync(${JSON.stringify(ps)}, ['-o', 'command=', '-p', String(process.ppid)], { encoding: 'utf8' });
-if (existsSync(${JSON.stringify(hold)}) && args.at(-1) === String(process.ppid) && parent.stdout?.includes('/hub/suite-worker.ts')) {
-  writeFileSync(${JSON.stringify(entered)}, String(process.ppid));
-  while (!existsSync(${JSON.stringify(release)})) await pause(25);
-}
-const result = spawnSync(${JSON.stringify(ps)}, args, { stdio: 'inherit' });
-process.exitCode = result.status ?? 1;
-`, { mode: 0o700 });
-  const f = await fixture(t, 'node -e "require(\'fs\').writeFileSync(\'admitted\',\'yes\')"', undefined, '', { PATH: `${bin}:${process.env.PATH ?? ''}` });
-  await writeFile(hold, 'hold');
+  const preload = join(bin, 'hold-acquisition.mjs');
+  // Hold the acquisition boundary itself. Holding ps consumes its production
+  // 3s identity deadline and can make ticket publication impossible under load.
+  await writeFile(preload, `import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+const original = fs.mkdirSync;
+fs.mkdirSync = (path, ...args) => {
+  if (process.argv[1]?.endsWith('/hub/suite-worker.ts') && String(path).endsWith('/suite.lock.queue')) {
+    fs.writeFileSync(${JSON.stringify(entered)}, String(process.pid));
+    const deadline = Date.now() + ${FIFO_SETUP_MS};
+    while (!fs.existsSync(${JSON.stringify(release)})) {
+      if (Date.now() >= deadline) throw new Error('fixture acquisition release missing');
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+    }
+  }
+  return original(path, ...args);
+};
+syncBuiltinESMExports();`);
+  const f = await fixture(t, 'node -e "require(\'fs\').writeFileSync(\'admitted\',\'yes\')"', undefined, '', { NODE_OPTIONS: `--import=${preload}` });
   const job = await f.launch();
   const pid = await f.workerPid(job.id);
   assert.ok(pid);
-  await eventually('worker paused before compatibility acquisition', async () => readFile(entered, 'utf8').then(enteredPid => Number(enteredPid) === pid ? true : undefined, () => undefined));
   const lock = join(f.root, 'suite.lock');
-  try { await mkdir(lock); }
+  try {
+    await eventually('worker paused before compatibility acquisition', async () => readFile(entered, 'utf8').then(enteredPid => Number(enteredPid) === pid ? true : undefined, () => undefined), FIFO_SETUP_MS);
+    await mkdir(lock);
+  }
   finally { await writeFile(release, 'release'); }
-  await eventually('admitted worker has a legacy FIFO ticket', async () => readdir(`${lock}.queue`).then(files => files.length === 1 ? true : undefined, () => undefined));
+  await eventually('admitted worker has a legacy FIFO ticket', async () => readdir(`${lock}.queue`).then(files => files.length === 1 ? true : undefined, () => undefined), FIFO_SETUP_MS);
   const cancelled = await clandWithEnv(f.root, f.env, 'verify', 'cancel', job.id, '--json');
   assert.equal(cancelled.code, 0, cancelled.stderr);
   const result = await eventually('queued worker cancellation posted', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));

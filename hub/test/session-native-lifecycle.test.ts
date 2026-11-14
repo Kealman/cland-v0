@@ -10,10 +10,12 @@ import { existsSync } from 'node:fs';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { nativeProjectHub as projectHub, spawnSpoke, clandWithEnv, withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { nativeProjectHub as projectHub, spawnSpoke, clandWithEnv, withDiscoveredPid, cland, connectUi, eventually, testWaitMs, fakeClaude, fakeCodex, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, SessionUsage } from '../src/protocol.ts';
 const CODEX_LAUNCH_MS = 30_000;
+// Setup includes Git worktree creation and native harness discovery under load.
+const POOL_LAUNCH_SETUP_MS = testWaitMs(30_000);
 // Shorten the existing publication window without changing usage/journal behavior.
 function startUsageDaemon(t: TestContext, root: string, env: Record<string, string>, usageEventMs = 100, serve: typeof projectHub | typeof startDaemon = projectHub) {
   return serve(t, root, { ...env, CLAND_TEST_USAGE_EVENT_MS: String(usageEventMs) });
@@ -62,7 +64,7 @@ test(`an Implementer pool moves to the next task worktree after merge (${harness
   const first = await create('First pooled item');
   const second = await create('Second pooled item');
   type Launch = { process: HarnessProcessView; claim: { sessionId: string; session: string }; worktree: { path: string; branch: string } };
-  const launched = await ui.request({ type: 'session.launch', name: 'pooled-impl', role: 'implementer', harness, item: first, brief: keepContext ? 'spawn subagents' : undefined });
+  const launched = await ui.request({ type: 'session.launch', name: 'pooled-impl', role: 'implementer', harness, item: first, brief: keepContext ? 'spawn subagents' : undefined }, POOL_LAUNCH_SETUP_MS);
   assert.equal(launched.ok, true, launched.error);
   const one = launched.value as Launch;
   const launchModel = one.process.model;

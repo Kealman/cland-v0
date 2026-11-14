@@ -1,5 +1,22 @@
 # hub/test/suite-timeouts.test.ts
 
+T-1846 separates denied-census fast-exit setup from the 3-second production stall
+watchdog. `PIPE_HOLDER_SETUP_MS = testWaitMs()` uses the shared 15-second default.
+The parent explicitly requests and atomically publishes its pre-child native ps
+snapshot before spawning the writer, with a heartbeat during the asynchronous
+request. Startup no longer depends on a successful periodic product inspection.
+The wrapper serves that table only while the native parent lives; after parent
+exit the product inspects fresh rows for its own census, cleanup and reporting.
+The watchdog, cleanup receipt and result waits retain their exact values.
+Keep incomplete-cleanup warning uniqueness, preserved unverified/foreign writers,
+muted result and successor admission assertions. A setup timeout is incomplete
+evidence, not a measured watchdog latency. Its permanent failure diagnostic
+retains the job id, armed/snapshot facts, native completion record (or `missing`)
+and at most 4096 bytes each of completion/log tail before fixture disposal.
+The original A-19248 stopping point is inferred, not proven: its fixture contents
+were already removed. The repair removes the observation dependency without
+classifying the failed 48.705-second case as a passing latency sample.
+
 This T3 file proves real verifier command stalls, per-test timeouts and process
 tree termination. Keep the hung fixture's normal timeout check and its setup and
 assertion failure controls together. The generated hung worker persists its own

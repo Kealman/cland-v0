@@ -1,5 +1,13 @@
 # hub/test/session-native-lifecycle.test.ts
 
+T-1846 gives the initial pooled launch reply a named `POOL_LAUNCH_SETUP_MS`
+(`testWaitMs(30_000)`) budget for Git worktree creation and native discovery.
+The reply completes setup; PID discovery, persisted native directory/history,
+claim release and brief delivery still prove the lifecycle behaviour separately.
+Run each OpenCode context setting five times in fresh processes under the
+machine-wide preservation lock, with CLAND variables stripped and no HOME or
+TMPDIR overlay. Record scratch socket inventories before and after.
+
 The progress-digest reply follows T-360's fake Codex contract: answer the last
 human or agent delivery (the report), with its topic and `replyTo` id. The old
 expectation of a pong for the first progress note predates that contract. Keep
