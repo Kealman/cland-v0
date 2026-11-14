@@ -188,9 +188,11 @@
       "A-19362",
       "A-19395",
       "A-19409",
-      "A-19429"
+      "A-19429",
+      "A-19430",
+      "A-19434"
     ],
-    "commit": "8d243a419638b2ca1401d7f44566d2320fe9de1c"
+    "commit": "932f3018c335d620fc6afd268c5f9abb846c9d13"
   },
   "budget": {
     "testSeconds": 5,
@@ -4107,6 +4109,22 @@
     "hub/test/git-daemon-stop.test.ts": {
       "seconds": 0.001131,
       "tests": 5
+    },
+    "hub/test/doctor-hosts.test.ts": {
+      "seconds": 3.727486,
+      "tests": 9
+    },
+    "hub/test/host-provider-tokens.test.ts": {
+      "seconds": 0.767598,
+      "tests": 4
+    },
+    "hub/test/host-tunnel-control.test.ts": {
+      "seconds": 0.271414,
+      "tests": 4
+    },
+    "hub/test/setup-hosts.test.ts": {
+      "seconds": 2.677536,
+      "tests": 33
     }
   },
   "tests": {
@@ -12247,7 +12265,66 @@
     "hub/test/opencode-policy.test.ts::fake OpenCode session publication keeps a complete record during a partial write": 0.000609,
     "hub/test/login-terminal.test.ts::setup terminal runner captures hub-assigned login with held completion cleanup": 0.101327,
     "hub/test/login-terminal.test.ts::setup terminal runner captures hub-assigned login with success": 0.112744,
-    "hub/test/setup-flow.test.ts::C1 agent hosts runs after remote steps and before the Aide": 0.003288
+    "hub/test/setup-flow.test.ts::C1 agent hosts runs after remote steps and before the Aide": 0.003288,
+    "hub/test/doctor-hosts.test.ts::C1/C6 doctor reads hub token presence=false without provider calls": 0.570933,
+    "hub/test/doctor-hosts.test.ts::C1/C6 doctor reads hub token presence=true without provider calls": 0.391925,
+    "hub/test/doctor-hosts.test.ts::C2 doctor names a changed lock and the image prepare command": 0.348491,
+    "hub/test/doctor-hosts.test.ts::C3 doctor counts actual exclusive logins only for placed harnesses": 0.348078,
+    "hub/test/doctor-hosts.test.ts::C3 doctor counts actual key logins only for placed harnesses": 0.381355,
+    "hub/test/doctor-hosts.test.ts::C3 doctor counts actual shared logins only for placed harnesses": 0.344005,
+    "hub/test/doctor-hosts.test.ts::C3/C4/C5 doctor reports free and signed-out logins, outage start and 80 percent spend": 0.720102,
+    "hub/test/doctor-hosts.test.ts::C7 doctor reports no pool and hub-backed unknowns with their fix": 0.302789,
+    "hub/test/doctor-hosts.test.ts::doctor accepts the previous host status shape and labels missing outage and spend unknown": 0.319808,
+    "hub/test/executor-prepare-component.test.ts::delivery retries a failed bundle with timed attempts and keeps exhausted delivery inconclusive": 0.262026,
+    "hub/test/host-provider-tokens.test.ts::C1/C3 provider diagnostics expose only the hub token fingerprint without provider requests": 0.16815,
+    "hub/test/host-provider-tokens.test.ts::C2 provider diagnostics distinguish absent tokens and providers needing none": 0.127477,
+    "hub/test/host-provider-tokens.test.ts::C4 provider diagnostics refuse sessions authenticated web and remote ingress": 0.201311,
+    "hub/test/host-provider-tokens.test.ts::setup reads unconfigured DigitalOcean token with additive filter and no provider calls": 0.27066,
+    "hub/test/host-tunnel-control.test.ts::tunnel control refuses foreign-directory before contacting its master": 0.099463,
+    "hub/test/host-tunnel-control.test.ts::tunnel control refuses foreign-pool before contacting its master": 0.054022,
+    "hub/test/host-tunnel-control.test.ts::tunnel control refuses foreign-project before contacting its master": 0.062421,
+    "hub/test/host-tunnel-control.test.ts::tunnel control refuses marker-alias before contacting its master": 0.055508,
+    "hub/test/hub-cards.test.ts::trusted sign-in login identity survives inbox history and closure without native payload fields": 0.108383,
+    "hub/test/merge-recovery.test.ts::daemon retains storage and lock until a timed-out prune settles (earlyFailure=false)": 0.351305,
+    "hub/test/merge-recovery.test.ts::daemon retains storage and lock until a timed-out prune settles (earlyFailure=true)": 0.22694,
+    "hub/test/merge-recovery.test.ts::merge stop retains every prune writer (timeout=false, throwingLog=false)": 0.29658,
+    "hub/test/merge-recovery.test.ts::merge stop retains every prune writer (timeout=false, throwingLog=true)": 0.169346,
+    "hub/test/merge-recovery.test.ts::merge stop retains every prune writer (timeout=true, throwingLog=false)": 0.16348,
+    "hub/test/merge-recovery.test.ts::merge stop retains every prune writer (timeout=true, throwingLog=true)": 0.159732,
+    "hub/test/setup-hosts.test.ts::C1 agent hosts offer defaults No and decline writes nothing": 0.000442,
+    "hub/test/setup-hosts.test.ts::C2 existing pool nonterminal and failed-read guidance never resets settings or placed roles": 0.000713,
+    "hub/test/setup-hosts.test.ts::C2 no terminal skips untouched hosts with exact pool and role commands without writes": 0.000199,
+    "hub/test/setup-hosts.test.ts::C2 yes skips agent hosts with and without a terminal": 0.000316,
+    "hub/test/setup-hosts.test.ts::C3/C4 paid pool consent names defaults and only yes writes and reloads": 0.001154,
+    "hub/test/setup-hosts.test.ts::C3/C5 socket setup persists pool and role through shared setters without leaking token": 0.420326,
+    "hub/test/setup-hosts.test.ts::C5 configured ready DigitalOcean pool still needs the hub token before ok": 0.000334,
+    "hub/test/setup-hosts.test.ts::C5 missing hub token stops before roles and asks for hub environment and restart": 0.000361,
+    "hub/test/setup-hosts.test.ts::C6 configured pool with ready placed-role logins asks nothing, even with yes": 0.000492,
+    "hub/test/setup-hosts.test.ts::C6 old hub reply without role eligibility leaves readiness unknown and open": 0.000346,
+    "hub/test/setup-hosts.test.ts::C6 role eligibility shares freeCount with account pins and preserves plain status shape": 0.148625,
+    "hub/test/setup-hosts.test.ts::setup metadata filter reads the unconfigured provider without changing the old reply": 0.000427,
+    "hub/test/setup-hosts.test.ts::T1831 accepted image offer publishes the fake pool image through the setup socket client": 0.173171,
+    "hub/test/setup-hosts.test.ts::T1831 builder c-16 uses declared price or remains open": 0.001011,
+    "hub/test/setup-hosts.test.ts::T1831 builder unpriced uses declared price or remains open": 0.000326,
+    "hub/test/setup-hosts.test.ts::T1831 C1 C3 image build consent false names paid machine and defaults No": 0.001284,
+    "hub/test/setup-hosts.test.ts::T1831 C1 C3 image build consent true names paid machine and defaults No": 0.000586,
+    "hub/test/setup-hosts.test.ts::T1831 C2 C4 terminal login exit 0 reports durable state and recovery": 0.00108,
+    "hub/test/setup-hosts.test.ts::T1831 C2 C4 terminal login exit 1 reports durable state and recovery": 0.000401,
+    "hub/test/setup-hosts.test.ts::T1831 C2 C4 terminal login exit 130 reports durable state and recovery": 0.000333,
+    "hub/test/setup-hosts.test.ts::T1831 C5 configured nonterminal pool reports image and missing harness commands without effects": 0.007455,
+    "hub/test/setup-hosts.test.ts::T1831 C5 configured nonterminal yes retains exact commands when hub reads fail": 0.000604,
+    "hub/test/setup-hosts.test.ts::T1831 image consent refuses changed paid terms before effects": 0.000938,
+    "hub/test/setup-hosts.test.ts::T1831 login consent refuses changed paid terms before effects": 0.000421,
+    "hub/test/setup-hosts.test.ts::T1831 named login lookup bounds retained inventory work and preserves unfiltered arrays": 1.453604,
+    "hub/test/setup-hosts.test.ts::T1831 named lookup accepts the previous unfiltered login.list wire shape": 0.008097,
+    "hub/test/setup-hosts.test.ts::T1831 pre-admission refusal retains add guidance without inventing a signin name": 0.000621,
+    "hub/test/setup-hosts.test.ts::T1831 ready logins still require a current image before ok": 0.000951,
+    "hub/test/setup-hosts.test.ts::T1831 ready row from another region cannot confirm terminal sign-in": 0.000503,
+    "hub/test/setup-hosts.test.ts::T1831 socket sign-in 0 persists login outcome and reaches Aide": 0.157631,
+    "hub/test/setup-hosts.test.ts::T1831 socket sign-in 1 persists login outcome and reaches Aide": 0.144419,
+    "hub/test/setup-hosts.test.ts::T1831 socket sign-in 130 persists login outcome and reaches Aide": 0.148838,
+    "hub/test/setup-hosts.test.ts::T1831 successful pinned login refreshes eligibility before unpinned and distinct-account offers": 0.001527,
+    "nvim/test/inbox-sections.test.ts::inbox retains optional sign-in login identity while rendering the existing card facts": 0.395688
   },
   "allow": {
     "hub/test/demo-release.test.ts::the detached demo watchdog confirms an active droplet losing tags during its delete": {
