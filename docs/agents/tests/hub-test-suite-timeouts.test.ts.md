@@ -17,6 +17,17 @@ The original A-19248 stopping point is inferred, not proven: its fixture content
 were already removed. The repair removes the observation dependency without
 classifying the failed 48.705-second case as a passing latency sample.
 
+The fixture leaves the hub and worker launch `PATH` unchanged. Its preload
+redirects `ps` only in the suite worker after the parent's armed receipt; the
+parent requests its snapshot through the wrapper's absolute path. A controlled
+3500ms pre-arm non-self start-probe trap exceeds the executor's native 3-second
+probe deadline, and the final test asserts that trap was never invoked. Applying
+the wrapper to the entire fixture environment instead prevents worker identity
+admission and leaves its ready gate unwritten. The outer setup error then hides
+that earlier boundary. Failure diagnostics also retain the exact job's hub
+admission outcome, ready-gate fact, trap receipt and bounded hub-log tail.
+The worker's generic gate-timeout wording is tracked separately as T-1850.
+
 This T3 file proves real verifier command stalls, per-test timeouts and process
 tree termination. Keep the hung fixture's normal timeout check and its setup and
 assertion failure controls together. The generated hung worker persists its own
