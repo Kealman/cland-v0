@@ -183,9 +183,10 @@
       "A-19116",
       "A-19120",
       "A-19131",
-      "A-19216"
+      "A-19216",
+      "A-19318"
     ],
-    "commit": "d2240269c3872ccdf7e49b99aaaa08451b5df9d4"
+    "commit": "e10b1a799870d21a1d90f4ca39f9ad9439642baf"
   },
   "budget": {
     "testSeconds": 5,
@@ -12228,7 +12229,8 @@
     "web/test/hosts-view.test.ts::Hosts Stop preserves cancellation and reports native deletion outcome: confirmed false": 1.811601,
     "web/test/hosts-view.test.ts::Hosts Stop preserves cancellation and reports native deletion outcome: confirmed true": 1.70203,
     "web/test/hosts-view.test.ts::Hosts view lists login metadata and refreshes pushed changes (desktop)": 1.513056,
-    "web/test/hosts-view.test.ts::Hosts view lists login metadata and refreshes pushed changes (phone)": 1.564441
+    "web/test/hosts-view.test.ts::Hosts view lists login metadata and refreshes pushed changes (phone)": 1.564441,
+    "hub/test/suite-remote-budget.test.ts::restored delivered leases use the durable delivery prefix without replaying collected bytes": 0.404686
   },
   "allow": {
     "hub/test/demo-release.test.ts::the detached demo watchdog confirms an active droplet losing tags during its delete": {
