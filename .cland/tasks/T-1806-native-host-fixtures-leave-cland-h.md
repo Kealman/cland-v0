@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-14T15:55:23.891Z
+updated: 2026-11-14T18:00:01.740Z
 ---
 
 ## Summary
@@ -56,3 +56,7 @@ Attribution for the ct-* class (2026-11-12): /private/tmp ct-* went 1,015 → 1,
 ### coord · 2026-11-14T15:55:23.891Z
 
 More evidence (2026-11-14): the unchanged hub/test/host-status.test.ts (and doctor-remotes in a combined run) adds two cland-h-* directories per run on macOS. Seen by impl-1829 at 14:30Z and 14:41Z (A-19382) and impl-1830 at 15:55Z; lone runs of the new doctor-hosts and setup-hosts cases had delta 0. T-1806 should land before the v0.4 release run.
+
+### coord · 2026-11-14T18:00:01.740Z
+
+More evidence (T-1831, 2026-11-14 17:59Z): hub/test/login-add.test.ts alone leaves one cland-h-* directory per run, both at the T-1831 candidate (cland-h-b7c1524e37085057fd7e) and at an isolated origin/dev baseline (cland-h-9b7a2b13ce5894e77b4c), so the leak predates T-1831. Both left in place.
