@@ -4,6 +4,7 @@ import { createServer, type Socket } from 'node:net';
 import { chmod } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { localHost } from './local.ts';
+import { stopGitDaemon } from './git-daemon-stop.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 
 /** The only environment admitted to a host's territory daemon. */
@@ -73,12 +74,10 @@ export async function startGitDaemon(options: GitDaemonOptions, chmodSocket: typ
         });
         let completed = false;
         let stopping: Promise<void> | undefined;
-        const stop = () => stopping ??= (async () => {
-          socket.destroy(); child.stdin.destroy();
-          const proof = await identity;
-          if (!completed && (!proof || !await native.stop(proof))) throw new Error('Git daemon termination incomplete');
-          await done;
-        })();
+        const stop = () => stopping ??= stopGitDaemon({
+          disconnect: () => { socket.destroy(); child.stdin.destroy(); },
+          identity, completed: () => completed, stop: proof => native.stop(proof), done,
+        });
         const done = new Promise<void>(finish => child.once('close', (code, signal) => {
           completed = true;
           socket.end(() => socket.destroy());

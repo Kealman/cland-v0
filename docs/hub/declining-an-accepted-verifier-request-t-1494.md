@@ -62,7 +62,10 @@ disables automatic GC, denies deletes and caps input at 128 MiB. Eight concurren
 connections (including pending first packets) are admitted per listener/host; excess connections close and emit a fixed
 capacity refusal. Exit logs contain host, connection, duration, code and signal,
 never child stderr or environment values. Close stops owned children and joins
-native close receipts. Failed permission setup after bind uses that same shutdown
+native close receipts. When identity is missing or stop returns false during an
+exit, shutdown still waits up to five seconds for the captured child's close
+receipt; missing close fails as termination incomplete. No missing identity grants
+signal authority. Failed permission setup after bind uses that same shutdown
 before reporting the original acquisition error; incomplete cleanup retains both
 errors in an aggregate. The built-ins-only `host/git-proxy.ts` takes a socket path
 before Git's host/port arguments, preserving request EOF while draining responses;
