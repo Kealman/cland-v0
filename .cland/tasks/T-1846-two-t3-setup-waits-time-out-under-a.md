@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-1500
 branch: t/T-1846-two-t3-setup-waits-time-out-under-a
 created: 2026-11-13T21:05:09.114Z
-updated: 2026-11-14T03:50:35.882Z
+updated: 2026-11-14T03:52:39.623Z
 closed: 2026-11-14T03:50:35.882Z
 ---
 
