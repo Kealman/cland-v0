@@ -33,6 +33,7 @@ const sidebar = [
     ['Topics and the inbox', 'docs/topics'],
     ['Sessions and harness access', 'docs/sessions'],
     ['Accounts and limits', 'docs/accounts'],
+    ['Hosts, pools and logins', 'docs/hosts'],
     ['Verification and release', 'docs/verification-and-release'],
     ['Web and phone', 'docs/web-and-phone'],
     ['Remote control', 'docs/remote-control'],

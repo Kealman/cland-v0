@@ -67,11 +67,11 @@ assert.deepEqual(findings([{ path: 'README.md', text: 'PENDING e-90004 and T-900
 console.log('closed-item wording lint: fixture diagnostics passed');
 
 if (process.argv.includes('--help')) {
-  console.log('Usage: node hub/test/lint-closed-item-wording.ts [--help | --self-test]\nScan README*.md throughout the repository and docs/**/*.md against .cland/tasks. Report same-line closed item references with until, stand-in, pending or later ticket wording (default tracker prefixes and T-n aliases). A same/previous-line <!-- cland-allow-closed-wording: reason --> exempts historical records or unrelated runtime wording. Unknown/open ids are ignored. In-memory fixture controls always run. --self-test skips repository reads.');
+  console.log('Usage: node hub/test/lint-closed-item-wording.ts [--help | --self-test]\nScan README*.md throughout the repository, docs/**/*.md and site/src/content/docs/**/*.md against .cland/tasks. Report same-line closed item references with until, stand-in, pending or later ticket wording (default tracker prefixes and T-n aliases). A same/previous-line <!-- cland-allow-closed-wording: reason --> exempts historical records or unrelated runtime wording. Unknown/open ids are ignored. In-memory fixture controls always run. --self-test skips repository reads.');
 } else if (!process.argv.includes('--self-test')) {
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const paths = new Set<string>();
-  for await (const path of glob(['**/README*.md', 'docs/**/*.md'], {
+  for await (const path of glob(['**/README*.md', 'docs/**/*.md', 'site/src/content/docs/**/*.md'], {
     cwd: root, exclude: ['**/node_modules/**', '**/.git/**', '**/.cland/**'],
   })) paths.add(path);
   const documents: Document[] = [];

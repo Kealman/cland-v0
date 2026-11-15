@@ -62,7 +62,8 @@ or empty records; `skill-provenance-merge.test.ts` proves native Git merge,
 `merge-tree` and one-parent squash preservation after copying the shipped skills.
 
 The closed-item wording guard (`hub/test/lint-closed-item-wording.ts`) checks
-repository `README*.md` files and `docs/**/*.md` against `.cland/tasks/*.md`,
+repository `README*.md` files, `docs/**/*.md` and `site/src/content/docs/**/*.md`
+against `.cland/tasks/*.md`,
 excluding dependency, Git and worktree directories. It fails with file/line
 diagnostics when a line combines a closed item reference with `until`, `stand-in`,
 `pending` or `later ticket`. Default tracker prefixes and numeric `T-n` aliases

@@ -23,6 +23,8 @@ Everything cland does, one line each. Each line links to the page that explains 
 
 ## The crew
 
+- **[Hosts, pools and logins](/docs/hosts/).** Place roles on remote host pools, manage harness logins and track host spending.
+
 - **[Sessions and direct harness access](/docs/sessions/).** Every session is a real Claude Code, Codex or OpenCode session; attach to it and type into it at any time.
 - **[Roles and crew configuration](/docs/crew/).** Choose the harness, model, effort, account and permissions of every role, and how many sessions of each run.
 - **[Accounts and limits](/docs/accounts/).** The usage windows Claude Code and Codex report in one place (OpenCode has no limit data); a limited account stops new launches, and you choose what happens next.

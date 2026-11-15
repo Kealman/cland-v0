@@ -1,5 +1,6 @@
 // T1: run the site's public-documentation contract in the repository suite.
 import '../../site/test/onboarding-claims.test.ts';
+import '../../site/test/hosts-docs.test.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { configKeys } from '../src/init/config-set.ts';

@@ -52,9 +52,9 @@ against `docs/spec/v0.3.md`; these source checks do not prove native transport.
 ## Site prebuild guards
 
 The T1 entry in `hub/test/tiers.json` also imports
-`site/test/onboarding-claims.test.ts`. Every mode-free task selection includes
+`site/test/onboarding-claims.test.ts` and `site/test/hosts-docs.test.ts`. Every mode-free task selection includes
 this wrapper through whole T1, including docs-only and site-only changes; the
-site prebuild still runs both guards directly. The task-selection regression
+site prebuild still runs all site guards directly. The task-selection regression
 checks the prebuild test inventory against the wrapper imports.
 
 Onboarding keeps T-1274's accepted and rejected sentences unchanged. A condition
@@ -63,3 +63,22 @@ that can write the root. A later access condition does not excuse an
 unconditional claim. Check each Aide subject separately: a conditional first
 subject cannot excuse an unconditional second subject on the same line. A colon ends the subject clause, so the Coordinator's
 commit is not attributed to an earlier mention of the Aide.
+
+## Hosts, pools and logins
+
+T-1833's `site/test/hosts-docs.test.ts` source contract runs through this shared
+wrapper, not a separately registered wrapper. Keep the selection regression's
+inventory assertion unchanged when adding a site guard. The hosts cases check
+Features links and subject matter, command/flag vocabulary against pure CLI
+help, pool/global keys against source declarations, defaults against the pure
+pool parser and weight policy, and waiting/doctor/setup labels against emitted
+source strings. Negative controls reject invented commands, settings and flags,
+including partial flag spellings and keys in visible executable blocks.
+
+Run `node --test hub/test/remote-docs.test.ts` and
+`node --test hub/test/suite-task-selection.test.ts`. No browser, process fixture
+or hub is needed. T-1833's original missing-page red had two failures and one
+passing negative control; the first Linux verify also caught a missing shared
+wrapper import, repaired without changing the inventory assertion. The T2
+walkthrough is documented separately under `hub-test-hosts-docs-pool.test.ts.md`.
+Closed-item wording T0 also scans the site Markdown docs against the tracker.
