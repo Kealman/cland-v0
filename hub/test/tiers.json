@@ -283,6 +283,7 @@
     "hub/test/host-create-ready.test.ts": "T3",
     "hub/test/host-destroy-native.test.ts": "T3",
     "hub/test/host-destroy.test.ts": "T2",
+    "hub/test/host-fixture-cleanup.test.ts": "T3",
     "hub/test/host-flush-native.test.ts": "T3",
     "hub/test/host-flush.test.ts": "T1",
     "hub/test/host-git-daemon.test.ts": "T3",
@@ -618,6 +619,10 @@
     "hub/test/scenarios/hub-lifecycle.test.ts": {
       "tier": "T3",
       "scenario": "hub-lifecycle"
+    },
+    "hub/test/scenarios/integrated-v04.test.ts": {
+      "tier": "T3",
+      "scenario": "integrated-v04"
     },
     "hub/test/scenarios/message-tracer.test.ts": {
       "tier": "T3",

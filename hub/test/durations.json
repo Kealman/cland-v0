@@ -15833,6 +15833,21 @@
       "expires": "2026-11-21",
       "reason": "T-1846: worst retained passing sample 6.713797292000001s; ceil(2.5x) per Coordinator native/ordinary brief. All 3 passing samples, source heads/argv/hash limitations and production checker replay in A-19250 (plus A-19242/A-19248). Includes setup/joined cleanup, excludes Node startup/slot wait. Qualified three-file deviation retained for maxima only, excluded from paired coverage. darwin arm64 Node24.21, local; Linux unexecuted; no browser/provider. Duration policy report mode."
     },
+    "hub/test/scenarios/integrated-v04.test.ts": {
+      "file": true,
+      "seconds": 30,
+      "owner": "C-216",
+      "added": "2026-11-15",
+      "expires": "2026-11-22",
+      "reason": "T-1870 integrated five-path fake scenario. Worst retained passing file sample 19.465928885s on Linux x64 droplet, Node24.21.0, reviewed head d18c4ef793d11f59329c6e815849bc5432caaf25, run895c28b9, A-19732; 30s rounds up 1.5x. Includes Node file startup, setup and joined cleanup; excludes queue and machine wait. Earlier macOS process samples were smaller; final native preservation evidence A-19722. Scenario uses fakes and no browser. Negative-control failures excluded. C-216 and seven-day expiry authorized in the item brief; duration policy remains report mode."
+    },
+    "hub/test/scenarios/integrated-v04.test.ts::v0.4 integrated: remote login, live renewal, two users, busy restart and host sub-cap": {
+      "seconds": 28,
+      "owner": "C-216",
+      "added": "2026-11-15",
+      "expires": "2026-11-22",
+      "reason": "T-1870 native fake SSH/Claude, login cards, users projections and restart. Worst retained passing case sample 18.233833274s on Linux x64 droplet, Node24.21.0, reviewed head d18c4ef793d11f59329c6e815849bc5432caaf25, run895c28b9, A-19732; 28s rounds up 1.5x. Includes setup and joined cleanup, excludes Node file startup and queue/machine wait. Earlier passing macOS case samples were smaller. No browser; negative-control failures excluded; report mode."
+    },
     "hub/test/suite-recovery.test.ts::cancel removes an admitted worker’s compatibility FIFO ticket without releasing a racing hand holder": {
       "seconds": 6,
       "owner": "C-216",
