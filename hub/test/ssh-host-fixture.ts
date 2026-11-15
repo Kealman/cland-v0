@@ -11,17 +11,21 @@ import { SshTransport } from '../src/transport/ssh.ts';
 import { createFakeHost } from './fakes/fake-host.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { fixtureSocketPath } from '../../test-support/socket-path.ts';
+import { enableFixtureHostSockets } from '../../shared/fixture-sockets.ts';
+import { fixtureWork } from '../../test-support/fixture-work.ts';
 import { ownDirectory, cleanupOwnedProcesses, fixtureProcessCensus } from './process-cleanup.ts';
 import { eventually } from './harness.ts';
 import type { Socket } from 'node:net';
 import assert from 'node:assert/strict';
 import {FakeHostProvider} from '../src/host/provider/fake.ts';
 import {hostDirectory} from '../../shared/fake-host-directory.ts';
+import {territoryGitAsync} from '../src/territory.ts';
 import type {Machine} from '../src/host/provider/provider.ts';
-export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): void }, options: {provider?:{root?:string;project?:string;region:string};afterNativeJoin?:()=>Promise<void>;memoryIntervalMs?:number;beforeRun?:(signal:AbortSignal)=>Promise<void>;afterOperation?:(operation:string,connection:Socket)=>void;startTransport?: boolean; env?:NodeJS.ProcessEnv; processHooks?:import('../src/host/agent/processes.ts').ProcessHooks} = {}) {
+export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): void }, options: {provider?:{root?:string;project?:string;region:string};afterRepositoryInit?:(root:string,signal:AbortSignal)=>Promise<void>;afterNativeJoin?:()=>Promise<void>;memoryIntervalMs?:number;beforeRun?:(signal:AbortSignal)=>Promise<void>;afterOperation?:(operation:string,connection:Socket)=>void;startTransport?: boolean; env?:NodeJS.ProcessEnv; processHooks?:import('../src/host/agent/processes.ts').ProcessHooks} = {}) {
   const root = join(realpathSync('/tmp'), 'cland-suite-' + randomUUID()); await mkdir(root,{mode:0o700});
   const previous = process.cwd(); process.chdir(root);
   const cleanup = ownDirectory(undefined,root);
+  const work = fixtureWork();
   const db = new DatabaseSync(':memory:');
   const additional: Array<()=>Promise<void>> = [];
   let runConnection:Socket|undefined,runToken='',runGate:Promise<void>|undefined,releaseRun:(()=>void)|undefined,cancelEntered=false;
@@ -33,6 +37,9 @@ export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): v
   let machine:Machine|undefined;
   let machineDirectory:string|undefined;
   t.after(async () => {
+    // Fence synchronously, then join entire admitted JS sequences. If this
+    // bound misses, keep the root/DB/native ownership for later recovery.
+    try { await work.close(); } catch (error) { process.chdir(previous); throw error; }
     const failures:unknown[]=[];
     const attempt=async(work:()=>unknown)=>{try{await work();}catch(error){failures.push(error);}};
     holdSettlement=false;releaseRun?.();host?.quiesce();
@@ -51,25 +58,35 @@ export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): v
     process.chdir(previous);if(joined)await attempt(cleanup);
     if(failures.length)throw new AggregateError(failures,'SSH fixture cleanup incomplete');
   });
+  // The raw root is a disposable repository before socket enrollment. Callers
+  // may reinitialize or add/clone it later; local excludes survive git init and
+  // prevent alias records from becoming non-private copies in those checkouts.
+  return work.run(async (step,signal) => {
+  await step(()=>territoryGitAsync(root,['init','--initial-branch=dev'],false,undefined,fixtureEnvironment(root,process.env)));
+  if(options.afterRepositoryInit)await step(()=>options.afterRepositoryInit!(root,signal));
+  await step(()=>writeFile(join(root,'.git/info/exclude'),'/.fixture-sockets/\n'));
+  signal.throwIfAborted();
+  enableFixtureHostSockets(root);
   const providerRoot=options.provider?.root??root;
   let fake:Awaited<ReturnType<typeof createFakeHost>>;
   if(options.provider){
     const provider=new FakeHostProvider({env:fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:providerRoot})});
-    const acquired=await provider.acquire({project:options.provider.project??root,pool:'agents',region:options.provider.region,architecture:'x86_64'});
+    const acquired=await step(()=>provider.acquire({project:options.provider!.project??root,pool:'agents',region:options.provider!.region,architecture:'x86_64'}));
     if(acquired.state!=='created')throw Error('SSH fixture provider acquisition failed');machine=acquired.machine;
     const directory=hostDirectory(providerRoot,machine.id),home=join(directory,'home');machineDirectory=directory;
     fake={directory,home,run:join(home,'.cland-host/run'),knownHosts:join(directory,'known_hosts'),bootId:join(directory,'boot-id'),key:(await readFile(join(directory,'host-key.pub'),'utf8')).trim()};
-  }else fake=await createFakeHost(root,'f1');
+  }else fake=await step(()=>createFakeHost(root,'f1'));
   const address=machine?.address??'f1';
+  signal.throwIfAborted();
   const env = fixtureEnvironment(root,process.env,{ CLAND_FAKE_HOSTS:address,CLAND_FAKE_HOST_ROOT:providerRoot,CLAND_SSH_BIN:new URL('./fakes/fake-ssh.ts',import.meta.url).pathname,CLAND_HOST_BOOT_ID_FILE:fake.bootId,...options.env });
   const records = new HostRecords(db), secrets = new HostSecretStore(root,records);
   const record = secrets.register({id:'f1',address,user:'agent',clientKeyPath:join(fake.directory,'client-key'),knownHosts:`${address} ${fake.key}\n`});
   agent = await serveAgent({runDir:fake.run,secret:secrets.readSecret('f1'),version:'test',env,...(options.memoryIntervalMs===undefined?{}:{memoryIntervalMs:options.memoryIntervalMs}),runStarted:(token,connection,signal)=>{runToken=token;runConnection=connection;return options.beforeRun?.(signal);},beforeRunCancel:async()=>{if(runGate){cancelEntered=true;await runGate;}},cleanupError:error=>cleanupErrors.push(error),afterOperation:(op,connection)=>{if(op==='settle-prepared'&&holdSettlement){settlementAttempts++;connection.destroy();}if(op==='forget-claude'&&dropForgetReply){dropForgetReply=false;connection.destroy();}if(op==='remove-claude'&&dropReleaseReply){dropReleaseReply=false;connection.destroy();}if(op==='run-host'&&dropRunReply){dropRunReply=false;connection.destroy();}if(op==='commit-prepared'&&dropCommitReply){dropCommitReply=false;connection.destroy();}options.afterOperation?.(op,connection);},processHooks:{...options.processHooks,closeLog:async close=>{await close();if(failLogClose)throw new Error('synthetic descriptor close failure');}}});
-  await writeFile(join(fake.directory,'ports.json'),JSON.stringify({'12345':join(fake.home,'session.sock')}));
-  const supervisor = join(root,'supervisor'); await writeFile(supervisor,'#!/bin/sh\n[ "$1" = --check ]\n',{mode:0o700});
+  await step(()=>writeFile(join(fake.directory,'ports.json'),JSON.stringify({'12345':join(fake.home,'session.sock')})));
+  const supervisor = join(root,'supervisor'); await step(()=>writeFile(supervisor,'#!/bin/sh\n[ "$1" = --check ]\n',{mode:0o700}));
   transport = new SshTransport({root,record,secrets,hubSocket:fixtureSocketPath(root,'hub'),spokeSocket:fixtureSocketPath(root,'spoke'),remoteRun:fake.run,supervisor,agentCommand:['stub'],env});
   if (options.startTransport !== false) {
-    await transport.start(); await eventually('fake tunnel up',()=>transport!.status().state === 'up' || undefined,10000);
+    await step(()=>transport!.start()); await step(()=>eventually('fake tunnel up',()=>transport!.status().state === 'up' || undefined,10000));
   }
   for(const path of [fixtureSocketPath(root,'hub'),fixtureSocketPath(root,'spoke'),...['agent','hub','spoke','git'].map(name=>join(fake.run,name+'.sock')),hostPaths(root,'f1').agentSocket,hostPaths(root,'f1').gitSocket,hostPaths(root,'f1').controlSocket,hostPaths(root,'f1').sessionSocket('session-id')]) assert.ok(Buffer.byteLength(path)+1<=104,path);
   const layout = Object.freeze({discoveryFile:join(fake.home,'hub.json'),node:process.execPath,cli:'/remote/cland.ts',spoke:'/remote/spoke.ts',runDirectory:fake.run,logDirectory:join(fake.home,'log')});
@@ -90,5 +107,6 @@ export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): v
     await write;
     return port;
   };
-  return {root,env,fake,host,transport,layout,faults,cleanupErrors,machine,holdRunCancellation:()=>{cancelEntered=false;runGate=new Promise<void>(resolve=>{releaseRun=resolve;});return {entered:()=>cancelEntered,token:()=>runToken,disconnect:()=>runConnection?.destroy(),release:()=>{releaseRun?.();runGate=undefined;}};},dropNextForgetReply:()=>{dropForgetReply=true;},dropNextReleaseReply:()=>{dropReleaseReply=true;},dropNextCommitReply:()=>{dropCommitReply=true;},dropNextRunReply:()=>{dropRunReply=true;},holdSettlementReplies:()=>{holdSettlement=true;return {attempts:()=>settlementAttempts,release:()=>{holdSettlement=false;}};}, records, secrets, agent, supervisor, addCleanup:(close:()=>Promise<void>)=>additional.push(close), paths:hostPaths(root,'f1')};
+  return {root,env,fake,host,transport,layout,faults,cleanupErrors,machine,runOwned:work.run,holdRunCancellation:()=>{cancelEntered=false;runGate=new Promise<void>(resolve=>{releaseRun=resolve;});return {entered:()=>cancelEntered,token:()=>runToken,disconnect:()=>runConnection?.destroy(),release:()=>{releaseRun?.();runGate=undefined;}};},dropNextForgetReply:()=>{dropForgetReply=true;},dropNextReleaseReply:()=>{dropReleaseReply=true;},dropNextCommitReply:()=>{dropCommitReply=true;},dropNextRunReply:()=>{dropRunReply=true;},holdSettlementReplies:()=>{holdSettlement=true;return {attempts:()=>settlementAttempts,release:()=>{holdSettlement=false;}};}, records, secrets, agent, supervisor, addCleanup:(close:()=>Promise<void>)=>additional.push(close), paths:hostPaths(root,'f1')};
+  });
 }

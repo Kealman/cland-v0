@@ -3,11 +3,66 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
-import { mkdir, stat } from 'node:fs/promises';
+import { mkdir, stat, access, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { tempProject } from './harness.ts';
 import { beforeDirectories } from './process-cleanup.ts';
+import { removeFixtureSockets, enableFixtureHostSockets, fixtureHostSocketDirectory } from '../../shared/fixture-sockets.ts';
+import { dirname } from 'node:path';
+import { hostPaths } from '../src/host/records.ts';
+
+test('root disposal retires discarded nested host socket opt-ins before any allocation', async t => {
+  const parent=await tempProject(t), nested=join(parent,'nested');
+  await mkdir(nested);
+  enableFixtureHostSockets(nested); // Deliberately discard the per-call disposer.
+  await removeFixtureSockets(parent);
+  assert.equal(fixtureHostSocketDirectory(nested,'unused'),undefined,'disposed opt-in cannot allocate new fixture storage');
+});
+
+test('a newer host socket opt-in survives completion of an older disposal', async t => {
+  const parent=await tempProject(t),nested=join(parent,'replacement');
+  await mkdir(nested);
+  enableFixtureHostSockets(nested);
+  const disposing=removeFixtureSockets(parent);
+  enableFixtureHostSockets(nested);
+  await disposing;
+  assert.notEqual(fixtureHostSocketDirectory(nested,'fresh'),undefined,'old disposal must not retire the replacement grant');
+});
+
+test('suite disposal removes reciprocal aliases nested inside fake host storage', async t => {
+  const root = await tempProject(t);
+  const outer = fixtureSocketPath(root, 'outer');
+  const nested = join(dirname(outer), 'machine');
+  await mkdir(nested);
+  const physical = await realpath(nested);
+  const inner = fixtureSocketPath(physical, 'inner');
+  await access(dirname(inner));
+  try {
+    await removeFixtureSockets(root);
+    await assert.rejects(access(dirname(inner)), {code:'ENOENT'});
+  } finally { await removeFixtureSockets(physical); }
+});
+
+test('scratch host sockets bind under deep roots within the shortest macOS path budget', async t => {
+  const root = await tempProject(t), deep = join(root, 'é'.repeat(60));
+  await mkdir(deep);
+  enableFixtureHostSockets(deep);
+  const paths = hostPaths(deep, 'host');
+  assert.notEqual(paths.agentSocket, hostPaths(deep, 'other').agentSocket);
+  await mkdir(paths.socketDirectory, {mode:0o700});
+  for (const path of [paths.agentSocket, paths.gitSocket, paths.controlSocket, paths.sessionSocket('long'.repeat(100))]) {
+    assert.ok(Buffer.byteLength(path)+1 <=104, path);
+    const server = createServer();
+    try {
+      const listening = once(server,'listening'); server.listen(path); await listening;
+      assert.equal((await stat(path)).isSocket(), true);
+    } finally {
+      if(server.listening){const closed=once(server,'close');server.close();await closed;}
+    }
+  }
+  assert.ok(Buffer.byteLength(paths.controlSocket)+1+20 <=104, 'SSH control suffix budget');
+});
 
 test('fixture socket binds within the macOS byte budget under a deep multibyte TMPDIR', async t => {
   const root = await tempProject(t);

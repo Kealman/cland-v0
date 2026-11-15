@@ -2,6 +2,8 @@ import { isAbsolute, resolve } from 'node:path';
 
 /** Written after all overlays by the sealed fixture builder, never from job data. */
 export const FIXTURE_OWNED_ROOT = 'CLAND_TEST_OWNED_ROOT';
+/** Exact project-root layout opt-in; never inherited from an options overlay. */
+export const FIXTURE_HOST_SOCKET_ROOT = 'CLAND_TEST_HOST_SOCKET_ROOT';
 
 /** Older fixture environments grant only the project root. Never infer ownership
  * from HOME's parent or the machine's generic temporary directory. */

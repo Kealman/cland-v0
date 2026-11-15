@@ -10,6 +10,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { parseTransportKind, type TransportKind } from './transport-kind.ts';
 import { SOCKET_PATH_MAX } from '../project.ts';
 import { hostDirectory } from '../../../shared/fake-host-directory.ts';
+import { enableFixtureHostSockets, fixtureHostSocketDirectory } from '../../../shared/fixture-sockets.ts';
 
 export type HostRecord = { id: string; transport: TransportKind; address: string; user: string; state: 'registered' | 'revoked' };
 export type HostRegistration = { id: string; address: string; user: string; clientKeyPath: string; knownHosts: string };
@@ -69,7 +70,7 @@ export function hostPaths(root: string, id: string) {
   const name = `cland-h-${digest(root + '\0' + id).slice(0, 20)}`;
   const candidates = [directory, join(tmpdir(), name), join('/tmp', name)];
   // Leave room for SSH's temporary control suffix as well as long session names.
-  const socketDirectory = candidates.find(path => Buffer.byteLength(join(path, 's-' + 'f'.repeat(24) + '.sock')) <= SOCKET_PATH_MAX - 20)!;
+  const socketDirectory = fixtureHostSocketDirectory(root, id) ?? candidates.find(path => Buffer.byteLength(join(path, 's-' + 'f'.repeat(24) + '.sock')) <= SOCKET_PATH_MAX - 20)!;
   return { directory, socketDirectory, secret: join(directory, 'secret'),
     clientKeyPath: join(directory, 'client-key-path'), knownHosts: join(directory, 'known_hosts'),
     agentSocket: join(socketDirectory, 'agent.sock'), gitSocket: join(socketDirectory, 'git.sock'), controlSocket: join(socketDirectory, 'ctl.sock'),
@@ -122,6 +123,7 @@ export class HostSecretStore {
 }
 
 export function registerFakeHosts(root: string, records: HostRecords, env: NodeJS.ProcessEnv, register: (values: readonly string[]) => void): void {
+  if (env.CLAND_FAKE_HOST_ROOT && isAbsolute(env.CLAND_FAKE_HOST_ROOT)) enableFixtureHostSockets(root);
   const secrets = new HostSecretStore(root, records, register);
   secrets.restore();
   if (!env.CLAND_FAKE_HOSTS || !env.CLAND_FAKE_HOST_ROOT) return;

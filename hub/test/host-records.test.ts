@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { remoteRedactor } from '../src/remote/redact.ts';
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync, statSync, mkdirSync, existsSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, statSync, mkdirSync, existsSync, realpathSync, lstatSync, readdirSync } from 'node:fs';
+import { dirname, join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createFakeHost } from './fakes/fake-host.ts';
 import { fakeHostSocketPath } from './fakes/fake-host-socket.ts';
@@ -18,16 +18,30 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { projectSshHosts } from '../src/host/registry.ts';
 import { remoteHostLayout } from '../src/host/remote-layout.ts';
 import type { SshOptions } from '../src/transport/ssh.ts';
+import { temporaryInventory, inventoryDelta } from '../../test-support/temporary-inventory.ts';
+
+test('scratch host registration owns socket storage and restores its inventory after disposal', async t => {
+  const parent = await tempProject(t);
+  assert.deepEqual(readdirSync(parent), [], 'unused fixture roots remain empty');
+  const before = await temporaryInventory([parent]);
+  let alias = '';
+  await t.test('register and dispose an owned project', async child => {
+    const root = await tempProject(child, 'host-', parent), store = new Store();
+    child.after(() => store.close());
+    new HostSecretStore(root, store.hosts).register(input('fixture'));
+    const paths = hostPaths(root, 'fixture');
+    assert.ok(realpathSync(paths.socketDirectory).startsWith(root + sep), 'socket storage belongs to the scratch project');
+    alias = dirname(paths.socketDirectory);
+  });
+  const after = await temporaryInventory([parent]);
+  assert.deepEqual(after, before);
+  assert.deepEqual(inventoryDelta(before, after), {[parent]: {added:[],removed:[]}});
+  assert.ok(alias, 'registration captured its exact socket alias');
+  assert.throws(() => lstatSync(alias), {code:'ENOENT'}, 'disposed owner removed its exact alias');
+});
 
 async function hostProject(t: TestContext): Promise<string> {
-  const root = await tempProject(t);
-  t.after(() => {
-    for (const id of ['f1', 'f2']) {
-      const paths = hostPaths(root, id);
-      if (paths.socketDirectory !== paths.directory) rmSync(paths.socketDirectory, { recursive: true, force: true });
-    }
-  });
-  return root;
+  return tempProject(t);
 }
 
 const input = (id: string) => ({ id, address: id, user: 'agent', clientKeyPath: '/synthetic/client-key', knownHosts: `${id} ssh-ed25519 synthetic-${id}\n` });

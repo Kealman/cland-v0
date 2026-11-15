@@ -15,9 +15,8 @@ positive control before restoration. Preserve `hub/test/host-registry.test.ts`
 unedited for prior session-frame and process-host compatibility.
 
 Run this file alone with `node --test hub/test/host-records.test.ts`, after checking
-disk space, load and cover-quiet admission. It starts no browser or GUI. Socket
-fallback directories are machine runtime paths; bootstrap secrets stay in the
-scratch project. Fixtures own their writers and close them before root removal.
+disk space, load and cover-quiet admission. It starts no browser or GUI. Unconfigured production roots retain machine runtime socket paths; scratch
+projects opt into owned fixture sockets and keep bootstrap secrets local. Fixtures own their writers and close them before root removal.
 
 T-1572's conflict-resolution cases open an existing SQLite file with legacy
 remote tables both with and without a hosts table. Keep users, hosts and remote
@@ -48,3 +47,27 @@ layout default and a custom absolute runtime containing spaces. Registered hosts
 therefore never use the generic transport's absent-option fallback. No SSH or
 Node subprocess is started. The v0.4 image/provisioning contract owns which Node
 the layout's PATH default resolves to; this control changes no layout default.
+
+The scratch disposal regression arms temporaryInventory from
+test-support/temporary-inventory.ts over an explicitly owned parent. A nested
+owned project registers a host, proves its socket storage resolves inside its
+scratch root, completes cleanup, asserts full parent name-set equality and
+checks that its exact captured alias was removed. Parallel T2 workers do not
+share that inventory parent. Global full-name preservation belongs only to a
+separately authorized isolated native slot. Scratch roots opt into persisted routing through enableFixtureHostSockets
+in shared/fixture-sockets.ts; tempProject enables it, and QA projects bypassing
+that helper call it before registration. An explicit absolute fake-host root
+also enables it. Production roots without that opt-in retain existing
+candidates and permissions. Socket nodes stay under the scratch root through a
+short reciprocal alias, removed only after writer drainage.
+
+Opt-in registration is lazy and leaves an unused root empty. The first host path
+allocation creates private storage and the persisted marker. fixtureEnvironment
+writes the exact-root CLAND_TEST_HOST_SOCKET_ROOT after all overlays so a cold
+hub/CLI child can allocate first. Inherited or overlaid root claims cannot
+replace the builder's root. The marker keeps later independent readers on the
+same paths. T3 fixture-socket-lifecycle proves that cross-process boundary.
+Shared account wrappers pass the subject project root separately from their
+scratch account root so CLI and hub launches keep both lifetimes explicit.
+The root's shared socket disposer owns alias removal and registration retirement;
+there is no additional post-disposal fallback-path deletion hook.

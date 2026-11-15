@@ -108,8 +108,12 @@ test('deliberate Git excludes stay under the disposable project without opening 
 });
 
 test('fixture root grants come from the sealed builder rather than parent or overlay claims', () => {
-  const env = fixtureEnvironment('/scratch/owned', { CLAND_TEST_OWNED_ROOT: '/live/parent' }, { CLAND_TEST_OWNED_ROOT: '/live/overlay' });
+  const env = fixtureEnvironment('/scratch/owned', { CLAND_TEST_OWNED_ROOT: '/live/parent', CLAND_TEST_HOST_SOCKET_ROOT:'/live/parent' }, { CLAND_TEST_OWNED_ROOT: '/live/overlay', CLAND_TEST_HOST_SOCKET_ROOT:'/live/overlay' });
   assert.equal(env.CLAND_TEST_OWNED_ROOT, '/scratch/owned');
+  assert.equal(env.CLAND_TEST_HOST_SOCKET_ROOT, '/scratch/owned');
+  const child=fixtureEnvironment('/scratch/accounts',{}, {},'/scratch/project');
+  assert.equal(child.HOME,'/scratch/accounts/home');
+  assert.equal(child.CLAND_TEST_HOST_SOCKET_ROOT,'/scratch/project');
   assert.deepEqual(fixtureOwnedRoots('/scratch/project', env), ['/scratch/project', '/scratch/owned']);
   assert.deepEqual(fixtureOwnedRoots('/scratch/project', { HOME: '/live/home', TMPDIR: '/tmp' }), ['/scratch/project']);
 });

@@ -1,4 +1,4 @@
-import { FIXTURE_OWNED_ROOT } from '../shared/fixture-roots.ts';
+import { FIXTURE_OWNED_ROOT, FIXTURE_HOST_SOCKET_ROOT } from '../shared/fixture-roots.ts';
 // Pure environment boundary shared by worker fixtures, child launches and manual probes.
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { withoutExecutorCredentials } from '../shared/executor-credentials.ts';
@@ -9,8 +9,10 @@ const credential = (key: string) => /^(DIGITALOCEAN_|DO_|OPENAI_|ANTHROPIC_|AWS_
 
 /** root is disposable and owned by the caller. Explicit profile/fake paths in
  * extra must also be scratch-owned. HOME and Git configuration cannot be overlaid.
- * Default to a synthetic Git identity; never inherit a machine's identity. */
-export function fixtureEnvironment(root: string, base: NodeJS.ProcessEnv, extra: NodeJS.ProcessEnv = {}): Record<string, string> {
+ * Default to a synthetic Git identity; never inherit a machine's identity.
+ * projectRoot names the socket-layout subject when accounts live in a separate
+ * worker root; the wrapper supplies it explicitly after every options overlay. */
+export function fixtureEnvironment(root: string, base: NodeJS.ProcessEnv, extra: NodeJS.ProcessEnv = {}, projectRoot = root): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(base)) {
     if (value !== undefined && !credential(key) && !/^(CLAND_|GIT_|EMAIL$|XDG_|CLAUDE_|CODEX_|OPENCODE_|FAKE_)/.test(key)) env[key] = value;
@@ -49,7 +51,7 @@ export function fixtureEnvironment(root: string, base: NodeJS.ProcessEnv, extra:
     } catch { /* Never include caller input in the error. */ }
     throw new Error(`fixture ${key} requires an explicit loopback HTTP API root`);
   }
-  return withoutExecutorCredentials({ ...env, [FIXTURE_OWNED_ROOT]: resolve(root), HOME: join(root, 'home'), GIT_CONFIG_GLOBAL: join(root, 'home', '.gitconfig'), GIT_CONFIG_NOSYSTEM: '1' });
+  return withoutExecutorCredentials({ ...env, [FIXTURE_OWNED_ROOT]: resolve(root), [FIXTURE_HOST_SOCKET_ROOT]: resolve(projectRoot), HOME: join(root, 'home'), GIT_CONFIG_GLOBAL: join(root, 'home', '.gitconfig'), GIT_CONFIG_NOSYSTEM: '1' });
 }
 
 /** Deliberate product path inputs, distinct from inherited environment extras. */

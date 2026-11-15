@@ -26,6 +26,7 @@ documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merg
 - [Identity and delivery](../docs/hub/identity-and-delivery.md)
 - [Droplet delivery](../docs/hub/running.md): size-scaled, bounded upload retries and per-attempt run-log receipts under the local run's droplet lifetime.
 - [Topics](../docs/hub/topics.md)
+- [Native fixture inventory](../qa/briefs/T-1806-inventory.md): shared exact name-set checks and scratch-only host socket routing.
 - [Thread runs and fold lines](../docs/hub/thread-runs-and-fold-lines.md)
 - [Asks and the inbox](../docs/hub/asks-and-the-inbox.md), including internal hub cards and synchronous answer handlers; [login wait cards](../docs/hub/logins.md#login-wait-cards) share one prompt per pool/harness shortage
 

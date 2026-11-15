@@ -343,7 +343,7 @@ async function runCland(cwd: string, extra: Record<string, string>, provider: (S
   if (args[0] === 'doctor' || args[0] === 'hub' && ['start', 'serve'].includes(args[1] ?? '')) overrides.CLAND_TEST_ORPHAN_ROOT = cwd;
   // Fixture ownership is authoritative for daemon launches, even over caller extras.
   const ownership = args[0] === 'hub' && ['start', 'serve'].includes(args[1] ?? '') ? { CLAND_TEST_FIXTURE_ROOT: cwd } : {};
-  const sealed = await accountFixtureEnvironment({ ...overrides, ...extra, ...ownership });
+  const sealed = await accountFixtureEnvironment({ ...overrides, ...extra, ...ownership }, cwd);
   const env = provider ? syntheticProviderEnvironment(sealed, provider) : sealed;
   return new Promise((resolve, reject) => {
     // Merge waits up to 60 s for the hub; the outer process budget must also allow CLI startup.
@@ -366,6 +366,8 @@ export async function tempProject(t: TestContext, prefix = 'cland-proj-', parent
   await ensureAccountFixture();
   const root = await realpath(await mkdtemp(join(parent, prefix)));
   ownDirectory(t, root);
+  const { enableFixtureHostSockets } = await import('../../shared/fixture-sockets.ts');
+  afterCleanup(t, enableFixtureHostSockets(root));
   return root;
 }
 
@@ -472,9 +474,9 @@ export const fixtureLockIdentity = (env: NodeJS.ProcessEnv) => capturedLockIdent
 export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; hostOwner: Dispatcher['hostOwner']; hostEnvironment: NodeJS.ProcessEnv; stopped: Promise<void>; stop: () => Promise<void>; verificationSettled: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
-  let sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_ORPHAN_ROOT: root, ...extra });
+  let sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_ORPHAN_ROOT: root, ...extra }, root);
   if (options.userState) {
-    sealed = await accountFixtureEnvironment({ ...sealed, XDG_STATE_HOME: sealed.HOME, CLAND_EXECUTOR_STATE: undefined });
+    sealed = await accountFixtureEnvironment({ ...sealed, XDG_STATE_HOME: sealed.HOME, CLAND_EXECUTOR_STATE: undefined }, root);
   }
   const accountEnv = options.scratchAccountPaths ? scratchAccountEnvironment(root, sealed, options.scratchAccountPaths) : sealed;
   const gitEnv = options.scratchGitConfig ? scratchGitEnvironment(root, accountEnv, options.scratchGitConfig) : accountEnv;

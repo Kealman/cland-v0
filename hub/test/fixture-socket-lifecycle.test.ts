@@ -4,12 +4,57 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { dirname } from 'node:path';
-import { lstat, stat, writeFile } from 'node:fs/promises';
+import { dirname, sep } from 'node:path';
+import { lstat, stat, writeFile, readdir, realpath } from 'node:fs/promises';
 import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { tempProject } from './harness.ts';
-import { afterCleanup, beforeDirectories, captureProcess } from './process-cleanup.ts';
+import { afterCleanup, beforeDirectories, captureProcess, ownProcess, guardDirectoryRemoval } from './process-cleanup.ts';
+import { enableFixtureHostSockets } from '../../shared/fixture-sockets.ts';
+import { hostPaths } from '../src/host/records.ts';
+
+test('a cold hub child allocates its first host sockets beneath the scratch root and persists independent reader paths', async t => {
+  const root = await tempProject(t);
+  assert.deepEqual(await readdir(root), [], 'parent has not allocated host storage');
+  const harness = new URL('./harness.ts', import.meta.url).href;
+  const store = new URL('../src/hub/store.ts', import.meta.url).href;
+  const testHost = new URL('../src/host/test-host.ts', import.meta.url).href;
+  const roots = new URL('../../shared/fixture-roots.ts', import.meta.url).href;
+  const records = new URL('../src/host/records.ts', import.meta.url).href;
+  const program = `import test from 'node:test';import {projectHub} from ${JSON.stringify(harness)};import {Store} from ${JSON.stringify(store)};import {testHost} from ${JSON.stringify(testHost)};import {HostSecretStore,hostPaths} from ${JSON.stringify(records)};import {FIXTURE_HOST_SOCKET_ROOT} from ${JSON.stringify(roots)};import {realpathSync,mkdirSync} from 'node:fs';import {join} from 'node:path';
+const root=process.argv[1],action=Promise.withResolvers();process.on('message',message=>{if(message==='allocate')action.resolve();});test('cold hub first allocation',async t=>{await action.promise;mkdirSync(join(root,'.cland'));const firstLayoutRoot=process.env[FIXTURE_HOST_SOCKET_ROOT],store=new Store(join(root,'.cland/hub.db'));let physical;try{new HostSecretStore(root,store.hosts).register({id:'child',address:'child',user:'agent',clientKeyPath:'/synthetic/key',knownHosts:'child ssh-ed25519 synthetic\\n'});physical=realpathSync(hostPaths(root,'child').socketDirectory);}finally{await store.hosts.leases.close();store.close();}const hub=await projectHub(t,root,{}, {hosts:[testHost('child',()=>{})]});const paths=hostPaths(root,'child'),restoredPhysical=realpathSync(paths.socketDirectory),layoutRoot=hub.hostEnvironment[FIXTURE_HOST_SOCKET_ROOT];await hub.stop();process.send({type:'allocated',socketDirectory:paths.socketDirectory,physical,restoredPhysical,layoutRoot,firstLayoutRoot},()=>process.disconnect());});process.send({type:'ready'});`;
+  let child: ReturnType<typeof spawn> | undefined, closed: Promise<unknown[]> | undefined;
+  let stopChild:(()=>Promise<void>)|undefined, childClosed=true;
+  guardDirectoryRemoval(root,()=>{if(!childClosed)throw Error('cold child writer closure unconfirmed; root retained');});
+  beforeDirectories(t, async () => {
+    await stopChild?.();
+    await closed;
+  });
+  child=spawn(process.execPath,['--input-type=module','-e',program,root],{cwd:root,env:fixtureEnvironment(root,process.env),stdio:['ignore','pipe','pipe','ipc']});
+  childClosed=false;
+  stopChild=ownProcess(t,child.pid);
+  let tail='';for(const stream of [child.stdout,child.stderr])stream?.on('data',chunk=>{tail=(tail+String(chunk)).slice(-4000);});
+  const incomplete=(boundary:string,error:unknown)=>new Error(`incomplete cold-child ${boundary}: exit ${child?.exitCode??'pending'}, signal ${child?.signalCode??'none'}; tail: ${tail}`,{cause:error});
+  closed=once(child,'close',{signal:AbortSignal.timeout(10000)}).then(receipt=>{childClosed=true;return receipt;}).catch(error=>{throw incomplete('close',error);});
+  void closed.catch(()=>{}); // Teardown and the final await still observe failure.
+  const [ready]=await once(child,'message',{signal:AbortSignal.timeout(5000)}).catch(error=>{throw incomplete('readiness',error);});
+  assert.deepEqual(ready,{type:'ready'});
+  const allocating=once(child,'message',{signal:AbortSignal.timeout(5000)}).catch(error=>{throw incomplete('allocation',error);});
+  child.send('allocate');
+  const [allocated]=await allocating as [{type:string;socketDirectory:string;physical:string;restoredPhysical:string;layoutRoot:string;firstLayoutRoot:string;error?:string}];
+  assert.equal(allocated.type,'allocated',allocated.error);
+  const [code,signal]=await closed;
+  assert.equal(code,0);assert.equal(signal,null);
+  assert.equal(allocated.firstLayoutRoot,root,'first registration has only the environment opt-in');
+  assert.equal(allocated.layoutRoot,root,'the spawned hub retains the subject root through account-environment sealing');
+  assert.ok(allocated.physical.startsWith(root+sep));
+  assert.equal(allocated.restoredPhysical,allocated.physical);
+  assert.equal((await stat(allocated.physical)).isDirectory(),true);
+  // Remove this process's memory opt-in: the persisted marker must suffice.
+  enableFixtureHostSockets(root)();
+  assert.equal(await realpath(hostPaths(root,'child').socketDirectory),allocated.physical);
+  afterCleanup(t, async()=>{await assert.rejects(lstat(dirname(allocated.socketDirectory)),{code:'ENOENT'});});
+});
 
 for (const killed of [false, true]) test(`private socket ownership cleans after ${killed ? 'killed listener' : 'normal close'}`, async t => {
   const root = await tempProject(t);

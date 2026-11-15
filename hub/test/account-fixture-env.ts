@@ -43,9 +43,9 @@ async function initialize(): Promise<void> {
 }
 
 /** Complete sealed launch environment. Apply extras here, never after this call. */
-export async function accountFixtureEnvironment(extra: NodeJS.ProcessEnv = {}): Promise<Record<string, string>> {
+export async function accountFixtureEnvironment(extra: NodeJS.ProcessEnv = {}, projectRoot?: string): Promise<Record<string, string>> {
   await ensureAccountFixture();
-  return fixtureEnvironment(fixtureRoot, process.env, extra);
+  return fixtureEnvironment(fixtureRoot, process.env, extra, projectRoot);
 }
 
 /** One native-binary selection shared by the account contract fixtures. */

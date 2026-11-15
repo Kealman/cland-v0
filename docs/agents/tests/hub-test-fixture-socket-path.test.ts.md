@@ -21,3 +21,20 @@ and socket directory when drainage is incomplete; keep existing child/peer drain
 Production layout tests, absent-socket controls, and native fake harnesses receiving
 production-selected paths retain those paths to test the production contract.
 No command, setting, wire shape or role permission changes.
+
+The nested fake-storage case allocates reciprocal aliases at two depths and
+asserts that owner disposal removes both. Traversal includes nested
+`.fixture-sockets` directories and never follows their aliases. The scratch host
+case opts into fixture routing, binds all three host endpoints and a long session
+endpoint under a deep multibyte root, and checks the additional SSH control suffix
+budget. Default production host fallback coverage remains in host-records.
+
+The discarded-registration control opts a nested raw directory in without
+retaining its per-call disposer, then disposes the parent scope through
+removeFixtureSockets. A subsequent first lookup must not allocate fixture
+storage. Disposal snapshots matching registrations before traversal and retires
+those same identities only after successful alias cleanup. This is also the
+lifetime owner for raw fake-host registrations and deep-root opt-ins.
+A separate replacement case registers a new grant while an older asynchronous
+disposal is in flight. Completion of the old scope must preserve that new grant;
+registration identity is per admission even when device/inode are unchanged.
