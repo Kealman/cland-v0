@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-1522
 branch: t/T-1862-digitalocean-provider-422-pause-test
 created: 2026-11-15T02:43:23.130Z
-updated: 2026-11-15T10:48:19.814Z
+updated: 2026-11-15T11:21:12.444Z
 ---
 
 ## Summary
@@ -45,6 +45,7 @@ Policy kept: reserved capacity is never revoked by later reservations. Caps are 
 
 - [x] C1. A deterministic control shows an unrelated reservation during key import no longer fails a valid acquire. A released, revoked or changed-backing reservation, and an over-cap new reservation, are still refused. Churn beyond the bound ends in a typed refusal with no provider request. The item names the cost-boundary counts (test).
   - done: impl-1862 · 2026-11-15T10:32:25.924Z
+  - verified: rev-35 [reviewer] · run rev-35-1862-evidence-1 · 2026-11-15T11:21:12.444Z · commit f02c4c772cbf048c0e8fd6ed01bd13430d1180d0
 - [ ] C2. Both the 429 and the 422 cases pass 20 out of 20 runs at a 1-minute load of at least 8 on macOS, with unchanged assertions (test).
 
 ## Comments
@@ -69,3 +70,31 @@ findings: [{"severity":"medium","text":"New issue queue has no closed-admission 
 finding_counts: {"high":0,"medium":2,"low":0}
 
 A-19609 completes clean e729fc55a/treeab1fbb41 review. Standards2medium; Spec no additional product finding. Bounded stable ledger observation preserves exact backing/revocation and reserved-capacity policy; original429/422 assertions unchanged apart diagnostics. C1 unverified pending lifecycle correction and exact-head evidence; C2 load20/20macOS>=8 still pending Coordinator authorization, not inferred from local green. A-19608 preserves transcribed producer/candidate/tracker-only-merge limits, cost-boundary facts and static consumer dispositions; original publication control missing, not upgraded. Hold released for one consolidated correction/fresh source request before verification. No Reviewer runtime/native/provider/cleanup experiment.
+
+### rev-35 · 2026-11-15T10:52:56.865Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1862-source-2
+commit: f02c4c772cbf048c0e8fd6ed01bd13430d1180d0
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-19616 source clear at clean f02c4c772/tree459e5708. Both A-19609 findings resolved: issue fence/shared close/attempt-all tail, all-context admission drainage before API/root and SQLite disposal, actual provider/prepare/volume held-work contracts and retained-root API failure path. Historical exact80 replay qualification preserves A18029 while requiring current imported/generated identities. Product bounded-stable admission source unchanged. C1/C2 unverified pending required exact-head load/configured evidence; Coordinator demo/load authorization still controls20/20macOS>=8 and is not released here. Then mode-free verify at unchanged clear head. A19613 complete TAP89/8/18 retained with A19614 correction: outer exit0 only, individual child native status/signal unknown; no provenance reruns. Earlier capture/publication/static-search limits retained. Hold released; no Reviewer runtime/census/provider/cleanup/browser.
+
+### rev-35 · 2026-11-15T11:21:12.444Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1862-evidence-1
+commit: f02c4c772cbf048c0e8fd6ed01bd13430d1180d0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Partial configured evidence clear A-19620; C1 verified, NOT final readiness. Exact f02c4c772 unchanged, A19619 actual6358ordinarytest/700file passes, separate240loadtest/file positives, no negatives. All selected220T1/425T2/55Web manifest roots positive. Eight product controls plus3real-factory teardown controls each ordinary+5 matching load/file receipts; typed churn/no-send/cap/backing and positive cost diagnostics established. Original429/422 Linux base passes do not satisfy C2 macOS20/20load>=8. Coordinator6e1667d6 authorized parallel droplet verify but explicitly holds local load until demo-done; C2 remains unverified. Hold released awaiting authorized same-head C2 receipts, no source change/configured rerun/local stress authorized by this verdict. Linux/Node24.21/Nvim.12.5/Headless1248CfT156 provenance noncached; report-only gates, remaining265T3/17T4 and A19608/A19614 capture/publication limits retained. No Reviewer runtime.
+
+Criteria: C1 verified.

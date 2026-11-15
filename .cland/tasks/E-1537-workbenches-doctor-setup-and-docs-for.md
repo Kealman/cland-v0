@@ -2,7 +2,8 @@
 id: E-1537
 kind: epic
 title: Workbenches, doctor, setup and docs for hosts
-state: open
+state: closed
+criterion_seq: 7
 labels:
   - epic
   - v0.4
@@ -15,7 +16,8 @@ blocked_by:
 topic: topic-1486
 branch: null
 created: 2026-10-31T18:22:04.429Z
-updated: 2026-11-15T10:13:19.669Z
+updated: 2026-11-15T11:35:15.103Z
+closed: 2026-11-15T11:35:15.103Z
 ---
 
 ## Goal
@@ -50,12 +52,19 @@ QA runs the demo below on `dev` through the `cland` CLI, headless Chromium and a
 In a scratch project QA runs setup with a scripted terminal through the agent-hosts step and the sign-in mode step (choosing users), and reads the pool, the first login and the first user. It launches sessions onto two fake hosts and reads the Hosts row and the expanded list in both workbenches, the host on each session row, and the row turning red when a host is made unreachable. It fills the logins so a launch waits, and reads the reason in both inboxes change as a login is added from the web's hosts view. It removes a login from the web and reads it gone from `cland login list`. It runs doctor with a stale pool image, a signed-out login and the token unset, and reads each line and fix. It walks the tour's hosts stage. From a fresh reading of the hosts page it configures a second pool, and from the users page it invites a user. It reads the price table's check date and the web-and-phone page's multi-user section.
 
 - [ ] C1. Both workbenches show a Hosts row per pool with hosts, slots and logins in use, expanding to the host list, red at once for an unreachable host.
+  - verified: qa-678 [qa] · run qa-e1537d-2026-11-15-qa678-1 · 2026-11-15T11:34:55.325Z · commit 5906a1e144b85cb1d4799aa74b12333e8e29569a
 - [ ] C2. The web's hosts view lists hosts and logins and adds, signs in again, removes and snapshots logins through the hub.
+  - verified: qa-678 [qa] · run qa-e1537d-2026-11-15-qa678-1 · 2026-11-15T11:34:55.325Z · commit 5906a1e144b85cb1d4799aa74b12333e8e29569a
 - [ ] C3. Session rows name their host, and waiting launches show their current reason in both inboxes.
+  - verified: qa-678 [qa] · run qa-e1537d-2026-11-15-qa678-1 · 2026-11-15T11:34:55.325Z · commit 5906a1e144b85cb1d4799aa74b12333e8e29569a
 - [ ] C4. Doctor checks the provider token, the pool images, free and signed-out logins, reachability and the hosts' spend, each with its fix, and makes no paid call.
+  - verified: qa-678 [qa] · run qa-e1537d-2026-11-15-qa678-1 · 2026-11-15T11:34:55.325Z · commit 5906a1e144b85cb1d4799aa74b12333e8e29569a
 - [ ] C5. Setup's agent-hosts step and sign-in mode step are optional, default to No with `--yes`, and leave a pool, a first login and, in users mode, a first user.
+  - verified: qa-678 [qa] · run qa-e1537d-2026-11-15-qa678-1 · 2026-11-15T11:34:55.326Z · commit 5906a1e144b85cb1d4799aa74b12333e8e29569a
 - [ ] C6. The onboarding tour has a stage on agent hosts.
+  - verified: qa-678 [qa] · run qa-e1537d-2026-11-15-qa678-1 · 2026-11-15T11:34:55.326Z · commit 5906a1e144b85cb1d4799aa74b12333e8e29569a
 - [ ] C7. The site has pages on hosts, pools and logins and on users and sign-in modes, a price table with its check date, and a multi-user section in the web-and-phone page, each matching the build.
+  - verified: qa-678 [qa] · run qa-e1537d-2026-11-15-qa678-1 · 2026-11-15T11:34:55.326Z · commit 5906a1e144b85cb1d4799aa74b12333e8e29569a
 
 
 ## Constraints
@@ -672,3 +681,136 @@ Run roots: W `/Users/evgeniyivanov/Projects/cland/v0/.cland/worktrees/qa-e1537s5
 
 
 Evidence artifact A-19597: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19597-e-1537-stage-5-qa-users-stage-31-checks-clear-at-efd3168e8/report.md
+
+### hub · 2026-11-15T10:56:37.644Z
+
+demo e125dec6-e983-4129-8a81-070b72bf8248 created: droplet cland-v0-e125dec6, commit 5906a1e144b85cb1d4799aa74b12333e8e29569a, deadline 2026-11-15T12:09:50.872Z.
+
+### hub · 2026-11-15T11:06:27.555Z
+
+demo E-1537 lease e125dec6-e983-4129-8a81-070b72bf8248 droplet 619500879: operator attention required; deletion not confirmed. {"reason":"deletion-unconfirmed","fields":[],"expected":{"id":619500879,"name":"cland-v0-e125dec6","tags":["cland","cland-p-8a978a214ba5"]},"observed":{"id":619500879,"name":"cland-v0-e125dec6","tags":[],"status":"active"}}
+
+### hub · 2026-11-15T11:07:09.737Z
+
+demo e125dec6-e983-4129-8a81-070b72bf8248 destroyed: lifetime 684532 ms; cost $0.0475.
+
+### qa-678 · 2026-11-15T11:34:55.326Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-e1537d-2026-11-15-qa678-1
+commit: 5906a1e144b85cb1d4799aa74b12333e8e29569a
+findings: [{"severity":"low","text":"Known T-1869 (XS), D34/D35: original PID-only gate reported 55011 after both hosts were destroyed. Exact argv, birth, parent and host unknown; it disappeared without signal. Both absence receipts confirmed, lease/input pairs gone. R-3 bounded settle and J2-only cleanup passed; J4 preserved. Original capture and read-only facts in A-19626."},{"severity":"low","text":"Known found-aside T-1806, D20/D24/D25/J2/D80: twelve dead fallback host socket directories, attributed by per-file intervals or exact hostPaths. No open handles; unchanged producer against pre-epic baseline. All twelve left untouched. A-19626 inventories.","file":"hub/src/host/records.ts","line":66},{"severity":"low","text":"Known found-aside T-1805/T-1676, D23/D25/D80: one shared dead source-worktree receipt (057a3794-bd9e-48c4-ad58-1594db7200a4, owner36693 absent, fixture gone, no handle) remains untouched. Fifteen own-T Neovim receipts had dead owners/no handles and unchanged producers; literal directory removed only after A-19621 publication. A-19626 traces.","file":"shared/fixture-ownership.ts"},{"severity":"low","text":"Known T-1866 accepted by committed brief, D62: hub-down setup without --no-aide reports open in single mode. Reachable-hub path passes; no new unexpected failure.","file":"hub/src/setup/steps/signin.ts"},{"severity":"low","text":"Known T-1867, D07: wording lint excludes MDX. Separate required check inspected all22 added MDX lines, zero tracker references; standard lint774documents/0findings. This is not a claim of full MDX lint coverage.","file":"hub/test/lint-closed-item-wording.ts"},{"severity":"low","text":"Brief corrections R-1/R-2 (coord2150b23a): remote test children now get a fresh shared-builder seal and immediate credential-name gate with exact argv unchanged; Q/T roots retained through D99/recording/verdict. R-3 (dd33597c/fea1dade) scopes cleanup to J2 and admits bounded watchdog settling. Originals, exact diffs and observations retained in A-19626; no product assertions loosened beyond explicit decisions.","file":"qa/briefs/E-1537.md"}]
+finding_counts: {"high":0,"medium":0,"low":6}
+
+| case | surface / executor | result | command and observation | evidence |
+| --- | --- | --- | --- | --- |
+| S0 | hub-api / local | PASS | Committed brief gate at 5906a1e1; retained capture inspected against every expected fact, including documented source deltas | S0.txt |
+| E1537D-00 | hub-api / local | PASS | Committed brief gate at 5906a1e1; retained capture inspected against every expected fact, including documented source deltas | E1537D-00.txt |
+| E1537D-01 | hub-api / local | PASS | Committed brief gate at 5906a1e1; retained capture inspected against every expected fact, including documented source deltas | E1537D-01.txt |
+| E1537D-02 | hub-api / droplet | PASS | Committed brief gate at 5906a1e1; retained capture inspected against every expected fact, including documented source deltas | E1537D-02.txt |
+| E1537D-03 | hub-api / droplet | PASS | Committed brief gate at 5906a1e1; retained capture inspected against every expected fact, including documented source deltas | E1537D-03.txt |
+| E1537D-04 | hub-api / local | PASS | Committed brief gate at 5906a1e1; retained capture inspected against every expected fact, including documented source deltas | E1537D-04.txt |
+| E1537D-05 | hub-api / local | PASS | Committed brief gate at 5906a1e1; retained capture inspected against every expected fact, including documented source deltas | E1537D-05.txt |
+| E1537D-06 | hub-api / local | PASS | Committed brief gate at 5906a1e1; retained capture inspected against every expected fact, including documented source deltas | E1537D-06.txt |
+| E1537D-07 | hub-api / local | PASS | Committed brief gate at 5906a1e1; retained capture inspected against every expected fact, including documented source deltas | E1537D-07.txt |
+| E1537D-10 | hub-api / droplet | PASS | R-1 sealed remote node --test; exact names and clean counters checked against retained TAP; no withheld lines | E1537D-10.log, E1537D-10.check.txt |
+| E1537D-11 | hub-api / droplet | PASS | R-1 sealed remote node --test; exact names and clean counters checked against retained TAP; no withheld lines | E1537D-11.log, E1537D-11.check.txt |
+| E1537D-12 | hub-api / droplet | PASS | R-1 sealed remote files; all 29 expanded source names match retained TAP; 29 pass zero fail skip withholding | E1537D-12.log, E1537D-12.audit.json |
+| E1537D-13 | hub-api / droplet | PASS | R-1 remote setup files; exact 33 generated cases passed with clean counters and no withholding | E1537D-13.log, E1537D-13.audit.json |
+| E1537D-14 | hub-api / droplet | PASS | R-1 remote onboarding; all 16 generated cases passed, no withholding | E1537D-14.log, E1537D-14.audit.json |
+| E1537D-15 | hub-api / droplet | PASS | R-1 remote documentation files; all 40 generated cases passed, no withholding | E1537D-15.log, E1537D-15.audit.json |
+| E1537D-20 | hub-api / local | PASS | Pinned Headless Shell host line, folding and alert checks; 4 exact cases passed, zero own-family delta | E1537D-20.log, E1537D-20.audit.json, E1537D-20.inventory-delta.txt |
+| E1537D-19 | hub-api / droplet | PASS | Hub demo stop followed by bounded status observations; confirmed released, lifetime 684532 ms, estimated cost USD 0.047536944444444444 | E1537D-19.json, E1537D-19-after.json, E1537D-19-confirmed.json, E1537D-19-confirmed.txt |
+| E1537D-21 | hub-api / local | PASS | Pinned Headless Shell session rows and waiting inbox; every expanded runtime name matched, clean counters and own-family delta | E1537D-21.log, E1537D-21.audit.json, E1537D-21.inventory-delta.txt |
+| E1537D-22 | hub-api / local | PASS | Pinned isolated Headless Shell virtual-authenticator sign-in test, alone under load gate; exact runtime names and counters checked | E1537D-22.log, E1537D-22.audit.json, E1537D-22.inventory-delta.txt |
+| E1537D-23 | hub-api / local | PASS | Pinned headless Neovim hosts, session rows and waiting inbox; exact source names matched runtime TAP; clean counters and own-family delta | E1537D-23.log, E1537D-23.audit.json, E1537D-23.inventory-delta.txt |
+| E1537D-24 | hub-api / local | PASS | Native hosts view in preservation slot; 26 exact cases passed; hc and ct deltas zero; six cland-h directories retained as known T-1806 subject to final census | E1537D-24.log, E1537D-24.audit.json, E1537D-24.inventory-delta.txt, E1537D-24.families.txt |
+| E1537D-25 | hub-api / local | PASS | Native Neovim and CLI tunnel outage in separate preservation slots; 2 source registrations and 3 runtime tests passed; hc and ct deltas zero; known residue retained for final census | E1537D-25.log, E1537D-25.audit.json, E1537D-25.inventory-delta.txt, E1537D-25.families.txt, E1537D-25.receipts.txt |
+| E1537D-26 | hub-api / local | PASS | Native doctor in preservation slot; every generated case passed, no paid fake-provider requests in scoped assertions; clean counters and own-family delta | E1537D-26.log, E1537D-26.audit.json, E1537D-26.inventory-delta.txt, E1537D-26.receipts.txt |
+| E1537D-27 | hub-api / local | PASS | Native setup-hosts in preservation slot; all generated case names matched runtime, clean counters and own-family delta | E1537D-27.log, E1537D-27.audit.json, E1537D-27.inventory-delta.txt, E1537D-27.receipts.txt |
+| E1537D-28 | hub-api / local | PASS | Native PTY setup scenario in preservation slot; default No for both optional steps; one exact case passed; zero inventory deltas | E1537D-28.log, E1537D-28.audit.json, E1537D-28.inventory-delta.txt |
+| S0-j2 | hub-api / local | PASS | J2 pinned blocks and sealed preconditions passed; own orchestration variable collision disclosed; block2 retained, continued only blocks3-7 before any fixture launch | S0-j2.txt, S0-j2-continuation.txt, j2-setup.txt |
+| E1537D-30 | hub-api / local | PASS | J2 r80: empty p1, sealed init and hub start, one qa pool, zero hosts/machines; every PRE fact passed | E1537D-30.txt |
+| E1537D-31 | hub-api / local | PASS | J2 r91 prepared qa and created two ready fake hosts; exact pool/count and recorded alias facts passed | E1537D-31.txt |
+| E1537D-32 | hub-api / local | PASS | J2 connect and snapshot hosts frames agree with CLI list; two ready hosts, public projection only, zero secret/root/address occurrences | E1537D-32.txt |
+| E1537D-33 | hub-api / local | PASS | J2 fake tunnel down/up; target alert after111ms, recovery1206ms within bounds, other host preserved, zero secret/root occurrences | E1537D-33.txt |
+| E1537D-34 | hub-api / local | PASS | J2 both hosts stopped to destroyed; connect frame hosts0/2 slots0/0 and no host rows; no withholding | E1537D-34.txt |
+| S0-j4 | hub-api / local | PASS | J4 stage blocks exactly match pinned hashes; both shared seals, scratch layout and helper syntax pass | S0-j4.txt, j4-setup.txt |
+| E1537D-50 | hub-api / local | PASS | Tour and hosts docs vocabulary matches CLI; negative controls pass; price date/default rates/storage equal source; counts6/27 commands and23 keys recorded | E1537D-50.txt |
+| E1537D-51 | hub-api / local | PASS | J4 empty project init, first pool configured, hub up, zero hosts/machines/leases; fresh seal PRE passed | E1537D-51.txt |
+| E1537D-35 initial PRE (superseded by approved R-3) | hub-api / local | BLOCKED | PID-only gate reported 55011; cleanup did not run; identity unknown | j2/E1537D-35-wdg.txt |
+| E1537D-35 | hub-api / local | PASS | R-3 coord-authorised settle gate and J2-only cleanup; initial PID 55011 capture BLOCKED with identity unknown, later absent without signal; both receipts confirmed; normal hub stop and four identified fake survivors TERM; zero J2 and J4 unchanged; T-1869 low | E1537D-35-wdg.txt, E1537D-35-readonly.json, E1537D-35-host-list-facts.json, E1537D-35-R3.txt |
+| E1537D-52 | hub-api / local | PASS | All ten published pool commands passed; second pool equals expected config; both pools listed with0hosts/slots0/0; no machine or lease created | E1537D-52.txt |
+| E1537D-53 | hub-api / local | PASS | Five doctor host rows and fixes map to documentation; no provider effect;20 whole-page table count recorded per carried scope decision | E1537D-53.txt |
+| E1537D-54 | hub-api / local | PASS | J4 normal hub stop; recorded PID absent; zero processes, aliases and watchdogs; no TERM needed | E1537D-54.txt |
+| S0-j5 | hub-api / local | PASS | J5 exact pinned stage blocks and helper checks; both fresh seals and scratch layout passed | S0-j5.txt, j5-setup.txt |
+| E1537D-60 | hub-api / local | PASS | Users docs13 commands, multiuser1, five CLI commands and14 UI labels match source; exact section bindings and negative controls passed | E1537D-60.txt |
+| E1537D-61 | hub-api / local | PASS | Fresh J5 single-mode project and loopback hub; Fixture Admin identity, one auth table, no users/pools, all six roles local | E1537D-61.txt |
+| E1537D-62 | hub-api / local | PASS | Doctor/setup single-mode facts and order passed; config/roles unchanged; hub-down without no-aide open line is known T-1866 accepted by committed brief, not a new finding | E1537D-62.txt |
+| E1537D-63 | hub-api / local | PASS | Four published users commands passed; first active admin and invited teammate; three one-use links filtered with positive controls; zero occurrences in44 scanned non-database files and selected outputs (DB excluded) | E1537D-63.txt |
+| E1537D-64 | hub-api / local | PASS | Users mode survives restart; reset returns single; user-list refusal and setup skip match brief; unchanged expected diagnostics | E1537D-64.txt |
+| E1537D-65 | hub-api / local | PASS | J5 hub stopped; all three recorded PIDs absent; zero aliases, watchdogs and processes; no TERM needed | E1537D-65.txt |
+| E1537D-80 | hub-api / local | PASS | Run-wide census: one dead shared receipt,12 attributed cland-h dirs, own J2 alias, zero live owners/own-family system-TMP names;15 dead own-T receipts attributed unchanged producer; all retained | E1537D-80.txt, known-main-t-receipts.json.txt, known-native-residue.json.txt, all-cland-h-final.json.txt, cleanup-inventory.json |
+| E1537D-90 | hub-api / local | PASS | Publication policy scan278files423858lines, zero refused; positive credential control refused; no capture withholding | E1537D-90.txt |
+| E1537D-91 | hub-api / local | PASS | After A19621 publication removed only two checked literal paths; clean unchanged requested dev/worktree, zero locks/own-family residue/withholding; every T empty except permitted compile cache; Q/T retained under R2 | E1537D-91.txt, cleanup-step1-before.txt, cleanup-step1-after.json |
+| E1537D-99 | hub-api / local | PASS | Final dev delta and demo status --commit: released, freshness.current true, zero withheld; epic suite A-19622 green at same full SHA | E1537D-99.txt, E1537D-99.json |
+
+Final evidence. Run `qa-e1537d-2026-11-15-qa678-1` at full tested SHA `5906a1e144b85cb1d4799aa74b12333e8e29569a`. 49 recorder lines currently present. Every scope row retains its original capture; coordinator-approved corrections are separately labelled.
+
+Targeted coverage: 27 files, 275 exact expanded top-level names, 276 runtime passes including one nested test; zero failures, cancelled, skips, todos or withheld lines. Thirteen files / 142 cases ran on the Linux x64 demo; fourteen files / 134 cases ran on local macOS arm64. Both exact:true and exact:false lists were checked against expanded source registrations and recorded TAP facts independently of exit status. See targeted-test-audit.json.
+Local Node v24.21.0, pinned Neovim v0.12.5, Playwright Chrome Headless Shell revision 1248; exact browser binary in platform-browser.txt. The build stamp is current at the tested source, clean detached worktree; typecheck and web build passed. Local timing admission was enforced at one-minute load <=10; run captures retain each reading. No real-browser GUI or real provider/harness login ran.
+Demo lease e125dec6-e983-4129-8a81-070b72bf8248 at the tested SHA, Linux x64 Node v24.21.0, deadline 2026-11-15T12:09:50.872Z. Confirmed released; measured lifetime 684532 ms and estimated cost USD 0.047536944444444444, including provisioning/cleanup lifetime. Local cases have no droplet cost. Intermediate releasing readings are not the final lifetime.
+The separate epic occasion suite 64fef6d2-b61d-46d9-8c30-1798d0dd99ca was submitted from freshly fetched clean root dev at this same SHA. Its submission returned exit75 after a reply timeout but the hub durably admitted it; no duplicate submission. The hub result is green; its final accounting follows below.
+
+Findings and limits:
+- Low, known T-1869 (XS, filed by Coordinator): D35 first observed PID 55011 after D34 confirmed both destroyed hosts. Its argv, birth, parent and host are unknown. It was already absent at the first exact-argv read, then absent at 11:14:44Z, without any signal. The Coordinator classified a watchdog join gap and authorised R-3. The exact-argv settle read found no watchdog, both absence receipts confirmed and both lease/input pairs absent. Corrected cleanup stopped J2 normally and drained only four fully identified fake survivors; J4 was excluded and preserved. See j2/E1537D-35-* and j2-cleanup-R3.mjs.
+- Low, known T-1806: twelve dead fallback socket directories, all left untouched. Two map by file interval to D20, six to D24, two to D25, and two exactly to J2 hostPaths outputs. No open handles. See all-cland-h-final.json.txt.
+- Low, known T-1805/T-1676: one shared source-worktree receipt 057a3794-bd9e-48c4-ad58-1594db7200a4 from D25 host-tunnel-outage-native, PID 36693 absent, no handle, scratch root gone; shared receipt left untouched. CLI ownership producer and shared ownership code match the pre-epic baseline. Fifteen dead receipts in this run main T came from D23 Neovim hosts/sessions; owners absent, no handles, unchanged ownership producers. This owned T receipt directory was removed after publication as A-19621, as prescribed; the shared receipt remains. See known-native-residue.json.txt and known-main-t-receipts.json.txt.
+- Known T-1866 in D62: hub-down setup without --no-aide reads open rather than skip in single mode. The committed brief accepts this built behaviour; no new finding or unexpected failure. T-1867 limits wording lint on MDX: D07 separately inspected the 22 added MDX lines, zero tracker-id references; standard wording lint checked 774 documents with 0 findings.
+- QA execution errors are disclosed in corrections.md: recorder Git resolution recursion (original diagnostic: `qa-record: not in a Git worktree and no CLAND_HUB_FILE`), followed by exact owned-process drain and absolute-Git correction; and J2 outer-loop variable collision before any fixture launch, continued from the unexecuted blocks only. Neither was a product test rerun. The 76 TERM targets in the recorder incident all chain to the own D10 recorder; zero remained and load returned below 20 before continuation.
+
+Criterion evidence substitutions, committed Coordinator decisions D-1–D-4 (2026-11-15):
+- C1/C3, D-1: workbench fixtures prove line/list/red/session rendering; the CLI scratch proves two-host projection and actual fake-tunnel outage/recovery. No live workbench attached to that scratch hub.
+- C2/C3, D-2: projectHub-backed web hosts-view proves add/sign-in/removal/snapshot and inbox updates; CLI-frame readback proves removal; Neovim waiting reason is a pushed fixture. No single web-to-Neovim scratch journey.
+- C5, D-3: the native PTY proves default No, scripted prompters prove confirmed pool/login/user paths, virtual-authenticator test proves first-user activation, and J5 proves published invite/reset commands. No single scripted terminal chose both optional steps.
+- C4, D-4: combined stale-image/signed-out/unset-provider conditions run in-process beside separate scratch CLI doctor checks; no single scratch hub combined all three. NEW-1–NEW-4 were not run and remain tracked by T-1868; these are approved substitutions, not unexecuted cases counted as passes.
+- C6/C7: tour and docs commands and labels checked against the built CLI/source, then published pool/user command blocks exercised on scratch hubs. Three invite links were intentionally filtered at capture boundary; the positive controls passed and no other line was withheld. The 44-file scratch invite search excludes database files, as the brief states.
+
+Source gate D06: 500 checks from the five historical stage probes,489 ok plus exactly 11 accepted source deltas: stage1 provision push/price/spend (T-1825 dc4cd638f); stage2 two protocol shapes and dispatcher (T-1830 22a8d60c3); stage3 doctor placement/no-pool/setup order/help (T-1836 d3a713025, T-1860 72f26bc5c, T-1835 5885fe1bf); stage4 setup order (T-1835). Replacing assertions are the later probes own passing lines. No other mismatch or missing line.
+
+Corrections: R-1 fresh shared seal for each remote test launch; R-2 retain all Q/T roots through final freshness, recording and verdict; R-3 bounded watchdog settle and J2-only cleanup. Exact original brief/helper and corrected launcher are retained; stage kit bodies stay private, with hashes in the evidence. See corrections.md for decisions, diffs and both execution errors.
+
+Requested criterion marks: C1,C2,C3,C4,C5,C6,C7, established by the mapped rows and approved D-1–D-4 substitutions. All scope rows and end gates passed. The Coordinator owns closure; this report does not claim closure.
+
+Epic occasion suite: GREEN, run `64fef6d2-b61d-46d9-8c30-1798d0dd99ca`, full tested head `5906a1e144b85cb1d4799aa74b12333e8e29569a`, integrated dev, executor droplet, full mode. Hub receipt A-19622: `/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19622-suite-64fef6d2-b61d-46d9-8c30-1798d0dd99ca-all-at-5906a1e.log`.
+
+T0, T1, T2, T3, T4 base and Web completed. 8,527 tests: 8,518 passed, zero failed/cancelled/todo, nine skipped. T4 repetitions did not run; its 17 files ran in the base phase only. The nine skips are not passes. No cache hit or projection is used as executed evidence.
+
+Both shards: Linux x64 6.8.0-147-generic, Node v24.21.0, Neovim v0.12.5, two configured workers; c-8 in ams3. The suite records Google Chrome for Testing 156.0.8078.4 at `/home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell`.
+
+| shard | machine | admission through remote finish | billed-lifetime estimate | estimated cost | collection after remote finish |
+| --- | --- | --- | --- | --- | --- |
+| shard-1 | cland-v0-1d568b81 | 2194.50 s | 2152 s | $0.1494 | 29.25 s |
+| shard-2 | cland-v0-7babf4c3 | 2013.50 s | 1972 s | $0.1370 | 30.30 s |
+
+Actual overall wall: **2224.45 s**, admission through collection; excludes pre-admission queue/submission time. Estimated suite cost **$0.2864**. The separately released demo lease cost is $0.047536944444444444 (684532 ms lifetime); local targeted checks have no droplet cost.
+
+Timing and lint gates were report-only: 122 lint findings in 59 files; T3 projected wall 1542.583 s against 900 s and Web projected wall 202.87 s against 40 s. Those projections are not measured wall times or performance passes. Ten per-case budgets would fail; the complete names and measurements remain in A-19622. The suite's test result is green despite these report-only findings.
+
+
+Pre-cleanup evidence was published as A-19621 before removing the fifteen dead receipts from the run's own T directory and its checked J2 alias. Shared historical receipts and all twelve attributed dead host socket directories remain untouched. D91 confirmed zero remaining owned-family residue, no preservation lock, clean worktree, unchanged root non-tracker status and zero unintended withheld lines. All four Q roots, all four T roots and the worktree remain until the verdict, under R-2; their literal-path cleanup follows the verdict.
+
+The suite is now complete. D99 is the final freshness check; its capture and recorder line establish the build's eligibility immediately before publication and verdict. C1–C7 are requested verified on this run with the committed D-1–D-4 evidence substitutions explicitly retained. NEW-1–NEW-4 were not run; T-1868 owns those independent journeys.
+
+
+
+Evidence A-19626: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19626-e-1537-dod-qa-49-checks-clear-at-5906a1e1-epic-suite-green/report.md
+Pre-cleanup A-19621; epic full-suite A-19622. Final publication scan:295files,424129lines,0refused,positivecontroltrue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-11-15T11:35:15.103Z
+
+Closed on qa-678's clear epic verdict qa-e1537d-2026-11-15-qa678-1 at 5906a1e144b85cb1d4799aa74b12333e8e29569a, with C1–C7 verified (A-19626). The epic suite 64fef6d2 is green: 8518 pass, 0 fail (A-19622). The five stages closed clear: A-19371, A-19436, A-19486, A-19597, plus stage 1. Substitutions D-1–D-4 are explicit; the live end-to-end drivers are T-1868. Known follow-ups: T-1866 (in R-1530, landing next), T-1867, T-1868, T-1869, T-1861.

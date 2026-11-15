@@ -3,7 +3,7 @@ id: T-1806
 kind: task
 title: Native host fixtures leave cland-h-* socket directories in /tmp, and /tmp holds about 90 historical native-fixture roots
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1520
 branch: t/T-1806-native-host-fixtures-leave-cland-h
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-15T10:26:24.560Z
+updated: 2026-11-15T10:59:44.047Z
 ---
 
 ## Summary
@@ -30,8 +30,10 @@ A run of `hub/test/host-create-ready.test.ts` (12/12 pass, macOS, 2026-11-10 18:
 
 - [x] C1. Native host fixtures create their socket directories under the file's scratch root, or register their disposal at allocation, so an exact `/tmp` name set reads unchanged across host-create-ready, host-destroy-native and host-restart (test).
   - done: impl-1806 · 2026-11-15T08:36:15.154Z
+  - verified: rev-35 [reviewer] · run rev-35-1806-final-1 · 2026-11-15T10:59:43.920Z · commit fa6cb7c65d1151a11e26514216d651095eebb3ac
 - [x] C3. A shared inventory helper gives tests and QA briefs one exact before/after name-set check (test).
   - done: impl-1806 · 2026-11-15T08:36:15.553Z
+  - verified: rev-35 [reviewer] · run rev-35-1806-final-1 · 2026-11-15T10:59:43.920Z · commit fa6cb7c65d1151a11e26514216d651095eebb3ac
 
 ## Comments
 
@@ -190,3 +192,22 @@ A-19606 completes failed-evidence pass for8dd973c2/A-19602: ordinary5609pass/1fa
 ### impl-1806 · 2026-11-15T10:26:24.560Z
 
 After Reviewer failed-evidence completion A-19606, executed Coordinator ba007232's exactly one unchanged-head retry: 064b9526-d2cd-413c-98c9-f753467f9e63 at fa6cb7c65. Durable hub admission and CLI exit0/queue position1 observed; configured result pending. No local/shared-test experiment or source/native changes. Same 422 case failure again => report/stop. Prior configured failures A-19577 and A-19602 remain red; A-19602 is attributed to shared T-1862; same-head native/control A-19596 remains88/88.
+
+### impl-1806 · 2026-11-15T10:54:26.051Z
+
+Authorized retry 064b9526/A-19615 passed at unchanged reviewed fa6cb7c65: hub aggregate6351/6351, zero fail/cancel/skip/todo. T0/T1/T2 + changed T3 file6 identities + Web55files/292 executed; remaining T3/T4 retained their batch/integrated split. Incremental log audit confirms actual finish/pass for all nine required generated cases, including shared422 recovery and original three exact-directory guards. New discarded/replacement/owned-parent cases each base+5 load completions, cold hub one T3 base. Provenance Linux x64 6.8.0-147-generic/Node24.21.0/Neovim0.12.5/droplet, isolated Headless Shell1248 Google Chrome for Testing156.0.8078.4. Report-only duration/ratchet notices are advisories, not enforced gate passes. Native A-19596 independently88/88 full system/user/suite names unchanged at same head. A-19577 remains failed prior own-source evidence, A-19602 remains failed known T-1862 flake. Final Reviewer C1/C3 settlement pending; no source change, claim retained.
+
+### rev-35 · 2026-11-15T10:59:43.920Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1806-final-1
+commit: fa6cb7c65d1151a11e26514216d651095eebb3ac
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear A-19618, accounting A-19617. Exact source-clear fa6cb7c65 unchanged; authorized single retry064b9526/A19615 actual6351ordinarytest/700file passes, separate190loadtest/185file positives, no negatives. All981manifest accounted:220T1/424T2/55Web+changedT3one actual ordinary file pass; required25load cases each joined to their file envelope. Native A19595/19596 independently verified88/88tenfiles, direct child status0/signalnull, full sorted unique system15553/user9990/suite2 arrays equal every file/overall; cold sole-env/prepared/tracker guards pass. C1/C3 verified; C2 remains T1865/no cleanup. Original1523consumer identities retained plus82manifest boundaries, inherited unknown/source flags preserved; filename false-positive represented by durable source-row pointer. Actual Linux/Node24.21/Nvim.12.5/Headless1248CfT156 noncached provenance correct; report-only lint/budgets/ratchet are not enforced/performance clearance. Remaining258T3/16T4 and parent occasions deferred; per-item QA none. A19602 stays failed sharedT1862, A19577 stays failed own-source, A19573 old-head. Hold released; no Reviewer runtime/native/census/provider/browser/merge action.
+
+Criteria: C1 verified, C3 verified.
