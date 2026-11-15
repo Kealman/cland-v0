@@ -2,8 +2,8 @@
 id: T-1760
 kind: task
 title: Merge queue lands an interrupted batch on failing-file reruns without running the files the interruption skipped
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-1527
 branch: t/T-1760-merge-queue-lands-an-interrupted-batch
 created: 2026-11-07T18:46:18.179Z
-updated: 2026-11-15T15:39:32.129Z
+updated: 2026-11-15T18:01:48.836Z
+closed: 2026-11-15T18:01:48.836Z
 ---
 
 ## Summary
@@ -111,3 +112,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear A-19736 at unchanged clean source-reviewed a4596490b. Independently streamed A-19735:6380ordinary test/700file positives; separate240load test/file positives, zero negatives. Every selected220T1/425T2/55Web file passes. All six new control identities base1+load5, all30 loads joined to positive file envelopes; merge-batches81/progress8/usagecompat/indexedguide and related mergequeue/clauses positive. C1full-plan/selection/restart, C2notice/inventory capability and C3later-red no-landing verified. Exact LinuxNode24.21/Nvim.12.5/Headless1248CfT156 noncached provenance matches. T1file>10s warning/report-only lint/budgets retained, no performance/enforcement clearance. Original83/all982 union and unknowns preserved;265T3/17T4/non-test-native/parent occasions deferred. Old transcribed/candidate/scanner limits not retrofitted. Hold released; Coordinator landing separate; no Reviewer runtime/livequeue/native/census/cleanup/merge.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-15T18:01:48.836Z
+
+Merged 30d4477fa006d8772f0b1df933eb66fccb4ee591 onto dev.
