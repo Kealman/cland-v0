@@ -36,6 +36,7 @@ const sidebar = [
     ['Hosts, pools and logins', 'docs/hosts'],
     ['Verification and release', 'docs/verification-and-release'],
     ['Web and phone', 'docs/web-and-phone'],
+    ['Users and sign-in modes', 'docs/users'],
     ['Remote control', 'docs/remote-control'],
   ]),
   // How to drive and configure it.

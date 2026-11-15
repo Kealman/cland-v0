@@ -36,6 +36,24 @@ In a normally launched session's shell, CLI calls use the inherited cland sessio
 
 `cland web --sessions` lists browser sign-ins; `cland web --revoke <id>` revokes one and closes its sockets. Both are **human** commands.
 
+## Users and sign-in
+
+See [Users and sign-in modes](/docs/users/) for the walkthrough. These commands
+require your local human shell and a running hub. Add and invite need an available
+web edge; their links are one-time credentials valid for 24 hours.
+
+| Command | What it does |
+| --- | --- |
+| `cland auth mode users` | Switch to users mode, sign out browsers and print the first user's metadata and invite when web is available. |
+| `cland auth reset` | Return to single mode, retaining users and revoking browser sessions and open invites. |
+| `cland user add <name> [--display <name>]` | Create an invited admin and print an invite. |
+| `cland user invite <name>` | Replace open invites with a fresh invite. |
+| `cland user list` | Print name, display name, role and state. |
+
+Users commands require users mode. Web admins can also create and list users
+in Accounts. Invite recipients register a passkey or a password of at least
+12 characters in the browser.
+
 ## Hosts and logins
 
 See [Hosts, pools and logins](/docs/hosts/) for configuration, paid operations,

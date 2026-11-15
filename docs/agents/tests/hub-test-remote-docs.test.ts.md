@@ -1,5 +1,14 @@
 # hub/test/remote-docs.test.ts
 
+The same wrapper imports `site/test/users-docs.test.ts`: source-only checks for
+the Features links, all users-page headings, command/flag/config vocabulary with
+invented controls, the scoped multi-user web section's exact controls, the
+usage-derived five auth/user subcommands including duplicate/extra controls,
+and setup/doctor descriptions. Run `node --test site/test/users-docs.test.ts`
+for just these five cases. It imports no native module. The CLI walkthrough's
+marked blocks share one extractor with the T2 users-docs-invite test; static
+labels do not claim browser execution or passkey registration.
+
 T1 imports `site/test/remote-docs.test.ts` into the existing hub suite. The site
 test also runs in site's prebuild with only its own dependencies installed:
 import only dependency-free CLI usage, and read the config template and

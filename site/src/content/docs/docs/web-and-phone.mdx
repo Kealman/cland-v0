@@ -23,6 +23,26 @@ These commands run from your own shell; launched agent sessions cannot mint or m
 
 The cookie is `HttpOnly` and `SameSite=Strict`, with `Secure` when using the configured HTTPS origin. Every connection checks its `Host` and `Origin`, and the page can only connect as you, never as a session.
 
+## Multi-user sign-in
+
+Single mode uses the one-time browser links described above. In users mode,
+each person signs in with their own passkey or password. On the invite page,
+choose **Create passkey** or **Set password** (at least 12 characters); later,
+choose **Use passkey** or enter **Password** and press **Sign in**.
+Passkeys need a secure browser context; use your HTTPS tunnel on a phone.
+See [Users and sign-in modes](/docs/users/) to switch modes and invite people.
+
+In **Accounts**, an admin sees **Users**, a table with **Name**, **Display name**,
+**Role** and **State**. Enter a name and optional display name, then **Create user**.
+The **Invite link** field has **Copy invite** and **Dismiss invite** controls.
+Share it privately: it is a one-time credential, valid for 24 hours. To replace
+an open invite, run `cland user invite <name>` in your local human shell.
+
+Messages show who wrote them, and answers and approvals show who settled them.
+There is one inbox for everyone: the first answer from any workbench or paired
+remote wins. In users mode, session rows and the Agents start line show the
+launching user.
+
 ## The layout
 
 - **The rail** on the left lists the areas: **Inbox**, **Items**, **Sessions**, **Topics**, **Events**, **Artifacts**, **Accounts**. Counts appear only where something asks for attention. The rail collapses to icons.

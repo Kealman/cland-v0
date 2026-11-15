@@ -40,6 +40,8 @@ Everything cland does, one line each. Each line links to the page that explains 
 
 ## Where you work
 
+- **[Users and sign-in modes](/docs/users/).** Named people, passkeys and passwords, private invites and one shared inbox.
+
 - **[The terminal workbench](/docs/workbench/).** cland's own Neovim, with a palette that shows every action and its key; no Neovim experience needed.
 - **[Web and phone](/docs/web-and-phone/).** The same hub in any browser and on your phone, installed as an app, with notifications for what needs you.
 - **[Remote control](/docs/remote-control/).** Follow and steer the crew from a private Telegram chat or a channel in your own Discord server. General goes both ways; asks and Codex and OpenCode approvals arrive as cards. Send photos, files and voice notes. Pair through `cland setup` on the machine running the hub.

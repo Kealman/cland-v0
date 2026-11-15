@@ -899,6 +899,7 @@
     "hub/test/typecheck.test.ts": "T3",
     "hub/test/until.test.ts": "T1",
     "hub/test/user-invites.test.ts": "T2",
+    "hub/test/users-docs-invite.test.ts": "T2",
     "hub/test/users.test.ts": "T1",
     "hub/test/v01-migration.test.ts": "T2",
     "hub/test/verdict-commit-component.test.ts": "T2",
