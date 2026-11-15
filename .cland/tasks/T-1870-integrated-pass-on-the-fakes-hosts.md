@@ -3,7 +3,7 @@ id: T-1870
 kind: task
 title: "Integrated pass on the fakes: hosts, logins, users and restart in one scenario"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1524
 branch: t/T-1870-integrated-pass-on-the-fakes-hosts
 created: 2026-11-15T13:08:09.345Z
-updated: 2026-11-15T13:52:53.253Z
+updated: 2026-11-15T14:29:52.814Z
 ---
 
 ## Summary
@@ -66,3 +66,37 @@ findings: [{"severity":"medium","text":"New setup/start sequences lack pre-acqui
 finding_counts: {"high":0,"medium":2,"low":0}
 
 A-19704 completes all six changed paths, both axes: Standards two medium rule12 findings confirmed by lead0dd9391c/614ef0e3; Spec no additional finding. Five intended paths, scoped faults, T3 registration/guide and current18s development allowance inspected; Linux resizing remains directly recorded Coordinator requirement. Independently checked raw five intended reds and green/all-five diagnostics. A-19703 binds precommit chronology/unknown immutable source, raw-versus-transcribed native fields, current-launcher and publication limits; no retroactive proof. A-19695 all983 tiers/47originalhits/12reached+17unknown retained; Web planned-disposition clarification pending. Development system+2/user-equal and derived prefix suite field are not C3 preservation. C1/C2 final verification pending; C3 authorized-pending, not failed. Hold released for consolidated correction and fresh source review. Coordinator82821e8a single later dev merge/quiet preservation/delta review/mode-free sequence retained; no Reviewer producer/native/cleanup run.
+
+### impl-1870 · 2026-11-15T14:13:26.342Z
+
+Corrected both source findings in f2e11bb614e6b7e3c421dfe0231588369e3cf79b: initialization/setup/start tracked and fenced before acquisition, late hubs stopped/joined before handles/root; pre-armed remote results cancel and join on thrown upload. Authorized development cleanup6/6 and scenario1/1 pass; captured receipts/logs A-19712, evidence labels clarified A-19711. Full workspace typecheck, child-env/tier/guide/wording checks pass; test lint report-only122 findings59 files, zero refusals. C3 and Linux remain pending T-1806 merge and directed evidence. Fresh source review requested; no configured verification yet.
+
+### rev-35 · 2026-11-15T14:17:29.120Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1870-source-2
+commit: f2e11bb614e6b7e3c421dfe0231588369e3cf79b
+scope: full
+findings: [{"severity":"medium","text":"New owner controls lack cleanup registered before admission/readiness. Late-acquisition assertions can leave its gate/action/close pending; thrown-upload controls enter finally only after an unrelated receipt is armed and readiness awaited. Register an outer release-first, attempt-all join owner before work starts; apply consistently to receipt controls.","file":"hub/test/host-fixture-cleanup.test.ts","line":73}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-19713 completes reworked nine-path correction pass; Standards one medium confirmed fd4295d0, Spec no additional finding. Both original A-19704 owners fixed: whole setup/start registration, fencing, late adoption/stop-once/drain before handles/root; exact-ID reply exchange cancellation and attempt-all teardown. New actual fixture controls and all five scenario paths inspected. A-19712 independently6/6+1/1/direct0-null and selective executable/launcher hashes match; development-only dirty-tree limits, per-harness unknowns and system+2 retained, not C3. New cleanup root T3/sortedmanifest984 and guides present; prior consumer union retained/additive helper hits checked; A-19711 Web/suite clarification accepted. C1/C2 final pending; C3 authorized-pending not failed. Hold released for correction/fresh review, preserving Coordinator506c0e4d/82821e8a sequence. No Reviewer runtime/native/census/provenance run.
+
+### impl-1870 · 2026-11-15T14:27:18.279Z
+
+Corrected A-19713 control cleanup finding in 454f64a8aed177b0c83baf599dcd20e7725c41f8. Every control registers release-first, attempt-all cleanup before admission; initialization/restart/disposal and individual receipt/loop promises join even after another failure. Cancelled synthetic initialization gets a final late-hook pass. Added direct late-hook and rejected-owner controls. Authorized cleanup-file-only development run8/8, close0/null, full system/user name sets unchanged; A-19714 retains launch/close/selective hashes and redacted output. Runtime fixture/scenario sources unchanged; no scenario rerun or C3 claim. Coordinator2982c54f bar/cap included in fresh review request.
+
+### rev-35 · 2026-11-15T14:29:52.814Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1870-source-3
+commit: 454f64a8aed177b0c83baf599dcd20e7725c41f8
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear A-19717 across complete two-path correction. A-19713 resolved: every control registers release-first/attempt-all owner before admission, including initialization and all reply tests; late synthetic hooks receive a final cursor pass after admitted work joins. Added cancelled-init and rejected-owner controls; no product assertion weakened. Directly read Coordinator2982c54f bar/cap; no follow-up/waiver needed. Independently checked A-19714 eight pass/direct child0-null/selective hashes, and A-19715/16 published original arrays byte-identical1,535,438bytes/SHA b61b33d2, sorted unique full15624system/10027user names equal. Development-only/selective-dirty-tree and native/provenance limits retained; no scenario or C3 upgrade. C1/C2 final pending; C3 authorized-pending not failed. Hold released. Coordinator82821e8a one laterdevmerge/quietpreservation/merged-head delta review/mode-free sequence and Linux-duration resizing remain binding. No Reviewer runtime/native/census/cleanup/merge.

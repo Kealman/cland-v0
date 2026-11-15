@@ -2,8 +2,8 @@
 id: T-1871
 kind: task
 title: Release docs checked against the build, with the price table's date
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1526
 branch: t/T-1871-release-docs-checked-against-the-build
 created: 2026-11-15T13:08:09.539Z
-updated: 2026-11-15T13:55:32.821Z
+updated: 2026-11-15T14:36:19.946Z
+closed: 2026-11-15T14:36:19.946Z
 ---
 
 ## Summary
@@ -93,3 +94,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear: A-19707; exact named/consumer ledger A-19706; original run75cd0dd0/A-19705. C1/C2 verified. All10 hosts and7 users source guards base+5 pass, including repaired12s revoke budget; frozen help compatibility and actual T2 public walkthroughs pass. Day-of-work public prices independently checked in A-19684 match dated table/provider storage declaration; configured pricing guards pass. 6357 positive base tests/700 files; separate210 load test/file passes. All982 manifest paths accounted:700 lower/Web pass,265 T3/17 T4 deferred, zero missing lower/Web. Exact head/tree/Linux/browser provenance, clean source, report-only budgets/lint. A-19683/A-19686 transcript/candidate/publication limits retained. No Reviewer runtime execution; remaining integrated release/demo/native/T4 occasions separate. Hub/Coordinator own ready/landing.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-15T14:36:19.946Z
+
+Merged 80ae07a711224f6ec6f2cab3f16a10d3891c0da2 onto dev.

@@ -2,8 +2,8 @@
 id: T-1806
 kind: task
 title: Native host fixtures leave cland-h-* socket directories in /tmp, and /tmp holds about 90 historical native-fixture roots
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1520
 branch: t/T-1806-native-host-fixtures-leave-cland-h
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-15T13:48:29.247Z
+updated: 2026-11-15T14:36:05.912Z
+closed: 2026-11-15T14:36:05.912Z
 ---
 
 ## Summary
@@ -270,3 +271,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final corrected-head clear A-19694. Source A-19669 unchanged/clean. Independently streamed A-19693:6356ordinary tests/701files pass; separate190load tests/185files, no negatives; all220T1/424T2/55Web plus changedT3twofiles/11identities positive. Exact LinuxNode24.21/Nvim.12.5/Headless1248CfT156 noncached provenance matches. Independently audited native158/158 across19files, all direct status0/signalnull/errornull/source+launcher hashes match. Preservation is18original clean intervals plus accepted clean Claude45/45 rerun; originalClaude/overalluser+2 remains+2, inferred concurrent-tooling attribution/exactownerunknown under directly read Coordinatoreff215eb. Current981manifest supplements preserved1523union=1605; unknown/source fields retained, remaining249T3/16T4 deferred. Report-only lint/budgets/ratchet notices not enforced/performance clearance. C1/C3 verified; C2 remainsT1865/no cleanup. Prior failed/source-head evidence remains historical. Hold released; Coordinator landing gate separate; Reviewer read-only only.
 
 Criteria: C1 verified, C3 verified.
+
+### coord · 2026-11-15T14:36:05.912Z
+
+Merged 68d820387635e286f13ed2760748b8574d748462 onto dev.

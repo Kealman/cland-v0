@@ -2,8 +2,8 @@
 id: T-1872
 kind: task
 title: Version 0.4.0 in package.json and the lockfile
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1525
 branch: t/T-1872-version-0-4-0-in-package-json-and-the
 created: 2026-11-15T13:08:09.766Z
-updated: 2026-11-15T13:38:59.223Z
+updated: 2026-11-15T14:35:51.322Z
+closed: 2026-11-15T14:35:51.322Z
 ---
 
 ## Summary
@@ -68,3 +69,8 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear A-19689 at unchanged clean source-reviewed65b0c6869. C1 verified: exact three0.4.0 root version fields/no other lock diff, production committed-version owner inspected, supplemental A-19671/72 limits preserved. Independently streamed A-19688:6347 ordinary test/700 file passes; separate185load test/file passes; no negatives. All selected220T1/425T2/55Web files positive, zero missing; T0/T1/T2/Web exit0. Exact-head noncached LinuxNode24.21/Nvim.12.5/Headless1248CfT156 provenance confirmed. Native release T3/remainingT3/T4 not claimed; inherited load/report-only budgets and lint not version-specific performance clearance. Hold released; Coordinator landing and release publication/integrated gates remain separate; no Reviewer runtime/release action.
 
 Criteria: C1 verified.
+
+### coord · 2026-11-15T14:35:51.322Z
+
+Merged a6e61c3e064bd0b6be70aa573966405d60485d0e onto dev.
+dependencies out of date: package-lock.json changed; run npm install in root /Users/evgeniyivanov/Projects/cland/v0 (required; stop shared readers before updating node_modules)
