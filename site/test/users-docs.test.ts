@@ -71,3 +71,26 @@ test('users guide describes setup and doctor from their source declarations', ()
   }
   for (const fact of ['skip', 'open', 'ok', '--yes', 'hub not running', 'cland hub reload', 'cland hub start']) assert.ok(page.includes(fact), fact);
 });
+
+test('offline setup rows and unreadable-config fallback match the signin declaration', () => {
+  const page = source(usersPath);
+  const declaration = source('hub/src/setup/steps/signin.ts');
+  for (const detail of ['single mode', 'users mode; hub not running', 'single mode default; detect when the hub is available', 'choose the web sign-in mode']) {
+    assert.ok(declaration.includes(`'${detail}'`), detail);
+    assert.ok(page.includes(`\`${detail}\``), detail);
+  }
+  assert.match(declaration, /o\.yes \|\| o\.noAide/);
+  assert.match(page, /--yes` or `--no-aide/);
+  assert.match(page, /project config[\s\S]*?`skip`[\s\S]*?`cland auth mode users`[\s\S]*?`open`[\s\S]*?`cland hub start`/);
+});
+
+test('CLI identity examples match the auth parser contract', () => {
+  const cli = source('site/src/content/docs/docs/cli.md');
+  const parser = source('hub/src/cli/auth.ts');
+  assert.ok(parser.includes("args[2] === '--display'"));
+  assert.ok(cli.includes('cland user add <name> [--display <name>]'));
+  assert.ok(parser.includes('${result.user.name}  ${result.user.role}  ${result.user.state}'));
+  assert.match(source(usersPath), /Add and invite print name, role and state/);
+  assert.ok(parser.includes("args.includes('--help')"));
+  assert.match(cli, /`auth` and `user` also accept `--help`/);
+});

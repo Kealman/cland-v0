@@ -5,7 +5,7 @@ the Features links, all users-page headings, command/flag/config vocabulary with
 invented controls, the scoped multi-user web section's exact controls, the
 usage-derived five auth/user subcommands including duplicate/extra controls,
 and setup/doctor descriptions. Run `node --test site/test/users-docs.test.ts`
-for just these five cases. It imports no native module. The CLI walkthrough's
+for the users cases. It imports no native module. The CLI walkthrough's
 marked blocks share one extractor with the T2 users-docs-invite test; static
 labels do not claim browser execution or passkey registration.
 
@@ -117,3 +117,20 @@ tests intentionally do not fetch mutable prices. Future quote refreshes check
 those pages again. A storage discrepancy requires a decision from the item lead
 before editing declared prices. The initial pricing red had two missing-content
 failures; the initial inventory red had an empty list versus 16 usage commands.
+
+### Release documentation audit
+
+The shared wrapper also checks exact offline sign-in details and the unreadable
+config fallback against `setup/steps/signin.ts` read as source. Missing-pool
+labels and both repair alternatives come from `host/missing-pools.ts`; setup's
+`open` and doctor's `warn` remain distinct. CLI guards check login-add flags
+against the parser and user-add output fields against `cli/auth.ts`, alongside
+the existing complete usage inventories. These are source contracts, with no
+native imports or real provider calls. Public prices require a separate dated
+read of all three linked provider pages; a passing test alone cannot refresh a
+quote. The web multi-user section retains its component-label guard.
+The host-revoke guard derives the settlement budget from the launch and host
+declarations read as source, checks help and public wording against it and keeps
+the CLI's separate frame margin explicit. It proves no native timing result. Count
+tracker ids manually in any changed `.mdx` lines: the closed-item lint reads
+Markdown only.

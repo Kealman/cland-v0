@@ -107,6 +107,37 @@ test('hosts storage table matches provider declared GiB-month rates without nati
   }
 });
 
+test('missing role pool docs quote the shared placement label and repair alternatives', () => {
+  const page = source(hostsPath);
+  const declaration = source('hub/src/host/missing-pools.ts');
+  for (const template of ['host ${role} placement', 'role ${role}: pool ${pool} is not configured', 'cland config set hosts.${pool}.provider digitalocean; cland hub reload OR cland role launch ${role} --pool local; cland hub reload']) {
+    assert.ok(declaration.includes(template));
+    const example = template.replaceAll('${role}', 'implementer').replaceAll('${pool}', 'agents');
+    for (const alternative of example.split(' OR ')) assert.ok(page.includes(`\`${alternative}\``), alternative);
+  }
+  assert.match(source('hub/src/setup/steps/hosts.ts'), /missingRolePools/);
+  assert.match(source('hub/src/doctor/hosts.ts'), /warn\(name, detail, fix\)/);
+  assert.match(page, /setup reports `open` \(exit 1\) and doctor reports `warn`/);
+});
+
+test('CLI login add flags match the parser rather than only help', () => {
+  const parser = source('hub/src/cli/login.ts');
+  const row = source('site/src/content/docs/docs/cli.md').split('\n').find(line => line.startsWith('| `cland login add'))!;
+  const accepted = /!\[([^\]]+)\]\.includes\(args\[i\]!\)/.exec(parser)![1]!;
+  assert.deepEqual([...row.matchAll(/--[a-z-]+/g)].map(m => m[0]).sort(), [...accepted.matchAll(/'(--[a-z-]+)'/g)].map(m => m[1]).sort());
+});
+
+test('host revoke documentation names the declared settlement budget', () => {
+  // Read declarations only: importing host settlement would widen the site T1 graph.
+  const launch = Number(/LAUNCH_SETTLEMENT_MS = (\d+)/.exec(source('hub/src/adapters/launch-settlement.ts'))![1]);
+  const host = /HOST_SETTLEMENT_MS = (\d+) \* LAUNCH_SETTLEMENT_MS \+ (\d+)/.exec(source('hub/src/host/settle.ts'))!;
+  const seconds = (Number(host[1]) * launch + Number(host[2])) / 1000;
+  assert.equal(seconds, 12);
+  assert.ok(source('site/src/content/docs/docs/cli.md').includes(`a ${seconds}-second settlement budget`));
+  assert.ok(HOST_USAGE.includes(`a ${seconds}s settlement budget`));
+  assert.match(source('hub/src/cli/host.ts'), /HOST_SETTLEMENT_MS \+ 3000/);
+});
+
 function cliHostCommands(text: string): string[] {
   return [...text.matchAll(/`cland ((?:host|login) [a-z-]+)\b/g)].map(match => match[1]!).sort();
 }

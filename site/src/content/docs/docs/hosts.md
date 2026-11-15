@@ -254,7 +254,14 @@ have separate default-No paid confirmations. The image row is `agent hosts image
 login rows name the harness. Setup verifies a current image and eligible logins
 for the chosen role accounts.
 
-For a role on a missing pool, setup reports `open` (exit 1) and doctor reports `warn` with `role implementer: pool agents is not configured` (using the actual role and pool), both read-only with the fix `cland config set hosts.agents.provider digitalocean; cland hub reload` or `cland role launch implementer --pool local; cland hub reload`.
+For a role on a missing pool, setup reports `open` (exit 1) and doctor reports `warn`.
+Doctor's line is `host implementer placement`, with `role implementer: pool agents is not configured`
+(using the actual role and pool). Both checks are read-only, including under `--yes`, with the fix:
+
+`cland config set hosts.agents.provider digitalocean; cland hub reload`
+OR `cland role launch implementer --pool local; cland hub reload`
+
+Choose one side of `OR`: configure the pool or return the role to local launches.
 
 With `--yes`, an untouched project reads `skip` with
 `optional agent hosts; default No`. Without a terminal and without `--yes`, untouched hosts read

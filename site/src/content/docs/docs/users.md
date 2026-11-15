@@ -14,7 +14,7 @@ the auth commands, rather than editing it or using config set.
 
 Run the following commands in your own local human shell, inside a project with
 a running hub and its web edge available. The first command switches from single
-to users mode, creates the first admin from Git's `user.name`, and prints that
+to users mode, creates the first admin from Git's `user.name` (or the OS username when unset), and prints that
 user's invite when web is available. Switching signs out current browser sessions.
 Open that invite privately to register your sign-in. Invite links are credentials:
 never paste them into topics, logs or screenshots.
@@ -36,8 +36,8 @@ cland user invite teammate
 
 Add creates an invited admin and prints a one-time, 24-hour invite. List shows
 name, display name, role and state. Invite replaces that user's open invites with
-a fresh 24-hour link; send the latest link privately. Printed output includes the
-user's metadata followed by `<one-time invite link>`; this placeholder is not a
+a fresh 24-hour link; send the latest link privately. Add and invite print name, role and state
+followed by `<one-time invite link>`; this placeholder is not a
 working credential. `cland user add <name> --display <name>` sets a display name.
 
 `cland auth reset` is the only way back to single mode. It retains users and
@@ -82,9 +82,12 @@ In single mode, `cland setup --yes` keeps single mode and reads `skip`.
 Without a terminal and without `--yes`, single mode also reads `skip`, with
 `cland auth mode users` as the fix, preserving unattended setup's exit status.
 With a reachable hub, users mode reads `ok` with its user count. When the hub
-cannot be reached, setup reads the mode from project config: single mode reads
-`skip` with `cland auth mode users`, with or without a terminal; users mode reads
-`open` with `cland hub start`. Unreadable config keeps the existing fallback.
+cannot be reached, setup reads `auth.mode` from project config: single mode reads
+`skip`, detail `single mode`, with `cland auth mode users`, with or without a terminal;
+users mode reads `open`, detail `users mode; hub not running`, with `cland hub start`.
+If config cannot be read, `--yes` or `--no-aide` gives `skip` with
+`single mode default; detect when the hub is available`; otherwise it gives `open`
+with `choose the web sign-in mode` and `cland auth mode users`.
 
 `cland doctor` reads **sign-in mode** from project config. Single mode reads
 `single`. In users mode the running hub supplies active/invited user counts and

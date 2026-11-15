@@ -5,7 +5,7 @@ sidebar:
   order: 10
 ---
 
-Run `cland --help` for the command reference. `web`, `verify`, `merge`, `push`, `publish`, `release` and `sync` also accept `--help` without a running hub; other commands do not consistently support it. Many commands take `--json` for machine-readable output.
+Run `cland --help` for the command reference. `web`, `verify`, `merge`, `push`, `publish`, `release`, `sync`, `auth` and `user` also accept `--help` without a running hub; other commands do not consistently support it. Many commands take `--json` for machine-readable output.
 
 Commands that talk to the hub find it through the project around the current directory, from any folder inside it, including task worktrees.
 
@@ -69,7 +69,7 @@ and agent sessions cannot run them.
 | `cland host list [--json]` | Id, pool, provider, size, region, state, uptime and USD/hour. **human** |
 | `cland host prepare [pool]` | Prepare one or all configured pool images. **human** |
 | `cland host destroy <id>` | Remove the host, machine and key with confirming reads. **human** |
-| `cland host revoke <id>` | Settle generations within 2 seconds, revoke the secret and report leftovers. **human** |
+| `cland host revoke <id>` | Allow a 12-second settlement budget before revoking the secret; report unresolved generations as leftovers. The CLI request adds a 3-second frame margin. **human** |
 | `cland host git-proxy <socket>` | Internal host transport: relay Git stdin/stdout through the forwarded Unix socket. |
 | `cland host attach <session>` | Attach using the agent run folder's private launch record and checked native identity; exiting leaves the session running. |
 | `cland host serve` | Run the host agent on agent.sock; requires the host secret environment and uses the configured run directory. |
