@@ -3,7 +3,7 @@ id: T-1806
 kind: task
 title: Native host fixtures leave cland-h-* socket directories in /tmp, and /tmp holds about 90 historical native-fixture roots
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1520
 branch: t/T-1806-native-host-fixtures-leave-cland-h
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-15T10:59:44.047Z
+updated: 2026-11-15T13:08:20.434Z
 ---
 
 ## Summary
@@ -29,11 +29,11 @@ A run of `hub/test/host-create-ready.test.ts` (12/12 pass, macOS, 2026-11-10 18:
 ## Acceptance criteria
 
 - [x] C1. Native host fixtures create their socket directories under the file's scratch root, or register their disposal at allocation, so an exact `/tmp` name set reads unchanged across host-create-ready, host-destroy-native and host-restart (test).
-  - done: impl-1806 · 2026-11-15T08:36:15.154Z
   - verified: rev-35 [reviewer] · run rev-35-1806-final-1 · 2026-11-15T10:59:43.920Z · commit fa6cb7c65d1151a11e26514216d651095eebb3ac
+  - done: impl-1806 · 2026-11-15T13:08:06.672Z
 - [x] C3. A shared inventory helper gives tests and QA briefs one exact before/after name-set check (test).
-  - done: impl-1806 · 2026-11-15T08:36:15.553Z
   - verified: rev-35 [reviewer] · run rev-35-1806-final-1 · 2026-11-15T10:59:43.920Z · commit fa6cb7c65d1151a11e26514216d651095eebb3ac
+  - done: impl-1806 · 2026-11-15T13:08:06.787Z
 
 ## Comments
 
@@ -211,3 +211,24 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear A-19618, accounting A-19617. Exact source-clear fa6cb7c65 unchanged; authorized single retry064b9526/A19615 actual6351ordinarytest/700file passes, separate190loadtest/185file positives, no negatives. All981manifest accounted:220T1/424T2/55Web+changedT3one actual ordinary file pass; required25load cases each joined to their file envelope. Native A19595/19596 independently verified88/88tenfiles, direct child status0/signalnull, full sorted unique system15553/user9990/suite2 arrays equal every file/overall; cold sole-env/prepared/tracker guards pass. C1/C3 verified; C2 remains T1865/no cleanup. Original1523consumer identities retained plus82manifest boundaries, inherited unknown/source flags preserved; filename false-positive represented by durable source-row pointer. Actual Linux/Node24.21/Nvim.12.5/Headless1248CfT156 noncached provenance correct; report-only lint/budgets/ratchet are not enforced/performance clearance. Remaining258T3/16T4 and parent occasions deferred; per-item QA none. A19602 stays failed sharedT1862, A19577 stays failed own-source, A19573 old-head. Hold released; no Reviewer runtime/native/census/provider/browser/merge action.
 
 Criteria: C1 verified, C3 verified.
+
+### impl-1806 · 2026-11-15T12:43:20.002Z
+
+Batch regression correction in progress at 267db462901d95dc6cd3ed6a87a4839eb0b37b75. Original unchanged fa6 native red/stat UID evidence A-19654 confirms registration switched from cland-h fallback to ct/hash only at later hub startup; raw sshHostFixture now enrolls before registration. A-19657 preserves the next partial red: Git copied socket metadata with mode755 into remote worktrees and real privacy cleanup rejected it. Raw fixture now initializes disposable Git and installs /.fixture-sockets/ in .git/info/exclude before allocation, with positive seed + exact committed-tree/clone metadata-absence regression. All18 native importers and all981 pinned manifest tests (265T3) listed in A-19658, source-only decisions distinct from runtime coverage. Coordinator c9dc3067 authorized expanded19 serial native set at this exact head; currently running. Historical/development/run residue remains untouched; C2 stays T-1865.
+
+### rev-35 · 2026-11-15T12:56:24.763Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1806-source-5
+commit: 267db462901d95dc6cd3ed6a87a4839eb0b37b75
+scope: delta
+findings: [{"severity":"medium","text":"The new init→exclude/enrollment continuation and host-runtime-join's Git/FS clone sequence have no cancellation fence or whole-sequence join before fixture teardown disposes storage/root. Native census and per-command timeout do not drain awaiting JavaScript continuations. Fence new work and join admitted sequences before disposal; prove the failure path with held work.","file":"hub/test/ssh-host-fixture.ts","line":59}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Complete pinned three-path delta pass, both Standards and Spec: one medium rule-12 finding, confirmed by lead b1a5ffed. A-19662 records source/consumer review and independent qualification of 19-file/156-pass normal-path evidence. All18 fixture importers accounted; all981 manifest tier/hash rows match. No additional findings. C1/C3 final freshness pending correction and same-head verification; C2 remains T-1865. Prior fa6 configured/native failures retained as history, not relabelled. Hold released; fresh corrected source review before configured verification.
+
+### impl-1806 · 2026-11-15T13:08:07.235Z
+
+Source-5 correction committed/pushed b4d585bae7feaf0edca07a09253848d7a725ff18. A-19665 (observerA-19663/launcherA-19664) proves native failure path red on unmodified archived267 (Git completion callback held across old disposal/root disappearance) then current runtime-join5/5 green including held init and held clone. Exact full system/user/suite deltas empty; Mac arm64 Node24.21/local/no browser. New shared scope fences admission and joins complete sequences before DB/native/root disposal;35s missed join preserves ownership/root. Hub typecheck passed. A-19666 retains current981 tier/hash rows and new helper/field consumers; prior all18 root/Git audit unchanged. Fresh source review requested; Coordinator1787d473 requires current final-reviewed-head19-file slot before mode-free verify. Prior156/156 remains old267 normal-path-only evidence; C2 T-1865, no retained-root cleanup.

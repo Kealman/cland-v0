@@ -3,7 +3,7 @@ id: T-1862
 kind: task
 title: Host admission fails a valid DigitalOcean create when an unrelated lease changes the spend ledger (seen as a 422-pause test flake)
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-1522
 branch: t/T-1862-digitalocean-provider-422-pause-test
 created: 2026-11-15T02:43:23.130Z
-updated: 2026-11-15T11:21:12.444Z
+updated: 2026-11-15T11:42:57.198Z
 ---
 
 ## Summary
@@ -46,7 +46,10 @@ Policy kept: reserved capacity is never revoked by later reservations. Caps are 
 - [x] C1. A deterministic control shows an unrelated reservation during key import no longer fails a valid acquire. A released, revoked or changed-backing reservation, and an over-cap new reservation, are still refused. Churn beyond the bound ends in a typed refusal with no provider request. The item names the cost-boundary counts (test).
   - done: impl-1862 · 2026-11-15T10:32:25.924Z
   - verified: rev-35 [reviewer] · run rev-35-1862-evidence-1 · 2026-11-15T11:21:12.444Z · commit f02c4c772cbf048c0e8fd6ed01bd13430d1180d0
-- [ ] C2. Both the 429 and the 422 cases pass 20 out of 20 runs at a 1-minute load of at least 8 on macOS, with unchanged assertions (test).
+  - verified: rev-35 [reviewer] · run rev-35-1862-final-1 · 2026-11-15T11:42:57.057Z · commit f02c4c772cbf048c0e8fd6ed01bd13430d1180d0
+- [x] C2. Both the 429 and the 422 cases pass 20 out of 20 runs at a 1-minute load of at least 8 on macOS, with unchanged assertions (test).
+  - done: impl-1862 · 2026-11-15T11:36:25.841Z
+  - verified: rev-35 [reviewer] · run rev-35-1862-final-1 · 2026-11-15T11:42:57.057Z · commit f02c4c772cbf048c0e8fd6ed01bd13430d1180d0
 
 ## Comments
 
@@ -98,3 +101,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Partial configured evidence clear A-19620; C1 verified, NOT final readiness. Exact f02c4c772 unchanged, A19619 actual6358ordinarytest/700file passes, separate240loadtest/file positives, no negatives. All selected220T1/425T2/55Web manifest roots positive. Eight product controls plus3real-factory teardown controls each ordinary+5 matching load/file receipts; typed churn/no-send/cap/backing and positive cost diagnostics established. Original429/422 Linux base passes do not satisfy C2 macOS20/20load>=8. Coordinator6e1667d6 authorized parallel droplet verify but explicitly holds local load until demo-done; C2 remains unverified. Hold released awaiting authorized same-head C2 receipts, no source change/configured rerun/local stress authorized by this verdict. Linux/Node24.21/Nvim.12.5/Headless1248CfT156 provenance noncached; report-only gates, remaining265T3/17T4 and A19608/A19614 capture/publication limits retained. No Reviewer runtime.
 
 Criteria: C1 verified.
+
+### impl-1862 · 2026-11-15T11:36:46.555Z
+
+C2 complete on unchanged reviewed f02c4c772 (macOS arm64 Node24.21 local): 429 20/20 at one-minute load 8.6411–9.6304; 422 20/20 at 9.6304–11.7109. All 40 direct child native status=0, signal=null, error=null, exact single-case TAP pass/no failures; CPU progress and 10 zero-exit worker receipts retained. Exclusive production suite broker leases released after native closures. Original 2s test watchdog and assertions unchanged; test-isolation=none disclosed. Evidence A-19627. Same-head configured Linux receipt A-19619; final Reviewer settlement requested.
+
+### rev-35 · 2026-11-15T11:42:57.057Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1862-final-1
+commit: f02c4c772cbf048c0e8fd6ed01bd13430d1180d0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear A-19633; A-19632 preserves full982manifest dispositions/11ordinary+55load joins. C1 retained from A19620/A19619 actual6358ordinarytest/700files, separate240load positives; all selectedT1/T2/Web pass, no negatives. C2 independently verified all40A19627TAP/receipts: each429/42220/20, exact1pass/no fail/cancel/skip/todo, distinct sequentialPIDs,status0/signalnull/errornull/no timeout, tenCPUworkers progress each case/exit0. Sampled load4298.6411..9.6304,4229.6304..11.7109;>=8<20. Original2s watchdog/assertions retained; fresh-process isolation=none disclosed, no metadata overrides. Coordinator7eeb2e15 demo-done authorization and6e1667d6 prior parallel verify read directly; source unchanged. A19630 derived metadata changes exactlyone descriptive line after serialized-redaction damage; original untouched, other data parse independently, original completion/scan/exemption limits retained. A19614 prior child-unknown facts not upgraded. Linux/Node24.21/Headless1248CfT156 noncached configured provenance correct; report-only gates, remaining265T3/17T4/per-itemQA-none separate. C1/C2 verified; hold released. No Reviewer runtime/load/provider/browser/cleanup/source/merge action.
+
+Criteria: C1 verified, C2 verified.
