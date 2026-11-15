@@ -2,8 +2,8 @@
 id: T-1863
 kind: task
 title: "suite-cancel: run worker found dead right after a refused cross-session cancel (Linux cover)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1523
 branch: t/T-1863-suite-cancel-run-worker-found-dead-right
 created: 2026-11-15T03:12:15.172Z
-updated: 2026-11-15T12:16:51.528Z
+updated: 2026-11-15T13:57:23.122Z
+closed: 2026-11-15T13:57:23.122Z
 ---
 
 ## Summary
@@ -87,3 +88,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear: A-19642, receipt/consumer ledger A-19641, original configured A-19640/runb8174aa5. C1/C2 verified: instrumented startup-snapshot diagnosis plus exact refusal/human signal positive control; all8 changed T3 base cases pass, and separate A-19637–39 final-head Linux arm64 Docker --init 20/20 passes with native code0/signalnull/errornull, sampled load8.00–12.16, CPU closures/Docker completion retained. Historical original Linux cause remains unknown, not overclaimed. 6355 positive base tests/701 files; separate185 load test/file passes. All982 manifest paths accounted,264 T3/17 T4 deferred, zero missing lower/Web. Exact droplet head/tree/browser provenance, clean source, report-only budgets/lint. Prior transcript/inventory/publication/linkage limits retained. No Reviewer runtime execution. qaPolicy none; hub/Coordinator own ready/landing.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-15T13:57:23.122Z
+
+Merged 141f7ca19d6a3227338b30667ba9e6d82e8902a0 onto dev.

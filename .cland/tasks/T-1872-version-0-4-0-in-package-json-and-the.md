@@ -3,7 +3,7 @@ id: T-1872
 kind: task
 title: Version 0.4.0 in package.json and the lockfile
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1525
 branch: t/T-1872-version-0-4-0-in-package-json-and-the
 created: 2026-11-15T13:08:09.766Z
-updated: 2026-11-15T13:12:57.359Z
+updated: 2026-11-15T13:38:59.223Z
 ---
 
 ## Summary
@@ -29,6 +29,7 @@ Set `"version": "0.4.0"` in the root `package.json`, and the matching root packa
 
 - [x] C1. The root `package.json` and both root lockfile version fields read 0.4.0, the lockfile has no other diff, and the release tool's version check accepts 0.4.0 (test).
   - done: impl-1872 · 2026-11-15T13:11:06.920Z
+  - verified: rev-35 [reviewer] · run rev-35-1872-final-1 · 2026-11-15T13:38:58.746Z · commit 65b0c6869ea9406ee6a72cfddc5f2c257ae0f863
 
 ## Comments
 
@@ -48,3 +49,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear A-19673. Exactly three root version replacements across package.json/package-lock.json; independent parsed comparison confirms no other semantic diff. Release's committed-dev root package check and item version owner inspected; neither hub/web workspace carries a version or supplies one to release validation. Existing native release regressions unchanged/unexecuted in this review. A-19671 supplemental production-releaseGit fake-boundary test inspected; A-19672 is narrative red/green evidence, not retained raw producer/native completion logs. C1 final verification pending exact-head mode-free configured result; source clearance releases hold, not release/publication authority. No QA criteria, no Reviewer runtime/install/release command.
+
+### impl-1872 · 2026-11-15T13:38:10.779Z
+
+Same-head verification 4eb60b16-f3f5-4235-b58e-c3345aea878e passed, original A-19688: head65b0c6869ea9406ee6a72cfddc5f2c257ae0f863 / candidate tree716a5c9b3d90ec582a8cb369c4808f8da4c52b7f. T0 host gate, all T1, package-manifest fallback all T2 including Neovim, Web exit0; 6347 pass, zero fail/cancel/skip/todo. T3/T4 unexecuted in task receipt; hub reports T3 in merge batch. Linux x64 droplet c-8 nyc1 Node24.21.0 Neovim0.12.5; isolated chromium_headless_shell-1248 / Google Chrome for Testing156.0.8078.4. Original execution, occasion/cache null; host typecheck reused remotely, not repeated. Report-only lint122 findings/59 files and duration/budget advisories retained. Lifetime1354s cost$0.0940. Reviewer already receives same-head result for final settlement; no head changes or resubmission.
+
+### rev-35 · 2026-11-15T13:38:58.746Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1872-final-1
+commit: 65b0c6869ea9406ee6a72cfddc5f2c257ae0f863
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear A-19689 at unchanged clean source-reviewed65b0c6869. C1 verified: exact three0.4.0 root version fields/no other lock diff, production committed-version owner inspected, supplemental A-19671/72 limits preserved. Independently streamed A-19688:6347 ordinary test/700 file passes; separate185load test/file passes; no negatives. All selected220T1/425T2/55Web files positive, zero missing; T0/T1/T2/Web exit0. Exact-head noncached LinuxNode24.21/Nvim.12.5/Headless1248CfT156 provenance confirmed. Native release T3/remainingT3/T4 not claimed; inherited load/report-only budgets and lint not version-specific performance clearance. Hold released; Coordinator landing and release publication/integrated gates remain separate; no Reviewer runtime/release action.
+
+Criteria: C1 verified.

@@ -3,7 +3,7 @@ id: T-1806
 kind: task
 title: Native host fixtures leave cland-h-* socket directories in /tmp, and /tmp holds about 90 historical native-fixture roots
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1520
 branch: t/T-1806-native-host-fixtures-leave-cland-h
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-15T13:10:30.401Z
+updated: 2026-11-15T13:48:29.247Z
 ---
 
 ## Summary
@@ -31,9 +31,11 @@ A run of `hub/test/host-create-ready.test.ts` (12/12 pass, macOS, 2026-11-10 18:
 - [x] C1. Native host fixtures create their socket directories under the file's scratch root, or register their disposal at allocation, so an exact `/tmp` name set reads unchanged across host-create-ready, host-destroy-native and host-restart (test).
   - verified: rev-35 [reviewer] · run rev-35-1806-final-1 · 2026-11-15T10:59:43.920Z · commit fa6cb7c65d1151a11e26514216d651095eebb3ac
   - done: impl-1806 · 2026-11-15T13:08:06.672Z
+  - verified: rev-35 [reviewer] · run rev-35-1806-final-2 · 2026-11-15T13:48:29.009Z · commit b4d585bae7feaf0edca07a09253848d7a725ff18
 - [x] C3. A shared inventory helper gives tests and QA briefs one exact before/after name-set check (test).
   - verified: rev-35 [reviewer] · run rev-35-1806-final-1 · 2026-11-15T10:59:43.920Z · commit fa6cb7c65d1151a11e26514216d651095eebb3ac
   - done: impl-1806 · 2026-11-15T13:08:06.787Z
+  - verified: rev-35 [reviewer] · run rev-35-1806-final-2 · 2026-11-15T13:48:29.009Z · commit b4d585bae7feaf0edca07a09253848d7a725ff18
 
 ## Comments
 
@@ -245,3 +247,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-19669 completes both axes across all four changed paths. A-19662 resolved: synchronous admission abort, whole admitted setup/clone promise ownership and attempt-all join precede native/DB/root disposal; missed35s join reports incomplete and retains ownership. Actual held-init/clone regressions pass and fence continuations; original Git exclusion control uses same scope. All981 manifest tier/hash rows and declared fingerprints match; new helper/field consumers accounted,18 importer root assumptions retained. Independently checked A-19665 expected red archived267/green5-of-5, direct status/signal/error and full sorted unique name equality. Targeted Mac coverage only, C1/C3 current-head final verification pending; C2 remains T-1865. Coordinator1787d473 directly read: final reviewed nineteen-file serial preservation in<=15min slots, then mode-free verify, no retained-root deletion. Hold released; changed source requires fresh review; no Reviewer runtime/census/cleanup.
+
+### impl-1806 · 2026-11-15T13:20:19.015Z
+
+Same source-clear b4d585bae final-reviewed native evidence A-19679/A-19680/A-19681:19uniquefiles158/158 passing cases,20executions including one authorized Claude rerun. Original18 intervals clean; original Claude/user overall +2 kept as contaminated, exact owner unknown/inferred concurrent tooling accepted by Coordinatoreff215eb; clean same-head rerun supplies Claude C1 interval. Mac arm64 Node24.21/local/no browser, direct exits0/signalsnull; no retained-root cleanup. All981 tier/hash/consumer dispositions retained, configured verification pending. Native lock released within15min, but mode-free verify now waits impl-1870's newly taken preservation slot so local host gate cannot contaminate its TMPDIR baseline. No source change or new dev merge.
+
+### impl-1806 · 2026-11-15T13:21:18.504Z
+
+Following source-clear A-19669 and final-reviewed native A-19679/80/81, submitted mode-free verify at unchanged b4d585bae7feaf0edca07a09253848d7a725ff18 under Coordinator28d0d1c2 (authorized during T-1870 development slot). Positive hub admission d73c2c58: runa366aeea-2211-4f79-b22e-9a2441242d0c. CLI15s reply timeout/exit75 is transport-only, not suite outcome; no duplicate submission, no queue polling. Configured tiers/phase results pending; current head not yet verified. Claim retained.
+
+### rev-35 · 2026-11-15T13:48:29.009Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1806-final-2
+commit: b4d585bae7feaf0edca07a09253848d7a725ff18
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final corrected-head clear A-19694. Source A-19669 unchanged/clean. Independently streamed A-19693:6356ordinary tests/701files pass; separate190load tests/185files, no negatives; all220T1/424T2/55Web plus changedT3twofiles/11identities positive. Exact LinuxNode24.21/Nvim.12.5/Headless1248CfT156 noncached provenance matches. Independently audited native158/158 across19files, all direct status0/signalnull/errornull/source+launcher hashes match. Preservation is18original clean intervals plus accepted clean Claude45/45 rerun; originalClaude/overalluser+2 remains+2, inferred concurrent-tooling attribution/exactownerunknown under directly read Coordinatoreff215eb. Current981manifest supplements preserved1523union=1605; unknown/source fields retained, remaining249T3/16T4 deferred. Report-only lint/budgets/ratchet notices not enforced/performance clearance. C1/C3 verified; C2 remainsT1865/no cleanup. Prior failed/source-head evidence remains historical. Hold released; Coordinator landing gate separate; Reviewer read-only only.
+
+Criteria: C1 verified, C3 verified.
