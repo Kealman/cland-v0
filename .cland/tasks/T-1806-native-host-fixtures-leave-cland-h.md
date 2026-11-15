@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1520
 branch: t/T-1806-native-host-fixtures-leave-cland-h
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-15T10:22:39.383Z
+updated: 2026-11-15T10:26:24.560Z
 ---
 
 ## Summary
@@ -169,3 +169,24 @@ A-19588 source clear at clean fa6cb7c65/treeeaa1efc5: both A-19583 findings reso
 ### impl-1806 · 2026-11-15T10:03:08.759Z
 
 Source-clear fa6cb7c65d1151a11e26514216d651095eebb3ac same-head native occasion completed after quiet release: A-19596 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19596-t-1806-fa6cb7c65-full-name-native-control-evidence-88-of-88), original launcher A-19595. Ten serial files 88/88, zero fail/cancel/skip/todo: cold-child lifecycle6, prepared-project1 (T4), tracker-native-boundary29 (T3), seven C1 host files52. Each full unfiltered system/user/suite before-after and overall delta empty; no contamination/retry; exact head/source hashes/native completions/case facts retained. MacOS arm64 Node24.21/local/no browser; normal owned fixtures disposed, historical/development leftovers untouched and suite root retained. Lock released under15min. Not full T3/T4/Web coverage. Publishing to Reviewer and submitting fresh mode-free verification now; A-19577 remains red and A-19573 old-head-only.
+
+### impl-1806 · 2026-11-15T10:23:47.881Z
+
+Configured run 8dd973c2/A-19602 is failed, not passing: T0/T1 completed, T2 one failure, selected T3 and Web unexecuted. Actual 422 case result at host-provider-digitalocean:368 was ['created','failed','created'] vs three created. Coordinator ba007232 classifies this as known shared T-1862, adds evidence there and authorizes exactly one mode-free retry at unchanged fa6cb7c65 after Reviewer finishes failed-evidence pass. No local experiment, diagnosis or source fix on T-1862. If same case fails again, report/stop. Same-head native/control A-19596 remains independently 88/88 with full-name preservation.
+
+### rev-35 · 2026-11-15T10:25:00.122Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1806-evidence-2
+commit: fa6cb7c65d1151a11e26514216d651095eebb3ac
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-19606 completes failed-evidence pass for8dd973c2/A-19602: ordinary5609pass/1fail,599pass/1fail files; separate190loadtest/185file positives. T0/T1 pass/T2 red, selectedT3/Web unexecuted. Sole422 final concurrency failure actual created/failed/created has no failed-result reason captured. Coordinator ba007232 directly read: known shared T-1862, exactly one unchanged fa6cb7c65 mode-free retry after this pass, no local experiment; repeated same-case red report/stop, other reds normal ownership. No new T1806 source finding. Earlier three fixture-content failures now ordinary pass. Same-head native A-19595/A-19596 independently audited: source/launcher hashes,88/88tenfiles, status0/signalnull, full sorted unique system/user/suite sets equal per-file/overall, sole-env cold/prepared/tracker controls positive; targeted scope preserved. C1/C3 unverified until new configured settlement. A-19602 stays red, A-19577 failed/A-19573 old-head; C2 T1865/no cleanup. Hold released, completing Coordinator retry prerequisite. Report-only/platform/capture/broadT3/T4 boundaries retained; no Reviewer runtime.
+
+### impl-1806 · 2026-11-15T10:26:24.560Z
+
+After Reviewer failed-evidence completion A-19606, executed Coordinator ba007232's exactly one unchanged-head retry: 064b9526-d2cd-413c-98c9-f753467f9e63 at fa6cb7c65. Durable hub admission and CLI exit0/queue position1 observed; configured result pending. No local/shared-test experiment or source/native changes. Same 422 case failure again => report/stop. Prior configured failures A-19577 and A-19602 remain red; A-19602 is attributed to shared T-1862; same-head native/control A-19596 remains88/88.

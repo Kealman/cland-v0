@@ -3,7 +3,7 @@ id: T-1866
 kind: task
 title: Setup's sign-in step reads open when the hub is down, even in single mode
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-1521
 branch: t/T-1866-setup-s-sign-in-step-reads-open-when-the
 created: 2026-11-15T08:06:05.452Z
-updated: 2026-11-15T10:23:14.574Z
+updated: 2026-11-15T10:48:20.803Z
 ---
 
 ## Summary
@@ -35,8 +35,10 @@ Nothing is written.
 
 - [x] C1. With no hub running and config in single mode, the sign-in step reads `skip` with fix `cland auth mode users`, both with and without a terminal, and writes nothing (test).
   - done: impl-1866 · 2026-11-15T10:18:12.963Z
+  - verified: rev-36 [reviewer] · run rev-36-1866-final-1 · 2026-11-15T10:48:20.676Z · commit b6031dc8e3caefec4b0d4330acd0f5a6abb79aee
 - [x] C2. With no hub running and config in users mode, it reads `open` with `cland hub start`. With a reachable hub, every existing T-1835 row is unchanged (test).
   - done: impl-1866 · 2026-11-15T10:18:35.404Z
+  - verified: rev-36 [reviewer] · run rev-36-1866-final-1 · 2026-11-15T10:48:20.676Z · commit b6031dc8e3caefec4b0d4330acd0f5a6abb79aee
 
 ## Comments
 
@@ -56,3 +58,31 @@ findings: [{"severity":"low","text":"Guide incorrectly attributes missing/defaul
 finding_counts: {"high":0,"medium":0,"low":1}
 
 A-19603 source clear with one low guide-attribution finding. Exact 9a197bf0b/treee1e1f3a15 clean; fixed point8f4592f11. Offline single/users/unreadable rows match task; shared read-only policy, successful reachable branch unchanged, older metadata/legacy wire retained, no new effects. C1/C2 unverified pending actual same-head configured receipts. A-19601 preserves transcribed argv/cwd/summaries and wrapper/precommit/raw-capture limits; original A-19600 publication scan was missing, not upgraded by fixture controls. Consumer list is source-search limited, actual selection/finish accounting pending, Web not established/deferred by local absence. E1537 stage5 historical known T1866 remains pinned history. Hold released; if correcting guide now, fresh delta source request before verify. Reviewer performed read-only analysis only.
+
+### rev-36 · 2026-11-15T10:23:52.102Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1866-source-2
+commit: b6031dc8e3caefec4b0d4330acd0f5a6abb79aee
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source repair clear, Standards/Spec no findings: A-19605. Exact one-guide diff corrects the sole prior low attribution; named setup-signin and doctor-users test owners checked read-only. Production/tests unchanged from rev-35 source clearance A-19603, which is preserved. Clean requested head confirmed. C1/C2 remain unverified pending exact-head configured named/file receipts. A-19601 transcript/precommit/publication-scan limits remain explicit; Web selection must be established by actual configured evidence, not local absence. Reviewer executed no tests, validators, native/browser probes or delegation. qaPolicy none; Coordinator/E-1537 landing gate remains.
+
+### rev-36 · 2026-11-15T10:48:20.676Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1866-final-1
+commit: b6031dc8e3caefec4b0d4330acd0f5a6abb79aee
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear: A-19612, exact named/consumer ledger A-19611, original run080bce8d/A-19610. C1/C2 verified: all five new offline/default/error identities base+5 pass, all ten setup-signin cases and seven doctor-users cases pass; existing reachable behavior preserved under A-19603/A-19605 source clear. Actual Web first-user passkey case/file pass, rather than local-absence deferral. 6352 positive base test/700 base file completions; separate210 load test/file passes. All982 manifest paths conservatively accounted:700 positive lower/Web,265 T3 and17 T4 deferred, no missing lower/Web. Exact head/tree/Linux/browser provenance recorded, clean tree, report-only budget/lint. A-19601 candidate/transcript/publication limits retained. No Reviewer runtime execution. qaPolicy none; E1537/Coordinator landing gate remains.
+
+Criteria: C1 verified, C2 verified.
