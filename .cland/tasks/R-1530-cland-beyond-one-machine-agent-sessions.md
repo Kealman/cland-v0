@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T18:03:30.138Z
-updated: 2026-11-15T18:51:42.117Z
+updated: 2026-11-15T21:48:18.541Z
 ---
 
 ## Goal
@@ -44,6 +44,7 @@ What the human can now do, by epic:
   - A local merge-batch checkout gets its dependencies (T-1844).
   - Native host fixtures no longer leave socket folders in `/tmp` (T-1806). Closing a git daemon that has already exited no longer reports a failure (T-1854).
   - The merge queue no longer lands an interrupted batch after rerunning only its failing file: the files the interruption skipped must run green first (T-1760).
+  - The Telegram pacing fixture waits for the hub's start with the shared load-scaled wait instead of a fixed second (T-1874).
 
   Load flakes that reddened suite runs were fixed: T-1845 to T-1847, T-1849, T-1851 to T-1853, T-1855 and T-1863.
 - **E-1539 Release v0.4.0 from the item.**
@@ -59,6 +60,7 @@ Decisions of the run:
 - Answered for the human, 2026-11-12: the native Codex and Claude Code dead-login cases moved into R-1530 to land before the release (T-1813).
 - The human, 2026-11-14: T-1846 (ask 96990fef) and T-1854 (ask d641172c) moved into the release.
 - The human, 2026-11-15 13:06Z (ask f485cc38): the live run on real DigitalOcean hosts is not needed for 0.4.0. It was dropped, and its points are listed under "Not verified" below.
+- Coordinator, 2026-11-15: T-1760 and T-1874 moved into R-1530 as release blockers. T-1760 let the merge queue land an interrupted batch; T-1874 failed the release's stage cover ed6d0724 in two of three full runs. Both landed.
 - Choices the spec left as assumed, as built:
   - An invite lasts 24 hours.
   - Claude Code's sign-in code goes back through the card's answer.
@@ -124,10 +126,11 @@ Tests and contributors:
 - T-1865: the one-off cleanup of historical fixture leftovers in `/private/tmp` waits for positive proof that they are unused;
 - T-1867: the closed-item wording lint skips `.mdx` site pages;
 - T-1868: QA has no drivers yet for the host and user end-to-end journeys;
+- T-1875: the card-web Telegram fixture keeps fixed 1 s inner waits until the shared test client can cancel them;
 - T-1805 and T-1676: test fixtures leave owner registries, fallback sockets and Codex placeholder sockets in TMPDIR, and one registry names the live source worktree;
-- known load flakes in suite runs: T-1641, T-1642, T-1643, T-1648, T-1695, T-1731, T-1736, T-1758, T-1761, T-1798, T-1841, T-1873 and T-1874.
+- known load flakes in suite runs: T-1641, T-1642, T-1643, T-1648, T-1695, T-1731, T-1736, T-1758, T-1761, T-1798, T-1841 and T-1873.
 
-In all, 56 items are open in Bugs and 25 in Tech debt.
+In all, 55 items are open in Bugs and 26 in Tech debt.
 
 The retrospective artifact of the run follows the release and will be linked from R-1530.
 
