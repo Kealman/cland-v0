@@ -79,3 +79,44 @@ test('hosts guide defaults match the shared pool parser and slot policy', () => 
   assert.ok(page.includes(`\`hosts.relaunch_after_signin\` | \`${config.relaunchAfterSignIn}\``));
   assert.ok(page.includes(`Claude Code uses ${DEFAULT_HOST_WEIGHTS['claude-code']}, Codex ${DEFAULT_HOST_WEIGHTS.codex} and OpenCode ${DEFAULT_HOST_WEIGHTS.opencode}`));
 });
+
+test('hosts price table dates public pool rates and computes default host-hours', () => {
+  const page = source(hostsPath);
+  const table = page.split('### Provider price table\n')[1]!.split('\n## ')[0]!;
+  assert.match(table, /checked on 2026-11-15/);
+  const config = readHostPools({ agents: { provider: 'digitalocean' }, qa: { provider: 'digitalocean' } });
+  // Public Regular Basic 4 vCPU / 8 GiB quote checked on the date above.
+  const quotes: Record<string, [number, number]> = { 's-4vcpu-8gb': [0.07143, 48] };
+  for (const name of ['agents', 'qa']) {
+    const size = config.pools[name]!.size;
+    const [hourly, monthly] = quotes[size]!;
+    assert.ok(table.includes(`| \`${name}\` | \`${size}\` | $${hourly} | $${monthly.toFixed(2)} |`), name);
+    const hours = config.dailySpendUsd / hourly;
+    assert.ok(table.includes(`$${config.dailySpendUsd.toFixed(2)}`));
+    assert.ok(table.includes(`${hours.toFixed(2)} host-hours`));
+  }
+  for (const url of ['https://www.digitalocean.com/pricing/droplets', 'https://www.digitalocean.com/pricing/volumes', 'https://docs.digitalocean.com/products/snapshots/details/pricing/']) assert.ok(table.includes(url));
+});
+
+test('hosts storage table matches provider declared GiB-month rates without native imports', () => {
+  const page = source(hostsPath);
+  const declaration = /DIGITALOCEAN_STORAGE_PRICES=Object.freeze\(\{([^}]+)\}\)/.exec(source('hub/src/host/provider/digitalocean.ts'))![1]!;
+  for (const [label, key] of [['Login volume', 'volumePerGiBMonth'], ['Volume snapshot', 'snapshotPerGiBMonth']]) {
+    const rate = Number(new RegExp(`${key}:([0-9.]+)`).exec(declaration)![1]);
+    assert.ok(page.includes(`| ${label} | $${rate.toFixed(2)}/GiB-month |`), label);
+  }
+});
+
+function cliHostCommands(text: string): string[] {
+  return [...text.matchAll(/`cland ((?:host|login) [a-z-]+)\b/g)].map(match => match[1]!).sort();
+}
+
+test('CLI Hosts and logins lists exactly the built usage subcommands', () => {
+  const section = /^## Hosts and logins\n([\s\S]*?)(?=^## |$(?![\s\S]))/m.exec(source('site/src/content/docs/docs/cli.md'))?.[1] ?? '';
+  const expected = [...(HOST_USAGE + LOGIN_USAGE).matchAll(/^  ((?:host|login) [a-z-]+)\b/gm)].map(match => match[1]!).sort();
+  assert.ok(expected.length > 0);
+  assert.deepEqual(cliHostCommands(section), expected);
+  // An extra command or duplicate must change the inventory, not disappear in a Set.
+  assert.notDeepEqual(cliHostCommands(section + '`cland host invented`'), expected);
+  assert.notDeepEqual(cliHostCommands(section + '`cland login list`'), expected);
+});

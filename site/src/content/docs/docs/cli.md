@@ -36,6 +36,32 @@ In a normally launched session's shell, CLI calls use the inherited cland sessio
 
 `cland web --sessions` lists browser sign-ins; `cland web --revoke <id>` revokes one and closes its sockets. Both are **human** commands.
 
+## Hosts and logins
+
+See [Hosts, pools and logins](/docs/hosts/) for configuration, paid operations,
+lifecycle, pricing and harness login rules. **human** means your local shell.
+Host inventory, preparation and creation require that local human CLI; the web
+and agent sessions cannot run them.
+
+| Command | What it does |
+| --- | --- |
+| `cland host create [pool]` | Create a host from a current pool image, with a five-minute boot gate. **human** |
+| `cland host status [--json]` | Pool slots, UTC spend including monthly login storage, and bound logins. **human** |
+| `cland host stop <id>` | Stop renewal and destroy with confirming reads. Human CLI, local Neovim or authenticated web. |
+| `cland host list [--json]` | Id, pool, provider, size, region, state, uptime and USD/hour. **human** |
+| `cland host prepare [pool]` | Prepare one or all configured pool images. **human** |
+| `cland host destroy <id>` | Remove the host, machine and key with confirming reads. **human** |
+| `cland host revoke <id>` | Settle generations within 2 seconds, revoke the secret and report leftovers. **human** |
+| `cland host git-proxy <socket>` | Internal host transport: relay Git stdin/stdout through the forwarded Unix socket. |
+| `cland host attach <session>` | Attach using the agent run folder's private launch record and checked native identity; exiting leaves the session running. |
+| `cland host serve` | Run the host agent on agent.sock; requires the host secret environment and uses the configured run directory. |
+| `cland login add <harness>` | Sign in on a 1 GiB disk through the harness in your terminal. Flags: `--name`, `--pool`, `--account`, `--kind disk\|key`. Authenticated web disk starts use a link/code card; users mode requires admin. OpenCode keys use stdin or a hidden prompt. |
+| `cland login list [--json]` | Project login metadata, bindings and capacity per pool/harness. Human CLI, local Neovim or authenticated web. |
+| `cland login signin <name>` | Renew a signed-out disk in a local human terminal, keeping its volume and running sessions. |
+| `cland login remove <name>` | Delete an idle login and storage; repeat after incomplete deletion. Also available to authenticated web admins. |
+| `cland login set <name> --exclusive true\|false` | Change an idle disk's exclusivity. Human CLI or local Neovim. |
+| `cland login snapshot <name>` | Back up a ready or in-use disk. Also available to authenticated web admins. |
+
 ## Remotes and secrets
 
 See [Remote control](/docs/remote-control/) for BotFather, setup, pairing, rotation and recovery. For the built-in Telegram client, use `telegram` as the messenger. Remote commands take `--json`, require a running hub and are for your own terminal or local Neovim; agent sessions and the web cannot manage remotes.

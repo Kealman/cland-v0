@@ -155,7 +155,34 @@ host reservations. Missing cost evidence is shown as unknown.
 
 ### Provider price table
 
-<!-- Price table insertion point: T-1834. Keep this heading stable. -->
+DigitalOcean USD prices, checked on 2026-11-15:
+
+| Pool | Default size | Per hour | Per month |
+| --- | --- | --- | --- |
+| `agents` | `s-4vcpu-8gb` | $0.07143 | $48.00 |
+| `qa` | `s-4vcpu-8gb` | $0.07143 | $48.00 |
+
+Both use Regular Basic Droplets with 4 vCPUs and 8 GiB RAM when only the
+pool provider is configured; `qa` is a pool name, not a separate size default.
+No pool exists until configured. A configured `agents` pool defaults to one
+always-on host; other pools default to zero minimum hosts.
+
+| Storage | Per month |
+| --- | --- |
+| Login volume | $0.10/GiB-month |
+| Volume snapshot | $0.06/GiB-month |
+
+The default `hosts.daily_spend_usd` sub-cap of $3.00 represents approximately
+42.00 host-hours at either table rate, shared across pools per UTC day.
+This is compute purchasing power, subject to the shared verification cap and
+lease reservations; it excludes storage, image preparation and taxes. Changing
+the size, provider or cap changes that estimate. Renewals follow the rules above.
+
+Sources: [Droplets](https://www.digitalocean.com/pricing/droplets),
+[Volumes](https://www.digitalocean.com/pricing/volumes) and
+[Snapshots](https://docs.digitalocean.com/products/snapshots/details/pricing/).
+Monthly compute figures are the provider's monthly caps. Login volumes and their
+snapshots are billed separately and can remain after compute is destroyed.
 
 Check provider pricing and the separately billed image builder before approving
 paid operations. Setup names its recorded machine and builder terms at each offer.
@@ -228,8 +255,16 @@ login rows name the harness. Setup verifies a current image and eligible logins
 for the chosen role accounts.
 
 With `--yes`, an untouched project reads `skip` with
-`optional agent hosts; default No`. Without a terminal, untouched hosts read
-`skip` and include exact configuration/placement/reload commands. A configured
-but incomplete pool reads `open` unattended; missing placement reads
-`agent hosts need role placement`. Image or sign-in work left incomplete stays
-visible with its command, and setup continues to the Aide.
+`optional agent hosts; default No`. Without a terminal and without `--yes`, untouched hosts read
+`skip` and include exact configuration/placement/reload commands.
+
+With provider metadata available, an `agents` pool without placed roles reads
+`open` without a terminal with `agent hosts need role placement`; with `--yes`
+in a terminal it reads `skip` with `optional agent hosts; default No`.
+A pool with placed roles reads `ok` when its image and role logins are ready.
+Otherwise its main `agent hosts` row reads `open` without a terminal and `ok`
+in a terminal. The separate image and sign-in rows retain their commands when
+incomplete: offers read `open` without a terminal and `skip` under `--yes` in a
+terminal. An unpriced image builder remains `open`. Missing required provider
+metadata leaves the step `open` before these placement checks. Setup continues
+to the Aide with incomplete work visible.

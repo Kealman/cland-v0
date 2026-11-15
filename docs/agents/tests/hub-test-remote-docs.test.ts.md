@@ -82,3 +82,29 @@ passing negative control; the first Linux verify also caught a missing shared
 wrapper import, repaired without changing the inventory assertion. The T2
 walkthrough is documented separately under `hub-test-hosts-docs-pool.test.ts.md`.
 Closed-item wording T0 also scans the site Markdown docs against the tracker.
+
+### Host pricing and CLI inventory
+
+The same imported hosts file covers T-1834 C1–C3 with these generated names:
+
+- `hosts price table dates public pool rates and computes default host-hours`
+- `hosts storage table matches provider declared GiB-month rates without native imports`
+- `CLI Hosts and logins lists exactly the built usage subcommands`
+
+The first reads `agents` and `qa` sizes and the daily sub-cap from the pure
+pool parser, compares the dated Regular Basic quote, and divides the built cap
+by the table hourly quote to check the displayed host-hours. Both pool names
+currently inherit the same size; neither is configured automatically. The second
+reads the provider's storage declaration as text: never import that provider or
+its native dependency graph into T1. The third derives the complete inventory
+from HOST_USAGE and LOGIN_USAGE and compares the CLI section including duplicate
+and extra-command controls. No API call, provider environment, browser or paid
+resource is involved. These source contracts do not prove rendered browser layout.
+
+For after-stage QA, run the shared wrapper above and read the Provider price
+table on `/docs/hosts/` and Hosts and logins section on `/docs/cli/`. The public
+Droplets, Volumes and Snapshots links record the quote's 2026-11-15 check date;
+tests intentionally do not fetch mutable prices. Future quote refreshes check
+those pages again. A storage discrepancy requires a decision from the item lead
+before editing declared prices. The initial pricing red had two missing-content
+failures; the initial inventory red had an empty list versus 16 usage commands.
