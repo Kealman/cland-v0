@@ -3,17 +3,17 @@ id: T-1806
 kind: task
 title: Native host fixtures leave cland-h-* socket directories in /tmp, and /tmp holds about 90 historical native-fixture roots
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
 parent: R-1530
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1806-native-host-fixtures-leave-cland-h
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-15T04:20:47.054Z
+updated: 2026-11-15T06:38:05.475Z
 ---
 
 ## Summary

@@ -3,18 +3,18 @@ id: T-1860
 kind: task
 title: "Setup and doctor: a role placed on a missing pool reads skip"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
-  - needs-triage
   - qa-found
+  - ready-for-agent
 assignee: null
 parent: R-1530
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1860-setup-and-doctor-a-role-placed-on-a
 created: 2026-11-14T20:16:16.052Z
-updated: 2026-11-15T04:20:47.532Z
+updated: 2026-11-15T06:38:00.878Z
 ---
 
 ## Summary

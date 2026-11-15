@@ -3,7 +3,7 @@ id: T-1838
 kind: task
 title: The users and sign-in modes page, the multi-user section and the CLI reference for `cland user` and `cland auth`
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -13,10 +13,10 @@ blocked_by:
   - T-1834
   - T-1835
   - T-1836
-topic: null
-branch: null
+topic: topic-1518
+branch: t/T-1838-the-users-and-sign-in-modes-page-the
 created: 2026-11-12T10:07:23.227Z
-updated: 2026-11-15T04:20:08.655Z
+updated: 2026-11-15T06:37:33.458Z
 ---
 
 ## Summary
