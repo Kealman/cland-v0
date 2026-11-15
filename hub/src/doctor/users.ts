@@ -1,6 +1,4 @@
-import { basename, join } from 'node:path';
-import { readText } from '../init/files.ts';
-import { defaultConfig, parseConfig } from '../init/config.ts';
+import { projectAuthMode } from '../init/auth-mode.ts';
 import { hubDiscovery, readDiscovery, pidAlive } from '../project.ts';
 import { askHubFrame, HubTimeout } from '../cli/socket-client.ts';
 import { ok, warn, type Check } from './report.ts';
@@ -11,8 +9,7 @@ export async function checkUsers(root: string, env: NodeJS.ProcessEnv, clock: Cl
   const name = 'sign-in mode';
   let mode;
   try {
-    const text = readText(join(root, '.cland/config.toml'));
-    mode = (text === null ? defaultConfig(basename(root)) : parseConfig(text, basename(root), env)).auth.mode;
+    mode = projectAuthMode(root, env);
   } catch { return [warn(name, 'mode unavailable', 'repair .cland/config.toml')]; }
   if (mode === 'single') return [ok(name, 'single')];
   const discovery = readDiscovery(hubDiscovery(root, env));

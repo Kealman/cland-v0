@@ -28,8 +28,11 @@ The sign-in mode step follows the hub and precedes the remotes. In single mode
 it asks "Let several people sign in to the web (users mode)?", default No.
 `--yes` keeps single mode and reports `skip`, with or without a terminal.
 Without a terminal and without `--yes`, it reports `skip` with
-`cland auth mode users`. `--no-aide` leaves detection skipped if no hub is
-available. Existing users mode reports `ok` with the number of users and asks
+`cland auth mode users`. If the hub cannot be reached, setup reads project config:
+single mode reports `skip` with `cland auth mode users` regardless of terminal,
+`--yes` or `--no-aide`; users mode reports `open` with `cland hub start`.
+Unreadable config retains the previous fallback (`open`, or detection skipped
+with `--yes`/`--no-aide`). Reachable users mode reports `ok` with the number of users and asks
 nothing. An older hub without setup metadata stays unknown/open; update it
 before choosing users through setup.
 

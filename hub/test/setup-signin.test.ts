@@ -7,7 +7,7 @@ import type { SetupOptions } from '../src/setup/types.ts';
 import { scriptedPrompter } from './setup-prompter.ts';
 import { projectHub, tempProject, flushProjectLogs } from './harness.ts';
 import { askHubFrame } from '../src/cli/socket-client.ts';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
 
@@ -20,6 +20,73 @@ export function signinOptions(root: string): SetupOptions {
       harness: async id => ({ id, bin: null, version: null, checks: [] }),
     } };
 }
+
+test('offline single mode skips with its command without prompts or writes', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const path = join(root, '.cland/config.toml');
+  const text = renderConfig(defaultConfig('Setup'));
+  await writeFile(path, text);
+  const before = await readdir(root, { recursive: true });
+  for (const interactive of [true, false]) {
+    for (const yes of [true, false]) {
+      const o = signinOptions(root);
+      o.interactive = interactive; o.yes = yes;
+      o.hub!.signinStatus = async () => { throw Error('hub unavailable'); };
+      o.hub!.signinUsers = async () => { throw Error('unexpected switch'); };
+      o.narrate = () => { throw Error('unexpected narration'); };
+      assert.deepEqual(await signin(o), [{ name: 'sign-in mode', verdict: 'skip', detail: 'single mode', fix: 'cland auth mode users' }]);
+    }
+  }
+  assert.equal(await readFile(path, 'utf8'), text);
+  assert.deepEqual(await readdir(root, { recursive: true }), before);
+});
+
+test('offline users mode needs the hub even with unattended options', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const config = defaultConfig('Setup'); config.auth.mode = 'users';
+  const text = renderConfig(config), path = join(root, '.cland/config.toml');
+  await writeFile(path, text);
+  const before = await readdir(root, { recursive: true });
+  for (const interactive of [true, false]) for (const yes of [true, false]) for (const noAide of [true, false]) {
+    const o = signinOptions(root);
+    Object.assign(o, { interactive, yes, noAide });
+    o.hub!.signinStatus = async () => { throw Error('hub unavailable'); };
+    assert.deepEqual(await signin(o), [{ name: 'sign-in mode', verdict: 'open', detail: 'users mode; hub not running', fix: 'cland hub start' }]);
+  }
+  assert.equal(await readFile(path, 'utf8'), text);
+  assert.deepEqual(await readdir(root, { recursive: true }), before);
+});
+
+test('offline invalid config preserves the existing fallback without exposing the error', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const path = join(root, '.cland/config.toml'), text = '[auth]\nmode = "invalid"\n';
+  await writeFile(path, text);
+  const o = signinOptions(root);
+  o.hub!.signinStatus = async () => { throw Error('untrusted hub error'); };
+  assert.deepEqual(await signin(o), [{ name: 'sign-in mode', verdict: 'open', detail: 'choose the web sign-in mode', fix: 'cland auth mode users' }]);
+  o.yes = true;
+  assert.deepEqual(await signin(o), [{ name: 'sign-in mode', verdict: 'skip', detail: 'single mode default; detect when the hub is available' }]);
+  assert.equal(await readFile(path, 'utf8'), text);
+});
+
+test('missing hub capability uses the default config without creating files', async t => {
+  const root = await tempProject(t), before = await readdir(root, { recursive: true });
+  const o = signinOptions(root);
+  delete o.hub!.signinStatus;
+  assert.deepEqual(await signin(o), [{ name: 'sign-in mode', verdict: 'skip', detail: 'single mode', fix: 'cland auth mode users' }]);
+  assert.deepEqual(await readdir(root, { recursive: true }), before);
+});
+
+test('offline unreadable config stays open instead of assuming single mode', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland/config.toml'), { recursive: true });
+  const o = signinOptions(root);
+  o.hub!.signinStatus = async () => { throw Error('hub unavailable'); };
+  assert.deepEqual(await signin(o), [{ name: 'sign-in mode', verdict: 'open', detail: 'choose the web sign-in mode', fix: 'cland auth mode users' }]);
+});
 
 test('C1 sign-in offer defaults No and yes skips with either terminal policy', async t => {
   const root = await tempProject(t);

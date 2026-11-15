@@ -81,7 +81,10 @@ Pressing Enter skips the wait: the row stays `open`, with
 In single mode, `cland setup --yes` keeps single mode and reads `skip`.
 Without a terminal and without `--yes`, single mode also reads `skip`, with
 `cland auth mode users` as the fix, preserving unattended setup's exit status.
-Already in users mode, the row reads `ok` with its user count.
+With a reachable hub, users mode reads `ok` with its user count. When the hub
+cannot be reached, setup reads the mode from project config: single mode reads
+`skip` with `cland auth mode users`, with or without a terminal; users mode reads
+`open` with `cland hub start`. Unreadable config keeps the existing fallback.
 
 `cland doctor` reads **sign-in mode** from project config. Single mode reads
 `single`. In users mode the running hub supplies active/invited user counts and

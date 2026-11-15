@@ -61,6 +61,8 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [cland setup](../docs/hub/cland-setup.md)
   offers sign-in mode between hub and remotes; `--yes` keeps single mode,
   while users mode confirms browser sign-out and waits for the first passkey.
+  With no reachable hub, config single mode skips and users mode stays open
+  with hub-start guidance.
   Optional agent pools, image builds and first terminal logins, each paid action on a separate default-No confirmation.
   offers agent hosts after remotes and before the Aide, default No; `--yes` skips
   untouched hosts. Missing role pools stay open (exit 1), with the role, pool and

@@ -1,16 +1,23 @@
 import { setupHub } from '../hub.ts';
 import { Cancelled } from '../prompter.ts';
 import type { SetupStep } from '../types.ts';
+import { projectAuthMode } from '../../init/auth-mode.ts';
 
 export const signin: SetupStep = async o => {
   const name = 'sign-in mode';
   const open = { name, verdict: 'open' as const, detail: 'choose the web sign-in mode', fix: 'cland auth mode users' };
+  const offline = () => {
+    try {
+      if (projectAuthMode(o.root, o.env) === 'single') return [{ name, verdict: 'skip' as const, detail: 'single mode', fix: open.fix }];
+      return [{ name, verdict: 'open' as const, detail: 'users mode; hub not running', fix: 'cland hub start' }];
+    } catch { /* Keep the existing fallback when config cannot be read. */ }
+    return o.yes || o.noAide ? [{ name, verdict: 'skip' as const, detail: 'single mode default; detect when the hub is available' }] : [open];
+  };
   const client = o.hub ?? setupHub(o.root, o.env);
-  if (!client.signinStatus) return o.yes || o.noAide
-    ? [{ name, verdict: 'skip', detail: 'single mode default; detect when the hub is available' }] : [open];
+  if (!client.signinStatus) return offline();
   let status;
   try { status = await client.signinStatus(); }
-  catch { return o.yes || o.noAide ? [{ name, verdict: 'skip', detail: 'single mode default; detect when the hub is available' }] : [open]; }
+  catch { return offline(); }
   if (status.mode === 'users') return [{ name, verdict: 'ok', detail: `users mode; ${status.users.length} users` }];
   if (status.mode !== 'single') return [open];
   if (o.yes) return [{ name, verdict: 'skip', detail: 'single mode' }];
