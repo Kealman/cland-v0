@@ -130,15 +130,40 @@ test('suite cancel defaults to the caller’s active run, stops its child and po
 
 test('suite cancel refuses another session’s run while the human can cancel it by id', async t => {
   // Artificial hold: this test kills or cancels the worker before the 30-second failure ceiling.
-  const f = await fixture(t, 'node -e "setTimeout(()=>{},30000)"', undefined, '[hygiene]\nmax_text_bytes = 384\n');
+  const f = await fixture(t, 'node -e "require(\'fs\').writeFileSync(\'ready-pid\',String(process.pid));setTimeout(()=>{},30000)"', undefined, '[hygiene]\nmax_text_bytes = 384\n');
   const rev = await spawnSpoke({ discover: true, cwd: f.root, name: 'rev', sessionId: 'suite-reviewer', role: 'reviewer' });
-  t.after(() => rev.close());
+  onCleanup(t, () => rev.close());
   await rev.waitForPresence(['rev']);
-  const job = await f.launch();
+  // Force the old failure: a submission snapshot can precede native admission.
+  await mkdir(join(f.root, 'suite.lock'));
+  const submitted = await f.launch();
+  assert.equal(submitted.pid, null);
+  await rm(join(f.root, 'suite.lock'), { recursive: true });
+  const job = { ...submitted, pid: await f.workerPid(submitted.id) };
+  const child = await eventually('fake body ready before refused cancellation', async () => readFile(join(f.root, 'ready-pid'), 'utf8').then(Number, () => undefined));
+  ownProcess(t, child);
+  const signals: Array<{ pid: number; signal: NodeJS.Signals | number | undefined }> = [];
+  const kill = process.kill.bind(process);
+  // projectHub runs the production LocalExecutor in this process. Observe native
+  // sends without suppressing them; human cancellation below is the positive control.
+  t.mock.method(process, 'kill', (pid: number, signal?: NodeJS.Signals | number) => {
+    if (signal !== 0) signals.push({ pid, signal });
+    return kill(pid, signal);
+  });
   const refused = await clandWithEnv(f.root, { CLAND_SESSION_NAME: 'rev', CLAND_SESSION_ID: 'suite-reviewer' }, 'suite', 'cancel', job.id);
   assert.notEqual(refused.code, 0);
   assert.match(refused.stderr, /cannot cancel another session’s suite/);
-  assert.equal(pidAlive(job.pid!), true);
+  const status = await f.ui.request({ type: 'hub.status', history: true });
+  const recorded = (status.value as HubStatus).suites?.find(run => run.id === job.id);
+  const dir = join(f.root, '.cland', 'run', 'suites', job.id);
+  const receipt = await readFile(join(dir, 'result.json'), 'utf8').catch(() => 'no native exit receipt');
+  const tail = (await readFile(join(dir, 'suite.log'), 'utf8').catch(() => '')).slice(-2000);
+  assert.equal(signals.length, 0, 'refused cancellation sends no native signal, including group signals');
+  assert.equal(recorded?.state, 'running');
+  assert.equal(recorded?.pid, job.pid);
+  assert.equal(recorded?.outcome, null);
+  assert.equal(pidAlive(job.pid!), true, JSON.stringify({ launch: job, recorded, receipt, tail }));
+  assert.equal(pidAlive(child), true);
   assert.equal((await f.results()).length, 0);
   const cancelled = await cland(f.root, 'suite', 'cancel', job.id, '--json');
   assert.equal(cancelled.code, 0, cancelled.stderr);
@@ -146,6 +171,7 @@ test('suite cancel refuses another session’s run while the human can cancel it
   assert.equal(result.from, 'impl');
   assert.deepEqual(result.to.sort(), ['impl', 'rev']);
   assert.match(result.text, /exit 143; cancelled/);
+  assert.ok(signals.some(send => send.pid === job.pid && send.signal === 'SIGTERM'), 'observer sees the human cancellation signal to this worker');
   assert.ok(Buffer.byteLength(result.text, 'utf8') <= 384);
   const repeated = await cland(f.root, 'suite', 'cancel', job.id);
   assert.equal(repeated.code, 0, repeated.stderr);
