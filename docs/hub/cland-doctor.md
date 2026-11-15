@@ -1,5 +1,20 @@
 ## cland doctor
 
+The `sign-in mode` row reads `[auth] mode` from project config (default `single`).
+Single mode is `ok` and needs no user-list request. In users mode the running
+hub's `user.list` supplies active and invited counts and total admins with the
+active admin count: `users; 1 active, 1 invited; 2 admins (1 active)`.
+No active admin warns with `cland user invite <name>`. Without hub discovery or
+a live hub PID, counts say `hub not running`, with `cland hub start`; remote
+discovery uses its forwarded socket without a local PID probe. A refused or
+unusable reply says `running hub doesn't report users mode`, with
+`cland hub reload`. Counts are never guessed from config or an offline database.
+If the request times out, counts say `unavailable (hub did not answer)` with
+`cland hub reload`; a timeout does not establish that the hub stopped.
+Text and `--json` contain only this metadata, never identity names, invite links,
+passkey or password material. The JSON envelope and existing check rows remain
+unchanged; this is one additional `{name, verdict, detail, fix?}` check.
+
 For configured host pools, doctor adds `host <provider> token`, `host <pool> image`,
 `host <pool> <harness> logins`, `host login <name>`, host reachability and `host spend`
 checks in the same text/JSON report. Token presence and its 12-character fingerprint

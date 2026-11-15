@@ -8,6 +8,10 @@ metadata:
 
 Implement the work described by the user in the spec or tickets.
 
+Doctor's sign-in mode check reads config mode and hub `user.list` counts only;
+see `docs/hub/cland-doctor.md` and the doctor-users per-test guide. Refused
+counts stay unknown with reload guidance; offline counts name hub start.
+
 Setup's optional agent-host offer uses the hub's metadata-only `host.providers`
 filter before a pool exists; it never reads the caller's provider token. Keep
 `--yes` at No and require the separate paid-pool confirmation. Untouched

@@ -1,5 +1,10 @@
 # Project secrets
 
+Doctor's sign-in mode check outputs config mode and aggregate user/admin counts
+from `user.list`, never names, invite links, passkeys or password material. Its
+[users tests](tests/hub-test-doctor-users.test.ts.md) plant synthetic material and
+prove the detector catches it before checking text and JSON.
+
 For host provider diagnostics, doctor reads `host.providers` from the running hub.
 It never resolves `DIGITALOCEAN_TOKEN` itself. Set that variable in the hub's
 environment, then run `cland hub stop && cland hub start`; the diagnostic exposes

@@ -184,6 +184,7 @@
     "hub/test/doctor-isolation.test.ts": "T3",
     "hub/test/doctor-remotes.test.ts": "T2",
     "hub/test/doctor-run.test.ts": "T2",
+    "hub/test/doctor-users.test.ts": "T2",
     "hub/test/doctor.test.ts": "T2",
     "hub/test/duration-legacy.test.ts": "T3",
     "hub/test/durations-refresh.test.ts": "T1",
