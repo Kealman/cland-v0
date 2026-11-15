@@ -2,8 +2,8 @@
 id: T-1838
 kind: task
 title: The users and sign-in modes page, the multi-user section and the CLI reference for `cland user` and `cland auth`
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-1518
 branch: t/T-1838-the-users-and-sign-in-modes-page-the
 created: 2026-11-12T10:07:23.227Z
-updated: 2026-11-15T07:24:08.213Z
+updated: 2026-11-15T08:30:02.020Z
+closed: 2026-11-15T08:30:02.020Z
 ---
 
 ## Summary
@@ -113,3 +114,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear: A-19576, exact receipt/consumer ledger A-19575, original configured A-19574/run059150dd. Independently reconciled 6345 passing base tests/700 base files and separate 190 passing load tests/files; five users source guards and corrected invite walkthrough each base+5 pass. C1-C5 verified. Wording lint 774 documents/1863 items/0 findings. All 982 manifest paths accounted for: 700 positive T1/T2/Web files, 265 T3 merge-batch and 17 T4 stage/epic deferrals, no missing lower/Web. Source clear A-19561 remains unchanged/clean. Linux/browser/head/tree provenance recorded; budgets/lint report-only. Corrected local T2 raw pass and identical 12955-name saved inventory pair close its interval; earlier transcript/overlap limitations retained. No Reviewer execution, no full-T3/T4 or after-stage QA claim.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-15T08:30:02.020Z
+
+Merged 17ef83b96bf58fecb6392bcc79d79da27bb659ae onto dev.

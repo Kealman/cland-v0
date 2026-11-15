@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1520
 branch: t/T-1806-native-host-fixtures-leave-cland-h
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-15T07:44:55.566Z
+updated: 2026-11-15T08:23:06.252Z
 ---
 
 ## Summary
@@ -29,9 +29,9 @@ A run of `hub/test/host-create-ready.test.ts` (12/12 pass, macOS, 2026-11-10 18:
 ## Acceptance criteria
 
 - [x] C1. Native host fixtures create their socket directories under the file's scratch root, or register their disposal at allocation, so an exact `/tmp` name set reads unchanged across host-create-ready, host-destroy-native and host-restart (test).
-  - done: impl-1806 · 2026-11-15T06:57:10.115Z
+  - done: impl-1806 · 2026-11-15T08:18:12.804Z
 - [x] C3. A shared inventory helper gives tests and QA briefs one exact before/after name-set check (test).
-  - done: impl-1806 · 2026-11-15T07:12:07.674Z
+  - done: impl-1806 · 2026-11-15T08:18:12.915Z
 
 ## Comments
 
@@ -131,3 +131,20 @@ findings: [{"severity":"medium","text":"Shared tempProject now creates .fixture-
 finding_counts: {"high":0,"medium":1,"low":0}
 
 A-19578 completes the failed-evidence pass. A-19577 is red with three direct fixture-baseline consumer failures, independently confirmed and accepted by lead; no timing/shared-defect waiver or unchanged retry. Ordinary finishes 5605 pass/3 fail across 597 pass/3 fail files; separate load180test/175file positives. T0/T1 pass, T2 fails, Web unexecuted/browser null. Native A-19572/A-19573 separately audited: exact source/launcher hashes, 52/52 across seven files, full sorted unique system/user/suite name arrays equal per file and overall, child status0/signalnull. Positive C1/C3 support retained without final verification marks while compatibility gate fails. C2 stays T-1865; old unsafe/prefix-only evidence not upgraded. Preserve red run and publication/capture/report-mode/T3/T4 boundaries. Hold released for corrected source and fresh review; Reviewer ran no runtime/census/cleanup/provenance experiment.
+
+### impl-1806 · 2026-11-15T08:18:12.994Z
+
+Consolidated replacement e5c0486c576f715e552d67ae73582db30065c8ab, pushed. Chose lazy setup after all-tier sweep exposed prepared-project (30 consumers incl T4) and tracker-native T3 exact guards. tempProject registration adds no entries; first allocation persists existing marker. Shared fixtureEnvironment seals exact layout root after overlays, with explicit projectRoot separate from worker account HOME; CLI/projectHub wrappers pass it. New spawned-hub child control checks first allocation, layout-root binding, persisted reader, native close and alias disposal; not executed before source review. Original artifact-lifecycle/artifacts/config-set/prepared-project/tracker-native-boundary source assertions are byte-identical to 6c6506a38. All-tier listing ledgers A-19581/A-19582 retain 592 candidates (250 listing lines, 351 indirect matches, 9 overlap), 30 prepared consumer files and 305 direct environment consumers with tiers/contexts/dispositions/hashes. Local source pass: empty-root control red before lazy fix; then host-records 13/13, socket-path 6/6, sealing 6/6, three original failed cases 1/1 each; final wrapper/native control unexecuted. Hub typecheck and static checks passed. A-19577 remains red; A-19573 only old-head evidence. Root artifact-staging folders removed after publication per Coordinator; future staging in worktree ignored .tmp. No historical/private-temp cleanup.
+
+### rev-35 · 2026-11-15T08:23:06.252Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1806-source-3
+commit: e5c0486c576f715e552d67ae73582db30065c8ab
+scope: full
+findings: [{"severity":"medium","text":"Lazy optedInRoots retains disposed non-tempProject roots: registerFakeHosts and the deep-root test discard the disposer, while removeFixtureSockets never retires matching registrations. No active-root bound/release owner exists in source. Bind registration retirement to the owned root lifecycle, retaining active/replacement identity safety.","file":"shared/fixture-sockets.ts","line":9},{"severity":"medium","text":"Cold-child control supplies an absolute fake-host root, so registerFakeHosts independently enables memory opt-in before allocation. It can pass if the new environment grant is ignored; layoutRoot equality only proves field construction. Isolate a first allocation with no marker, memory grant or fake-root grant and prove the sealed exact-root grant is consumed.","file":"hub/test/fixture-socket-lifecycle.test.ts","line":25}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+A-19583 completes the reworked lazy source pass at clean e5c0486c5/tree38b3cf52. Standards two medium findings; Spec no additional findings. A-19578 eager-baseline problem resolved in source; original five exact-content consumers byte-identical, no filtering/weakened assertions. Source/manifest fingerprints in A-19582 match; prior union retained; static candidates are not executions and object tiers require .tier normalization. C1/C3 remain unverified pending correction, fresh source review and exact-head native/configured receipts. A-19577 remains red; A-19573 native52/52/full-name evidence old-head-only. C2 stays T-1865, no historical cleanup. Hold released for consolidated correction; no pre-clear native run or unchanged retry requested. Reviewer performed read-only source/Git/artifact analysis only.
