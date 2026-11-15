@@ -2,8 +2,8 @@
 id: T-1870
 kind: task
 title: "Integrated pass on the fakes: hosts, logins, users and restart in one scenario"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1524
 branch: t/T-1870-integrated-pass-on-the-fakes-hosts
 created: 2026-11-15T13:08:09.345Z
-updated: 2026-11-15T15:49:48.880Z
+updated: 2026-11-15T18:48:48.450Z
+closed: 2026-11-15T18:48:48.450Z
 ---
 
 ## Summary
@@ -159,3 +160,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; A-19738 records the independent audit. Fresh same-head 5cd26380/A-19737 has 6402 ordinary test/705 file passes plus 210 separate load test/file passes, no negative finishes or skips; every selected T1/T2/Web file and five actual T3 files/28 identities passed. All five scenario outcomes and eight cleanup controls have positive receipts. Case18.681410714s/file20.044333151s remain within28/30s allowances and the agreed about1.5x bar. C2 retains qualified evolving-candidate five fault controls A-19696–A-19700/A-19703; no exact-head red rerun claimed. Native preservation A-19722 remains explicitly d18c4ef evidence carried across the sole durations.json delta; executable/fixture inputs independently unchanged, full canonical system/user/suite name arrays equal. Prior source clearance A-19734 stands. Complete consumer union retained, no missing selected receipts; remaining262 T3/17 T4 deferred. Capture/publication limitations and report-only budget/lint/ratchet advisories retained. No new experiment, cleanup or landing action.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-15T18:48:48.450Z
+
+Merged 1652d3ea7bc13c0b7fc7a6084cccf0cc12241c58 onto dev.
