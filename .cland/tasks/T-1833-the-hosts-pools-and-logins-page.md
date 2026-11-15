@@ -2,8 +2,8 @@
 id: T-1833
 kind: task
 title: The hosts, pools and logins page
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-1513
 branch: t/T-1833-the-hosts-pools-and-logins-page
 created: 2026-11-12T10:07:22.211Z
-updated: 2026-11-14T23:09:24.148Z
+updated: 2026-11-15T00:30:30.535Z
+closed: 2026-11-15T00:30:30.535Z
 ---
 
 ## Summary
@@ -125,3 +126,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; C1–C4 verified. A-19456 / c3509fac passes 6315/6315, zero fail/cancel/skip/todo, T0/all T1/fallback all T2/Web. Independently checked four site host guards (each base+5 load), repaired selection guard, actual marked-command walkthrough (base 3.266500842 s +5 load pass), document membership and T0 wording scan (768 docs/0 findings). A-19458 records criterion/provenance/capture limits; A-19457 reconciles all 977 manifest paths: 695 positive file receipts, 265 T3/17 T4 deferred, no missing lower/Web. Linux x64 Node24.21/Nvim0.12.5, pinned Headless Shell1248/CfT156.0.8078.4, no cache/skips; report-only budgets/lint retained. Prior A-19450 red and qualified candidate/inventory history preserved. Full T3/T4, site rendering/native provisioning and affected after-stage QA are not claimed. No Reviewer execution; hub/Coordinator owns ready/landing.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-15T00:30:30.535Z
+
+Merged 5cd48f9de1ba30bd34bd8cefb4fcf925e78a31e7 onto dev.
