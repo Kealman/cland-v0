@@ -3,7 +3,7 @@ id: T-1835
 kind: task
 title: Setup's sign-in mode step
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1537
 blocked_by:
   - T-1831
-topic: null
-branch: null
+topic: topic-1515
+branch: t/T-1835-setup-s-sign-in-mode-step
 created: 2026-11-12T10:07:22.624Z
-updated: 2026-11-15T04:20:08.260Z
+updated: 2026-11-15T04:22:20.650Z
 ---
 
 ## Summary
