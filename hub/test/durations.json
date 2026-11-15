@@ -205,9 +205,11 @@
       "A-19544",
       "A-19546",
       "A-19580",
-      "A-19585"
+      "A-19585",
+      "A-19744",
+      "A-19746"
     ],
-    "commit": "e4ad65fb9bdd104ed8f7ac5b784cbe3fc9485e5e"
+    "commit": "562f8359f3715752ffcee6de13cbc7c5841dae26"
   },
   "budget": {
     "testSeconds": 5,
@@ -4163,6 +4165,14 @@
     },
     "web/test/setup-signin.test.ts": {
       "seconds": 1.685503,
+      "tests": 1
+    },
+    "hub/test/host-fixture-cleanup.test.ts": {
+      "seconds": 1.376151,
+      "tests": 8
+    },
+    "hub/test/scenarios/integrated-v04.test.ts": {
+      "seconds": 25.482223,
       "tests": 1
     }
   },
@@ -12388,7 +12398,26 @@
     "hub/test/users-docs-invite.test.ts::published users commands switch a single project and renew the second user invite privately": 1.107939,
     "nvim/test/sessions.test.ts::selected session metadata names the launching user and accepts legacy rows": 0.33137,
     "web/test/sessions.test.ts::Sessions row names its launching user only in users mode": 2.191935,
-    "web/test/setup-signin.test.ts::C3 setup completes after the first user registers a passkey on the invite page": 1.685503
+    "web/test/setup-signin.test.ts::C3 setup completes after the first user registers a passkey on the invite page": 1.685503,
+    "hub/test/fixture-socket-lifecycle.test.ts::a cold hub child allocates its first host sockets beneath the scratch root and persists independent reader paths": 1.733453,
+    "hub/test/host-runtime-join.test.ts::enrolled host socket metadata stays out of a committed and cloned fixture root": 0.222478,
+    "hub/test/host-runtime-join.test.ts::fixture disposal joins a held clone sequence and fences its later filesystem write": 0.220455,
+    "hub/test/host-runtime-join.test.ts::fixture disposal joins held repository setup and fences exclude enrollment": 0.542765,
+    "hub/test/merge-batches.test.ts::a custom command without package inventory retains unknown skipped files": 0.318897,
+    "hub/test/merge-batches.test.ts::completed empty files stay observed and confirmation preserves a later rebuild notice": 0.313395,
+    "hub/test/merge-batches.test.ts::interrupted file diagnosis requires the skipped selection: later file exit 0": 0.312899,
+    "hub/test/merge-batches.test.ts::interrupted file diagnosis requires the skipped selection: later file exit 1": 0.370631,
+    "hub/test/suite-progress.test.ts::file execution inventory opts in to empty file envelopes without changing legacy progress": 0.002692,
+    "hub/test/web-readme.test.ts::hub reference retains the indexed merge queue landing guide": 0.001333,
+    "hub/test/host-fixture-cleanup.test.ts::control cleanup drains hooks registered after cancelled fixture initialization": 0.134745,
+    "hub/test/host-fixture-cleanup.test.ts::control cleanup releases first and attempts every join after one rejects": 0.001509,
+    "hub/test/host-fixture-cleanup.test.ts::held fixture restart joins startup before closing handles and rejects later starts": 1.010321,
+    "hub/test/host-fixture-cleanup.test.ts::held fixture setup joins its last write before storage and root teardown": 0.219952,
+    "hub/test/host-fixture-cleanup.test.ts::late restart acquisition stops its returned hub exactly once before close completes": 0.002316,
+    "hub/test/host-fixture-cleanup.test.ts::synchronous remote result completes the pre-armed receipt and cancels its timer": 0.001538,
+    "hub/test/host-fixture-cleanup.test.ts::thrown bob-answer upload joins its armed result and every other receipt": 0.001602,
+    "hub/test/host-fixture-cleanup.test.ts::thrown code-1 upload joins its armed result and every other receipt": 0.004168,
+    "hub/test/scenarios/integrated-v04.test.ts::v0.4 integrated: remote login, live renewal, two users, busy restart and host sub-cap": 25.482223
   },
   "allow": {
     "hub/test/demo-release.test.ts::the detached demo watchdog confirms an active droplet losing tags during its delete": {
@@ -15835,18 +15864,18 @@
     },
     "hub/test/scenarios/integrated-v04.test.ts": {
       "file": true,
-      "seconds": 30,
+      "seconds": 49,
       "owner": "C-216",
       "added": "2026-11-15",
       "expires": "2026-11-22",
-      "reason": "T-1870 integrated five-path fake scenario. Worst retained passing file sample 19.465928885s on Linux x64 droplet, Node24.21.0, reviewed head d18c4ef793d11f59329c6e815849bc5432caaf25, run895c28b9, A-19732; 30s rounds up 1.5x. Includes Node file startup, setup and joined cleanup; excludes queue and machine wait. Earlier macOS process samples were smaller; final native preservation evidence A-19722. Scenario uses fakes and no browser. Negative-control failures excluded. C-216 and seven-day expiry authorized in the item brief; duration policy remains report mode."
+      "reason": "T-1870 integrated five-path fake scenario. Raised to 49s by the Coordinator at the release (2026-11-15): loaded Linux maximum 32.399119681s (A-19743, batch 537bdc1c, c-8 nyc1, peak load 14.7) x1.5. Worst retained passing file sample 19.465928885s on Linux x64 droplet, Node24.21.0, reviewed head d18c4ef793d11f59329c6e815849bc5432caaf25, run895c28b9, A-19732; 30s rounds up 1.5x. Includes Node file startup, setup and joined cleanup; excludes queue and machine wait. Earlier macOS process samples were smaller; final native preservation evidence A-19722. Scenario uses fakes and no browser. Negative-control failures excluded. C-216 and seven-day expiry authorized in the item brief; duration policy remains report mode."
     },
     "hub/test/scenarios/integrated-v04.test.ts::v0.4 integrated: remote login, live renewal, two users, busy restart and host sub-cap": {
-      "seconds": 28,
+      "seconds": 46,
       "owner": "C-216",
       "added": "2026-11-15",
       "expires": "2026-11-22",
-      "reason": "T-1870 native fake SSH/Claude, login cards, users projections and restart. Worst retained passing case sample 18.233833274s on Linux x64 droplet, Node24.21.0, reviewed head d18c4ef793d11f59329c6e815849bc5432caaf25, run895c28b9, A-19732; 28s rounds up 1.5x. Includes setup and joined cleanup, excludes Node file startup and queue/machine wait. Earlier passing macOS case samples were smaller. No browser; negative-control failures excluded; report mode."
+      "reason": "T-1870 native fake SSH/Claude, login cards, users projections and restart. Worst retained passing case sample 18.233833274s on Linux x64 droplet, Node24.21.0, reviewed head d18c4ef793d11f59329c6e815849bc5432caaf25, run895c28b9, A-19732; 28s rounds up 1.5x. Includes setup and joined cleanup, excludes Node file startup and queue/machine wait. Earlier passing macOS case samples were smaller. No browser; negative-control failures excluded; report mode. Raised to 46s by the Coordinator at the release (2026-11-15): loaded Linux maximum 30.659327257s (A-19743, batch 537bdc1c, c-8 nyc1, peak load 14.7) x1.5."
     },
     "hub/test/suite-recovery.test.ts::cancel removes an admitted worker’s compatibility FIFO ticket without releasing a racing hand holder": {
       "seconds": 6,
