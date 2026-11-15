@@ -190,9 +190,15 @@
       "A-19409",
       "A-19429",
       "A-19430",
-      "A-19434"
+      "A-19434",
+      "A-19454",
+      "A-19456",
+      "A-19470",
+      "A-19460",
+      "A-19462",
+      "A-19473"
     ],
-    "commit": "932f3018c335d620fc6afd268c5f9abb846c9d13"
+    "commit": "09271f1bd8b780f703a7362f20cb6176aae8c79b"
   },
   "budget": {
     "testSeconds": 5,
@@ -4125,6 +4131,10 @@
     "hub/test/setup-hosts.test.ts": {
       "seconds": 2.677536,
       "tests": 33
+    },
+    "hub/test/hosts-docs-pool.test.ts": {
+      "seconds": 2.877461,
+      "tests": 1
     }
   },
   "tests": {
@@ -12323,7 +12333,9 @@
     "hub/test/setup-hosts.test.ts::T1831 socket sign-in 1 persists login outcome and reaches Aide": 0.144419,
     "hub/test/setup-hosts.test.ts::T1831 socket sign-in 130 persists login outcome and reaches Aide": 0.148838,
     "hub/test/setup-hosts.test.ts::T1831 successful pinned login refreshes eligibility before unpinned and distinct-account offers": 0.001527,
-    "nvim/test/inbox-sections.test.ts::inbox retains optional sign-in login identity while rendering the existing card facts": 0.395688
+    "nvim/test/inbox-sections.test.ts::inbox retains optional sign-in login identity while rendering the existing card facts": 0.395688,
+    "hub/test/hosts-docs-pool.test.ts::published pool commands configure a second fake pool and host status lists it": 2.877461,
+    "hub/test/skills-onboarding.test.ts::the onboarding tour has ten stages ending with Look now": 0.002333
   },
   "allow": {
     "hub/test/demo-release.test.ts::the detached demo watchdog confirms an active droplet losing tags during its delete": {
