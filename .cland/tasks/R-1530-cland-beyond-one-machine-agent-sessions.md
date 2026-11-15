@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T18:03:30.138Z
-updated: 2026-11-15T21:48:18.541Z
+updated: 2026-11-15T23:29:38.022Z
 ---
 
 ## Goal
@@ -119,7 +119,8 @@ Sessions, the hub and the remotes:
 - T-1864: `artifact.create` with very large inline content times out after 300 seconds with an unknown outcome;
 - T-1857: a long verify result cuts off its executor, lifetime and cost line;
 - T-1843: a finished suite with no lease can keep holding a remote slot across hub restarts;
-- T-1856: a hub stop cannot cancel a hung `git worktree prune`.
+- T-1856: a hub stop cannot cancel a hung `git worktree prune`;
+- T-1876: `cland release` reports a bare "gh auth failed (ENOENT)" when the hub's PATH lacks `gh`. Start the hub with Homebrew's bin on its PATH.
 
 Tests and contributors:
 - T-1861: `cland qa lint` reads a per-test docs path (`.test.ts.md`) as a missing test file;
@@ -130,7 +131,7 @@ Tests and contributors:
 - T-1805 and T-1676: test fixtures leave owner registries, fallback sockets and Codex placeholder sockets in TMPDIR, and one registry names the live source worktree;
 - known load flakes in suite runs: T-1641, T-1642, T-1643, T-1648, T-1695, T-1731, T-1736, T-1758, T-1761, T-1798, T-1841 and T-1873.
 
-In all, 55 items are open in Bugs and 26 in Tech debt.
+In all, 56 items are open in Bugs and 26 in Tech debt.
 
 The retrospective artifact of the run follows the release and will be linked from R-1530.
 
