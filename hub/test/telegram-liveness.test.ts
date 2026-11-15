@@ -31,7 +31,7 @@ async function doctorStop(t: import('node:test').TestContext, root: string) {
 
 test('Telegram liveness missing startup receipt disposes the owned hub and native connections', async t => {
   const setupClock = new FakeClock();
-  const f = await fixture(t, { setupClock, publishReady: false });
+  const f = await fixture(t, { setupClock, setupTimeoutMs: 1_000, publishReady: false });
   const failed = assert.rejects(f.start(), /Telegram liveness startup receipt deadline reached/);
   const actual = await f.actual();
   await setupClock.advance(1_000);
@@ -45,7 +45,7 @@ test('Telegram liveness missing startup receipt disposes the owned hub and nativ
 
 test('Telegram liveness aborted held startup joins getMe and closes the late hub before disposal', async t => {
   const abort = new AbortController();
-  const f = await fixture(t, { signal: abort.signal });
+  const f = await fixture(t, { signal: abort.signal, setupTimeoutMs: 1_000 });
   await control(f.fake.url, 'fault', { method: 'getMe', code: 500, response: 'hold' });
   const held = f.fake.waitForHeldRequest('getMe');
   const failed = assert.rejects(f.start(), /cancel held Telegram startup/);

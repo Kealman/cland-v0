@@ -131,8 +131,15 @@ capturing the original waiter orders. Keep the card guide's live held-publicatio
 drop control as well: limiting reconciliation must still settle that old waiter
 without waiting for stop.
 
-The shared `pacingOwner` keeps a one-second setup receipt deadline by default.
+The shared `pacingOwner` uses `testSetupWaitMs` for real acquisition: a five-second
+base, replaced by positive `CLAND_TEST_WAIT_MS`, then scaled by the shared worker
+load factor (`CLAND_TEST_LOAD_FACTOR`, or two on droplets and one locally).
+An injected setup clock retains the exact one-second fault-probe bound.
 Manual startup probes may pass `{ setupTimeoutMs }` at owner construction;
-existing one-argument callers retain the original deadline and disposal order.
+that explicit deadline and the disposal order remain unchanged.
+Individual `start` calls may also set `setupTimeoutMs`; that call's explicit
+value wins over the owner and shared defaults. Omission/cancellation probes pin
+their original one-second bound at the call site; Claude component probes pin
+their existing `testWaitMs(5000)` bound. A default change cannot retime them.
 The memory-producer controls exercise that opt-in without changing messenger
 settings, production wire fields or persisted records.

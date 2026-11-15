@@ -75,7 +75,7 @@ async function endpointFixture(t: TestContext, messenger: 'discord' | 'telegram'
   const fetches = t.mock.method(globalThis, 'fetch', async () => { throw new Error('unexpected fixture request'); });
   const token = messenger === 'telegram' ? '123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi' : 'fictional-discord-token';
   const clock = new FakeClock();
-  const start = (setup: { receipt?: Promise<void>; signal?: AbortSignal; clock?: FakeClock } = {}) => owner.start(root, {}, clock, {
+  const start = (setup: { receipt?: Promise<void>; signal?: AbortSignal; clock?: FakeClock; setupTimeoutMs?: number } = {}) => owner.start(root, {}, clock, {
     ...setup, hubOptions: { syntheticRemoteSecrets: { [`${messenger}.token`]: token }, log: entry => { logs.push(entry); } },
   });
   return { owner, root, remove, logs, fetches, clock, start };
@@ -107,7 +107,7 @@ for (const messenger of ['discord', 'telegram'] as const) {
       const f = await endpointFixture(t, messenger);
       const setupClock = new FakeClock();
       const abort = new AbortController();
-      const starting = f.start({ receipt: new Promise<void>(() => {}), clock: setupClock, signal: abort.signal });
+      const starting = f.start({ receipt: new Promise<void>(() => {}), clock: setupClock, setupTimeoutMs: 1_000, signal: abort.signal });
       const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /setup cancelled/);
       const hub = await within(f.owner.serving, 1_000);
       if (failure === 'omitted') await setupClock.advance(1_000);

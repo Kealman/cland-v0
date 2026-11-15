@@ -12,7 +12,7 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Telegram marks fixt
   const setupClock = new FakeClock(), abort = new AbortController();
   const poll = f.owner.observe(signal => f.fake.waitForPoll(signal));
   const closed = f.owner.observe(async signal => f.fake.waitForPollClose((await poll).id, signal), { drain: true });
-  const starting = f.startHub(root, f.env, {}, { receipt: new Promise<void>(() => {}), clock: setupClock, signal: abort.signal });
+  const starting = f.startHub(root, f.env, {}, { receipt: new Promise<void>(() => {}), clock: setupClock, setupTimeoutMs: 1_000, signal: abort.signal });
   const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /cancelled/);
   const hub = await within(f.owner.serving, 2000);
   await within(poll, 2000);

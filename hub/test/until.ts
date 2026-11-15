@@ -17,6 +17,11 @@ export function waitTimeoutMs(ms:number,loadFactor?:number):number {
   return timeoutMs;
 }
 
+/** Real acquisition tolerates loaded workers; injected setup clocks retain exact fault bounds. */
+export function testSetupWaitMs(clock?: Clock, explicitMs?: number): number {
+  return explicitMs ?? (clock ? 1_000 : waitTimeoutMs(testWaitMs(5_000)));
+}
+
 /**
  * Wait for an observable condition with one load-scaled deadline. Yield to I/O
  * between observations rather than sleeping a guessed amount of wall time.

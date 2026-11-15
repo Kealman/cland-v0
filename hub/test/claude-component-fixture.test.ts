@@ -29,7 +29,7 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Claude component ${
   // admission must release this deliberate hold before the owner joins it.
   onCleanup(t, releaseAndJoin);
   const owner = claudeComponentOwner(t, root, clock, { clock, adapters: [(host, clock) => fakeHarness('claude-code', { host, clock })] });
-  const starting = owner.start({ publishReady: false, signal: abort.signal, clock: setupClock });
+  const starting = owner.start({ publishReady: false, signal: abort.signal, clock: setupClock, setupTimeoutMs: testWaitMs(5_000) });
   const failed = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /cancel Claude setup/);
   void failed.catch(() => {}); // Early assertion failure still owns setup cancellation.
   const { hub, ui } = await within(owner.actual, 5_000);

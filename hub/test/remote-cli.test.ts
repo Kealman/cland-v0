@@ -267,7 +267,7 @@ for (const failure of ['missing receipt', 'aborted setup'] as const) test(`older
   const root = await tempProject(t);
   const clock = new FakeClock();
   const abort = new AbortController();
-  const fixture = legacyRemoteHubFixture(t, root, { clock, signal: abort.signal, publishListening: false });
+  const fixture = legacyRemoteHubFixture(t, root, { clock, setupTimeoutMs: 1_000, signal: abort.signal, publishListening: false });
   const observed = within(fixture.listening(), 1000);
   const started = fixture.start();
   const failed = assert.rejects(started, failure === 'missing receipt' ? /legacy hub listening receipt deadline reached/ : /fixture setup cancelled/);
@@ -282,7 +282,7 @@ for (const failure of ['missing receipt', 'aborted setup'] as const) test(`older
 
 test('older-hub fixture reports a native bind error and disposes through its setup owner', async t => {
   const root = await tempProject(t);
-  const fixture = legacyRemoteHubFixture(t, root);
+  const fixture = legacyRemoteHubFixture(t, root, { setupTimeoutMs: 1_000 });
   // Occupy the portable endpoint before listening, preserving a native bind failure.
   await mkdir(fixtureSocketPath(root, 'legacy.sock'));
   await assert.rejects(within(fixture.start(), 1500), /legacy hub listen failed: EADDRINUSE/);

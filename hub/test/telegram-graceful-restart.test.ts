@@ -43,7 +43,7 @@ for (const aborted of [false, true]) test(`Integrated remotes startup ${aborted 
   const abort = new AbortController();
   if (aborted) abort.abort(new Error('Controlled setup abort'));
   const missing = new Promise<void>(() => {});
-  const rejected = assert.rejects(f.start({ receipt: missing, signal: abort.signal }),
+  const rejected = assert.rejects(f.start({ receipt: missing, signal: abort.signal, setupTimeoutMs: 1_000 }),
     aborted ? /Controlled setup abort/ : /setup receipt deadline reached/);
   await rejected;
   await f.exchange.close();

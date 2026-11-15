@@ -66,7 +66,7 @@ test('Telegram uncertain gap retains its captured ids and stable send key across
 test('Telegram held gap missing setup receipt cancels and joins its writer before closing stores', async t => {
   const f = await heldTelegramGap(t);
   f.missed('pending', 'source');
-  const failed = assert.rejects(f.start({ publishReady: false }), /Telegram gap setup receipt deadline reached/);
+  const failed = assert.rejects(f.start({ publishReady: false, setupTimeoutMs: 1_000 }), /Telegram gap setup receipt deadline reached/);
   assert.equal(f.calls.length, 1, 'the captured producer is active while its setup receipt is suppressed');
   await failed; // start owns deadline progression; the caller advances no clock.
   assert.deepEqual(f.receipts(), { joined: true, closed: true, outcome: 'rejected', finalStates: ['missed'] });
@@ -78,7 +78,7 @@ test('Telegram held gap aborted setup cancels and joins its writer before closin
   const f = await heldTelegramGap(t);
   f.missed('pending', 'source');
   const abort = new AbortController();
-  const failed = assert.rejects(f.start({ publishReady: false, signal: abort.signal }), /cancel held gap setup/);
+  const failed = assert.rejects(f.start({ publishReady: false, signal: abort.signal, setupTimeoutMs: 1_000 }), /cancel held gap setup/);
   assert.equal(f.calls.length, 1);
   abort.abort(new Error('cancel held gap setup'));
   await failed;

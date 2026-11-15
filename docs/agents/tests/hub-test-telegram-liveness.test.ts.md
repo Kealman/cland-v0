@@ -3,13 +3,17 @@
 T2 uses sealed `tempProject`/`projectHub`, the production Telegram factory,
 Unix-socket frames and the loopback fake Bot API. The CLI status case uses the
 shared sealed `cland` launcher. A single `FakeClock` drives all behavior;
-one-second native bounds detect missing receipts and do not simulate outages.
+Native receipt bounds detect missing receipts and do not simulate outages.
 No platform, real token, browser binary or GUI is used. Run the file alone.
 
 `telegram-liveness-fixture.ts` registers its disposer before starting the hub.
-Readiness is armed before `projectHub`, with a separate real-clock one-second
-bound (or an independently injected setup clock). Disposal aborts the observer,
-closes the fake and joins its native connections/handlers, joins the retained
+Readiness is armed before `projectHub`, with the shared `testSetupWaitMs` real
+acquisition bound: five seconds by default, replaced by positive
+`CLAND_TEST_WAIT_MS`, then scaled by `CLAND_TEST_LOAD_FACTOR` (default two on
+droplets, one locally). An independently injected setup clock retains the exact
+one-second fault bound. Fault probes explicitly pass `setupTimeoutMs: 1000`
+at their call sites. Disposal aborts the observer, closes the fake and joins
+its native connections/handlers, joins the retained
 startup promise and stops a late hub before directory cleanup. The missing
 startup receipt and aborted held `getMe` controls call this exact disposer and
 retain native closed/zero-writer, joined-startup, completed-stop and zero-timer

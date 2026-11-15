@@ -173,7 +173,7 @@ for (const crash of [false, true]) test(`Discord persists complete groups before
 
 for (const omitted of [false, true]) test(`Discord render owner drains ${omitted ? 'omitted held publication' : 'aborted held setup'} before Store close`, async t => {
   const f = await fixture(t, !omitted);
-  const held = f.run(signal => f.fake.waitForHold(signal));
+  const held = f.run(signal => f.fake.waitForHold(signal, 1_000));
   const rejected = assert.rejects(held, /aborted|disposed/); void rejected.catch(() => {});
   try {
     if (omitted) {

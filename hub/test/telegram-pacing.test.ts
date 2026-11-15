@@ -415,7 +415,7 @@ for (const failure of ['missed receipt', 'aborted receipt', 'rejected startup'] 
     await writeFile(join(root, '.cland/config.toml'), 'broken = [');
   }
   const starting = owner.start(root, {}, clock, {
-    receipt: new Promise<void>(() => {}), clock: setupClock, signal: setupAbort.signal,
+    receipt: new Promise<void>(() => {}), clock: setupClock, setupTimeoutMs: 1_000, signal: setupAbort.signal,
   });
   const rejected = assert.rejects(starting, failure === 'missed receipt' ? /setup receipt deadline/ : failure === 'aborted receipt' ? /setup cancelled/ : /Invalid TOML document: unfinished array/);
   let hub: Awaited<typeof owner.serving> | undefined;
@@ -474,7 +474,7 @@ for (const interruption of ['abort', 'missing startup deadline'] as const) test(
   assert.equal((await telegramControl(fake.url, 'fault', { method: 'getMe', code: 500, response: 'hold' })).status, 200);
   // queueFixture registered this fake's startup release through the same owner.
   const entered = fake.waitForHeldRequest('getMe');
-  const starting = owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock, { clock: setupClock, signal: setupAbort.signal });
+  const starting = owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock, { clock: setupClock, setupTimeoutMs: 1_000, signal: setupAbort.signal });
   void starting.catch(() => {});
   try {
     const request = await within(entered, 1_000);

@@ -983,7 +983,7 @@ test('Telegram card web fixture missing setup receipt closes native HTTP and Web
   const f = await fixture(t);
   const setupClock = new FakeClock();
   const closeReceipt = Promise.withResolvers<void>();
-  const starting = f.web.start(f.ui, { setupClock, publishReady: false, closeReceipt: closeReceipt.promise });
+  const starting = f.web.start(f.ui, { setupClock, setupTimeoutMs: 1_000, publishReady: false, closeReceipt: closeReceipt.promise });
   const failed = assert.rejects(starting, /setup receipt deadline reached/);
   void failed.catch(() => {});
   await f.web.actual();
@@ -1007,7 +1007,7 @@ test('Telegram card web fixture missing setup receipt closes native HTTP and Web
 for (const stage of ['HTTP', 'WebSocket'] as const) test(`Telegram card web fixture aborted during ${stage} acquisition drains its native close receipts`, async t => {
   const f = await fixture(t);
   const abort = new AbortController();
-  const starting = f.web.start(f.ui, { signal: abort.signal });
+  const starting = f.web.start(f.ui, { signal: abort.signal, setupTimeoutMs: 1_000 });
   const failed = assert.rejects(starting, /fixture acquisition cancelled/);
   void failed.catch(() => {});
   await within(stage === 'HTTP' ? f.web.httpStarted : f.web.socketStarted, 1000);

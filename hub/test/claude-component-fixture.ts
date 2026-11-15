@@ -37,11 +37,11 @@ export function claudeComponentOwner(t: TestContext, root: string, clock: Clock,
   return {
     dispose: owner.dispose, observations: owner.observations, serving: owner.serving, actual: actual.promise, removing: removing.promise,
     frame, client, observe,
-    start: (setup: { signal?: AbortSignal; clock?: Clock; publishReady?: boolean } = {}) => {
+    start: (setup: { signal?: AbortSignal; clock?: Clock; publishReady?: boolean; setupTimeoutMs?: number } = {}) => {
       assert.equal(admitted, false, 'one hub acquisition per owner');
       admitted = true;
       // The shared setup bound includes hub startup, hello and subscription.
-      const starting = owner.start(root, {}, clock, { receipt: ready.promise, ...(setup.signal ? { signal: setup.signal } : {}), ...(setup.clock ? { clock: setup.clock } : {}), hubOptions });
+      const starting = owner.start(root, {}, clock, { receipt: ready.promise, setupTimeoutMs: setup.setupTimeoutMs, ...(setup.signal ? { signal: setup.signal } : {}), ...(setup.clock ? { clock: setup.clock } : {}), hubOptions });
       const connecting = observe(async signal => {
         const hub = await abortable(owner.serving, signal);
         signal.throwIfAborted();

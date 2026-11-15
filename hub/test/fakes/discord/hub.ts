@@ -11,6 +11,7 @@ import { defaultConfig, renderConfig } from '../../../src/init/config.ts';
 import { DiscordRemote } from '../../../src/remote/discord.ts';
 import type { RemoteStatusRow } from '../../../src/protocol.ts';
 import type { Clock } from '../../../src/hub/clock.ts';
+import { testSetupWaitMs, testWaitMs, waitTimeoutMs } from '../../until.ts';
 
 /** Register native/hub joins before acquisition; close injected storage only after drainage. */
 export function discordHubFixtureOwner(t: TestContext, options: {
@@ -39,7 +40,7 @@ export function discordHubFixtureOwner(t: TestContext, options: {
       const started = now();
       let root: string;
       try {
-        root = await native.run(signal => options.acquireProject?.(signal) ?? tempProject(t), options.acquisitionTimeoutMs ?? 15000, options.acquisitionClock);
+        root = await native.run(signal => options.acquireProject?.(signal) ?? tempProject(t), options.acquisitionTimeoutMs ?? waitTimeoutMs(testWaitMs(15000)), options.acquisitionClock);
         acquisitionReceipts.push({ phase: 'tempProject acquisition', elapsedMs: now() - started, outcome: 'complete' });
         t.diagnostic(JSON.stringify(acquisitionReceipts.at(-1)));
       } catch (cause) {
@@ -64,11 +65,11 @@ export function discordHubFixtureOwner(t: TestContext, options: {
         ...(options.injected ? { gatewayMessenger: () => new DiscordRemote(native.api, DISCORD_TEST_TOKEN, clock,
           { log: entry => { logs.push(entry); options.log?.(entry); }, fake: true, random: () => 0.25, store: state, notice: cause => notices.push(cause) }) } : {}),
       });
-      const hub = await native.run(() => hubReady!);
-      const ui = await native.run(() => connectUi(t, hub.discovery, 'nvim'));
+      const hub = await native.run(() => hubReady!, testSetupWaitMs());
+      const ui = await native.run(() => connectUi(t, hub.discovery, 'nvim'), testSetupWaitMs());
       const status = async () => ((await ui.request({ type: 'remote.status' })).value as { remotes: RemoteStatusRow[] }).remotes[1]!;
       const history = async () => ((await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string }> }).messages;
-      await native.run(() => until(async () => (await native.fake.control('state')).gateway.identifies === 1, { timeoutMs: 2000, what: 'native Identify receipt' }));
+      await native.run(() => until(async () => (await native.fake.control('state')).gateway.identifies === 1, { timeoutMs: testWaitMs(5000), what: 'native Identify receipt' }), testSetupWaitMs());
       return { ...native, root, hub, ui, clock, state, status, history, notices, logs, close: owner.close };
     } catch (error) { await owner.close(); throw error; }
   };

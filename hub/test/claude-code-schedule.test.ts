@@ -317,7 +317,7 @@ for (const mode of ['omitted', 'aborted'] as const) test(`Claude replay bridge $
   const { ui, hub } = await f.open();
   const setupClock = new FakeClock();
   const abort = new AbortController();
-  const starting = web.start(ui, { setupClock, publishReady: false, signal: abort.signal });
+  const starting = web.start(ui, { setupClock, setupTimeoutMs: 1_000, publishReady: false, signal: abort.signal });
   const failed = assert.rejects(starting, mode === 'omitted' ? /setup receipt deadline reached/ : /replay setup cancelled/);
   void failed.catch(() => {});
   await web.actual(); // Native HTTP and WebSocket acquisition completed; ready receipt is withheld.

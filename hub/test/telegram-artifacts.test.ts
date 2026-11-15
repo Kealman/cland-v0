@@ -306,7 +306,7 @@ for (const failure of ['omitted', 'aborted', 'omitted exact receipt'] as const) 
     const held = await heldReceipt;
     await telegramControl(facts.fake.url, 'release-requests', { ids: [held.id] });
     await closeReceipt;
-  }, options: { clock: setupClock, signal: cancellation.signal }, prepared: async facts => {
+  }, options: { clock: setupClock, setupTimeoutMs: 1_000, signal: cancellation.signal }, prepared: async facts => {
     ready.resolve(facts);
     await telegramControl(facts.fake.url, 'fault', { method: 'getMe', response: 'hold', code: 503 });
     heldReceipt = observeReceipt(facts.owner, signal => facts.fake.waitForHeldRequest('getMe', signal));

@@ -213,6 +213,12 @@ hub. HTTP request and response close events, WebSocket close, native acquisition
 and the independent readiness observer are owned before their operations can
 complete. Disposal aborts acquisition, destroys outstanding HTTP work, terminates
 the socket and waits at most two seconds for native close and setup observers.
+Real outer readiness uses the shared scaled five-second setup base; injected
+setup clocks retain an exact one-second fault bound. The inner FrameClient
+`web.link` request and welcome waits retain their original one-second limits by
+the Coordinator's T-1874 disposition: these timers cannot be cancelled and must
+fit inside the two-second drain owner. T-1875 owns cancellable FrameClient waits
+and scaling these remaining real acquisition prerequisites.
 
 Three same-disposer controls preserve the actual web decline/card assertions:
 a deliberately omitted readiness receipt after a real authenticated handshake,

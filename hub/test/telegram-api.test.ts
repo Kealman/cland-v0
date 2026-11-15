@@ -7,6 +7,7 @@ import { fakeTelegram, telegramControl, TELEGRAM_TEST_TOKEN } from './fakes/tele
 import { FakeClock } from './fake-clock.ts';
 import * as telegramFakes from './fakes/telegram/fake-api.ts';
 import { abortable, within } from '../src/executor/droplet/deadline.ts';
+import { testSetupWaitMs } from './until.ts';
 import { realClock, type Clock } from '../src/hub/clock.ts';
 import { onCleanup } from './process-cleanup.ts';
 
@@ -413,7 +414,7 @@ test('Telegram fake drains missed and aborted setup through its pre-registered o
   for (const mode of ['missed', 'aborted'] as const) {
     const setupClock = new FakeClock();
     const abort = new AbortController();
-    const fixture = telegramFakes.fakeTelegramFixture(t, { setupClock, publishListening: false, signal: abort.signal });
+    const fixture = telegramFakes.fakeTelegramFixture(t, { setupClock, setupTimeoutMs: 1_000, publishListening: false, signal: abort.signal });
     const listening = fixture.listening();
     const setup = fixture.start();
     const refused = assert.rejects(setup, mode === 'missed' ? /listening receipt deadline reached/ : /setup aborted/);
@@ -429,7 +430,7 @@ test('Telegram fake drains missed and aborted setup through its pre-registered o
 
 test('Telegram fake observes a native bind error and closes through the same owner', async t => {
   const occupied = await fakeTelegram(t);
-  const fixture = telegramFakes.fakeTelegramFixture(t, { port: Number(new URL(occupied.url).port) });
+  const fixture = telegramFakes.fakeTelegramFixture(t, { port: Number(new URL(occupied.url).port), setupTimeoutMs: 1_000 });
   await assert.rejects(fixture.start(), /listen failed: EADDRINUSE/);
   await fixture.close();
   assert.deepEqual(fixture.receipts(), { listening: false, closed: true, connections: 0, handlers: 0, nativeError: 'EADDRINUSE' });
@@ -456,7 +457,7 @@ test('Telegram fake injects unlisted update kinds with redacted request observat
 });
 
 /** Own readiness, transport and observers before acquiring any native resource. */
-function cappedDownloadFixture(t: TestContext, bytes: Buffer, options: { setupClock?: Clock; publishHeld?: boolean; signal?: AbortSignal; maxBytes?: number } = {}) {
+function cappedDownloadFixture(t: TestContext, bytes: Buffer, options: { setupClock?: Clock; setupTimeoutMs?: number; publishHeld?: boolean; signal?: AbortSignal; maxBytes?: number } = {}) {
   const fixture = telegramFakes.fakeTelegramFixture(t);
   const lifetime = new AbortController();
   const observers = new AbortController();
@@ -496,7 +497,9 @@ function cappedDownloadFixture(t: TestContext, bytes: Buffer, options: { setupCl
       const path = (await api.getFile({ file_id: queued[0]!.message!.document!.file_id }, { signal: lifetime.signal })).file_path!;
       lifetime.signal.throwIfAborted();
       const observationSignal = AbortSignal.any([observers.signal, AbortSignal.timeout(2_000)]);
-      const held = fake.waitForHeldRequest('download', observationSignal);
+      // Native held acquisition is setup; the close behavior keeps its exact 2s bound.
+      const heldSignal = AbortSignal.any([observers.signal, AbortSignal.timeout(testSetupWaitMs())]);
+      const held = fake.waitForHeldRequest('download', heldSignal);
       closed = fake.waitForConnectionClose('download', observationSignal);
       observed = Promise.allSettled([held, closed]).then(results => { observersSettled = true; return results; });
       void held.then(receipt => {
@@ -505,7 +508,7 @@ function cappedDownloadFixture(t: TestContext, bytes: Buffer, options: { setupCl
       }, error => { nativeHeld.reject(error); published.reject(error); });
       const setupSignal = AbortSignal.any([lifetime.signal, t.signal, ...(options.signal ? [options.signal] : [])]);
       // Arm this bound before the action; caller cancellation never replaces it.
-      const ready = within(abortable(published.promise, setupSignal), 1_000, options.setupClock ?? realClock,
+      const ready = within(abortable(published.promise, setupSignal), testSetupWaitMs(options.setupClock, options.setupTimeoutMs), options.setupClock ?? realClock,
         () => new Error('capped download held receipt deadline reached'));
       void ready.catch(() => {});
       download = api.download(path, options.maxBytes ?? bytes.length - 1, lifetime.signal).then(
@@ -528,7 +531,7 @@ function cappedDownloadFixture(t: TestContext, bytes: Buffer, options: { setupCl
     } finally { await close(); }
   })();
   return { start, close,
-    held: () => within(nativeHeld.promise, 2_000, realClock, () => new Error('native held setup receipt missing')),
+    held: () => within(nativeHeld.promise, testSetupWaitMs(), realClock, () => new Error('native held setup receipt missing')),
     receipts: () => ({ closed: closedReceipt, downloadSettled, observersSettled, native: fixture.receipts() }),
   };
 }
@@ -658,7 +661,7 @@ test('Telegram capped exchange drains its exact native request after missed or a
   for (const mode of ['missed', 'aborted'] as const) {
     const setupClock = new FakeClock();
     const abort = new AbortController();
-    const exchange = cappedDownloadFixture(t, Buffer.from('over cap'), { setupClock, publishHeld: false, signal: abort.signal, maxBytes: 100 });
+    const exchange = cappedDownloadFixture(t, Buffer.from('over cap'), { setupClock, setupTimeoutMs: 1_000, publishHeld: false, signal: abort.signal, maxBytes: 100 });
     const work = exchange.start();
     const refused = assert.rejects(work, mode === 'missed' ? /held receipt deadline/ : /setup aborted/);
     const held = await exchange.held();

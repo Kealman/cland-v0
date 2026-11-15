@@ -6,8 +6,9 @@ import type { TestContext } from 'node:test';
 import { beforeDirectories } from '../process-cleanup.ts';
 import { abortable, within } from '../../src/executor/droplet/deadline.ts';
 import { realClock, type Clock } from '../../src/hub/clock.ts';
+import { testSetupWaitMs } from '../until.ts';
 
-type Options = { clock?: Clock; signal?: AbortSignal; publishListening?: boolean; legacyStatus?: boolean; remoteStatus?: () => unknown; hostStatus?: () => unknown; logins?: () => unknown; users?: () => unknown; holdUsers?: () => void };
+type Options = { clock?: Clock; setupTimeoutMs?: number; signal?: AbortSignal; publishListening?: boolean; legacyStatus?: boolean; remoteStatus?: () => unknown; hostStatus?: () => unknown; logins?: () => unknown; users?: () => unknown; holdUsers?: () => void };
 
 // Literal previous wire shape: no stopCause field, including for a stopped remote.
 const LEGACY_STATUS = { remotes: [{
@@ -103,7 +104,7 @@ export function legacyRemoteHubFixture(t: TestContext, root: string, options: Op
     const signal = AbortSignal.any([t.signal, lifetime.signal, ...(options.signal ? [options.signal] : [])]);
     try {
       signal.throwIfAborted();
-      const ready = within(abortable(listening.promise, signal), 1000, options.clock ?? realClock,
+      const ready = within(abortable(listening.promise, signal), testSetupWaitMs(options.clock, options.setupTimeoutMs), options.clock ?? realClock,
         () => new Error('legacy hub listening receipt deadline reached'));
       void ready.catch(() => {});
       invoked = true;

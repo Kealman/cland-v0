@@ -220,7 +220,7 @@ for (const aborted of [false,true]) test(`Discord Telegram-origin owner drains $
   const telegram = testMessenger();
   const owner = pacingOwner(t); f.stop(()=>owner.dispose());
   const clock = new FakeClock(), abort = new AbortController();
-  const starting = owner.start(f.root,{},realClock,{hubOptions:{gatewayRemotes:[telegram]},clock,signal:abort.signal,receipt:new Promise<void>(()=>{})});
+  const starting = owner.start(f.root,{},realClock,{hubOptions:{gatewayRemotes:[telegram]},clock,setupTimeoutMs:1000,signal:abort.signal,receipt:new Promise<void>(()=>{})});
   const rejected = assert.rejects(starting,/cancelled|aborted|deadline/); void rejected.catch(()=>{});
   const hub = await f.run(()=>owner.serving);
   if (aborted) abort.abort(new Error('aborted setup control')); else await clock.advance(1000);

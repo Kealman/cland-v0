@@ -16,12 +16,14 @@ import type { TgMessage } from '../src/remote/telegram-api.ts';
 import { FakeClock } from './fake-clock.ts';
 import { DISCORD_IDS as ids } from './fakes/discord/fake-api.ts';
 import { discordExchangeOwner } from './fakes/discord/exchange.ts';
+import { testSetupWaitMs } from './until.ts';
 
 // Own the rejecting observer before setup can yield; failed setup cancels and
 // joins it before releasing native holds. Successful callers retain the hold.
-async function holdRequest(f: Awaited<ReturnType<typeof fixture>>, produce: () => Promise<unknown>, signal?: AbortSignal): Promise<void> {
+async function holdRequest(f: Awaited<ReturnType<typeof fixture>>, produce: () => Promise<unknown>, signal?: AbortSignal, setupTimeoutMs?: number): Promise<void> {
   const abort = new AbortController();
-  const held = f.run(owner => f.fake.waitForHold(AbortSignal.any([owner, abort.signal, ...(signal ? [signal] : [])])));
+  // The envelope includes the observer's own failure and cancellation settlement.
+  const held = f.run(owner => f.fake.waitForHold(AbortSignal.any([owner, abort.signal, ...(signal ? [signal] : [])]), setupTimeoutMs), 2 * testSetupWaitMs());
   try {
     signal?.throwIfAborted();
     await f.run(produce);
@@ -398,7 +400,7 @@ for (const aborted of [false, true]) test(`Discord hold setup ${aborted ? 'pre-a
   const abort = new AbortController();
   if (aborted) abort.abort(new Error('Hold setup intentionally aborted'));
   let entered = false;
-  await assert.rejects(holdRequest(f, async () => { entered = true; }, abort.signal),
+  await assert.rejects(holdRequest(f, async () => { entered = true; }, abort.signal, 1_000),
     aborted ? /Hold setup intentionally aborted/ : /Discord fake hold receipt deadline reached/);
   assert.equal(entered, !aborted);
   assert.equal(f.pending(), 0);

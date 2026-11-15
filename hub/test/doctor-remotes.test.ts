@@ -270,7 +270,7 @@ test(`Discord workbench fixture drains ${failure} setup before Store and root re
   const project = await f.project();
   await f.prepare(project.root);
   const setupClock = new FakeClock(), abort = new AbortController();
-  const starting = f.startHub(project.root, f.env, {}, { receipt: new Promise<void>(() => {}), clock: setupClock, signal: abort.signal });
+  const starting = f.startHub(project.root, f.env, {}, { receipt: new Promise<void>(() => {}), clock: setupClock, setupTimeoutMs: 1_000, signal: abort.signal });
   const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /cancelled/);
   const hub = await within(f.startup.serving, 2000);
   await until(async () => (await f.fake.control('state')).gateway.identifies === 1, { what: 'native startup Identify', timeoutMs: 2000 });

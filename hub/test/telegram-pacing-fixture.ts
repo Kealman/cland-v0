@@ -4,6 +4,7 @@ import { projectHub, until, testWaitMs, type ProjectHubOptions } from './harness
 import { onCleanup } from './process-cleanup.ts';
 import { abortable, within } from '../src/executor/droplet/deadline.ts';
 import type { Clock } from '../src/hub/clock.ts';
+import { testSetupWaitMs } from './until.ts';
 
 /** Own resources before acquisition, including setup whose serving receipt is lost. */
 export function pacingOwner(t: TestContext, options: { setupTimeoutMs?: number; lockIdentity?: ProjectHubOptions['lockIdentity'] } = {}) {
@@ -60,12 +61,14 @@ export function pacingOwner(t: TestContext, options: { setupTimeoutMs?: number; 
     },
     store: (path: string) => db = new Store(path),
     start: (root: string, extra: Record<string, string>, clock: Clock, setup: {
-      receipt?: Promise<void>; signal?: AbortSignal; clock?: Clock; hubOptions?: ProjectHubOptions;
+      receipt?: Promise<void>; signal?: AbortSignal; clock?: Clock; setupTimeoutMs?: number | undefined; hubOptions?: ProjectHubOptions;
     } = {}) => {
       const signal = AbortSignal.any([abort.signal, t.signal, ...(setup.signal ? [setup.signal] : [])]);
       const ready = Promise.withResolvers<Awaited<ReturnType<typeof projectHub>>>();
       // Arm the setup observer before even invoking actual native acquisition.
-      const observed = within(abortable(ready.promise, signal), options.setupTimeoutMs ?? 1_000, setup.clock,
+      // Hub acquisition is setup, not pacing behavior: allow loaded workers to
+      // publish readiness. Injected-clock fault probes keep their exact bound.
+      const observed = within(abortable(ready.promise, signal), setup.setupTimeoutMs ?? options.setupTimeoutMs ?? testSetupWaitMs(setup.clock), setup.clock,
         () => new Error('Telegram pacing fixture setup receipt deadline reached'));
       observing.add(observed);
       void observed.then(() => observing.delete(observed), () => observing.delete(observed));

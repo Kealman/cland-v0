@@ -387,7 +387,7 @@ async function durationFixture(t: TestContext) {
   const clock = new FakeClock();
   const graph = new PlanGit();
   await mkdir(join(root, '.cland'), { recursive: true });
-  const start = (setup: { receipt?: Promise<void>; signal?: AbortSignal; clock?: FakeClock } = {}) => owner.start(root, {}, clock, {
+  const start = (setup: { receipt?: Promise<void>; signal?: AbortSignal; clock?: FakeClock; setupTimeoutMs?: number } = {}) => owner.start(root, {}, clock, {
     ...setup, hubOptions: { git: graph.read, readBase: async () => 'dev',
       scheduleTips: read => { void read(); return { poke: () => { void read(); }, stop() {} }; } },
   });
@@ -464,7 +464,7 @@ for (const failure of ['omitted', 'aborted'] as const) {
     const fixture = await durationFixture(t);
     const setupClock = new FakeClock();
     const controller = new AbortController();
-    const starting = fixture.start({ receipt: new Promise<void>(() => {}), signal: controller.signal, clock: setupClock });
+    const starting = fixture.start({ receipt: new Promise<void>(() => {}), signal: controller.signal, clock: setupClock, setupTimeoutMs: 1_000 });
     const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /setup cancelled/);
     const hub = await within(fixture.owner.serving, 1_000);
     if (failure === 'omitted') await setupClock.advance(1_000);

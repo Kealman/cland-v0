@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile, readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tempProject, projectHub, connectUi, until } from './harness.ts';
+import { tempProject, projectHub, connectUi, until, testWaitMs } from './harness.ts';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import { Store } from '../src/hub/store.ts';
 import { fakeDiscordFixture, DISCORD_TEST_TOKEN, DISCORD_IDS as ids } from './fakes/discord/fake-api.ts';
@@ -17,8 +17,8 @@ import { realClock } from '../src/hub/clock.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 import type { discordExchangeOwner } from './fakes/discord/exchange.ts';
 
-function mediaStartup(t: TestContext, exchange: Awaited<ReturnType<ReturnType<typeof discordExchangeOwner>['start']>>) {
-  const startup = pacingOwner(t);
+function mediaStartup(t: TestContext, exchange: Awaited<ReturnType<ReturnType<typeof discordExchangeOwner>['start']>>, options: { setupTimeoutMs?: number } = {}) {
+  const startup = pacingOwner(t, options);
   // Register the dynamic acquisition owner before projectHub can start.
   exchange.stop(startup.dispose);
   return startup;
@@ -248,7 +248,8 @@ for (const mode of ['omitted', 'aborted'] as const) test(`Discord media ${mode} 
   onCleanup(t, () => gate.resolve());
   const { discordExchangeOwner } = await import('./fakes/discord/exchange.ts');
   const owner = discordExchangeOwner(t), project = await owner.project(), exchange = await owner.start();
-  const startup = mediaStartup(t, exchange), abort = new AbortController();
+  // Deliberately missing readiness tests the exact failure bound, not hub speed.
+  const startup = mediaStartup(t, exchange, { setupTimeoutMs: 1_000 }), abort = new AbortController();
   const config = defaultConfig('Media startup'); config.remote.discord.enabled = true;
   await mkdir(join(project.root, '.cland'), { recursive: true }); await writeFile(join(project.root, '.cland/config.toml'), renderConfig(config));
   const store = new Store(join(project.root, '.cland/hub.db')); let drained = false;
@@ -279,7 +280,7 @@ for (const reassigned of [false, true]) test(`Discord held CDN input retains its
   const owner = discordExchangeOwner(t), { root } = await owner.project();
   const exchange = await owner.start(), fake = exchange.fake;
   // Native startup is bounded independently of the held-input/fresh-cursor assertion.
-  const startup = pacingOwner(t, { setupTimeoutMs: 3000 }); exchange.stop(startup.dispose);
+  const startup = pacingOwner(t, { setupTimeoutMs: testWaitMs(3000) }); exchange.stop(startup.dispose);
   const config = defaultConfig('Users held media'); config.auth.mode = 'users'; config.remote.discord.enabled = true;
   config.verification.lockPath = join(root, 'suite.lock');
   await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));

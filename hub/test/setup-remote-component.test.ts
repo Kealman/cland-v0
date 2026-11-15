@@ -205,7 +205,7 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Discord setup fixtu
   const clock = new FakeClock();
   const abort = new AbortController();
   const closed = native.fake.waitForGatewayClose();
-  const starting = setupOwner.start(root, env, realClock, { receipt: new Promise<void>(() => {}), clock, signal: abort.signal });
+  const starting = setupOwner.start(root, env, realClock, { receipt: new Promise<void>(() => {}), clock, setupTimeoutMs: 1_000, signal: abort.signal });
   const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /cancelled/);
   const hub = await native.run(() => setupOwner.serving);
   if (failure === 'omitted') await clock.advance(1000);

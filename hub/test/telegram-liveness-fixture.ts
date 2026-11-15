@@ -11,13 +11,14 @@ import { tempProject, projectHub, connectUi, until } from './harness.ts';
 import { fakeTelegramFixture, TELEGRAM_TEST_TOKEN } from './fakes/telegram/fake-api.ts';
 import { FakeClock } from './fake-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
+import { testSetupWaitMs } from './until.ts';
 
 type Hub = Awaited<ReturnType<typeof projectHub>>;
 type Ui = Awaited<ReturnType<typeof connectUi>>;
 
 /** Own startup before invoking the hub, including a frozen/held getMe or lost readiness receipt. */
 export async function telegramLivenessFixture(t: TestContext, options: {
-  setupClock?: Clock; signal?: AbortSignal; publishReady?: boolean;
+  setupClock?: Clock; setupTimeoutMs?: number; signal?: AbortSignal; publishReady?: boolean;
 } = {}) {
   const clock = new FakeClock();
   const setupAbort = new AbortController();
@@ -57,7 +58,8 @@ export async function telegramLivenessFixture(t: TestContext, options: {
     assert.equal(starting, undefined, 'fixture startup has one owner');
     const signal = AbortSignal.any([t.signal, setupAbort.signal, ...(options.signal ? [options.signal] : [])]);
     // Arm the independent readiness bound before triggering any hub startup.
-    observing = within(abortable(ready.promise, signal), 1_000, options.setupClock ?? realClock,
+    // Real hub setup follows worker load; injected setup faults keep exact time.
+    observing = within(abortable(ready.promise, signal), testSetupWaitMs(options.setupClock, options.setupTimeoutMs), options.setupClock ?? realClock,
       () => new Error('Telegram liveness startup receipt deadline reached'));
     void observing.catch(() => {});
     starting = projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock, log: entry => { logs.push(entry); } });
@@ -86,7 +88,7 @@ export async function telegramLivenessFixture(t: TestContext, options: {
   const retries = () => logs.filter(entry => entry.event === 'telegram-poll-retry').length;
   const waitRetry = (count: number) => until(() => retries() === count, { what: `Telegram retry ${count}`, timeoutMs: 1_000 });
   return { root, clock, fake, logs, start, retries, waitRetry, dispose,
-    actual: () => within(actual.promise, 1_000, realClock, () => new Error('actual Telegram hub startup missing')),
+    actual: () => within(actual.promise, testSetupWaitMs(), realClock, () => new Error('actual Telegram hub startup missing')),
     receipts: () => ({ joined, stopped, ...native!.receipts() }),
   };
 }

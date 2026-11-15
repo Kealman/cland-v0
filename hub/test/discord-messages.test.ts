@@ -222,7 +222,7 @@ async function ownedOutbox(t: TestContext, publishHeld = true, suppliedClock?: i
     release: () => run(() => fake.control('release', {})),
     nativeHeld: () => run(() => fake.held()),
     resume: () => run(() => outbox.resume()),
-    observe: () => run(() => fake.waitForHold(signal)),
+    observe: (setupTimeoutMs?: number) => run(() => fake.waitForHold(signal, setupTimeoutMs)),
     send: () => run(() => outbox.send(ids.channel, 'Atomic receipt', 'atomic-source')),
   };
 }
@@ -230,7 +230,7 @@ async function ownedOutbox(t: TestContext, publishHeld = true, suppliedClock?: i
 test('Discord held-send owner drains omitted observer and abort before fault setup', async t => {
   for (const publishHeld of [false, true]) {
     const owner = await ownedOutbox(t, publishHeld);
-    const held = owner.observe();
+    const held = owner.observe(1_000);
     if (!publishHeld) {
       await owner.fault();
       owner.send();
@@ -711,7 +711,7 @@ for (const failure of ['omitted', 'aborted'] as const) test(`General reply paire
   const ready = Promise.withResolvers<PairedReplyFacts>();
   const factsReceipt = within(ready.promise, 2000);
   void factsReceipt.catch(() => {});
-  const starting = pairedReplyFixture(t, { clock: setupClock, signal: cancellation.signal, receipt: new Promise<void>(() => {}) }, ready.resolve);
+  const starting = pairedReplyFixture(t, { clock: setupClock, setupTimeoutMs: 1_000, signal: cancellation.signal, receipt: new Promise<void>(() => {}) }, ready.resolve);
   void starting.catch(ready.reject);
   const incomplete = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /aborted paired setup/);
   const facts = await factsReceipt;

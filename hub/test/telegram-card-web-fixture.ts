@@ -7,6 +7,7 @@ import { frameClient, type FrameClient } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { abortable, within } from '../src/executor/droplet/deadline.ts';
 import type { Clock } from '../src/hub/clock.ts';
+import { testSetupWaitMs } from './until.ts';
 
 /** Register before the hub owner: even failed setup drains before SQLite/root disposal. */
 export function cardWebOwner(t: TestContext) {
@@ -49,19 +50,22 @@ export function cardWebOwner(t: TestContext) {
     httpStarted: httpStarted.promise,
     socketStarted: socketStarted.promise,
     socketClosed: nativeSocketClosed.promise,
-    actual: () => within(actual.promise, 1_000),
+    actual: () => within(actual.promise, testSetupWaitMs()),
     receipts: () => ({ started: { ...started }, closed: { ...closed }, joined, observing, pending: pending.size }),
-    start: async (local: FrameClient, options: { signal?: AbortSignal; setupClock?: Clock; publishReady?: boolean; closeReceipt?: Promise<void> } = {}) => {
+    start: async (local: FrameClient, options: { signal?: AbortSignal; setupClock?: Clock; setupTimeoutMs?: number; publishReady?: boolean; closeReceipt?: Promise<void> } = {}) => {
       assert.equal(started.requests, 0, 'one web acquisition per owner');
       const signal = AbortSignal.any([abort.signal, t.signal, ...(options.signal ? [options.signal] : [])]);
       const ready = Promise.withResolvers<FrameClient>();
       // Arm the independent setup observer before starting any native work.
       observing = true;
-      const observed = own(within(abortable(ready.promise, signal), 1_000, options.setupClock,
+      // Real socket setup tolerates worker load; fake-clock fault bounds stay exact.
+      const observed = own(within(abortable(ready.promise, signal), testSetupWaitMs(options.setupClock, options.setupTimeoutMs), options.setupClock,
         () => new Error('card web setup receipt deadline reached')).finally(() => { observing = false; }));
       signal.addEventListener('abort', stopNative, { once: true });
       const native = own(Promise.resolve().then(async () => {
         signal.throwIfAborted();
+        // Coordinator disposition: uncancellable FrameClient timers stay inside
+        // the 2s drain; T-1875 owns cancellation and scaling these inner waits.
         const link = await local.request({ type: 'web.link' }, 1_000);
         assert.equal(link.ok, true, link.error);
         signal.throwIfAborted();

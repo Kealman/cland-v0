@@ -9,6 +9,7 @@ import { remoteRedactor, redactValue } from '../../../src/remote/redact.ts';
 import { realClock, type Clock, type ClockTimer } from '../../../src/hub/clock.ts';
 import { onCleanup } from '../../process-cleanup.ts';
 import { abortable, within } from '../../../src/executor/droplet/deadline.ts';
+import { testSetupWaitMs } from '../../until.ts';
 
 /** Fabricated credential only; the fake never reads the environment or a secrets file. */
 export const TELEGRAM_TEST_TOKEN = '123456789:cland_fixture_telegram_0000000000';
@@ -70,7 +71,7 @@ function observe<T>(events: EventEmitter, event: string, accepts: (value: T) => 
   });
 }
 
-type FakeOptions = { clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; port?: number; publicOrigin?: string };
+type FakeOptions = { clock?: Clock; setupClock?: Clock; setupTimeoutMs?: number; signal?: AbortSignal; publishListening?: boolean; port?: number; publicOrigin?: string };
 
 /** Own every native resource before binding, including abandoned setup. */
 export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
@@ -527,7 +528,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
   const start = () => starting ??= (async () => {
     const signal = AbortSignal.any([t.signal, lifetime.signal, ...(options.signal ? [options.signal] : [])]);
     try {
-      const ready = within(abortable(listening.promise, signal), 1_000, options.setupClock ?? realClock,
+      const ready = within(abortable(listening.promise, signal), testSetupWaitMs(options.setupClock, options.setupTimeoutMs), options.setupClock ?? realClock,
         () => new Error('fake Telegram listening receipt deadline reached'));
       void ready.catch(() => {});
       signal.throwIfAborted();
@@ -546,7 +547,7 @@ export function fakeTelegramFixture(t: TestContext, options: FakeOptions = {}) {
   })();
   return {
     start, close,
-    listening: () => within(nativeListening.promise, 1_000, realClock, () => new Error('fake Telegram native listening receipt missing')),
+    listening: () => within(nativeListening.promise, testSetupWaitMs(), realClock, () => new Error('fake Telegram native listening receipt missing')),
     receipts: () => ({ listening: didListen, closed: didClose, connections: connections.size, handlers: handlers.size, nativeError }),
   };
 }

@@ -531,7 +531,7 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Telegram input fixt
   // A loaded runner may spend over a second acquiring the hub.
   await new Promise(resolve => setTimeout(resolve, 1_100)); // lint-allow-wall-clock: fault injection exceeds the former pre-disposal observer deadline (T-1417)
   const starting = owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock, {
-    receipt: new Promise<void>(() => {}), clock: setupClock, signal: abort.signal,
+    receipt: new Promise<void>(() => {}), clock: setupClock, setupTimeoutMs: 1_000, signal: abort.signal,
   });
   const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /setup cancelled/);
   const hub = await within(owner.serving, testWaitMs(5_000));
@@ -769,7 +769,7 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Telegram held media
   // A loaded runner may spend over a second acquiring the hub.
   await new Promise(resolve => setTimeout(resolve, 1_100)); // lint-allow-wall-clock: fault injection exceeds the former pre-disposal observer deadline (T-1417)
   const starting = owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock, {
-    receipt: new Promise<void>(() => {}), clock: setupClock, signal: abort.signal,
+    receipt: new Promise<void>(() => {}), clock: setupClock, setupTimeoutMs: 1_000, signal: abort.signal,
   });
   const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /setup cancelled/);
   const hub = await within(owner.serving, testWaitMs(5_000));

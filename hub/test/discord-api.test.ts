@@ -196,7 +196,7 @@ test('Discord fake omitted and aborted serving receipts close the acquisition ow
   for (const mode of ['omitted', 'aborted'] as const) {
     const setupClock = new FakeClock();
     const abort = new AbortController();
-    const owner = discordFixtureOwner(t, { setupClock, publishListening: false, signal: abort.signal });
+    const owner = discordFixtureOwner(t, { setupClock, setupTimeoutMs: 1_000, publishListening: false, signal: abort.signal });
     const nativeListening = owner.listening();
     const starting = owner.start();
     const rejected = assert.rejects(starting, mode === 'omitted' ? /listening receipt deadline/ : /setup aborted/);
@@ -220,7 +220,7 @@ test('Discord fake omitted and aborted serving receipts close the acquisition ow
 test('Discord fake omitted and aborted hold observations always join the call and observers', async t => {
   for (const mode of ['omitted', 'aborted'] as const) {
     const setupClock = new FakeClock();
-    const fake = await fakeDiscordFixture(t, { setupClock, publishHeld: false });
+    const fake = await fakeDiscordFixture(t, { setupClock, setupTimeoutMs: 1_000, publishHeld: false });
     const api = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url });
     await fake.control('fault', { response: 'hold' });
     const controller = new AbortController();
@@ -259,7 +259,7 @@ test('Discord fake closed before acquisition cancels native observers and refuse
 test('Discord fake omitted and aborted websocket setup receipts dispose the same native owner', async t => {
   for (const mode of ['omitted', 'aborted'] as const) {
     const setupClock = new FakeClock(); const abort = new AbortController();
-    const owner = discordFixtureOwner(t, { setupClock, publishGatewayListening: false, signal: abort.signal });
+    const owner = discordFixtureOwner(t, { setupClock, setupTimeoutMs: 1_000, publishGatewayListening: false, signal: abort.signal });
     const native = owner.gatewayListening(); const starting = owner.start();
     const failed = assert.rejects(starting, mode === 'omitted' ? /gateway listening receipt deadline/ : /setup aborted/);
     try {
@@ -280,7 +280,7 @@ test('Discord fake omitted and aborted websocket close observers retain held RES
   const { within } = await import('../src/executor/droplet/deadline.ts');
   for (const mode of ['omitted', 'aborted'] as const) {
     const setupClock = new FakeClock();
-    const fake = await fakeDiscordFixture(t, { setupClock, publishGatewayClose: false });
+    const fake = await fakeDiscordFixture(t, { setupClock, setupTimeoutMs: 1_000, publishGatewayClose: false });
     const socket = new WebSocket(fake.url.replace('http:', 'ws:'));
     const closed = new Promise<void>(resolve => socket.once('close', () => resolve()));
     socket.on('error', () => {});
@@ -424,7 +424,7 @@ test('Discord discovering route owns its shared bucket until body completion, in
 test('Discord exchange owner drains omitted/aborted setup and frozen pacing waits', async t => {
   for (const mode of ['omitted', 'aborted', 'frozen'] as const) {
     const clock = new FakeClock();
-    const owner = discordExchangeOwner(t, { clock, setupClock: clock, publishListening: mode === 'frozen' });
+    const owner = discordExchangeOwner(t, { clock, setupClock: clock, setupTimeoutMs: 1_000, publishListening: mode === 'frozen' });
     if (mode !== 'frozen') {
       const starting = owner.start(); const failed = assert.rejects(starting, /deadline|aborted/); void failed.catch(() => {});
       await owner.listening();
@@ -447,7 +447,7 @@ test('Discord exchange owner drains omitted/aborted setup and frozen pacing wait
 
 test('Discord exchange owner joins missing heldStored observer and control aborted before launch', async t => {
   for (const launch of [true, false]) {
-    const clock = new FakeClock(); const owner = discordExchangeOwner(t, { clock, publishHeld: false });
+    const clock = new FakeClock(); const owner = discordExchangeOwner(t, { clock, publishHeld: false, setupTimeoutMs: 1_000 });
     const { fake, api, run, signal } = await owner.start();
     const observed = run(() => fake.waitForHold(signal)); const missing = assert.rejects(observed, /disposed|abort/i); void missing.catch(() => {});
     if (launch) {

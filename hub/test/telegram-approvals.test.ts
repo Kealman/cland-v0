@@ -42,7 +42,7 @@ async function prepareFixture(t: TestContext, scripted?: 'codex' | 'opencode', d
   let initial: Promise<void> | undefined;
   let observing = false;
   owner.close(async () => { initialAbort.abort(); await initial?.catch(() => {}); });
-  const start = (setup: { publishInitial?: boolean; signal?: AbortSignal; clock?: FakeClock } = {}) => {
+  const start = (setup: { publishInitial?: boolean; signal?: AbortSignal; clock?: FakeClock; setupTimeoutMs?: number } = {}) => {
     observing = true;
     // Arm before native acquisition. The same owner cancels and joins this
     // observer, including when the native initial-poll receipt is withheld.
@@ -51,7 +51,7 @@ async function prepareFixture(t: TestContext, scripted?: 'codex' | 'opencode', d
       if (setup.publishInitial === false) await abortable(new Promise<void>(() => {}), initialAbort.signal);
     }).finally(() => { observing = false; });
     void initial.catch(() => {});
-    return owner.start(root, {}, clock, { receipt: initial,
+    return owner.start(root, {}, clock, { receipt: initial, setupTimeoutMs: setup.setupTimeoutMs,
       ...(setup.signal ? { signal: setup.signal } : {}), ...(setup.clock ? { clock: setup.clock } : {}),
       hubOptions: { gatewayRemotes: [gateway], ...(script ? { adapters: [script.factory] } : {}) } });
   };
@@ -401,7 +401,7 @@ for (const interruption of ['omitted', 'aborted'] as const) test(`Telegram appro
   const closeReceipt = Promise.withResolvers<void>();
   const f = await prepareFixture(t, undefined, undefined, closeReceipt.promise);
   const setupClock = new FakeClock(), setupAbort = new AbortController();
-  const starting = f.start({ publishInitial: false, clock: setupClock, signal: setupAbort.signal });
+  const starting = f.start({ publishInitial: false, clock: setupClock, setupTimeoutMs: 1_000, signal: setupAbort.signal });
   let joined = false;
   const failed = assert.rejects(starting, interruption === 'omitted' ? /setup receipt deadline/ : /cancel initial-poll setup/)
     .then(() => { joined = true; });

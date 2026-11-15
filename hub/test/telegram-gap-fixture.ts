@@ -46,11 +46,11 @@ export async function heldTelegramGap(t: TestContext) {
   const missed = (id: string, source: string) => store.putOutbox({ id, kind: 'general', source, state: 'missed',
     payload: { telegram: true, params: { chat_id: pairing.chatId }, userId: pairing.userId },
     created: clock.now().toISOString(), updated: clock.now().toISOString() });
-  const start = async (options: { signal?: AbortSignal; publishReady?: boolean } = {}) => {
+  const start = async (options: { signal?: AbortSignal; publishReady?: boolean; setupTimeoutMs?: number } = {}) => {
     if (producer) throw new Error('Telegram gap fixture has one producer');
     const signal = AbortSignal.any([lifetime.signal, t.signal, ...(options.signal ? [options.signal] : [])]);
     // Setup and held behavior have separate injected-clock bounds.
-    observing = within(abortable(ready.promise, signal), 1_000, setupClock,
+    observing = within(abortable(ready.promise, signal), options.setupTimeoutMs ?? 1_000, setupClock,
       () => new Error('Telegram gap setup receipt deadline reached'));
     void observing.catch(() => {});
     producer = flushTelegramGap(store, clock, async (chat, text, key) => {
@@ -64,7 +64,7 @@ export async function heldTelegramGap(t: TestContext) {
     // setup clock after triggering it; advance yields queued receipt microtasks
     // first and still reaches the deadline if no receipt was published. Callers
     // never need the awaited start to return before its bound can progress.
-    drivingSetup = setupClock.advance(1_000);
+    drivingSetup = setupClock.advance(options.setupTimeoutMs ?? 1_000);
     try { await observing; }
     catch (error) { await dispose(); throw error; }
   };

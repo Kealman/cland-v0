@@ -188,7 +188,7 @@ for (const failure of ['missed receipt', 'aborted startup', 'rejected startup'] 
   const sending = rejectedStartup ? f.remote.test(f.state.pairing(), 'held mute fixture writer').then(() => 'sent', () => 'incomplete') : null;
   if (rejectedStartup) await within(entered, 1_000);
   const starting = f.owner.start(f.root, {}, f.clock, {
-    clock: setupClock, signal: setupAbort.signal, hubOptions: { gatewayRemotes: [f.remote] },
+    clock: setupClock, setupTimeoutMs: 1_000, signal: setupAbort.signal, hubOptions: { gatewayRemotes: [f.remote] },
   });
   void starting.catch(() => {});
   const rejected = assert.rejects(within(starting, 1_000), rejectedStartup ? /Invalid TOML document: unfinished array/

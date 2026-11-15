@@ -9,6 +9,7 @@ import type { TestContext } from 'node:test';
 import { realClock, type Clock } from '../../../src/hub/clock.ts';
 import { redactValue, remoteRedactor } from '../../../src/remote/redact.ts';
 import { DISCORD_USER_AGENT } from '../../../src/remote/discord-api.ts';
+import { testSetupWaitMs } from '../../until.ts';
 import type { DiscordActionRow, DiscordApplication, DiscordSessionStartLimit, DiscordMessage } from '../../../src/remote/discord-api.ts';
 
 export const DISCORD_TEST_TOKEN = 'fictional_discord_fixture_credential';
@@ -27,7 +28,7 @@ function reply(res: ServerResponse, status: number, body: unknown): void {
 }
 
 /** In-process fake; no accounts, filesystem, inherited credentials or child launches. */
-type FakeOptions = { publicOrigin?: string; onCallback?: (id: string, type: number) => void | Promise<void>; clock?: Clock; setupClock?: Clock; signal?: AbortSignal; publishListening?: boolean; publishHeld?: boolean; publishGatewayListening?: boolean; publishGatewayClose?: boolean };
+type FakeOptions = { publicOrigin?: string; onCallback?: (id: string, type: number) => void | Promise<void>; clock?: Clock; setupClock?: Clock; setupTimeoutMs?: number; signal?: AbortSignal; publishListening?: boolean; publishHeld?: boolean; publishGatewayListening?: boolean; publishGatewayClose?: boolean };
 export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const lifetime = new AbortController();
   const serving = Promise.withResolvers<void>();
@@ -394,7 +395,7 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
     } finally { clearTimeout(timer); }
   }
   function observeNative<T>(work: Promise<T>): Promise<T> {
-    const observation = within(abortable(work, lifetime.signal), 2000)
+    const observation = within(abortable(work, lifetime.signal), testSetupWaitMs())
       .finally(() => observers.delete(observation));
     observers.add(observation);
     return observation;
@@ -410,12 +411,12 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   }
   const client = () => ({ gatewayReceipts: gateway.receipts, closeGateway: gateway.close, waitForGatewayClose: gatewayCloseObservation, url, ids: DISCORD_IDS, control, close, receipts,
     held: () => observeNative(nativeHeld.promise),
-    waitForHold(signal = AbortSignal.timeout(2000)): Promise<number> {
+    waitForHold(signal = AbortSignal.timeout(testSetupWaitMs()), timeoutMs = testSetupWaitMs(options.setupClock, options.setupTimeoutMs)): Promise<number> {
       const pending = Promise.withResolvers<number>();
       const receive = (id: number) => pending.resolve(id);
       events.once('held', receive);
       const combined = AbortSignal.any([signal, lifetime.signal]);
-      const observation = within(abortable(pending.promise, combined), 1000, options.setupClock ?? realClock,
+      const observation = within(abortable(pending.promise, combined), timeoutMs, options.setupClock ?? realClock,
         () => new Error('Discord fake hold receipt deadline reached'))
         .catch(error => { throw new Error(combined.aborted ? 'Discord fake observation aborted' : String(error)); })
         .finally(() => { events.off('held', receive); observers.delete(observation); });
@@ -427,11 +428,11 @@ export function discordFixtureOwner(t: TestContext, options: FakeOptions = {}) {
   const start = () => starting ??= (async () => {
     const signal = AbortSignal.any([lifetime.signal, t.signal, ...(options.signal ? [options.signal] : [])]);
     try {
-      const ready = within(abortable(serving.promise, signal), 1000, options.setupClock ?? realClock,
+      const ready = within(abortable(serving.promise, signal), testSetupWaitMs(options.setupClock, options.setupTimeoutMs), options.setupClock ?? realClock,
         () => new Error('Discord fake listening receipt deadline reached'));
       void ready.catch(() => {});
       const gatewayReady = within(abortable(options.publishGatewayListening === false ? new Promise<void>(() => {}) : gateway.listening, signal),
-        1000, options.setupClock ?? realClock, () => new Error('Discord fake gateway listening receipt deadline reached'));
+        testSetupWaitMs(options.setupClock, options.setupTimeoutMs), options.setupClock ?? realClock, () => new Error('Discord fake gateway listening receipt deadline reached'));
       void gatewayReady.catch(() => {});
       signal.throwIfAborted();
       invoked = true;

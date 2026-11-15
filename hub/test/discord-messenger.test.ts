@@ -457,7 +457,7 @@ test('Discord hub fixture failed tempProject names phase and elapsed time', asyn
 
 for (const mode of ['omitted', 'aborted'] as const) test(`Discord hub fixture ${mode} setup receipt disposes the acquisition owner`, async t => {
   const setupClock = new FakeClock(); const abort = new AbortController();
-  const owner = discordHubFixtureOwner(t, { fake: { publishListening: false, setupClock, signal: abort.signal } });
+  const owner = discordHubFixtureOwner(t, { fake: { publishListening: false, setupClock, setupTimeoutMs: 1_000, signal: abort.signal } });
   const listening = owner.listening(); void listening.catch(() => {});
   const starting = owner.start();
   const failed = assert.rejects(starting, mode === 'omitted' ? /listening receipt deadline/ : /aborted/); void failed.catch(() => {});
@@ -470,7 +470,7 @@ for (const mode of ['omitted', 'aborted'] as const) test(`Discord hub fixture ${
 
 for (const mode of ['omitted', 'aborted'] as const) test(`Discord hub fixture ${mode} held receipt joins writers before Store close`, async t => {
   const setupClock = new FakeClock(); const abort = new AbortController();
-  const owner = discordHubFixtureOwner(t, { injected: true, interval: 1000000, fake: { publishHeld: false, setupClock } });
+  const owner = discordHubFixtureOwner(t, { injected: true, interval: 1000000, fake: { publishHeld: false, setupClock, setupTimeoutMs: 1_000 } });
   const fixture = await owner.start();
   const { fake, api, run, hub, clock } = fixture;
   await run(() => fake.control('fault', { response: 'hold' }));
@@ -609,7 +609,7 @@ test('Discord rereads the start budget before a fresh Identify after READY', asy
 
 for (const mode of ['omitted', 'aborted'] as const) test(`Discord Identify ${mode} admission setup drains observers and native writers`, async t => {
   const setupClock = new FakeClock(); const abort = new AbortController();
-  const admission = discordAdmissionObserver(t, { setupClock, publish: false });
+  const admission = discordAdmissionObserver(t, { setupClock, publish: false, timeoutMs: 2_000 });
   const owner = discordHubFixtureOwner(t, { log: admission.log, interval: 1000000 });
   const { fake, clock, logs, hub } = await owner.start();
   const scheduled = admission.observe(2, abort.signal);

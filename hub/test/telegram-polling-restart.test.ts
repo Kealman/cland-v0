@@ -198,7 +198,7 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Telegram restart ob
   const closed = owner.observe(signal => fake.waitForConnectionClose('setMessageReaction', signal), { drain: true });
   await control(fake.url, 'say', { text: 'setup control' });
   const starting = owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock, {
-    receipt: new Promise<void>(() => {}), clock: setupClock, signal: abort.signal,
+    receipt: new Promise<void>(() => {}), clock: setupClock, setupTimeoutMs: 1_000, signal: abort.signal,
   });
   const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /setup cancelled/);
   const hub = await within(owner.serving, 1_000);

@@ -1,5 +1,6 @@
 // T3: scratch filesystem copies and a native Python analyzer; pre-owned bounded hub/scheduler and native PID controls drain before Store/root cleanup.
 import { pacingOwner } from './telegram-pacing-fixture.ts';
+import { testWaitMs } from './until.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 import { realClock } from '../src/hub/clock.ts';
 import type { Suites as SuiteScheduler } from '../src/hub/suites.ts';
@@ -287,7 +288,7 @@ test('copied probe seals unfinished suite capabilities and preserves finished hi
   const { memoryProducer } = await import('./memory-producer.ts');
   const { processIdentityAsync } = await import('../src/process-identity.ts');
   const { processStartedAsync } = await import('../src/hub/lock.ts');
-  const lifetime = pacingOwner(t, { setupTimeoutMs: 5000 });
+  const lifetime = pacingOwner(t, { setupTimeoutMs: testWaitMs(5000) });
   const sourceOwner = pacingOwner(t), copyOwner = pacingOwner(t);
   const root = await mkdtemp(join(tmpdir(), 'memory-seal-'));
   const source = join(root, 'source'), scratch = join(root, 'scratch');
@@ -648,7 +649,7 @@ test('isolated recovery accepts builder-owned scratch and temp paths while refus
 for (const legacy of [false, true]) test(`report-only recovery publishes log unavailable for ${legacy ? 'legacy' : 'terminal'} state without reading an outside stored file`, async t => {
   const { sessionDispatcherUi } = await import('./session-credential-fixture.ts');
   const { FakeClock } = await import('./fake-clock.ts');
-  const lifetime = pacingOwner(t, { setupTimeoutMs: 5000 });
+  const lifetime = pacingOwner(t, { setupTimeoutMs: testWaitMs(5000) });
   const seedOwner = pacingOwner(t);
   let ui: Awaited<ReturnType<typeof sessionDispatcherUi>> | undefined;
   const root = await mkdtemp(join(tmpdir(), 'memory-unavailable-report-'));
