@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-14T01:22:50.606Z
+updated: 2026-11-15T23:30:34.106Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -594,3 +594,7 @@ Hub restart #74 (2026-11-13 23:51:24Z, stand-in, launchd). Reason: T-1842 (bound
 ### human · 2026-11-14T01:22:50.606Z
 
 Hub restart #75 (2026-11-14 01:17:14Z, stand-in, launchd). Reason: human's answer on ask 96990fef at 01:16Z via Discord (option 1: land T-1846 and T-1847 locally, rerun the stage-2 macOS cover, hold the Linux cover until the human checks the network to DigitalOcean; even with T-1842's retries SSH to droplets stalled on upload and mkdir, A-19232). Config 2a51b98af: executor local, workers 1; reload refused 'verification.workers changed: restart required'. Gate: both stage covers finished, merge queue empty, no run, droplets 0, no live implementers, dev=origin/dev=f4542153b, load 2.1. Stop: launchctl remove cland-hub-r74 → hub 95226 gone in 3 s. Serve: launchctl submit cland-hub-r75 → listening 01:17:27Z, serving 01:17:33Z. Gap stop→serve 20 s. New hub 5828, port 53112, web 56935, nice 0, ppid 1, env check 2, one launchd job. Coord 66570: bridge-closed 01:17:14Z → bridge-connected 01:17:34Z → session-resumed → coordinator-filled 01:17:45Z → injected 01:17:46Z; one bridge. doctor 35 ok 3 warn 0 fail.
+
+### human · 2026-11-15T23:30:34.106Z
+
+Hub restart #76 (2026-11-15 23:29:45Z, stand-in, launchd). Reason: cland release --dry-run for R-1530 failed with 'gh auth failed (ENOENT)' because the hub's PATH (inherited from the stand-in's zsh -ic launch) lacked /opt/homebrew/bin (T-1876); coord asked for a restart with it added. Gate: E-1539 closed, all R-1530 children closed, merge queue empty, no run, droplets 0, dev=origin/dev=58f403462, load 2.0. Stop: launchctl remove cland-hub-r75 → hub 5828 gone in 2 s (uptime 45 h). Serve: launchctl submit cland-hub-r76 with PATH=<nvm bin>:/opt/homebrew/bin:$PATH → listening 23:29:58Z, serving 23:30:02Z. Gap stop→serve 17 s. New hub 30658, port 53942, web 56935, nice 0, ppid 1, env check 2, PATH contains /opt/homebrew/bin (verified on the serving pid), one launchd job. Coord 66570: bridge-closed 23:29:45Z → bridge-connected 23:30:02Z → session-resumed → coordinator-filled 23:30:16Z → injected 23:30:17Z; one bridge. doctor 37 ok 4 warn 0 fail. Recipe note: the launchd recipe now exports /opt/homebrew/bin in PATH for every future restart.
