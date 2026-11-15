@@ -3,18 +3,18 @@ id: T-1862
 kind: task
 title: DigitalOcean provider 422-pause test cancelled at its 2 s timeout in a macOS cover
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
-  - needs-triage
   - flaky
+  - ready-for-agent
 assignee: null
 parent: R-1530
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1862-digitalocean-provider-422-pause-test
 created: 2026-11-15T02:43:23.130Z
-updated: 2026-11-15T04:20:48.049Z
+updated: 2026-11-15T10:23:37.520Z
 ---
 
 ## Summary
@@ -33,3 +33,9 @@ The behaviour assertions stay exact: the retry time, the POST count and the toke
 
 - [ ] C1. The cause is named in the item from a reproduction, for example under induced load or with an instrumented fixture, and the fix removes it or bounds it with the shared load-scaled wait (test).
 - [ ] C2. Both the 429 and the 422 cases pass 20 out of 20 runs at a 1-minute load of at least 8 on macOS, with unchanged assertions (test).
+
+## Comments
+
+### coord · 2026-11-15T10:23:13.000Z
+
+Second failure, with a different symptom (2026-11-15, T-1806's mode-free verify 8dd973c2 at fa6cb7c65, Linux droplet, log A-19602). The 422 branch's recovery after the retry time expected `['created','created','created']` but got `['created','failed','created']` at host-provider-digitalocean.test.ts:368. One of the three concurrent acquires failed after the pause expired, and the test doesn't print the reason. The provider, fake API and test source are unchanged. Together with the macOS cover timeout (145e3085, A-19474), this points to a concurrency defect in the shared fake API or the provider around the pause expiry, not only a slow fixture. C1 should name both symptoms.
