@@ -1,5 +1,5 @@
-import { beforeDirectories } from './process-cleanup.ts';
-import { admissionFixture } from './host-admission-fixture.ts';
+import { admissionFixture, ownAdmissionApi } from './host-admission-fixture.ts';
+import { admissionCloseContract, capturedCleanup } from './host-admission-close-contract.ts';
 import { seedPoolImages } from './digitalocean-pool-fixture.ts';
 // T2: scripted provider boundary; disposable records, no native processes or sockets.
 import test, { type TestContext } from 'node:test';
@@ -11,17 +11,14 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { hostProviderVolumeContract } from './host-provider-contract.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
 
-async function closeFixture(api: { close(options?: { retainRoot?: boolean }): Promise<void> }, beforeClose?: () => Promise<void>) {
-  const failures: unknown[] = [];
-  try { await beforeClose?.(); } catch (error) { failures.push(error); }
-  try { await api.close({ retainRoot: failures.length > 0 }); } catch (error) { failures.push(error); }
-  if (failures.length) throw new AggregateError(failures, 'volume fixture cleanup incomplete');
-}
+test('digitalocean volume fixture drains queued issuance before storage and root disposal',async t=>{
+ await admissionCloseContract(t,context=>fixture(context));
+});
 
 async function fixture(t: TestContext, scenario = 'normal', beforeClose?: () => Promise<void>, requestsPerMinute?:number) {
   const clock = new FakeClock();
   const api = await fakeDigitalOcean('volume-sentinel', { machine: 'scripted', clock, testContext: t,...(requestsPerMinute?{requestsPerMinute}:{}) });
-  beforeDirectories(t, () => closeFixture(api, beforeClose));
+  ownAdmissionApi(t,api,beforeClose);
   await seedPoolImages(api.stateRoot);
   api.account.droplet_limit = 10;
   api.faults.allocateAddressEarly = true;
@@ -32,10 +29,11 @@ async function fixture(t: TestContext, scenario = 'normal', beforeClose?: () => 
   const env = fixtureEnvironment(api.stateRoot, {}, { CLAND_FAKE_HOST_ROOT: api.stateRoot });
   const provider = new DigitalOceanHostProvider({ root: api.stateRoot, env, api: api.provider, clock, pool: 'agents' });
   await provider.refreshDeclarations();
-  await admissionFixture(t,api.stateRoot,env,clock).wrap(provider);
+  const admissions=admissionFixture(t,api.stateRoot,env,clock);
+  await admissions.wrap(provider);
   const create = provider.createVolume.bind(provider);
   provider.createVolume = options => create({ ...options, admission: options.admission ?? { login: options.name, project: options.project, pool: 'agents' } });
-  return { provider, api, clock, env };
+  return { provider, api, clock, env, admissions };
 }
 hostProviderVolumeContract('digitalocean', async (t, scenario) => {
   const f = await fixture(t, scenario);
@@ -226,15 +224,17 @@ test('digitalocean snapshot receipts and source project fence destructive use ac
   assert.deepEqual(await restarted.deleteSnapshot(s.snapshot), { state: 'deleted' });
 });
 
-test('digitalocean volume fixture closes API and retains root after rejected owner drain', async () => {
+test('digitalocean volume fixture closes API and retains root after rejected owner drain', async t => {
+  const cleanup=capturedCleanup(t);
   let closed = false;
   const drainError = new Error('injected owner drain failure');
   const closeError = new Error('injected API close failure');
-  await assert.rejects(closeFixture({ close: async options => {
+  ownAdmissionApi(cleanup.context,{ close: async options => {
     closed = true;
     assert.deepEqual(options, { retainRoot: true });
     throw closeError;
-  } }, async () => { throw drainError; }), error => {
+  } }, async () => { throw drainError; });
+  await assert.rejects(cleanup.dispose(), error => {
     assert.ok(error instanceof AggregateError);
     assert.deepEqual(error.errors, [drainError, closeError]);
     return true;

@@ -12,6 +12,7 @@ const issued=new WeakMap<object,Effect>();
 export const issuedHostAdmission=(value:HostCreateAdmission)=>issued.has(value);
 export const hostAdmissionTag=(id:string)=>'cland-lease-'+id;
 export class HostAdmissionUnavailable extends Error {}
+class AdmissionLedgerChanged extends Error {}
 export function hostAdmissionEffect<T>(admission:HostCreateAdmission,work:()=>Promise<T>):Promise<T> {
  const owner=issued.get(admission);if(!owner)throw new HostAdmissionUnavailable('host admission not issued');return owner(work);
 }
@@ -33,18 +34,35 @@ export async function hostCreateAdmission(root:string,id:string,provider:string,
   const before=stamp(spendPath(env));
   let reservation:NonNullable<HostCreateAdmission['reservation']>;
   try{reservation=await hostSpendReservation(root,id,env);}catch(error){throw new HostAdmissionUnavailable('host create requires an unsettled hosts reservation',{cause:error});}
-  if(before!==stamp(spendPath(env))||reservation.pool!==lease.pool||reservation.deadline!==lease.deadline)throw new HostAdmissionUnavailable('host reservation changed');
+  if(reservation.pool!==lease.pool||reservation.deadline!==lease.deadline)throw new HostAdmissionUnavailable('host reservation changed');
+  if(before!==stamp(spendPath(env)))throw new AdmissionLedgerChanged();
   if(!await watchdogAlive({watchdog} as DropletLease,env,options))throw new HostAdmissionUnavailable('host create requires an armed watchdog');
   return {lease,watchdog,reservation,ledgerStamp:before};
  };
- const initial=await inspect();
+ // Ledger publication is account-wide: another valid lease is not revocation.
+ // Retry only an unstable observation, within a native-I/O bound. Every retry
+ // rechecks the exact lease, reservation, watchdog and revocation fence.
+ const stable=async<T>(accept:(current:Awaited<ReturnType<typeof inspect>>)=>T):Promise<T>=>{
+  const deadline=Date.now()+15000;
+  for(let attempt=0;attempt<8;attempt++){
+   try {
+    const current=await inspect();
+    if(stamp(spendPath(env))===current.ledgerStamp)return accept(current);
+   }catch(error){if(!(error instanceof AdmissionLedgerChanged)){if(error instanceof HostAdmissionUnavailable)throw error;throw new HostAdmissionUnavailable('host admission backing unavailable',{cause:error});}}
+   if(Date.now()>=deadline)throw new HostAdmissionUnavailable('host admission ledger observation did not stabilize');
+  }
+  throw new HostAdmissionUnavailable('host admission ledger observation did not stabilize');
+ };
+ const initial=await stable(current=>current);
  const admission=Object.freeze({provider,root,project,lease:Object.freeze(initial.lease),watchdog:Object.freeze({...initial.watchdog}),reservation:Object.freeze(initial.reservation)});
  issued.set(admission,async work=>{
   try {
-   const current=await inspect();
+   return stable(current=>{
    const authoritative=options.currentLease(),mirror=JSON.parse(readFileSync(hostLeasePath(root,id),'utf8'));
-   if(!live()||!authoritative||JSON.stringify(authoritative)!==JSON.stringify({...current.lease,watchdog:current.watchdog})||mirror.deadline!==current.lease.deadline||JSON.stringify(mirror.watchdog)!==JSON.stringify(current.watchdog)||stamp(spendPath(env))!==current.ledgerStamp||Date.parse(current.lease.deadline)<=(options.clock?.now()??new Date()).getTime())throw new HostAdmissionUnavailable('host admission backing changed');
+   if(!live()||!authoritative||JSON.stringify(authoritative)!==JSON.stringify({...current.lease,watchdog:current.watchdog})||mirror.deadline!==current.lease.deadline||JSON.stringify(mirror.watchdog)!==JSON.stringify(current.watchdog)||Date.parse(current.lease.deadline)<=(options.clock?.now()??new Date()).getTime())throw new HostAdmissionUnavailable('host admission backing changed');
+   if(stamp(spendPath(env))!==current.ledgerStamp)throw new AdmissionLedgerChanged();
    return work();
+   });
   }catch(error){if(error instanceof HostAdmissionUnavailable)throw error;throw new HostAdmissionUnavailable('host admission backing unavailable',{cause:error});}
  });
  return admission;

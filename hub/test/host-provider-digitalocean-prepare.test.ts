@@ -1,15 +1,20 @@
-import { admissionFixture } from './host-admission-fixture.ts';
+import { admissionFixture, ownAdmissionApi } from './host-admission-fixture.ts';
 // T2: provider admission and pool image lifecycle against the scripted API/machine.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { DigitalOceanHostProvider } from '../src/host/provider/digitalocean.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { FakeClock } from './fake-clock.ts';
+import { admissionCloseContract } from './host-admission-close-contract.ts';
+
+test('digitalocean preparation fixture drains queued issuance before storage and root disposal',async t=>{
+ await admissionCloseContract(t,fixture);
+});
 
 test('digitalocean production create names the missing host lease watchdog and spend before API access', async t => {
   const clock = new FakeClock();
   const api = await fakeDigitalOcean('pool-sentinel', { machine: 'scripted', clock });
-  t.after(() => api.close());
+  ownAdmissionApi(t,api);
   const provider = new DigitalOceanHostProvider({ root: api.stateRoot, env: {}, api: api.provider, clock });
   const admission=provider.createAdmission();
   assert.equal(admission.state,'refused');assert.equal(api.requests.length,0,'preflight makes no API call');
@@ -30,7 +35,7 @@ async function fixture(t: TestContext) {
   const { poolImageKey } = await import('../src/host/provider/pool-image.ts');
   const clock = new FakeClock();
   const api = await fakeDigitalOcean('pool-sentinel', { machine: 'scripted', clock });
-  t.after(() => api.close());
+  ownAdmissionApi(t,api);
   api.account.droplet_limit = 10;
   const root = api.stateRoot;
   await mkdir(join(root, '.cland'), { recursive: true });
@@ -45,8 +50,9 @@ async function fixture(t: TestContext) {
   } };
   const env = fixtureEnvironment(root, {}, { DIGITALOCEAN_TOKEN: 'pool-sentinel', CLAND_FAKE_HOST_ROOT: root, CLAND_EXECUTOR_STATE: join(root, 'executor-state') });
   const provider = new DigitalOceanHostProvider({ root, env, api: api.provider, clock, dependencies });
-  await admissionFixture(t,root,env,clock).wrap(provider);
-  return { root, api, clock, key, machine, provider, commands, readFile, join, drive, dependencies, env };
+  const admissions=admissionFixture(t,root,env,clock);
+  await admissions.wrap(provider);
+  return { root, api, clock, key, machine, provider, admissions, commands, readFile, join, drive, dependencies, env };
 }
 
 test('digitalocean prepare builds an agent image then root provision and runner prepare, and reuses its key', async t => {

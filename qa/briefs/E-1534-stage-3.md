@@ -99,6 +99,19 @@ The rerun (run qa-e1534s2-…-2, clear) applied one Coordinator-approved documen
 
 ## Corrections from this brief's own run (qa-678, A-18029)
 
+**Current replay qualification (T-1862).** The successful run below and its
+80-case provider expectation describe the historical `1dcf4144` / A-18029 tree.
+Keep that receipt and the embedded historical names unchanged. This qualification
+also applies to the provider's `exact: true` list in the TAP expectations and
+the E1534S3-50 row. They are not current-tree registration expectations.
+For a replay or a copied kit at any later `<dev SHA>`, regenerate the complete
+provider list from that source, including imported registrars and all generated
+expansions, before running E1534S3-50; compare it to that run's runtime TAP.
+Record the pinned SHA and regenerated names/count as run-copy evidence. A replay
+using the historical 80 names against changed registrations is incomplete, not
+a pass; do not weaken `exact: true` or rewrite the historical receipt to a new
+count. The T-1862 admission and teardown cases are additions to that history.
+
 The run at `1dcf4144` (run qa-e1534s3-2026-11-09-qa678-1, A-18029) was clear. It applied three Coordinator-approved run-copy corrections; a brief that copies this kit carries them as written here:
 
 - **Expected registration (decision b31b1a0b).** `hub/test/host-provider-digitalocean.test.ts` registers **80** top-level cases: 70 direct cases, one direct case indented by a space (`DigitalOcean requires lease, watchdog and hosts reservation even with an injected API`), and nine registered through the shared registrar `hostProviderContract('digitalocean', …)` from `hub/test/host-provider-contract.ts` (four plain cases and the `refused`, `failed-acquire`, `delayed-boot`, `never-boot` and `ignored-delete` expansions of its two block loops, each prefixed `digitalocean: `). E1534S3-50 keeps `exact: true` with all 80. **Exact lists expand imported and generated registrars** and must match the runtime TAP; `hostProviderVolumeContract` (in `host-provider-digitalocean-volumes`) is checked whole-file clean, not exact.

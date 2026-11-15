@@ -1,5 +1,46 @@
 # hub/test/host-provider-digitalocean.test.ts
 
+T-1862 deterministic diagnosis: `digitalocean acquire survives an unrelated
+reservation during <boundary> watchdog observation`, expanded for `key import`
+and `droplet POST`, inserts another admitted reservation after the exact ledger
+read and before the watchdog identity reply. With the stable-observation retry
+disabled, both fail with `DigitalOcean create failed; retained for reap`.
+The fake request counts are respectively key POSTs 0/1, droplet POSTs 0/0,
+droplets 0/0, retained keys 0/1. This reproduction creates no billable droplet;
+the second boundary retains an imported key for recovery. With the retry, both
+create exactly one droplet and one key. This does not establish the cost of an
+unobserved historical failure.
+
+`digitalocean admission ledger retry preserves <change> policy` expands to
+released, revoked, backing, reservation, cap and churn. Existing reserved capacity is never
+revoked by later reservations. A new over-cap reservation is refused at
+reserveHostSpend while the existing admission can send. Release, revocation and
+backing changes refuse without sending; eight consecutive unrelated publications
+exhaust the retry bound with HostAdmissionUnavailable. The bound also checks
+15 seconds of native-I/O elapsed time between observations, rather than waiting
+for FakeClock time to advance.
+
+The fixture serializes only admission issuance, joining durable lease/watchdog
+and ledger setup before issuing another fixture lease. Otherwise concurrent
+fixture setup can park on spend-lock retry timers in an undriven FakeClock.
+Provider acquisitions and product admission remain concurrent. The original
+macOS two-second cancellation has not yet been reproduced deterministically;
+the fixture wait is a candidate explanation, not a confirmed historical cause.
+The original pause assertions and two-second test watchdog are unchanged;
+failed recovery assertions now include the sanitized non-created results.
+
+`digitalocean provider fixture drains queued issuance before storage and root
+disposal` exercises the actual factory's staged teardown hook. The shared
+`host-admission-close-contract.ts` holds issuance at its persisted watchdog,
+queues a failing issue and another valid issue, starts disposal, checks the exact
+watchdog file and live SQLite owner, and refuses new work. Repeated close returns
+the same completion. Releasing the hold must settle all three queued attempts
+before SQLite closes and the API removes its root. Matching preparation and
+volume factory tests exercise the same owner. `ownAdmissionApi` joins every
+issuance owner registered in its TestContext before API disposal, including the
+signal cleanup path; failed drainage retains the root while API close is still
+attempted. Product acquisition remains outside the setup queue.
+
 T2, macOS and Linux. Run `node --test hub/test/host-provider-digitalocean.test.ts`
 with a supported Node 24 runtime and a fixtureEnvironment-sealed launcher (shared
 procedure in tests.md). No credentials, real API, native machine or browser is

@@ -58,6 +58,14 @@ mutations never reach the provider. Lease expiry/release, spend settlement/cance
 and watchdog retirement revoke capabilities before their asynchronous work. The
 lease index still fences attempts whose provider outcome is unknown.
 
+An unrelated spend-ledger publication does not revoke reserved capacity.
+Admission retries an unstable ledger observation up to eight times, checking a
+15-second native-I/O elapsed bound between observations. Each retry re-reads the
+exact lease, mirror, watchdog and unsettled reservation; the final synchronous
+checks and send share one turn. Persistent churn raises `HostAdmissionUnavailable`.
+Caps apply when reserving capacity; a later over-cap reservation is refused
+without invalidating an existing reservation.
+
 A refused droplet POST after successful key import is not empty acquisition.
 The exact key id and positive droplet refusal are persisted before cleanup. The
 live acquire owner waits through the shared API cooldown, then deletes the key

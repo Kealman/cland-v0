@@ -4,6 +4,14 @@ T2, in-process scripted DigitalOcean API and scripted machine, fake clock and
 disposable roots. No provider network, droplets, native harness or browser.
 Run `node --test hub/test/host-provider-digitalocean-prepare.test.ts`.
 
+`digitalocean preparation fixture drains queued issuance before storage and root
+disposal` uses the actual factory and shared admission-close contract. It holds
+one persisted issue, queues a failure followed by a valid issue, starts teardown
+and checks that both SQLite and the exact watchdog file remain available.
+New issuance refuses, repeated close shares completion, and every queued attempt
+settles before API/root disposal. See the provider per-test guide for owner order
+and the signal-path scope.
+
 Cases:
 
 - `digitalocean production create names the missing host lease watchdog and spend before API access`: C6, sealed production refusal with zero API calls.

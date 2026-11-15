@@ -1,4 +1,4 @@
-import { admissionFixture, hostLockProcesses } from './host-admission-fixture.ts';
+import { admissionFixture, hostLockProcesses, ownAdmissionApi } from './host-admission-fixture.ts';
 import { readdir } from 'node:fs/promises';
 import { seedPoolImages } from './digitalocean-pool-fixture.ts';
 // T2: scripted DigitalOcean boundary and disposable provider records; no sockets or processes.
@@ -14,6 +14,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { hostProviderContract, type ProviderScenario } from './host-provider-contract.ts';
 import { HostProviderRegistry } from '../src/host/provider/registry.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
+import { admissionCloseContract } from './host-admission-close-contract.ts';
 
 async function refusedIntent(root:string):Promise<boolean> {
  const {readFile}=await import('node:fs/promises');
@@ -21,10 +22,13 @@ async function refusedIntent(root:string):Promise<boolean> {
  return false;
 }
 const request = { project: 'contract', pool: 'agents', architecture: 'x86_64' as const };
+test('digitalocean provider fixture drains queued issuance before storage and root disposal',async t=>{
+ await admissionCloseContract(t,context=>fixture(context));
+});
 async function fixture(t: TestContext, scenario: ProviderScenario = 'normal', beforeClose?: () => Promise<void>,requestsPerMinute?:number) {
   const clock = new FakeClock();
   const api = await fakeDigitalOcean('provider-sentinel-secret', { machine: 'scripted', clock,...(requestsPerMinute?{requestsPerMinute}:{}) });
-  t.after(async () => { await beforeClose?.(); await api.close(); });
+  ownAdmissionApi(t,api,beforeClose);
   await seedPoolImages(api.stateRoot);
   api.account.droplet_limit = 10;
   api.faults.allocateAddressEarly = true;
@@ -37,8 +41,9 @@ async function fixture(t: TestContext, scenario: ProviderScenario = 'normal', be
   const provider = new DigitalOceanHostProvider({ root: api.stateRoot, env, api: api.provider, clock, size: 's-2vcpu-4gb', image: 'ubuntu-24-04-x64' });
   const rawProvider=new DigitalOceanHostProvider({root:api.stateRoot,env,api:api.provider,clock});
   const acquire=rawProvider.acquire.bind(rawProvider),createAdmission=rawProvider.createAdmission.bind(rawProvider);
-  await admissionFixture(t,api.stateRoot,env,clock).wrap(provider);
-  return { api, provider, clock, raw:{acquire,createAdmission} };
+  const admissions=admissionFixture(t,api.stateRoot,env,clock);
+  await admissions.wrap(provider);
+  return { api, provider, clock, admissions, raw:{acquire,createAdmission} };
 }
 test('digitalocean create carries configured inputs, isolated key and project/pool tags; invalid region makes no call', async t => {
   const { api, provider } = await fixture(t);
@@ -365,8 +370,59 @@ for (const status of [429, 422]) test(`digitalocean ${status} pauses every creat
   assert.equal(api.requests.length, sent);
   await clock.advance(1);
   const results = await Promise.all([provider.acquire(request), provider.acquire({ ...request, pool: 'second' }), provider.acquire({ ...request, pool: 'third' })]);
-  assert.deepEqual(results.map(r => r.state), ['created', 'created', 'created']);
+  assert.deepEqual(results.map(r => r.state), ['created', 'created', 'created'], JSON.stringify(results.map(r => r.state === 'created' ? { state: r.state } : r)));
   assert.equal(postCount(), 4);
+});
+
+for(const boundary of ['key import','droplet POST'] as const)test(`digitalocean acquire survives an unrelated reservation during ${boundary} watchdog observation`, async t => {
+  const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{});
+  const owner=admissionFixture(t,api.stateRoot,env,clock);
+  const admission=await owner.issue(request.project,request.pool);
+  let observations=0,changed=false;
+  t.mock.method(owner.processes,'identity',async()=>{
+    // Checks: preflight, key outer/send, droplet outer/send.
+    if(++observations===(boundary==='key import'?2:4)){changed=true;await owner.issue(request.project,'unrelated');}
+    return 'scripted-birth';
+  });
+  const result=await raw.acquire({...request,admission});
+  t.diagnostic(JSON.stringify({keyPosts:api.requests.filter(r=>r.method==='POST'&&r.path==='/v2/account/keys').length,dropletPosts:api.requests.filter(r=>r.method==='POST'&&r.path==='/v2/droplets').length,droplets:api.droplets.length,keys:api.keys.length}));
+  assert.equal(changed,true);
+  assert.equal(result.state,'created',JSON.stringify(result.state==='created'?{state:result.state}:result));
+  assert.equal(api.droplets.length,1);
+});
+
+for(const change of ['released','revoked','backing','reservation','cap','churn'] as const)test(`digitalocean admission ledger retry preserves ${change} policy`,async t=>{
+  const {api,clock,raw}=await fixture(t),env=fixtureEnvironment(api.stateRoot,{},{});
+  const owner=admissionFixture(t,api.stateRoot,env,clock),admission=await owner.issue(request.project,request.pool);
+  const {hostAdmissionEffect,HostAdmissionUnavailable}=await import('../src/host/create-admission.ts');
+  const {reserveHostSpend,settleHostSpend}=await import('../src/executor/droplet/spend.ts');
+  const {invalidateHostAdmission}=await import('../src/host/admission-fence.ts');
+  let observations=0,sends=0;
+  t.mock.method(owner.processes,'identity',async()=>{
+    observations++;
+    if(observations===1||change==='churn'){
+      if(change==='released')await settleHostSpend(api.stateRoot,admission.lease!.id,clock.now().toISOString(),env,{clock,processes:hostLockProcesses});
+      else if(change==='revoked')invalidateHostAdmission(api.stateRoot,admission.lease!.id);
+      else if(change==='backing')owner.loseWatchdog();
+      else if(change==='reservation'){
+        const {readFile}=await import('node:fs/promises'),{spendPath}=await import('../src/executor/droplet/spend.ts'),{durableJson}=await import('../src/executor/droplet/lease.ts');
+        const ledger=JSON.parse(await readFile(spendPath(env),'utf8'));
+        ledger.entries.find((entry:{lease:string})=>entry.lease===admission.lease!.id).pool='changed';
+        await durableJson(spendPath(env),ledger);
+      }
+      else {
+        const input={project:api.stateRoot,lease:'unrelated-'+observations,pool:'other',size:'c-8',priceHourly:change==='cap'?1:0,billingMinimumMs:60000,created:clock.now().toISOString(),deadline:admission.lease!.deadline};
+        if(change==='cap')await assert.rejects(reserveHostSpend(input,{shared:0,hosts:0},env,{clock,processes:hostLockProcesses}),/spend cap/);
+        else await reserveHostSpend(input,{shared:10000,hosts:10000},env,{clock,processes:hostLockProcesses});
+      }
+    }
+    return change==='backing'?null:'scripted-birth';
+  });
+  const effect=()=>hostAdmissionEffect(admission,async()=>{sends++;});
+  if(change==='cap'){const result=await raw.acquire({...request,admission});assert.equal(result.state,'created',JSON.stringify(result.state==='created'?{state:result.state}:result));assert.equal(api.droplets.length,1);}
+  else {await assert.rejects(effect(),error=>error instanceof HostAdmissionUnavailable&&(change!=='churn'||/did not stabilize/.test(error.message)));assert.equal(sends,0);}
+  if(change==='churn')assert.equal(observations,8);
+  if(change!=='cap')assert.equal(api.requests.length,0);
 });
 
 test('digitalocean unavailable declarations refuse safely and recover without partial publication', async t => {

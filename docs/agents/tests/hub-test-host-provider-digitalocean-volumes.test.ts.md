@@ -6,6 +6,15 @@ scripted fake DigitalOcean, FakeClock and disposable roots, no sockets, native
 process, browser, real cloud or credentials. The factory uses fixtureEnvironment
 with overlays inside the builder. Fake close joins its writers before removal.
 
+`digitalocean volume fixture drains queued issuance before storage and root
+disposal` uses the actual volume factory's teardown owner and the shared
+admission-close contract: held persisted issuance, a queued failure, another
+valid issue, live SQLite/watchdog checks during close, post-close refusal and
+joined completion before root removal. `ownAdmissionApi` drains provider work,
+then every admission owner, then closes the API. Its retained-root failure case
+uses that same staged owner and requires API close even when provider drainage
+rejects. See the provider per-test guide for the shared ordering contract.
+
 The factory supplies pool agents and login admission explicitly; there is no production default.
 `hostProviderVolumeContract('digitalocean', factory, registrar)` registers:
 
