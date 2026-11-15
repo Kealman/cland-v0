@@ -3,7 +3,7 @@ id: T-1837
 kind: task
 title: The launching user on session rows and Agents start lines
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-12T10:07:23.052Z
-updated: 2026-11-12T10:07:30.236Z
+updated: 2026-11-15T04:20:08.795Z
 ---
 
 ## Summary

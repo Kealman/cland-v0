@@ -3,7 +3,7 @@ id: T-1836
 kind: task
 title: Doctor's sign-in mode line
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-12T10:07:22.789Z
-updated: 2026-11-12T10:07:29.826Z
+updated: 2026-11-15T04:20:08.405Z
 ---
 
 ## Summary

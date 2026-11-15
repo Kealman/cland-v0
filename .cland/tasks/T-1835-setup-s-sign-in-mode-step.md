@@ -3,7 +3,7 @@ id: T-1835
 kind: task
 title: Setup's sign-in mode step
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-12T10:07:22.624Z
-updated: 2026-11-12T10:07:29.402Z
+updated: 2026-11-15T04:20:08.260Z
 ---
 
 ## Summary

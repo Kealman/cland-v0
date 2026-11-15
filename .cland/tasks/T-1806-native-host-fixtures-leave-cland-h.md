@@ -8,12 +8,12 @@ size: M
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: R-1530
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-14T22:17:27.687Z
+updated: 2026-11-15T04:20:47.054Z
 ---
 
 ## Summary

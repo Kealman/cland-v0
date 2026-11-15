@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1486
 branch: null
 created: 2026-10-31T18:22:04.429Z
-updated: 2026-11-14T22:16:36.283Z
+updated: 2026-11-15T04:20:07.427Z
 ---
 
 ## Goal
@@ -506,3 +506,73 @@ Fresh shared seals and credential-name gates preceded scratch commands; every ex
 - E1537S3-99: `s99 final census after literal alias removal; supplemental second-root census`.
 
 Durable evidence: A-19436, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19436-e-1537-stage-3-qa-doctor-and-setup-hosts-35-scoped-checks-clear-at-932f3018c/report.md
+
+### qa-678 · 2026-11-15T04:20:07.427Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-e1537s4-2026-11-15-qa678-1
+commit: 881114bfdc1e75e1ec4fc5df8109e99b96357a81
+stage: the tour and the hosts docs
+stage_hash: ffb094bafe51bed858c5163275619ee3a7acd7a5e339b2cca0904bafe97ec1d6
+findings: [{"severity":"low","text":"Known found-aside T-1861, row07: qa lint treats the skills-onboarding per-test Markdown note as absent test source. Diagnostic SHA-1 9500e1078706; E1313 findings 6→7, exactly this addition; E616 unchanged at6. Brief explicitly accepts it. No new issue. Evidence A-19486.","file":"qa/briefs/E-1313.md"}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Evidence A-19486: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19486-e-1537-stage-4-qa-tour-and-hosts-docs-23-scoped-checks-clear-at-881114bfd/report.md
+
+# E-1537 stage 4 QA — clear
+
+Stage: **the tour and the hosts docs**. Scope: affected/after-stage. Build: `881114bfdc1e75e1ec4fc5df8109e99b96357a81`. Run: `qa-e1537s4-2026-11-15-qa678-1`. Request: coord `37d0a4d8-4bc6-4216-94ba-808853c3c7a2`, topic-1486. All 23 scoped rows pass. No epic criterion marks.
+
+Executed locally on macOS arm64/Darwin27.0.0, Node v24.21.0, in a clean detached worktree. Nine serial targeted files produced114 passing test results (imported tests execute again in the wrapper),0 failures/cancellations/skips/todos. No suite, native preservation slot, browser, Neovim, real provider or external pricing lookup was run by QA. UI claims and unreachable setup variants are source checks, as scoped by the brief; the site was not rendered. Typecheck and web build passed.
+
+All child launches use a fresh fixtureEnvironment plus scratchGitEnvironment seal; explicit fixture inputs enter the builder, credential-name gates read0, login:false throughout. All captures pass through the unchanged publication policy. The pinned kit/carried hashes and A-19436 report/corrections hashes match. All local admissions passed with load≤10; no quiet-slot or load stress. Command/test durations remain in captures and final-validation.json; they exclude other rows, queue wait and setup and are not suite wall times.
+
+| Case | Result | Observation | Evidence |
+| --- | --- | --- | --- |
+| E1537S4-10 | PASS | skills-onboarding:15/15, exact expanded list. | [E1537S4-10.log](E1537S4-10.log), [E1537S4-10.check.txt](E1537S4-10.check.txt), [E1537S4-10.inventory-delta.txt](E1537S4-10.inventory-delta.txt) |
+| E1537S4-11 | PASS | Site guards:7+3+22 passing results, exact lists. | [E1537S4-11.log](E1537S4-11.log), [E1537S4-11.check.txt](E1537S4-11.check.txt), [E1537S4-11.inventory-delta.txt](E1537S4-11.inventory-delta.txt) |
+| E1537S4-12 | PASS | Shared remote-docs wrapper:33/33, including imported guard titles. | [E1537S4-12.log](E1537S4-12.log), [E1537S4-12.check.txt](E1537S4-12.check.txt), [E1537S4-12.inventory-delta.txt](E1537S4-12.inventory-delta.txt) |
+| E1537S4-13 | PASS | Published pool commands test:1/1; saved second pool/status match the manual walk. | [E1537S4-13.log](E1537S4-13.log), [E1537S4-13.check.txt](E1537S4-13.check.txt), [E1537S4-13.inventory-delta.txt](E1537S4-13.inventory-delta.txt) |
+| E1537S4-14 | PASS | Task-selection10, test-docs4, suite-tiers19: all pass. | [E1537S4-14.log](E1537S4-14.log), [E1537S4-14.check.txt](E1537S4-14.check.txt), [E1537S4-14.inventory-delta.txt](E1537S4-14.inventory-delta.txt) |
+| E1537S4-00 | PASS | HEAD = dev = request; clean detached tree; root non-tracker entries 0; three members landed/closed/done; earlier three stages closed; both covers present. | [E1537S4-00.txt](E1537S4-00.txt) |
+| E1537S4-01 | PASS | Node v24.21.0; root typecheck exit 0; tree clean. | [E1537S4-01.txt](E1537S4-01.txt) |
+| E1537S4-02 | PASS | 12 accepted first-parent commits; all member tips match their landings; no preserved source, hub/src, shared, web or nvim changes. | [E1537S4-02.txt](E1537S4-02.txt) |
+| E1537S4-03 | PASS | 129/129 source assertions read ok. | [E1537S4-03.txt](E1537S4-03.txt) |
+| E1537S4-04 | PASS | 20 mapped ids; all 23 table rows present; no open marker; 82 titles and 989 brief lines publishable; positive control rejected. | [E1537S4-04.txt](E1537S4-04.txt) |
+| E1537S4-05 | PASS | 6 tour and 25 page commands recognized; 22 hosts keys recognized; CLI section exactly16 subcommands; pricing arithmetic/defaults/storage declarations match; negative controls pass. | [E1537S4-05.txt](E1537S4-05.txt) |
+| E1537S4-06 | PASS | Three member verifies, three merge-batch receipts/candidates and both requested-head stage covers verified. Full provenance in pre-validation.json. | [E1537S4-06.txt](E1537S4-06.txt) |
+| E1537S4-07 | PASS | Notes/index/tier entries present; wording lint 768 documents,0 findings. E1313 delta is exactly known T1861; E616 unchanged. | [E1537S4-07.txt](E1537S4-07.txt) |
+| E1537S4-08 | PASS | Fresh-sealed npm run build exit0; stamp current (2026-11-15T04:11:42.817Z); clean unchanged SHA. | [E1537S4-08.txt](E1537S4-08.txt) |
+| E1537S4-80 | PASS | Fresh p1; init and existing first pool; fake hub up; no host/machine/lease. | [E1537S4-80.txt](E1537S4-80.txt) |
+| E1537S4-81 | PASS | All10 commands read from page exit0; first and second pools show0 hosts, slots0/0; second settings equal T2 assertions; no image or machine. | [E1537S4-81.txt](E1537S4-81.txt) |
+| E1537S4-82 | PASS | Untouched nonterminal setup: skip plus exact commands; after speech/before Aide; no image/login rows; config/roles/HOME unchanged. | [E1537S4-82.txt](E1537S4-82.txt) |
+| E1537S4-83 | PASS | Five exact doctor rows map to the page. PASS with authorized R-1: original broad count20 retained; scoped doctor table6, captured runtime names5, unmapped0. | [E1537S4-83.txt](E1537S4-83.txt), [E1537S4-83-R1.txt](E1537S4-83-R1.txt) |
+| E1537S4-84 | PASS | Unplaced agents:2 open rows; placed Implementer:3 open rows; each page sentence present; setup leaves config/roles unchanged; no hosts/images/logins. | [E1537S4-84.txt](E1537S4-84.txt) |
+| E1537S4-85 | PASS | Both recorded hub PIDs absent; zero aliases/survivors/watchdogs; TERM sent0; hub down. | [E1537S4-85.txt](E1537S4-85.txt) |
+| E1537S4-86 | PASS | No new shared receipts, ct-/cland-h-/hc- entries or system TMPDIR names; no owned live residue. | [E1537S4-86.txt](E1537S4-86.txt) |
+| E1537S4-90 | PASS | Publication scan84 files/29484 lines,0 refused; positive control rejected. Final publication scan repeated after report/recorder additions. | [E1537S4-90.txt](E1537S4-90.txt) |
+| E1537S4-99 | PASS | HEAD/dev/request unchanged; W clean; root status unchanged; no owned lock/alias; withholding0; T holds only node-compile-cache. | [E1537S4-99.txt](E1537S4-99.txt) |
+
+## Findings and correction
+
+**Low, found aside — existing T-1861 (Bugs), row07.** `cland qa lint` reports `test file docs/agents/tests/hub-test-skills-onboarding.test.ts is absent from the build` (SHA-1 of diagnostic9500e1078706). The actual reference is the per-test Markdown note. E-1313 has6 findings before T-1832 and7 at this build; the single added diagnostic is exactly the brief's accepted T-1861 signature. E-616 remains6 with no added finding. No new issue requested. There are no stage product findings and no new residue occurrences.
+
+**R-1 — counter-scope correction, coord decision3ac87db0-5823-466d-8eed-41cb1b4a585c (2026-11-15T04:15:03.524Z).** Row83 originally reports20 page table names. Its brief regex `/^\| `(host[^`]*)` \|/gm` scans all hosts.md, matching14 configuration-key rows at23–42 as well as the6 doctor rows at240–245. The original capture is unchanged. The separately authorized read-only observation limits the table to “Workbench, doctor and setup”: exactly6 names, all5 preserved runtime doctor names map,0 unmapped. No CLI rerun, configuration change or altered product assertion. Only the brief is defective. The initial question called the extra rows command rows; the source immediately established they are configuration rows, and that correction was sent to coord before the decision. [Observation](E1537S4-83-R1.txt); [source](R1-observation.mjs). Carried stage3 R1–R7 were already in this brief and are not new corrections.
+
+Rule proposal sent to coord: bind documentation table probes to an explicit section/table header before counting, with a neighboring similarly prefixed table as a negative control.
+
+## Cover evidence read, not rerun
+
+Both stage covers match this SHA and tree1eb316935ebacf7e37a93ef74f2c41ff2a0c8f61. A-19478 (Linux droplet79affb72-ca93-4396-b56d-aeff389631b9):8489pass/0fail/9 documented platform skips; T0–T4 and Web, two c-8 ams3 shards. cland-v0-2183c7cd lifetime2618s,$0.1818; cland-v0-7f17f50e lifetime1761s,$0.1223; total$0.3041; overall2744.32s admission through collection (collection30.06s and30.49s recorded separately). A-19482 (macOS local e2dd5574-5be4-49ef-bc70-b0d0bec924c8):8497pass/0fail/1 Linux-only skip, T0–T4 and Web, configured worker1 (Web reports2). Neither receipt is cached.
+
+Cover platforms: Linux x64 6.8.0-147-generic and macOS arm64 27.0.0; Node v24.21.0, Neovim v0.12.5. Both report Chrome Headless Shell1248 / Google Chrome for Testing156.0.8078.4; exact browser binaries and every skip are retained in [pre-validation.json](pre-validation.json). Timing/lint budgets in these receipts are report-only, not performance passes. Initial cover attempts3845b0b3/A-19475 (T-1863 suite-cancel) and145e3085/A-19474 (T-1862 provider422pause timeout) failed before the Coordinator's single successful retries; they are not presented as passes.
+
+Member mode-free receipts A-19454/A-19456/A-19470 supply T0/T1/T2/Web at reviewed heads; merge batches fe0ff273/c3154209/ba1ed164 supply T0/T1/T3 through A-19459–A-19462 and A-19472–A-19473. Candidate trees equal member landings outside tracker files. Full heads, phases and observations are in row06.
+
+## Records and cleanup
+
+The skill recorder has23 PASS lines for this run in runs.jsonl; [copy](recorder-lines.jsonl). No epic criteria are verified or failed by this stage verdict. Root non-tracker status remained empty and dev stayed pinned through row99. The scratch hub is down; no process, watchdog, alias or newly attributed shared receipt remains. T has only node-compile-cache; no residue removal was needed. After verdict, only this run's worktree,Q andT will be removed; shared historical residue stays untouched.
+
+Run roots: W `/Users/evgeniyivanov/Projects/cland/v0/.cland/worktrees/qa-e1537s4-qa-e1537s4-2026-11-15-qa678-1`, Q `/private/tmp/q53-PurKca`, T `/private/tmp/qa-e1533-s3-b6348de3-3a6d-4aa6-8828-69f4a34833fe`. The evidence export contains only declared reports, captures, inventories, source helpers and recorder receipts; no HOME/config store/environment dump or one-use link.

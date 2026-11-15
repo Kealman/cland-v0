@@ -9,12 +9,12 @@ labels:
   - needs-triage
   - qa-found
 assignee: null
-parent: C-325
+parent: R-1530
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T20:16:16.052Z
-updated: 2026-11-14T20:16:16.052Z
+updated: 2026-11-15T04:20:47.532Z
 ---
 
 ## Summary
