@@ -20,6 +20,30 @@ import { askHubFrame } from '../src/cli/socket-client.ts';
 
 const rows = (text: string): Check[] => JSON.parse(text).checks;
 const named = (checks: Check[], name: string) => { const row = checks.find(c => c.name === name); assert.ok(row, name); return row; };
+test('doctor warns for every missing role pool without writes or provider requests', async t => {
+  const tools = await toolchain(t), root = await initialised(t, tools.env);
+  const roles = '[implementer.launch]\nharness="codex"\npool="agents"\n[reviewer.launch]\nharness="codex"\npool="workers"\n';
+  await writeFile(join(root, '.cland/roles.toml'), roles);
+  const clock = new FakeClock(Date.now()), processes = fakeLockProcesses().processes;
+  const api = await fakeDigitalOcean('cland-test-missing-pool', { machine: 'scripted', clock, testContext: t });
+  onCleanup(t, () => api.close());
+  await projectHub(t, root, {}, { clock, processes, droplet: { processes, api: api.provider } });
+  const config = await readFile(join(root, '.cland/config.toml'), 'utf8');
+  for (const args of [[], ['--json']]) {
+    const result = await doctor(root, tools.env, ...args);
+    if (args.length) {
+      const checks = rows(result.stdout);
+      for (const [role, pool] of [['implementer', 'agents'], ['reviewer', 'workers']]) {
+        assert.deepEqual(named(checks, `host ${role} placement`), { name: `host ${role} placement`, verdict: 'warn',
+          detail: `role ${role}: pool ${pool} is not configured`,
+          fix: `cland config set hosts.${pool}.provider digitalocean; cland hub reload OR cland role launch ${role} --pool local; cland hub reload` });
+      }
+    } else assert.match(result.stdout, /warn.*host implementer placement.*pool agents is not configured/);
+  }
+  assert.equal(await readFile(join(root, '.cland/roles.toml'), 'utf8'), roles);
+  assert.equal(await readFile(join(root, '.cland/config.toml'), 'utf8'), config);
+  assert.deepEqual(api.requests, []);
+});
 for (const present of [false, true]) test(`C1/C6 doctor reads hub token presence=${present} without provider calls`, async t => {
   const tools = await toolchain(t), root = await initialised(t, tools.env);
   await writeFile(join(root, '.cland/config.toml'), '[hosts.agents]\nprovider="digitalocean"\nmin_hosts=0\n');

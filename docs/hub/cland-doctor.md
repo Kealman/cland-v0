@@ -1,5 +1,10 @@
 ## cland doctor
 
+A role on an unconfigured pool adds `host <role> placement` with `warn` and
+`role <role>: pool <pool> is not configured`, even when no pools exist. The fix
+configures that pool's provider or moves the role to `local`, then reloads.
+This check reads only config and roles, writes nothing and calls no provider.
+
 The `sign-in mode` row reads `[auth] mode` from project config (default `single`).
 Single mode is `ok` and needs no user-list request. In users mode the running
 hub's `user.list` supplies active and invited counts and total admins with the
@@ -38,7 +43,8 @@ that field prints `outage since unknown`. Spend warns at 80 percent of
 `[hosts] daily_spend_usd` and names `cland config set hosts.daily_spend_usd <n>`;
 unknown spend stays unknown. Warnings do not change the exit code. With no running
 hub the hub-backed checks say `hub not running`, fixed by `cland hub start`;
-local image checks remain available. With no pool there is one `ok` row,
+local image checks remain available. With no pool and no role pointing at a missing
+pool there is one `ok` row,
 `hosts: no host pool`. Older hubs refusing provider diagnostics produce a status
 unavailable warning with restart commands, never a fabricated token result.
 

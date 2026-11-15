@@ -44,6 +44,25 @@ function options(): SetupOptions {
   };
 }
 
+test('missing pool placements remain open without effects even with yes', async () => {
+  for (const yes of [false, true]) {
+    const o = options(); o.interactive = false; o.yes = yes;
+    o.machine.read = async path => path === 'roles.toml' ? '[implementer.launch]\nharness="codex"\npool="agents"\n[reviewer.launch]\nharness="codex"\npool="workers"\n' : '';
+    o.hub!.providers = async () => { throw Error('unexpected provider read'); };
+    o.hub!.configure = async () => { throw Error('unexpected configuration'); };
+    o.hub!.placeRole = async () => { throw Error('unexpected placement'); };
+    const lines = await hosts(o);
+    assert.equal(lines.length, 2);
+    assert.deepEqual(lines.map(l => [l.name, l.verdict, l.detail, l.fix]), [
+      ['agent hosts', 'open', 'role implementer: pool agents is not configured', 'cland config set hosts.agents.provider digitalocean; cland hub reload OR cland role launch implementer --pool local; cland hub reload'],
+      ['agent hosts', 'open', 'role reviewer: pool workers is not configured', 'cland config set hosts.workers.provider digitalocean; cland hub reload OR cland role launch reviewer --pool local; cland hub reload'],
+    ]);
+    const result = await setup({ ...o, noAide: true, noAccounts: true });
+    assert.equal(result.code, 1);
+    assert.equal(result.report.next, 'cland setup');
+  }
+});
+
 test('T1831 C5 configured nonterminal pool reports image and missing harness commands without effects', async () => {
   const o = options(); o.interactive = false;
   let effects = 0;

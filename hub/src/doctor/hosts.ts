@@ -8,16 +8,23 @@ import type { providerTokens } from '../host/provider-tokens.ts';
 import type { hostStatus } from '../host/status.ts';
 import type { Login } from '../host/logins.ts';
 import { fail, ok, warn, type Check } from './report.ts';
+import { parseRoles } from '../roles/config.ts';
+import { missingRolePools } from '../host/missing-pools.ts';
 
 /** Local metadata only. Provider credentials remain in the running hub. */
 export async function checkHosts(root: string, env: NodeJS.ProcessEnv): Promise<Check[]> {
   let config;
   try { const text = readText(join(root, '.cland/config.toml')); config = text === null ? defaultConfig(basename(root)) : parseConfig(text, basename(root), env); }
   catch { return [fail('hosts config', 'cannot read host pools', 'repair .cland/config.toml')]; }
-  if (!Object.keys(config.hosts.pools).length) return [ok('hosts', 'no host pool')];
+  let placements: Check[];
+  try {
+    placements = missingRolePools(config.hosts, parseRoles(readText(join(root, '.cland/roles.toml')) ?? ''))
+      .map(({ name, detail, fix }) => warn(name, detail, fix));
+  } catch { placements = []; } // The roles.toml check owns parse errors.
+  if (!Object.keys(config.hosts.pools).length) return placements.length ? placements : [ok('hosts', 'no host pool')];
   const discovery = readDiscovery(hubDiscovery(root, env));
   const live = discovery && (discovery.remote || pidAlive(discovery.pid));
-  const out: Check[] = [];
+  const out: Check[] = [...placements];
   for (const [pool, settings] of Object.entries(config.hosts.pools).sort(([a], [b]) => a.localeCompare(b))) {
     const name = `host ${pool} image`, fix = `cland host prepare ${pool}`;
     const image = await inspectPoolImage(root, env, pool, settings.provider);

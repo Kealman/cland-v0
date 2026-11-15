@@ -1,5 +1,10 @@
 # hub/test/setup-hosts.test.ts
 
+`missing pool placements remain open without effects even with yes` proves two
+missing pools name both roles and exact configure/local repair commands, without
+effects, and the whole setup runner returns exit 1 with next `cland setup`.
+The untouched skip and configured-ready controls remain unchanged.
+
 T2 exercises setup's scripted prompter, terminal-runner boundary and projectHub
 sockets. Provider metadata uses the scripted fake DigitalOcean API with a sentinel;
 sign-in uses an in-process fake Host/provider and the production disk owner.

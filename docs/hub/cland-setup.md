@@ -1,5 +1,10 @@
 ## cland setup
 
+A role placed on an unconfigured pool makes agent hosts `open`, even with `--yes`
+or without a terminal, and setup exits 1. Each row names its role and missing pool,
+with commands to configure that pool or place the role on `local`, then reload.
+This diagnostic writes nothing; untouched optional hosts still skip.
+
 Run `cland setup [dir]` after `cland init`. It uses the current directory or the
 explicit directory, refuses a discovered parent and HOME, and stops with
 "run cland init first" when `.cland/` is absent.

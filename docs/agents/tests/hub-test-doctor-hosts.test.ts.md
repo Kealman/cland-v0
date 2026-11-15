@@ -1,5 +1,10 @@
 # hub/test/doctor-hosts.test.ts
 
+`doctor warns for every missing role pool without writes or provider requests`
+checks text and JSON for two missing pools, exact shared repair commands,
+unchanged config/roles bytes, and zero fake DigitalOcean API requests. Capture
+the baseline after projectHub startup so startup normalization is excluded.
+
 `hub/test/doctor-hosts.test.ts` is T2. Run one file with
 `node --test hub/test/doctor-hosts.test.ts` on supported Node, under the current
 native preservation slot and cover-quiet admission. No browser or real provider

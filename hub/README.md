@@ -63,7 +63,9 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
   while users mode confirms browser sign-out and waits for the first passkey.
   Optional agent pools, image builds and first terminal logins, each paid action on a separate default-No confirmation.
   offers agent hosts after remotes and before the Aide, default No; `--yes` skips
-  this step. Nonterminal untouched hosts skip; partial pools stay open, with
+  untouched hosts. Missing role pools stay open (exit 1), with the role, pool and
+  configure-or-local repair commands; doctor warns with the same fix.
+  Nonterminal untouched hosts skip; partial pools stay open, with
   exact commands in the detail and no writes. Token
   presence comes from the hub environment; paid-pool confirmation names the
   recorded size, minimum hosts and hourly price.

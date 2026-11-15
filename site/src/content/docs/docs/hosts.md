@@ -244,7 +244,7 @@ provider, login, harness or host in place of `<name>`:
 | `host <name> reachability` | ready or state/outage; destroy unreachable hosts, stop other unhealthy hosts |
 | `host spend` | today versus daily cap, warning at 80%; review the cap and spending |
 
-Without pools doctor's `hosts` line reads `no host pool`. A stopped hub or an older reply
+Without pools, when no role points to a missing pool, doctor's `hosts` line reads `no host pool`. A stopped hub or an older reply
 without the needed metadata reports unavailable, rather than assuming readiness.
 
 `cland setup` includes the optional **agent hosts** step after remote setup and
@@ -253,6 +253,8 @@ preselected. The always-on pool (`min_hosts` 1), image build and each first logi
 have separate default-No paid confirmations. The image row is `agent hosts image`;
 login rows name the harness. Setup verifies a current image and eligible logins
 for the chosen role accounts.
+
+For a role on a missing pool, setup reports `open` (exit 1) and doctor reports `warn` with `role implementer: pool agents is not configured` (using the actual role and pool), both read-only with the fix `cland config set hosts.agents.provider digitalocean; cland hub reload` or `cland role launch implementer --pool local; cland hub reload`.
 
 With `--yes`, an untouched project reads `skip` with
 `optional agent hosts; default No`. Without a terminal and without `--yes`, untouched hosts read

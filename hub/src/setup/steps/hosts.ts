@@ -7,6 +7,7 @@ import { readHostPools, hostPoolsDocument } from '../../host/pools.ts';
 import { HARNESS_ORDER } from './harnesses.ts';
 import { Cancelled } from '../prompter.ts';
 import { shellQuote } from '../../accounts/registry.ts';
+import { missingRolePools } from '../../host/missing-pools.ts';
 
 // docs/spec/v0.4.md, Prices: recorded 2026-10-31, USD without VAT.
 const DECLARED_DEFAULT = { size: 's-4vcpu-8gb', hourly: '0.0714', date: '2026-10-31' };
@@ -98,9 +99,10 @@ export const hosts: SetupStep = async options => {
     const pool = config.hosts.pools.agents;
     if (!pool) fix = commands(defaultPool, ['implementer']);
     const roles = parseRoles(await machine.read('roles.toml') ?? '', null, HARNESS_ORDER);
+    const missing = missingRolePools(config.hosts, roles);
+    if (missing.length) return missing.map(({ detail, fix }) => ({ name, verdict: 'open', detail, fix }));
     const placed = [...roles.values()].filter(role => role.launch.pool === 'agents');
     if (pool && !placed.length) fix = commands({}, ['implementer']);
-    if (!pool && placed.length) fix = commands(defaultPool, []);
     const client = injected ?? setupHub(root, env);
     const configuredProvider = pool?.provider === 'digitalocean' ? (await client.providers?.('digitalocean').catch(() => undefined))?.providers.find(p => p.provider === 'digitalocean') : undefined;
     if (pool?.provider === 'digitalocean' && !configuredProvider?.present) return [...missingToken(), ...(!interactive ? await finishPool(options, placed, hostPoolsDocument(config.hosts).agents as Record<string, unknown>) : [])];
