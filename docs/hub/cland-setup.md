@@ -10,14 +10,34 @@ attaches in the current terminal instead; `--no-aide` skips the handover.
 
 Setup currently detects the project, then Claude Code, Codex and OpenCode, then
 the installed harnesses' logins, then records the favourite harness and grants
-project trust for every installed harness, then starts the hub, offers Telegram
-remote setup and starts the Aide. Each line has `ok`,
+project trust for every installed harness, then starts the hub, offers the sign-in
+mode, Telegram and Discord remotes, speech, agent hosts and the Aide. Each line has `ok`,
 `done`, `skip`,
 `open` or `fail`, a detail and any fix. With no harness installed, all three
 installers are `open`; with one installed, missing alternatives are `skip` with
 an installer hint. A binary found only in an installer's folder explains that a
 new shell is needed for PATH. A missing Claude Code or Codex login is `open`;
 OpenCode's login is optional because its free model needs none.
+
+The sign-in mode step follows the hub and precedes the remotes. In single mode
+it asks "Let several people sign in to the web (users mode)?", default No.
+`--yes` keeps single mode and reports `skip`, with or without a terminal.
+Without a terminal and without `--yes`, it reports `skip` with
+`cland auth mode users`. `--no-aide` leaves detection skipped if no hub is
+available. Existing users mode reports `ok` with the number of users and asks
+nothing. An older hub without setup metadata stays unknown/open; update it
+before choosing users through setup.
+
+Choosing users requires a separate default-No confirmation: switching signs out
+the current browser sessions, and `cland auth reset` is the only way back. Setup
+uses the hub's normal `auth.mode` switch, which names the first user from Git's
+`user.name`. The first user's name and one-time invite appear only in the
+human's terminal, never in the structured report. Keep that link private. Setup
+waits for the invite page's passkey registration; Enter leaves `open` with
+`cland user invite <name>`. A persisted passkey ends the step `done`.
+The local setup client opts in to `user.list` with `setup: true` for mode and
+per-user `passkeyRegistered` metadata; ordinary `user.list` keeps its previous
+reply and single-mode refusal. An unavailable registration receipt stays open.
 
 For a missing harness in a terminal, setup shows its official user-level installer
 before asking `Install <Harness> now? [y/N]`. A yes runs it in the same terminal,

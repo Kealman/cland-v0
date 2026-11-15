@@ -33,6 +33,14 @@ Named metadata omits binding inventory; absence is unknown, not an empty list.
 After paid yes, re-read displayed terms and leave changes open. T-1858 tracks
 shared admission pinning beyond the one-human interactive setup trust model.
 
+Setup's sign-in step runs between hub and remotes. Its offer and switch
+confirmation default No; `--yes` skips single mode, nonterminal without it skips
+with the auth command. Existing users mode reports its user count. Use the hub's auth switch and
+opt-in `user.list setup:true` metadata; older replies stay unknown. Print the
+invite only through terminal narration, never SetupLine or a prompt transcript.
+Wait for the persisted passkey receipt and join the abortable terminal reader;
+Enter leaves `cland user invite <name>`. See docs/hub/cland-setup.md.
+
 ## Merge-delta advisory comments
 
 The hosting hub records clean reviewed-head/dev merges as report-only item

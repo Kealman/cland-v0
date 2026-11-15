@@ -12,7 +12,7 @@ export type Choice<T extends string> = { value: T; label: string };
 export type Prompter = {
   confirm(question: string, def: boolean): Promise<boolean>;
   choose<T extends string>(question: string, choices: readonly Choice<T>[], def: T): Promise<T>;
-  pause(message: string): Promise<void>;
+  pause(message: string, signal?: AbortSignal): Promise<void>;
   secret(question: string): Promise<string>;
 };
 
@@ -21,15 +21,16 @@ export function readlinePrompter(io: { input: Readable; output: Writable }): Pro
   const checkInput = () => {
     if (io.input.readableEnded || io.input.destroyed) throw new Cancelled('input ended');
   };
-  const ask = async (question: string): Promise<string> => {
+  const ask = async (question: string, signal?: AbortSignal): Promise<string> => {
+    if (signal?.aborted) return '';
     checkInput();
-    const rl = createInterface({ input: io.input, terminal: false });
+    const rl = createInterface({ input: io.input, terminal: false, ...(signal ? { signal } : {}) });
     // Register before writing: an answer can arrive before we start awaiting it.
     const lines = rl[Symbol.asyncIterator]();
     try {
       io.output.write(question);
       const line = await lines.next();
-      if (line.done) throw new Cancelled('input ended');
+      if (line.done) { if (signal?.aborted) return ''; throw new Cancelled('input ended'); }
       return String(line.value).trim();
     } finally {
       // Pause input before a terminal child takes over the stream.
@@ -64,8 +65,8 @@ export function readlinePrompter(io: { input: Readable; output: Writable }): Pro
         if (hit) return hit.value;
       }
     },
-    async pause(message) {
-      await ask(`${message} `);
+    async pause(message, signal) {
+      await ask(`${message} `, signal);
     },
   };
 }

@@ -1,9 +1,11 @@
 # hub/test/scenarios/setup.test.ts
 
 T3 runs setup through a real CLI and PTY on sealed scratch machines with fake
-vendor binaries and a stand-in launcher. Every terminal script answers the new
-`Set up agent hosts? [y/N]` offer with Enter, retaining default No. Expected rows
-include agent hosts skip; piped untouched setup keeps exit zero. Preserve the
+vendor binaries and a stand-in launcher. Terminal scripts after starting a hub
+answer `Let several people sign in to the web (users mode)? [y/N]` with Enter,
+then the remote and `Set up agent hosts? [y/N]` offers with Enter. Expected rows
+include sign-in mode and agent hosts skip; piped untouched setup keeps exit zero.
+Piped single-mode setup without --yes skips with its auth command. Preserve the
 favourite/install/trust assertions, onboarding job receipt, hub/Aide reuse,
 launcher counts and observed native PID closure before directory disposal.
 

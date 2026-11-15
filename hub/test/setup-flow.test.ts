@@ -97,7 +97,7 @@ test('setup reports project, harnesses and installed logins in order without ask
   assert.equal(code, 1);
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
     ['project', 'ok'], ['claude-code', 'ok'], ['codex', 'skip'], ['opencode', 'ok'],
-    ['claude-code login', 'open'], ['opencode login', 'skip'], ['accounts', 'ok'], ['favourite', 'ok'], ['trust', 'open'], ['hub', 'skip'], ['remote telegram', 'skip'], ['remote discord', 'skip'], ['speech', 'ok'], ['agent hosts', 'skip'], ['aide', 'skip'],
+    ['claude-code login', 'open'], ['opencode login', 'skip'], ['accounts', 'ok'], ['favourite', 'ok'], ['trust', 'open'], ['hub', 'skip'], ['sign-in mode', 'skip'], ['remote telegram', 'skip'], ['remote discord', 'skip'], ['speech', 'ok'], ['agent hosts', 'skip'], ['aide', 'skip'],
   ]);
   assert.equal(report.steps[4]?.fix, 'run: claude auth login');
   assert.equal(report.next, 'cland setup');
@@ -216,7 +216,7 @@ test('the first installed harness makes missing alternatives optional in the fin
   } });
   assert.equal(code, 1); // favourite still needs --harness or --yes without a terminal
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex login', 'skip'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'ok'], ['hub', 'skip'], ['remote telegram', 'skip'], ['remote discord', 'skip'], ['speech', 'ok'], ['agent hosts', 'skip'], ['aide', 'skip'],
+    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex login', 'skip'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'ok'], ['hub', 'skip'], ['sign-in mode', 'skip'], ['remote telegram', 'skip'], ['remote discord', 'skip'], ['speech', 'ok'], ['agent hosts', 'skip'], ['aide', 'skip'],
   ]);
 });
 
@@ -245,6 +245,8 @@ test('C1 agent hosts runs after remote steps and before the Aide', async t => {
   const root = scratch(t);
   const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: false, yes: true, prompter: scriptedPrompter([]), machine });
   const names = report.steps.map(s => s.name);
+  assert.equal(names.indexOf('sign-in mode'), names.indexOf('hub') + 1);
+  assert.equal(names.indexOf('remote telegram'), names.indexOf('sign-in mode') + 1);
   assert.ok(names.indexOf('agent hosts') > names.indexOf('remote discord'));
   assert.ok(names.indexOf('agent hosts') < names.indexOf('aide'));
 });
@@ -270,8 +272,8 @@ test('all steps ok exits zero and points to cland; installer folders explain PAT
   } });
   assert.equal(code, 0);
   assert.equal(report.next, 'cland');
-  assert.deepEqual(report.summary, { ok: 11, done: 0, skip: 5, open: 0, fail: 0 });
-  assert.ok(report.steps.filter(s => !['hub', 'remote telegram', 'remote discord', 'speech', 'agent hosts', 'aide'].includes(s.name)).every(s => s.verdict === 'ok'));
+  assert.deepEqual(report.summary, { ok: 11, done: 0, skip: 6, open: 0, fail: 0 });
+  assert.ok(report.steps.filter(s => !['hub', 'sign-in mode', 'remote telegram', 'remote discord', 'speech', 'agent hosts', 'aide'].includes(s.name)).every(s => s.verdict === 'ok'));
   assert.match(report.steps[1]!.detail, /not on your PATH yet: open a new shell/);
 });
 

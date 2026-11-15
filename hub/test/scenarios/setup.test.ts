@@ -21,7 +21,7 @@ const brief = "Run the onboarding skill; project: empty; harnesses: claude-code,
 const allOk = [
   ['project', 'ok'], ['claude-code', 'ok'], ['codex', 'ok'], ['opencode', 'skip'],
   ['claude-code login', 'ok'], ['codex login', 'ok'], ['accounts', 'ok'],
-  ['favourite', 'ok'], ['trust', 'ok'], ['hub', 'ok'], ['remote telegram', 'skip'], ['remote discord', 'skip'], ['speech', 'ok'], ['agent hosts', 'skip'], ['aide', 'ok'],
+  ['favourite', 'ok'], ['trust', 'ok'], ['hub', 'ok'], ['sign-in mode', 'skip'], ['remote telegram', 'skip'], ['remote discord', 'skip'], ['speech', 'ok'], ['agent hosts', 'skip'], ['aide', 'ok'],
 ];
 
 function stepLines(output: string): string[][] {
@@ -136,13 +136,13 @@ test('setup provisions a scratch machine, reuses its hub and Aide, and remembers
 
   const first = await terminalSetup(t, machine, [
     ['Install Codex now? [y/N]', 'y'], ['Sign in to Claude Code now? [Y/n]', 'y'],
-    ['Write them to ~/.config/cland/accounts.toml? [y/N]', ''], ['Which harness do you talk to? [1]', '1'], ['Set up Telegram remote now? [y/N]', ''], ['Set up Discord remote now? [y/N]', ''], ['Set up agent hosts? [y/N]', ''],
+    ['Write them to ~/.config/cland/accounts.toml? [y/N]', ''], ['Which harness do you talk to? [1]', '1'], ['Let several people sign in to the web (users mode)? [y/N]', ''], ['Set up Telegram remote now? [y/N]', ''], ['Set up Discord remote now? [y/N]', ''], ['Set up agent hosts? [y/N]', ''],
   ]);
   assert.equal(first.code, 0, first.output);
   assert.deepEqual(stepLines(first.output), [
     ['project', 'ok'], ['claude-code', 'ok'], ['codex', 'done'], ['opencode', 'skip'],
     ['claude-code login', 'done'], ['codex login', 'ok'], ['accounts', 'skip'],
-    ['favourite', 'done'], ['trust', 'done'], ['hub', 'done'], ['remote telegram', 'skip'], ['remote discord', 'skip'], ['speech', 'ok'], ['agent hosts', 'skip'], ['aide', 'done'],
+    ['favourite', 'done'], ['trust', 'done'], ['hub', 'done'], ['sign-in mode', 'skip'], ['remote telegram', 'skip'], ['remote discord', 'skip'], ['speech', 'ok'], ['agent hosts', 'skip'], ['aide', 'done'],
   ]);
   await assert.rejects(readFile(join(machine.env.XDG_CONFIG_HOME!, 'cland/accounts.toml')), { code: 'ENOENT' });
   const roles = parse(await readFile(join(machine.project, '.cland/roles.toml'), 'utf8')) as { aide: { launch: { harness: string } } };
@@ -170,7 +170,7 @@ test('setup provisions a scratch machine, reuses its hub and Aide, and remembers
   }, 10_000);
   assert.deepEqual(JSON.parse((await readFile(launchLog, 'utf8')).trim()), { session: 'aide-1', root: machine.project });
 
-  const second = await terminalSetup(t, machine, [['Set up Telegram remote now? [y/N]', ''], ['Set up Discord remote now? [y/N]', ''], ['Set up agent hosts? [y/N]', '']]);
+  const second = await terminalSetup(t, machine, [['Let several people sign in to the web (users mode)? [y/N]', ''],['Set up Telegram remote now? [y/N]', ''], ['Set up Discord remote now? [y/N]', ''], ['Set up agent hosts? [y/N]', '']]);
   assert.equal(second.code, 0, second.output);
   assert.deepEqual(stepLines(second.output), allOk);
   const third = await ok(machine, 'setup'); // Pipes, no answers and no --no-aide escape hatch.

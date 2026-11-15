@@ -96,7 +96,7 @@ test('a terminal Telegram offer stores a hidden token and enables it without sta
     },
   } });
   const lines = result.report.steps;
-  assert.deepEqual(lines.slice(-6).map(row => row.name), ['hub', 'remote telegram', 'remote discord', 'speech', 'agent hosts', 'aide']);
+  assert.deepEqual(lines.slice(-7).map(row => row.name), ['hub', 'sign-in mode', 'remote telegram', 'remote discord', 'speech', 'agent hosts', 'aide']);
   const line = lines.find(row => row.name === 'remote telegram')!;
   assert.equal(line.verdict, 'open');
   assert.match(line.fix!, /cland hub reload/);

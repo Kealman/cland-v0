@@ -966,7 +966,7 @@ export type ClientRequest =
   | { type: 'resume'; id: string; epoch: string; seq: number }
   | { type: 'auth.mode'; id: string; mode: 'users' }
   | { type: 'auth.reset'; id: string }
-  | { type: 'user.list'; id: string }
+  | { type: 'user.list'; id: string; setup?: boolean }
   | { type: 'user.add'; id: string; name: string; displayName?: string }
   | { type: 'user.invite'; id: string; name: string }
   | ArtifactUrl | WebLink | WebSessions | WebRevoke | SessionHistory | WebSessionRequest

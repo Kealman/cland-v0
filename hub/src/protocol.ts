@@ -721,7 +721,7 @@ export type ClientRequest =
   | { type: 'resume'; id: string; epoch: string; seq: number }
   | { type: 'auth.mode'; id: string; mode: 'users' }
   | { type: 'auth.reset'; id: string }
-  | { type: 'user.list'; id: string }
+  | { type: 'user.list'; id: string; setup?: boolean }
   | { type: 'user.add'; id: string; name: string; displayName?: string }
   | { type: 'user.invite'; id: string; name: string }
   | ArtifactUrl | WebLink | WebSessions | WebRevoke | SessionHistory | WebSessionRequest
@@ -1120,8 +1120,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'auth.mode':
       return f.mode === 'users';
     case 'auth.reset':
-    case 'user.list':
       return true;
+    case 'user.list':
+      return f.setup === undefined || typeof f.setup === 'boolean';
     case 'web.revoke':
       return typeof f.session === 'string' && f.session.length > 0;
     case 'task.migrate':

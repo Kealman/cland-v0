@@ -60,7 +60,7 @@ test('terminal setup stores a hidden Telegram token, reloads through frames and 
   assert.equal(code, 1, 'unpaired setup stays open');
   assert.ok(/@BotFather/.test(output), 'BotFather guidance is printed');
   assert.ok(/\/newbot/.test(output), 'bot creation command is printed');
-  assert.ok(/ok +hub .*\nopen +remote telegram .*https:\/\/t.me\/setup_fixture_bot.*cland remote approve telegram <code>\nskip +remote discord .*\nok +speech .*\nskip +agent hosts .*\ndone +aide /.test(output), 'the remote row names link/approval and sits between hub and Aide');
+  assert.ok(/ok +hub .*\nskip +sign-in mode .*\nopen +remote telegram .*https:\/\/t.me\/setup_fixture_bot.*cland remote approve telegram <code>\nskip +remote discord .*\nok +speech .*\nskip +agent hosts .*\ndone +aide /.test(output), 'the remote row names link/approval and sits between hub and Aide');
   assert.ok(readSecretsFile(f.root)['telegram.token'] === token, 'the hidden value is stored');
   assert.equal(parseConfig(await readFile(join(f.root, '.cland/config.toml'), 'utf8'), 'Setup remote', {}).remote.telegram.enabled, true);
   assert.equal(f.remotes.length, 1);
@@ -166,7 +166,7 @@ for (const repair of [false, true, 'decline'] as const) test(`Discord setup chec
   } };
   const result = await native.run(() => setupOwner.observe(signal => setup({ ...options, signal })));
   assert.equal(script.left().length, 0, JSON.stringify(result.report.steps));
-  assert.deepEqual(result.report.steps.slice(-6).map(row => row.name), ['hub', 'remote telegram', 'remote discord', 'speech', 'agent hosts', 'aide']);
+  assert.deepEqual(result.report.steps.slice(-7).map(row => row.name), ['hub', 'sign-in mode', 'remote telegram', 'remote discord', 'speech', 'agent hosts', 'aide']);
   if (repair === 'decline') {
     assert.equal(result.report.steps.find(row => row.name === 'remote discord')?.verdict, 'open');
     assert.equal(parseConfig(await readFile(join(root, '.cland/config.toml'), 'utf8'), 'Discord setup', {}).remote.discord.enabled, false);

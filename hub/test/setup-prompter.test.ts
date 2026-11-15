@@ -32,6 +32,17 @@ test('confirm accepts yes or no, defaults on Enter and repeats invalid answers',
   }
 });
 
+test('aborting a setup wait releases its reader before the next question', async () => {
+  const r = rig([]);
+  const stop = new AbortController();
+  const pause = r.prompter.pause('Register a passkey; Enter skips.', stop.signal);
+  stop.abort();
+  await pause;
+  r.output.on('data', () => r.input.write('yes\n'));
+  assert.equal(await r.prompter.confirm('Next?', false), true);
+  r.input.end(); r.output.end();
+});
+
 const choices = [
   { value: 'claude-code', label: 'Claude Code' },
   { value: 'codex', label: 'Codex' },

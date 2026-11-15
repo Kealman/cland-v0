@@ -8,6 +8,8 @@ import type { ListedLogin } from '../cli/login.ts';
 import type { LoginMetadataRow } from '../protocol.ts';
 
 export type SetupHub = {
+  signinStatus?(): Promise<{ mode?: 'single' | 'users'; users: Array<{ id: string; name: string; state: string; passkeyRegistered?: boolean }> }>;
+  signinUsers?(): Promise<{ user: { id: string; name: string }; url?: string }>;
   preparePool?(pool: string): Promise<{ pool: string; state: string }[]>;
   login?(name: string): Promise<LoginMetadataRow | ListedLogin | undefined>;
   providers?(provider: 'digitalocean'): Promise<{ providers: { provider: string; present: boolean; fingerprint: string | null }[] }>;
@@ -41,6 +43,8 @@ export function setupHub(root: string, env: NodeJS.ProcessEnv): SetupHub {
     catch { return null; }
   };
   return {
+    signinStatus: async () => await request({ type: 'user.list', setup: true }) as Awaited<ReturnType<NonNullable<SetupHub['signinStatus']>>>,
+    signinUsers: async () => await request({ type: 'auth.mode', mode: 'users' }, 60_000) as Awaited<ReturnType<NonNullable<SetupHub['signinUsers']>>>,
     running,
     preparePool: async pool => await request({ type: 'host.prepare', pool }, 1_200_000) as { pool: string; state: string }[],
     // Older hubs ignore the additive filter and return the previous full array.

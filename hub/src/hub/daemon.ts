@@ -422,7 +422,8 @@ export async function serveProject(root: string, options: { createHostRegistry?:
           if (!user) throw new Error('unknown user');
           return { user, ...web.invite(user.id) };
         },
-        userList: () => {
+        userList: setup => {
+          if (setup === true) return { mode: store.users.mode(), users: store.users.list().map(user => ({ ...user, passkeyRegistered: store.users.passkeys(user.id).length > 0 })) };
           if (roles.config().auth.mode !== 'users') throw new Error('use cland auth mode users before cland user commands');
           return { users: store.users.list() };
         },

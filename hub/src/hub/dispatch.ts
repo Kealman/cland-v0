@@ -150,7 +150,7 @@ export type Control = {
   authMode?: (mode: 'users' | 'single', resumed: import('./budget.ts').Resumed) => Promise<unknown>;
   userAdd?: (name: string, displayName?: string) => unknown;
   userInvite?: (name: string) => unknown;
-  userList?: () => unknown;
+  userList?: (setup?: boolean) => unknown;
   webLink?: (qr?: boolean, userId?: string) => import('../protocol.ts').WebLinkResult;
   webSessions?: () => import('../protocol.ts').WebSessionsResult;
   webRevoke?: (id: string) => Promise<import('../protocol.ts').WebRevokeResult>;
@@ -2518,7 +2518,7 @@ export class Dispatcher {
           case 'user.list':
             requireUserManagement();
             if (!control.userList) throw new Error('cland user requires the local Unix socket');
-            return answer(control.userList());
+            return answer(control.userList(frame.setup));
           case 'web.link':
             if (transport.edge !== 'socket') throw new Error('web.link requires the local Unix socket');
             if (!control.webLink) throw new Error('the web edge is unavailable');
