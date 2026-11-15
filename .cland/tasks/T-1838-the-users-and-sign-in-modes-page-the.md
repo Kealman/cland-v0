@@ -3,7 +3,7 @@ id: T-1838
 kind: task
 title: The users and sign-in modes page, the multi-user section and the CLI reference for `cland user` and `cland auth`
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1518
 branch: t/T-1838-the-users-and-sign-in-modes-page-the
 created: 2026-11-12T10:07:23.227Z
-updated: 2026-11-15T06:55:31.900Z
+updated: 2026-11-15T07:24:08.213Z
 ---
 
 ## Summary
@@ -39,14 +39,19 @@ The multi-user section of web-and-phone covers signing in with a passkey or a pa
 
 - [x] C1. The page is in the docs sidebar under Features, is linked from the features overview, and has sections on the two modes, switching and reset, users and invites, passkeys and passwords, `--as`, remotes in users mode, setup's sign-in step and doctor's mode line (test).
   - done: impl-1838 · 2026-11-15T06:43:39.302Z
+  - verified: rev-36 [reviewer] · run rev-36-1838-final-1 · 2026-11-15T07:24:07.960Z · commit a15551d77475e7332f28e2edc57a92e9c76b1dff
 - [x] C2. Every `cland` command and config key on the page and in web-and-phone's multi-user section exists in the CLI help and the config keys (test).
   - done: impl-1838 · 2026-11-15T06:43:39.494Z
+  - verified: rev-36 [reviewer] · run rev-36-1838-final-1 · 2026-11-15T07:24:07.960Z · commit a15551d77475e7332f28e2edc57a92e9c76b1dff
 - [x] C3. The page's marked command blocks, run in order in a scratch single-mode project, switch it to users mode and print a one-time invite for a second user (test).
   - done: impl-1838 · 2026-11-15T06:55:31.900Z
+  - verified: rev-36 [reviewer] · run rev-36-1838-final-1 · 2026-11-15T07:24:07.960Z · commit a15551d77475e7332f28e2edc57a92e9c76b1dff
 - [x] C4. web-and-phone has a multi-user section on passkey and password sign-in, the users list and invites in the web, author names and the one inbox, linked from the users page (test).
   - done: impl-1838 · 2026-11-15T06:43:40.010Z
+  - verified: rev-36 [reviewer] · run rev-36-1838-final-1 · 2026-11-15T07:24:07.960Z · commit a15551d77475e7332f28e2edc57a92e9c76b1dff
 - [x] C5. The CLI reference lists each `cland user` and `cland auth` subcommand that their usage text names, and no other, and the closed-item wording lint passes on the changed pages (test).
   - done: impl-1838 · 2026-11-15T06:43:40.333Z
+  - verified: rev-36 [reviewer] · run rev-36-1838-final-1 · 2026-11-15T07:24:07.961Z · commit a15551d77475e7332f28e2edc57a92e9c76b1dff
 
 ## Blocked by
 
@@ -93,3 +98,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear, Standards and Spec: no findings. A-19561 records the exact two-file clock/guide repair and carries forward the complete A-19559 source audit. Public assertions unchanged; clean task tree and requested HEAD confirmed. No runtime criteria verified and no tests/validators run by Reviewer. Corrected T2 execution, attributable inventory recheck and exact-head configured named receipts remain pending. Task view still shows failed C3; restore implementation-done after necessary repair validation before final evidence settlement. Historical transcript/candidate and inventory limitations remain explicit; after-stage QA separate.
+
+### rev-36 · 2026-11-15T07:24:07.961Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1838-final-1
+commit: a15551d77475e7332f28e2edc57a92e9c76b1dff
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear: A-19576, exact receipt/consumer ledger A-19575, original configured A-19574/run059150dd. Independently reconciled 6345 passing base tests/700 base files and separate 190 passing load tests/files; five users source guards and corrected invite walkthrough each base+5 pass. C1-C5 verified. Wording lint 774 documents/1863 items/0 findings. All 982 manifest paths accounted for: 700 positive T1/T2/Web files, 265 T3 merge-batch and 17 T4 stage/epic deferrals, no missing lower/Web. Source clear A-19561 remains unchanged/clean. Linux/browser/head/tree provenance recorded; budgets/lint report-only. Corrected local T2 raw pass and identical 12955-name saved inventory pair close its interval; earlier transcript/overlap limitations retained. No Reviewer execution, no full-T3/T4 or after-stage QA claim.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

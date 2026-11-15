@@ -2,8 +2,8 @@
 id: T-1860
 kind: task
 title: "Setup and doctor: a role placed on a missing pool reads skip"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1519
 branch: t/T-1860-setup-and-doctor-a-role-placed-on-a
 created: 2026-11-14T20:16:16.052Z
-updated: 2026-11-15T06:50:46.040Z
+updated: 2026-11-15T07:52:17.086Z
+closed: 2026-11-15T07:52:17.086Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ When at least one role is placed on a pool that does not exist, setup's agent-ho
 
 - [x] C1. Without a terminal and with a role placed on a missing `agents` pool, setup's agent-hosts step prints `open`, naming the role, with the exact fix commands and no writes. With no such role, the output is unchanged (test).
   - done: impl-1860 · 2026-11-15T06:42:25.279Z
+  - verified: rev-35 [reviewer] · run rev-35-1860-final-1 · 2026-11-15T07:13:37.660Z · commit 2eb80d321bbccd21d1ef6f09aa4a87afe658e454
 - [x] C2. Doctor's hosts block warns for a role on a missing pool and gives the same fix. It makes no provider call (test).
   - done: impl-1860 · 2026-11-15T06:42:25.437Z
+  - verified: rev-35 [reviewer] · run rev-35-1860-final-1 · 2026-11-15T07:13:37.660Z · commit 2eb80d321bbccd21d1ef6f09aa4a87afe658e454
 
 ## Comments
 
@@ -64,3 +67,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at clean2eb80d321bbccd21d1ef6f09aa4a87afe658e454/treefe20ca877056925882339d6a480f49b5402d1f10. A-19560 records Standards0/Spec0remaining: all A-19558 findings resolved across four docs/skill paths; no runtime/test bytes changed. Corrected page/source needles match once each, old doctor and skill conditions qualified, historical receipts separated. Coordinator88b806a1 explicitly dispositions unrelated signin-order mismatch as closed-stage881114bfd history;128/129 is not QA green. C1/C2 await positive same-head configured receipts; normal mode-free verify may proceed. Candidate/raw-stream/inventory/scan limits retained; no Reviewer runtime/provenance rerun. Per-item QA none; broaderT3/T4/parentstage occasions separate.
+
+### rev-35 · 2026-11-15T07:13:37.660Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1860-final-1
+commit: 2eb80d321bbccd21d1ef6f09aa4a87afe658e454
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; C1/C2 verified. A-19570 independently streams A-19569/c82eff73 at clean2eb80d321/tree42c92407: doctor14788 and setup25277 ordinary passes plus5 load test/file pairs each; no missing target pairs. Default decline/yes controls25411/25416 positive; doctor/setup files14867/25477 pass, help compatibility/full-help/public-doc/setup-flow consumers positive.6341ordinary tests/699files+170separate load tests/files, zero negatives;220T1+424T2+55Web accounted, no missing. Provenance36032 Linux droplet Node24.21/nvim.12.5 actual HeadlessShell1248/CfT156.0.8078.4 no cache/skips,1110s/$0.0771. Source findings resolved; report-only notices/candidate limits and Coordinator historical closed-QA disposition retained;265T3/17T4 separate occasions. No Reviewer runtime/provenance rerun.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-15T07:52:17.086Z
+
+Merged 72f26bc5c7418ab933650f2c401e0ce32d0e7147 onto dev.

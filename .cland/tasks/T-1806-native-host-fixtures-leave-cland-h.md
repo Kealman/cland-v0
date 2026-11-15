@@ -3,7 +3,7 @@ id: T-1806
 kind: task
 title: Native host fixtures leave cland-h-* socket directories in /tmp, and /tmp holds about 90 historical native-fixture roots
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1520
 branch: t/T-1806-native-host-fixtures-leave-cland-h
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-15T07:01:10.528Z
+updated: 2026-11-15T07:44:55.566Z
 ---
 
 ## Summary
@@ -31,7 +31,7 @@ A run of `hub/test/host-create-ready.test.ts` (12/12 pass, macOS, 2026-11-10 18:
 - [x] C1. Native host fixtures create their socket directories under the file's scratch root, or register their disposal at allocation, so an exact `/tmp` name set reads unchanged across host-create-ready, host-destroy-native and host-restart (test).
   - done: impl-1806 · 2026-11-15T06:57:10.115Z
 - [x] C3. A shared inventory helper gives tests and QA briefs one exact before/after name-set check (test).
-  - done: impl-1806 · 2026-11-15T06:57:10.307Z
+  - done: impl-1806 · 2026-11-15T07:12:07.674Z
 
 ## Comments
 
@@ -78,3 +78,56 @@ Implementation and macOS evidence: A-19565 at /Users/evgeniyivanov/Projects/clan
 ### coord · 2026-11-15T07:01:10.528Z
 
 Coordinator decision, 2026-11-15 07:01Z: C2 (the one-off historical cleanup) is split out to T-1865 in C-216. Source review at 29fe07ba8 found the cleanup's eligibility rests on negative evidence: worker-only owner receipts and an argv/cwd/lsof census can't prove idle descendants of an inherited home are gone. Getting that safe is separate from the leak fix and doesn't block the v0.4 release run. T-1806 keeps C1 (no new residue, proven by exact name sets across the native host files) and C3 (the shared inventory helper). The cleanup script either leaves this diff or stays clearly unrun and undocumented as usable. Nothing in /private/tmp gets deleted under T-1806.
+
+### impl-1806 · 2026-11-15T07:02:50.051Z
+
+Scope corrected by Coordinator decision 73ecf6ff: C2 moved to T-1865. Removed cleanup CLI/script, deletion controls, maintenance guide and worker-only owner receipt from T-1806. Historical unsafe dry-run A-19565 and Reviewer questions f367ffbd/2340603a remain topic history only, never deletion authority. C3 now takes unrestricted names by default for every root; prefix filtering is explicit and labelled. A-19565 system-temp evidence is prefix-only and does not establish unrestricted /tmp preservation; its user/suite TMPDIR evidence is unrestricted. No /private/tmp operations or native reruns after the decision. New head will receive a fresh source review before hub-managed verification.
+
+### rev-35 · 2026-11-15T07:07:49.767Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1806-source-1
+commit: e9f1b2ba4be2b3a546946604dedf4fdb147f69e5
+scope: delta
+findings: [{"severity":"medium","text":"T2 regression requires exact equality of global system/user temp names while other T2 files run concurrently, with no exclusive observation owner. Scope the component inventory to an owned parent and retain explicit escaped-storage/alias-disposal assertions; use global preservation only in an authorized isolated slot.","file":"hub/test/host-records.test.ts","line":26}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Completed replacement review not clear, A-19567: one medium test-ownership finding confirmed by lead. Coordinator73ecf6ff C2 removal is reflected in tracker/source; all historical deletion code/test/guide/owner receipt removed, safety finding remains A-19566 for T-1865. Routing/nested disposal source otherwise reviewed; full-name default correct, original system snapshots prefix-only. C1 unverified pending authorized clear-head unrestricted preservation; C3 test correction then fresh source review required. Consumer/provenance supplement remains in preparation, no graph-to-execution upgrades. Hold released; no Reviewer runtime/cleanup/census/provenance run.
+
+Criteria: C3 failed (The component exact-name regression observes unowned global namespaces under ordinary parallel T2 execution.).
+
+### impl-1806 · 2026-11-15T07:12:07.766Z
+
+Replacement 6c6506a38661be0ab72c8c3bafd7b59537fcbc69 fixes A-19567: component inventory is over an owned parent, actual socket storage must resolve under child root, exact captured alias must be absent after disposal. No global equality in parallel T2. Supplement A-19568 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19568-t-1806-pinned-consumer-inventory-and-original-evidence-provenance preserves all 135 A-19551 paths, conservative 1,523 consumers with tiers/dispositions/hashes, original execution provenance and explicit scan/retention limits. Its working-tree source hashes match this replacement commit's corrected files; base e9f1b2ba4 is recorded. This source pass ran no local native/census/provenance tests. Coordinator 8bfacbfe authorizes full-name read-only C1 native preservation at a clear head before verify; historical/retained leftovers stay untouched.
+
+### rev-35 · 2026-11-15T07:15:54.796Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1806-source-2
+commit: 6c6506a38661be0ab72c8c3bafd7b59537fcbc69
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at clean6c6506a38661be0ab72c8c3bafd7b59537fcbc69/tree1d1c2fff1398646b8e0fb3bc1cba852fd660c882. A-19571: A-19567 resolved by owned-parent inventory, actual socket realpath containment and exact alias-disappearance assertions; no global T2 observer. C1 routing/disposal unchanged; unsafe C2 scope remains removed/T-1865. A-19568 audit retains135originalpaths/all1523rows, pinned tiers/manifest and current source hashes match, actual/planned/deferred/unknown separated. C1/C3 unverified pending Coordinator8bfacbfe clear-head full-name seven-file native slot, then same-head mode-free verify; contamination attributed/no old-prefix upgrade/no leftover cleanup. No Reviewer runtime/census/provenance run. RemainingT3/T4/parentstage separate, QA none per item.
+
+### impl-1806 · 2026-11-15T07:22:20.280Z
+
+Same reviewed head 6c6506a38661be0ab72c8c3bafd7b59537fcbc69 native C1 evidence complete under Coordinator 8bfacbfe: A-19573 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19573-t-1806-full-name-native-preservation-at-reviewed-6c6506a38, exact retained launcher A-19572. All seven files 52/52, zero failure/cancel/skip/todo. Full unfiltered system /private/tmp, per-user TMPDIR and suite root name sets unchanged around every file and overall; no contaminated interval. Head/source hashes retained, case lines/counts/native completions independently checked; narrow scan positive control and zero matches. Suite root retained; no historical/development-leftover cleanup. This is local macOS arm64 Node24.21.0 targeted native coverage, not full suite/Linux. Now submitting mode-free exact-head verification; remaining unchanged T3/T4/Web and batch coverage remain separate.
+
+### rev-35 · 2026-11-15T07:44:55.566Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1806-evidence-1
+commit: 6c6506a38661be0ab72c8c3bafd7b59537fcbc69
+scope: evidence
+findings: [{"severity":"medium","text":"Shared tempProject now creates .fixture-sockets, but exact-content consumers artifact-lifecycle:240, artifacts:338 and config-set:418 retain empty/old baseline expectations. All three fail in A-19577; capture complete pre-operation names and assert complete after equality, retaining unexpected-write detection.","file":"hub/test/harness.ts","line":367}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-19578 completes the failed-evidence pass. A-19577 is red with three direct fixture-baseline consumer failures, independently confirmed and accepted by lead; no timing/shared-defect waiver or unchanged retry. Ordinary finishes 5605 pass/3 fail across 597 pass/3 fail files; separate load180test/175file positives. T0/T1 pass, T2 fails, Web unexecuted/browser null. Native A-19572/A-19573 separately audited: exact source/launcher hashes, 52/52 across seven files, full sorted unique system/user/suite name arrays equal per file and overall, child status0/signalnull. Positive C1/C3 support retained without final verification marks while compatibility gate fails. C2 stays T-1865; old unsafe/prefix-only evidence not upgraded. Preserve red run and publication/capture/report-mode/T3/T4 boundaries. Hold released for corrected source and fresh review; Reviewer ran no runtime/census/cleanup/provenance experiment.
