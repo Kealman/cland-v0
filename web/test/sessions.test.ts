@@ -2,13 +2,36 @@
 import test from 'node:test';
 import { caseDeadlines } from '../../hub/test/case-deadlines.ts';
 import assert from 'node:assert/strict';
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { HarnessProcessView } from '../../shared/wire/index.ts';
 import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { resizePage, pageUntil, webFixture } from './harness.ts';
 import { sessionHostFixture } from './session-host-fixture.ts';
+import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
+import { defaultConfig, renderConfig } from '../../hub/src/init/config.ts';
+
+test('Sessions row names its launching user only in users mode', async t => {
+  const fixture = await webFixture(t, { prepare: async root => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    const config = defaultConfig('Launch users');
+    config.verification.lockPath = join(root, 'suite.lock');
+    await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
+  } });
+  const request = (frame: Parameters<typeof askHubFrame>[1]) => askHubFrame(fixture.hub.discovery, frame, 3000, {});
+  await request({ type: 'session.launch', name: 'single-worker', harness: 'codex' });
+  await request({ type: 'auth.mode', mode: 'users' });
+  const { users } = await request({ type: 'user.list' }) as { users: Array<{ displayName: string }> };
+  await request({ type: 'session.launch', name: 'user-worker', harness: 'codex' });
+  await fixture.pageCase(t, async page => {
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    const row = page.locator('[data-object-id="user-worker"]');
+    await row.getByText(`by ${users[0]!.displayName}`, { exact: true }).waitFor();
+    assert.equal(await row.getByText(`by ${users[0]!.displayName}`, { exact: true }).textContent(), `by ${users[0]!.displayName}`);
+    assert.equal(await page.locator('[data-object-id="single-worker"] [data-launch-user]').count(), 0);
+  });
+});
 
 test('Sessions remote host fact names its host with a tooltip on ground and selection', async t => {
   const fixture = await sessionHostFixture(t);

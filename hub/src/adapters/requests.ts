@@ -78,13 +78,14 @@ export type BridgePeer = { send: (frame: HubFrame) => void; isOpen: () => boolea
 
 /** Answer one session request; the result frame comes when the work is done (a launch waits for the harness). */
 /** `resumed` times the synchronous lifecycle work after adapter or Git awaits: the hub's guard. */
-export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees, resumed?: Resumed, authorize?: () => void, actor = 'human', retainedAuthorize?: () => void, waitingActor: import('./waiting-launches.ts').WaitingActor = null, inferredRole?: string | null): Promise<HubFrame> {
+export async function answerSession(sessions: Sessions | undefined, frame: SessionRequest, peer: BridgePeer, worktrees?: TaskWorktrees, resumed?: Resumed, authorize?: () => void, actor = 'human', retainedAuthorize?: () => void, waitingActor: import('./waiting-launches.ts').WaitingActor = null, inferredRole?: string | null, userId?: string): Promise<HubFrame> {
   const ok = (value: unknown): HubFrame => ({ type: 'result', id: frame.id, ok: true, value });
   if (!sessions) return { type: 'result', id: frame.id, ok: false, error: 'this hub launches no sessions (it serves no project)' };
   try {
     switch (frame.type) {
       case 'session.launch': {
         const request = {
+          ...(userId ? { userId } : {}),
           name: frame.name,
           ...(frame.host !== undefined ? { host: frame.host } : {}),
           ...(frame.account !== undefined ? { account: frame.account } : {}),

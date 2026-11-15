@@ -171,6 +171,8 @@ function M.sessions(include_archived)
       model = p.model,
       account = p.account,
       host = p.host,
+      userId = p.userId,
+      userDisplayName = p.userDisplayName,
       cwd = p.cwd,
       state = live and (p.state or 'unknown') or 'unknown',
       stateReason = live and p.stateReason or nil,

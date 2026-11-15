@@ -66,3 +66,10 @@ The setup Store is allocated by `withFixtureStore`: its owner is registered
 immediately, joins configuration/secret seeding on rejection or cleanup, and
 closes idempotently after setup settles. Pure `fixture-store.test.ts` controls
 hold both successful and rejected setup producers and observe close afterward.
+
+The three admitted-relaunch cases now use fixture users mode. The running case
+requires the original launching user's id on the destination process row, view
+and emitted `session-launched` entry, plus the display name `Alex Smith`. The
+existing injected post-publication observer failure remains: the entry assertion
+is at the journal producer callback, not proof of disk append under that fault.
+The source/destination native and lease assertions remain unchanged.

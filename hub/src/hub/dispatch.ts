@@ -1721,6 +1721,7 @@ export class Dispatcher {
         retainedAuthorize,
         original ? { name: original.name, sessionId: original.sessionId } : null,
         inferred ? inferredRole : undefined,
+        original ? undefined : humanUser(frame)?.id,
       ).then((result) => {
         if (peer.isOpen()) peer.send(result);
         else settle(result);

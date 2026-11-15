@@ -12,6 +12,23 @@ const startSessions: typeof startShell = (t, edit, env, initialSnapshots) => sta
   edit?.(s);
 }, env, initialSnapshots);
 const account = (name: string, harness: string, windows: unknown[] = [], at: string | null = '2026-10-19T12:00:00Z') => ({ name, harness, windows, at, source: at ? { kind: 'poll' } : null, path: null, variable: harness === 'codex' ? 'CODEX_HOME' : 'CLAUDE_CONFIG_DIR' });
+test('selected session metadata names the launching user and accepts legacy rows', { skip }, async t => {
+  const c = await startSessions(t, s => { s.processes = [{ ...proc('user-worker', 'implementer', 'idle', 'a-long-local-model-name'), account: 'a-long-local-account-name', userId: 'alex-id', userDisplayName: 'Alex Smith' }]; });
+  const panelText = (screen: string) => screen.split('\n').map(line => line.slice(line.lastIndexOf('│') + 1)).join('').replaceAll(/[\s|]/g, '');
+  for (const width of [34, 50, 80]) {
+    await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.right); vim.api.nvim_win_set_width(0,...); require('cland.state').S.ui.sessions_sel='user-worker'; require('cland.state').changed()", width);
+    const shown = await c.waitScreen(s => panelText(s).includes('byAlexSmith'), 'complete launching user in selected local metadata');
+    assert.ok(panelText(shown).includes('byAlexSmith'));
+    const meta = await c.lua<string>("local p=require('cland.panels');local b=p.bufs.sessions;local out={};for r,line in ipairs(vim.api.nvim_buf_get_lines(b,0,-1,false)) do local row=p.rows[b][r] or {};if row.session=='user-worker' and row.detail then out[#out+1]=line end end;return table.concat(out,' ')");
+    assert.ok(meta.replaceAll(/\s/g, '').includes('byAlexSmith'));
+    assert.equal(await c.lua<boolean>("local p=require('cland.panels'); for _,line in ipairs(vim.api.nvim_buf_get_lines(p.bufs.sessions,0,-1,false)) do if vim.api.nvim_strwidth(line)>vim.api.nvim_win_get_width(require('cland.layout').win.right) then return false end end; return true"), true);
+  }
+  const legacy = proc('user-worker', 'implementer', 'idle');
+  await c.control({ set: { processes: [legacy] }, emit: { type: 'session.process', process: legacy } });
+  await c.lua("require('cland.state').changed()");
+  await c.waitScreen(s => s.includes('user-worker') && !s.includes('by Alex Smith'), 'legacy metadata rendered');
+  assert.doesNotMatch((await c.screen()).join('\n'), /by Alex Smith/);
+});
 const setNow = (c: Client, seconds: number) => c.lua(`local time=os.time; os.time=function(date) if date then return time(date) end return ${seconds} end; require('cland.state').changed()`);
 test('recorded session rows show verifier holds and retain claims after release', { skip }, async t => {
   const processes = [proc('rev', 'reviewer', 'idle'), proc('qa-one', 'qa', 'idle')].map(p => ({ ...p, holds: [] as Array<{ item: string; role: string }> }));

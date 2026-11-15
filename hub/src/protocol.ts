@@ -992,6 +992,8 @@ export type SessionRow = Omit<Partial<HarnessProcessView>, 'harness' | 'status' 
 
 /** A row of the hub's process table as clients see it. */
 export type HarnessProcessView = {
+  userId?: string;
+  userDisplayName?: string;
   host?: string;
   login?: string | null;
   account?: string | null;

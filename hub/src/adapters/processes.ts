@@ -114,6 +114,7 @@ export type PendingStop = {
 };
 
 const toProcess = (r: Row): HarnessProcess => ({
+  ...(r.user_id ? { userId: String(r.user_id) } : {}),
   name: r.name as string,
   host: (r.host as string | null) ?? 'local',
   harness: r.harness as string,
@@ -180,6 +181,7 @@ export class ProcessTable {
     if (!columns.has('cleanup_held_at')) this.#db.exec('alter table harness_processes add column cleanup_held_at text');
     // Older rows carry no usage: absent stays null, never zero.
     if (!columns.has('usage')) this.#db.exec('alter table harness_processes add column usage text');
+    if (!columns.has('user_id')) this.#db.exec('alter table harness_processes add column user_id text');
   }
 
   /** Every committed row change, including renames: the sessions layer publishes its public view. */
@@ -234,6 +236,7 @@ export class ProcessTable {
            pid_started = excluded.pid_started, pid_identity = excluded.pid_identity, item = excluded.item, brief = excluded.brief, effort = excluded.effort, stopped_at = excluded.stopped_at, archived_at = excluded.archived_at, archived_by = excluded.archived_by, cleanup_item = excluded.cleanup_item, cleanup_held_at = excluded.cleanup_held_at, account = excluded.account, account_env = excluded.account_env, usage = excluded.usage, login = excluded.login`,
       )
       .run(p.host ?? 'local', p.name, p.harness, p.role, p.model, p.cwd, p.pid, p.harnessId, p.sessionId, p.harnessSessionId, p.startedAt, p.status, p.pidStarted ?? null, p.pidIdentity ?? null, p.item ?? null, p.launchBrief ?? null, p.effort ?? null, p.stoppedAt ?? null, p.archivedAt ?? null, p.archivedBy ?? null, p.cleanupItem ?? null, p.cleanupHeldAt ?? null, p.account ?? null, p.accountEnv ? JSON.stringify(p.accountEnv) : null, p.usage ? JSON.stringify(p.usage) : null, p.login ?? null);
+    this.#db.prepare('update harness_processes set user_id=? where name=?').run(p.userId ?? null, p.name);
     if (relaunch) {
       const stored = this.#db.prepare('select value from meta where key=?').get(relaunch.intentKey);
       const intent = stored?.value ? JSON.parse(String(stored.value)) as HostRelaunchIntent : null;

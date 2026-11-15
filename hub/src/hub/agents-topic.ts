@@ -72,7 +72,7 @@ export function lifecycleNotice(entry: LogEntry, label: (name: string) => string
       return session ? { kind: 'session-waiting', text: `${label(session)}: ${entry.end ? `wait ended (${String(entry.end)})` : String(entry.reason)}`, detail: { session, pool: entry.pool, reason: entry.reason, since: entry.since, ...(entry.end ? { end: entry.end } : {}) } } : null;
     case 'session-launched':
       // the role it was launched for: its spoke has not said hello yet
-      return session ? { kind: 'session-start', text: `${str(entry.role) ? withRole(session, entry.role as string) : label(session)} started (${str(entry.harness) ?? 'harness'}${str(entry.model) ? `, ${String(entry.model)}` : ''})`, detail: { session, harness: entry.harness ?? null } } : null;
+      return session ? { kind: 'session-start', text: `${str(entry.role) ? withRole(session, entry.role as string) : label(session)} started (${str(entry.harness) ?? 'harness'}${str(entry.model) ? `, ${String(entry.model)}` : ''})${str(entry.userDisplayName) ? ` by ${String(entry.userDisplayName)}` : ''}`, detail: { session, harness: entry.harness ?? null, ...(str(entry.userId) ? { userId: entry.userId } : {}) } } : null;
     case 'session-reused':
       return session ? { kind: 'session-start', text: `${label(session)} reused from the idle pool for ${String(entry.item)}`, detail: { session, item: entry.item, reused: true } } : null;
     case 'session-resumed':

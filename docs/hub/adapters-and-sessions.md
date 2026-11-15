@@ -1,5 +1,13 @@
 ## Adapters and sessions
 
+In users mode a human session launch records the authenticated user's optional
+`userId` on the process row and `session-launched` journal entry. Process views
+and session rows add `userDisplayName`; the Agents start line adds `by <display name>`.
+Web launches use the authenticated user and local CLI launches use the first
+user. Agent launches and pre-attribution rows have no launching user. The id
+survives hub restart; single mode omits attribution from projections and new
+launches. Older clients may omit both optional fields.
+
 An adapter launches one kind of harness, tells the hub what each session is doing, and hands it messages (spec 4.3). Claude Code, OpenCode and Codex have one.
 
 A turn that fails is reported separately from the session's idle state. OpenCode's `session.execution.failed`, Codex's `turn/completed` with an error (or failed status), and Claude Code's `StopFailure` make a journalled `turn-failed` notice in Agents and a record in the events view: `<name> [Role]: its turn failed: <first line of the error>`. Sessions whose hub messages fed the turn (including steers) receive a hub note too; human messages are covered by Agents and the events view. The harness stays running. Failures the adapter misses while its event stream is disconnected cannot be reported. OpenCode drops uncertain sender attribution on stream loss and tracks new deliveries after reconnect. Codex associates only accepted admissions, including ones acknowledged after completion. Claude Code uses the hooks' `prompt_id` to reconcile a failure that arrives before its start hook, keeping at most 64 recent prompt records; missing or evicted identities still produce the public notice, without guessing a sender.

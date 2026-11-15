@@ -67,6 +67,7 @@ const waitingPool = Symbol('waiting pool');
 class WaitingPoolRemoved extends Error {}
 const waitingReason = (cause: PoolCapacityUnavailable | HostMemoryFloorRefusal) => cause instanceof HostMemoryFloorRefusal ? `waiting for a host: host ${cause.host}, available memory ${cause.availableBytes} bytes` : cause.reason;
 export type LaunchRequest = {
+  userId?: string;
   [waitingPublication]?: WaitingPublication; [waitingPool]?: string; [waitingRetry]?: boolean; [placedLaunch]?: { active: boolean; validate?: () => void; reuse?: string }; name: string; host?: string; role?: string | null; model?: string | null; harness?: string; account?: string | null; cwd?: string; effort?: string | null; item?: string | null; brief?: string };
 
 type AccountLaunchRequest = LaunchRequest & { resolvedAccount: AccountSelection; login?: string };
@@ -1141,6 +1142,12 @@ export class Sessions {
     };
   }
 
+  #launchUser(p: Pick<HarnessProcess, 'userId'>): { userId?: string; userDisplayName?: string } {
+    if (this.#core.store.users.mode() !== 'users' || !p.userId) return {};
+    const user = this.#core.store.users.get(p.userId);
+    return { userId: p.userId, ...(user ? { userDisplayName: user.displayName } : {}) };
+  }
+
   view(p: HarnessProcess): HarnessProcessView {
     const adapter = this.#adapters.get(p.harness);
     const usage = this.#reportedUsage(p);
@@ -1162,6 +1169,7 @@ export class Sessions {
     return {
       ...(relaunchWarning ? {warning:relaunchWarning} : {}),
       name: p.name,
+      ...this.#launchUser(p),
       ...((p.host ?? 'local') === 'local' ? {} : { host: p.host }),
       harness: p.harness,
       account: p.account ?? null,
@@ -1915,7 +1923,7 @@ export class Sessions {
       const proof = owned.pid !== null && (owned.pidStarted == null || owned.pidIdentity === undefined) ? await this.#hostForProcess(owned).identity(owned.pid) : null;
       const pidStarted = owned.pidStarted ?? proof?.pidStarted ?? null;
       const pidIdentity = owned.pidIdentity !== undefined ? owned.pidIdentity : proof?.pidIdentity ?? null;
-      const p: HarnessProcess = { ...owned, ...selected, ...(request.login ? {login:request.login} : {}), accountEnv: selected.accountEnv ?? owned.accountEnv ?? null, item, pidStarted, pidIdentity, launchBrief: request.brief ?? null, effort };
+      const p: HarnessProcess = { ...owned, ...selected, ...(request.userId ? { userId: request.userId } : {}), ...(request.login ? {login:request.login} : {}), accountEnv: selected.accountEnv ?? owned.accountEnv ?? null, item, pidStarted, pidIdentity, launchBrief: request.brief ?? null, effort };
       owned = p;
       return resumed(() => {
         authorize();
@@ -1935,7 +1943,7 @@ export class Sessions {
         this.#lastAt.delete(p.sessionId);
         this.#stateObservation.delete(p.sessionId);
         this.#lastPush.delete(p.sessionId);
-        this.#log({ event: 'session-launched', ...(p.launchPolicy ? { policy: p.launchPolicy } : {}), account: p.account ?? null, ...(p.harness === 'opencode' && p.accountEnv ? { database: openCodeDatabase(p.accountEnv) } : {}), session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
+        this.#log({ event: 'session-launched', ...this.#launchUser(p), ...(p.launchPolicy ? { policy: p.launchPolicy } : {}), account: p.account ?? null, ...(p.harness === 'opencode' && p.accountEnv ? { database: openCodeDatabase(p.accountEnv) } : {}), session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
         adapter.watch(p);
         const dead=this.#earlyLoginDead.get(p.sessionId);this.#earlyLoginDead.delete(p.sessionId);
         if(dead)this.#loginDead(p.sessionId,dead);
@@ -2260,7 +2268,7 @@ export class Sessions {
       const brief = sourceBrief ? {...sourceBrief,text:`${sourceBrief.text}\n\n${note}`} : await this.#resolveBrief(p.name,note,resumed,() => { resumed(current); });
       const launching = resumed(current);
       nativeEntered=true;
-      const process = await this.#launchNew({name:launching.name,host,role:launching.role,harness:launching.harness,model:launching.model,effort:launching.effort ?? null,cwd:tree.path,item:launching.item!,resolvedAccount:{account:launching.account ?? null,accountEnv:launching.accountEnv ?? null},...(p.launchBrief == null ? {} : {brief:p.launchBrief})}, launching.role,resumed,() => { resumed(current); },undefined,brief,launching.sessionId,true,{intentKey,sourceGeneration,tree,note});
+      const process = await this.#launchNew({name:launching.name,host,...(launching.userId ? {userId:launching.userId} : {}),role:launching.role,harness:launching.harness,model:launching.model,effort:launching.effort ?? null,cwd:tree.path,item:launching.item!,resolvedAccount:{account:launching.account ?? null,accountEnv:launching.accountEnv ?? null},...(p.launchBrief == null ? {} : {brief:p.launchBrief})}, launching.role,resumed,() => { resumed(current); },undefined,brief,launching.sessionId,true,{intentKey,sourceGeneration,tree,note});
       const launched = this.#process(process.name), work = this.#resumeWork(launched);
       const notes = [...work.notes,note];
       try {
@@ -2290,7 +2298,7 @@ export class Sessions {
       if (current.sessionId !== original.sessionId) throw new Error(`session "${name}" was replaced; retry`);
       checkRoleHost(current.role, current.host);
       const role = current.role && this.#core.holderOf(current.role, name) ? null : current.role;
-      return { name, host: current.host ?? 'local', role, resolvedAccount: { account: current.account ?? null, accountEnv: current.accountEnv ?? null }, harness: current.harness, model: current.model, effort: current.effort ?? null, cwd: current.cwd, item: current.item ?? null, ...(current.launchBrief == null ? {} : { brief: current.launchBrief }) };
+      return { name, ...(current.userId ? { userId: current.userId } : {}), host: current.host ?? 'local', role, resolvedAccount: { account: current.account ?? null, accountEnv: current.accountEnv ?? null }, harness: current.harness, model: current.model, effort: current.effort ?? null, cwd: current.cwd, item: current.item ?? null, ...(current.launchBrief == null ? {} : { brief: current.launchBrief }) };
     });
     const process = await resumed(() => this.#launchNew(request, request.role, resumed, authorize, undefined, undefined, original.sessionId));
     return resumed(() => {
@@ -2416,14 +2424,14 @@ export class Sessions {
       const current = row();
       if (!relaunch && this.#table.hostGenerationRebooted(current)) throw new Error('host rebooted while resuming');
       const process: HarnessProcess = {
-        ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, pidIdentity: !relaunch && current.pid === found.process.pid ? current.pidIdentity ?? null : found.process.pidIdentity ?? null, stoppedAt: null, archivedAt: null, archivedBy: null,
+        ...found.process, ...(current.userId ? { userId: current.userId } : {}), name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, pidIdentity: !relaunch && current.pid === found.process.pid ? current.pidIdentity ?? null : found.process.pidIdentity ?? null, stoppedAt: null, archivedAt: null, archivedBy: null,
         // A relaunch resumes the same conversation and cland identity: the adapter's fresh in-memory sum
         // starts from the totals the stopped row already holds. A fresh launch (#freshResume) has none.
         ...(relaunch && found.process.usage == null && current.usage ? { usage: current.usage } : {}),
       };
       this.#clearRetirement(current);
       this.#table.put(process);
-      this.#log({ event: 'session-launched', ...(process.launchPolicy ? { policy: process.launchPolicy } : {}), account: process.account ?? null, ...(process.harness === 'opencode' && process.accountEnv ? { database: openCodeDatabase(process.accountEnv) } : {}), session: process.name, sessionId: process.sessionId, harness: process.harness, harnessSessionId: process.harnessSessionId, harnessId: process.harnessId, pid: process.pid, model: process.model, effort: process.effort ?? null, role: process.role, cwd: process.cwd, ...(process.item ? { item: process.item } : {}), resumed: true });
+      this.#log({ event: 'session-launched', ...this.#launchUser(process), ...(process.launchPolicy ? { policy: process.launchPolicy } : {}), account: process.account ?? null, ...(process.harness === 'opencode' && process.accountEnv ? { database: openCodeDatabase(process.accountEnv) } : {}), session: process.name, sessionId: process.sessionId, harness: process.harness, harnessSessionId: process.harnessSessionId, harnessId: process.harnessId, pid: process.pid, model: process.model, effort: process.effort ?? null, role: process.role, cwd: process.cwd, ...(process.item ? { item: process.item } : {}), resumed: true });
       if (current.archivedAt) this.#log({ event: 'session-unarchived', session: process.name, sessionId: process.sessionId, by: current.archivedBy, reason: 'resume' });
       adapter.watch(process);
       this.#core.publishProcess(this.view(process));

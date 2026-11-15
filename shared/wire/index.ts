@@ -454,6 +454,8 @@ export type SessionRow = Omit<Partial<HarnessProcessView>, 'harness' | 'status' 
 export type SessionListRows = { processes: HarnessProcessView[]; rows: SessionRow[] };
 
 export type HarnessProcessView = {
+  userId?: string;
+  userDisplayName?: string;
   host?: string;
   login?: string | null;
   account?: string | null;

@@ -55,6 +55,12 @@ test('onboarding names only shipped commands or explicitly pending release work'
   }
 });
 
+test('sessions page describes launching users and uses shipped commands', async () => {
+  const markdown = await readFile(new URL('../../site/src/content/docs/docs/sessions.mdx', import.meta.url), 'utf8');
+  assert.match(markdown, /In users mode, session rows and the Agents start line name the user who launched the session/);
+  assert.deepEqual(commandProblems(markdown), []);
+});
+
 test('the onboarding command check rejects unknown commands, config keys and secret names', () => {
   assert.deepEqual(commandProblems('`cland crew add` and `cland nonexistent`'), [
     'unknown command: cland crew add', 'unknown command: cland nonexistent',

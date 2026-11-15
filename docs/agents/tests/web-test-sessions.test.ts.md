@@ -1,5 +1,10 @@
 # web/test/sessions.test.ts
 
+`Sessions row names its launching user only in users mode` launches a legacy
+single-mode row and a users-mode row through the fixture hub, then asserts the
+rendered `by <display name>` fact and the legacy row's absence of that fact.
+The scratch config is managed; the browser has its own Headless Shell profile.
+
 `web/test/sessions.test.ts` owns the Sessions list seams against fake harnesses:
 group/header counts, browser-only fold persistence, merged row facts and live
 hold/request changes, full waiting commands and human-ask topics, visible-row

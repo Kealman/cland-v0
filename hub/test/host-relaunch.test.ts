@@ -84,7 +84,9 @@ for (const outcome of ['running','refused','no-login'] as const) test(`C2/C3 adm
     await mkdir(join(root,'node_modules'));
   }
   await withFixtureStore(join(f1.root,'.cland/hub.db'),close=>f1.addCleanup(close),async store=>{
-  await writeFile(join(f1.root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nslots=8\nregion="fake-1"\n');
+  await writeFile(join(f1.root,'.cland/config.toml'),'[auth]\nmode="users"\n[hosts.agents]\nprovider="fake"\nslots=8\nregion="fake-1"\n');
+  store.users.firstAdmin('Alex Smith', [], Date.now());
+  store.users.setMode('users', Date.now());
   for (const {f,name} of machines) {
     store.hosts.insert({id:name,address:f.machine!.address,user:'agent',clientKeyPath:'unused',knownHosts:'unused'},f.secrets.readSecret('f1'));
     if(name==='f1'||outcome!=='no-login')await mountedSettledLogin({root:f1.root,env:f1.env,records:store.hosts.logins,host:{...f.host,name},machine:f.machine!,harness:'codex',account:'work',beforeStop:close=>f1.addCleanup(close),afterNativeJoin:close=>afterNativeJoin.push(close)});
@@ -93,8 +95,9 @@ for (const outcome of ['running','refused','no-login'] as const) test(`C2/C3 adm
   await writeFile(hostPaths(f1.root,'f2').secret,f2.secrets.readSecret('f1'),{mode:0o600});
   });
   let observerFailed=false;
+  const journal: Record<string, unknown>[] = [];
   const spawns:import('../src/adapters/contract.ts').SpawnRequest[]=[];
-  const hub=await projectHub(t,f1.root,f1.env,{hasTerritory:async()=>true,log:entry=>{if(outcome==='running'&&entry.event==='session-launched'&&String(entry.cwd).startsWith(f2.fake.home)){observerFailed=true;throw Error('injected post-publication observer failure');}},hosts:[f1.host,{...f2.host,name:'f2'}],adapters:[host=>{
+  const hub=await projectHub(t,f1.root,f1.env,{hasTerritory:async()=>true,log:entry=>{journal.push(entry);if(outcome==='running'&&entry.event==='session-launched'&&String(entry.cwd).startsWith(f2.fake.home)){observerFailed=true;throw Error('injected post-publication observer failure');}},hosts:[f1.host,{...f2.host,name:'f2'}],adapters:[host=>{
     const adapter=fakeHarness('codex',{host}), spawn=adapter.spawn.bind(adapter);
     adapter.spawn=async(request,resumed,authorize)=>{
       spawns.push(request);
@@ -123,6 +126,8 @@ for (const outcome of ['running','refused','no-login'] as const) test(`C2/C3 adm
   const brief=(artifact.value as {artifact:{id:string}}).artifact.id;
   const launch=await ui.request({type:'session.launch',name:'worker',role:'implementer',harness:'codex',item,host:'f1',brief},testWaitMs(60_000)); assert.equal(launch.ok,true,launch.error);
   const before=(launch.value as {process:HarnessProcessView}).process;
+  assert.ok(before.userId);
+  assert.equal(before.userDisplayName, 'Alex Smith');
   assert.equal(before.login,'codex-f1');assert.equal(before.account,'work');
   assert.deepEqual(spawns[0]!.accountEnv,{CODEX_HOME:'/cland/auth/codex-codex-f1'});
   await eventually('f1 native worker first-input receipt',()=>readFile(join(before.cwd,'worker.ready'),'utf8').catch(()=>undefined));
@@ -159,6 +164,10 @@ for (const outcome of ['running','refused','no-login'] as const) test(`C2/C3 adm
   assert.equal(moved.ok,true,moved.error); assert.equal(observerFailed,true);
   const result=moved.value as {found:boolean;process:HarnessProcessView;notes:string[]}; assert.equal(result.found,true);
   const after=result.process;
+  assert.equal(after.userId, before.userId);
+  assert.equal(after.userDisplayName, 'Alex Smith');
+  assert.equal(table.get('worker')!.userId, before.userId);
+  assert.equal(journal.filter(row => row.event === 'session-launched' && row.session === 'worker').at(-1)?.userId, before.userId);
   assert.equal(after.login,'codex-f2');assert.equal(after.account,'work');
   assert.deepEqual(spawns[1]!.accountEnv,{CODEX_HOME:'/cland/auth/codex-codex-f2'});
   assert.deepEqual(table.get('worker')!.accountEnv,{CODEX_HOME:'/cland/auth/codex-codex-f2'});

@@ -172,6 +172,7 @@ function M.session_meta_parts(s)
     head[#head + 1] = s.account
   end
   if type(s.host) == 'string' and s.host ~= '' then head[#head + 1] = s.host end
+  if type(s.userDisplayName) == 'string' and s.userDisplayName ~= '' then head[#head + 1] = 'by ' .. s.userDisplayName end
   local tail = s.stateReason or M.session_words(s)
   local usage = s.live and M.usage_text(s.usage) or nil
   if usage then
@@ -291,7 +292,7 @@ local function session_row(c, s, group)
   tail = M.session_words(s)
   local mhl = down and 'ClandRed' or 'ClandDim'
   local meta = '   ' .. head .. ' · ' .. tail
-  if host and sw(meta) > c.width then
+  if (host or s.userDisplayName) and sw(meta) > c.width then
     for _, line in ipairs(M.wrap(head .. ' · ' .. tail, math.max(1, c.width - 3))) do
       c:add({ { '   ' .. line, mhl } }, nil, { session = s.name, group = group, detail = true })
     end

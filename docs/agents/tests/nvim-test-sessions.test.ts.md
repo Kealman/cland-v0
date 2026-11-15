@@ -1,5 +1,13 @@
 # nvim/test/sessions.test.ts
 
+`selected session metadata names the launching user and accepts legacy rows`
+renders the optional userDisplayName from a process frame in the selected meta
+line, then replaces it with the previous wire shape and observes the rendered
+legacy metadata. Both input shapes are retained in the protocol catalog.
+The attributed local session has long model/account facts and no host field;
+34, 50 and 80 column panels must render the complete name across wrapped lines,
+retain anchored detail-row metadata and keep every rendered line within width.
+
 T2 replays recorded public frames into isolated headless Neovim. Run this file
 alone; refresh its retained slice with
 `node hub/test/record-nvim-frames.ts --slice nvim/test/sessions.test.ts` after
