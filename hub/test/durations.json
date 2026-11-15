@@ -196,9 +196,18 @@
       "A-19470",
       "A-19460",
       "A-19462",
-      "A-19473"
+      "A-19473",
+      "A-19540",
+      "A-19535",
+      "A-19537",
+      "A-19574",
+      "A-19569",
+      "A-19544",
+      "A-19546",
+      "A-19580",
+      "A-19585"
     ],
-    "commit": "09271f1bd8b780f703a7362f20cb6176aae8c79b"
+    "commit": "e4ad65fb9bdd104ed8f7ac5b784cbe3fc9485e5e"
   },
   "budget": {
     "testSeconds": 5,
@@ -4134,6 +4143,26 @@
     },
     "hub/test/hosts-docs-pool.test.ts": {
       "seconds": 2.877461,
+      "tests": 1
+    },
+    "hub/test/doctor-users.test.ts": {
+      "seconds": 2.854995,
+      "tests": 7
+    },
+    "hub/test/launch-user.test.ts": {
+      "seconds": 1.118562,
+      "tests": 4
+    },
+    "hub/test/setup-signin.test.ts": {
+      "seconds": 0.611822,
+      "tests": 5
+    },
+    "hub/test/users-docs-invite.test.ts": {
+      "seconds": 1.107939,
+      "tests": 1
+    },
+    "web/test/setup-signin.test.ts": {
+      "seconds": 1.685503,
       "tests": 1
     }
   },
@@ -12335,7 +12364,31 @@
     "hub/test/setup-hosts.test.ts::T1831 successful pinned login refreshes eligibility before unpinned and distinct-account offers": 0.001527,
     "nvim/test/inbox-sections.test.ts::inbox retains optional sign-in login identity while rendering the existing card facts": 0.395688,
     "hub/test/hosts-docs-pool.test.ts::published pool commands configure a second fake pool and host status lists it": 2.877461,
-    "hub/test/skills-onboarding.test.ts::the onboarding tour has ten stages ending with Look now": 0.002333
+    "hub/test/skills-onboarding.test.ts::the onboarding tour has ten stages ending with Look now": 0.002333,
+    "hub/test/doctor-hosts.test.ts::doctor warns for every missing role pool without writes or provider requests": 0.514658,
+    "hub/test/doctor-users.test.ts::C1 doctor reports single mode from the running hub": 0.490566,
+    "hub/test/doctor-users.test.ts::C2 doctor reads users counts from the hub and labels offline counts unknown": 0.652767,
+    "hub/test/doctor-users.test.ts::C3 doctor warns with invite fix when no active admin exists": 0.312025,
+    "hub/test/doctor-users.test.ts::C4 doctor omits planted identity and credential material in text and JSON": 0.28952,
+    "hub/test/doctor-users.test.ts::doctor keeps held live user counts unknown after timeout": 0.371414,
+    "hub/test/doctor-users.test.ts::doctor reports hub not running for stale discovery with a live PID": 0.332447,
+    "hub/test/doctor-users.test.ts::doctor warns when config users disagrees with a running single-mode hub": 0.406256,
+    "hub/test/launch-user.test.ts::Agents start lines name the recorded launching user and accept legacy records": 0.001715,
+    "hub/test/launch-user.test.ts::hub restart reads pre-attribution process and journal fixtures without a user": 0.373151,
+    "hub/test/launch-user.test.ts::launch attribution follows authenticated humans in single mode": 0.245187,
+    "hub/test/launch-user.test.ts::launch attribution follows authenticated humans in users mode": 0.498509,
+    "hub/test/setup-hosts.test.ts::missing pool placements remain open without effects even with yes": 0.012621,
+    "hub/test/setup-prompter.test.ts::aborting a setup wait releases its reader before the next question": 0.001449,
+    "hub/test/setup-signin.test.ts::C1 sign-in offer defaults No and yes skips with either terminal policy": 0.302923,
+    "hub/test/setup-signin.test.ts::C2 C4 C5 confirmed switch prints the invite only to terminal and Enter leaves the exact command": 0.174152,
+    "hub/test/setup-signin.test.ts::C4 nonterminal single mode skips with its command and a declined confirmation leaves single unchanged": 0.133535,
+    "hub/test/setup-signin.test.ts::lost registration read stays open and joins the terminal reader": 0.000733,
+    "hub/test/setup-signin.test.ts::older injected hub metadata stays unknown without switching": 0.000479,
+    "hub/test/skills-onboarding.test.ts::sessions page describes launching users and uses shipped commands": 0.004474,
+    "hub/test/users-docs-invite.test.ts::published users commands switch a single project and renew the second user invite privately": 1.107939,
+    "nvim/test/sessions.test.ts::selected session metadata names the launching user and accepts legacy rows": 0.33137,
+    "web/test/sessions.test.ts::Sessions row names its launching user only in users mode": 2.191935,
+    "web/test/setup-signin.test.ts::C3 setup completes after the first user registers a passkey on the invite page": 1.685503
   },
   "allow": {
     "hub/test/demo-release.test.ts::the detached demo watchdog confirms an active droplet losing tags during its delete": {
