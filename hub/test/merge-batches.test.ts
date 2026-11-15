@@ -1,6 +1,6 @@
 // T1: batch policy at the durable controller/Suites seam, FakeClock and in-process executor receipts.
 import { join } from 'node:path';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { TaskMerges, joinMergeCleanup } from '../src/hub/merge.ts';
 import { MergeError } from '../src/merge.ts';
@@ -8,7 +8,7 @@ import { TerritoryGitError } from '../src/territory.ts';
 import { MergeQueue } from '../src/hub/merge-queue.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MergeBatches, BatchRefusal, BatchRebuild, diagnosticResult, batchInteractionSummary, type BatchBoundary, type BatchCandidate } from '../src/hub/merge-batches.ts';
+import { MergeBatches, BatchRefusal, BatchRebuild, diagnosticResult, batchInteractionSummary, batchNoticeId, type BatchBoundary, type BatchCandidate } from '../src/hub/merge-batches.ts';
 import type { MergeQueueEntry } from '../src/protocol.ts';
 import type { TopicNotice } from '../src/hub/core.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
@@ -77,6 +77,110 @@ const failureLog = 'suite test failures [{"file":"hub/test/example.test.ts","nam
 const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/example.test.ts","name":"rejects stale input","at":1,"nesting":0,"outcome":"pass","seconds":0.01}\nsuite test failures []\n# tests 1\n# pass 1\n';
 const t0Green = 'tier T0: exit 0; duration 1 s; output tail: static checks passed\n';
 const t0Red = 'tier T0: exit 2; duration 1 s; output tail: error TS2344\n';
+
+test('a custom command without package inventory retains unknown skipped files', async t => {
+  const state = await fixture(t);
+  const { f, entries, landed, reports } = state;
+  entries.splice(2); await f.clock.advance(600_000);
+  await rename(join(f.root, 'hub/test/run-suite.ts'), join(f.root, 'custom-test-script.ts'));
+  await state.runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.finish(original.id, 1, failureLog); await state.runner.tick();
+  for (let index = 0; index < 3; index++) {
+    await f.finish(f.suites.status().at(-1)!.id, 0, passLog); await state.runner.tick();
+  }
+  assert.deepEqual(landed, []);
+  assert.equal(state.runner.snapshot()?.confirmation?.skipped, null);
+  assert.ok(reports.some(text => text.includes('unknown; full selection rerun') && text.includes('confirmation pending')));
+  await state.runner.tick();
+  const confirmation = f.suites.status().at(-1)!;
+  assert.equal(confirmation.batch?.diagnostic, undefined);
+  await f.finish(confirmation.id); await state.runner.tick();
+  assert.ok(reports.some(text => text.includes(`covering run ${confirmation.id}`) && text.includes('unknown; full selection rerun')));
+  assert.deepEqual(landed, ['T-1', 'T-2']);
+});
+
+test('completed empty files stay observed and confirmation preserves a later rebuild notice', async t => {
+  const state = await fixture(t);
+  const { f, entries, landed, reports, boundary } = state;
+  entries.splice(2); await f.clock.advance(600_000);
+  const empty = 'hub/test/empty.test.ts';
+  for (const file of [empty, 'hub/test/example.test.ts']) await writeFile(join(f.root, file), '');
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1,
+    tests: { [empty]: 'T1', 'hub/test/example.test.ts': 'T1' } }));
+  f.configure('[verification]\nexecutor="droplet"\n[merge]\nqueue=true\nbatch_tiers=["T1"]');
+  const delivered = new Map<string, string>();
+  const report = boundary.report;
+  boundary.report = (batch, text, phase) => {
+    const key = batchNoticeId(batch, phase);
+    if (!delivered.has(key)) { delivered.set(key, text); report(batch, text, phase); }
+  };
+  await state.runner.tick();
+  await f.finish(f.suites.status()[0]!.id, 1, failureLog + `suite progress ${JSON.stringify({
+    event: 'finish', id: 'empty', file: empty, name: empty, type: 'file', at: 1, nesting: 0, outcome: 'pass', seconds: 0,
+  })}\n`);
+  await state.runner.tick();
+  for (let index = 0; index < 3; index++) {
+    await f.finish(f.suites.status().at(-1)!.id, 0, passLog); await state.runner.tick();
+  }
+  assert.deepEqual(state.runner.snapshot()?.confirmation?.skipped, []);
+  assert.ok(reports.some(text => /skipped files .*: none;.*confirmation pending/.test(text)));
+  await state.runner.tick();
+  const confirmation = f.suites.status().at(-1)!;
+  await f.finish(confirmation.id);
+  state.move(false);
+  await state.runner.tick();
+  assert.deepEqual(landed, []);
+  assert.ok(reports.some(text => text.includes(`covering run ${confirmation.id}`)));
+  assert.ok(reports.some(text => /rebuild: commit .*changed batch test inputs/.test(text)));
+});
+
+for (const laterCode of [0, 1]) test(`interrupted file diagnosis requires the skipped selection: later file exit ${laterCode}`, async t => {
+  const state = await fixture(t);
+  const { f, entries, landed, reports, dropped } = state;
+  entries.splice(2);
+  await f.clock.advance(600_000);
+  const later = 'nvim/test/later.test.ts';
+  await mkdir(join(f.root, 'nvim/test'), { recursive: true });
+  await writeFile(join(f.root, later), '');
+  await writeFile(join(f.root, 'hub/test/example.test.ts'), '');
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1,
+    tests: { 'hub/test/example.test.ts': 'T1', [later]: 'T1' } }));
+  f.configure('[verification]\nexecutor="droplet"\n[merge]\nqueue=true\nbatch_tiers=["T1"]');
+  await state.runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.finish(original.id, 1, failureLog + 'suite interruption {"at":"2026-01-01T00:00:00Z"}\n');
+  await state.runner.tick();
+  for (let index = 0; index < 3; index++) {
+    const diagnostic = f.suites.status().at(-1)!;
+    assert.deepEqual(diagnostic.batch?.diagnostic?.files, ['hub/test/example.test.ts']);
+    await f.finish(diagnostic.id, 0, passLog); await state.runner.tick();
+  }
+  assert.deepEqual(landed, [], 'failing-file greens cannot cover the skipped file');
+  await state.reopen(); await state.runner.tick();
+  const confirmation = f.suites.status().at(-1)!;
+  assert.equal(confirmation.batch?.diagnostic, undefined);
+  assert.equal(confirmation.tree, original.tree);
+  assert.deepEqual(confirmation.selection?.tiers, ['T1']);
+  const selection = selectionFromEnv(selectionTransport(confirmation.selection, join(f.root, 'selection.json')).env)!;
+  assert.ok((await packageShards(f.root, selection.mode, selection.shard, selection)).flatMap(phase => phase.targets).includes(later));
+  await f.finish(confirmation.id, laterCode, laterCode ? `suite test failures [{"file":"${later}","name":"later failure"}]\n` : passLog);
+  await state.runner.tick();
+  assert.ok(reports.some(text => text.includes(later) && text.includes(confirmation.id)), reports.join('\n'));
+  if (laterCode) {
+    // Drive all red alternatives to their durable unresolved receipt.
+    for (let index = 0; index < 3; index++) {
+      await f.finish(f.suites.status().at(-1)!.id, 1, `suite test failures [{"file":"${later}","name":"later failure"}]\n`);
+      await state.runner.tick();
+    }
+    assert.deepEqual(landed, []);
+    assert.ok(dropped.every(text => text.includes(later)));
+    assert.equal(dropped.length, 2);
+  } else {
+    assert.deepEqual(landed, ['T-1', 'T-2']);
+    assert.ok(reports.some(text => text.includes(confirmation.id) && text.includes('full plan green')));
+  }
+});
 
 for (const missing of ['node_modules', '@modelcontextprotocol/sdk']) test(`missing ${missing} holds dependency preparation inconclusive with members queued`, async t => {
   const state = await fixture(t);
@@ -465,9 +569,12 @@ for (const scope of ['test', 'file'] as const) test(`a ${scope}-budget-only red 
     await runner.tick();
   }
   assert.deepEqual(dropped, [`T-2: merge-bisected: ${identity}\n${budget}`]);
+  assert.deepEqual(landed, []);
+  await runner.tick();
+  await f.finish(f.suites.status().at(-1)!.id); await runner.tick();
   assert.deepEqual(landed, ['T-1']);
   assert.equal(runner.snapshot(), null);
-  assert.equal(f.suites.status().length, 3);
+  assert.equal(f.suites.status().length, 4);
   assert.ok(reports.join('\n').includes(budget), 'report retains the measured seconds and threshold');
 });
 
@@ -500,10 +607,13 @@ test('a red hub-only triple reaches a unique green leave-one-out verdict through
     await runner.tick();
   }
   assert.match(dropped[0]!, /T-2: merge-bisected.*rejects stale input/);
+  assert.deepEqual(landed, []);
+  assert.match(reports.at(-2)!, /file job.*tree without-culprit.*seconds.*cost/s);
+  await runner.tick();
+  await f.finish(f.suites.status().at(-1)!.id); await runner.tick();
   assert.deepEqual(landed, ['T-1', 'T-3']);
   assert.equal(runner.snapshot(), null, 'diagnosis completes instead of holding an inconclusive batch');
-  assert.equal(f.suites.status().length, 4, 'one batch plus at most three file jobs');
-  assert.match(reports.at(-1)!, /file job.*tree without-culprit.*seconds.*cost/s);
+  assert.equal(f.suites.status().length, 5, 'original, three file jobs and full confirmation');
 });
 
 test('a red repeat without a unique culprit refuses everyone with one Coordinator notice', async t => {
@@ -525,7 +635,7 @@ test('a red repeat without a unique culprit refuses everyone with one Coordinato
 
 test('independent flaky batches retain both receipts in a Coordinator quarantine question', async t => {
   const state = await fixture(t);
-  const { f, boundary, entries, landed, dropped } = state;
+  const { f, boundary, entries, landed, dropped, reports } = state;
   const notices: TopicNotice[] = [];
   boundary.notice = notice => { notices.push(notice); };
   for (let batch = 0; batch < 2; batch++) {
@@ -539,6 +649,9 @@ test('independent flaky batches retain both receipts in a Coordinator quarantine
       await f.finish(f.suites.status().at(-1)!.id, 0, passLog); await state.runner.tick();
     }
     assert.equal(notices.length, batch);
+    assert.ok(reports.some(text => text.includes('unknown; full selection rerun') && text.includes('confirmation pending')));
+    await state.runner.tick();
+    await f.finish(f.suites.status().at(-1)!.id); await state.runner.tick();
     assert.equal(state.runner.snapshot(), null);
   }
   assert.deepEqual(dropped, []);

@@ -116,7 +116,7 @@ import { ArtifactError, createArtifact } from './artifacts.ts';
 import type { ArtifactCreate, ArtifactList, ArtifactPromote, ArtifactKeep, ArtifactArchive, ArtifactMove } from '../protocol.ts';
 import { MergeQueue } from './merge-queue.ts';
 import { taskTierEvidence, type SuiteDryRun } from '../suite-tier-report.ts';
-import { MergeBatches, BatchRefusal, BatchRebuild } from './merge-batches.ts';
+import { MergeBatches, BatchRefusal, BatchRebuild, batchNoticeId } from './merge-batches.ts';
 import { prepareMergeBatch, checkoutMergeBatch, removeMergeBatch, batchRebuildReason } from './merge-batch-territory.ts';
 import { TaskMerges, MergeCleanupIncomplete, type MergeCleanupStop } from './merge.ts';
 import { Releases } from './releases.ts';
@@ -438,15 +438,14 @@ export class Dispatcher {
       drop: (entry, reason) => this.#mergeQueue!.drop(entry, reason),
       notice: notice => { if (!options.core.noticeTo(AGENTS.id, notice)) throw new Error('batch notice topic unavailable'); },
       report: (batch, text, reportPhase) => {
-        const phase = reportPhase ?? (batch.failed ? 'blocked' : batch.diagnosis ? 'diagnosis' : 'suite');
         const selected = batch.diagnosis?.selected === undefined ? batch.candidate : batch.diagnosis.jobs[batch.diagnosis.selected]?.candidate;
         const detail = { event: 'merge-batch-result', batch: batch.id, members: batch.members.map(e => e.item), tree: selected?.tree ?? null,
           ...(batch.diagnosis ? { diagnosis: batch.diagnosis } : {}) };
         for (const entry of batch.members) {
           const topic = options.tracker!.summary(entry.item)?.topic ?? AGENTS.id;
-          options.core.noticeTo(topic, { id: `merge-batch:${batch.id}:${batch.run ?? 'blocked'}:${phase}:${entry.item}`, kind: 'report', to: [entry.by.name, `lead ${entry.item}`], text, detail });
+          options.core.noticeTo(topic, { id: batchNoticeId(batch, reportPhase, entry.item), kind: 'report', to: [entry.by.name, `lead ${entry.item}`], text, detail });
         }
-        options.core.noticeTo(AGENTS.id, { id: `merge-batch:${batch.id}:${batch.run ?? 'blocked'}:${phase}`, kind: 'report', text, detail });
+        options.core.noticeTo(AGENTS.id, { id: batchNoticeId(batch, reportPhase), kind: 'report', text, detail });
       },
     }, () => options.projectConfig?.().merge ?? { queue: false, batch: 3, batchWaitMs: 600_000 }) : null;
     void this.#mergeQueueReady.then(() => { if (!this.#closed) { landingReports?.reconcile(); this.#batches?.start(); } });

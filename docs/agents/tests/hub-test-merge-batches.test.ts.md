@@ -1,5 +1,24 @@
 # hub/test/merge-batches.test.ts
 
+Interrupted file diagnosis uses the same fake-only T1 seam. Plant an interrupted
+prefix, pass every failing-file diagnostic, and assert no member lands. Reopen
+before the full confirmation; a later Neovim file either passes and permits FIFO
+landing or fails and is named in the covering-run notice and final refusals.
+The existing legacy receipt controls also require confirmation without an
+interruption marker. File inventory uses the admitted package planner's retained
+nonempty tier file list. Empty/absent plans and custom-command inventory stay
+unknown while the pinned full plan still runs. The custom-command regression
+renames the fixture runner marker before admission and asserts unknown inventory
+in both pending and covering-run notices. No native
+process, real queue, provider or network is used. Run this file alone with
+`node --test hub/test/merge-batches.test.ts` on supported Node.
+
+The empty-file control keeps a positive original file envelope with no child
+tests. Both pending and confirmation inventory render the known empty skipped
+set as `none`, reserving `unknown` for unavailable inventory. Its idempotent fake
+notice sink uses dispatch's shared `batchNoticeId` policy; a green confirmation
+followed by a genuine candidate rebuild must deliver both notices.
+
 Dependency-preparation cases use the real worktreeInstall policy via
 prepareBatchDependencies against suiteUnit's disposable root. Missing
 node_modules and a missing locked SDK package must persist an inconclusive

@@ -1338,7 +1338,7 @@ require a new run. A task-head change drops that member, with the prepared and
 current heads in its notice (a deleted ref is `missing`). Red batches rerun
 failing files or the failed T0/Web step on leave-one-out trees: `merge-bisected` rejects a unique culprit
 (or a red singleton). Without a unique green removal, one original-tree repeat
-can supply green proof; otherwise `merge-bisect-unresolved` rejects every member
+can select a candidate; otherwise `merge-bisect-unresolved` rejects every member
 and notifies the Coordinator. Inconclusive runs hold the batch for its decision.
 Batch checkouts and periodic diagnostic clones link the root dependency install
 through task worktrees' shared install policy before admission. Missing or stale
@@ -1347,9 +1347,11 @@ package, without dropping members. Local runs never invoke prepare or npm;
 droplet delivery retains its configured prepare step. Candidate removal drains
 fixture writers and removes the link without deleting the root's node_modules.
 Results name T0 and Web with their measured durations, including a red host check before
-droplet creation. Step bisection and file-only recovery of Web-containing plans
-select a candidate for the original pinned
-full-plan confirmation before landing; missing or conflicting successful T0/Web proof
+droplet creation. Every successful diagnosis selects a candidate for the original
+pinned full-plan confirmation before landing, including file-only non-Web recovery.
+Failing-file reruns alone never cover a skipped selection. Diagnosis notices name
+files without execution receipts and the covering run, tree and result. Unknown
+file inventory still requires the full plan. Missing or conflicting successful T0/Web proof
 holds the batch. See [queued merge batches](../agents/tests.md#queued-merge-batches)
 for step receipts and combined-tree T0/Web bisection.
 `merge-conflict` and `merge-budget` go to the item lead for a fix and renewed

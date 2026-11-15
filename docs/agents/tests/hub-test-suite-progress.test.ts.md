@@ -1,5 +1,11 @@
 # hub/test/suite-progress.test.ts
 
+Merge diagnosis opts in to `suiteProgress`'s `fileEnvelopes` option to recognize
+positive file completion even with zero child tests. The paired regression
+asserts the previous default output exactly, then the opt-in file inventory.
+Other progress, timing, quarantine and interruption callers keep their existing
+default; this adds no persisted field or default wire-shape change.
+
 Timing receipts retain all existing body rows and add an optional outcome. Assert the body timing and passing outcome while continuing to exclude the outer file envelope. Skipped and failed bodies remain available to existing timing consumers; only allowance recommendations filter passing samples.
 
 

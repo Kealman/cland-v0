@@ -1,6 +1,7 @@
 import { TerritoryBusy } from '../territory-lock-context.ts';
 // Durable merge-batch policy; Git preparation and landing are owned by the territory boundary.
 import { randomUUID } from 'node:crypto';
+import { suiteProgress } from '../suite-progress.ts';
 import type { MergeQueueEntry } from '../protocol.ts';
 import type { Store } from './store.ts';
 import type { Clock, ClockTimer } from './clock.ts';
@@ -27,8 +28,12 @@ export type BatchCandidate = { base: string; head: string; tree: string; cwd: st
 type DiagnosticResult = { result: 'green' | 'red' | 'inconclusive'; reason?: string };
 export type FileJob = { key: string; omitted?: string; candidate: BatchCandidate; run?: string; result?: DiagnosticResult['result']; reason?: string; seconds?: number | null; costUsd?: number | null; log?: { artifact: string; path: string } };
 export type BatchDiagnosis = { failure: { run: string; tree: string; log: { artifact: string; path: string } }; failures: string[]; budgetLines?: string[]; files: string[]; steps?: VerificationStep['name'][]; jobs: FileJob[]; selected?: number; excluded?: string[]; reported?: boolean; unresolved?: boolean };
-export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; planFrom?: string; failed?: string; reportError?: string; retryLanding?: boolean; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
+export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; planFrom?: string; confirmation?: { original: string; skipped: string[] | null }; failed?: string; reportError?: string; retryLanding?: boolean; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
 type FollowUpReport = { batch: MergeBatch; item: string; error: string; reportError?: string };
+export function batchNoticeId(batch: MergeBatch, phase?: string, item?: string): string {
+  return `merge-batch:${batch.id}:${batch.run ?? 'blocked'}:${phase ?? (batch.failed ? 'blocked' : batch.diagnosis ? 'diagnosis' : 'suite')}${item ? ':' + item : ''}`;
+}
+function skippedFilesText(files: string[] | null): string { return files === null ? 'unknown; full selection rerun' : files.join(', ') || 'none'; }
 export type BatchBoundary = {
   log?: LogFn;
   changed?(): void;
@@ -40,7 +45,7 @@ export type BatchBoundary = {
   cleanup(candidate: BatchCandidate): Promise<void>;
   checkout(candidate: BatchCandidate): Promise<void>;
   isLanded(entry: MergeQueueEntry): boolean;
-  report(batch: MergeBatch, text: string, phase?: 'rebuild' | `follow-up:${string}`): void;
+  report(batch: MergeBatch, text: string, phase?: 'rebuild' | 'confirmation' | `follow-up:${string}`): void;
   notice(notice: TopicNotice): void;
 };
 export class BatchRebuild extends Error {}
@@ -183,16 +188,18 @@ export class MergeBatches {
     if (!job?.reported || !job.outcome || this.#closed) return;
     if (job.tree !== batch.candidate.tree || job.head !== batch.candidate.head) throw new Error('batch suite does not match its prepared candidate');
     const evidence = await this.suites.receipt(job.id);
+    const requiredSteps: VerificationStep['name'][] = evidence.job.commands?.check === '' ? [] : ['check'];
+    if (evidence.job.commands?.plan?.some(step => step.name === 'Web')) requiredSteps.push('Web');
+    const original = diagnosticResult(evidence.job, evidence.log, requiredSteps);
     if (batch.reportedRun !== job.id) {
       const tiers = job.selection?.tiers?.join(', ') || 'unavailable';
       const steps = verificationStepResults(evidence.log).map(step => `${verificationStepLabel(step.name)}: exit ${step.code}; duration ${step.seconds} s`);
       const log = this.store.resolveArtifact(evidence.job.artifact ?? '');
       this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs == null ? 'unavailable' : job.runMs + ' ms'}; exit ${job.outcome.code}; batch interaction ${JSON.stringify(batchInteractionSummary(evidence.job.selection?.batchInteraction))}; log ${log?.id ?? 'unavailable'}: ${log?.path ?? 'unavailable'}\n${steps.join('\n')}\n${batch.candidate.budgetLines.join('\n')}`);
+      if (batch.confirmation) this.boundary.report(batch,
+        `Diagnosis confirmation of ${batch.confirmation.original}: skipped files (no execution receipt): ${skippedFilesText(batch.confirmation.skipped)}; covering run ${job.id}; tree ${job.tree}; exit ${job.outcome.code}; ${original.result === 'green' ? 'full plan green' : original.result}\n${failureText(batchFailures(evidence.log))}`, 'confirmation');
       batch.reportedRun = job.id; this.#save(batch);
     }
-    const requiredSteps: VerificationStep['name'][] = evidence.job.commands?.check === '' ? [] : ['check'];
-    if (evidence.job.commands?.plan?.some(step => step.name === 'Web')) requiredSteps.push('Web');
-    const original = diagnosticResult(evidence.job, evidence.log, requiredSteps);
     if (original.result === 'inconclusive') {
       const artifact = this.store.resolveArtifact(evidence.job.artifact!);
       if (!artifact) throw new Error('original batch log artifact unavailable');
@@ -211,12 +218,21 @@ export class MergeBatches {
       }
       candidate = await this.#diagnose(batch);
       if (!candidate) return;
-      // Step bisection and file-only recovery of a Web-containing plan select
-      // a candidate; neither proves every command on that selected tree ran.
-      if (batch.diagnosis?.steps?.length || requiredSteps.includes('Web')) {
+      // Diagnostics select a tree, never prove its complete selection. This
+      // also covers legacy logs without interruption/completion receipts.
+      {
+        const progress = suiteProgress(evidence.log, 0, { fileEnvelopes: true });
+        const observed = new Set([...(progress?.completed ?? []), ...(progress?.unfinished ?? [])].map(row => row.file));
+        for (const identity of batchFailures(evidence.log).failures) observed.add(identity.split('::')[0]!);
+        // Only the admitted package planner's retained file list establishes
+        // inventory. Empty/absent plans cannot enumerate custom test commands.
+        const selected = evidence.job.tierPlan?.flatMap(row => row.files);
+        const skipped = selected?.length ? [...new Set(selected)].filter(file => !observed.has(file)).sort() : null;
+        this.boundary.report(batch, `Diagnosis selected tree ${candidate.tree}; skipped files (no execution receipt): ${skippedFilesText(skipped)}; original ${job.id}; pinned full-plan confirmation pending`, 'confirmation');
         await this.#cleanup(batch);
         const members = batch.members.filter(entry => !batch!.diagnosis!.excluded?.includes(entry.item));
-        this.#save({ id: randomUUID(), members, candidate, planFrom: batch.run });
+        this.#save({ id: randomUUID(), members, candidate, planFrom: batch.run,
+          confirmation: { original: job.id, skipped } });
         return;
       }
     }
@@ -231,7 +247,9 @@ export class MergeBatches {
       if (rebuild) {
         this.boundary.report(batch, `batch ${batch.id} rebuild: ${rebuild}`, 'rebuild');
         await this.#cleanup(batch);
-        batch = { id: randomUUID(), members: remaining, candidate: current };
+        batch = { id: randomUUID(), members: remaining, candidate: current,
+          ...(batch.planFrom ? { planFrom: batch.planFrom } : {}),
+          ...(batch.confirmation ? { confirmation: batch.confirmation } : {}) };
         this.#save(batch); return;
       }
       let followUp: string | undefined;
@@ -325,7 +343,7 @@ export class MergeBatches {
       if (repeat.result === 'green' && (!testFailures.length || recordBatchFlakes(this.store, batch.id, testFailures, await this.suites.receipt(batch.run!), await this.suites.receipt(repeat.run!), notice => this.boundary.notice(notice)))) {
         diagnosis.selected = diagnosis.jobs.indexOf(repeat);
         if (!diagnosis.reported) {
-          this.boundary.report(batch, `batch ${batch.id}: flaky failing files; landing tree ${repeat.candidate.tree}\n${this.#fileReport(diagnosis)}`);
+          this.boundary.report(batch, `batch ${batch.id}: flaky failing files; selected tree ${repeat.candidate.tree}; full-plan confirmation required\n${this.#fileReport(diagnosis)}`);
           diagnosis.reported = true; this.#save(batch);
         }
         return repeat.candidate;

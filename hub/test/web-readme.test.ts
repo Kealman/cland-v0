@@ -9,6 +9,11 @@ import { defaultConfig, parseConfig } from '../src/init/config.ts';
 const hubReadme = hubReference();
 const webReadme = readFileSync(new URL('../../web/README.md', import.meta.url), 'utf8');
 
+test('hub reference retains the indexed merge queue landing guide', () => {
+  const guide = readFileSync(new URL('../../docs/hub/merge-queue-landing-reports-t-1503.md', import.meta.url), 'utf8');
+  assert.ok(hubReadme.includes(guide), 'the bare subsystem pointer must retain the complete guide');
+});
+
 // Grep feature deferrals, not live request/approval states or the human's named
 // stand-in attribution. Those words remain valid protocol and fixture terms.
 function staleFeatureWording(text: string): string[] {

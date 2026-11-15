@@ -8,6 +8,13 @@ import { suiteProgress, progressLines } from '../src/suite-progress.ts';
 
 async function* events(rows: TestEvent[]) { yield* rows; }
 
+test('file execution inventory opts in to empty file envelopes without changing legacy progress', () => {
+  const log = `suite progress ${JSON.stringify({ event: 'finish', id: 'empty', file: 'hub/test/empty.test.ts',
+    name: 'empty', type: 'file', at: 1, nesting: 0, outcome: 'pass', seconds: 0 })}\n`;
+  assert.deepEqual(suiteProgress(log, 0), { completed: [], unfinished: [] });
+  assert.deepEqual(suiteProgress(log, 0, { fileEnvelopes: true })!.completed.map(row => row.file), ['hub/test/empty.test.ts']);
+});
+
 test('replayed completions preserve finish-only receipts and fresh executions at the same location', async () => {
   for (const testId of [undefined, 1]) {
     const start = { file: '/project/example.test.ts', name: 'repetition', nesting: 2, line: 9, column: 1, testId, type: 'test' as const };

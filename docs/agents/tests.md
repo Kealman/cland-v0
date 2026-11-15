@@ -587,8 +587,11 @@ absent), runs once without load repetitions, and retains its timed `tier Web`
 receipt. A red Web step uses the same `diagnostic.steps` list as T0: rerun the
 complete Web tier on leave-one-out trees, then the original tree if needed.
 Two members green alone and red together are refused after a red repeat.
-A green step diagnosis or file-only diagnosis of a Web-containing plan requires
-the original pinned full-plan confirmation (T1 can fail before Web starts);
+A successful diagnosis always requires the original pinned full-plan confirmation
+on the selected tree. File-only greens cannot cover files skipped after a failure,
+including on plans without Web. The diagnosis names files with no execution
+receipt and the covering run, tree and result; unavailable file inventory stays
+unknown and still requires the full plan. Config changes and restart retain that plan;
 Web not-run/missing/conflicting success receipts hold the batch as inconclusive.
 Batches with no web/ path retain their existing tiers and add no Web wall time.
 Test-identity flakes keep their separate quarantine observation rules.

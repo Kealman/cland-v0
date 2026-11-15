@@ -4,7 +4,7 @@ export type CompletedTest = TestProgress & { event: 'finish'; outcome: NonNullab
 export type UnfinishedTest = TestProgress & { runningSeconds: number };
 export type SuiteProgress = { completed: CompletedTest[]; unfinished: UnfinishedTest[] };
 
-export function suiteProgress(log: string, stoppedAt: number): SuiteProgress | null {
+export function suiteProgress(log: string, stoppedAt: number, options: { fileEnvelopes?: boolean } = {}): SuiteProgress | null {
   const started = new Map<string, TestProgress>();
   const completed = new Map<string, CompletedTest>();
   const cutoffs = new Map<string, number>();
@@ -36,7 +36,7 @@ export function suiteProgress(log: string, stoppedAt: number): SuiteProgress | n
         continue;
       }
       started.delete(row.id);
-      if (row.type !== 'file') completed.set(row.id, row as CompletedTest);
+      if (row.type !== 'file' || options.fileEnvelopes) completed.set(row.id, row as CompletedTest);
     }
   }
   if (!seen) return null;

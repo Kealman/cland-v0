@@ -89,6 +89,10 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Operator retry of queued input (T-1473)](../docs/hub/operator-retry-of-queued-input-t-1473.md)
 - [Pinned verifier request heads](../docs/hub/pinned-verifier-request-heads.md)
 - [Merge queue landing reports (T-1503)](../docs/hub/merge-queue-landing-reports-t-1503.md)
+
+Every successful batch diagnosis requires its pinned full plan on the selected
+tree before landing; [running](../docs/hub/running.md) describes skipped-file and
+covering-run notices.
 - [Standing duration allowance owners](../docs/hub/standing-duration-allowance-owners.md)
 - [Setup and doctor remote readiness](../docs/hub/setup-and-doctor-remote-readiness.md)
 - [Declining an accepted verifier request (T-1494)](../docs/hub/declining-an-accepted-verifier-request-t-1494.md)
