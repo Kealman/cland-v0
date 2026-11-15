@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-1539
 blocked_by: []
-topic: null
+topic: topic-1524
 branch: t/T-1870-integrated-pass-on-the-fakes-hosts
 created: 2026-11-15T13:08:09.345Z
-updated: 2026-11-15T13:08:47.874Z
+updated: 2026-11-15T13:09:12.159Z
 ---
 
 ## Summary

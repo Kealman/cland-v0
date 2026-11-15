@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1520
 branch: t/T-1806-native-host-fixtures-leave-cland-h
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-15T13:08:20.434Z
+updated: 2026-11-15T13:10:30.401Z
 ---
 
 ## Summary
@@ -232,3 +232,16 @@ Complete pinned three-path delta pass, both Standards and Spec: one medium rule-
 ### impl-1806 · 2026-11-15T13:08:07.235Z
 
 Source-5 correction committed/pushed b4d585bae7feaf0edca07a09253848d7a725ff18. A-19665 (observerA-19663/launcherA-19664) proves native failure path red on unmodified archived267 (Git completion callback held across old disposal/root disappearance) then current runtime-join5/5 green including held init and held clone. Exact full system/user/suite deltas empty; Mac arm64 Node24.21/local/no browser. New shared scope fences admission and joins complete sequences before DB/native/root disposal;35s missed join preserves ownership/root. Hub typecheck passed. A-19666 retains current981 tier/hash rows and new helper/field consumers; prior all18 root/Git audit unchanged. Fresh source review requested; Coordinator1787d473 requires current final-reviewed-head19-file slot before mode-free verify. Prior156/156 remains old267 normal-path-only evidence; C2 T-1865, no retained-root cleanup.
+
+### rev-35 · 2026-11-15T13:10:30.401Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1806-source-6
+commit: b4d585bae7feaf0edca07a09253848d7a725ff18
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-19669 completes both axes across all four changed paths. A-19662 resolved: synchronous admission abort, whole admitted setup/clone promise ownership and attempt-all join precede native/DB/root disposal; missed35s join reports incomplete and retains ownership. Actual held-init/clone regressions pass and fence continuations; original Git exclusion control uses same scope. All981 manifest tier/hash rows and declared fingerprints match; new helper/field consumers accounted,18 importer root assumptions retained. Independently checked A-19665 expected red archived267/green5-of-5, direct status/signal/error and full sorted unique name equality. Targeted Mac coverage only, C1/C3 current-head final verification pending; C2 remains T-1865. Coordinator1787d473 directly read: final reviewed nineteen-file serial preservation in<=15min slots, then mode-free verify, no retained-root deletion. Hold released; changed source requires fresh review; no Reviewer runtime/census/cleanup.
