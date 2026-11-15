@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1524
 branch: t/T-1870-integrated-pass-on-the-fakes-hosts
 created: 2026-11-15T13:08:09.345Z
-updated: 2026-11-15T14:29:52.814Z
+updated: 2026-11-15T14:45:36.770Z
 ---
 
 ## Summary
@@ -42,7 +42,8 @@ Reuse the existing fixtures: `sshHostFixture`/fake host provider, `projectHub`, 
   - done: impl-1870 · 2026-11-15T13:43:45.438Z
 - [x] C2. Each path fails when its product behaviour is broken: show a red run per path, for example by withholding the login release, signalling the host's sessions, dropping the second user's projection, losing a row across restart, or letting a new host past the sub-cap (test).
   - done: impl-1870 · 2026-11-15T13:43:45.673Z
-- [ ] C3. The file is registered in T3 with a duration allowance if it needs one, and an exact `/private/tmp` and per-user TMPDIR name set is unchanged around it (test).
+- [x] C3. The file is registered in T3 with a duration allowance if it needs one, and an exact `/private/tmp` and per-user TMPDIR name set is unchanged around it (test).
+  - done: impl-1870 · 2026-11-15T14:45:22.274Z
 
 ## Comments
 
@@ -100,3 +101,13 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear A-19717 across complete two-path correction. A-19713 resolved: every control registers release-first/attempt-all owner before admission, including initialization and all reply tests; late synthetic hooks receive a final cursor pass after admitted work joins. Added cancelled-init and rejected-owner controls; no product assertion weakened. Directly read Coordinator2982c54f bar/cap; no follow-up/waiver needed. Independently checked A-19714 eight pass/direct child0-null/selective hashes, and A-19715/16 published original arrays byte-identical1,535,438bytes/SHA b61b33d2, sorted unique full15624system/10027user names equal. Development-only/selective-dirty-tree and native/provenance limits retained; no scenario or C3 upgrade. C1/C2 final pending; C3 authorized-pending not failed. Hold released. Coordinator82821e8a one laterdevmerge/quietpreservation/merged-head delta review/mode-free sequence and Linux-duration resizing remain binding. No Reviewer runtime/native/census/cleanup/merge.
+
+### hub · 2026-11-15T14:36:45.359Z
+
+Merge-delta assessment (report-only)
+{"reviewed":"454f64a8aed177b0c83baf599dcd20e7725c41f8","head":"d18c4ef793d11f59329c6e815849bc5432caaf25","dev":"81e756339f060e7e08d554f43f4b18cba6e3b5f0","mergeBase":"d908382c2602ce19edb397b4cdbf06a2452eb220","mode":"report","rule":"conservative-runtime-coupling-v1","result":"overlapping","branchPaths":["docs/agents/tests/hub-test-host-fixture-cleanup.test.ts.md","docs/agents/tests/hub-test-scenarios-integrated-v04.test.ts.md","docs/agents/tests/index.md","hub/test/durations.json","hub/test/host-create-fixture.ts","hub/test/host-fixture-cleanup.test.ts","hub/test/host-fixture-owner.ts","hub/test/scenario-reply-owner.ts","hub/test/scenarios/integrated-v04.test.ts","hub/test/tiers.json"],"devPaths":[".cland/tasks/E-1539-release-v0-4-0-from-the-item.md",".cland/tasks/T-1806-native-host-fixtures-leave-cland-h.md",".cland/tasks/T-1862-digitalocean-provider-422-pause-test.md",".cland/tasks/T-1863-suite-cancel-run-worker-found-dead-right.md",".cland/tasks/T-1866-setup-s-sign-in-step-reads-open-when-the.md",".cland/tasks/T-1870-integrated-pass-on-the-fakes-hosts.md",".cland/tasks/T-1871-release-docs-checked-against-the-build.md",".cland/tasks/T-1872-version-0-4-0-in-package-json-and-the.md","docs/agents/tests/hub-test-fixture-socket-lifecycle.test.ts.md","docs/agents/tests/hub-test-fixture-socket-path.test.ts.md","docs/agents/tests/hub-test-host-provider-digitalocean-prepare.test.ts.md","docs/agents/tests/hub-test-host-provider-digitalocean-volumes.test.ts.md","docs/agents/tests/hub-test-host-provider-digitalocean.test.ts.md","docs/agents/tests/hub-test-host-records.test.ts.md","docs/agents/tests/hub-test-host-runtime-join.test.ts.md","docs/agents/tests/hub-test-remote-docs.test.ts.md","docs/agents/tests/hub-test-setup-signin.test.ts.md","docs/agents/tests/hub-test-suite-cancel.test.ts.md","docs/hub/cland-setup.md","docs/hub/digitalocean-host-admission.md","hub/README.md","hub/src/cli/usage.ts","hub/src/doctor/users.ts","hub/src/host/create-admission.ts","hub/src/host/records.ts","hub/src/init/auth-mode.ts","hub/src/setup/steps/signin.ts","hub/test/account-fixture-env.ts","hub/test/fixture-environment.test.ts","hub/test/fixture-socket-lifecycle.test.ts","hub/test/fixture-socket-path.test.ts","hub/test/fixtures/cli-usage/commands.json","hub/test/harness.ts","hub/test/host-admission-close-contract.ts","hub/test/host-admission-fixture.ts","hub/test/host-provider-digitalocean-prepare.test.ts","hub/test/host-provider-digitalocean-volumes.test.ts","hub/test/host-provider-digitalocean.test.ts","hub/test/host-records.test.ts","hub/test/host-runtime-join.test.ts","hub/test/setup-signin.test.ts","hub/test/ssh-host-fixture.ts","hub/test/suite-cancel.test.ts","package-lock.json","package.json","qa/briefs/E-1534-stage-3.md","qa/briefs/T-1806-inventory.md","shared/fixture-roots.ts","shared/fixture-sockets.ts","site/src/content/docs/docs/cli.md","site/src/content/docs/docs/hosts.md","site/src/content/docs/docs/users.md","site/test/hosts-docs.test.ts","site/test/users-docs.test.ts","test-support/fixture-environment.ts","test-support/fixture-work.ts","test-support/temporary-inventory.ts"],"overlap":[],"dependency":{"status":"known","importers":["hub/test/host-create-fixture.ts","hub/test/host-fixture-cleanup.test.ts","hub/test/scenarios/integrated-v04.test.ts"]},"patchIdCurrent":true}
+Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove behavioral independence.
+
+### impl-1870 · 2026-11-15T14:45:22.483Z
+
+Single authorized origin/dev merge d18c4ef793d11f59329c6e815849bc5432caaf25/tree2c180b8153205795ae96ad3114dd709794962c1d contains T-1806 and0.4.0; full workspace typecheck passed. Quiet native evidence A-19722: cleanup8/8 and scenario1/1/all five paths, direct native close0/null for both, no truncation/source-digest change, full system/user/separate suite TMPDIR deltas empty for EACH interval. Original arrays, source hashes, launch/close JSON, redacted output and launcher retained. C3 implementation done; all3 criteria done, final verification still pending. Source review of merge delta requested before mode-free verification under rule11; actual Linux duration will determine allowance resize before ready.

@@ -2,8 +2,8 @@
 id: T-1770
 kind: task
 title: "Concurrent DigitalOcean creates right after a 422 pause expires: one of three fails (Linux, once)"
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -14,7 +14,8 @@ regression_of: T-1756
 topic: null
 branch: null
 created: 2026-11-09T10:30:58.810Z
-updated: 2026-11-09T10:30:58.810Z
+updated: 2026-11-15T14:47:36.317Z
+closed: 2026-11-15T14:47:36.317Z
 ---
 
 ## Summary
@@ -31,3 +32,9 @@ In `hub/test/host-provider-digitalocean.test.ts`, "digitalocean 422 pauses every
 
 - [ ] C1. The failed acquire's reason is identified and three concurrent creates right after a shared pause expires all succeed, or the documented intended outcome is asserted (test).
 - [ ] C2. The case passes 20/20 under the load gate's repetition on Linux (test).
+
+## Comments
+
+### coord · 2026-11-15T14:47:36.317Z
+
+Closed as a duplicate of T-1862, landed 55a1a2892 on 2026-11-15. It's the same test and the same symptom: `['created','failed','created']` after the 422 pause. T-1862 reproduced it deterministically. Host-create admission rejected a valid reservation when an unrelated lease changed the spend-ledger stamp during key import. The fix is a bounded stable-snapshot retry, proven 20/20 under load.

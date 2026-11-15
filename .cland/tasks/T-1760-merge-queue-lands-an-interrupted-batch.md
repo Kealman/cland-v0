@@ -3,19 +3,19 @@ id: T-1760
 kind: task
 title: Merge queue lands an interrupted batch on failing-file reruns without running the files the interruption skipped
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
   - ready-for-agent
   - release-blocker
 assignee: null
-parent: C-325
+parent: R-1530
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1760-merge-queue-lands-an-interrupted-batch
 created: 2026-11-07T18:46:18.179Z
-updated: 2026-11-07T18:46:18.179Z
+updated: 2026-11-15T14:48:01.927Z
 ---
 
 ## Summary
