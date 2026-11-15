@@ -2,8 +2,8 @@
 id: T-1835
 kind: task
 title: Setup's sign-in mode step
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1515
 branch: t/T-1835-setup-s-sign-in-mode-step
 created: 2026-11-12T10:07:22.624Z
-updated: 2026-11-15T05:25:22.851Z
+updated: 2026-11-15T06:36:56.892Z
+closed: 2026-11-15T06:36:56.892Z
 ---
 
 ## Summary
@@ -123,3 +124,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final exact-head evidence clear: run b2e70b6b/A-19540 matches reviewed c435f67e1 and independently recomputed canonical tree c13b3b6c503a1f2c479b75e49cea15f6b08300e6. T0/allT1/fallbackallT2/changedT3 scenario/Web exit0;6326 base test+698 base file passes, zero negative finishes. All5 setup-signin cases base+5/5, abortable-reader control base+5/5, actual passkey Web1.662968176s and scenario13.393809786s pass. Separate Web whole-file report-only CPU repetition10/10 attempted/passed; no per-case5/5 Web claim. Planted serializer secrecy control executes; no invite-pattern matches in final log. All979 normalized conservative ledger paths retained; every220T1/422T2/55Web has case+file pass,1T3 scenario current,264T3/17T4 deferred. Source fixes resolve old navigation/capture findings; A-19530 old7/10/leak history remains. Linux droplet Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156.0.8078.4, uncached/skips[]. C1–C5 verified; report-only advisories and after-stage QA split retained.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-15T06:36:56.892Z
+
+Merged 5885fe1bfb1b3395eb25c1c2aa4898f1c798538f onto dev.

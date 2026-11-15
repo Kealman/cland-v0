@@ -2,8 +2,8 @@
 id: T-1837
 kind: task
 title: The launching user on session rows and Agents start lines
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1516
 branch: t/T-1837-the-launching-user-on-session-rows-and
 created: 2026-11-12T10:07:23.052Z
-updated: 2026-11-15T05:17:47.555Z
+updated: 2026-11-15T06:36:42.698Z
+closed: 2026-11-15T06:36:42.698Z
 ---
 
 ## Summary
@@ -113,3 +114,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; C1–C5 verified. A-19537/d09b914c passes 6330/6330, zero fail/cancel/skip/todo. Independently checked named launch-user/Agents/legacy/fresh-resume, changed cross-host retention, rendered Neovim normal/narrow+Web, cleanup and docs base/load receipts. T0/all T1/all fallback T2/changed T3(4 cases once)/mapped T4(1 base guard only)/Web exit0. A-19539 records detailed criterion/provenance/allowance/capture limits; A-19538 reconciles all978 manifest paths (698 positive file receipts,264 T3+16 T4 deferred, no missing lower/Web). New Web case2.341s; no Web repetition claim; unchanged C-216 allowances cover existing relaunch cases. Linux x64 Node24.21/Nvim0.12.5, pinned Headless Shell1248/CfT156.0.8078.4, no cache/skips, report-only notices retained. R1 missing unlocked baseline and excluded R2 overlap remain explicit. Full T3/T4 and affected after-stage QA separate. No Reviewer execution; hub/Coordinator owns ready/landing.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-11-15T06:36:42.698Z
+
+Merged 01c97ad5bfbf4801a88cd185081fa89ad7cf77f9 onto dev.
