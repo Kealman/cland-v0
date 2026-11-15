@@ -3,7 +3,7 @@ id: T-1870
 kind: task
 title: "Integrated pass on the fakes: hosts, logins, users and restart in one scenario"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1524
 branch: t/T-1870-integrated-pass-on-the-fakes-hosts
 created: 2026-11-15T13:08:09.345Z
-updated: 2026-11-15T14:45:36.770Z
+updated: 2026-11-15T15:49:48.880Z
 ---
 
 ## Summary
@@ -40,10 +40,13 @@ Reuse the existing fixtures: `sshHostFixture`/fake host provider, `projectHub`, 
 
 - [x] C1. The scenario passes on the fakes through all five paths, asserting each outcome where a human would see it, with no real host, token or network (test).
   - done: impl-1870 · 2026-11-15T13:43:45.438Z
+  - verified: rev-35 [reviewer] · run rev-35-1870-final-1 · 2026-11-15T15:49:48.703Z · commit 831c36926f86d940b648efe074337e7f73b1b068
 - [x] C2. Each path fails when its product behaviour is broken: show a red run per path, for example by withholding the login release, signalling the host's sessions, dropping the second user's projection, losing a row across restart, or letting a new host past the sub-cap (test).
   - done: impl-1870 · 2026-11-15T13:43:45.673Z
+  - verified: rev-35 [reviewer] · run rev-35-1870-final-1 · 2026-11-15T15:49:48.703Z · commit 831c36926f86d940b648efe074337e7f73b1b068
 - [x] C3. The file is registered in T3 with a duration allowance if it needs one, and an exact `/private/tmp` and per-user TMPDIR name set is unchanged around it (test).
   - done: impl-1870 · 2026-11-15T14:45:22.274Z
+  - verified: rev-35 [reviewer] · run rev-35-1870-final-1 · 2026-11-15T15:49:48.704Z · commit 831c36926f86d940b648efe074337e7f73b1b068
 
 ## Comments
 
@@ -111,3 +114,48 @@ Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove
 ### impl-1870 · 2026-11-15T14:45:22.483Z
 
 Single authorized origin/dev merge d18c4ef793d11f59329c6e815849bc5432caaf25/tree2c180b8153205795ae96ad3114dd709794962c1d contains T-1806 and0.4.0; full workspace typecheck passed. Quiet native evidence A-19722: cleanup8/8 and scenario1/1/all five paths, direct native close0/null for both, no truncation/source-digest change, full system/user/separate suite TMPDIR deltas empty for EACH interval. Original arrays, source hashes, launch/close JSON, redacted output and launcher retained. C3 implementation done; all3 criteria done, final verification still pending. Source review of merge delta requested before mode-free verification under rule11; actual Linux duration will determine allowance resize before ready.
+
+### rev-35 · 2026-11-15T14:48:04.915Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1870-source-4
+commit: d18c4ef793d11f59329c6e815849bc5432caaf25
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged source delta clear A-19723. Both parents independently confirmed: cleared454f task plus authorized81e756339dev. All10task files byte-identical to cleared source; all57incoming paths equal dev parent, no resolution edits/weakened assertions. Merged T-1806 integration inspected. A-19722 independently8cleanup+1scenario/allfive pass, child0/null/spawnErrornull, no truncation/changed hashes; published launcher hash matches. Actual sorted unique system15630/user10027/separate suite0 full arrays equal per file; native timings/load/platform/source provenance qualified. Prior draft fault/scan limits retained; no final Linux claim. No findings, hold released for mode-free verify at this exact head per directly read Coordinatorbd89096b. Linux worst-sample allowance sizing remains mandatory if needed, with fresh small delta review/verify on changed head. Final criteria/readiness pending configured receipt, remainingT3/T4/parentgates separate. No Reviewer runtime/native/census/cleanup/merge.
+
+### impl-1870 · 2026-11-15T15:17:08.084Z
+
+First mode-free Linux run895c28b9 passed6402/6402 atd18c4ef79 (A-19732). Per Coordinator bd89096b, allowance-only delta831c36926 pushed: case28s/file30s from actual18.233833274s/19.465928885s, sameC-216/Nov22 expiry. Manifest lint/diff check pass; fresh source review requested from reviewer, then fresh verification. Evidence A-19733. No source/native changes.
+
+### rev-35 · 2026-11-15T15:18:05.121Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1870-source-5
+commit: 831c36926f86d940b648efe074337e7f73b1b068
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Allowance-only source clear A-19734. Complete one-file delta: case18→28/file18→30 plus accurate reasons; same C-216/Nov15–22. Independently read A-19732 passing case18.233833274s/file19.465928885s and ceil1.5x=28/30, all earlier passing Mac samples smaller. No runtime/test/fixture/tier/environment change. Prior d18run6402ordinary/705file and210load positives remains prior-head, not fresh verification. A-19722d18native carry remains explicitly source-equivalent, not relabelled. Hold released for fresh mode-free verify at831c36926 per Coordinatorbd89096b. Final C1-C3 pending that receipt; report-mode/broadgate/provenance qualifications retained. No Reviewer runtime/native/census/cleanup/merge.
+
+### rev-35 · 2026-11-15T15:49:48.704Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1870-final-1
+commit: 831c36926f86d940b648efe074337e7f73b1b068
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; A-19738 records the independent audit. Fresh same-head 5cd26380/A-19737 has 6402 ordinary test/705 file passes plus 210 separate load test/file passes, no negative finishes or skips; every selected T1/T2/Web file and five actual T3 files/28 identities passed. All five scenario outcomes and eight cleanup controls have positive receipts. Case18.681410714s/file20.044333151s remain within28/30s allowances and the agreed about1.5x bar. C2 retains qualified evolving-candidate five fault controls A-19696–A-19700/A-19703; no exact-head red rerun claimed. Native preservation A-19722 remains explicitly d18c4ef evidence carried across the sole durations.json delta; executable/fixture inputs independently unchanged, full canonical system/user/suite name arrays equal. Prior source clearance A-19734 stands. Complete consumer union retained, no missing selected receipts; remaining262 T3/17 T4 deferred. Capture/publication limitations and report-only budget/lint/ratchet advisories retained. No new experiment, cleanup or landing action.
+
+Criteria: C1 verified, C2 verified, C3 verified.
