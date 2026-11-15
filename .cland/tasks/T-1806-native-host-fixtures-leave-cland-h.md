@@ -3,7 +3,7 @@ id: T-1806
 kind: task
 title: Native host fixtures leave cland-h-* socket directories in /tmp, and /tmp holds about 90 historical native-fixture roots
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1520
 branch: t/T-1806-native-host-fixtures-leave-cland-h
 created: 2026-11-10T18:13:37.516Z
-updated: 2026-11-15T08:23:06.252Z
+updated: 2026-11-15T10:03:08.759Z
 ---
 
 ## Summary
@@ -29,9 +29,9 @@ A run of `hub/test/host-create-ready.test.ts` (12/12 pass, macOS, 2026-11-10 18:
 ## Acceptance criteria
 
 - [x] C1. Native host fixtures create their socket directories under the file's scratch root, or register their disposal at allocation, so an exact `/tmp` name set reads unchanged across host-create-ready, host-destroy-native and host-restart (test).
-  - done: impl-1806 · 2026-11-15T08:18:12.804Z
+  - done: impl-1806 · 2026-11-15T08:36:15.154Z
 - [x] C3. A shared inventory helper gives tests and QA briefs one exact before/after name-set check (test).
-  - done: impl-1806 · 2026-11-15T08:18:12.915Z
+  - done: impl-1806 · 2026-11-15T08:36:15.553Z
 
 ## Comments
 
@@ -148,3 +148,24 @@ findings: [{"severity":"medium","text":"Lazy optedInRoots retains disposed non-t
 finding_counts: {"high":0,"medium":2,"low":0}
 
 A-19583 completes the reworked lazy source pass at clean e5c0486c5/tree38b3cf52. Standards two medium findings; Spec no additional findings. A-19578 eager-baseline problem resolved in source; original five exact-content consumers byte-identical, no filtering/weakened assertions. Source/manifest fingerprints in A-19582 match; prior union retained; static candidates are not executions and object tiers require .tier normalization. C1/C3 remain unverified pending correction, fresh source review and exact-head native/configured receipts. A-19577 remains red; A-19573 native52/52/full-name evidence old-head-only. C2 stays T-1865, no historical cleanup. Hold released for consolidated correction; no pre-clear native run or unchanged retry requested. Reviewer performed read-only source/Git/artifact analysis only.
+
+### impl-1806 · 2026-11-15T08:36:15.638Z
+
+Replacement fa6cb7c65d1151a11e26514216d651095eebb3ac committed/pushed. A-19587 fingerprints supersede A-19586: shared root disposal captures/retire matching opt-ins after successful alias cleanup; each registration has its own admission token so an old disposal cannot delete a newer same-inode grant. Both public-boundary T2 regressions observed red then green; final socket-path8/8 and host-records13/13 local macOS, hub typecheck/static checks passed before cover-quiet bd28504a. Cold-hub control now bootstraps its first synthetic record before hub startup with no marker/memory/fake-root grant, then starts inert-Host hub from persisted record and checks initial/restored storage + both root bindings + native close. T3 case unexecuted pending review/native slot. Removed obsolete post-root fallback deletion hook. Original five exact-directory consumers unchanged. C1/C3 done, final evidence pending. Coordinator cover-quiet: no local tests/native/load until release notice; dev frozen and merge held for stage-5 QA. Next: clear source, quiet release, same-head native, mode-free verify, ready. A-19577 red and A-19573 old-head-only retained.
+
+### rev-35 · 2026-11-15T08:37:59.160Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1806-source-4
+commit: fa6cb7c65d1151a11e26514216d651095eebb3ac
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-19588 source clear at clean fa6cb7c65/treeeaa1efc5: both A-19583 findings resolved. Root disposal retires captured registration identities only after successful alias cleanup; per-admission objects preserve newer grants. New T2 public-behavior controls cover discarded nested grants and replacement admission. Cold child first allocates before hub startup with no marker/memory/fake-root alternative, then restores its persisted host under inert Host and checks initial/restored storage, sealed root, native close and independent reader. Five original exact-directory consumers unchanged; no filtering. All A-19587 source hashes match. C1/C3 remain unverified pending exact-head preservation/configured evidence. Cover-quiet bd28504a remains binding: no local/native/load/merge until Coordinator release; source verdict does not release it. After release, authorized same-head slot then mode-free verify; changed head requires review. A-19577 remains red, A-19573 old-head-only; C2 stays T-1865, no cleanup authority. Hold released; no Reviewer runtime/census/cleanup/provenance run.
+
+### impl-1806 · 2026-11-15T10:03:08.759Z
+
+Source-clear fa6cb7c65d1151a11e26514216d651095eebb3ac same-head native occasion completed after quiet release: A-19596 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19596-t-1806-fa6cb7c65-full-name-native-control-evidence-88-of-88), original launcher A-19595. Ten serial files 88/88, zero fail/cancel/skip/todo: cold-child lifecycle6, prepared-project1 (T4), tracker-native-boundary29 (T3), seven C1 host files52. Each full unfiltered system/user/suite before-after and overall delta empty; no contamination/retry; exact head/source hashes/native completions/case facts retained. MacOS arm64 Node24.21/local/no browser; normal owned fixtures disposed, historical/development leftovers untouched and suite root retained. Lock released under15min. Not full T3/T4/Web coverage. Publishing to Reviewer and submitting fresh mode-free verification now; A-19577 remains red and A-19573 old-head-only.

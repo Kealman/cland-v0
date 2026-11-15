@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1486
 branch: null
 created: 2026-10-31T18:22:04.429Z
-updated: 2026-11-15T04:20:07.427Z
+updated: 2026-11-15T10:13:19.669Z
 ---
 
 ## Goal
@@ -576,3 +576,99 @@ Member mode-free receipts A-19454/A-19456/A-19470 supply T0/T1/T2/Web at reviewe
 The skill recorder has23 PASS lines for this run in runs.jsonl; [copy](recorder-lines.jsonl). No epic criteria are verified or failed by this stage verdict. Root non-tracker status remained empty and dev stayed pinned through row99. The scratch hub is down; no process, watchdog, alias or newly attributed shared receipt remains. T has only node-compile-cache; no residue removal was needed. After verdict, only this run's worktree,Q andT will be removed; shared historical residue stays untouched.
 
 Run roots: W `/Users/evgeniyivanov/Projects/cland/v0/.cland/worktrees/qa-e1537s4-qa-e1537s4-2026-11-15-qa678-1`, Q `/private/tmp/q53-PurKca`, T `/private/tmp/qa-e1533-s3-b6348de3-3a6d-4aa6-8828-69f4a34833fe`. The evidence export contains only declared reports, captures, inventories, source helpers and recorder receipts; no HOME/config store/environment dump or one-use link.
+
+### qa-678 · 2026-11-15T10:13:19.669Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-e1537s5-2026-11-15-qa678-1
+commit: efd3168e8b521bf177f310684759250c0a75d761
+stage: the users stage
+stage_hash: def9e83bf1706b754839131bdc69a2f382f97aa9f0c9df876ce62a28cb561cd5
+findings: [{"severity":"low","text":"Found aside, existing T-1676 (Bugs, S), E1537S5-14: eight dead own-TMPDIR fixture-owner receipts after nvim sessions. Owner PIDs absent/no handles/project roots gone; ownership block and shared/shell fixture producers byte-identical to BASE. Literal directory removed after scan; row99 clean. A-19597 trace.","file":"nvim/test/stub-hub.ts","line":43},{"severity":"low","text":"Known T-1866, accepted brief decision D-1, row81: nonterminal hub-down setup without --no-aide reports open choose web sign-in mode even in single mode. Exit unchanged/config untouched. Reachable-hub path passes.","file":"hub/src/setup/steps/signin.ts"},{"severity":"low","text":"Known T-1867, accepted D-2, row07: wording lint excludes MDX. Required substitute check found zero tracker ids in 22 added MDX lines; no assertion of full MDX lint coverage.","file":"hub/test/lint-closed-item-wording.ts"},{"severity":"low","text":"Run-copy R-1, coord86ffcc72: direct inherited-environment Neovim resolution deferred until fresh.mjs; cached pinned executable checked first, same command through plain seal, no download. Original/diff retained, expectation unchanged.","file":"qa/briefs/E-1537-stage-5.md","line":209},{"severity":"low","text":"Run-copy R-2, coord86ffcc72: publication precheck omitted seven setup-remotes generated titles in exact:false file. Seven authorized stage3 mappings applied only to that file before unchanged redactor; 39 original runtime names reverse-match,39pass/0fail/0skip,0 other withheld. Exact original/run copy hashes and mappings in A-19597.","file":"qa/briefs/E-1537-stage-5.md"},{"severity":"low","text":"Carried T-1861 lint diagnostic remains unchanged (E1313 seven at BASE/build; E616 six; prior E1537 stages zero). No new lint finding.","file":"qa/briefs/E-1313.md"}]
+finding_counts: {"high":0,"medium":0,"low":6}
+
+| Case | Surface | Result | Observation | Evidence |
+| --- | --- | --- | --- | --- |
+| E1537S5-10 | hub-api | PASS | hub/test/doctor-users.test.ts:7 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-10.log](E1537S5-10.log), [E1537S5-10.check.txt](E1537S5-10.check.txt), [E1537S5-10.inventory-delta.txt](E1537S5-10.inventory-delta.txt) |
+| E1537S5-11 | hub-api | PASS | hub/test/cli-usage.test.ts:1 pass; hub/test/cli-usage-compatibility.test.ts:1 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-11.log](E1537S5-11.log), [E1537S5-11.check.txt](E1537S5-11.check.txt), [E1537S5-11.inventory-delta.txt](E1537S5-11.inventory-delta.txt) |
+| E1537S5-12 | hub-api | PASS | hub/test/launch-user.test.ts:4 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-12.log](E1537S5-12.log), [E1537S5-12.check.txt](E1537S5-12.check.txt), [E1537S5-12.inventory-delta.txt](E1537S5-12.inventory-delta.txt) |
+| E1537S5-13 | hub-api | PASS | web/test/sessions.test.ts:8 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-13.log](E1537S5-13.log), [E1537S5-13.check.txt](E1537S5-13.check.txt), [E1537S5-13.inventory-delta.txt](E1537S5-13.inventory-delta.txt) |
+| E1537S5-14 | hub-api | PASS | nvim/test/sessions.test.ts:8 pass; hub/test/nvim-fixture-boundary.test.ts:8 pass; hub/test/nvim-frame-refresh.test.ts:6 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-14.log](E1537S5-14.log), [E1537S5-14.check.txt](E1537S5-14.check.txt), [E1537S5-14.inventory-delta.txt](E1537S5-14.inventory-delta.txt), [T1676-receipt-trace.json](T1676-receipt-trace.json) |
+| E1537S5-15 | hub-api | PASS | hub/test/skills-onboarding.test.ts:16 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-15.log](E1537S5-15.log), [E1537S5-15.check.txt](E1537S5-15.check.txt), [E1537S5-15.inventory-delta.txt](E1537S5-15.inventory-delta.txt) |
+| E1537S5-16 | hub-api | PASS | hub/test/setup-signin.test.ts:5 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-16.log](E1537S5-16.log), [E1537S5-16.check.txt](E1537S5-16.check.txt), [E1537S5-16.inventory-delta.txt](E1537S5-16.inventory-delta.txt) |
+| E1537S5-17 | hub-api | PASS | web/test/setup-signin.test.ts:1 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-17.log](E1537S5-17.log), [E1537S5-17.check.txt](E1537S5-17.check.txt), [E1537S5-17.inventory-delta.txt](E1537S5-17.inventory-delta.txt) |
+| E1537S5-18 | hub-api | PASS | hub/test/setup-flow.test.ts:21 pass; hub/test/setup-hub.test.ts:7 pass; hub/test/setup-prompter.test.ts:10 pass; hub/test/setup-cli.test.ts:7 pass; hub/test/setup-remote-component.test.ts:7 pass; hub/test/setup-remotes.test.ts:39 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-18.log](E1537S5-18.log), [E1537S5-18.check.txt](E1537S5-18.check.txt), [E1537S5-18.inventory-delta.txt](E1537S5-18.inventory-delta.txt), [test-validation.json](test-validation.json) |
+| E1537S5-19 | hub-api | PASS | site/test/users-docs.test.ts:5 pass; site/test/hosts-docs.test.ts:7 pass; site/test/onboarding-claims.test.ts:3 pass; site/test/remote-docs.test.ts:22 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-19.log](E1537S5-19.log), [E1537S5-19.check.txt](E1537S5-19.check.txt), [E1537S5-19.inventory-delta.txt](E1537S5-19.inventory-delta.txt) |
+| E1537S5-20 | hub-api | PASS | hub/test/remote-docs.test.ts:38 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-20.log](E1537S5-20.log), [E1537S5-20.check.txt](E1537S5-20.check.txt), [E1537S5-20.inventory-delta.txt](E1537S5-20.inventory-delta.txt) |
+| E1537S5-21 | hub-api | PASS | hub/test/users-docs-invite.test.ts:1 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-21.log](E1537S5-21.log), [E1537S5-21.check.txt](E1537S5-21.check.txt), [E1537S5-21.inventory-delta.txt](E1537S5-21.inventory-delta.txt) |
+| E1537S5-22 | hub-api | PASS | hub/test/suite-task-selection.test.ts:10 pass; hub/test/test-docs.test.ts:4 pass; hub/test/suite-tiers.test.ts:19 pass. Exact runtime/source names agree,0 fail/cancel/skip/todo; no unexpected withheld line. | [E1537S5-22.log](E1537S5-22.log), [E1537S5-22.check.txt](E1537S5-22.check.txt), [E1537S5-22.inventory-delta.txt](E1537S5-22.inventory-delta.txt) |
+| E1537S5-00 | hub-api | PASS | HEAD=dev=request; clean tree; all four members closed/done/landed; four earlier stages closed; Linux and macOS covers present. | [E1537S5-00.txt](E1537S5-00.txt) |
+| E1537S5-01 | hub-api | PASS | Node24.21.0; typecheck passed; tree clean. | [E1537S5-01.txt](E1537S5-01.txt) |
+| E1537S5-02 | hub-api | PASS | All four reviewed landing deltas reconciled; 16 accepted commits; T-1860 named; no unexpected preserved-file or dependency changes. | [E1537S5-02.txt](E1537S5-02.txt) |
+| E1537S5-03 | hub-api | PASS | 94 source assertions: all ok. | [E1537S5-03.txt](E1537S5-03.txt) |
+| E1537S5-04 | hub-api | PASS | 31 rows; 27 mapped ids; no missing id/open marker; 197 listed titles and 1097 brief lines publishable; both positive controls rejected. R-2 supplemental expansion covers all265 names. | [E1537S5-04.txt](E1537S5-04.txt), [R1-pinned-resolution.txt](R1-pinned-resolution.txt), [R2-registration-publishability.json](R2-registration-publishability.json) |
+| E1537S5-05 | hub-api | PASS | 13 page commands, 5 bound CLI commands, 8 sections, 14 UI labels match source. Neighboring-table and invented-command controls pass. | [E1537S5-05.txt](E1537S5-05.txt) |
+| E1537S5-06 | hub-api | PASS | All member/batch/cover receipts and candidate comparisons pass. T3/Web evidence read from batches; no suite started by QA. | [E1537S5-06.txt](E1537S5-06.txt) |
+| E1537S5-07 | hub-api | PASS | Notes/index/tier checks pass; 774 documents,0 wording findings; added22 MDX lines have0 tracker ids; all four lint baselines unchanged. | [E1537S5-07.txt](E1537S5-07.txt) |
+| E1537S5-08 | hub-api | PASS | Fresh-sealed web build passed; current stamp at2026-11-15T10:05:32.758Z; tree clean. | [E1537S5-08.txt](E1537S5-08.txt) |
+| E1537S5-80 | hub-api | PASS | Fresh project, synthetic Git identity, single mode, loopback web edge,6 roles local,0 pools. | [E1537S5-80.txt](E1537S5-80.txt) |
+| E1537S5-81 | hub-api | PASS | Doctor/setup single-mode up/down branches pass; setup exit unchanged; config/roles unchanged. Known D-1/T-1866 open wording observed. | [E1537S5-81.txt](E1537S5-81.txt) |
+| E1537S5-82 | hub-api | PASS | Config-users/running-single mismatch warns with reload guidance; restored config digest equals original. | [E1537S5-82.txt](E1537S5-82.txt) |
+| E1537S5-83 | hub-api | PASS | All4 published commands exit0; correct active/invited/admin counts; users setup ok; offline counts unknown. Three invite values absent from50 scanned files and captured reports, positive control found. | [E1537S5-83.txt](E1537S5-83.txt) |
+| E1537S5-84 | hub-api | PASS | Users restart succeeds; auth reset returns to single; user list correctly refused; doctor/setup return to single. | [E1537S5-84.txt](E1537S5-84.txt) |
+| E1537S5-85 | hub-api | PASS | Three recorded hub PIDs absent; no alias, process or watchdog; TERM0; hub down. | [E1537S5-85.txt](E1537S5-85.txt) |
+| E1537S5-86 | hub-api | PASS | No new shared receipt, ct-, cland-h-, hc- or system TMPDIR entry. Own TMPDIR eight T-1676 receipts traced separately. | [E1537S5-86.txt](E1537S5-86.txt) |
+| E1537S5-90 | hub-api | PASS | Initial publication scan162 files/32306 lines,0 refused; positive control rejected. Final scan repeated after report and recorder additions. | [E1537S5-90.txt](E1537S5-90.txt) |
+| E1537S5-99 | hub-api | PASS | HEAD/dev/request unchanged; tree/root status clean; no owned lock/alias; withholding0; invite-control failures0; T contains only node-compile-cache after literal receipt-directory removal. | [E1537S5-99.txt](E1537S5-99.txt) |
+
+
+# E-1537 stage 5 QA — clear
+
+Stage: **the users stage**. Build: `efd3168e8b521bf177f310684759250c0a75d761`. Run: `qa-e1537s5-2026-11-15-qa678-1`. Request: coord `d5824562-f4f3-4dc9-9f51-4721fb74fee8`, topic-1486. Brief: `qa/briefs/E-1537-stage-5.md` at that build. All31 scoped rows PASS. No epic criterion marks.
+
+
+## Findings, known limits and corrections
+
+No stage product finding. The following lows are found aside or brief defects; they do not change the scoped pass conditions.
+
+- **T-1676, Bugs, S, row14:** `nt E1537S5-14 nvim/test/sessions.test.ts …` leaves8 dead fixture-owner receipts in this run TMPDIR. The inventory reports `new t: cland-fixture-owners-501 known-class`. All8 PIDs absent, no open receipt handles, fixture project roots gone. `nvim/test/stub-hub.ts:43–49` ownership/exit-removal block, full `shared/fixture-ownership.ts` and full `nvim/test/shell-fixture.ts` are byte-identical to BASE881114bfd; all SHA256s and paths in [trace](T1676-receipt-trace.json). This is the brief's unchanged-producer allowance, even though sessions.test.ts is stage-edited. Rechecked dead before removing only `/private/tmp/qa-e1533-s3-1f406e01-5b35-4ab5-a09a-04ccb4f89806/cland-fixture-owners-501` by literal `rm -r`, after row90 passed. Shared/historical receipts untouched.
+- **T-1866, accepted D-1, row81:** setup with hub down, no terminal and without --no-aide reports `open | choose the web sign-in mode | cland auth mode users`. The reachable-hub path skips as documented. Its exit equals the other rows' exit; no config change. Known wording/diagnostic defect, excluded by explicit Coordinator decision in the brief.
+- **T-1867, accepted D-2, row07:** wording lint excludes MDX. The substitute direct check finds0 tracker ids in this stage's22 added MDX lines. This is limited coverage, not a claim that lint processed MDX.
+- **T-1861, carried row07:** E-1313 remains7 findings and E-616 remains6; E-1537 stages3/4 remain0. No new lint diagnostic. The per-test Markdown note path false positive stays known.
+
+**Run-copy R-1 and R-2**, authorized by coord decision `86ffcc72-2cc1-4c35-b923-daca4ab18ace` (2026-11-15T09:58:58.375Z), are brief defects. Exact original blocks, original/corrected fresh.mjs, mapping and diff remain privately preserved; their SHA256s and exact changes are declared in [corrections.json](corrections.json). Product code, command arguments, assertions and expected values are unchanged.
+
+R-1 defers bootstrap line209 `NV=$(cd "$W" && node nvim/bin/nvim-path.ts 2> /dev/null)` until fresh.mjs exists. The cached pinned executable is checked first; missing means BLOCKED with no download. The same resolver command then runs through fresh's plain seal, resolving main-worktree Neovim0.12.5. [Capture](R1-pinned-resolution.txt).
+
+R-2 substitutes exactly the seven setup-remotes generated English titles before the unchanged redactor, only for that file. The brief precheck listed197 titles and missed these because its file was exact:false; QA expanded all265 registrations before execution and found exactly7 refused titles. Telegram loop combinations(false,true),(true,false),(true,true), source142–144, map respectively to `R-3 committed test title 2`, `3`, `4`; Discord(false,false),(false,true),(true,false),(true,true), source303, map to labels5,6,7,8. These are the exact stage3 replacements retained by the decision. All7 original SHA256s and replacements are in [mapping](R2-registration-publishability.json). Runtime reverse mapping privately established all39 original names,39pass/0fail/0skip,14 substitutions(two appearances per title),0 other withholding. No test rerun. No scanner weakening.
+
+Rule proposal to Coordinator: before a QA request, expand and publication-check every reachable test registration, including exact:false files, imports and loops; verify the list against runtime TAP. This stage supplies the seven-title positive control for that rule.
+
+## Execution and evidence boundaries
+
+Local macOS arm64 Darwin27.0.0, Node24.21.0, Neovim0.12.5. 26 serial targeted T1/T2/Web/site files:265 passing results,0 failures/cancellations/skips/todos. Imported site cases run again in the wrapper and are counted as executions, not unique cases. Typecheck/build and94 source assertions passed. All13 test rows and6 scratch rows admitted through the brief's quiet/load gates (≤10, enforce); no suite, local stress or native preservation slot started by QA. Baseline waited for impl-1806's release and confirmed host-gate handoff, messages3620a4b0 andf6ecc39a.
+
+Browser: isolated Chrome Headless Shell1248, Google Chrome for Testing156.0.8078.4, binary `/Users/evgeniyivanov/Projects/cland/v0/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-mac-arm64/chrome-headless-shell`. Sessions rendering and passkey registration ran in disposable profiles; the latter used CDP virtual authenticator. No real browser/keychain/passkey, invite screenshot or trace. Pinned headless Neovim binary is recorded in R1.
+
+Fresh fixtureEnvironment + scratchGitEnvironment seals for every test/manual launch; explicit inputs inside the builders; immediate credential-name gates0; login:false. Raw invites stayed in memory/pipes and were redacted before capture, with per-step positive controls. No raw environment/account store/database or invite copied into evidence. The 50-file invite-value check excludes database files, as specified; it is not a database-content claim. Per-file TAP durations in test-validation.json exclude other rows, queue wait and setup; no summed duration is claimed as suite wall time.
+
+Out of scope per brief: rendered Astro site, real browsers/authenticators/remotes, live scratch harness sessions, scripted terminal setup or --yes walkthrough, injected doctor transport failures outside their tests. T3/T4 evidence is from covers/batches below. Missing or unexecuted work is not counted as a local pass.
+
+## Existing covers and batch evidence
+
+Both uncached stage covers match this full SHA and verification tree `c0539df1834556b6719f4bad5d3d2ce2dae145ff`, T0–T4 and Web. Linux run `f9830ac0-deee-4e33-bd0a-7c5d4b238fb9`, A-19589 (shards A-19590/A-19591):8527 tests,8518pass/0fail/9 named platform skips. Two c-8 ams3 shards: cland-v0-802bffb8, admission-to-finish2588.68s, lifetime2556s,$0.1775; cland-v0-0413494a,1931.68s,lifetime1884s,$0.1308. Total$0.3083; overall wall2637.74s admission through collection. macOS local run `041d5830-ac94-4065-977c-8bf700b04a82`, A-19593:8527 tests,8526pass/0fail/1 named Linux-only skip. Local cost not applicable.
+
+Platforms Linux x64 6.8.0-147-generic and macOS arm64 27.0.0; both Node24.21.0, Neovim0.12.5, Chrome for Testing156.0.8078.4. Exact provenance, browser paths, skip lists and receipt lines in [cover evidence](cover-evidence.json). Report-only timing/lint budgets are not performance passes. Cover load repetitions are existing evidence; QA ran none.
+
+Reviewed-head mode-free receipts: A-19535/T1836, A-19537/T1837, A-19540/T1835, A-19574/T1838. Merge batches4ee95ce6,d4203f6d,2812dfb4: A-19543–47,A-19584–85. Row06 records exact heads/phases, full T3/selected Web title outcomes, and candidates equal to landings outside tracker files. These other heads are supporting evidence, never represented as this local build. Fixed kit hashes and A-19486 report/observation reconciliation passed.
+
+## Records and cleanup
+
+31 PASS ledger entries recorded through the QA skill, [copy](recorder-lines.jsonl); no epic criterion marks. Stage verdict closes only the users stage. Root non-tracker state stayed empty; dev/request remained pinned through row99. Scratch hub down, all3 hub PIDs absent, zero watchdog/process/alias survivors. Own T has only node-compile-cache after the attributed receipt cleanup. After verdict, remove only W,Q,T under the brief's literal-path and prefix/content checks; shared historical residue remains.
+
+Run roots: W `/Users/evgeniyivanov/Projects/cland/v0/.cland/worktrees/qa-e1537s5-qa-e1537s5-2026-11-15-qa678-1`, Q `/private/tmp/q53-VcaGBP`, T `/private/tmp/qa-e1533-s3-1f406e01-5b35-4ab5-a09a-04ccb4f89806`. Evidence export contains only reports, captures, name inventories and recorder receipts. Exact private helper originals are outside the exported tree. Final publication scan with positive control runs after all report additions.
+
+
+Evidence artifact A-19597: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19597-e-1537-stage-5-qa-users-stage-31-checks-clear-at-efd3168e8/report.md
