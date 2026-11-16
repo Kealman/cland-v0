@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T18:03:30.138Z
-updated: 2026-11-15T23:29:38.022Z
+updated: 2026-11-15T23:32:34.990Z
 ---
 
 ## Goal
@@ -128,10 +128,11 @@ Tests and contributors:
 - T-1867: the closed-item wording lint skips `.mdx` site pages;
 - T-1868: QA has no drivers yet for the host and user end-to-end journeys;
 - T-1875: the card-web Telegram fixture keeps fixed 1 s inner waits until the shared test client can cancel them;
+- T-1877: the managed `.cland/.gitignore` header, rewritten when the hub starts on a new version, moves the dev tree off its green covers;
 - T-1805 and T-1676: test fixtures leave owner registries, fallback sockets and Codex placeholder sockets in TMPDIR, and one registry names the live source worktree;
 - known load flakes in suite runs: T-1641, T-1642, T-1643, T-1648, T-1695, T-1731, T-1736, T-1758, T-1761, T-1798, T-1841 and T-1873.
 
-In all, 56 items are open in Bugs and 26 in Tech debt.
+In all, 56 items are open in Bugs and 27 in Tech debt.
 
 The retrospective artifact of the run follows the release and will be linked from R-1530.
 
