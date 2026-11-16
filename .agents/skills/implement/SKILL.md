@@ -150,6 +150,15 @@ a local macOS stage receipt cannot satisfy a droplet release request. See
 
 ## Verifier request procedure
 
+Typed file-start progress arms the command worker's startup watchdog: 30 seconds
+of shared load-scaled setup headroom, capped at half the no-output timeout.
+First test/suite start or a completed empty file disarms it. A startup stall
+uses the existing owned cleanup and native exit/pipe/process evidence; it does
+not change test behaviour deadlines. The delivered-tree package runner owns the
+same guard on droplets; phase start/finish receipts delegate local outer
+startup cleanup, with native exit/close reclaim and the no-output backstop for
+a hung inner runner. See docs/hub/running.md and the suite-command/phase guides.
+
 - Inspect request outcomes: `resolvedTo` names the verifier; `queued` waiting for a free verifier means the hub will deliver automatically and notify you. Wait instead of resending. If no verifier is live, report the staffing blocker to your lead; a refusal notice names the retry rule.
 - Text after the item on the request's first line is detail: `review request T-12 — branch, head, scope` resolves one verifier exactly like the bare form, so a detail placed after the id never turns the request into a role broadcast. A letter glued to the id (`review request T-12abc`) is no request at all.
 

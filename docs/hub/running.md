@@ -788,6 +788,36 @@ Package suites pass `--test-timeout` to every Node test phase. The default is
 sets a positive duration (`s`, `m`, `h` or `d`). A timed-out test fails by name.
 An explicit test-level timeout still overrides Node's default.
 
+Structured file-start receipts also arm one shared per-file startup/import
+watchdog in the verification command worker and the delivered tree's package
+runner, including on Linux droplets. If no test or suite starts in that file, it
+fails with `<file> no test started within <n> s`. The base setup allowance is
+30 seconds, scaled by the shared suite load policy (load, configured workers,
+parallelism, executor floor and explicit `CLAND_TEST_LOAD_FACTOR`), and capped
+at half the admitted no-output timeout. A completed empty file disarms it;
+unrelated output and duplicate file starts do not extend it. Older reporters
+without typed file progress retain the ordinary no-output guard. This watches
+startup readiness, leaving test behaviour deadlines unchanged. It uses the
+existing captured-process cleanup path. Both owners retain the pre-cleanup
+native exit/pipe receipt; the outer command also retains the process census
+described below. The runner joins timeout cleanup and forces a failed phase
+even if its native test process exits zero or assertions were quarantined.
+
+After installing its phase guard and before releasing the test child, the
+package runner emits `suite startup owner {"id":"<phase>","event":"start"}`.
+It emits the matching `finish` after the guarded child's native exit and any
+timeout cleanup have joined. Pipe-close waiting stays after the existing writer
+sweep; inherited pipe writers cannot hold startup delegation open.
+The outer command delegates startup cleanup between those receipts. A missing
+finish returns ownership on the launched command's native exit/close; a hung
+inner runner still has the outer no-output guard as its backstop. Older trees
+without the marker retain outer startup monitoring. No periodic renewal or
+prepared-image change is required: the droplet executes the delivered tree's
+`hub/test/run-suite.ts`. Markers do not change test counts or durable evidence.
+The failure's `suite stall startup` record retains its file and bound through
+semantic log reduction, so a droplet phase remains a timeout in cover history
+even when the shell reports only its nonzero command exit.
+
 The local verification worker also watches stdout and stderr during check
 and tests. `[verification].stall_timeout` defaults to `"10m"`. After that much
 silence it fails with `stalled: no output for <n> min` and up to eight tests

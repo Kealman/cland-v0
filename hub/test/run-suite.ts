@@ -40,7 +40,8 @@ import { StringDecoder } from 'node:string_decoder';
 import { webPhaseAvailable, type WebPrerequisite } from '../src/web-phase.ts';
 import { runWebRepetitions } from './web-repetitions.ts';
 import { WEB_REPETITION_REPORT } from '../src/web-repetitions.ts';
-import { watchWebPhase } from '../src/web-phase-watchdog.ts';
+import { watchSuitePhase } from './suite-phase.ts';
+import { fileStartupTimeoutMs } from '../src/file-startup-watchdog.ts';
 import type { Clock } from '../src/hub/clock.ts';
 
 // Candidate capability read by verificationCommands; old runners retain their recorded tiers.
@@ -73,7 +74,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   let runId = options.token ?? randomBytes(10).toString('base64url');
   let activeIdentity: ProcessIdentity | null = null;
   let activeClosed: Promise<void> | undefined;
-  let activeGuard: ReturnType<typeof watchWebPhase> | undefined;
+  let activeGuard: ReturnType<typeof watchSuitePhase> | undefined;
   const loadRunners = new Set<ProcessIdentity>();
   const handlers = (['SIGINT', 'SIGTERM'] as const).map((signal) => {
     const handler = () => {
@@ -265,7 +266,7 @@ process.chdir(cwd);`);
       const progressDecoder = new StringDecoder('utf8');
       let pendingProgress = '';
       let stderrTail = Buffer.alloc(0);
-      let phaseGuard: ReturnType<typeof watchWebPhase> | undefined;
+      let phaseGuard: ReturnType<typeof watchSuitePhase> | undefined;
       let guardCleanup: Promise<void> | undefined;
       active.stdout!.on('data', (chunk: Buffer) => {
         process.stdout.write(chunk);
@@ -287,6 +288,8 @@ process.chdir(cwd);`);
       });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
       const closed = activeClosed = new Promise<void>(resolve => active!.once('close', () => resolve()));
+      let nativeExit: { code: number | null; signal: NodeJS.Signals | null } | null = null;
+      active.once('exit', (code, signal) => { nativeExit = { code, signal }; });
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
       activeIdentity = captureProcess(active.pid);
       if (!activeIdentity) throw new Error('cannot establish suite runner process identity');
@@ -294,17 +297,23 @@ process.chdir(cwd);`);
       for (const lease of [...leases, ...machine]) await lease.publish();
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const runnerIdentity = activeIdentity;
-      phaseGuard = webPhase ? watchWebPhase({ fileSeconds: webSeconds,
+      phaseGuard = watchSuitePhase({ exit: done,
+        owner: { id: `${runId}:${index}`, report: line => process.stdout.write(line + '\n') },
+        commandState: () => ({ commandPid: runnerIdentity.pid, exit: nativeExit,
+          stdout: active!.stdout!.readableEnded ? 'closed' : 'open', stderr: active!.stderr!.readableEnded ? 'closed' : 'open' }),
+        report: line => process.stderr.write(line + '\n'),
+        startupMs: fileStartupTimeoutMs(limits.stallTimeoutMs, Number(env.CLAND_TEST_LOAD_FACTOR)),
+        ...(webPhase ? { web: { fileSeconds: webSeconds,
         workers: options.workers?.[index] ?? Number(args.find(arg => arg.startsWith('--test-concurrency='))?.split('=')[1] ?? 1),
+        } } : {}),
         ...(options.clock ? { clock: options.clock } : {}),
         stalled: reason => {
           const files = [...new Set([...unfinished.values()].map(row => row.file))];
           process.stderr.write(reason + (files.length ? `; unfinished files ${files.join(', ')}` : '') + '\n');
           guardCleanup = cleanupOwnedProcesses([runnerIdentity]);
-          // Observe rejection immediately, then propagate after the exit receipt.
-          void guardCleanup.catch(() => {});
+          return guardCleanup;
         },
-      }) : undefined;
+      });
       activeGuard = phaseGuard;
       await writeFile(gate, 'ready');
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
@@ -315,7 +324,11 @@ process.chdir(cwd);`);
         timeoutMs: limits.testTimeoutMs, workers: limits.loadGateWorkers, phase: done,
         interrupted: () => interruption.signal !== null, active: loadRunners,
       }) : Promise.resolve({ failed: false, extraWallMs: 0, failures: [], rerun: async (_identity: string) => {} });
-      const [phaseOutcome, gateOutcome] = await Promise.allSettled([done.finally(() => phaseGuard?.stop()), repeats]);
+      const tierFinished = phaseGuard.result.then(code => {
+        phaseGuard!.finished();
+        return code;
+      });
+      const [phaseOutcome, gateOutcome] = await Promise.allSettled([tierFinished, repeats]);
       await guardCleanup;
       if (phaseOutcome.status === 'rejected') throw phaseOutcome.reason;
       if (gateOutcome.status === 'rejected') throw gateOutcome.reason;

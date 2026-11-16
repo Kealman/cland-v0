@@ -6,10 +6,22 @@ import { processStartedAsync } from './hub/lock.ts';
 import { endProcess, systemProcesses } from './system-processes.ts';
 import { suiteLimits } from './suite-limits.ts';
 import type { TestProgress } from './suite-progress.ts';
+import { availableParallelism, loadavg } from 'node:os';
+import { suiteLoadFactor } from './suite-wait-budget.ts';
+import { fileStartupTimeoutMs, watchFileStartup } from './file-startup-watchdog.ts';
+import { stallCommandEvidence } from './suite-stall-evidence.ts';
+import { parseStartupOwner } from './suite-startup-owner.ts';
 
 const nativeProcesses = { processIdentityAsync, processStartedAsync, systemProcesses, stdioWriters, endProcess };
 export async function suiteCommand(line: string, cwd: string, env: NodeJS.ProcessEnv = process.env, native = nativeProcesses): Promise<{ code: number; cause: string }> {
-  const { stallTimeoutMs } = await suiteLimits(cwd, 'local', env);
+  const { stallTimeoutMs, workers } = await suiteLimits(cwd, 'local', env);
+  // Test-process startup/import readiness needs load headroom, independently of
+  // test behaviour. Never let setup headroom consume the no-output guard.
+  const startupMs = fileStartupTimeoutMs(stallTimeoutMs, suiteLoadFactor({
+    load: loadavg()[0]!, parallelism: availableParallelism(), workers: workers ?? 1,
+    ...(env.CLAND_SUITE_EXECUTOR ? { executor: env.CLAND_SUITE_EXECUTOR } : {}),
+    ...(env.CLAND_TEST_LOAD_FACTOR ? { override: env.CLAND_TEST_LOAD_FACTOR } : {}),
+  }));
   const child = spawn('/bin/sh', ['-c', line], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
   const birth = child.pid ? native.processIdentityAsync(child.pid, env) : Promise.resolve(null);
   const identity = child.pid ? native.processStartedAsync(child.pid) : Promise.resolve(null);
@@ -21,7 +33,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   let observeTimer: NodeJS.Timeout | undefined;
   let closed = false;
   let exit: { code: number | null; signal: NodeJS.Signals | null } | undefined;
-  child.once('exit', (code, signal) => { exit = { code, signal }; });
+  child.once('exit', (code, signal) => { exit = { code, signal }; resumeStartup(); });
   const owned = new Map<number, { pid: number; started: string; identity: string }>();
   // Preserve proof across parent exit/reparenting. Cwd, command text and group
   // membership alone never admit a process into this ownership set.
@@ -54,17 +66,18 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   const unfinished = new Map<string, string>();
   const ended = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
     child.once('error', reject);
-    child.once('close', (code, signal) => resolve({ code, signal }));
+    child.once('close', (code, signal) => { resumeStartup(); resolve({ code, signal }); });
   });
   const stop = (reason: string) => {
     if (ending || interrupted) return;
-    cause = reason;
-    // Persist the pre-cleanup boundary even if native inspection/termination fails.
-    cause += `; command exit ${exit ? exit.signal ?? exit.code : 'pending'}; stdout ${child.stdout.readableEnded ? 'closed' : 'open'}; stderr ${child.stderr.readableEnded ? 'closed' : 'open'}`;
-    process.stderr.write(`suite stall command ${JSON.stringify({ commandPid: child.pid ?? null, exit: exit ?? null, stdout: child.stdout.readableEnded ? 'closed' : 'open', stderr: child.stderr.readableEnded ? 'closed' : 'open' })}\n`);
+    const evidence = stallCommandEvidence(reason, { commandPid: child.pid ?? null, exit: exit ?? null, stdout: child.stdout.readableEnded ? 'closed' : 'open', stderr: child.stderr.readableEnded ? 'closed' : 'open' });
+    cause = evidence.cause;
+    process.stderr.write(evidence.line + '\n');
+    if (evidence.startupLine) process.stderr.write(evidence.startupLine + '\n');
     process.stderr.write(cause + '\n');
     clearTimeout(timer);
     clearTimeout(observeTimer);
+    startup.stop();
     ending = (async () => {
       await observing;
       const started = await identity;
@@ -102,6 +115,17 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
       stop(`stalled: no output for ${minutes} min; last started tests: ${[...unfinished.values()].slice(-8).join(' | ') || '(none reported)'}`);
     }, stallTimeoutMs);
   };
+  const innerOwners = new Set<string>();
+  let deferredStartup: string | undefined;
+  const newStartup = () => watchFileStartup({ timeoutMs: startupMs, stalled: reason => {
+    if (innerOwners.size) deferredStartup = reason;
+    else stop(reason);
+  } });
+  let startup = newStartup();
+  const resumeStartup = () => {
+    innerOwners.clear();
+    if (deferredStartup) { const reason = deferredStartup; deferredStartup = undefined; stop(reason); }
+  };
   const output = (chunk: string, stream: NodeJS.WriteStream) => {
     arm();
     stream.write(chunk);
@@ -110,10 +134,19 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     while ((newline = pending.indexOf('\n')) >= 0) {
       const line = pending.slice(0, newline);
       pending = pending.slice(newline + 1);
+      const owner = parseStartupOwner(line);
+      if (owner && !ending && !interrupted && !closed) {
+        if (owner.event === 'start') innerOwners.add(owner.id);
+        else if (innerOwners.delete(owner.id) && innerOwners.size === 0) {
+          // A finish follows the inner owner's joined native exit/timeout cleanup.
+          startup.stop(); deferredStartup = undefined; startup = newStartup();
+        }
+      }
       if (line.startsWith('suite progress ')) {
         try {
           const row = JSON.parse(line.slice('suite progress '.length)) as TestProgress;
           if (typeof row.id !== 'string' || typeof row.file !== 'string' || typeof row.name !== 'string') continue;
+          if (!ending && !interrupted && !closed) startup.progress(row);
           if (row.event === 'start') unfinished.set(row.id, JSON.stringify({ file: row.file, name: row.name }).slice(0, 1000));
           else if (row.event === 'finish' && ['pass', 'fail', 'skip', 'todo'].includes(row.outcome ?? '')) unfinished.delete(row.id);
         } catch { /* Torn progress cannot erase an observed start. */ }
@@ -126,7 +159,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   const handlers = (['SIGINT', 'SIGTERM'] as const).map(signal => {
     // Hub cancellation already owns termination of the worker tree. Do not
     // acquire a competing termination owner from inside that captured tree.
-    const handler = () => { interrupted = true; clearTimeout(timer); clearTimeout(observeTimer); child.kill(signal); };
+    const handler = () => { interrupted = true; clearTimeout(timer); clearTimeout(observeTimer); startup.stop(); child.kill(signal); };
     process.on(signal, handler);
     return { signal, handler };
   });
@@ -144,6 +177,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     closed = true;
     clearTimeout(timer);
     clearTimeout(observeTimer);
+    startup.stop();
     await observing;
     for (const { signal, handler } of handlers) process.off(signal, handler);
   }

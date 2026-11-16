@@ -20,3 +20,18 @@ semantic command-state receipt through in-memory reduction and 40 later noise
 lines, with a long unfinished test name pushing state beyond the ordinary
 cause excerpt. Both live-command and exited-with-open-pipes states are asserted;
 no cleanup authority is granted by the failed inspection.
+
+The startup cases feed a fake file-start with no first test and advance native
+mock timers to one millisecond before and exactly at the 30-second allowance.
+They assert owned termination and the same command/pipe/process stall evidence.
+Other cases cover load factor 2, a half-stall-time cap, duplicate starts,
+unrelated file progress/output, first test/suite receipts, completed empty files,
+normal command close, same-file progress from a different reporter, and the
+previous untyped progress shape. Reporter UUIDs in existing progress IDs keep
+parallel repetitions from acknowledging each other's startup. No native process
+or real-time wait is used. The startup guard is setup headroom; test behaviour
+deadlines remain exact.
+
+Ownership cases cover a new runner's normal start/finish, native exit without
+finish, malformed ownership markers, and a hung inner owner falling back to the
+no-output guard. The unmarked held child remains the old-candidate control.

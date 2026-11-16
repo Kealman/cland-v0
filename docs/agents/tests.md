@@ -2039,6 +2039,12 @@ See [hub/src/hub/store.test.ts](tests/hub-src-hub-store.test.ts.md) and the [per
 
 ## Implementer test selection
 
+Typed file-start receipts in verification commands have a startup watchdog:
+30 seconds of shared load-scaled setup headroom, capped at half the admitted
+no-output timeout. Its first-test/suite or empty-file completion receipt disarms
+it; test behaviour deadlines remain unchanged. See the suite-command per-test
+guide for fake-clock coverage and docs/hub/running.md for diagnostic evidence.
+
 See the [per-test index](tests/index.md) for file-specific coverage and fixtures.
 
 For remote watchdog regressions, use the executor fake with a shared fake clock:

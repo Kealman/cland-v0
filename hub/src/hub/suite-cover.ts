@@ -1,6 +1,7 @@
 import type { CoverRecord, CoverStatus } from '../protocol.ts';
 import type { SuiteJob } from './suites.ts';
 import { failingTests } from './shared-defects.ts';
+import { isFileStartupStall } from '../file-startup-watchdog.ts';
 
 /** Outcome-derived incident data; separate from the executor's process receipt. */
 export function deriveCover(job: Readonly<SuiteJob>, log: string): CoverRecord | undefined {
@@ -14,6 +15,7 @@ export function deriveCover(job: Readonly<SuiteJob>, log: string): CoverRecord |
   if (job.cancelled || job.requesterDied) return { status: 'cancelled', cause: 'cancel-requester', tests: failed };
   if (job.outcome.code === 0) return { status: 'green', cause: null, tests: [] };
   if (job.timedOut || job.outcome.code === 124 || /(?:^|: )(?:run timeout |stalled: no output for )/.test(job.outcome.cause)
+    || isFileStartupStall(job.outcome.cause) || isFileStartupStall(text)
     || /failureType: ['"]testTimeoutFailure['"]/.test(text)) return { status: 'red', cause: 'timeout', tests: failed };
   return { status: 'red', cause: budgets.length && !hasFailure ? 'budget' : 'test-failure', tests: [...new Set([...failed, ...budgets])] };
 }

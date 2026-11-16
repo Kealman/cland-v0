@@ -12,6 +12,7 @@ import { serializeTierManifest } from '../src/suite-shards.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { devT3Result } from '../src/hub/dev-t3-result.ts';
 import { DevT3Search } from '../src/hub/dev-t3-search.ts';
+import { suiteEvidence } from '../src/suite-log.ts';
 
 async function shardedCover(t: Parameters<typeof suiteUnit>[0], options: Parameters<typeof suiteUnit>[1] = {}) {
   const f = await suiteUnit(t, { executor: 'droplet', machineReceiptsOnly: true, ...options });
@@ -270,6 +271,8 @@ test('recovered covers distinguish timeouts, worker head cancellations, mixed fa
   const cases = [
     { id: 'run-timeout', code: 124, cause: 'run timeout 75m', log: '', expected: { status: 'red', cause: 'timeout', tests: [] } },
     { id: 'stall', code: 1, cause: 'stalled: no output for 10 min; last started tests: (none reported)', log: '', expected: { status: 'red', cause: 'timeout', tests: [] } },
+    { id: 'startup-stall', code: 1, cause: 'stalled: hub/test/example.test.ts no test started within 30 s; command exit pending; stdout open; stderr open', log: '', expected: { status: 'red', cause: 'timeout', tests: [] } },
+    { id: 'startup-stall-from-runner', code: 1, cause: '', log: suiteEvidence('suite stall startup stalled: hub/test/example.test.ts no test started within 60 s\n' + 'later noise\n'.repeat(40)), expected: { status: 'red', cause: 'timeout', tests: [] } },
     { id: 'test-timeout', code: 1, cause: '', log: `${failure}\n  [Error: test timed out after 1000ms] { failureType: 'testTimeoutFailure' }`, expected: { status: 'red', cause: 'timeout', tests: ['hub/test/example.test.ts::hangs'] } },
     { id: 'timeout-title', code: 1, cause: '', log: 'test at /home/runner/cland/hub/test/example.test.ts:1:1\n✖ test timed out after 1000ms (20ms)\n  AssertionError: expected true', expected: { status: 'red', cause: 'test-failure', tests: ['hub/test/example.test.ts::test timed out after 1000ms'] } },
     { id: 'worker-head', code: 1, cause: 'cancelled: submitted head aaa changed to bbb; submit verification again', log: '', expected: { status: 'cancelled', cause: 'cancel-head', tests: [] } },
