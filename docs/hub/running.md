@@ -287,6 +287,19 @@ machine capacity.
 Local execution stays at one run per machine. Deploy and restart the hub before
 raising this setting for work that relies on the new admission policy.
 
+Verify replies with the run id, nullable worker pid and queue position after the
+job is persisted, without waiting for scheduler inspection or worker launch.
+This early reply belongs to the socket/RPC request handler. In-process
+`Suites.start()` callers still await the scheduler pass; existing fixtures and
+fake-clock drivers retain that completion contract.
+Candidate validation, tree hashing and required spend checks still precede
+admission; bundling, host gates and execution follow it. Scheduler work is owned
+by the hub and joined on shutdown; launch failures remain recorded run outcomes
+and produce the usual artifact-backed result. The local CLI reply bound is 15 s
+(remote discovery: 90 s; diagnostics: 120 s). A sent request with no reply exits
+75 and says to check `cland verify queue` before resubmitting; it never retries
+automatically. The reply fields retain their previous shape.
+
 One local run uses the host's compatibility leases. Up to `remote_budget` droplet
 runs proceed beside it, using their own machines' locks. A full remote budget with `local_fallback = true` (the default)
 may send a default droplet request to a free local slot with a warning; with both budgets full,

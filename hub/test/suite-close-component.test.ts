@@ -239,11 +239,11 @@ test('a Coordinator integrated batch reserves two shards without stage provenanc
     reservations = ledger.entries.filter(e => e.cost === null).map(e => e.reservation);
   });
   const job = await drive(f, f.launch('all', '--fresh'));
+  await startedShards(f, job.id);
   const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
   assert.ok(queue.remote);
   assert.equal(queue.remote.length, 2, 'the batch occupies both remote slots');
   assert.ok(queue.remote.every(run => !run.occasion));
-  await startedShards(f, job.id);
   assert.deepEqual(reservations, [0.0625, 0.0625], 'both lifetimes reserved before either create');
   f.machine.finish(`${job.id}-shard-1`, 0);
   f.machine.finish(`${job.id}-shard-2`, 0);
@@ -324,6 +324,9 @@ test('cancelling while provider sizes are held joins reservation before reportin
   await waiting;
   await lock.release();
   assert.equal((await drive(f, submission)).id, id);
+  // Admission may already be complete; keep driving the reservation owner,
+  // whose lock retry and cleanup must settle before advancing result polling.
+  await drive(f, f.verificationSettled());
   await f.clock.advance(1000);
   const result = await drive(f, f.result(id));
   assert.match(result.text, /cancelled/);
@@ -445,10 +448,10 @@ test('task heads and non-Coordinator batches keep one remote slot', async t => {
     f.candidate.branch = request.branch;
     assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: request.role })).ok, true);
     const job = await drive(f, f.launch(request.mode, '--fresh'));
+    await drive(f, f.machine.started(job.id));
     const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
     assert.ok(queue.remote);
     assert.deepEqual(queue.remote.map(run => run.id), [job.id]);
-    await drive(f, f.machine.started(job.id));
     await eventually('whole run durably running', async () => {
       const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; state: string }[] }).suites;
       return jobs.find(run => run.id === job.id)?.state === 'running' ? true : undefined;
@@ -463,10 +466,10 @@ test('another project stage close skips sharding and runs once without a check',
   const f = await integrated(t, '', 2, undefined, { machine: 'scripted', stack: 'other', check: '', test: 'printf project-test' });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   const job = await drive(f, f.launch('all', '--fresh', '--occasion', 'stage'));
-  const history = (await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: { text: string; severity?: string }[] };
-  assert.deepEqual(history.messages.filter(m => m.text.startsWith('sharding skipped:')).map(m => [m.text, m.severity]), [['sharding skipped: project commands are not sharded', 'warn']]);
   await drive(f, f.machine.started(job.id));
   await f.verificationSettled();
+  const history = (await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: { text: string; severity?: string }[] };
+  assert.deepEqual(history.messages.filter(m => m.text.startsWith('sharding skipped:')).map(m => [m.text, m.severity]), [['sharding skipped: project commands are not sharded', 'warn']]);
   await f.clock.advance(1000);
   const result = await drive(f, f.result(job.id));
   assert.match(result.text, /all exit 0/);

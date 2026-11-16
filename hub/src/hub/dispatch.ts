@@ -2626,7 +2626,16 @@ export class Dispatcher {
         const source=remote&&caller&&claimed?await this.#flushHostItem(claimed.id,caller.sessionId,request.worktreeHead):undefined;
         if(remote&&!source)throw new Error('host-flush-refused: claimed host task unavailable; worktree HEAD unknown; territory HEAD unknown');
         authorize();
-        return this.#suites!.start({ ...(source?{source}:{}), mode: request.mode, dryRun: request.dryRun ?? false, diagnostics: request.diagnostics ?? false, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: !source && (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize);
+        const reply = Promise.withResolvers<Awaited<ReturnType<Suites['start']>>>();
+        let admitted: string | undefined;
+        const work = this.#suites!.start({ ...(source?{source}:{}), mode: request.mode, dryRun: request.dryRun ?? false, diagnostics: request.diagnostics ?? false, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: !source && (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize, admission => { admitted = admission.id; reply.resolve(admission); });
+        // start() retains its in-process scheduler join. Its durable callback
+        // releases only this wire reply; Suites still owns/drains the work.
+        void work.then(value => reply.resolve(value), error => {
+          if (admitted) log({ event: 'verification-followup-failed', run: admitted, error: String(error) });
+          else reply.reject(error);
+        });
+        return reply.promise;
       };
       later('suite.start', submit().then(value => ({ type: 'result' as const, id: request.id, ok: true as const, value }), failure).then(record));
     };

@@ -11,6 +11,38 @@ import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
 import { fixture as componentFixture } from './suite-component-fixture.ts';
 
+test('detached launch failure is recorded and posted before the next queued run completes', async t => {
+  const f = await componentFixture(t);
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  onCleanup(t, () => release.resolve());
+  const start = LocalExecutor.prototype.start;
+  const order: string[] = [];
+  t.mock.method(LocalExecutor.prototype, 'start', async function (this: LocalExecutor, ...args: Parameters<typeof start>) {
+    order.push(args[1].id);
+    if (order.length === 1) {
+      entered.resolve();
+      await release.promise;
+      throw new Error('scripted worker launch failed');
+    }
+    return start.apply(this, args);
+  });
+  const first = await f.launch();
+  await entered.promise;
+  const reply = await f.ui.request({ type: 'suite.start', mode: 'auto', fresh: true, cwd: f.root, report: f.topic });
+  assert.equal(reply.ok, true, reply.error);
+  const second = (reply.value as { id: string }).id;
+  assert.deepEqual(order, [first.id], 'second admission does not bypass the held launch');
+  release.resolve();
+  const results = await f.results();
+  const status = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
+  const failed = status.suites!.find(job => job.id === first.id)!;
+  assert.equal(failed.outcome!.code, 1);
+  assert.match(failed.outcome!.cause, /scripted worker launch failed/);
+  assert.ok(results.some(result => result.text.includes(first.id)), 'failure has a posted durable result');
+  await f.results();
+  assert.deepEqual(order, [first.id, second]);
+});
+
 test('verify queue retains a local release recovery failure until cleanup succeeds, with the next run waiting', async t => {
   const f = await componentFixture(t);
   let blocked = true;

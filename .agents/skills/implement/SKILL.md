@@ -127,6 +127,10 @@ under running readers. A host check's `dependencies out of date: run npm install
 means a locked package is missing: report it to the item lead so the Coordinator
 can arrange a root install after shared readers stop.
 
+Verify admission returns the durable run id before scheduler inspection and
+worker launch. If a sent request exits 75 without a reply, check the queue once
+before any explicit retry; the CLI does not resubmit automatically.
+
 Commit your work to the current branch.
 
 On a tool result with `code: "invalid_argument"`, correct the named fields using its accepted values and retry. A `forbidden` result is a permission refusal: stop that action and follow the lead-chain escalation in your role clause. See `docs/agents/session-permissions.md`.

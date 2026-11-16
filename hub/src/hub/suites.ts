@@ -51,6 +51,7 @@ import { unavailableWebPhase, webUnavailableLine, type WebPhaseUnavailable } fro
 import { receiptExecutionMatches } from '../verification-tree.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
+export type SuiteAdmission = { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] };
 export type TestSlotWaiter = { id: string; sessionId: string; cover: string };
 export type SuiteJob = {
   webPhase?: WebPhaseUnavailable;
@@ -541,11 +542,11 @@ export class Suites {
     }
     this.#hostSnapshotSweepComplete=true;
   }
-  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void, onAdmitted?: (admission: SuiteAdmission) => void): Promise<SuiteAdmission | SuiteDryRun> {
     if (input.batch) input = { ...input, actor: { name: 'hub', sessionId: `merge-batch:${input.batch.id}:${input.batch.diagnostic?.key ?? 'batch'}`, shell: true }, fresh: true };
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const prepare = async()=>{
-      if(!input.source)return this.#start(input,authorize);
+      if(!input.source)return this.#start(input,authorize,onAdmitted);
       await this.#recoverHostSnapshots();
       authorize();
       const prior=this.#jobs.find(job=>job.hostSource&&this.#active(job)&&suiteOwner(job)===suiteOwner(input)&&job.head===input.source!.head&&job.branch===input.source!.branch);
@@ -554,7 +555,7 @@ export class Suites {
       let hostSnapshot:HostVerifySnapshot;
       try{hostSnapshot=await hostVerifyWorktree(this.#root,cwd,input.source.head,this.#env);}
       catch(error){await this.#recoverHostSnapshots();throw error;}
-      try{return await this.#start({...input,cwd,hostSnapshot},authorize);}
+      try{return await this.#start({...input,cwd,hostSnapshot},authorize,onAdmitted);}
       finally{if(!this.#jobs.some(job=>job.cwd===cwd))await removeHostVerifyWorktree(this.#root,cwd,this.#env,hostSnapshot);}
     };
     const work=input.source?this.#hostSourceTail.then(prepare):prepare();
@@ -563,7 +564,7 @@ export class Suites {
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void, onAdmitted?: (admission: SuiteAdmission) => void): Promise<SuiteAdmission | SuiteDryRun> {
     if (input.batchPlanFrom && (!input.batch || input.batch.diagnostic || input.occasion !== 'batch')) throw new Error('pinned batch plan requires a full batch confirmation');
     const pinned = input.batchPlanFrom ? (await this.receipt(input.batchPlanFrom)).job : undefined;
     const config = this.#options.projectConfig?.();
@@ -721,6 +722,9 @@ export class Suites {
     if (concurrent) return concurrent;
     this.#jobs.push(job); this.#save(job);
     if (!job.cached && executor === 'droplet' && (!this.#env.DIGITALOCEAN_TOKEN || !tree)) this.#fallback(job, !this.#env.DIGITALOCEAN_TOKEN ? 'DIGITALOCEAN_TOKEN is required' : 'dirty worktree cannot be bundled for droplet');
+    // Socket/RPC callers can acknowledge the durable checkpoint without changing
+    // start()'s scheduler-completion contract for in-process callers.
+    onAdmitted?.({ id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) });
     await this.#check();
     return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
   }

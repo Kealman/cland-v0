@@ -16,8 +16,9 @@ import { LocalExecutor } from '../src/executor/local.ts';
 import type { Lease, RunRef, RunStatus } from '../src/executor/executor.ts';
 import type { HubFrame, VerificationQueue, HubStatus } from '../src/protocol.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
+import { until } from './until.ts';
 
-async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'result', otherStack = false) {
+async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' | null = 'result', otherStack = false, slowCompatibility = false) {
   const root = await tempProject(t, 'verify-submit-');
   await verificationFixture(root, otherStack ? { stack: 'other', check: '', test: 'true' } : {});
   const clock = new FakeClock();
@@ -26,13 +27,26 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'resul
   const started = Promise.withResolvers<RunRef>();
   const receipts = new Map<string, RunStatus>();
   const inspections: Array<SuiteSelection | undefined> = [];
+  const compatibilityEntered = Promise.withResolvers<void>();
+  const compatibilityRelease = Promise.withResolvers<void>();
+  onCleanup(t, () => compatibilityRelease.resolve());
+  let submissions = 0;
+  let compatibilityWaiting = false;
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { started.resolve(run); });
   t.mock.method(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
   t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nexecutor="local"\n');
   const hub = await projectHub(t, root, {}, { clock, durationContext: null,
-    compatibility: { holder: async () => null, occupied: async () => held },
+    compatibility: { holder: async () => null, occupied: async () => {
+      compatibilityEntered.resolve();
+      if (slowCompatibility) {
+        compatibilityWaiting = true;
+        try { await compatibilityRelease.promise; }
+        finally { compatibilityWaiting = false; }
+      }
+      return held;
+    } },
     candidate: { head: async () => head, tree: async () => null, inspect: async (_cwd, _mode, _workers, projectTest) => {
       inspections.push(projectTest);
       return { head, branch: 'candidate', tree: null,
@@ -65,7 +79,9 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'resul
       buffer += chunk;
       let nl: number;
       while ((nl = buffer.indexOf('\n')) >= 0) {
-        conversation.receive(buffer.slice(0, nl)); buffer = buffer.slice(nl + 1);
+        const line = buffer.slice(0, nl);
+        if (JSON.parse(line).type === 'suite.start') submissions++;
+        conversation.receive(line); buffer = buffer.slice(nl + 1);
       }
     });
   });
@@ -83,9 +99,41 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'resul
   const submit = (mode = 'auto', ...extra: string[]) => submitAs(env, mode, extra);
   const queue = async () => (await ui.request({ type: 'suite.queue' })).value as VerificationQueue;
   return { root, clock, cliClock, ui, firstReply, submit, queue, outputs, errors, started, receipts, inspections,
+    compatibilityEntered, compatibilityRelease, get submissions() { return submissions; },
+    get compatibilityWaiting() { return compatibilityWaiting; },
+    settle: () => hub.verificationSettled(),
     human: (mode: string, ...extra: string[]) => submitAs({}, mode, extra),
     hold(value: boolean) { held = value; }, head(value: string) { head = value; } };
 }
+
+test('verify returns durable admission before slow scheduler compatibility inspection', async t => {
+  const f = await fixture(t, null, false, true);
+  let outcome: { value: number } | { error: unknown } | undefined;
+  const pending = f.submit().then(value => { outcome = { value }; }, error => { outcome = { error }; });
+  try {
+    await until(() => f.compatibilityWaiting || outcome !== undefined && 'error' in outcome, { what: 'compatibility barrier entered', timeoutMs: 1000 });
+    if (outcome && 'error' in outcome) throw outcome.error;
+    assert.equal(f.compatibilityWaiting, true);
+    // stdout is written only after this CLI socket consumed the result frame.
+    await until(() => f.outputs.length === 1 || outcome !== undefined, { what: 'CLI admission output', timeoutMs: 1000, behaviour: 'reply while scheduler held' });
+    await pending;
+    assert.ok(outcome);
+    if ('error' in outcome) throw outcome.error;
+    assert.equal(outcome.value, 0);
+    assert.equal(f.outputs.length, 1);
+    await f.cliClock.advance(15000);
+    assert.equal(f.compatibilityWaiting, true, 'slow step remains held past the CLI deadline');
+    const admission = JSON.parse(f.outputs[0]!);
+    assert.equal(admission.position, 1);
+    assert.equal(admission.pid, null);
+    assert.deepEqual((await f.queue()).waiters.map(run => run.id), [admission.id]);
+    assert.equal(f.submissions, 1);
+  } finally {
+    f.compatibilityRelease.resolve();
+    try { await pending; }
+    finally { await f.settle(); }
+  }
+});
 
 test('other-stack verify submits a full project test without cland planning', async t => {
   const f = await fixture(t, 'result', true);
@@ -123,6 +171,7 @@ test('an accepted verify submission times out as unconfirmed and safely retries 
   assert.deepEqual(await pending, { code: 75 });
   assert.deepEqual(f.errors, ['cland: submission sent; no reply within 15 s; check `cland verify queue` before resubmitting\n']);
   assert.deepEqual(f.outputs, []);
+  assert.equal(f.submissions, 1, 'timeout never automatically resubmits');
   reply.release();
   assert.equal(await f.submit(), 0);
   const reused = JSON.parse(f.outputs.pop()!);

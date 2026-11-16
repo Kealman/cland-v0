@@ -1,5 +1,16 @@
 # hub/test/suite-close-component.test.ts
 
+Admission is not shard acquisition: observe `startedShards` or the scripted
+machine's start receipt before asserting remote slot membership or sharding
+notices. Join `verificationSettled()` where the assertion consumes completed
+publication work. Keep admission separate in tests that intentionally hold a
+provider lookup gate.
+
+The provider-size cancellation case drives `verificationSettled()` after releasing
+the size and ledger gates. Driving only the submission promise stops too early
+now that admission excludes reservation work, leaving its fake-clock lock retry
+undriven. Keep the zero-reserved-spend and posted-result assertions.
+
 T-1029: execute two scripted Linux shards through the production scheduler, wait
 for the parent result and drain verification work before stopping the first
 `projectHub`. Start a second hub with the same owned provider and clock; its first
