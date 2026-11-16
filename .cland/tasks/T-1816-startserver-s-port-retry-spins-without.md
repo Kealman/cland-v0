@@ -3,16 +3,17 @@ id: T-1816
 kind: task
 title: startServer's port retry spins without bound when freePort keeps returning an already-attempted port
 state: open
-status: planned
+status: in progress
 size: XS
+criterion_seq: 2
 labels: []
 assignee: null
 parent: E-1885
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1562
+branch: t/T-1816-startserver-s-port-retry-spins-without
 created: 2026-11-11T18:14:27.445Z
-updated: 2026-11-16T07:31:17.187Z
+updated: 2026-11-16T16:32:26.130Z
 ---
 
 ## Summary
@@ -26,10 +27,44 @@ Bound the retry: a fixed, named number of attempts (or a repeated-port refusal),
 ## Acceptance criteria
 
 - [ ] C1. A freePort that always returns an attempted port makes `startServer` fail within its named attempt bound with a typed error naming the port (test).
+  - failed: rev-37 [reviewer] · 2026-11-16T16:32:26.130Z · note Configured run497fbadd ended on executor transport error after T0; no runtime receipt for the bounded repeated-port case.
 - [ ] C2. An address-in-use followed by a fresh port still succeeds on the next attempt (test).
+  - failed: rev-37 [reviewer] · 2026-11-16T16:32:26.130Z · note Configured run497fbadd produced no runtime receipt for fresh-port success; evidence incomplete, not a failed product assertion.
 
 ## Comments
 
 ### coord · 2026-11-11T18:14:46.091Z
 
 Exact location from impl-1794: OpenCode `startServer` in `hub/src/adapters/opencode/server.ts:74` (`if (attempted.has(port)) continue`), producing more than 16M async-hook continuations and the RangeError before its 30 s deadline. Triggered by T-1794's native fixture's constant freePort after a socket collision; the fixture fix stays in T-1794.
+
+### impl-1816 · 2026-11-16T16:18:16.235Z
+
+Rule 20 consumer audit: searched startServer, freePort, EADDRINUSE/address-in-use, existing serve failure messages and LaunchRecoveryPending across hub/web/nvim, docs, QA briefs and shipped skills, including T3/T4. Sole production caller is OpenCodeAdapter.spawn (opencode.ts); its existing launch rollback rethrows Error or wraps it in LaunchRecoveryPending, preserving message/cause. Sessions launch/resume in adapters/sessions.ts formats Error.message/String(error), retains cleanup ownership and generic failure classification; no new wire refusal code/shape is added. CLI/web/Neovim launch rendering consumes that existing generic failure text; no migration. Existing opencode-host T2, opencode-adapter T3, opencode-remote and opencode-remote-cleanup native tests, fake-opencode collision fixture, launch recovery tests (codex-host, claude-code-remote-files, session-archive) and QA E-412/E-1533/4/5/7 briefs do not classify port errors or pin the timeout text; unaffected. New typed Error is local to startServer, preserving the prior Error contract. C1 red on baseline source: 'Error: port selection exceeded regression safety bound; port selections: 1001', expected OpenCodePortRetryError; 64.5 ms test on macOS local Node 24.21.0. The fake has both a 1000-call and 250 ms safety fence; no native/network operation.
+
+### rev-37 · 2026-11-16T16:25:24.757Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1816-source-1
+commit: c78e87d536fcafb1e65c291cc0f566d927871993
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source review A-20251: Standards clear, Spec clear; no findings. Eight selections count duplicate ports before a ninth freePort call, with local typed Error naming last port/count and unchanged existing deadline/collision-success/rollback ownership. New scripted T2 controls retain exact8 selections/1spawn and fresh-port authenticated readiness/secondPID+URL/exit checks; no native or network work. Docs and consumer dispositions match. A-20247/A-20250 retain original candidate excerpts: final2 regressions green, full14 before safety-only adjustment; static checks predate or overlap guard/docs changes and are not exact-head passes, raw streams/launch hashes unknown. No Reviewer runtime or configured receipt yet; C1/C2 remain unverified for same-head configured evidence.
+
+### rev-37 · 2026-11-16T16:32:26.130Z
+
+verdict: review
+result: not clear
+by: rev-37 [reviewer]
+run: rev-37-1816-evidence-1
+commit: c78e87d536fcafb1e65c291cc0f566d927871993
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Actual failure: 'DigitalOcean 0 transport: request failed or exceeded its time bound'; hub exit1/failed. A-20264: source remains unchanged/source-clear A-20251, no new source findings. A-20262 head matches; localT0exit0/126.212s, remote platform/browsernull, no test-finish receipts, counts unavailable. T1/T2/Web and T3/T4 unexecuted, planned projections not passes; report-only notices retained. C1/C2 failed marks denote incomplete configured evidence, not failing product assertions. Lead holds retries for recovery/window guidance; no Reviewer run or resubmission.
+
+Criteria: C1 failed (Configured run497fbadd ended on executor transport error after T0; no runtime receipt for the bounded repeated-port case.), C2 failed (Configured run497fbadd produced no runtime receipt for fresh-port success; evidence incomplete, not a failed product assertion.).

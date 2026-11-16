@@ -3,7 +3,7 @@ id: T-1907
 kind: task
 title: cland verify times out at 15 s ("submission sent; no reply") while the hub admits the run, three times in a row on 2026-11-16
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1555
 branch: t/T-1907-cland-verify-times-out-at-15-s
 created: 2026-11-16T08:08:22.188Z
-updated: 2026-11-16T15:48:53.378Z
+updated: 2026-11-16T16:18:59.321Z
 ---
 
 ## Summary
@@ -33,8 +33,10 @@ Find what the hub does between receiving a verify submission and replying. Reply
 
 - [x] C1. A verify submission on a quiet machine returns the run id within the CLI bound, with the slow step measured and named (test with a fake slow step).
   - done: impl-1907 · 2026-11-16T15:44:07.794Z
+  - verified: rev-36 [reviewer] · run rev-36-1907-final-1 · 2026-11-16T16:18:58.117Z · commit 61ffc95cfc3638d46e9f7e02a3b48d751e4a5c8c
 - [x] C2. A real timeout still reports "submission sent; check the queue" and never resubmits (test).
   - done: impl-1907 · 2026-11-16T13:47:40.977Z
+  - verified: rev-36 [reviewer] · run rev-36-1907-final-1 · 2026-11-16T16:18:58.118Z · commit 61ffc95cfc3638d46e9f7e02a3b48d751e4a5c8c
 
 ## Comments
 
@@ -217,3 +219,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear after Coordinator wire-only redesign; Standards0/Spec0. A-20229 traces the durable callback shared by socket/RPC, immediate start-promise outcome ownership, restored await#check/#starting shutdown join, and byte-identical restoration of unit fixture/remote-budget/guide to78393cf43. C1/C2 assertions and old reply/help fields retained; close-component wire readers now await actual machine/publication receipts and drive reservation settlement. A-20226 candidate61-case proofs and captured limitations remain distinct from immutable configured evidence; A-20228 normalizes206 retained reference paths with planned/deferred/helper boundaries. C1/C2 remain unverified until exact-head mode-free configured result; prior A-20135/A-20184 reds retained. Proceed in authorized verify window.
+
+### rev-36 · 2026-11-16T16:18:58.118Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1907-final-1
+commit: 61ffc95cfc3638d46e9f7e02a3b48d751e4a5c8c
+scope: evidence
+findings: [{"severity":"low","text":"The new launch-failure control awaits entered.promise without a separately named setup deadline after the launch reply settles. Missing executor entry would wait for the run-wide guard. Rule9 requires a setup bound; claimant fe5d77a5 confirms none omitted. Release/cleanup is owned and all behavior receipts pass, so nonblocking diagnostic issue: use a named bounded observation while retaining final durable assertions.","file":"hub/test/suite-admission-responsive.test.ts","line":30}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Final clear with one low diagnostic finding; C1/C2 verified. A-20239 verdict + A-20238 independent receipt ledger establish exact-head278ae9f0/A-20237:6416 ordinary tests/704 files pass, separate220load tests/files, no nonpass/skip. All61 required compatibility cases and both new names base1+load5 pass; prior hung accounting/budget/close cases now have positive finishes. Exact actual browser/platform captured; budgets/lint report-only. Retained206consumer references classify56 configured pass,33T3/T4 deferred,117source/helper/client/skill/QA references; full989manifest no missing lower/Web finish. Earlier failed/incomplete/provenance limits retained. XS Tech debt to lead: separately bound entered setup at responsive:30; cleanup already owns release and successful evidence remains valid.
+
+Criteria: C1 verified, C2 verified.

@@ -16,7 +16,7 @@ found_by: qa
 topic: topic-1552
 branch: t/T-1705-role-sessions-login-shells-inherit
 created: 2026-11-06T10:31:30.250Z
-updated: 2026-11-16T16:07:53.739Z
+updated: 2026-11-16T16:10:54.194Z
 ---
 
 ## Summary
@@ -161,3 +161,13 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Merge-delta clear A-20234. Whole-tree parent comparison has no unexpected non-overlap paths; all33 task paths outside five shared files are unchanged. Reviewed shared skill/index/README/help fixture and combined running.md hunk: secret-store/migration guidance retained with exact regional422 fallback; obsolete blanket create-retry denial removed. Task production/tests unchanged; daemon credential and inherited droplet boundary inspected. Coordinator9ce8d8fe/7525817f explicitly waives new verify for docs-only resolution after three checks; A-20233 records merged-head root typecheck/test:lint/separate wording exit0, report-only findings and tool-return provenance limits retained. C1/C2 reverified under that waiver with A-20208/A-20204 prior evidence qualifications, not a new merged-head runtime pass. Four Linuxzsh skips and separate limited MacA-20164 remain distinct, no native harness/human migration claim; old redA-20169 retained. Hold released; Coordinator owns enqueue/landing.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T16:10:54.194Z
+
+Enqueued at af14a0111 under the rule 6 docs-only waiver. The full mode-free verify passed at 67f2473c4. af14a0111 merges dev b57847bca, and the only manual resolution is in `docs/hub/running.md`. Evidence at the merged head:
+- `npm run typecheck` exit 0 (impl-1705);
+- searches of hub/test and nvim/test for every changed phrase; the only match is `hub/test/executor-admission.test.ts`, which pins the fake provider's message, not the doc;
+- that file run on af14a0111 merged with dev 9859c068b (c99b51aad): 9/9 pass, exit 0;
+- `npm run test:lint` 0 refusals;
+- closed-item wording lint: 793 documents, 0 findings.
+No new verify; the merge-queue batch adds T1+T3 on the integrated tree.

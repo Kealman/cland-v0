@@ -3,7 +3,7 @@ id: T-1768
 kind: task
 title: projectHub T2 fixtures reach native sysctl through the default lock identity
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1557
 branch: t/T-1768-projecthub-t2-fixtures-reach-native
 created: 2026-11-09T06:56:35.201Z
-updated: 2026-11-16T15:54:07.303Z
+updated: 2026-11-16T16:47:15.128Z
 ---
 
 ## Summary
@@ -22,10 +22,12 @@ A T2 test that starts `projectHub` without an explicit `lockIdentity` reaches na
 
 ## Acceptance criteria
 
-- [ ] C1. projectHub under T2 defaults to a fixture lock identity with no native process call; native identity stays opt-in, used explicitly by T3 and by the T2 files whose native CLI reads the lock, which T-1915 then classifies (test).
-  - failed: rev-35 [reviewer] · 2026-11-16T15:54:07.303Z · note Regression fixtures still lack ownership over initial tempProject acquisition; post-root controls do not prove this failure path.
+- [x] C1. projectHub under T2 defaults to a fixture lock identity with no native process call; native identity stays opt-in, used explicitly by T3 and by the T2 files whose native CLI reads the lock, which T-1915 then classifies (test).
+  - done: impl-1768 · 2026-11-16T16:11:08.464Z
+  - verified: rev-35 [reviewer] · run rev-35-1768-final-1 · 2026-11-16T16:47:14.687Z · commit 710cc489a1dab540384009fe988af9cbc10054fe
 - [x] C2. An enforce-mode tripwire run over the projectHub-based T2 files reports no native process call from projectHub's own default hub lock path (lock identity or process-start probe); other native calls the run finds are recorded in an artifact for a follow-up item (test).
-  - done: impl-1768 · 2026-11-16T15:46:56.814Z
+  - done: impl-1768 · 2026-11-16T16:11:08.911Z
+  - verified: rev-35 [reviewer] · run rev-35-1768-final-1 · 2026-11-16T16:47:14.687Z · commit 710cc489a1dab540384009fe988af9cbc10054fe
 
 ## Comments
 
@@ -86,3 +88,31 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Complete seven-file repair pass recorded in A-20230. processes:undefined normalization is fixed; explicit tables/native defaults and accepted ten compatibility exceptions preserved. Sole remaining medium is pre-root acquisition ownership; implementer confirms no earlier owner. A-20227 positive normal/post-root receipts retained with stated provenance limits, not proof of initial-root closure. C2 remains done/unverified. Pin released for consolidated correction using shared owner, then fresh source review at a clean committed head before verify; no dev merge required.
 
 Criteria: C1 failed (Regression fixtures still lack ownership over initial tempProject acquisition; post-root controls do not prove this failure path.).
+
+### rev-35 · 2026-11-16T16:12:44.591Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1768-source-3
+commit: 710cc489a1dab540384009fe988af9cbc10054fe
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Complete six-file repair pass clear A-20236. Shared admitted-work core composed before first async acquisition; late root remover/guard captured before abort check, full body and late resources joined before restoration/removal, failed settlement retains root. Owned held-initial-acquisition/startup/read controls retain positive final assertions. Earlier processes:undefined normalization and explicit/native compatibility choices unchanged; production untouched. A-20235 independently confirms 7/7 enforce zero-child and5/5 native selected-file completions, code0/signalnull/no timeout; exact test/launcher hashes match. Local macOS Node24.21/no browser; no full-tier/configured claim, atomic birth/tree/raw-chunk limits retained. Historical census failures/incomplete results and T-1915 scope retained. C1/C2 done but unverified until configured same-head evidence. Hold released; mode-free verify at exact head in Coordinator window may proceed, no final landing claim.
+
+### rev-35 · 2026-11-16T16:47:14.687Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1768-final-1
+commit: 710cc489a1dab540384009fe988af9cbc10054fe
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear A-20290, detailed named/992manifest ledger A-20286. A-20277 independently6488 ordinary tests/709files, separate235load tests/files, no negatives/skips; all224T1/427T2/55Web plus3changedT3files31identities. Required7probes+5lifecycle cases positive; five newT2identities each base+5, ten compatibility files and27identity/5env cases pass. Remaining266T3/17T4 unexecuted. C1/C2verified under narrowed own-default-lock scope: finalMac enforceA-20235 seven zero-child cases+source normalization and original scoped enforce census/other-owner dispositions; no all239green/currentfullMac claim. Old212exit0/25fail/2incomplete census and original source/native/raw/hash limits retained forT-1915. Exact head/provenance37453 normalized85ba9f32, Linuxx64Node24.21Nvim0.12.5uncached; actualWeb34863 isolatedHeadlessShell1248/CfT156.0.8078.4. Report-only duration/lint/ratchet notices not enforced passes. Source unchanged/clean, original653consumer paths retained. Hold released; Coordinator owns readiness/enqueue/landing. No Reviewer runtime or extra run requested.
+
+Criteria: C1 verified, C2 verified.
