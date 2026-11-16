@@ -47,7 +47,7 @@ test('C1-C4 socket pushes follow commits, amend, reset, rebase, refusal and down
  const events:Extract<AgentEvent,{event:'ref-moved'}>[]=[];
  const observe=(frame:AgentEvent)=>{if(frame.event==='ref-moved')events.push(frame);};client.on('event',observe);
  await f.host.worktreeAdd({root,path,branch,territory:{path:'git://cland/territory.git',tip:await git(f.root,['rev-parse','HEAD'])}});
- const reaches=async()=>{const head=await git(path,['rev-parse','HEAD']);await eventually('territory has exact moved head',async()=>await git(territoryPath(f.root),['rev-parse',branch]).catch(()=>'')===head||undefined,/* behaviour: publication after ref move */ 5000);assert.equal(await git(territoryPath(f.root),['rev-parse',branch]),head);return head;};
+ const reaches=async()=>{const head=await git(path,['rev-parse','HEAD']);await eventually('territory has exact moved head',async()=>await git(territoryPath(f.root),['rev-parse',branch]).catch(()=>'')===head||undefined,{ timeoutMs: 5000, behaviour: "publication after ref move" });assert.equal(await git(territoryPath(f.root),['rev-parse',branch]),head);return head;};
  await reaches();
  await git(path,['commit','--allow-empty','-m','commit']);const committed=await reaches();
  await git(path,['commit','--amend','--allow-empty','-m','amend']);assert.notEqual(await reaches(),committed);
@@ -114,7 +114,7 @@ exec /usr/bin/git "$@"
  client=await eventually('replacement watch agent ready',async()=>{const next=await AgentClient.connect(f.paths.agentSocket,f.secrets.readSecret('f1')).catch(()=>undefined);if(next?.hello.pid===oldPid){await next.close();return undefined;}return next;});
  await writeFile(gate,'release');
  let observedHead:string|null=null;
- try{await eventually('current head durable publication after interrupted push',async()=>{observedHead=await git(territoryPath(f.root),['rev-parse',branch]);return observedHead===current||undefined;},/* behaviour: post-signal receipt deadline */ 5000);}
+ try{await eventually('current head durable publication after interrupted push',async()=>{observedHead=await git(territoryPath(f.root),['rev-parse',branch]);return observedHead===current||undefined;},{ timeoutMs: 5000, behaviour: "post-signal receipt deadline" });}
  catch(error){
   try{const facts=JSON.stringify(await pushRecoveryFacts({runDir:f.fake.run,path,bootFile:f.fake.bootId,before:helloBefore,after:client.hello,captured:pending.pending,expectedHead:current,observedHead,secrets:[f.secrets.readSecret('f1')],observe:pid=>client.request('identity',{pid},1000) as Promise<string|null>}));t.diagnostic('push recovery receipts '+facts.slice(0,16384)+(facts.length>16384?' [incomplete: diagnostic truncated at16384characters]':''));}
   catch(diagnostic){t.diagnostic('push recovery diagnostic incomplete: '+(diagnostic as Error).name);}
@@ -157,10 +157,10 @@ test('killed producer without result stays named and fenced until a later succes
  killRoot=true;await eventually('positive producer-only fault receipt',async()=>{
   try{assert.equal(await client.request('signal',{...interrupted.pending.native,signal:'SIGKILL'}),false,'a declined capture sends no signal');return undefined;}
   catch(error){assert.match(String(error),/producer-only crash/);return killedRoot||undefined;}
- },/* behaviour: post-signal receipt deadline */ 5000);assert.equal(killedRoot,true);
+ },{ timeoutMs: 5000, behaviour: "post-signal receipt deadline" });assert.equal(killedRoot,true);
  await eventually('missing result named fence',async()=>{const rows=await client.request('watch-status',{}) as Array<{path:string;state:string;cause?:string}>;return rows.find(row=>row.path===path&&row.state==='fenced'&&row.cause?.includes('producer result missing'));});await assert.rejects(stat(join(f.fake.run,'ref-push',interrupted.pending.id+'.json')),{code:'ENOENT'});
  // The surviving captured Git child is still owned by the existing ledger; join it before fixture cleanup.
  assert.equal(await client.request('stop',interrupted.pending.native),true);await writeFile(gate,'release');await git(path,['commit','--allow-empty','-m','later leased head']);const next=await git(path,['rev-parse','HEAD']);
- await eventually('later leased head clears fenced publication',async()=>await git(territoryPath(f.root),['rev-parse',branch])===next||undefined,/* behaviour: post-signal receipt deadline */ 5000);await client.request('flush',{});
+ await eventually('later leased head clears fenced publication',async()=>await git(territoryPath(f.root),['rev-parse',branch])===next||undefined,{ timeoutMs: 5000, behaviour: "post-signal receipt deadline" });await client.request('flush',{});
  assert.equal((await client.request('watch-status',{}) as Array<{state:string}>)[0]?.state,'watching');
 });

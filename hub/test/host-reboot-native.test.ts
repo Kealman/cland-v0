@@ -35,7 +35,7 @@ test('reboot retires one host without stop or signals and bootstraps a fresh sup
     await cleanupOwnedProcesses(fixtureProcessCensus(f.root));
     // A supervisor can spawn its final 0.2s sleep between census and kill. Its
     // launcher is joined; observe that short-lived native writer gone as well.
-    try {await eventually('all captured fixture writers positively absent',()=>fixtureProcessCensus(f.root).filter(p=>p.pid!==process.pid).length===0||undefined,/* behaviour: post-signal receipt deadline */ 2000);}
+    try {await eventually('all captured fixture writers positively absent',()=>fixtureProcessCensus(f.root).filter(p=>p.pid!==process.pid).length===0||undefined,{ timeoutMs: 2000, behaviour: "post-signal receipt deadline" });}
     catch(error) {
       const survivors=fixtureProcessCensus(f.root).filter(p=>p.pid!==process.pid).map(p=>({pid:p.pid,identity:p.identity,group:p.group,started:p.started}));
       throw new Error('fixture writers remain after 2s: '+JSON.stringify(survivors),{cause:error});
@@ -93,12 +93,12 @@ test('reboot retires one host without stop or signals and bootstraps a fresh sup
   const unchanged=await AgentClient.connect(hostPaths(f.root,'f1').agentSocket,f.secrets.readSecret('f1'));
   for(const p of old.filter(p=>p.host==='f1'))assert.equal(await unchanged.request('identity',{pid:p.pid}),p.pidIdentity,'wrong-owner CLI never signals an older worker');
   await unchanged.close();
-  const retirement=eventually('durable exits for every rebooted native row',()=>old.filter(p=>p.host==='f1').every(p=>table.bySessionId(p.sessionId)?.status==='exited')||undefined,/* behaviour: post-signal receipt deadline */ 15000); void retirement.catch(()=>{});
+  const retirement=eventually('durable exits for every rebooted native row',()=>old.filter(p=>p.host==='f1').every(p=>table.bySessionId(p.sessionId)?.status==='exited')||undefined,{ timeoutMs: 15000, behaviour: "post-signal receipt deadline" }); void retirement.catch(()=>{});
   await cliReboot();await retirement;
   const replacement=await eventually('authenticated replacement agent with a changed boot',async()=>{
     const client=await AgentClient.connect(hostPaths(f.root,'f1').agentSocket,f.secrets.readSecret('f1')).catch(()=>undefined);
     if(!client)return;const hello=client.hello;await client.close();return hello.bootId!==boot?hello:undefined;
-  },/* behaviour: post-signal receipt deadline */ 15000);
+  },{ timeoutMs: 15000, behaviour: "post-signal receipt deadline" });
   assert.notEqual(replacement.pid,agentPid);assert.notEqual(await readFile(join(f.fake.run,'supervisor.lock/pid'),'utf8'),supervisorBefore);
   assert.notEqual(await readFile(f.fake.bootId,'utf8'),boot);
   const rows=((await ui.request({type:'session.list'})).value as {processes:HarnessProcessView[]}).processes;

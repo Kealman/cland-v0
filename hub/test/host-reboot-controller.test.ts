@@ -40,7 +40,7 @@ test('close joins held admission and forbids reboot after owner observation', {t
   await eventually('held admission entered',()=>entered||undefined,testWaitMs());
   let clientClosed=false;socket.once('close',()=>{clientClosed=true;});
   let closed=false;const closing=controller.close().then(()=>{closed=true;});
-  await eventually('close destroys its accepted transport',()=>clientClosed||undefined,/* behaviour: post-signal receipt deadline */ 1000);
+  await eventually('close destroys its accepted transport',()=>clientClosed||undefined,{ timeoutMs: 1000, behaviour: "post-signal receipt deadline" });
   assert.equal(closed,false,'a closed socket cannot stand in for the held admission');
   release.resolve();await closing;
   assert.equal(reboots,0,'closing is rechecked after asynchronous admission');
@@ -74,6 +74,6 @@ test('failed held setup destroys accepted partial clients before rejecting', {ti
   await new Promise<void>((resolve,reject)=>{socket.once('connect',resolve);socket.once('error',reject);});
   let closed=false;socket.once('close',()=>{closed=true;});socket.write('{');
   release.resolve();await assert.rejects(starting,/injected publication failure/);
-  await eventually('failed setup accepted client closed',()=>closed||undefined,/* behaviour: post-signal receipt deadline */ 1000);
+  await eventually('failed setup accepted client closed',()=>closed||undefined,{ timeoutMs: 1000, behaviour: "post-signal receipt deadline" });
   await assert.rejects(stat(f.socket),{code:'ENOENT'});await assert.rejects(stat(f.record),{code:'ENOENT'});
 });

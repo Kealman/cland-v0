@@ -15,7 +15,8 @@ import { PROTOCOL_VERSION, parseFrame, type SuiteSlotResult } from '../src/proto
 import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, realpath, stat, writeFile, glob } from 'node:fs/promises';
-import { loadavg } from 'node:os';
+import { availableParallelism, loadavg } from 'node:os';
+import { suiteLoadFactor } from './until.ts';
 import { join, resolve, matchesGlob } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
@@ -183,6 +184,12 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
         machineWait = Date.now() - phaseStarted;
       }
       const env: NodeJS.ProcessEnv = { ...suiteTestEnv(options.selection), TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token, TEST_SUITE_CWD: holder.worktree };
+      env.CLAND_TEST_LOAD_FACTOR = String(suiteLoadFactor({
+        load: loadavg()[0]!, parallelism: availableParallelism(),
+        workers: options.workers?.[index] ?? Number(args.find(arg => arg.startsWith('--test-concurrency='))?.split('=')[1] ?? 1),
+        ...(env.CLAND_SUITE_EXECUTOR ? { executor: env.CLAND_SUITE_EXECUTOR } : {}),
+        ...(env.CLAND_TEST_LOAD_FACTOR ? { override: env.CLAND_TEST_LOAD_FACTOR } : {}),
+      }));
       // Selection belongs to this runner, not its tests or any nested package run.
       delete env.CLAND_SUITE_SELECTION;
       delete env.CLAND_SUITE_SELECTION_FILE;

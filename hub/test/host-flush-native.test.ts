@@ -44,7 +44,7 @@ test('queued host verification retains pinned territory snapshot through restart
  await suites.close();store.close();
  store=new Store(join(root,'.cland','hub.db'));
  suites=new Suites(store,root,async()=>{}, {budget:1,env,locks:[join(root,'suite.lock')]});
- await eventually('durable completed and reported host run',()=>suites.status().find(job=>job.id===admission.id&&job.reported),/* behaviour: post-signal receipt deadline */ 15000);
+ await eventually('durable completed and reported host run',()=>suites.status().find(job=>job.id===admission.id&&job.reported),{ timeoutMs: 15000, behaviour: "post-signal receipt deadline" });
  const finished=suites.status().find(job=>job.id===admission.id)!;
  assert.equal(finished.outcome?.code,0);assert.equal(finished.head,head);assert.equal(finished.branch,'t/task');
  await assert.rejects(stat(queued.cwd),{code:'ENOENT'});
@@ -184,7 +184,7 @@ test('interrupted ready publication is abandoned under its Git lock and fresh ad
  assert.ok(suites.hostSnapshotLeftovers()?.some(item=>item.path===abandoned&&item.cause.includes('index.lock')));
  await unlink(lock);await suites.close();store.close();
  store=new Store(join(root,'.cland','hub.db'));suites=new Suites(store,root,async()=>{}, {budget:1,env,locks:[join(root,'suite.lock')]});
- await eventually('fresh run completes after abandonment',()=>suites.status().find(job=>job.id===admitted.id&&job.reported),/* behaviour: post-signal receipt deadline */ 15000);
+ await eventually('fresh run completes after abandonment',()=>suites.status().find(job=>job.id===admitted.id&&job.reported),{ timeoutMs: 15000, behaviour: "post-signal receipt deadline" });
  assert.equal(suites.status().find(job=>job.id===admitted.id)?.outcome?.code,0);
  await assert.rejects(stat(abandoned),{code:'ENOENT'});assert.equal(suites.hostSnapshotLeftovers()?.some(item=>item.path===abandoned),false);
 });

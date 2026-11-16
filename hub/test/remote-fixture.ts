@@ -32,7 +32,7 @@ export function remoteWaitMs(baseMs = 30_000): number {
   return Math.ceil(testWaitMs(baseMs) * Math.max(1, loadavg()[0]! / availableParallelism()));
 }
 export function remoteEventually<T>(what: string, check: () => Promise<T | undefined> | T | undefined, baseMs?: number): Promise<T> {
-  return eventually(what, check, remoteWaitMs(baseMs));
+  return eventually(what, check, { timeoutMs: remoteWaitMs(baseMs), loadFactor: 1 });
 }
 /** Scripted machines share the supplied hub clock; process machines keep real time. */
 export async function fixture(t: TestContext, options: FixtureStack & { devT3Repository?: import('../src/hub/dev-t3-probe.ts').ProbeRepository; git?: import('../src/tracker/verdict-git.ts').Git; machine?: 'scripted' | 'process'; clock?: FakeClock; script?: MachineScript; territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; gitExcludes?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {

@@ -118,7 +118,7 @@ for(const terminal of ['stop','exit'] as const)for(const retained of ['pruned-ro
   if(terminal==='stop')await sessions.stop(view.name);
   else {
     const {eventually}=await import('./harness.ts');
-    const exited=eventually('normal OpenCode exit durable row',()=>table.get(view.name)?.status==='exited'||undefined,/* behaviour: post-signal receipt deadline */ 1000);
+    const exited=eventually('normal OpenCode exit durable row',()=>table.get(view.name)?.status==='exited'||undefined,{ timeoutMs: 1000, behaviour: "post-signal receipt deadline" });
     nativeAlive=false;await timers.advance(10);await exited;
   }
   const config=join(remote,'opencode','worker','opencode.json'),password=join(remote,'opencode','worker','password');
@@ -280,7 +280,7 @@ test('changed boot fences an already-admitted failed-stop continuation before it
   let admitted=false;void entered.promise.then(()=>{admitted=true;});
   await clock.advance(5000);assert.equal(admitted,true,'native cleanup owner entered before reboot proof');
   sessions.retainHostGeneration(p,{cause:'host-rebooted',bootId:newBoot});
-  const fenced=eventually('durable failed cleanup retains the reboot fence',()=>table.pendingStops()[0]?.error.includes('resource retirement remains pending')||undefined,/* behaviour: post-signal receipt deadline */ 1000);
+  const fenced=eventually('durable failed cleanup retains the reboot fence',()=>table.pendingStops()[0]?.error.includes('resource retirement remains pending')||undefined,{ timeoutMs: 1000, behaviour: "post-signal receipt deadline" });
   held.resolve();await fenced;await clock.advance(5000);
   assert.equal(nativeStops,0);assert.equal(table.pendingStops().length,1);assert.equal(table.pendingStops()[0]?.hostRebooted?.bootId,newBoot);
 });

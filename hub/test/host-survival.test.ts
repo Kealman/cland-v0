@@ -104,7 +104,7 @@ test('readiness during a held startup pass retries the earlier failed row before
   const ready = sessions.resumeHost('remote');
   assert.equal(ready,startup,'the ready edge stays inside the same drain owner');
   release.resolve();
-  await eventually('ready-driven recovery completion',()=>settled||undefined,/* behaviour: post-signal receipt deadline */ 1000);
+  await eventually('ready-driven recovery completion',()=>settled||undefined,{ timeoutMs: 1000, behaviour: "post-signal receipt deadline" });
   await ready;
   assert.deepEqual(attempts,['early','held','early','held']);
   assert.deepEqual([...recovered].sort(),['early','held']);

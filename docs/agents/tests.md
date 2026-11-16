@@ -940,9 +940,24 @@ without an event API. It yields to I/O between observations and owns one deadlin
 including asynchronous predicate time. The failure names `what`; the final
 assertion still states the behaviour proved. `timeoutMs` defaults to the harness
 wait budget (15 seconds, or `CLAND_TEST_WAIT_MS`). The deadline is multiplied by
-`CLAND_TEST_LOAD_FACTOR`; absent an override, the executor default is 2 on a
-droplet and 1 locally. Invalid factors fall back to 1. Tests of the helper inject
-one complete `Clock` and a `loadFactor`, without waiting for real time.
+`CLAND_TEST_LOAD_FACTOR`. Before each phase, run-suite exports
+`max(1, (one-minute load + phase workers) / availableParallelism())`, with a
+minimum of 2 on droplets. A finite override of at least 1 takes precedence;
+invalid overrides use the computed factor. Outside run-suite the defaults stay
+2 on droplets and 1 locally; invalid factors there fall back to 1.
+`eventually(what, check, timeoutMs)` uses the same setup scaling and retains its
+50 ms observation cadence. Its third argument also accepts the options below.
+Both helpers own an independent deadline while an asynchronous check is pending;
+a late value cannot turn an expired wait into success. A check must remain an
+observation: its owner still joins any work it starts before disposing a fixture.
+
+An injected `clock` keeps the deadline exact unless the caller explicitly supplies
+`loadFactor` for a policy test. A named `behaviour` always keeps the deadline exact,
+for example `{ timeoutMs: 1000, behaviour: 'outage rendered within one second' }`.
+Existing `loadFactor: 1` calls remain exact. Use these only for the behaviour under
+test; name setup readiness in `what`. `remoteEventually` keeps its existing
+load-aware remote budget without applying the suite factor twice. Tests of the
+helpers use fake time, without waiting for real time.
 
 The heartbeat reconnect regression in `hub/test/hygiene.test.ts` is the worked
 example. Its hand-written loop slept 25 ms after each probe. It now waits for

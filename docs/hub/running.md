@@ -1846,7 +1846,14 @@ cases and the real-window account-limits test retain the 1000 ms production defa
 number sets the default budget for `eventually` and the gated verifier's startup
 wait. Without it (or with an invalid value), `eventually` retains 15 seconds and
 the verifier startup wait gets 30 seconds to prepare its worktree and start its
-harness under load. Explicit deadlines on other waits stay as specified. The
+harness under load. Setup `until` and `eventually` budgets also use the phase's
+`CLAND_TEST_LOAD_FACTOR`: run-suite derives it from one-minute load plus phase
+workers divided by available parallelism (minimum 1 locally, 2 on droplets),
+unless a finite override of at least 1 is set. Injected wait clocks and named
+`behaviour` deadlines stay exact; an explicit `loadFactor` can exercise scaling
+with a fake clock. Positional `eventually` budgets remain supported and scale
+as setup waits. `remoteEventually` keeps its remote scaling without a second
+suite multiplier. See the shared wait procedure in docs/agents/tests.md. The
 verifier fixture releases its adapter only after the competing tracker operations
 finish, without a timed gate opening. No production timeout changes. Linux proof
 runs use the defaults, with this variable unset.

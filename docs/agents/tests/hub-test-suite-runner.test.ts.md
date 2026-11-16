@@ -5,6 +5,12 @@ stale-process recovery, bundle prerequisites and Web repetition child cleanup.
 The process boundary is necessary to observe actual child exits and owned
 resources; pure selection and summary rules belong in `web-phase.test.ts`.
 
+The setup-factor child regression checks a finite exported factor and explicit
+override through the actual runner subprocess in a disposable root. Run its
+single case with `--test-name-pattern='suite children receive load headroom'`
+under the exclusive preservation slot. The arithmetic and exact wait deadlines
+are covered without native processes in `until.test.ts`.
+
 T-1301's held Web child contract uses a synthetic prerequisite with no browser.
 Arm stdout/stderr and close observers before awaiting the persisted PID receipt
 and runner progress; advance only the guard's fake clock by 60 s after those

@@ -962,6 +962,22 @@ for (const [resource, source] of [
   assert.match(output, /T1 test touches machine resources.*wait\.test\.ts/);
 });
 
+test('suite children receive load headroom and retain an explicit override', async t => {
+  const dir = await fixture(t);
+  const file = join(dir, 'factor.test.mjs');
+  await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict';
+test('setup factor receipt', () => {
+  const factor = Number(process.env.CLAND_TEST_LOAD_FACTOR);
+  assert.ok(Number.isFinite(factor) && factor >= 1, 'runner exports setup factor');
+  if (process.env.EXPECT_FACTOR) assert.equal(factor, Number(process.env.EXPECT_FACTOR));
+});`);
+  for (const override of ['', '3']) {
+    const suite = run(t, dir, file, undefined, false, { CLAND_TEST_LOAD_FACTOR: override, EXPECT_FACTOR: override });
+    assert.equal(await suite.done, 0, suite.output());
+    assert.match(suite.output(), /setup factor receipt/);
+  }
+});
+
 test('an explicit package shard selects its files without leaking into nested package runs', async t => {
   const dir = await fixture(t);
   const nested = join(dir, 'nested');

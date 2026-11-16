@@ -3,8 +3,8 @@ import { fakePollerProcesses } from './fakes/poller-processes.ts';
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
 import { fakeHarness, FAKE_FLAVOURS, type FakeFlavour, type FakeHarness } from './fakes/harness.ts';
 import { realClock, type Clock } from '../src/hub/clock.ts';
-import { testWaitMs } from './until.ts';
-export { until, testWaitMs } from './until.ts';
+import { eventually, testWaitMs } from './until.ts';
+export { until, eventually, testWaitMs } from './until.ts';
 // The test harness for the two seams:
 //   1. the spoke's MCP surface — in-memory for T2, a real stdio process for binary contracts/lifecycle
 //   2. the hub's WebSocket edge — an in-process hub on an ephemeral port
@@ -912,22 +912,6 @@ export async function withDiscoveredPid<T extends { sessionId: string }>(ui: Fra
     return (listed.value as { processes: HarnessProcessView[] }).processes.find(p => p.sessionId === launched.sessionId)?.pid || undefined;
   }, testWaitMs(45_000));
   return { ...launched, pid };
-}
-
-/** Poll until `check` returns a value (not undefined), or fail with what was last seen. */
-export async function eventually<T>(what: string, check: () => Promise<T | undefined> | T | undefined, timeoutMs = testWaitMs()): Promise<T> {
-  const deadline = Date.now() + timeoutMs;
-  let last: unknown;
-  while (Date.now() < deadline) {
-    try {
-      const v = await check();
-      if (v !== undefined) return v;
-    } catch (err) {
-      last = err;
-    }
-    await sleep(50);
-  }
-  throw new Error(`${what}: not within ${timeoutMs} ms${last ? ` (last error: ${String(last)})` : ''}`);
 }
 
 // ------------------------------------------------------------------ the fake Codex

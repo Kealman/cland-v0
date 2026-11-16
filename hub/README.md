@@ -25,6 +25,7 @@ documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merg
 - [Human last looks and read marks](../docs/hub/human-last-looks-and-read-marks.md)
 - [Identity and delivery](../docs/hub/identity-and-delivery.md)
 - [Droplet delivery](../docs/hub/running.md): size-scaled, bounded upload retries and per-attempt run-log receipts under the local run's droplet lifetime.
+- [Test waits](../docs/agents/tests.md#waiting-for-an-observable-condition): phase load headroom for setup and exact injected-clock or named behaviour deadlines.
 - [Topics](../docs/hub/topics.md)
 - [Native fixture inventory](../qa/briefs/T-1806-inventory.md): shared exact name-set checks and scratch-only host socket routing.
 - [Thread runs and fold lines](../docs/hub/thread-runs-and-fold-lines.md)

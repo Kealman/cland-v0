@@ -106,7 +106,7 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
   for (const row of before) assert.ok(row.pidIdentity);
   const deliver = async (tag:string) => {
     for (const spec of specs) {
-      const receipt = eventually('persisted spoke response '+spec.name+' '+tag,()=>ui.frames.find(frame=>frame.type==='message'&&JSON.stringify(frame).includes('pong: '+tag+'-'+spec.name)),/* behaviour: post-signal receipt deadline */ 15000);
+      const receipt = eventually('persisted spoke response '+spec.name+' '+tag,()=>ui.frames.find(frame=>frame.type==='message'&&JSON.stringify(frame).includes('pong: '+tag+'-'+spec.name)),{ timeoutMs: 15000, behaviour: "post-signal receipt deadline" });
       void receipt.catch(()=>{});
       const sent = await ui.request({type:'topic.send',topic:'general',to:[spec.name],text:tag+'-'+spec.name});
       assert.equal(sent.ok,true,sent.error);
@@ -130,7 +130,7 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
   const master = JSON.parse(await readFile(join(second.directory,'master-control'),'utf8')) as {token:string};
   const replacement = eventually('replacement master durable receipt',async()=>{
     try { return (JSON.parse(await readFile(join(second.directory,'master-control'),'utf8')) as {token:string}).token !== master.token || undefined; } catch { return undefined; }
-  },/* behaviour: post-signal receipt deadline */ 15000);
+  },{ timeoutMs: 15000, behaviour: "post-signal receipt deadline" });
   void replacement.catch(()=>{});
   await hostControl('kill-master','f2',env);
   assert.ok((await rows()).every(p=>p.status==='running'));
