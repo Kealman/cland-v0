@@ -33,12 +33,12 @@ async function nextHeartbeat(clock: FakeClock, ui: FrameClient, ms: number, matc
   return (await receipt).message as Message;
 }
 
-test('Coordinator heartbeat delivers every allowance entering the 48-hour UTC expiry window', async t => {
+test('Coordinator heartbeat delivers every allowance entering the 5-day UTC expiry window', async t => {
   const root = await tempProject(t);
   const clock = new FakeClock(Date.parse('2026-10-17T00:00:00Z') - 600);
   await mkdir(join(root, 'hub/test'), { recursive: true });
   const allow = Object.fromEntries(Array.from({ length: 12 }, (_, n) => [`hub/test/expiry.test.ts::case ${n}`, {
-    seconds: 6, reason: 'Expiry fixture.', owner: `E-${n + 1}`, added: '2026-10-16', expires: '2026-10-19',
+    seconds: 6, reason: 'Expiry fixture.', owner: `E-${n + 1}`, added: '2026-10-16', expires: '2026-10-22',
   }]));
   const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow };
   await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify(manifest));
@@ -56,7 +56,7 @@ test('Coordinator heartbeat delivers every allowance entering the 48-hour UTC ex
   const warning = ui.waitFor(f => heartbeat(f) && (f.message as Message).text.includes('expiry.test.ts'));
   await clock.advance(200);
   const message = (await warning).message as Message;
-  for (let n = 0; n < 12; n++) assert.ok(message.text.includes(`hub/test/expiry.test.ts::case ${n} · owner E-${n + 1} · expires 2026-10-19`), message.text);
+  for (let n = 0; n < 12; n++) assert.ok(message.text.includes(`hub/test/expiry.test.ts::case ${n} · owner E-${n + 1} · expires 2026-10-22`), message.text);
   await ui.waitFor(f => f.type === 'delivery' && f.message === message.id && f.stage === 'injected');
   assert.ok(fakes['claude-code']!.injections.some(i => i.message.id === message.id));
 });
@@ -110,7 +110,7 @@ async function fixture(t: TestContext, heartbeatMs: number, options: { runTimeou
   return { root, clock, tracker, crew, hub, ui, coord };
 }
 
-test('a held manifest read uses the heartbeat firing clock at the 48-hour boundary', async t => {
+test('a held manifest read uses the heartbeat firing clock at the 5-day boundary', async t => {
   const run = caseDeadlines(t);
   const clock = new FakeClock(Date.parse('2026-10-17T00:00:00Z') - 500);
   const entered = Promise.withResolvers<void>();
@@ -125,7 +125,7 @@ test('a held manifest read uses the heartbeat firing clock at the 48-hour bounda
   await mkdir(join(root, 'hub/test'), { recursive: true });
   await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
     source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
-      'hub/test/expiry.test.ts::held': { seconds: 6, reason: 'Held fixture.', owner: 'E-1', added: '2026-10-16', expires: '2026-10-19' },
+      'hub/test/expiry.test.ts::held': { seconds: 6, reason: 'Held fixture.', owner: 'E-1', added: '2026-10-16', expires: '2026-10-22' },
     } }));
   await clock.advance(100);
   await run.wait('manifest read entered before warning window', () => entered.promise);
@@ -135,7 +135,7 @@ test('a held manifest read uses the heartbeat firing clock at the 48-hour bounda
   await completed;
   const message = (await notes(f.ui)).find(m => m.to.includes('coord'))!;
   assert.equal(message.ts, '2026-10-17T00:00:00.000Z');
-  assert.match(message.text, /duration allowance expiring within 48h: hub\/test\/expiry.test.ts::held · owner E-1/);
+  assert.match(message.text, /duration allowance expiring within 5d: hub\/test\/expiry.test.ts::held · owner E-1/);
 });
 
 for (const change of ['rename', 'role', 'stop', 'prune', 'disable'] as const) test(`held heartbeat warning read rechecks ${change} before publishing`, async t => {

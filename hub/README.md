@@ -94,6 +94,10 @@ Every successful batch diagnosis requires its pinned full plan on the selected
 tree before landing; [running](../docs/hub/running.md) describes skipped-file and
 covering-run notices.
 - [Standing duration allowance owners](../docs/hub/standing-duration-allowance-owners.md)
+
+`npm run test:tiers` and the Coordinator heartbeat report dated duration
+allowances expiring within five days, including the UTC expiry and owner.
+The warning is report-only; the existing expired-manifest refusal still applies.
 - [Setup and doctor remote readiness](../docs/hub/setup-and-doctor-remote-readiness.md)
 - [Declining an accepted verifier request (T-1494)](../docs/hub/declining-an-accepted-verifier-request-t-1494.md)
 

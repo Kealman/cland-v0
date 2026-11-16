@@ -83,9 +83,9 @@ export function durationAllowanceExpiries(manifest: DurationManifest) {
 }
 
 export function durationAllowanceWarnings(manifest: DurationManifest, now = Date.now()): string[] {
-  return durationAllowanceExpiries(manifest).filter(entry => entry.at <= now + 48 * 60 * 60 * 1000)
+  return durationAllowanceExpiries(manifest).filter(entry => entry.at <= now + 5 * 24 * 60 * 60 * 1000)
     .sort((a, b) => a.at - b.at || a.key.localeCompare(b.key))
-    .map(entry => `duration allowance ${entry.at <= now ? 'expired' : 'expiring within 48h'}: ${entry.key} · owner ${entry.owner ?? 'missing'} · expires ${entry.expires} (00:00 UTC)`);
+    .map(entry => `duration allowance ${entry.at <= now ? 'expired' : 'expiring within 5d'}: ${entry.key} · owner ${entry.owner ?? 'missing'} · expires ${entry.expires} (00:00 UTC)`);
 }
 
 /** Reporting survives admission refusal; sample the clock after manifest I/O. */

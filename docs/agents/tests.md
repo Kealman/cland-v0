@@ -1538,6 +1538,12 @@ with the result, including after restart; it never edits the manifest itself.
 `hub/test/durations.json` declares the budgets listed under Test levels in
 `budget.T1` through `budget.T4`.
 
+`npm run test:tiers` prints report-only warnings for dated allowances expiring
+within five days (inclusive, midnight UTC), using the same warning reader as the
+Coordinator heartbeat. Warnings never change its exit status; expired allowances
+still fail the existing manifest lint. Legacy undated entries have no calendar
+warning. Missing manifests produce no warnings; read errors remain explicit.
+
 Tier budgets check every observed identity, including known baselines and files
 missing from the duration manifest. Missing files are named with their observed
 seconds. In report mode, logs keep the complete `budget (report only): would fail …` list;

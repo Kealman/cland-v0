@@ -6,6 +6,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { refreshDurations } from './durations.ts';
 import type { DurationManifest } from '../src/suite-durations.ts';
+import { durationAllowanceWarnings, lintDurationManifest } from '../src/suite-durations.ts';
+
+test('allowance warnings report five days before expiry without refusing valid manifests', () => {
+  const manifest: DurationManifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
+    'hub/test/example.test.ts::slow': { seconds: 6, owner: 'C-216', added: '2026-11-16', expires: '2026-11-23', reason: 'Measured fixture.' },
+  } };
+  const boundary = Date.parse('2026-11-18T00:00:00Z');
+  assert.deepEqual(durationAllowanceWarnings(manifest, boundary - 1), []);
+  assert.deepEqual(durationAllowanceWarnings(manifest, boundary), ['duration allowance expiring within 5d: hub/test/example.test.ts::slow · owner C-216 · expires 2026-11-23 (00:00 UTC)']);
+  assert.doesNotThrow(() => lintDurationManifest(manifest, { now: boundary }));
+  assert.match(durationAllowanceWarnings(manifest, Date.parse('2026-11-23'))[0]!, /allowance expired:/);
+});
 
 test('add-only adds missing baselines while preserving old entry bytes and every allowance', async t => {
   const cwd = await mkdtemp(join(tmpdir(), 'duration-add-only-'));

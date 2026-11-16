@@ -1598,8 +1598,8 @@ Coordinator diagnoses the named manifest key and recovers the batch after cleanu
 
 The hub reads the current project's `hub/test/durations.json` for the periodic
 dev T3 result report and each Coordinator heartbeat. Both name every dated
-allowance expiring within 48 hours, its exact test/file key, owner and UTC expiry
-date; already expired entries remain visible as expired. The 48-hour boundary
+allowance expiring within five days, its exact test/file key, owner and UTC expiry
+date; already expired entries remain visible as expired. The five-day boundary
 is inclusive and samples the hub clock after the manifest read completes.
 Admission uses the same midnight-UTC date
 interpretation and still refuses expired allowances, listing all expired keys

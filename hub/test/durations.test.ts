@@ -408,6 +408,7 @@ test('cover-log remote-docs fixture refresh keeps npm test:tiers admitted', asyn
   // Run the shipped tier entry point with its real root resolution in the fixture.
   await mkdir(join(cwd, 'hub/src'), { recursive: true });
   await symlink(fileURLToPath(new URL('../src/suite-shards.ts', import.meta.url)), join(cwd, 'hub/src/suite-shards.ts'));
+  await symlink(fileURLToPath(new URL('../src/suite-durations.ts', import.meta.url)), join(cwd, 'hub/src/suite-durations.ts'));
   await copyFile(fileURLToPath(new URL('./lint-tiers.ts', import.meta.url)), join(cwd, 'hub/test/lint-tiers.ts'));
   await writeFile(join(cwd, 'package.json'), JSON.stringify({ type: 'module', scripts: { 'test:tiers': 'node hub/test/lint-tiers.ts' } }));
   const file = 'hub/test/remote-docs.test.ts';
@@ -428,6 +429,15 @@ test('cover-log remote-docs fixture refresh keeps npm test:tiers admitted', asyn
   const admitted = await commandIn(machine, cwd, 'npm', ['run', 'test:tiers']);
   assert.equal(admitted.code, 0, admitted.stderr);
   assert.match(admitted.stdout, /hub free: 1 files/);
+  const today = new Date().toISOString().slice(0, 10);
+  const expires = new Date(Date.parse(today) + 5 * 86_400_000).toISOString().slice(0, 10);
+  await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
+  await writeFile(join(cwd, '.cland/tasks/C-216-fixture.md'), '---\nid: C-216\nkind: category\ntitle: Duration owner\nstate: open\n---\n');
+  manifest.allow = { [`${file}::site vocabulary extraction matches the runtime config and secret names`]: { seconds: 1, owner: 'C-216', added: today, expires, reason: 'Measured fixture.' } };
+  await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify(manifest));
+  const warned = await commandIn(machine, cwd, 'npm', ['run', 'test:tiers']);
+  assert.equal(warned.code, 0, warned.stderr);
+  assert.match(warned.stdout, /duration \(report only\): duration allowance expiring within 5d:/);
   // The refresh filter must not weaken the planner's existing refusal.
   manifest.files['site/test/remote-docs.test.ts'] = { seconds: 1, tests: 0 };
   await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify(manifest));

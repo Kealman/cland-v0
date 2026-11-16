@@ -384,7 +384,7 @@ test('periodic dev T3 posts a hub-owned structured red result to the Coordinator
   await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
     source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
       'hub/test/example.test.ts::expiring': { seconds: 6, reason: 'Expiry fixture.', owner: 'E-41', added: '2026-10-16', expires: '2026-10-18' },
-      'hub/test/example.test.ts::later': { seconds: 6, reason: 'Later fixture.', owner: 'E-42', added: '2026-10-16', expires: '2026-10-19' },
+      'hub/test/example.test.ts::later': { seconds: 6, reason: 'Later fixture.', owner: 'E-42', added: '2026-10-16', expires: '2026-10-23' },
       'hub/test/example.test.ts::legacy': { seconds: 6, reason: 'Legacy fixture.', owner: 'E-677', legacy: true },
     } }));
   f.machine.finish(job.id, 1, log);
@@ -398,7 +398,7 @@ test('periodic dev T3 posts a hub-owned structured red result to the Coordinator
   assert.equal(result.detail!.result, 'red');
   assert.deepEqual(result.detail!.failingFiles, ['hub/test/example.test.ts']);
   assert.match(result.text, /Periodic dev T3 red/);
-  assert.match(result.text, /duration allowance expiring within 48h: hub\/test\/example.test.ts::expiring · owner E-41 · expires 2026-10-18/);
+  assert.match(result.text, /duration allowance expiring within 5d: hub\/test\/example.test.ts::expiring · owner E-41 · expires 2026-10-18/);
   assert.doesNotMatch(result.text, /owner E-42|::legacy/);
 });
 
