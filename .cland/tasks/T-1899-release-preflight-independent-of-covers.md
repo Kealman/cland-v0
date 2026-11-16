@@ -3,8 +3,9 @@ id: T-1899
 kind: task
 title: Release preflight independent of covers
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 2
 labels:
   - retro-improvement
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-1548
 branch: t/T-1899-release-preflight-independent-of-covers
 created: 2026-11-16T07:29:46.730Z
-updated: 2026-11-16T11:26:18.265Z
+updated: 2026-11-16T11:32:18.447Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ Kind: product. Triage ticket H-11 of A-19813, part of E-1888 (the v0.4.0 retrosp
 
 ## Acceptance criteria
 
-- [ ] C1. A release preflight mode reports every non-cover refusal (`gh` on the hub PATH, clean root, version files) without needing green covers (test).
-- [ ] C2. The release skill runs it right after the release epic's brief (docs check).
+- [x] C1. A release preflight mode reports every non-cover refusal (`gh` on the hub PATH, clean root, version files) without needing green covers (test).
+  - done: impl-1899 · 2026-11-16T11:31:57.774Z
+- [x] C2. The release skill runs it right after the release epic's brief (docs check).
+  - done: impl-1899 · 2026-11-16T11:31:57.910Z
 
 ## Dependencies
 
