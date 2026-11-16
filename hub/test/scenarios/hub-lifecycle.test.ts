@@ -1,12 +1,19 @@
 // T3 scenario: start, discovery, stop grace, restart and orphan sweep.
 // Rule coverage (T1/T2): hub/test/project-probes.test.ts, hub/test/bridge-grace.test.ts.
-// Hub process starts: 10: skeleton 1, stop 1, grace 2, spoke restart 2, sweep modes 4; discovery uses projectHub. Only one hub is live at a time.
-import { ownProcess } from '../process-cleanup.ts';
+// Hub process starts: 11: skeleton 1, fallback 1, stop 1, grace 2, spoke restart 2, sweep modes 4; discovery uses projectHub. Only one hub is live at a time.
+import { beforeDirectories, ownProcess } from '../process-cleanup.ts';
 import { test } from 'node:test';
+import { Socket } from 'node:net';
+import { once } from 'node:events';
+import { createInterface } from 'node:readline';
+import { fixtureWork } from '../fixture-work.ts';
+import { testWaitMs } from '../until.ts';
+import { within } from '../../src/executor/droplet/deadline.ts';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { PROTOCOL_VERSION } from '../../src/protocol.ts';
+import { SOCKET_PATH_MAX } from '../../src/project.ts';
 import { cland, clandWithEnv, connectSocket, killDaemon, pidAlive, nativeProjectHub as projectHub, readDiscovery, eventually, spawnSpoke, startDaemon, tempProject } from '../harness.ts';
 
 test('cland hub start creates the .cland skeleton and the discovery file', async (t) => {
@@ -18,7 +25,7 @@ test('cland hub start creates the .cland skeleton and the discovery file', async
   assert.equal(discovery.root, root);
   assert.equal(typeof discovery.port, 'number');
   assert.match(discovery.secret, /^[0-9a-f]{64}$/);
-  assert.equal(discovery.socket, join(root, '.cland', 'hub.sock'));
+  assert.equal(typeof discovery.socket, 'string');
   assert.equal((await stat(discovery.socket)).isSocket(), true);
 
   const secretFile = join(root, '.cland', 'secret');
@@ -34,6 +41,96 @@ test('cland hub start creates the .cland skeleton and the discovery file', async
   for (const p of ['hub.db*', 'hub.json', 'hub.sock', 'secret', 'journal.jsonl', 'log/', 'artifacts/', 'worktrees/', 'territory.git/', 'scratch/', 'qa/', ...recoveryPatterns]) assert.ok(patterns.includes(p), `ignores ${p}`);
   for (const kept of ['tasks', 'roles.toml', 'config.toml', '.gitignore']) assert.ok(!patterns.some((p) => p.startsWith(kept) && !recoveryPatterns.includes(p)), `does not ignore ${kept}`);
   assert.ok(pidAlive(discovery.pid), 'the daemon outlives the `cland hub start` that spawned it');
+});
+
+function socketResource() {
+  const socket = new Socket();
+  const closed = new Promise<void>(resolve => socket.once('close', () => resolve()));
+  socket.on('error', () => {});
+  return { socket, closed };
+}
+
+async function closeSocket(resource: ReturnType<typeof socketResource>) {
+  resource.socket.destroy();
+  await resource.closed;
+}
+
+test('cland hub start publishes and serves a fallback socket when the project and TMPDIR paths exceed the limit', async t => {
+  await fixtureWork(t).run(async work => {
+    const root = await work.root(() => tempProject(t, `cland-fallback-${'a'.repeat(SOCKET_PATH_MAX)}-`));
+    const primary = join(root, '.cland', 'hub.sock');
+    assert.ok(Buffer.byteLength(primary) > SOCKET_PATH_MAX);
+    assert.ok(Buffer.byteLength(root) > SOCKET_PATH_MAX, 'the child TMPDIR also forces the /tmp fallback');
+    const { discovery } = await work.acquire(() => startDaemon(t, root, { TMPDIR: root }), daemon => killDaemon(daemon.discovery.pid));
+    assert.notEqual(discovery.socket, primary);
+    assert.equal(dirname(discovery.socket), '/tmp');
+    assert.ok(Buffer.byteLength(discovery.socket) <= SOCKET_PATH_MAX);
+    assert.equal((await work.step(() => stat(discovery.socket))).isSocket(), true);
+    await work.step(() => assert.rejects(stat(primary), { code: 'ENOENT' }));
+
+    // Own the native socket before starting setup, so an aborted connect is destroyed and joined.
+    const { socket } = await work.acquire(async () => socketResource(), closeSocket);
+    await work.step(async () => {
+      const signal = AbortSignal.any([work.signal, AbortSignal.timeout(testWaitMs(5000))]);
+      const connected = once(socket, 'connect', { signal });
+      socket.connect(discovery.socket);
+      try { await connected; }
+      catch (cause) { throw new Error('fallback socket setup failed or exceeded its deadline', { cause }); }
+    });
+    const lines = await work.acquire(async () => createInterface({ input: socket }), async reader => reader.close());
+    await work.step(async () => {
+      const welcome = once(lines, 'line', { signal: AbortSignal.any([work.signal, AbortSignal.timeout(testWaitMs(5000))]) });
+      socket.write(`${JSON.stringify({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'nvim' })}\n`);
+      assert.equal(JSON.parse((await welcome)[0]).type, 'welcome', 'the published fallback serves the authenticated hub protocol');
+    });
+  });
+});
+
+test('fallback socket fixture cancellation adopts a late client before removing its root', async t => {
+  const entered = Promise.withResolvers<void>(), released = Promise.withResolvers<void>();
+  const draining = Promise.withResolvers<void>(), finish = Promise.withResolvers<void>();
+  let root: string | undefined;
+  let client: ReturnType<typeof socketResource> | undefined;
+  let laterAdmission = false;
+  let running: Promise<void> | undefined;
+  let owner: ReturnType<typeof fixtureWork> | undefined;
+  const releaseAndJoin = async () => {
+    released.resolve(); finish.resolve();
+    await owner?.dispose();
+    await running?.catch(() => {});
+  };
+  beforeDirectories(t, releaseAndJoin);
+  owner = fixtureWork(t);
+  owner.release(() => released.resolve());
+  running = owner.run(async work => {
+    root = await work.root(() => tempProject(t));
+    await work.acquire(async () => {
+      client = socketResource();
+      entered.resolve();
+      await released.promise;
+      draining.resolve();
+      await finish.promise;
+      return client;
+    }, closeSocket);
+    laterAdmission = true;
+  });
+  const failed = assert.rejects(running, /fixture work admission closed/);
+  void failed.catch(() => {});
+  try {
+    await within(entered.promise, testWaitMs(5000));
+    const removing = owner.dispose();
+    void removing.catch(() => {});
+    await within(draining.promise, testWaitMs(5000));
+    assert.ok(root);
+    assert.equal((await stat(root)).isDirectory(), true, 'pending acquisition retains the root');
+    finish.resolve();
+    await within(Promise.all([failed, removing]), testWaitMs(5000));
+    assert.ok(client);
+    await client.closed;
+    assert.equal(client.socket.destroyed, true, 'late socket is closed and joined');
+    assert.equal(laterAdmission, false, 'cancellation fences subsequent steps');
+    await assert.rejects(stat(root), { code: 'ENOENT' });
+  } finally { await releaseAndJoin(); }
 });
 
 test('a spoke started in the project with no hub environment connects through the discovery file; status shows it from another process', async (t) => {
