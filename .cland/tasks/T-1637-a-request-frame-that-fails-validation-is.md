@@ -3,7 +3,7 @@ id: T-1637
 kind: task
 title: A request frame that fails validation is reported as an unknown request type
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1563
 branch: t/T-1637-a-request-frame-that-fails-validation-is
 created: 2026-11-02T16:48:05.147Z
-updated: 2026-11-16T16:48:05.272Z
+updated: 2026-11-16T17:19:21.319Z
 ---
 
 ## Summary
@@ -28,8 +28,10 @@ A known request type whose arguments fail validation is refused as `invalid_argu
 
 - [x] C1. `cland remote approve telegram 000000` exits 1 with a message naming the code format, not `unknown request type` (test).
   - done: impl-1637 · 2026-11-16T16:25:59.420Z
+  - verified: rev-37 [reviewer] · run rev-37-1637-final-1 · 2026-11-16T17:19:20.885Z · commit 6c994b387dc3677b6dcf9a25a4f11c46320f1871
 - [x] C2. A known frame type with an invalid field is refused as invalid_argument naming the field, and a truly unknown type still reads `unknown request type` (test).
   - done: impl-1637 · 2026-11-16T16:32:57.348Z
+  - verified: rev-37 [reviewer] · run rev-37-1637-final-1 · 2026-11-16T17:19:20.885Z · commit 6c994b387dc3677b6dcf9a25a4f11c46320f1871
 
 ## Comments
 
@@ -81,3 +83,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear A-20290 if assigned by artifact response; shared-deadline correction reviewed with prior full A-20260/A-20266 context. Only test changed, no production/config/allowance/dev merge. Existing within owns/clears timer; caller settles pending reply, removes observers and joins observed promise in finally while retaining exact-id prearming and final refusal assertions. A-20288 prior verify-test-lint was pre-admission/no run per Coordinator, not runtime evidence; corrected candidate8/8/typecheck0/lint0/0refusals retain raw/tree limits. No Reviewer runtime; C1/C2 remain unverified pending configured same-head evidence.
+
+### rev-37 · 2026-11-16T17:19:20.885Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1637-final-1
+commit: 6c994b387dc3677b6dcf9a25a4f11c46320f1871
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear; C1/C2 verified. A-20306 independently reconciles86c389bc/A-20305 head/canonicaltree30f05459c6431a3d4ee5346bd17307ed436ac487 to sourceclearA-20291. Exact local-malformed/client-field/old-error-only cases base+5/5load; bounded raw-spoke invalid/unknown case basepass; help/permission preservation files pass. HostT0/allT1/shared-protocol fallbackallT2/Web exit0, hub6466pass/0fail/cancel/skip/todo. Linuxx64droplet Node24.21/Nvim0.12.5 actualHeadlessShell1248/CfT156.0.8078.4,uncached. T3/T4unexecuted/deferred; budgets/lint/ratchet report-only. Prior pre-admission refusal/candidate limits remain historical. Standards/Spec clear;findings[]. No Reviewer runtime.
+
+Criteria: C1 verified, C2 verified.

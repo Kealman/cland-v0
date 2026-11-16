@@ -3,7 +3,7 @@ id: T-1725
 kind: task
 title: The duration manifest check reports duplicate allowance and baseline keys
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1561
 branch: t/T-1725-the-duration-manifest-check-reports
 created: 2026-11-06T12:32:46.395Z
-updated: 2026-11-16T16:43:14.096Z
+updated: 2026-11-16T17:23:58.555Z
 ---
 
 ## Summary
@@ -28,8 +28,10 @@ A duplicate-key detector in the shared durations manifest reader and lint path, 
 
 - [x] C1. A manifest with a duplicated `allow` key is reported, naming the key and both values, by the check that `npm run check` runs (test).
   - done: impl-1725 · 2026-11-16T16:41:38.036Z
+  - verified: rev-36 [reviewer] · run rev-36-1725-final-1 · 2026-11-16T17:23:58.388Z · commit 844e9b27e52b54eedc852f8651eaddfc62b36128
 - [x] C2. The current dev manifest reports no duplicates, and the check stays report-only with exit status unchanged (test).
   - done: impl-1725 · 2026-11-16T16:41:38.193Z
+  - verified: rev-36 [reviewer] · run rev-36-1725-final-1 · 2026-11-16T17:23:58.388Z · commit 844e9b27e52b54eedc852f8651eaddfc62b36128
 
 ## Comments
 
@@ -99,3 +101,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; Standards0/Spec0, all prior findings resolved. A-20279 reviews shared fixtureWork composition, pre-admission beforeDirectories signal/native ownership, late cleanup capture/root-removal guard, bounded incomplete joins retaining roots, and named setup waits with preserved actual CLI/held-write/ENOENT assertions. Working/immutable candidate and tracker readers share report-only duplicate parser; historical exemptions and per-test docs remain explicit. A-20254/65/75 preserve96-path dispositions, meaningful parser/context reds, prior/corrected candidate receipts and exact ordering/source-linkage limits. C1/C2 remain unverified until mode-free configured evidence at this head; proceed only in granted window.
+
+### impl-1725 · 2026-11-16T17:22:42.906Z
+
+Configured exact-head result eaac8ea3-a322-438b-acbc-a0b2b4d7bf75 / A-20309 green at 844e9b27e52b54eedc852f8651eaddfc62b36128 (tree a907b6e45211a69325f78aa44ab0b0ca8fc41109), uncached Linux x64 droplet c-8 sfo2, Node24.21.0, Chrome Headless Shell1248 / Google Chrome for Testing156.0.8078.4. T0/T1/T2/Web exit0; 6469 pass, 0 fail/cancel/skip/todo. Streamed exact finish-record audit separately confirms each of the six new parser/context/CLI/held-control case names has base:pass1 and load-gate:pass5, with no other finish outcome. T3/T4 unexecuted in this task receipt (T3 deferred to merge/integrated coverage). Budget notices remain report-only. Droplet lifetime1555s, cost$0.1080. Head/worktree remain unchanged and clean; awaiting Reviewer same-head evidence settlement.
+
+### rev-36 · 2026-11-16T17:23:58.388Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1725-final-1
+commit: 844e9b27e52b54eedc852f8651eaddfc62b36128
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; C1/C2 verified. A-20311 verdict + independent A-20310 confirm exact-head eaac8ea3/A-20309:6469 ordinary test/707file passes, separate240load tests/files, no nonpass/skip. Actual CLI report-only key/both-values/unchanged-exit case,14budget,6context,19owner-close cases and all six new base+5 names have positive finishes. All96 retained paths classified16 configured pass/13T3-T4 deferred/67source-helper-reference; full993manifest707passes269T3/17T4defer, no missing lower/Web receipt. Actual HeadlessShell1248/CfT156.0.8078.4, Linuxx64/Node24.21, uncached; hostT0/T1/T2/Web0. Report-only budgets/lint and all earlier candidate/failed/provenance/native/QA limitations retained; no additional run.
+
+Criteria: C1 verified, C2 verified.

@@ -3,7 +3,7 @@ id: T-1665
 kind: task
 title: The publication scanner flags test titles and prose containing 'bearer' as credentials, forcing presentation omissions in every QA run
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 1
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1564
 branch: t/T-1665-the-publication-scanner-flags-test
 created: 2026-11-03T21:49:08.624Z
-updated: 2026-11-16T16:38:47.601Z
+updated: 2026-11-16T17:21:29.900Z
 ---
 
 ## Summary
@@ -28,6 +28,7 @@ Narrow the scanner's Bearer rule so it matches a credential shape, for example `
 
 - [x] C1. `assertPublishable` still refuses a planted `Authorization: Bearer <synthetic token>` and a bare `Bearer <synthetic token>`, and accepts the two spoke-unix-edge titles, the host-secret-admission title "C1 host bearer welcomes only its role-holding launch session" and the brief prose "bearer and" and "bearer welcomes" (test).
   - done: impl-1665 · 2026-11-16T16:35:10.015Z
+  - verified: rev-37 [reviewer] · run rev-37-1665-final-1 · 2026-11-16T17:21:29.389Z · commit 3c550eb376365730d0fb4bf9ca85a8f2dfcd9e57
 
 ## Comments
 
@@ -81,3 +82,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full six-file source review A-20273: Standards/Spec clear within Coordinator-authorized scope. Scalar/recursive Authorization context and complete-JSON traversal repairs retain five exact prose/title controls, standalone16 threshold/provider/value-free/old-wire checks and partial-fragment token-shaped refusal. This pass reproduced pair-list/property-key short-value gaps via claimant9d1f5888; independently read Coordinator5b823075 explicitly excludes both, files S Follow-ups T-1920 and permits named-limit docs there with unchanged head. Those are tracked exclusions, not in-scope blockers or complete short-header coverage claims. A-20248/A-20268 preserve candidate18/18 native0 and earlier raw/hash/combined-exit limits; no recorder/init/T3/browser runtime inferred. No Reviewer execution. C1 remains unverified for same-head configured evidence.
+
+### rev-37 · 2026-11-16T17:21:29.389Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1665-final-1
+commit: 3c550eb376365730d0fb4bf9ca85a8f2dfcd9e57
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear/C1 verified; A-20308. Independently matched74782459/A-20307 canonicaltree7559eb3e4a4476a5587981b38b95f76066e2fc78/head to sourceclearA-20273. Both synthetic credential controls/five exact prose-title negatives base+5/5load; all13new controls have explicit5of5, policy18ordinary passes plus recorder23preservation cases/filepasses. HostT0/allT1/fallbackallT2/Web exit0,hub6476pass/0fail/cancel/skip/todo. Linuxx64droplet Node24.21/Nvim0.12.5 actualHeadlessShell1248/CfT156.0.8078.4,uncached; T3/T4unexecuted/deferred,advisories report-only. Scope retains Coordinator5b823075 S Follow-upsT-1920 exclusions for pair-list/property-key short values and permitted deferred docs; no certification of those forms. Standards/Spec clear within scope;findings[]. No Reviewer runtime.
+
+Criteria: C1 verified.

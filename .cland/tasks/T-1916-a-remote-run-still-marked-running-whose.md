@@ -3,7 +3,7 @@ id: T-1916
 kind: task
 title: "A remote run still marked running whose droplet no longer exists keeps its remote slot after T-1843 (ghost b33e7940 survived restart #77)"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels: []
@@ -14,7 +14,7 @@ regression_of: T-1843
 topic: topic-1565
 branch: t/T-1916-a-remote-run-still-marked-running-whose
 created: 2026-11-16T16:07:55.388Z
-updated: 2026-11-16T16:57:28.257Z
+updated: 2026-11-16T17:35:39.403Z
 ---
 
 ## Summary
@@ -29,8 +29,8 @@ At hub start and on each remote reconciliation, treat a remote run whose record 
 
 - [x] C1. A persisted remote run in the running state, whose droplet the fake provider no longer lists, is absent from `verify queue` and frees its slot after a hub start (test, red before the fix).
   - done: impl-1916 · 2026-11-16T16:57:12.074Z
-- [x] C2. It gets exactly one posted result naming the missing machine; a run whose droplet still exists, and a run whose provider read fails or times out (inventory unknown), both keep their slot (test).
-  - done: impl-1916 · 2026-11-16T16:57:12.676Z
+- [ ] C2. It gets exactly one posted result naming the missing machine; a run whose droplet still exists, and a run whose provider read fails or times out (inventory unknown), both keep their slot (test).
+  - failed: rev-36 [reviewer] · 2026-11-16T17:35:39.403Z · note Required same-head configured run9759d489 exited1 remote machine lost during Web; nine Web files lack completion, so final verification remains incomplete despite positive task matrices.
 
 ## Comments
 
@@ -75,3 +75,31 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Not clear, one medium Standards finding; full pass A-20295. Source1 recovery hole is repaired: restored green native/missing-log matrix confirms provider absence before reconstruction, preserves native bytes, incomplete gating and present/unknown fences. Normal-after step/join and bounded protocol observer are valid; signal/root sequence ownership remains absent. A-20271/87/92 preserve original156-path union+helper dispositions, exact-head targeted terminal receipts and missing helper final receipt/scan/hash/native limitations. C1 stays implementation-done/unverified; C2 failed. Pin released for consolidated ownership correction/new source review before verification; no signal/provenance experiment requested.
 
 Criteria: C2 failed (New recovery callback evidence still lacks whole-sequence signal/root-removal ownership.).
+
+### rev-36 · 2026-11-16T16:59:16.057Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1916-source-3
+commit: f83e202730fe01870ffa609cada5e528c5c45330
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear under Coordinator55dd6f54 scoped final helper round; Standards0/Spec0. A-20297 traces mandatory pre-acquisition run-user shared normal/signal enrollment, memoized join/root guard, fenced release and late-root adoption inside underlying acquisitions. Wait-onlyT1 API/no-native-import behavior and fixtureWork/process-cleanup unchanged; prior recovery/incomplete/native-byte protections unchanged and accepted. A-20296 retained68 committed-source local passes and compiler0; whole-source lint remains in progress, not claimed pass. Preserve156-path union/helper additions, historical above-cap/failed/unknown and raw/source-linkage limits. C1/C2 remain unverified until same-head configured evidence; finish existing lint then mode-free verify in granted window.
+
+### rev-36 · 2026-11-16T17:35:39.403Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1916-evidence-1
+commit: f83e202730fe01870ffa609cada5e528c5c45330
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Evidence not clear; no new source finding. A-20327 verdict/A-20326 independent ledger preserve all13 new identities base1+load5 and all helper/accounting/protocol/cover/persistence file passes. T0/T1/T2 completed; scheduler exit1 remote machine lost during Web, seven start ids unfinished/nine Web files missing, T3/T4 deferred. Hub aggregate6126 completed-phase passes;6435 ordinary+275load finish passes=6710 observed before interruption are distinct, no full-pass substitution. C1 stays done/unverified; C2 failed only for incomplete required task verification, not a failed matrix assertion. Same clean source-clear head; actual machine-loss cause/classification unknown. Lead owns investigation/retry decision; no code edit or extra run requested/authorized. Earlier scope/provenance/advisory/native/QA limits retained.
+
+Criteria: C2 failed (Required same-head configured run9759d489 exited1 remote machine lost during Web; nine Web files lack completion, so final verification remains incomplete despite positive task matrices.).

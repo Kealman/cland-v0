@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-16T16:07:47.058Z
+updated: 2026-11-16T17:54:39.234Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -602,3 +602,11 @@ Hub restart #76 (2026-11-15 23:29:45Z, stand-in, launchd). Reason: cland release
 ### human · 2026-11-16T16:07:47.058Z
 
 Hub restart #77 (2026-11-16 16:04:54Z, stand-in, launchd). Reason: T-1843 (ghost remote slot reconciliation) landed at b57847bca and applies at hub start; coord go after batch run c9c83d2d finished its host T0 and delivery upload (I held the first request because that run was mid-acquire). Gate: dev=origin/dev=b57847bca, root clean, load 2.9, two remote runs waived by coord (T-1907 278ae9f0, batch c9c83d2d), no local run. Stop: launchctl remove cland-hub-r76 → hub 30658 gone in 3 s (uptime 16.6 h). Serve: launchctl submit cland-hub-r77 → listening 16:05:12Z, serving 16:05:17Z. Gap stop→serve 23 s. New hub 88226, port 51318, web 56935, nice 0, ppid 1, env check 2, /opt/homebrew/bin on PATH, one launchd job. Coord 61301: bridge-closed 16:04:54Z, one inject-unconfirmed at 16:06:44Z, coordinator-vacant → coordinator-filled 16:06:46Z, injected 16:06:49Z (about 110 s without a confirmed injection, self-healed, one bridge). Both remote runs survived with live watchdogs. doctor 37 ok 5 warn 0 fail.
+
+### coord · 2026-11-16T17:33:13.751Z
+
+2026-11-16 17:31Z, lost suite run. Merge batch b6b8ed80 (T-1861, T-1867, T-1904; tree d84440642), run c830a7ae on droplet cland-v0-0597651d (c-8 sfo2, lifetime 2492 s, $0.17), was interrupted at 17:31:32Z, and the hub held it as "inconclusive: remote machine lost". Before the interruption: 3,571 pass, 0 fail, T0 and T1 exit 0. Three T3 tests had been in flight for about 307 s: tracker-native-boundary "cached rollback listings preserve later commits and dirty work" (and its "new branch: dirty worktree" subtest), and tracker-ready-native "ready and the merge gate agree on one fixture". The same members plus T-1764 went green 45 min earlier (c9c83d2d); that green landing was lost to the T-1921 git read failure. Recovery: cancelled T-1904, T-1867, T-1861 (first member last) and re-enqueued them, the first resubmission for this tree under rule 35. The hub formed batch 9a1dd7d8 (T-1705, T-1907, T-1768, T-1764, T-1640) at once.
+
+### human · 2026-11-16T17:54:39.234Z
+
+Hub start #78 after a Mac reboot (2026-11-16 17:45:38Z, stand-in, launchd). Reason: sysmond service lost (pgrep 'sysmond service not found', T-1922, ask a509b72e); the human rebooted the Mac because even the terminal would not open, then asked the stand-in to start everything. Previous hub 88226 logged 'stopped' at 17:41:22Z. Boot load 26 → waited for load < 10. Serve: launchctl submit cland-hub-r78 → listening 17:45:55Z, 'restoring sessions' 17:46:53Z, serving 17:47:53Z (136 s under boot load). Hub 2124, port 49183, web 56935, nice 0, ppid 1, env check 2, /opt/homebrew/bin on PATH, one launchd job; dev=origin/dev=f4288109d. Coord: session resume coord --relaunch at 17:48Z (job 3837cb54, pid 7131); first role set refused 'no hello received'; coordinator-filled 17:48:24Z; six inject-unconfirmed 17:49–17:51Z; hub at ~107% CPU refused socket connections around 17:51Z (ECONNREFUSED seen by coord, hub pid unchanged); coord spoke bye 17:52:50Z → hello and coordinator-filled 17:54:15Z; role set repeated in between. Crew rows from before the reboot all exited; coord relaunched impl-1916 and impl-1919. Merge queue resumed by itself (batch 0a1b5c9f). The three orphan droplets from the sysmond incident are no longer tagged.
