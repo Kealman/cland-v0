@@ -8,10 +8,10 @@ labels:
 assignee: null
 parent: R-1880
 blocked_by: []
-topic: null
+topic: topic-1544
 branch: null
 created: 2026-11-16T07:28:32.898Z
-updated: 2026-11-16T07:31:07.033Z
+updated: 2026-11-16T08:34:56.811Z
 ---
 
 ## Goal
@@ -44,6 +44,8 @@ stages:
       - - T-1767
       - - T-1817
       - - T-1677
+      - - T-1905
+      - - T-1904
   - name: stage 2
     qa:
       scope: none

@@ -3,7 +3,7 @@ id: T-1904
 kind: task
 title: "hub-status-component.test.ts fails 4/8 in a crew session's shell: in-process CLI cases inherit the session's CLAND_* identity and hit the scratch hub's credential check"
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - flaky
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T07:40:00.448Z
-updated: 2026-11-16T07:40:00.448Z
+updated: 2026-11-16T08:34:44.417Z
 ---
 
 ## Summary

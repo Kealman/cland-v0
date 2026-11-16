@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1538
 branch: t/T-1697-host-agent-checkpoint-writes-share-one
 created: 2026-11-05T19:31:45.062Z
-updated: 2026-11-16T08:00:27.314Z
+updated: 2026-11-16T08:33:11.053Z
 ---
 
 ## Summary
@@ -35,8 +35,10 @@ In impl-1692's Linux container evidence (T-1692; `docker run --init`, arm64 Node
 
 - [x] C1. The failing order is named with a deterministic reproduction (test, red before the fix).
   - done: impl-1697 · 2026-11-16T07:43:11.702Z
+  - verified: rev-37 [reviewer] · run rev-37-1697-evidence-1 · 2026-11-16T08:33:11.053Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
 - [x] C2. Concurrent checkpoints of one file never fail and never leave a partial file, and the last completed write wins (test).
   - done: impl-1697 · 2026-11-16T07:43:31.973Z
+  - verified: rev-37 [reviewer] · run rev-37-1697-evidence-1 · 2026-11-16T08:33:11.053Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
 - [ ] C3. claude-code-remote passes 10/10 under CPU load in a Linux container run with `docker run --init` (evidence).
 
 ## Comments
@@ -74,3 +76,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Reworked recovery source clear at exact58f83349e; Standards and Spec clear, findings []. Both A-19849 findings resolved: streamed bounded scheduled recovery outside readiness, synchronous cancellation/join on close, exact external code basenames without generation traversal. Reviewed new T1 work-budget/external controls, unexecuted native lifecycle test, per-write publication, caller compatibility, docs and regenerated closure hashes. C1/C2/C3 remain runtime-unverified. Coordinator b3dcad69 authorizes source clear before lifecycle run; assigned slot must supply that exact-head receipt plus10 loaded full-file Linux --init C3 runs, separately from configured verification. A-19856 preserves predecessor red/green provenance, not corrected-head evidence. No Reviewer runs/edits. Artifact A-19867 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19867-t-1697-corrected-recovery-source-review.md
+
+### rev-37 · 2026-11-16T08:33:11.053Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1697-evidence-1
+commit: 58f83349eca11d94485f534251e0ab0951f94d9a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Partial evidence settlement: C1/C2 verified, C3 pending/unverified, not final item settlement. Independently reconciled A-19883/run1270b05e at source-clear58f83349e and canonical tree3efbcc01925d47cdfb6557e4c27b35aeb5364ad9; uncached Linux x64 droplet Node24.21/Nvim0.12.5, pinned Headless Shell1248 Chrome156.0.8078.4. T0/allT1/fallback allT2/changedT3 lifecycle once/Web complete.6387 base test+702 file passes; separate240 load test+240 file passes; no negative finishes. Each six storage generated names has1 base+5 load passes; closure5 base; new lifecycle1 base pass/file receipt. RemainingT3/T4 not run here; budgets/lint/ratchet report-only. A-19856 red/green plus exact-head receipts establish C1/C2; historical missing-parent producer still unproven. C3's10 loaded full-file Linux Docker --init repetitions remain separate. No Reviewer runs/edits. A-19884 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19884-t-1697-configured-evidence-c1-and-c2-c3-pending.md
+
+Criteria: C1 verified, C2 verified.
