@@ -5,15 +5,16 @@ title: Host spawn's `exited` resolves with the raw `process-exited` event instea
 state: open
 status: in progress
 size: S
+criterion_seq: 2
 labels:
   - flaky
 assignee: null
 parent: E-1881
 blocked_by: []
-topic: null
+topic: topic-1541
 branch: t/T-1731-host-spawn-s-exited-resolves-with-the
 created: 2026-11-06T23:09:27.734Z
-updated: 2026-11-16T07:33:08.767Z
+updated: 2026-11-16T07:38:24.448Z
 ---
 
 ## Summary
@@ -30,5 +31,18 @@ The resolved value also carried `event: 'process-exited'`, `pid`, `identity`, `a
 
 ## Acceptance criteria
 
-- [ ] C1. With the commit reply dropped and reconciliation forced to settle first, `child.exited` resolves exactly `{code: 7, signal: null}` (test, red before the fix).
+- [x] C1. With the commit reply dropped and reconciliation forced to settle first, `child.exited` resolves exactly `{code: 7, signal: null}` (test, red before the fix).
+  - done: impl-1731 · 2026-11-16T07:38:24.448Z
 - [ ] C2. `host-ssh-contract.test.ts` passes 10/10 in the four-file parallel mix under a Linux `--init` container at load 8 or more (evidence).
+
+## Comments
+
+### impl-1731 · 2026-11-16T07:35:17.007Z
+
+Rule 20 consumer sweep before source change: searched .exited, process-exited, native-receipts, HostSpawn and Host/sshHost imports across hub/src, hub/test (tiers.json includes T1–T4), nvim, web, shared, test-support, docs (QA briefs/evidence/startup guidance), and shipped .agents/skills. Native producers/readers: host/agent/{protocol,processes,server}.ts, host/ssh-host.ts and AgentClient; native wire and persisted process rows stay unchanged. Promise consumers: adapters/codex.ts, adapters/opencode/{server}.ts, adapters/opencode.ts, adapters/launch-files.ts; they read code/signal or await completion and require no migration. host/local.ts retains the exact existing Host.spawn shape. Tests consuming this promise: host-contract.ts (shared SSH/local contracts), host-ssh-contract, host-local-contract, host-agent, login-key-spawn, host-login-disk, host-relaunch; all remain compatible. Native-event consumers in host-prepared, host-agent-restart, host-agent, login-write-back, host-login-disk and host-relaunch retain their full events. Scripted native-receipts replies in host-command-environment, host-flush, host-settlement keep wire shape. Other Host importers only call other Host methods or supply the declared promise shape. AdapterHost.exited callbacks (codex-host, codex-remote-cleanup, claude-code-schedule, fakes/harness), daemon exited in edges, outbox exchange.exited and nvim sessions.exited are unrelated homonyms. Docs: docs/hub/ssh-host.md, docs/agents/host-agent.md, docs/spec/v0.4.md; update SSH Host promise wording only. No web/nvim wire, QA brief, startup probe or shipped skill consumes leaked extra keys. Previous wire-shape regression: scripted legacy native event without authority/ended, alongside current extended frame. No field removal on the wire; normalize solely at the existing public promise boundary.
+
+Red receipt on macOS arm64, Node 24.21.0, task base d642982 tree plus new tests: host-command-environment T2 11 pass / 2 fail. Both failures are exact deepStrictEqual: actual includes event:'process-exited', pid:42, identity:'synthetic-birth'; extended also authority:'closed', ended:true. Expected {code:7,signal:null}. No native process, browser, full suite or verification run.
+
+### impl-1731 · 2026-11-16T07:37:56.553Z
+
+Supplemental rule 20 sweep explicitly included shipped skills/, qa/, .github/, packaging/, hub/bin/, web/test and nvim/test. QA brief matches: qa/briefs/E-1534{,-stage-1,-stage-2,-stage-3}.md, E-1533{,-stage-2,-stage-3}.md and E-1535-stage-1.md describe historical T-1731 failure signatures and stage rerun policy, rather than consuming native frames; unaffected historical evidence. No CLI/startup probe or skill example parses this exit promise. Note correction to prior evidence tier: host-command-environment.test.ts is existing T1 per tiers.json, not T2. Green after normalization: 13/13 on macOS arm64 Node 24.21.0, no native I/O or browser; full verification not yet run.

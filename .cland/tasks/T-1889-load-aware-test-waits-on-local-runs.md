@@ -3,7 +3,7 @@ id: T-1889
 kind: task
 title: Load-aware test waits on local runs
 state: open
-status: in progress
+status: review
 size: S
 labels:
   - retro-improvement
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1534
 branch: t/T-1889-load-aware-test-waits-on-local-runs
 created: 2026-11-16T07:29:44.705Z
-updated: 2026-11-16T07:32:46.300Z
+updated: 2026-11-16T07:39:28.082Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ Kind: product (test infra). Triage ticket H-1 of A-19813, part of E-1888 (the v0
 ## Dependencies
 
 none; lands first in A1 stage 1 (`hub/test/until.ts`, `harness.ts`)
+
+## Comments
+
+### impl-1889 · 2026-11-16T07:33:45.087Z
+
+Consumer sweep: searched until, eventually, waitTimeoutMs, testSetupWaitMs, CLAND_TEST_LOAD_FACTOR and imports across hub/src, hub/test (all tiers), web/test, nvim/test, docs, shipped .agents/skills. Scope is test-only; no production wire/persisted reply changes. Existing until loadFactor:1 behaviour callers remain exact; clock.test.ts intentionally passes factor3 to exercise arithmetic. Harness eventually numeric callers retain shape and get setup scaling; remote-fixture remoteEventually currently pre-scales and needs explicit factor1 to prevent double scaling. Existing setup envelopes (host-fixture-cleanup, login-terminal, Discord acquisition, scenario-reply-owner) already use waitTimeoutMs. Shared documentation lives in docs/agents/tests.md and docs/hub/running.md; no skill examples of either wait API found.

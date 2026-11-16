@@ -5,6 +5,7 @@ title: cland release fails with a bare "gh auth failed (ENOENT)" when the hub's 
 state: open
 status: in progress
 size: S
+criterion_seq: 2
 labels: []
 assignee: null
 parent: E-1888
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-1535
 branch: t/T-1876-cland-release-fails-with-a-bare-gh-auth
 created: 2026-11-15T23:29:25.796Z
-updated: 2026-11-16T07:32:49.827Z
+updated: 2026-11-16T07:40:09.635Z
 ---
 
 ## Summary
@@ -25,5 +26,13 @@ When a release tool isn't found (ENOENT), the release error says which binary is
 
 ## Acceptance criteria
 
-- [ ] C1. A release whose hub PATH lacks `gh` refuses with a message naming `gh`, the hub's PATH and the restart fix (test).
-- [ ] C2. `cland doctor` warns when `web_bundle` is on and `gh` isn't on the hub's PATH, with the fix, and makes no network call (test).
+- [x] C1. A release whose hub PATH lacks `gh` refuses with a message naming `gh`, the hub's PATH and the restart fix (test).
+  - done: impl-1876 · 2026-11-16T07:40:05.621Z
+- [x] C2. `cland doctor` warns when `web_bundle` is on and `gh` isn't on the hub's PATH, with the fix, and makes no network call (test).
+  - done: impl-1876 · 2026-11-16T07:40:09.635Z
+
+## Comments
+
+### impl-1876 · 2026-11-16T07:34:07.648Z
+
+Contract sweep before edits: searched hub.status, HubStatus, checkWebRelease, AssetCommand, checkToolchain and ToolchainRequirements across hub/web/nvim/shared, skills, QA and docs including all test tiers; inventory at worktree .cland/T-1876-consumers.txt. Plan: additive opt-in hub.status releaseTools boolean and optional releaseTools.gh resolution result. Existing production clients, startup probes, persisted readers, socket fixtures and all prior status requests retain their exact shape; only doctor opts in. Prior wire shape gets an explicit client regression (missing result stays unknown). No existing fields, notices, admission or outcome classes change.

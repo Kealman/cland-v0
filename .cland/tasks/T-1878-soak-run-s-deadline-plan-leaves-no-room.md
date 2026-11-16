@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-1537
 branch: t/T-1878-soak-run-s-deadline-plan-leaves-no-room
 created: 2026-11-16T04:19:13.815Z
-updated: 2026-11-16T07:33:04.757Z
+updated: 2026-11-16T07:34:42.336Z
 ---
 
 ## Summary
@@ -27,3 +27,9 @@ Find out why the soak's deadline plan admitted a selection that reached the dead
 
 - [ ] C1. With the recorded durations of A-19799, the soak plan either fits all selected tiers with real margin or trims repetitions, shown by a test over a fake duration manifest (test).
 - [ ] C2. A soak that times out names its unexecuted tiers and files in the result, as unexecuted, never as passed (test).
+
+## Comments
+
+### impl-1878 · 2026-11-16T07:34:42.336Z
+
+Consumer sweep (rule 20): soakDeadlinePlan caller is hub/src/hub/suites.ts; selection.reason is presentation text consumed by describeSelection, suite logs, suiteSummary and suite-soak-component tests. TierPlan comes from suite-tier-report, reused by local runner, suites, shards and tier-report tests. Timeout progress is consumed by hub dispatch interruptionLines, run-suite, batch-flakes, dev-t3-probe, merge-batches, soak-quarantine, suite-progress/durations-runner/suite-runner/hung-component tests. Plan: keep existing progress and wire fields unchanged; add optional execution inventory to result.json and additive timeout text lines. Legacy result readers use code/cause/progress and ignore additive fields. Searched production, web/nvim, all test tiers, docs, skills and QA guidance for soakDeadlinePlan, tierPlan, suiteProgress, progressLines, interruptionLines, result.json and timeout text. Update shared procedures and running reference; no role permission change.

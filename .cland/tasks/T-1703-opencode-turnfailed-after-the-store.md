@@ -14,7 +14,7 @@ found_by: droplet
 topic: topic-1540
 branch: t/T-1703-opencode-turnfailed-after-the-store
 created: 2026-11-06T05:22:20.125Z
-updated: 2026-11-16T07:33:22.806Z
+updated: 2026-11-16T07:38:20.364Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ Make OpenCode adapter callbacks such as turnFailed, arriving after Sessions or i
 
 - [ ] C1. A deterministic test delivers an OpenCode turnFailed after the store closes and shows it red before the fix and green after.
 - [ ] C2. opencode-adapter.test.ts passes 10/10 on Linux under load (evidence).
+
+## Comments
+
+### impl-1703 · 2026-11-16T07:38:20.364Z
+
+C1 deterministic red/green captured in A-19832. Captured OpenCode AdapterHost.turnFailed after awaited hub shutdown and positive closed-store control fails with database is not open before the two-line Sessions fence; full scripted T2 file passes 33/33 after. No shared reply, schema, or wire contract changes. Linux Docker load run in progress under exclusive slot.

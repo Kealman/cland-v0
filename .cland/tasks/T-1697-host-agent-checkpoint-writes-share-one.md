@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-1538
 branch: t/T-1697-host-agent-checkpoint-writes-share-one
 created: 2026-11-05T19:31:45.062Z
-updated: 2026-11-16T07:33:04.895Z
+updated: 2026-11-16T07:37:24.513Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ In impl-1692's Linux container evidence (T-1692; `docker run --init`, arm64 Node
 - [ ] C1. The failing order is named with a deterministic reproduction (test, red before the fix).
 - [ ] C2. Concurrent checkpoints of one file never fail and never leave a partial file, and the last completed write wins (test).
 - [ ] C3. claude-code-remote passes 10/10 under CPU load in a Linux container run with `docker run --init` (evidence).
+
+## Comments
+
+### impl-1697 · 2026-11-16T07:37:24.513Z
+
+Deterministic red reproduced: first checkpoint is held after sync, second opens/truncates the shared .new and renames it, first rename throws ENOENT ('missing rename source'). New unique pid/UUID temp passes the same order. This proves the collision, not the historical missing-parent open failure. Current AgentProcesses #persist serializes processes.json and drain fences new reconciliation and joins saves/completions; no live-parent recreation is introduced. Caller sweep: entry applied.json; bootstrap birth.json; ref-push-worker result; processes plans/admissions/release/closed/process table; watch snapshots (serialized owner); prepared plans/results (token owner); claude generation receipts; signin admission receipt; server agent.pid; supervisor restart-result. JSON bytes/paths and checkpoint(path,value) calls stay compatible. Unique temp permits independent concurrent callers. Startup cleanup preserves live/unknown pid temps and legacy .new (no captured writer identity).

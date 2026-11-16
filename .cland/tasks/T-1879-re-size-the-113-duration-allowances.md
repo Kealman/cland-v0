@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1531
 branch: t/T-1879-re-size-the-113-duration-allowances
 created: 2026-11-16T07:04:58.109Z
-updated: 2026-11-16T07:33:07.660Z
+updated: 2026-11-16T07:36:31.817Z
 ---
 
 ## Summary
@@ -66,3 +66,16 @@ Criteria: C1 failed (Wrong normalized C-216 default/removal decision and incompl
 ### impl-1879 · 2026-11-16T07:32:42.892Z
 
 Corrected both medium review findings at df5624c4d2d6bf5cb0fe48ce9f22ba1e009bf8a3; no dev merge after first review. A-19815 replaces A-19807: all469 original inputs preserved, 429 suite logs in Nov9–Nov16 07:10Z across all branches/occasions, 396 explicit platform receipts and 33 unknown-platform exclusions retained. Production readTierAssignments + TIER_BUDGETS replace raw object-tier/generic defaults. Counts C-216100 remove/36 resize/2 explicit keep caps46/49; E-880206 remove/124 resize/1 ratchet keep. A19743 included; identical peak also in duplicate A19742. Fresh native full command receipts A-19816 at exact head: targeted8+23+2+18+38 tests green sequentially on macOS arm64 Node24.21.0, no browser. test:tiers, hub typecheck, wording lint green. Date proof whole manifest green Nov22 23Z/red Nov23 00Z; renewed125-entry E-880 subset green Dec16 23Z/red Dec17 00Z, 63 excluded keys listed with earliest expiry Nov23. Byte-preservation check green for25 unrelated allowance values and outside allow except two renamed heartbeat baselines. A-19817 preserves807 consumer/16 unknown graph union with explicit executed versus deferred status. Launchers A-19818/19/20; narrowed token/bearer scan with synthetic positive control before new publications, exact scope in A-19816. Original provenance gaps remain in A-19812, not replaced by new receipt claims. Configured suite remains pending fresh source review.
+
+### rev-35 · 2026-11-16T07:36:31.817Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1879-source-2
+commit: df5624c4d2d6bf5cb0fe48ce9f22ba1e009bf8a3
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-19829 records corrected source clear. All469 input rows/decisions preserved; production normalized tiers/budgets and current manifest entries independently match. Streamed429logs (316Linux/80Mac/33unavailable platform):468positiveLinux peaks all match audit, includesA19743. Counts C216100remove/36resize/2keep46/49; E880206remove/124resize/1ratchet.25unrelated unchanged; mode report, original baseline only2title renames. Effective date controls/targeted89test positives in new A19816 checked, manifest hash matches;807consumer/16unknown union and capture limits retained. Previous findings resolved. C1–C3 unverified pending configured same-head receipt; hold released, mode-free verify at unchanged head permitted. No Reviewer runtime work.
