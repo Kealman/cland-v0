@@ -2,8 +2,8 @@
 id: T-1731
 kind: task
 title: Host spawn's `exited` resolves with the raw `process-exited` event instead of `{code, signal}` when reconciliation wins the race after a dropped commit reply
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1541
 branch: t/T-1731-host-spawn-s-exited-resolves-with-the
 created: 2026-11-06T23:09:27.734Z
-updated: 2026-11-16T09:27:45.168Z
+updated: 2026-11-16T11:15:13.454Z
+closed: 2026-11-16T11:15:13.454Z
 ---
 
 ## Summary
@@ -97,3 +98,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; C1/C2 verified. Independently parsed all10 original A-19932 TAPs:40 required Host names exactly once per mix,400/400 Host passes,60 result rows/mix,0cancel/skip/todo. Whole-mix592pass/8fail retained (five whole mixes exit1); failures quote 'autonomous retry publishes up: not within 3000 ms', 'explicit incomplete cleanup receipt: not within 2000 ms', and 'changed publication completed before up: not within 2000 ms', exclusively T-1906 identities authorized by Coordinator eb7791e3/3c13e6e3. Entry load8.01–9.55; end7.54–13.33 retained;1f0892fc explicitly accepts entry-only accounting/mix6. C2 is satisfied under that narrow disposition, not10 clean whole-mix passes. Linux Docker --init/network-none/4CPU Node24.21, exact four-file concurrency4; no incomplete file counted. Original missing-zod/load-readiness setup failures and mix7 original accounted:false retained. Corrected source-base provenance reconciled. Configured ac9a6214/A-19894 unchanged uncached60e823451/tree45ecfa9d1a4bdf267d5dcd5af718f6ef0e3b4301 remains green6382base tests/700files plus220load tests/files; Linuxx64 droplet Node24.21/Nvim0.12.5, pinned isolated Headless Shell1248 Chrome156.0.8078.4; T0/allT1/fallback allT2/Web, no taskT3/T4. Budgets/lint report-only, QA none. No Reviewer runs/edits. A-19934 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19934-t-1731-final-same-head-c1-c2-evidence-review.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T11:15:13.454Z
+
+Merged 66bce8751d6dc928f9d28fe73fd3a61956a600d6 onto dev.

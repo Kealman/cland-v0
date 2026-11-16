@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1547
 branch: t/T-1796-macos-stage-cover-t2-stalled-10-min
 created: 2026-11-09T18:33:53.922Z
-updated: 2026-11-16T10:24:40.137Z
+updated: 2026-11-16T11:18:13.192Z
 ---
 
 ## Summary
@@ -23,9 +23,11 @@ The macOS local stage cover e50b7ddb at dev 700f88ce (A-18171) ended `exit 1; st
 ## Acceptance criteria
 
 - [x] C1. The stall report keeps the evidence that tells what kept the T2 command alive after its last file finished: the command still alive, or an inherited pipe writer after it exited, with bounded process names and pids captured before cleanup. A-18171's own survivor is recorded on the item as unknown, since its log has no native evidence (test).
-  - done: impl-1796 · 2026-11-16T10:21:16.991Z
+  - verified: rev-36 [reviewer] · run rev-36-1796-final-1 · 2026-11-16T10:56:15.371Z · commit 2b2ea08a47a34306e84a1e78cf02e2608513a93f
+  - done: impl-1796 · 2026-11-16T11:17:50.503Z
 - [x] C2. The stall report's "last started tests" lists only tests that started without finishing (test).
-  - done: impl-1796 · 2026-11-16T09:58:17.671Z
+  - verified: rev-36 [reviewer] · run rev-36-1796-final-1 · 2026-11-16T10:56:15.371Z · commit 2b2ea08a47a34306e84a1e78cf02e2608513a93f
+  - done: impl-1796 · 2026-11-16T11:17:50.716Z
 
 ## Comments
 
@@ -91,3 +93,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full corrected source audit A-19965: Standards0/Spec0. Sole A-19960 blocker resolved: bounded semantic suite-stall-command state is emitted synchronously before native awaits, retained by shared streaming/in-memory/cache namespace, and command-only evidence drives capped artifact pointer. Red inspection-failure2/5 -> green5/5, full backfill5/5 and actual capped dispatch5/5 recorded in A-19964 with candidate/raw limits; exact exit/pending/EOF and no cleanup authority assertions intact. Earlier census-retention and pre-admission fake-child join fixes remain. C1 done restored; no criteria verified/final ready until exact-head configured result/consumer reconciliation. Historical survivor unknown under Coordinator revised C1; failed load-coincident run and report-only advisories remain qualified. Source clear at2b2ea08a4 permits authorized mode-free verification; no new source changes without review.
+
+### rev-36 · 2026-11-16T10:56:15.371Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1796-final-1
+commit: 2b2ea08a47a34306e84a1e78cf02e2608513a93f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head audit A-19978 / independent ledger A-19977: C1/C2 verified. A-19975 run3f3f680f passed at reviewed2b2ea08a4; all15 changed-file cases base pass, eight new diagnostics/retention/capped-dispatch identities each additional5/5, max0.755075113s. Positive command state/census, inspection-failure reduction/pointer and completed-file exclusion checked with source assertions; historical A-18171 survivor remains unknown under revised C1. Deduplicated6395 base test/700 file passes plus separate250 load test/file passes; conservative984 manifest paths =700 lower/Web positive +267T3/17T4 explicit deferrals, no lower/Web gap. A-19947 original16-path hit set retained and expanded; A-19976 caller/native/QA/transitive limits explicit. Exact Linux/Node/browser provenance36986, no cache/skips; local/failed-load/raw/source-linkage limits and report-only advisories retained. No actual native cleanup/stall-cause diagnosis or fullT3/T4 claim. Hub/Coordinator own ready/landing.
+
+Criteria: C1 verified, C2 verified.

@@ -2,8 +2,8 @@
 id: T-1876
 kind: task
 title: cland release fails with a bare "gh auth failed (ENOENT)" when the hub's PATH has no gh; doctor doesn't check gh on the hub's PATH
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1535
 branch: t/T-1876-cland-release-fails-with-a-bare-gh-auth
 created: 2026-11-15T23:29:25.796Z
-updated: 2026-11-16T09:07:30.666Z
+updated: 2026-11-16T11:14:59.039Z
+closed: 2026-11-16T11:14:59.039Z
 ---
 
 ## Summary
@@ -100,3 +101,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head C1/C2 verified, A-19929/A-19928. All5doctor cases ordinary+5; held-work ordinary+5; actual changedT3 native2/2 plus whole file pass on final head.6388base tests/702files and240separate load tests/files all positive; all220T1/426T2/1changedT3/55Web files pass. Preserved all404 A-19850 paths and conservative manifest/helper superset1209, zero missing selected files; broader267T3/17T4 deferred. Prior E-1882/candidate capture/withdrawn-head history remains scoped. Report-mode advisories not enforcement passes. No Reviewer runtime work. Hold released; Coordinator landing gate remains.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T11:14:59.039Z
+
+Merged 6e6b709de524afdd2ec833f7da1e22f346bec99f onto dev.

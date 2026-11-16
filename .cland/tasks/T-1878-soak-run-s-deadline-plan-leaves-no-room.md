@@ -2,8 +2,8 @@
 id: T-1878
 kind: task
 title: "Soak run's deadline plan leaves no room for Web: d5150de3 timed out (exit 124) in the Web tier after T0–T4 passed"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1537
 branch: t/T-1878-soak-run-s-deadline-plan-leaves-no-room
 created: 2026-11-16T04:19:13.815Z
-updated: 2026-11-16T09:01:27.745Z
+updated: 2026-11-16T11:15:56.949Z
+closed: 2026-11-16T11:14:46.236Z
 ---
 
 ## Summary
@@ -89,3 +90,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head C1/C2 verified, A-19925/A-19924. Independently audited planner base+5, all five timeout cases/base file and new local/broad cases+5;6383base tests/701files plus225load tests/files all pass. All221T1/425T2/55Web files positive, no selected-file receipt missing. Conservative985manifest accounting retains267T3/17T4 deferred and original named consumer boundaries; no graph/runtime soak claim. Provenance matches reviewed head, uncached Linux/browser. Historical candidate/capture and report-only advisories retained. No Reviewer runtime work. Hold released; Coordinator landing gate remains.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T11:14:46.236Z
+
+Merged d5ea35a55b8ab20dcdfc502c0f007bce710afa2b onto dev.
