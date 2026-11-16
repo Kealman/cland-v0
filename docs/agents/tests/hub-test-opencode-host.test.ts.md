@@ -1,5 +1,13 @@
 # hub/test/opencode-host.test.ts
 
+Port retry regressions call startServer with scripted Host/client operations only.
+Repeated freePort selections exhaust SERVER_PORT_ATTEMPTS (eight), throw
+OpenCodePortRetryError with the last port, and spawn the colliding port only once.
+The fake enforces a 1000-call/1000 ms safety bound inside freePort so a microtask
+spin cannot starve the test timeout. A collision followed by a fresh port must
+return that second server's PID and URL after its authenticated readiness reply;
+the fake then publishes the exact child exit before releasing the fixture.
+
 T2 recording Host seam with a scripted OpenCode HTTP transport. Prove one
 spawn per launch, serve argv, cwd, environment filtering and private config/password
 and log paths. Synthetic PIDs and birth identities must never reach local probes.

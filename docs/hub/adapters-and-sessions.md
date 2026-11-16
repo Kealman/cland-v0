@@ -179,6 +179,13 @@ See [Accounts and limits](accounts-and-limits.md#accounts-and-limits) for the re
 
 `src/adapters/opencode.ts`, with `opencode/client.ts` (the HTTP API and the event stream), `opencode/state.ts` (events to states) and `opencode/server.ts` (the session's server and its files). Launched with `"harness": "opencode"`.
 
+Server launch selects at most eight ports (`SERVER_PORT_ATTEMPTS`), counting
+repeated selections. A child that exits with address-in-use output can retry
+on a fresh port within the launch deadline. Exhaustion raises
+`OpenCodePortRetryError`, naming the last port and selection count, through the
+existing launch-failure cleanup and rendering path. HTTP readiness keeps its
+existing launch deadline; repeated ports are never spawned twice.
+
 The server process and its shell tools receive `CLAND_HUB_FILE`,
 `CLAND_SESSION_ID`, `CLAND_SESSION_NAME`, `CLAND_LAUNCH_TOKEN` when present,
 and `CLAND_ROLE` when assigned. The generated cland MCP server environment

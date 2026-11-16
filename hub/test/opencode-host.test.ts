@@ -11,6 +11,82 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { join } from 'node:path';
 import { beforeDirectories } from './process-cleanup.ts';
 
+test('OpenCode repeated port selection fails with a bounded typed launch error', async t => {
+  const { startServer, serverFiles, OpenCodePortRetryError, SERVER_PORT_ATTEMPTS } = await import('../src/adapters/opencode/server.ts');
+  const { LaunchFiles } = await import('../src/adapters/launch-files.ts');
+  const { OpenCodeClient } = await import('../src/adapters/opencode/client.ts');
+  const root = await tempProject(t);
+  const env = fixtureEnvironment(root, process.env);
+  let selections = 0, spawns = 0;
+  const started = performance.now();
+  const host = { ...localHost(env), stat: async () => ({ size: 0, mode: 0o600 }),
+    freePort: async () => {
+      // A microtask spin starves node:test's timer; enforce the red-run bound inside the fake.
+      if (++selections > 1000 || performance.now() - started > 1000) throw new Error('port selection exceeded regression safety bound');
+      return 12345;
+    },
+    spawn: async () => { spawns++; return { pid: 987654, exited: Promise.resolve({ code: 1, signal: null }) }; },
+    identity: async () => null,
+    readFile: async () => Buffer.from('EADDRINUSE: address already in use'),
+  };
+  const transaction = new LaunchFiles(undefined, host);
+  await assert.rejects(startServer({ host, bin: 'synthetic-opencode', cwd: root, env,
+    files: serverFiles(root, 'repeated'), password: 'synthetic', deadlineMs: 10000,
+    transaction, log: () => {}, stopGraceMs: 1,
+    client: async url => { const client = new OpenCodeClient(url, 'synthetic'); t.mock.method(client, 'request', async () => { throw new Error('not ready'); }); return client; },
+  }), error => {
+    assert.ok(error instanceof Error);
+    t.diagnostic(`${error.name}: ${error.message}; port selections: ${selections}`);
+    assert.ok(error instanceof OpenCodePortRetryError);
+    assert.equal(error.name, 'OpenCodePortRetryError');
+    assert.match(error.message, /12345/);
+    assert.equal((error as Error & { port: number }).port, 12345);
+    assert.equal((error as Error & { attempts: number }).attempts, 8);
+    return true;
+  });
+  assert.equal(selections, 8);
+  assert.equal(SERVER_PORT_ATTEMPTS, 8);
+  assert.equal(spawns, 1);
+  transaction.commit();
+});
+
+test('OpenCode address-in-use retries successfully on a fresh port', async t => {
+  const { startServer, serverFiles } = await import('../src/adapters/opencode/server.ts');
+  const { LaunchFiles } = await import('../src/adapters/launch-files.ts');
+  const { OpenCodeClient } = await import('../src/adapters/opencode/client.ts');
+  const root = await tempProject(t);
+  const env = fixtureEnvironment(root, process.env);
+  const ports = [12345, 12346], launched: string[][] = [], requests: string[] = [];
+  let selections = 0;
+  const exit = { code: 0, signal: null };
+  let finish!: (value: typeof exit) => void;
+  const liveExit = new Promise<typeof exit>(resolve => { finish = resolve; });
+  t.after(() => finish(exit));
+  const host = { ...localHost(env), stat: async () => ({ size: 0, mode: 0o600 }),
+    freePort: async () => { assert.ok(selections < ports.length); return ports[selections++]!; },
+    spawn: async (command: Parameters<import('../src/host/host.ts').Host['spawn']>[0]) => {
+      launched.push([...command.args]);
+      return { pid: 987654 + launched.length, exited: launched.length === 1 ? Promise.resolve({ code: 1, signal: null }) : liveExit };
+    },
+    identity: async () => null,
+    readFile: async () => Buffer.from('EADDRINUSE: address already in use'),
+  };
+  const transaction = new LaunchFiles(undefined, host);
+  const result = await startServer({ host, bin: 'synthetic-opencode', cwd: root, env,
+    files: serverFiles(root, 'fresh'), password: 'synthetic', deadlineMs: 1000,
+    transaction, log: () => {}, stopGraceMs: 1,
+    client: async url => { const client = new OpenCodeClient(url, 'synthetic'); t.mock.method(client, 'request', async () => { requests.push(url); if (url.endsWith(':12345')) throw new Error('not ready'); return []; }); return client; },
+  });
+  assert.equal(selections, 2);
+  assert.deepEqual(launched.map(args => args.at(-1)), ['12345', '12346']);
+  assert.deepEqual(requests, ['http://127.0.0.1:12345', 'http://127.0.0.1:12346']);
+  assert.equal(result.url, 'http://127.0.0.1:12346');
+  assert.equal(result.pid, 987656);
+  finish(exit);
+  assert.deepEqual(await result.exited, exit);
+  transaction.commit();
+});
+
 test('OpenCode poll, resume and stop use the row Host and preserve its birth identity', async t => {
   const root = await tempProject(t);
   const env = fixtureEnvironment(root, process.env);

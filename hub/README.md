@@ -83,7 +83,7 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Prebuilt Web release assets](../docs/hub/prebuilt-web-release-assets.md)
 - [cland doctor](../docs/hub/cland-doctor.md): toolchain, remote readiness, read-only hosts diagnostics and sign-in mode with hub-backed users counts. With `[release] web_bundle = true`, also checks gh resolution on the running hub's PATH without auth or network calls; missing tools need a hub restart with the tool on PATH.
 - [The project's hub](../docs/hub/the-projects-hub.md)
-- [Adapters and sessions](../docs/hub/adapters-and-sessions.md): managed Claude Bash guard refuses computed and unquoted-glob rm/rmdir targets.
+- [Adapters and sessions](../docs/hub/adapters-and-sessions.md): managed Claude Bash guard refuses computed and unquoted-glob rm/rmdir targets; OpenCode server launch bounds port selections at eight, including repeated ports, within its launch deadline.
 - [The tracker](../docs/hub/the-tracker.md)
 - [Running](../docs/hub/running.md): executor API endpoint declarations, per-token request budgets and shared dependency preparation for local batch/probe checkouts.
 - [Artifacts](../docs/hub/artifacts.md)

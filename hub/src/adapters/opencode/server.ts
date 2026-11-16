@@ -18,6 +18,20 @@ import { dirname, join, basename } from 'node:path';
 
 export type ServerFiles = { dir: string; config: string; password: string; log: string };
 
+/** Includes repeated selections, which must not spin until the launch deadline. */
+export const SERVER_PORT_ATTEMPTS = 8;
+
+export class OpenCodePortRetryError extends Error {
+  readonly port: number;
+  readonly attempts: number;
+  constructor(port: number, attempts: number) {
+    super(`opencode serve exhausted ${attempts} port selections; last port ${port}`);
+    this.name = 'OpenCodePortRetryError';
+    this.port = port;
+    this.attempts = attempts;
+  }
+}
+
 export function serverFiles(clandDir: string, name: string): ServerFiles {
   const dir = join(clandDir, 'opencode', name);
   return { dir, config: join(dir, 'opencode.json'), password: join(dir, 'password'), log: join(dir, 'serve.log') };
@@ -69,8 +83,12 @@ export async function startServer(options: { host: Host; client?: (url: string, 
     let start = yield* wait(options.host.stat(files.log).then(s => s.size, err => { if (err.code === 'ENOENT') return 0; throw err; }));
     let explanation = '';
     const attempted = new Set<number>();
+    let selections = 0, lastPort = 0;
     while (Date.now() < deadline) {
+      if (selections === SERVER_PORT_ATTEMPTS) throw new OpenCodePortRetryError(lastPort, selections);
       const port = yield* wait(options.host.freePort());
+      selections++;
+      lastPort = port;
       if (attempted.has(port)) continue;
       attempted.add(port);
       const url = `http://127.0.0.1:${port}`;
