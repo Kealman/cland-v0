@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1547
 branch: t/T-1796-macos-stage-cover-t2-stalled-10-min
 created: 2026-11-09T18:33:53.922Z
-updated: 2026-11-16T11:18:13.192Z
+updated: 2026-11-16T11:20:35.203Z
 ---
 
 ## Summary
@@ -108,3 +108,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head audit A-19978 / independent ledger A-19977: C1/C2 verified. A-19975 run3f3f680f passed at reviewed2b2ea08a4; all15 changed-file cases base pass, eight new diagnostics/retention/capped-dispatch identities each additional5/5, max0.755075113s. Positive command state/census, inspection-failure reduction/pointer and completed-file exclusion checked with source assertions; historical A-18171 survivor remains unknown under revised C1. Deduplicated6395 base test/700 file passes plus separate250 load test/file passes; conservative984 manifest paths =700 lower/Web positive +267T3/17T4 explicit deferrals, no lower/Web gap. A-19947 original16-path hit set retained and expanded; A-19976 caller/native/QA/transitive limits explicit. Exact Linux/Node/browser provenance36986, no cache/skips; local/failed-load/raw/source-linkage limits and report-only advisories retained. No actual native cleanup/stall-cause diagnosis or fullT3/T4 claim. Hub/Coordinator own ready/landing.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-36 · 2026-11-16T11:20:35.203Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1796-merge-source-1
+commit: 446d8ae90ea6b0037d0cec4e9927cc76540bec00
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge-delta source audit A-19984: Standards0/Spec0. Both parents confirmed (prior clear2b2ea08a4/captureddev6e6b709de). Only manual conflict semantic matcher resolves exact union of suite-stall namespace plus execution-summary/unexecuted/incomplete-tier retention. Task command/tests unchanged; summary pointer and imported execution/interruption evidence coexist without dropping prior state. Auto docs/index retain both families. Coordinator18153b51/0c5a8fd9 one-merge plan read directly; later dev not required/remerged. A-19983 local focused5/5 task files, hung-component5/5,summary4/4,typecheck/lint completions retain candidate/raw/report-only limits. Prior configured A-19975 belongs old parent, no new-head runtime carry or criteria verification. Source clear at446d8ae90 permits required new authorized mode-free verify/window then same-head evidence settlement; historical survivor remains unknown.

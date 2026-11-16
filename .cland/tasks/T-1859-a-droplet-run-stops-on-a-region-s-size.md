@@ -3,16 +3,17 @@ id: T-1859
 kind: task
 title: A droplet run stops on a region's 'size not available' instead of trying the next region
 state: open
-status: planned
+status: in progress
 size: S
+criterion_seq: 2
 labels: []
 assignee: null
 parent: E-1888
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1549
+branch: t/T-1859-a-droplet-run-stops-on-a-region-s-size
 created: 2026-11-14T18:24:03.472Z
-updated: 2026-11-16T07:31:25.777Z
+updated: 2026-11-16T11:27:03.649Z
 ---
 
 ## Summary
@@ -25,5 +26,13 @@ The droplet executor treats a create-time "size not available in this region" (4
 
 ## Acceptance criteria
 
-- [ ] C1. With the fake DigitalOcean API returning that 422 for the first region and success for the second, a run is created in the second region and its log names the first refusal (test).
-- [ ] C2. When every configured region refuses, the run ends with one reason listing each region's refusal, leaves no machine, and releases its spend reservation (test).
+- [x] C1. With the fake DigitalOcean API returning that 422 for the first region and success for the second, a run is created in the second region and its log names the first refusal (test).
+  - done: impl-1859 · 2026-11-16T11:27:03.329Z
+- [x] C2. When every configured region refuses, the run ends with one reason listing each region's refusal, leaves no machine, and releases its spend reservation (test).
+  - done: impl-1859 · 2026-11-16T11:27:03.649Z
+
+## Comments
+
+### impl-1859 · 2026-11-16T11:24:12.702Z
+
+Seam fixed by brief C1/C2: DropletExecutor.acquire through scripted DigitalOceanApi, scripted host/machine and scratch filesystem, observing returned lease, run log, durable released lease and spend ledger. Consumer sweep: acquire callers suites.ts (normal/shards), droplet.ts (prepare/host prepare), executor interface and direct executor tests; ProviderCapacityUnavailable consumers suites.ts (submission/dry run/provider-capacity outcome) plus suite-cover/close/soak tests. Search covered hub/src,test, nvim,web,qa,.agents,docs by acquire, ProviderCapacityUnavailable and refusal text. Existing run log readers treat lines as opaque text (CLI suite log/heartbeat, Neovim/web and QA); append regional refusal lines without altering existing lines or wire fields. Existing catalog capacity text unchanged; aggregated exhaustion remains ProviderCapacityUnavailable. No client migration required.

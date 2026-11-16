@@ -3,7 +3,7 @@ id: T-1899
 kind: task
 title: Release preflight independent of covers
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - retro-improvement
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1888
 blocked_by:
   - T-1876
-topic: null
-branch: null
+topic: topic-1548
+branch: t/T-1899-release-preflight-independent-of-covers
 created: 2026-11-16T07:29:46.730Z
-updated: 2026-11-16T07:31:24.921Z
+updated: 2026-11-16T11:26:18.265Z
 ---
 
 ## Summary
@@ -31,3 +31,9 @@ Kind: product. Triage ticket H-11 of A-19813, part of E-1888 (the v0.4.0 retrosp
 ## Dependencies
 
 T-1876
+
+## Comments
+
+### impl-1899 · 2026-11-16T11:26:18.265Z
+
+Rule 20 consumer sweep: searched release frame/type/function names, ReleaseRequest, ReleaseResult, releaseDescription, dryRun and release-version across hub/src, shared/wire, nvim, web, shipped skills, QA briefs and every test tier. Production consumers: CLI release.ts, protocol.ts, shared wire and hub dispatch/Releases; migrated additively via release.preflight. Existing release wire shape/results/refusal codes remain unchanged (homebrew.test.ts retains previous-wire regression). Neovim/web do not initiate release; web denies unclassified frames by default. Existing QA briefs E-412, E-612, E-617, E-420, E-1314, E-1539 and T-117 exercise unchanged final dry-run/publication paths. Release tests release, release-item, release-t3-component, tracker-native-boundary remain unchanged consumers; wire-conformance checks request parity. No persisted preflight record, positional reader, startup probe or T4 release-frame consumer found. New preflight is report-only and uses no green-cover dependency.
