@@ -26,7 +26,7 @@
     },
     {
       "path": "hub/src/host/agent/entry.ts",
-      "sha256": "6be77dde297cd6b0ce234fc6592dd05332b2817ddb7a5216efba0da3583d93bc"
+      "sha256": "e081685af786401651e58c9cebdc93569f3f70bbef9de2315ac30b58225dfb0d"
     },
     {
       "path": "hub/src/host/agent/fake-layout.ts",
@@ -130,7 +130,7 @@
     },
     {
       "path": "hub/src/host/agent/server.ts",
-      "sha256": "ca6634756d8ffc633a5a3805bfb4fc8c1910825f8a148906aebf2e674896a9f8"
+      "sha256": "c0bf33e459aeaf5e18f3bb5cadcbbe37c57bd660fd06c5db027333487155bbd5"
     },
     {
       "path": "hub/src/host/agent/signin-command.ts",
@@ -158,7 +158,7 @@
     },
     {
       "path": "hub/src/host/agent/storage.ts",
-      "sha256": "84ed025dec3b363535767b10533c83fb4e9525046599de7bdb2c63b49026427f"
+      "sha256": "f7451862d71dfca1d2b8310635d1da5d5c505a8e8934c8518a4212eafe10f0ae"
     },
     {
       "path": "hub/src/host/agent/supervisor.sh",

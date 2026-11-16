@@ -20,7 +20,7 @@ const stop=()=>{
   void shutdown.then(()=>process.exit(0),error=>{console.error(error);process.exitCode=1;});
 };
 process.once('SIGTERM',stop);process.once('SIGINT',stop);
-agent=await serveAgent({secret,runDir,version:manifest.version});
+agent=await serveAgent({secret,runDir,version:manifest.version,checkpointCodeDir:fileURLToPath(new URL('../../../../../',import.meta.url))});
 readyWork=(async()=>{
   const birth=(await observeProcesses([process.pid],process.env)).get(process.pid)?.identity;
   if(!birth)throw new Error('agent readiness birth unavailable');

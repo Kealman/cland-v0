@@ -15,13 +15,13 @@ import { join } from 'node:path';
 import { totalmem } from 'node:os';
 import type { ProcessHooks } from './processes.ts';
 import { AgentProcesses } from './processes.ts';
-import { agentBootId } from './native.ts';
+import { agentBootId, observeProcesses } from './native.ts';
 import { timingSafeEqual, randomUUID } from 'node:crypto';
-import { checkpoint } from './storage.ts';
+import { checkpoint, checkpointRecovery, type CheckpointRecoveryIO } from './storage.ts';
 import { run as runCommand } from './command.ts';
 import { agentOperations, parseAgentRun } from './operations.ts';
 import { AGENT_PROTOCOL, PREPARED_HOST_CAPABILITY, MAX_LINE_BYTES, LineDecoder, parseRequest } from './protocol.ts';
-export type AgentOptions = { loginDiskCommand?: typeof runCommand; runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void>; cleanupError?: (error: unknown) => void; afterOperation?: (operation: string, connection: Socket) => void; beforeRunCancel?: (token: string) => Promise<void>; runStarted?: (token: string, connection: Socket, signal:AbortSignal) => void | Promise<void> };
+export type AgentOptions = { checkpointRecoveryIO?:CheckpointRecoveryIO; checkpointCodeDir?:string; loginDiskCommand?: typeof runCommand; runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void>; cleanupError?: (error: unknown) => void; afterOperation?: (operation: string, connection: Socket) => void; beforeRunCancel?: (token: string) => Promise<void>; runStarted?: (token: string, connection: Socket, signal:AbortSignal) => void | Promise<void> };
 export async function serveAgent(options: AgentOptions) {
   if (!options.secret) throw new Error('host secret required');
   // Invalid fake-host configuration must not begin recovery or acquire resources.
@@ -41,6 +41,13 @@ export async function serveAgent(options: AgentOptions) {
     });
   });
   const connections = new Set<Socket>();
+  const checkpointCleanup = checkpointRecovery([
+    {directory:options.checkpointCodeDir??join(options.runDir,'../code'),basenames:['applied.json','restart-result.json']},
+    {directory:options.runDir},
+  ], async pids => {
+    const observations = await observeProcesses(pids, options.env ?? process.env);
+    return new Set([...observations].filter(([, proof]) => proof.ended).map(([pid]) => pid));
+  },options.checkpointRecoveryIO,options.cleanupError);
   const authenticatedConnections = new Set<Socket>();
   const broadcast = (frame: unknown) => { for (const peer of authenticatedConnections) if (!peer.destroyed) peer.write(JSON.stringify(frame) + "\n"); };
   const processes = new AgentProcesses(options.runDir, options.env ?? process.env, broadcast, options.processHooks);
@@ -211,6 +218,8 @@ export async function serveAgent(options: AgentOptions) {
   });
   const close = async () => {
     admitting = false; clearInterval(memoryTimer); clearTimeout(recoveryTimer);
+    let checkpointFailure:unknown;
+    const checkpointClosing=checkpointCleanup.close().catch(error=>{checkpointFailure=error;});
     const peerCloses=[...connections].map(connection=>connection.closed?Promise.resolve():new Promise<void>(resolve=>connection.once('close',resolve)));
     for (const connection of connections) connection.destroy();
     await Promise.all(peerCloses);
@@ -218,6 +227,7 @@ export async function serveAgent(options: AgentOptions) {
     await memoryWork;
     while(pending.size) await Promise.all([...pending]);
     const failures:unknown[]=[];
+    await checkpointClosing;if(checkpointFailure)failures.push(checkpointFailure);
     try{await watches.close();}catch(error){failures.push(error);}
     try{await prepared.close();cleanupFailures.clear();}catch(error){failures.push(error);}
     try{await processes.drain();}catch(error){failures.push(error);}
@@ -240,6 +250,7 @@ export async function serveAgent(options: AgentOptions) {
     await watches.start();
     admitting = true;
     recoveryTimer = setTimeout(() => { memoryWork = memoryWork.then(() => processes.reconcile()).catch(() => {}); }, 0);
+    checkpointCleanup.start();
     return { socket, close };
   } catch (error) { await close(); throw error; }
 }

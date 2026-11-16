@@ -40,6 +40,13 @@ Interrupted publish/append commit checkpoints remain fenced after restart when
 no durable result exists. Settlement checks the captured recovery owner, keeps
 the plan and effect bytes, reports pending, and never replays append.
 
+`completed append retains ownership when its durable result cannot be written`
+removes the empty result directory after the native append completes and before
+the sole result writer starts. The commit must reject with `ENOENT` while the
+effect stays written once, mutation remains fenced, settlement stays pending
+and the durable plan stays `committing`. This filesystem fault is independent
+of the checkpoint's unique temporary filename; no active writer is removed.
+
 T-1704 restart readiness observation: `agent.pid` records native identity before
 watch startup and authenticated admission. The native restart case first matches
 that receipt to its observed child, then waits with a setup bound for an

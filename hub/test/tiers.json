@@ -269,6 +269,8 @@
     "hub/test/host-agent-files.test.ts": "T3",
     "hub/test/host-agent-restart.test.ts": "T3",
     "hub/test/host-agent-signin-op.test.ts": "T3",
+    "hub/test/host-agent-storage-lifecycle.test.ts": "T3",
+    "hub/test/host-agent-storage.test.ts": "T1",
     "hub/test/host-agent.test.ts": "T3",
     "hub/test/host-allow-list.test.ts": "T3",
     "hub/test/host-attach-routing.test.ts": "T2",

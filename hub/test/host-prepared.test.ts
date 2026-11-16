@@ -6,7 +6,7 @@ import { serveAgent } from '../src/host/agent/server.ts';
 import { testWaitMs } from './until.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rmdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tempProject, eventually } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
@@ -301,9 +301,11 @@ test('completed append retains ownership when its durable result cannot be writt
  const native=fileOperations.appendFile;
  t.mock.method(fileOperations,'appendFile',async (...args: Parameters<typeof native>)=>{
    await native(...args);
-   await mkdir(join(root,'prepared-results',admission.token!+'.json.new'));
+   // The append has completed; release the empty result directory before its
+   // sole writer starts. Failure must not depend on checkpoint temp naming.
+   await rmdir(join(root,'prepared-results'));
  });
- await assert.rejects(prepared.commit(admission.token!),/EISDIR/);
+ await assert.rejects(prepared.commit(admission.token!),{code:'ENOENT'});
  assert.throws(()=>prepared.assertMutable(),/ownership incomplete/);
  assert.deepEqual(await prepared.settle(admission.token!,recoveryKey),{state:'pending',reason:'file commit completion unknown; never replay'});
  assert.equal(await readFile(path,'utf8'),'once');
