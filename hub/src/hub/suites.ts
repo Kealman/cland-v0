@@ -473,6 +473,10 @@ export class Suites {
     return (['Linux droplet', 'macOS'] as const).filter(platform => !covers.some(cover => cover.platform === platform));
   }
   #active = (job: SuiteJob) => !job.reported && (!job.outcome || (job.outcome.code !== 0 && !job.cleaned));
+  // Terminal report recovery without an acquired resource holds no execution
+  // slot. Independently persisted leases still reserve their own slots.
+  #occupying = (job: SuiteJob) => job.state !== 'queued' && !job.cleaned && !job.reported
+    && !(job.executor === 'droplet' && (job.state === 'finished' || job.outcome) && !job.lease && !job.shards);
   #recordTiming(job: SuiteJob, completedAt: string): void {
     if (job.completedAt) return;
     job.completedAt = completedAt;
@@ -1304,7 +1308,7 @@ export class Suites {
     if (this.#closed) return;
     // Reserve launching jobs, including their asynchronous acquires, until release
     // is confirmed. A receipt alone does not free a billable remote resource.
-    const active = this.#jobs.filter(j => j.state !== 'queued' && !j.cleaned && !j.reported);
+    const active = this.#jobs.filter(this.#occupying);
     let remoteActive = active.filter(j => j.executor === 'droplet').reduce((sum, j) => sum + (j.shards?.filter(shard => !shard.cleaned).length ?? 1), 0);
     let localActive = active.filter(j => j.executor === 'local').length;
     // Human reservations expire even when no waiter needs the local slot.
@@ -1421,6 +1425,32 @@ export class Suites {
     job.state = 'finished'; this.#save(job);
     return true;
   }
+  async #recoverMissingRemoteEvidence(job: SuiteJob): Promise<void> {
+    // A cache hit has no new native receipt. Legacy report-only inputs and fresh
+    // refusals still own their first materialization; an outcome alone does not
+    // prove that remote execution finished and subsequently lost its evidence.
+    if (job.executor !== 'droplet' || job.lease || job.shards || job.cached || job.reported
+      || job.state !== 'finished' || !job.finished) return;
+    const missing: string[] = [];
+    for (const [name, path] of [['result receipt', job.result], ['collection log receipt', job.log]] as const) {
+      try { await stat(path); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        missing.push(name);
+      }
+    }
+    if (!missing.length) return;
+    // Lost evidence proves collection failure, not non-execution. A terminal
+    // refusal already has positive non-execution facts: preserve its exact cause.
+    const diagnostic = `missing ${missing.join(' and ')}`;
+    if (!job.outcome?.notRun) job.outcome = { code: job.outcome?.code || 1, cause: `${job.outcome?.cause ? job.outcome.cause + '; ' : ''}${diagnostic}; remote collection unavailable` };
+    job.finished ??= this.#clock.now().toISOString();
+    job.state = 'finished'; this.#save(job);
+    await mkdir(dirname(job.log), { recursive: true });
+    await mkdir(dirname(job.result), { recursive: true });
+    await appendFile(job.log, `${job.outcome!.notRun ? `${diagnostic}; report inputs reconstructed from terminal refusal\n` : ''}${job.outcome!.cause}\n`, { mode: 0o600 });
+    if (!job.outcome!.notRun || missing.includes('result receipt')) await writeFile(job.result, JSON.stringify({ ...job.outcome, finished: job.finished }), { mode: 0o600 });
+  }
   async #confirmAccounting(job: SuiteJob): Promise<void> {
     const sources = job.shards ?? [job];
     for (const source of sources) {
@@ -1447,6 +1477,7 @@ export class Suites {
       job.outcome = { code: 130, cause: 'cancelled: requester died before admission' };
     }
     try {
+      await this.#recoverMissingRemoteEvidence(job);
       const restored = await this.#restoreRemoteResult(job);
       if (!restored && job.shards && !job.groupMerged && !await this.#collectShards(job)) return;
       const remote = job.executor === 'droplet';
@@ -1786,7 +1817,7 @@ export class Suites {
     // Cache hits are already completed at submission. They count in the metrics but must
     // not bias the estimate for an actual queued execution, which missed the cache.
     const estimate = (mode: string | null, executor: ExecutorKind) => durations(recent.filter(j => j.executor === executor && !j.cached && j.outcome?.code === 0 && j.admittedAt && (mode === null || (j.selection?.mode ?? j.mode) === mode)).map(j => j.runMs)).medianMs;
-    const occupying = this.#jobs.filter(j => j.state !== 'queued' && !j.cleaned && !j.reported);
+    const occupying = this.#jobs.filter(this.#occupying);
     const active = occupying.find(j => j.executor === 'local');
     // A failed release still owns the local budget, so admission never reaches
     // occupied(). Surface that cleanup failure until this job is actually clean.

@@ -1,23 +1,90 @@
 // T1: durable suite history and inspection use an isolated store and fake time.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, rm, readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, readFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Store } from '../src/hub/store.ts';
-import { Suites, releaseT3Cover, type SuiteJob } from '../src/hub/suites.ts';
+import { Suites, releaseT3Cover, suiteSummary, type SuiteJob } from '../src/hub/suites.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
 import { FakeClock } from './fake-clock.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { caseDeadlines } from './case-deadlines.ts';
+import { heartbeatDigest } from '../src/hub/heartbeat.ts';
+import { devT3Result } from '../src/hub/dev-t3-result.ts';
 
-async function fixture(t: test.TestContext, count: number, reported: boolean, options: { job?: Partial<SuiteJob>; onJob?: (job: Readonly<SuiteJob>) => void } = {}) {
+test('legacy green report without a native finish receipt retains its report-only budget exit', async t => {
+  const f = await fixture(t, 1, false, { job: { cleaned: true }, omitFinished: true });
+  f.allowReports();
+  await unlink(join(f.root, '0/result'));
+  await writeFile(join(f.root, '0/log'), '# tests 2\n# pass 2\n');
+  await f.clock.advance(1000); await f.suites.settled();
+  assert.equal(f.suites.status()[0]!.reported, true);
+  assert.deepEqual(f.suites.status()[0]!.outcome, { code: 0, cause: '' });
+  assert.doesNotMatch(await readFile(join(f.root, '0/log'), 'utf8'), /missing result receipt/);
+});
+
+for (const prior of ['failed', 'green', 'unknown', 'not-run'] as const) test(`missing result recovery preserves execution facts and periodic failure identities (${prior})`, { timeout: 30000 }, async t => {
+  const outcome = prior === 'failed' ? { code: 7, cause: 'worker exit 7' }
+    : prior === 'green' ? { code: 0, cause: '' }
+    : prior === 'not-run' ? { code: 1, cause: 'host gate refused before execution', notRun: 'infrastructure' as const } : null;
+  const f = await fixture(t, 1, false, { job: { cleaned: false, occasion: 'dev-t3', outcome } });
+  f.allowReports();
+  await unlink(join(f.root, '0/result'));
+  const surviving = '# tests 2\n# pass 1\n# fail 1\ntest at hub/test/regression.test.ts:10:1\n✖ known failing test (1ms)\n';
+  await writeFile(join(f.root, '0/log'), prior === 'not-run' ? 'host gate refused before execution\n' : surviving);
+  await f.clock.advance(1000); await f.suites.settled();
+  const job = (JSON.parse(f.store.suiteJob('0')!) as { job: SuiteJob }).job;
+  assert.equal(job.reported, true);
+  assert.equal(job.outcome!.code, prior === 'failed' ? 7 : 1);
+  if (prior === 'not-run') assert.deepEqual(job.outcome, outcome, 'first refusal materialization retains the exact producer outcome');
+  else assert.match(job.outcome!.cause, /missing result receipt/);
+  assert.equal(job.outcome!.notRun, prior === 'not-run' ? 'infrastructure' : undefined);
+  const log = await readFile(job.log, 'utf8');
+  const periodic = await devT3Result(job, log, { id: 'fixture-artifact', path: job.log }, async () => assert.fail('no previous green range'));
+  assert.equal(periodic.result, prior === 'not-run' ? 'not-run' : 'red');
+  assert.deepEqual(periodic.failingFiles, prior === 'not-run' ? [] : ['hub/test/regression.test.ts']);
+  if (prior !== 'not-run') {
+    assert.match(suiteSummary(log), /tests 2; pass 1; fail 1/);
+    assert.match(suiteSummary(log), /known failing test/);
+  }
+});
+
+for (const restart of [false, true]) for (const refused of [false, true]) test(`terminal remote run without a lease releases capacity and posts missing evidence once (restart=${restart}, refused=${refused})`, { timeout: 30000 }, async t => {
+  const outcome = { code: 1, cause: refused ? 'provider refused before execution' : 'collection lost', ...(refused ? { notRun: 'provider-capacity' as const } : {}) };
+  const f = await fixture(t, 1, false, { job: { cleaned: false, outcome } });
+  const finished = f.clock.now().toISOString();
+  f.allowReports();
+  await unlink(join(f.root, '0/log'));
+  await unlink(join(f.root, '0/result'));
+  if (restart) await f.reopen();
+  assert.match(heartbeatDigest(f.store, [], 1000, f.clock.now().getTime(), 0, 1000).text, /ended without a posted result/);
+  assert.deepEqual((await f.suites.queue()).remote, [], 'terminal report recovery owns no remote slot');
+  await f.clock.advance(1000); await f.suites.settled();
+  assert.equal(f.suites.status()[0]!.reported, true);
+  if (refused) assert.deepEqual(f.suites.status()[0]!.outcome, outcome);
+  else assert.match(f.suites.status()[0]!.outcome!.cause, /missing.*receipt/);
+  assert.match(await readFile(join(f.root, '0/log'), 'utf8'), /missing.*receipt/);
+  const receipt = JSON.parse(await readFile(join(f.root, '0/result'), 'utf8'));
+  assert.equal(receipt.finished, finished);
+  if (refused) assert.deepEqual(receipt, { ...outcome, finished });
+  assert.equal(f.reports(), 1);
+  assert.doesNotMatch(heartbeatDigest(f.store, [], 1000, f.clock.now().getTime(), 0, 1000).text, /ended without a posted result/);
+  await f.reopen();
+  await f.clock.advance(1000); await f.suites.settled();
+  assert.deepEqual((await f.suites.queue()).remote, []);
+  assert.equal(f.suites.status()[0]!.reported, true);
+  assert.equal(f.reports(), 1);
+});
+
+async function fixture(t: test.TestContext, count: number, reported: boolean, options: { job?: Partial<SuiteJob>; omitFinished?: boolean; onJob?: (job: Readonly<SuiteJob>) => void } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'suite-persistence-'));
   const env = fixtureEnvironment(root, process.env);
   const database = join(root, 'hub.db');
   const store = new Store(database), clock = new FakeClock();
   t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
   const jobs: SuiteJob[] = [];
   for (let i = 0; i < count; i++) {
     const dir = join(root, String(i));
@@ -28,14 +95,17 @@ async function fixture(t: test.TestContext, count: number, reported: boolean, op
       pid: null, started: null, outcome: { code: 0, cause: '' }, artifact: null, reported, error: null,
       cleaned: true, progressReported: true, budgetReported: true, finished, state: 'finished',
       selection: { mode: 'hub-only', files: ['x'.repeat(9000)], reason: 'history' }, ...options.job };
+    if (options.omitFinished) delete job.finished;
     if (!reported) { await writeFile(job.result, JSON.stringify({ code: 0, finished })); await writeFile(job.log, ''); }
     jobs.push(job);
   }
   store.setMeta('suite-jobs', JSON.stringify(jobs));
   let reports = 0, allowed = false;
-  const suites = new Suites(store, root, async () => { reports++; if (!allowed) throw new Error('forbidden: artifact.create (a session with no role has no tools)'); }, { clock, env, ...(options.onJob ? { onJob: options.onJob } : {}) });
+  const make = () => new Suites(store, root, async () => { reports++; if (!allowed) throw new Error('forbidden: artifact.create (a session with no role has no tools)'); }, { clock, env, ...(options.onJob ? { onJob: options.onJob } : {}) });
+  let suites = make();
   t.after(async () => { await suites.close(); store.close(); await rm(root, { recursive: true, force: true }); });
-  return { root, env, store, suites, clock, database, reports: () => reports, allowReports: () => { allowed = true; } };
+  return { root, env, store, get suites() { return suites; }, clock, database, reports: () => reports, allowReports: () => { allowed = true; },
+    async reopen() { await suites.close(); suites = make(); } };
 }
 
 test('six permanently forbidden finished reports perform no writes on later inspect ticks', async t => {

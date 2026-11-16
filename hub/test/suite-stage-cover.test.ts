@@ -97,6 +97,7 @@ test('after-stage gates require Mac and sharded Linux at one tree, retain histor
   await eventually('the next stage advances after both receipts', async () => (await read(next.id)).status === 'planned' ? true : undefined);
   const cached = await run('droplet', false);
   assert.equal(cached.cached?.run, linux.id);
+  assert.doesNotMatch(cached.text, /missing result receipt|remote collection unavailable/);
   assert.match(cached.text, /stage cover complete/);
   assert.equal(f.api.requests.filter(request => request.method === 'POST' && request.path === '/v2/droplets').length, 2);
   await setPlan('affected');

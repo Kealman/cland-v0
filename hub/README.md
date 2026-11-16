@@ -27,7 +27,7 @@ documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merg
 - [Negotiated connection snapshot](../docs/hub/negotiated-connection-snapshot.md)
 - [Human last looks and read marks](../docs/hub/human-last-looks-and-read-marks.md)
 - [Identity and delivery](../docs/hub/identity-and-delivery.md)
-- [Droplet delivery](../docs/hub/running.md): size-scaled, bounded upload retries and per-attempt run-log receipts under the local run's droplet lifetime.
+- [Droplet delivery](../docs/hub/running.md): size-scaled, bounded upload retries, per-attempt run-log receipts and terminal no-lease slot/report recovery under the local run's droplet lifetime.
 - [Regional capacity](../docs/hub/running.md#controls-and-the-prepared-snapshot): the exact create-time size-unavailable 422 tries the next eligible configured region, recording refusals in the run log; other create errors retain their handling.
 - [Test waits](../docs/agents/tests.md#waiting-for-an-observable-condition): phase load headroom for setup and exact injected-clock or named behaviour deadlines.
 - [File startup watchdog](../docs/hub/running.md): typed file-start receipts get 30 seconds of load-scaled setup headroom, capped at half the admitted no-output timeout, before the existing owned stall cleanup runs.

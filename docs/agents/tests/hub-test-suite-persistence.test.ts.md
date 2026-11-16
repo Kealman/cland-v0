@@ -1,5 +1,26 @@
 # hub/test/suite-persistence.test.ts
 
+Terminal no-lease remote seeds lose both result and log receipts before recovery,
+with and without a scheduler restart. Queue membership, explicit missing-receipt
+outcome, persisted reported state, heartbeat clearance and no repeat publication
+after another restart are asserted on fake-clock ticks. No provider is contacted.
+Missing-result cases retain a surviving log's pass/fail counts and failure
+identity through suiteSummary and devT3Result. Known nonzero, green and unknown
+prior outcomes become failures without inventing non-execution; an original
+pre-execution refusal retains its not-run classification. The cases have a
+30-second outer failure bound and use only fake scheduler time for behavior.
+The refusal control preserves its exact producer cause: its first result write
+is normal materialization, not lost collection. LocalExecutor.holder is faked
+alongside reconcile, so explicit queue reads never reach native lock inspection.
+The both-files-lost matrix includes executed failures and terminal provider
+refusals, each with and without a pre-recovery restart. Refusals reconstruct
+report inputs from their terminal checkpoint without changing outcome/cause;
+the log names missing inputs, the result retains its original finish time,
+heartbeat clears and another restart produces no second publication.
+The legacy green report-only seed deliberately has no native finish timestamp
+or result file. Its zero outcome and surviving log stay unchanged; absence before
+first materialization does not establish lost execution evidence.
+
 `node --test hub/test/suite-persistence.test.ts` uses scratch SQLite files,
 sealed child environments and fake scheduler time. No browser or native worker
 is started. The 3,000-job legacy-storage regression seeds over 250 MB of planning

@@ -1055,6 +1055,22 @@ checks the shared daily spend cap. The provider also counts durable preparation
 and unconfirmed cleanup leases before permitting a create. `verification-admitted` records `remoteActive`
 and `remoteBudget` for each remote admission.
 
+A terminal remote run with no acquired lease holds no execution slot, even if
+posting its result needs a retry. Startup applies the same accounting. Durable
+preparation and unconfirmed cleanup leases still reserve capacity independently.
+Missing-evidence recovery applies only to unreported, finished remote executions
+with a recorded finish time and no lease. Cache hits have no new native receipt;
+legacy report-only inputs without that finish receipt retain their original exit.
+If a terminal no-lease run has lost its result or collection log receipt, the hub
+posts a failure naming the missing evidence, retaining a known nonzero exit and
+surviving log identities; it never reconstructs a pass or infers non-execution.
+An existing pre-execution refusal keeps its exact original outcome and cause;
+its first result receipt is materialized normally, without a collection-loss diagnosis.
+If that refusal is already terminal and its report files are lost, the hub
+reconstructs those inputs from the checkpoint, naming missing inputs in the log
+while preserving the refusal's exact outcome, cause and finish time.
+The heartbeat clears its unposted-result row after publication.
+
 The compatibility broker keeps both legacy locks as a fence, and a hand
 `npm test` or pre-V1 holder occupies admission. The worker takes a verified lease
 before typecheck; V1 package runners borrow it through all phases and publish

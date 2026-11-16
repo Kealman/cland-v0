@@ -20,6 +20,23 @@ const remote = (f: Fixture, require = true) => f.launch(require ? { executor: 'd
 // without any suite job behind it.
 const leasedOnly = (f: Fixture, lease = 'preparation-only'): DropletLease => ({ kind: 'droplet', provider: 'digitalocean', run: 'preparation', lease, name: `cland-${lease}`, tags: ['cland'], size: 'c-8', region: 'lon1', priceHourly: 0.25, keyName: lease, created: f.clock.now().toISOString(), deadline: new Date(f.clock.now().getTime() + 6600000).toISOString(), state: 'creating', resource: 777, keyId: null });
 
+test('terminal no-lease report retry cannot consume the only remote budget slot', { timeout: testWaitMs() }, async t => {
+  const f = await suiteUnit(t, { remoteBudget: 1 });
+  const original = await remote(f); await running(f, original.id); await f.finish(original.id, 1);
+  const ghost = (await f.jobs()).find(job => job.id === original.id)!;
+  delete ghost.lease; ghost.cleaned = false; ghost.reported = false; ghost.artifact = null;
+  f.beforeReport(async job => { if (job.id === ghost.id) throw new Error('report temporarily unavailable'); });
+  await f.reopen([ghost]);
+  assert.deepEqual((await f.suites.queue()).remote, []);
+  const successor = await remote(f); await running(f, successor.id);
+  assert.equal(f.status(ghost.id).reported, false, 'capacity does not depend on successful publication');
+  assert.deepEqual((await f.suites.queue()).remote!.map(row => row.id), [successor.id]);
+  await f.finish(successor.id);
+  f.beforeReport(async () => {});
+  await f.tick(); await f.suites.settled();
+  assert.equal(f.status(ghost.id).reported, true);
+});
+
 test('restored delivered leases use the durable delivery prefix without replaying collected bytes', { timeout: testWaitMs() }, async t => {
   const f = await suiteUnit(t, { executor: 'droplet' });
   for (const variant of ['absent', 'stale', 'partial', 'legacy'] as const) {

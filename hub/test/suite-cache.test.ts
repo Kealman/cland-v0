@@ -5,6 +5,17 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import { webPhaseAvailable } from '../src/web-phase.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 
+test('droplet cache reuse has no new native result receipt and retains its original green outcome', async t => {
+  const f = await suiteUnit(t, { executor: 'droplet', machineReceiptsOnly: true });
+  const original = await f.launch(); await f.machine.started(original.id); await f.finish(original.id);
+  const hit = await f.launch();
+  assert.equal(hit.cached?.run, original.id);
+  await f.result(hit.id);
+  assert.deepEqual(f.status(hit.id).outcome, { code: 0, cause: 'cached' });
+  assert.doesNotMatch(await f.log(hit.id), /missing result receipt|remote collection unavailable/);
+  assert.deepEqual(f.acquisitions, [original.id]);
+});
+
 test('selected-run cache reuse requires the same covering test files', async t => {
   const f = await suiteUnit(t);
   f.candidate.selection = { mode: 'hub-selected', files: ['hub/src/example.ts'], reason: 'coverage', tests: ['hub/test/first.test.ts'] };

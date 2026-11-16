@@ -117,6 +117,8 @@ test('a task run report keeps its green exit when planted tiers exceed the wall 
   assert.match(result.text, /tier share: T1\+T2 55.556 % of 900 s \(T3 400 s, T4 0 s\)/);
   assert.doesNotMatch(result.text, /^tier T4:/m);
   assert.equal(result.job.outcome?.code, 0);
+  assert.deepEqual(result.job.outcome, { code: 0, cause: '' }, 'report-only budgets preserve the producer outcome');
+  assert.doesNotMatch(await readFile(log, 'utf8'), /missing result receipt|remote collection unavailable/);
   assert.match(result.text, /test lint \(report only\): 2 findings in 2 files/);
   assert.doesNotMatch(result.text, /^test lint (?:finding|tier):/m);
   assert.match(result.text, /test lint detail: 4 tier lines; 2 finding lines; log/);

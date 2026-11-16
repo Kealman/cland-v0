@@ -1,5 +1,10 @@
 # hub/test/suite-remote-budget.test.ts
 
+A terminal no-lease report retry must leave the sole remote slot available to a
+successor. The scheduler restarts from that seed while report publication fails;
+observe the successor's scripted worker-start receipt before asserting membership.
+Existing preparation and unconfirmed-cleanup cases retain their capacity fences.
+
 These T1 scheduler cases use `suiteUnit` and its semantic receipts rather than real
 machines: the scripted machine plus fake DigitalOcean provider create the lease and
 delivery facts, `FakeClock` advances acquisition, run and wait time, and
