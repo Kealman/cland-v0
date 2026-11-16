@@ -42,7 +42,7 @@ import { idNumber } from '../tracker/item.ts';
 import { diagnosticTestFile, taskSuiteSelection, describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 import { parseCoverageMap, mergeCoverageFiles } from '../suite-coverage.ts';
 import { VerificationWait } from './verification-wait.ts';
-import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
+import { classifyCover, deriveCover, incompleteCollection, recentCovers } from './suite-cover.ts';
 import { quarantineResults, quarantineSummary, suiteTestFailures } from '../suite-quarantine.ts';
 import { suiteAdmissionTimeouts } from '../test-admission-outcome.ts';
 import { machineHealthFromLog, type MachineHealth, type ShardMachineHealth } from '../executor/droplet/health.ts';
@@ -1483,6 +1483,19 @@ export class Suites {
     try {
       await this.#recoverMissingRemoteEvidence(job);
       const restored = await this.#restoreRemoteResult(job);
+      if (restored && job.executor === 'droplet' && job.lease) {
+        const missingLog = await stat(job.log).then(() => false, error => {
+          if (error.code === 'ENOENT') return true;
+          throw error;
+        });
+        if (missingLog) {
+          // A native result suppresses status polling. Confirm absence at the
+          // provider before rebuilding its missing local collection mirror.
+          if (!await this.#droplet.confirmMachineMissing(job.lease as DropletLease)) return;
+          await mkdir(dirname(job.log), { recursive: true });
+          await appendFile(job.log, `machine ${(job.lease as DropletLease).name} gone; collection log missing\n`, { mode: 0o600 });
+        }
+      }
       if (!restored && job.shards && !job.groupMerged && !await this.#collectShards(job)) return;
       const remote = job.executor === 'droplet';
       if (remote && !job.outcome && this.#clock.now().getTime() < (job.nextPoll ?? 0)) return;
@@ -1501,6 +1514,13 @@ export class Suites {
       }
       if (receipt?.platform) job.platform = receipt.platform;
       if (receipt?.finished) job.finished = receipt.finished;
+      // A lost machine cannot supply collection bytes. Keep any surviving log,
+      // but reconstruct a missing mirror before the evidence readers below:
+      // otherwise ENOENT strands the running checkpoint and its capacity forever.
+      if (remote && receipt?.state === 'lost' && job.lease) {
+        await mkdir(dirname(job.log), { recursive: true });
+        await appendFile(job.log, `remote machine ${(job.lease as DropletLease).name}: ${receipt.cause ?? 'lost'}; collection unavailable\n`, { mode: 0o600 });
+      }
       if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.outcome?.notRun && !job.cancelled && !job.requesterDied && !job.timedOut) {
         job.outcome = { code: receipt.code ?? 1, cause: receipt.code === 124 ? `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` : receipt.cause ?? '' };
       }
@@ -1531,7 +1551,7 @@ export class Suites {
         job.outcome = { code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' };
       }
       if (remote) {
-        if (!job.shards && !job.shardHealth) {
+        if (!job.shards && !job.shardHealth && !job.health) {
           for await (const line of suiteLogLines(job.log)) {
             if (!line.startsWith('suite machine health ')) continue;
             const health = machineHealthFromLog(line);
@@ -1556,9 +1576,19 @@ export class Suites {
             }
             if (job.selection?.recordCoverage && job.outcome.code === 0) {
               const path = join(this.#root, '.cland/run/suites', job.id, 'coverage-map.json');
-              if (!await stat(path).then(() => true, () => false)) await this.#droplet.collectCoverage(lease, path);
-              const map = parseCoverageMap(await readFile(path, 'utf8'));
-              if (map.head !== job.head || map.tree !== job.tree) throw new Error('coverage map provenance mismatch');
+              try {
+                if (!await stat(path).then(() => true, () => false)) await this.#droplet.collectCoverage(lease, path);
+                const map = parseCoverageMap(await readFile(path, 'utf8'));
+                if (map.head !== job.head || map.tree !== job.tree) throw new Error('coverage map provenance mismatch');
+              } catch (error) {
+                if (!await this.#droplet.confirmMachineMissing(lease)) throw error;
+                // Execution finished, but its required coverage receipt cannot
+                // be recovered. Persist incompleteness before releasing the lease, so
+                // retries never parse or fetch an interrupted map again.
+                job.outcome = { code: 1, cause: `incomplete: machine ${lease.name} gone; coverage map missing; tests exited 0 (original result.json retained)` };
+                this.#save(job);
+                await appendFile(job.log, `${job.outcome.cause}\n`);
+              }
             }
             // Retain the durable outcome/log while release retries. A bounded
             // window catches normal provider lag without holding a verdict
@@ -1595,7 +1625,10 @@ export class Suites {
       // remain raw byte offsets until the machine has been released.
       let evidence: string | undefined;
       const logEvidence = async () => evidence ??= await (job.cached ? this.evidence(job) : readSuiteEvidence(job.log));
-      if (!job.cached) {
+      // A native success can coexist with an incomplete scheduler collection.
+      // Keep that original receipt byte-for-byte, including across report retries.
+      const preserveNativeResult = remote && incompleteCollection(job);
+      if (!job.cached && !preserveNativeResult) {
         const webPhase = unavailableWebPhase(await logEvidence());
         if (webPhase) {
           job.webPhase = webPhase;
@@ -1605,7 +1638,7 @@ export class Suites {
           this.#save(job);
         }
       }
-      if (!job.cached && !job.progressReported && (remote || job.outcome.code === 124)) {
+      if (!job.cached && !preserveNativeResult && !job.progressReported && (remote || job.outcome.code === 124)) {
         const log = await logEvidence();
         if (job.outcome.code === 124 && job.tierPlan?.length) {
           const execution = tierExecution(job.tierPlan, log);

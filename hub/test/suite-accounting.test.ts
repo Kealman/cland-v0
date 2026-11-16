@@ -9,13 +9,17 @@ import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
-import { readLeases } from '../src/executor/droplet/lease.ts';
+import { readLeases, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
-import { machineAccounting, type SuiteJob } from '../src/hub/suites.ts';
+import { machineAccounting, releaseT3Cover, type SuiteJob } from '../src/hub/suites.ts';
 import { machineHealthSummary } from '../src/executor/droplet/health.ts';
 import { until } from './until.ts';
 import { legacyLedger, scratchMachine, snapshot } from './init-machine.ts';
 import { spendPath } from '../src/executor/droplet/spend.ts';
+import { DropletRun } from '../src/executor/droplet/run.ts';
+import { deriveCover } from '../src/hub/suite-cover.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 
 type Fixture = Awaited<ReturnType<typeof suiteUnit>>;
 async function running(f: Fixture, id: string) {
@@ -24,6 +28,102 @@ async function running(f: Fixture, id: string) {
   await f.suites.settled();
 }
 const remote = (f: Fixture, require = true) => f.launch(require ? { executor: 'droplet', fresh: true } : { fresh: true });
+
+for (const missingLog of [false, true]) for (const inventory of ['absent', 'present', 'unknown'] as const) test(`restored green remote receipt with unfinished coverage collection reconciles provider inventory (${inventory}, missingLog=${missingLog})`, { timeout: 10000 }, async t => {
+  const run = caseDeadlines(t, { timeoutMs: 5000, ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return run.run(async step => {
+    const f = await step(() => run.wait('fixture setup', async () => {
+      const fixture = await suiteUnit(run.fixtures, { executor: 'droplet', remoteBudget: 1 });
+      run.adoptRoot(fixture.root); return fixture;
+    }));
+    const original = await step(() => run.wait('running setup receipt', async () => { const job = await remote(f); await running(f, job.id); return job; }));
+    const job = (await step(() => f.jobs())).find(job => job.id === original.id)!;
+    job.selection!.recordCoverage = { head: job.head, tree: job.tree!, run: job.id };
+    const finished = f.clock.now().toISOString();
+    await step(() => writeFile(job.log, 'suite command end tests 0\nsuite machine health {}\nFinished: exit 0\n'));
+    if (missingLog) await step(() => unlink(job.log));
+    const originalResult = JSON.stringify({ code: 0, cause: '', finished });
+    await step(() => writeFile(job.result, originalResult));
+    await step(() => writeFile(join(f.root, '.cland/run/suites', job.id, 'coverage-map.json.tmp'), '{"interrupted":'));
+    const lease = job.lease as DropletLease;
+    if (inventory === 'absent') await step(() => f.api.provider.deleteDroplet(lease.resource!));
+    if (inventory === 'unknown') t.mock.method(f.api.provider, 'droplet', async () => { throw new Error('provider read timed out'); });
+    let attempts = 0;
+    t.mock.method(DropletExecutor.prototype, 'collectCoverage', async () => { attempts++; throw new Error('machine unavailable'); });
+    await step(() => f.reopen([job])); await step(() => f.tick()); await step(() => f.suites.settled());
+    if (inventory !== 'absent') {
+      assert.deepEqual((await step(() => f.suites.queue())).remote!.map(row => row.id), [job.id]);
+      assert.equal(f.reports.length, 0);
+      return;
+    }
+    assert.deepEqual((await step(() => f.suites.queue())).remote, [], 'gone provider machine cannot hold capacity for unfinished coverage');
+    assert.equal(f.status(job.id).reported, true);
+    assert.equal(f.status(job.id).outcome!.code, 1);
+    assert.equal(f.status(job.id).outcome!.cause, `incomplete: machine ${lease.name} gone; coverage map missing; tests exited 0 (original result.json retained)`);
+    assert.equal(await step(() => readFile(job.result, 'utf8')), originalResult);
+    assert.equal(f.status(job.id).outcome!.notRun, undefined);
+    assert.ok(f.status(job.id).outcome!.cause.includes(lease.name));
+    assert.equal(f.reports.length, 1);
+    assert.equal(f.reports[0]!.outcome!.cause, f.status(job.id).outcome!.cause);
+    const terminal = (await step(() => f.jobs())).find(row => row.id === job.id)!;
+    const gateReceipt = { ...terminal, integrated: true, branch: 'dev', occasion: 'dev-t3' as const,
+      selection: { ...job.selection!, mode: 'full' as const, tiers: ['T3' as const] } };
+    f.store.setMeta(`suite-job:${job.id}`, JSON.stringify({ position: 0, job: { ...gateReceipt, outcome: { code: 0, cause: '' } } }));
+    assert.ok(releaseT3Cover(f.store, job.tree!), 'positive control proves this receipt otherwise supplies the release gate');
+    f.store.setMeta(`suite-job:${job.id}`, JSON.stringify({ position: 0, job: gateReceipt }));
+    assert.equal(releaseT3Cover(f.store, job.tree!), null);
+    assert.equal(deriveCover(gateReceipt, await step(() => readFile(job.log, 'utf8'))), undefined);
+    f.store.setMeta(`suite-job:${job.id}`, JSON.stringify({ position: 0, job: terminal }));
+    assert.equal(attempts, 1);
+    await step(() => f.reopen()); await step(() => f.tick()); await step(() => f.suites.settled());
+    assert.equal(f.reports.length, 1); assert.equal(attempts, 1);
+    assert.equal(await step(() => readFile(job.result, 'utf8')), originalResult);
+    const successor = await step(() => f.launch({ executor: 'droplet' }));
+    assert.equal(successor.cached, undefined, 'incomplete collection cannot supply cached green evidence');
+  });
+});
+
+for (const inventory of ['absent', 'present', 'unknown'] as const) test(`running remote recovery with missing collection files retains only unconfirmed machines (${inventory})`, { timeout: 10000 }, async t => {
+  const run = caseDeadlines(t, { timeoutMs: 5000, ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return run.run(async step => {
+    const f = await step(() => run.wait('fixture setup', async () => {
+      const fixture = await suiteUnit(run.fixtures, { executor: 'droplet', remoteBudget: 1 });
+      run.adoptRoot(fixture.root); return fixture;
+    }));
+    const original = await step(() => run.wait('running setup receipt', async () => { const job = await remote(f); await running(f, job.id); return job; }));
+    const job = (await step(() => f.jobs())).find(job => job.id === original.id)!;
+    assert.equal(job.state, 'running'); assert.equal(job.outcome, null);
+    await step(() => unlink(job.log));
+    await step(() => unlink(job.result).catch(error => { if (error.code !== 'ENOENT') throw error; }));
+    const lease = job.lease as DropletLease;
+    if (inventory === 'absent') await step(() => f.api.provider.deleteDroplet(lease.resource!));
+    if (inventory === 'unknown') t.mock.method(f.api.provider, 'droplet', async () => { throw new Error('provider read timed out'); });
+    // Use production observation with a transport that positively cannot collect
+    // from the retired machine; no SSH or shell process is started.
+    const observer = new DropletRun(f.root, f.env, { api: f.api.provider, clock: f.clock,
+      machine: { exec: async () => { throw new Error('machine unreachable'); } } as never });
+    const observedStatus = t.mock.method(DropletExecutor.prototype, 'status', (lease: DropletLease) => observer.status(lease));
+    await step(() => f.reopen([job]));
+    await step(() => f.tick()); await step(() => f.suites.settled());
+    const queue = await step(() => f.suites.queue());
+    if (inventory !== 'absent') {
+      assert.deepEqual(queue.remote!.map(row => row.id), [job.id]);
+      assert.equal(f.reports.length, 0);
+      assert.equal(f.status(job.id).outcome, null);
+      return;
+    }
+    assert.deepEqual(queue.remote, [], 'confirmed missing machine releases its slot despite missing collection files');
+    assert.equal(f.status(job.id).reported, true);
+    assert.match(f.status(job.id).outcome!.cause, /remote machine.*lost/);
+    assert.match(await step(() => readFile(job.log, 'utf8')), new RegExp(lease.name));
+    assert.equal(f.reports.length, 1);
+    assert.ok(f.api.requests.some(row => row.method === 'GET' && row.path === `/v2/droplets/${lease.resource}`));
+    await step(() => f.reopen()); await step(() => f.tick()); await step(() => f.suites.settled());
+    assert.equal(f.reports.length, 1);
+    observedStatus.mock.restore();
+    const successor = await step(() => remote(f)); await step(() => running(f, successor.id)); await step(() => f.finish(successor.id));
+  });
+});
 
 for (const overlay of ['partial', 'explicit hostile paths'] as const) test(`${overlay} fixture env cannot write hostile scratch HOME ledgers during executor accounting`, async t => {
   const machine = await scratchMachine(t, { identity: false });

@@ -3,9 +3,12 @@ import type { SuiteJob } from './suites.ts';
 import { failingTests } from './shared-defects.ts';
 import { isFileStartupStall } from '../file-startup-watchdog.ts';
 
+/** Existing non-pass outcomes can name incomplete collection separately from execution. */
+export const incompleteCollection = (job: Pick<SuiteJob, 'outcome'>): boolean => job.outcome?.code !== 0 && job.outcome?.cause.startsWith('incomplete:') === true;
+
 /** Outcome-derived incident data; separate from the executor's process receipt. */
 export function deriveCover(job: Readonly<SuiteJob>, log: string): CoverRecord | undefined {
-  if (!job.integrated || job.parentRun || !job.outcome || job.outcome.notRun) return undefined;
+  if (!job.integrated || job.parentRun || !job.outcome || job.outcome.notRun || incompleteCollection(job)) return undefined;
   // Close-run collection labels receipts after their reporter terminator.
   const text = log.replace(/\x1b\[[0-9;]*m/g, '').replace(/ \[shard-\d+\]$/gm, '');
   const failed = failingTests(text);

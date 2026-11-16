@@ -1085,6 +1085,25 @@ reconstructs those inputs from the checkpoint, naming missing inputs in the log
 while preserving the refusal's exact outcome, cause and finish time.
 The heartbeat clears its unposted-result row after publication.
 
+Running leased jobs also resume status inspection after startup. When status
+observes a lost machine, collection failure cannot strand completion merely
+because the local log mirror is missing: the hub creates that log, naming the
+machine and loss cause, and continues through the existing release and single
+publication checkpoints. Surviving collection bytes remain in the log.
+Provider-confirmed absence uses the captured machine id; failed provider reads
+remain unknown and a present machine retains its slot during normal execution.
+This recovery does not turn missing execution evidence into a passing result.
+If a completed green native result survives but required coverage collection
+fails, a provider-confirmed missing machine ends finalization as incomplete.
+The original result file stays byte-for-byte intact. The scheduler uses its
+existing nonzero outcome with the cause `incomplete: machine <name> gone;
+coverage map missing; tests exited 0 (original result.json retained)`.
+That outcome supplies no gate, cache or cover evidence. Present or unknown
+provider inventory retains the lease for a later collection retry. Temporary
+coverage files are never parsed during this recovery; its durable incomplete
+checkpoint prevents further collection attempts, and restored health avoids
+rescanning the log for machine health on each retry.
+
 The compatibility broker keeps both legacy locks as a fence, and a hand
 `npm test` or pre-V1 holder occupies admission. The worker takes a verified lease
 before typecheck; V1 package runners borrow it through all phases and publish

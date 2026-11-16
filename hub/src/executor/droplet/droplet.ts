@@ -108,6 +108,16 @@ export class DropletExecutor implements Executor {
   async log(lease: DropletLease, offset: number) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).log(lease, offset); }
   async cancel(lease: DropletLease, _signal: string) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).cancel(lease); }
   async collectCoverage(lease: DropletLease, path: string) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).collectCoverage(lease, path); }
+  /** A failed transport is not evidence that the provider machine is gone. */
+  async confirmMachineMissing(lease: DropletLease): Promise<boolean> {
+    if (lease.resource === null) return false;
+    try { await (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock)).droplet(lease.resource); }
+    catch (error) {
+      if (error instanceof DigitalOceanError && error.status === 404) return true;
+      throw error;
+    }
+    return false;
+  }
 
   /** Validate a per-run size; capacity is distinct from invalid price/configuration. */
   async validateSize(size: string, snapshot?: ProjectConfig): Promise<void> {

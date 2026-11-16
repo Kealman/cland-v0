@@ -1,5 +1,16 @@
 # hub/test/suite-protocol.test.ts
 
+The incomplete-collection result case seeds the existing nonzero scheduler
+outcome with its original test-exit-zero cause. It arms the exact suite-message
+observer before ticking the in-process hub, then checks the posted cause
+verbatim and rejects a fabricated no-tests-executed claim. No worker or provider
+is started for this case; the old wire shape is retained.
+The whole sequence enters caseDeadlines.run before seed acquisition; step
+fencing prevents later operations once cleanup begins. The message observer is
+armed before the tick, bounded to five seconds, observed immediately for
+rejection and joined in finally before the owned sequence settles. Captured
+seed teardown hooks run only after whole-sequence and named-wait drainage.
+
 T2 keeps the queue/status CLI, subscription, role and journal contracts on
 seeded executor receipts. The root-preservation controls call the public sweep
 boundary with fixture-owned paths and no process discovery: wrong paths and

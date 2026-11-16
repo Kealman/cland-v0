@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { cland, inProcessSpoke, nativeIdentityProjectHub as projectHub, tempProject } from './harness.ts';
 import { compatibilityHolder, sweep } from '../src/suite-lock.ts';
-import { ownDirectory } from './process-cleanup.ts';
+import { ownDirectory, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { Store } from '../src/hub/store.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
@@ -19,6 +19,7 @@ import { FakeClock } from './fake-clock.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { testLintReport, type TestLintFile } from '../src/test-lint.ts';
 import { tierReport, type TierPlan, type SuiteDryRun } from '../src/suite-tier-report.ts';
+import { caseDeadlines } from './case-deadlines.ts';
 
 test('root recovery preserves a changed path outside the run token and never follows a symlink', async t => {
   const root = await tempProject(t);
@@ -73,6 +74,27 @@ async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob)
   const hub = await projectHub(t, root, {}, { clock, compatibility, candidate, durationContext: null }); const ui = await connectUi(t, hub.discovery);
   return { root, clock, hub, ui, compatibility };
 }
+
+test('posted incomplete collection preserves the original test exit in its cause', async t => {
+  const run = caseDeadlines(t, { timeoutMs: 10000, ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return run.run(async step => {
+    const cause = 'incomplete: machine cland-retired gone; coverage map missing; tests exited 0 (original result.json retained)';
+    const f = await step(() => run.wait('seed setup', async () => {
+      const fixture = await seed(run.fixtures, base => [{ ...base, reported: false, integrated: false,
+        outcome: { code: 1, cause }, tierReported: true, budgetReported: true }], '', '# tests 1\n# pass 1\n');
+      run.adoptRoot(fixture.root); return fixture;
+    }));
+    await step(() => f.ui.request({ type: 'subscribe' }));
+    const posted = step(() => f.ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).id === 'suite:cover-0', 5000));
+    void posted.catch(() => {});
+    try {
+    await step(() => f.clock.advance(1000)); await step(() => f.hub.verificationSettled());
+    const message = (await step(() => run.wait('posted incomplete result', () => posted))).message as TopicMessage;
+    assert.ok(message.text.includes(cause), message.text);
+    assert.doesNotMatch(message.text, /No tests executed/);
+    } finally { await Promise.allSettled([posted]); }
+  });
+});
 
 test('each lead can attach the batch log named in its member topic', async t => {
   const log = '# tests 2\n# pass 2\n';
