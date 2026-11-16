@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1531
 branch: t/T-1879-re-size-the-113-duration-allowances
 created: 2026-11-16T07:04:58.109Z
-updated: 2026-11-16T09:00:03.165Z
+updated: 2026-11-16T09:00:47.619Z
 closed: 2026-11-16T09:00:03.165Z
 ---
 
