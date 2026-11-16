@@ -10,6 +10,7 @@ import { missingDependencyHint } from '../dependency-install.ts';
 import { pinVerificationPlan, verificationSteps } from '../verification-plan.ts';
 import { loadProofIdentities, skipT4LoadRepetitions, soakDeadlinePlan } from '../suite-load-gate-plan.ts';
 import { suiteProgress, progressLines } from '../suite-progress.ts';
+import { tierExecution, executionLines } from '../suite-execution.ts';
 import { suiteCandidate, type SuiteCandidate } from './suite-candidate.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import { realClock, type Clock, type ClockTimer } from './clock.ts';
@@ -1568,16 +1569,25 @@ export class Suites {
           this.#save(job);
         }
       }
-      if (remote && !job.cached && !job.progressReported) {
+      if (!job.cached && !job.progressReported && (remote || job.outcome.code === 124)) {
         const log = await logEvidence();
-        const progress = suiteProgress(log, Date.parse(job.interruptedAt ?? job.finished ?? this.#clock.now().toISOString()));
+        if (job.outcome.code === 124 && job.tierPlan?.length) {
+          const execution = tierExecution(job.tierPlan, log);
+          const result = JSON.parse(await readFile(job.result, 'utf8'));
+          await writeFile(`${job.result}.execution.tmp`, JSON.stringify({ ...result, execution }), { mode: 0o600 });
+          await rename(`${job.result}.execution.tmp`, job.result);
+          const lines = '\n' + [...executionLines(execution),
+            ...executionLines(execution, 256).map(line => `suite execution summary ${line}`)].join('\n') + '\n';
+          await appendFile(job.log, lines); evidence = log + lines;
+        }
+        const progress = remote ? suiteProgress(log, Date.parse(job.interruptedAt ?? job.finished ?? this.#clock.now().toISOString())) : null;
         if (progress) {
           const result = JSON.parse(await readFile(job.result, 'utf8'));
           await writeFile(`${job.result}.progress.tmp`, JSON.stringify({ ...result, progress }), { mode: 0o600 });
           await rename(`${job.result}.progress.tmp`, job.result);
           if (job.outcome.code !== 0 && !log.includes('\nsuite interruption ')) {
             const lines = `\nsuite interruption ${JSON.stringify({ at: job.interruptedAt })}\n${progressLines(progress, { timeout: job.outcome.code === 124 }).join('\n')}\n`;
-            await appendFile(job.log, lines); evidence = log + lines;
+            await appendFile(job.log, lines); evidence = (evidence ?? log) + lines;
           }
         }
         job.progressReported = true; this.#save(job);

@@ -1,6 +1,8 @@
 # Hub documentation
 
 Subsystem reference and implementation guidance live in `docs/hub/`.
+Nightly soak deadline admission and timeout execution inventories are described
+in [Running](../docs/hub/running.md#soak-deadline-accounting).
 The [logins reference](../docs/hub/logins.md) also covers terminal renewal of an
 existing disk with `cland login signin`, binding-preserving admission and the
 24-hour one-sign-in hint.

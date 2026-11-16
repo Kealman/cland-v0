@@ -36,13 +36,15 @@ export function loadGateRepetitions(identity: string, selection: SuiteSelection 
 
 /** Pin five-repetition identities before spending on a soak. Serialize repeat costs:
  * each fresh name-filtered process can still pay its whole file's fixture cost.
+ * Reserve base file costs without assuming worker speedup under contention.
  * Reserve 20% for load variance plus 60 s for check/coverage/runner overhead.
  */
 export function soakDeadlinePlan(selection: SuiteSelection, plan: TierPlan, manifest: DurationManifest | null, timeoutMs: number): SuiteSelection {
   const files = new Set(plan.flatMap(row => row.files));
   if (files.size && !manifest) throw new Error('soak deadline plan refused: missing file duration baseline');
   const budget = timeoutMs / 1000 * 0.8 - 60;
-  const base = plan.reduce((sum, row) => sum + row.projectedWall, 0) + files.size;
+  const base = plan.reduce((sum, row) => sum + Math.max(row.projectedWall,
+    row.phases?.reduce((cost, phase) => cost + phase.weights.reduce((total, weight) => total + weight, 0), 0) ?? row.seconds), 0) + files.size;
   if (base > budget) throw new Error(`soak deadline plan refused: base projection ${base.toFixed(1)} s exceeds ${budget.toFixed(1)} s after 20% margin and 60 s overhead`);
   let projected = base;
   const tests: string[] = [];

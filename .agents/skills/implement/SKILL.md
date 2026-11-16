@@ -45,6 +45,11 @@ Enter leaves `cland user invite <name>`. See docs/hub/cland-setup.md.
 
 ## Merge-delta advisory comments
 
+Nightly soak admission budgets serial base file costs, including Web, before
+repetitions; a base beyond the reserved deadline refuses before machine creation.
+Timeout evidence distinguishes unexecuted files from incomplete files and
+completed tests. See `docs/hub/running.md#soak-deadline-accounting`.
+
 The hosting hub records clean reviewed-head/dev merges as report-only item
 comments with path and shared-import-graph facts. The conservative rule treats
 runtime/config/test/generated changes as potentially coupled. Unknown graph

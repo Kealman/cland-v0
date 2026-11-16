@@ -59,5 +59,8 @@ export function progressLines(progress: SuiteProgress, interruption: Interruptio
 export function interruptionLines(log: string, interruption: Interruption = {}): string[] {
   if (!log.includes('suite interruption ') && !interruption.timeout) return [];
   const progress = suiteProgress(log, 0);
-  return progress ? progressLines(progress, interruption) : interruption.timeout ? ['timeout: counts unavailable (no test progress receipts)'] : [];
+  const summaries = log.split('\n').filter(line => line.startsWith('suite execution summary ')).map(line => line.slice('suite execution summary '.length));
+  const execution = [...new Set(summaries.length ? summaries : log.split('\n').filter(line => /^(?:unexecuted|incomplete) tier (?:T[1-4]|Web): /.test(line)).map(line =>
+    Buffer.byteLength(line) <= 384 ? line : `${line.split(':')[0]}: details omitted; full list in log`))];
+  return [...(progress ? progressLines(progress, interruption) : interruption.timeout ? ['timeout: counts unavailable (no test progress receipts)'] : []), ...execution];
 }

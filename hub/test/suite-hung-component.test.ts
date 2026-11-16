@@ -2,12 +2,69 @@
 // the scripted machine plants completed tests beside tests that never complete.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fixture } from './remote-fixture.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { drive } from './remote-clock.ts';
 import type { Message } from '../src/protocol.ts';
+import { suiteUnit } from './suite-unit-fixture.ts';
+import { interruptionLines } from '../src/suite-progress.ts';
+
+test('local soak timeout persists execution inventory and retains local progress', async t => {
+  const f = await suiteUnit(t, { executor: 'local' });
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const file = 'hub/test/example.test.ts';
+  await writeFile(join(f.root, file), '');
+  await writeFile(join(f.root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { [file]: 'T4' } }));
+  await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
+    source: { artifacts: [], commit: f.candidate.head }, budget: { testSeconds: 5, fileSeconds: 60 },
+    files: { [file]: { seconds: 1, tests: 1 } }, tests: {}, allow: {} }));
+  const job = await f.launch({ mode: 'all', occasion: 'soak', integrated: true, fresh: true });
+  await f.suites.settled();
+  const run = f.delivered.get(job.id);
+  assert.ok(run, 'local worker admission observed before planting its result');
+  const progress = { completed: [], unfinished: [] };
+  await writeFile(run.result, JSON.stringify({ code: 124, finished: f.clock.now().toISOString(), progress }));
+  await f.finish(job.id, 124, 'suite interruption {"at":"2026-10-16T12:00:00Z"}\n');
+  const receipt = JSON.parse(await readFile(join(f.root, '.cland/run/suites', job.id, 'result.json'), 'utf8'));
+  assert.equal(receipt.code, 124);
+  assert.deepEqual(receipt.progress, progress);
+  assert.deepEqual(receipt.execution, [{ tier: 'T4', unexecuted: [file], incomplete: [] }]);
+  assert.match(interruptionLines(await f.log(job.id), { timeout: true }).join('\n'), /unexecuted tier T4: hub\/test\/example.test.ts/);
+});
+
+test('broad timeout retains all tier states and the log pointer within the report cap', async t => {
+  const script = { outcome: 'red' as const, code: 124, afterMs: 300000, log: '' };
+  const f = await fixture(t, { machine: 'scripted', script, config: 'lifetime="15m"\nrun_timeout="5m"' });
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', soak: true, fetchedDev: f.candidate.head };
+  const tiers = ['T1', 'T2', 'T3', 'T4', 'Web'] as const;
+  const entries = tiers.flatMap(tier => Array.from({ length: 20 }, (_, i) =>
+    [`${tier === 'Web' ? 'web' : 'hub'}/test/${tier}-${String(i).padStart(2, '0')}-${'x'.repeat(180)}.test.ts`, tier] as const));
+  // Candidate plans are fixture input; no need to create or parse a hundred
+  // test files to exercise reporting after a producer's timeout receipt.
+  f.candidate.tierPlan = tiers.map(tier => ({ tier, files: entries.filter(([, value]) => value === tier).map(([file]) => file),
+    tests: 20, seconds: 0.2, projectedWall: 0.2, workers: 1, missing: 0 }));
+  const job = await f.launch('all', '--fresh');
+  await drive(f, f.machine.started(job.id));
+  f.clock.block(300000);
+  await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  const history = ((await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: Message[] }).messages;
+  const result = history.find(message => message.id === `suite:${job.id}`);
+  assert.ok(result, 'observe the completed broad timeout report');
+  assert.ok(Buffer.byteLength(result.text) <= 8192);
+  for (const tier of tiers) assert.match(result.text, new RegExp(`unexecuted tier ${tier}: 20 files`));
+  assert.match(result.text, /omitted; full list in log/);
+  assert.match(result.text, /Log A-\d+/);
+  assert.ok(result.text.includes(f.candidate.head));
+  assert.match(result.text, /Executor droplet/);
+  const receipt = JSON.parse(await readFile(join(f.root, '.cland/run/suites', job.id, 'result.json'), 'utf8'));
+  assert.deepEqual(receipt.execution.map((row: { unexecuted: string[] }) => row.unexecuted).flat().sort(), entries.map(([file]) => file).sort());
+  const log = await readFile(result.artifacts![0]!.path, 'utf8');
+  for (const [file] of entries) assert.ok(log.includes(file), 'full path retained in artifact');
+});
 
 test('run timeout retains completed results beside every unfinished test', async t => {
   const script = { outcome: 'red' as const, code: 124, afterMs: 11000, log: '' };
@@ -113,12 +170,23 @@ test('soak deadline reports zero failures before its short in-flight test', asyn
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const paths = ['hub/test/example.test.ts', 'web/test/partial.test.ts', 'web/test/not-started.test.ts'];
+  await mkdir(join(f.root, 'web/test'), { recursive: true });
+  for (const path of paths) await writeFile(join(f.root, path), '');
+  const deferred = 'hub/test/later.test.ts';
+  await writeFile(join(f.root, deferred), '');
+  await writeFile(join(f.root, 'hub/test/tiers.json'), JSON.stringify({ version: 1,
+    tests: { [paths[0]!]: 'T1', [deferred]: 'T4', [paths[2]!]: 'Web', [paths[1]!]: 'Web' } }));
+  await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
+    source: { artifacts: [], commit: f.candidate.head }, budget: { testSeconds: 5, fileSeconds: 60 },
+    files: Object.fromEntries(paths.map(file => [file, { seconds: 1, tests: 1 }])), tests: {}, allow: {} }));
   const job = await f.launch('all', '--fresh', '--occasion', 'soak');
   await drive(f, f.machine.started(job.id));
   const at = f.clock.now().getTime();
   const row = (event: string, id: string, name: string, extra = {}) => `suite progress ${JSON.stringify({ event, id, file: 'hub/test/example.test.ts', name, nesting: 0, at, ...extra })}\n`;
   script.log = row('finish', 'green', 'completed', { outcome: 'pass', seconds: 1 })
-    + row('start', 'in-flight', 'still running', { at: at + 299000 });
+    + row('finish', 'file', 'file completed', { type: 'file', outcome: 'pass', seconds: 1 })
+    + row('start', 'in-flight', 'still running', { file: paths[1], at: at + 299000 });
   f.clock.block(300000);
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
   const history = ((await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: Message[] }).messages;
@@ -126,4 +194,13 @@ test('soak deadline reports zero failures before its short in-flight test', asyn
   assert.ok(result, 'observe the completed soak report in its explicit topic');
   assert.match(result.text, /^suite result [^\n]+\nall exit 124[^\n]*\ntimeout: 1 tests completed, 0 failed\nin flight:.*still running/);
   assert.doesNotMatch(result.text, /hung:/);
+  assert.match(result.text, /unexecuted tier Web: web\/test\/not-started.test.ts/);
+  assert.match(result.text, /incomplete tier Web: web\/test\/partial.test.ts/);
+  assert.match(result.text, /unexecuted tier T4: hub\/test\/later.test.ts/);
+  const receipt = JSON.parse(await readFile(join(f.root, '.cland/run/suites', job.id, 'result.json'), 'utf8'));
+  assert.deepEqual(receipt.execution, [
+    { tier: 'T1', unexecuted: [], incomplete: [] },
+    { tier: 'T4', unexecuted: [deferred], incomplete: [] },
+    { tier: 'Web', unexecuted: [paths[2]], incomplete: [paths[1]] },
+  ]);
 });

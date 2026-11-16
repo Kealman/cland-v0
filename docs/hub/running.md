@@ -2262,6 +2262,23 @@ When changing dictionary membership or prototype checks in this repository's
 `hub/src`, read the T0 dictionary guard scope and exemption rules in
 `docs/agents/tests.md`.
 
+## Soak deadline accounting
+
+Nightly soak admission reserves serial base file weights across every selected
+tier, including Web, before choosing fivefold repetitions. It keeps the existing
+20% of `run_timeout` plus 60 seconds for overhead; a base that cannot fit refuses
+before machine creation. Package worker projections remain report estimates.
+Generated and inherited configuration use the same calculation on either executor.
+On a local or remote timeout, `result.json` adds per-tier `execution` entries with
+`unexecuted` and `incomplete` file lists. A terminal file envelope proves file
+execution completed; individual completed tests do not. The report and log name
+both lists, preserving completed test counts and exit 124. Topic display limits
+path details per tier and names omitted counts with a log reference; result.json
+and the log keep every path. Local worker progress receipts remain intact. Legacy receipts
+without the optional inventory retain their previous progress representation.
+See [nightly soak](../agents/tests.md#nightly-soak) for the shared procedure.
+Existing role routing and permissions apply; no clause change is needed.
+
 ## Retained history and hub memory
 
 For startup history changes, use the suite summary/by-id and recovery controls

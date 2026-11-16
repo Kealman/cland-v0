@@ -423,8 +423,10 @@ It requires clean `dev` at freshly fetched `origin/dev` and skips an unchanged
 candidate tree. A soak uses one droplet with Coordinator priority, plans T1–T4
 with `CLAND_TEST_SOAK=1`, and load-repeats measured identities absent from the last
 green soak. Admission pins the timeout/configuration and a five-repetition identity
-list from `durations.json`. Its estimate uses the package phase worker projection for the base run (including
-the manifest median for missing files), then charges each repeated identity its
+list from `durations.json`. Its base estimate reserves the serial sum of package
+phase file weights (including the manifest median for missing files), or the
+worker projection if greater. Worker speedup under contention is not assumed
+for deadline admission. It then charges each repeated identity its
 whole file cost (or identity cost, if greater) serially, plus one second per fresh
 process. It reserves 20% of `run_timeout` for load variance
 and 60 seconds for check/coverage/runner overhead, trimming repetitions to fit.
@@ -1185,6 +1187,14 @@ test is labelled `in flight`; `hung` requires an observed native `testTimeoutFai
 identity, proving its own effective timeout expired (including explicit overrides).
 Elapsed time beyond the run-wide default alone and unknown per-test budgets never
 establish a hang.
+Timeout results also persist an additive `execution` inventory in `result.json`.
+Each selected tier names files with no execution receipt as `unexecuted` and
+started files without a terminal file envelope as `incomplete`. Completed tests
+alone never prove the whole file passed. Both lists appear in the timeout report
+and log. Topic summaries bound each tier's path details with explicit omitted
+counts; full paths remain in result.json and the artifact log. Local and remote
+timeouts share this inventory; local worker progress stays intact. Older receipts
+without this inventory keep their existing progress fields.
 When an inherited-pipe writer cannot be verified, the result explicitly says
 cleanup is incomplete, Agents and the inbox receive one warning, and the queue
 is released. Unknown processes are preserved. Native endpoint inspection also
