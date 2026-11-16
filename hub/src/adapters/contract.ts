@@ -158,7 +158,7 @@ export type SpawnRequest = LaunchPolicy & {
 /** A native sub-agent start; absent model means unreported, never the parent model. */
 export type SubagentLaunch = { id?: string; type?: string; model?: string };
 /** A harness report with optional state and launch metadata. State ordering drops older signals. */
-export type StateSignal = { state?: SessionState; source: string; at: number; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; moved?: { directory: string } };
+export type StateSignal = { state?: SessionState; source: string; at: number; approvalCommand?: string; approvalPrompt?: string; model?: string; subagent?: SubagentLaunch; moved?: { directory: string } };
 
 /** Only these request fields cross the adapter boundary; the hub copies an allowlist.
  *  An outcome lets async subject enrichment publish an already-resolved request atomically;
@@ -223,7 +223,7 @@ export type AdapterHost = {
 export type TurnReplay = { attempt: number; run: (authorize: () => void) => Promise<boolean> };
 
 /** What one signal from inside the session (a hook, the mod) means: a state, the model, usage, messages it confirms. */
-export type Interpretation = { loginDead?: { reason: string }; limitHit?: { reason: string; resetsAt?: string }; state?: SessionState; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; usage?: Record<string, unknown>; rateLimits?: { windows: import('../accounts/limits.ts').LimitWindow[]; at?: string }; confirms?: string[]; turnError?: string; failureAudience?: 'senders'; failureDedupe?: { key: string; episode: string }; failureMessages?: Promise<string[]> };
+export type Interpretation = { loginDead?: { reason: string }; limitHit?: { reason: string; resetsAt?: string }; state?: SessionState; approvalCommand?: string; approvalPrompt?: string; model?: string; subagent?: SubagentLaunch; usage?: Record<string, unknown>; rateLimits?: { windows: import('../accounts/limits.ts').LimitWindow[]; at?: string }; confirms?: string[]; turnError?: string; failureAudience?: 'senders'; failureDedupe?: { key: string; episode: string }; failureMessages?: Promise<string[]> };
 
 /** The frame an in-session bridge receives: submit this message as a turn, then confirm it. */
 export type InjectFrame = { type: 'inject'; session: string; message: string; text: string };
@@ -290,7 +290,8 @@ export interface HarnessAdapter {
    * Claude requires an envelope-bearing turn-start; its mod's `injected` is only submission acceptance. */
   confirm(process: HarnessProcess, messageId: string): void;
   /** What a signal posted from inside the session (`cland hook <event>`, with the harness's payload) means. */
-  interpret(event: string, payload: Record<string, unknown>, process?: HarnessProcess, at?: number): Interpretation;
+  /** stateCurrent is the owning Sessions writer's hook-order admission decision. */
+  interpret(event: string, payload: Record<string, unknown>, process?: HarnessProcess, at?: number, stateCurrent?: boolean): Interpretation;
   /** An in-session bridge connected (the Claude Code mod): inject frames go to `send`. Returns its disconnect.
    * The receipt is true only when this captured bridge was still current at disconnect,
    * after generation and native ownership invalidation. False means stale.

@@ -39,6 +39,20 @@ An unfinalized launch identity is fenced against rename and role changes (assign
 
 `idle`, `busy`, `waiting for human`, `waiting for approval`, `unknown` (spec 4.2). Only adapters set it; the model's `status` tool sets the status line and never the state. Presence (`who`, `hub.status`) carries it, and subscribed clients get `session.state`. A session no adapter launched is `unknown`, and so is a launched one whose process died or was stopped.
 
+Claude permission waits retain the session-scoped hook identity (`agent_id` plus
+`tool_use_id`, falling back to `prompt_id`). Parent turn boundaries and polls do
+not resolve a child's pending prompt. A matching tool completion, owning turn
+boundary, sub-agent stop or session end releases it. Hooks without identity keep
+the legacy unscoped behaviour. Repeated waits keep one inbox record and remote
+card; a different prompt or a wait after resolution announces again. A terminal
+approval still pending after 30 minutes gets one reminder on the hub clock,
+with the same card content. Its original inbox age stays intact; the persisted
+reminder timestamp prevents another reminder, including after restart. This does
+not change relayed approval choices or first-answer-wins settlement.
+The Sessions state writer supplies hook-order admission to interpretation;
+metadata hooks do not move that boundary. Replacing a pending prompt starts a
+fresh inbox age and a fresh 30-minute reminder interval.
+
 - A push signal (a hook, the mod) carries the time it happened; one older than the last push applied is dropped, so out-of-order hooks never move a session back. For a hook that time is when its `cland hook` process started (the harness fires the event by starting it; the process may take hundreds of milliseconds more to run), for the mod the event's own time. The hub's receipt order is not used: two hook processes started in one order often arrive in the other.
 - A signal or a bridge names its launch (`--launch`, the cland session id the launch gave the hooks and the mod). One from an earlier launch under the same name is ignored (`signal-other-launch` in the log) or refused: it never changes the row of the process that replaced it. A signal never revives a row that is not `running`; only resume does.
 - A retry asked for while an inject of the same message is still waiting for its confirmation (an `idle`, a bridge that connected) is made when that inject gives up, if the message still waits. A rename takes the session's `delivered` messages along, so their retry and confirmation find them. At a launch, the bridges that connected early are registered before the early signals are replayed.

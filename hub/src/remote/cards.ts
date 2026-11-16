@@ -32,7 +32,7 @@ export function noticeCards(inbox: Inbox, webOrigin?: string): RemoteNotice[] {
       card: { title: `📥 ${row.request} · ${row.from} · ${row.subject}`, question: row.text, preview: 'message' as const, buttons: [] } })),
     ...inbox.messages.filter(row => !!row.topic.item).map(row => ({ id: row.id, kind: 'message' as const, since: row.since, topic: row.topic.id,
       card: { title: `📥 ${row.from} · ${row.topic.item}`, question: row.text, preview: 'message' as const, buttons: [] } })),
-    ...inbox.approvals.filter(row => row.answerIn === 'tui').map(row => ({ id: row.id, kind: 'approval' as const, since: row.since, topic: 'general', reference: `re approval ${row.session}:`,
+    ...inbox.approvals.filter(row => row.answerIn === 'tui').map(row => ({ id: row.id, kind: 'approval' as const, since: row.reminderAt ?? row.since, topic: 'general', reference: `re approval ${row.session}:`,
       card: { title: `📥 ${row.session} · ${row.harness ?? 'approval'}`, question: `Answer in its terminal.\n\n${row.subject.command ?? row.command ?? row.subject.files?.join('\n') ?? 'Waiting for approval'}`, preview: 'command' as const, buttons: [] } })),
   ];
 }

@@ -34,6 +34,7 @@ documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merg
 - [Test waits](../docs/agents/tests.md#waiting-for-an-observable-condition): phase load headroom for setup and exact injected-clock or named behaviour deadlines.
 - [In-process test fixtures](../docs/agents/tests.md#in-process-harnesses): `projectHub` uses fixture lock identity and process-start facts; T3 selects `lockIdentity: 'native'` and `probes: 'native'` explicitly, or uses `nativeProjectHub`.
 - [File startup watchdog](../docs/hub/running.md): typed file-start receipts get 30 seconds of load-scaled setup headroom, capped at half the admitted no-output timeout, before the existing owned stall cleanup runs.
+- [Claude terminal approval notifications](../docs/hub/adapters-and-sessions.md): retain pending hook identity across parent turns and send one reminder after 30 minutes on the hub clock; the session states reference describes resolution and legacy hook behaviour.
 - [Topics](../docs/hub/topics.md)
 - [Native fixture inventory](../qa/briefs/T-1806-inventory.md): shared exact name-set checks and scratch-only host socket routing.
 - [Demo publication policy](../docs/agents/qa-demo-recording.md): remote QA captures reject Bearer credentials in Authorization headers and standalone token runs of at least 16 characters; short prose remains publishable. Manual captures still require redaction and scanning.

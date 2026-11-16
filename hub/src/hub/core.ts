@@ -431,6 +431,7 @@ export class HubCore {
   /** Each session's state by its session id (a rename moves nothing), set only by adapters (spec 4.2). */
   readonly #states = new Map<string, SessionState>();
   readonly #approvalCommands = new Map<string, string>();
+  readonly #approvalPrompts = new Map<string, string>();
   #drainingVerifierRequests = false;
   /** Sessions rejects recipients without an adapter-owned injection boundary. */
   #withdrawalRefusal: ((messageId: string, sessions: string[]) => string | null) | null = null;
@@ -586,6 +587,7 @@ export class HubCore {
       },
       idleNotifyMs: options.idleNotifyMs ?? IDLE_NOTIFY_MS,
       idle: (session, minutes) => this.publishEvent({ session }, 'session.state', `${session} idle ${minutes} min`, { lifecycle: 'long idle' }),
+      approvalReminder: session => this.publishEvent({ session }, 'session.state', `${session} waiting for approval`, { lifecycle: 'waiting for approval' }),
     });
     // The inbox observes section changes and journals informational notifications.
     this.#listeners.add((e) => this.inbox.observe(e));
@@ -949,6 +951,7 @@ export class HubCore {
     this.#store.pruneSession(process.name, process.sessionId);
     this.#states.delete(process.sessionId);
     this.#approvalCommands.delete(process.sessionId);
+    this.#approvalPrompts.delete(process.sessionId);
     this.#heartbeatProcesses.delete(process.sessionId);
     this.#heartbeatStarts.delete(process.sessionId);
     this.#store.stopHeartbeat(process.sessionId);
@@ -1812,12 +1815,16 @@ export class HubCore {
   }
 
   /** A session's state, from its adapter (never from the model's `status`); subscribers hear a change. */
-  setSessionState(sessionId: string, name: string, state: SessionState, source: string, approvalCommand?: string): boolean {
+  setSessionState(sessionId: string, name: string, state: SessionState, source: string, approvalCommand?: string, approvalPrompt?: string): boolean {
     const previous = this.#approvalCommands.get(sessionId);
+    const newPrompt = state === 'waiting for approval' && approvalPrompt !== undefined && approvalPrompt !== this.#approvalPrompts.get(sessionId);
+    if (state !== 'waiting for approval') this.#approvalPrompts.delete(sessionId);
+    else if (approvalPrompt !== undefined) this.#approvalPrompts.set(sessionId, approvalPrompt);
+    if (newPrompt) this.inbox.replaceApprovalPrompt(sessionId, approvalPrompt!);
     // A poll that still reports waiting supplies no new command. Keep the pushed command until
     // the state changes; a second approval can update it without a state transition.
-    const command = state === 'waiting for approval' ? approvalCommand ?? previous : undefined;
-    if (this.#states.get(sessionId) === state && command === previous) return false;
+    const command = state === 'waiting for approval' ? approvalCommand ?? (newPrompt ? undefined : previous) : undefined;
+    if (this.#states.get(sessionId) === state && command === previous && !newPrompt) return false;
     const changed = this.#states.get(sessionId) !== state;
     this.#states.set(sessionId, state);
     if (changed) {
@@ -1827,7 +1834,7 @@ export class HubCore {
     if (command !== undefined) this.#approvalCommands.set(sessionId, command);
     else this.#approvalCommands.delete(sessionId);
     this.#log({ event: 'session-state', session: name, state, source });
-    if (changed && state !== 'unknown') this.publishEvent({ session: name }, 'session.state', `${name} ${state}`, state === 'waiting for approval' ? { lifecycle: state } : {});
+    if ((changed || newPrompt) && state !== 'unknown') this.publishEvent({ session: name }, 'session.state', `${name} ${state}`, state === 'waiting for approval' ? { lifecycle: state } : {});
     this.#emit({ type: 'session.state', session: name, sessionId, state, source, ts: this.#now().toISOString(), ...(command !== undefined ? { approvalCommand: command } : {}) });
     this.#drainVerifierRequests();
     return true;

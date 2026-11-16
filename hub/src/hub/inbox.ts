@@ -66,6 +66,7 @@ export type InboxPort = {
   idleNotifyMs: number;
   /** Long idle also reaches subscribed sessions, independently of its human inbox layer. */
   idle: (session: string, minutes: number) => void;
+  approvalReminder?: (session: string) => void;
   approvalNote: (record: InboxApproval, note: string) => void;
   sizeRefusal: (text: string) => string | null;
 };
@@ -81,6 +82,8 @@ export class InboxBoard {
   /** When each session entered `waiting for approval`, by session id. */
   readonly #since = new Map<string, string>();
   readonly #fallbacks = new Map<string, InboxApproval>();
+  readonly #promptKeys = new Map<string, string>();
+  readonly #reminders = new Map<string, ClockTimer>();
   readonly #approvals = new Map<string, InboxApproval>();
   readonly #reported = new Set<string>();
   readonly #restored = new Set<string>();
@@ -107,7 +110,10 @@ export class InboxBoard {
       const record: InboxApproval = { ...facts, state: 'pending' };
       this.#approvals.set(record.id, record);
       this.#since.set(record.sessionId, record.since);
-      if (fallback) this.#fallbacks.set(record.sessionId, record);
+      if (fallback) {
+        this.#fallbacks.set(record.sessionId, record);
+        if (record.approvalPrompt) this.#promptKeys.set(record.sessionId, record.approvalPrompt);
+      }
       else { this.#reported.add(record.sessionId); this.#restored.add(record.id); }
     }
   }
@@ -140,6 +146,37 @@ export class InboxBoard {
     this.#scheduled = null;
     for (const t of this.#idle.values()) this.#clock.clearTimeout(t);
     this.#idle.clear();
+    for (const timer of this.#reminders.values()) this.#clock.clearTimeout(timer);
+    this.#reminders.clear();
+  }
+
+  /** A native prompt identity changes independently of its display text or session state. */
+  replaceApprovalPrompt(sessionId: string, key: string): void {
+    const previous = this.#fallbacks.get(sessionId);
+    if (previous && previous.approvalPrompt !== key) {
+      this.#closeApproval(previous,
+        { choice: 'answered in the harness', by: 'harness', via: 'harness', at: this.#port.now().toISOString() });
+      this.#since.delete(sessionId);
+    }
+    this.#promptKeys.set(sessionId, key);
+  }
+
+  #remindApproval(record: InboxApproval): void {
+    if (record.reminderAt || this.#reminders.has(record.id)) return;
+    const timer = this.#clock.setTimeout(() => {
+      this.#reminders.delete(record.id);
+      const current = this.#fallbacks.get(record.sessionId);
+      if (this.#closed || current?.id !== record.id || this.#port.stateOf(record.sessionId) !== 'waiting for approval') return;
+      const reminded = { ...current, reminderAt: this.#port.now().toISOString() };
+      this.#fallbacks.set(record.sessionId, reminded);
+      this.#approvals.set(record.id, reminded);
+      this.#waitApproval(reminded);
+      this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', reminded, 'approval') });
+      this.#port.approvalReminder?.(reminded.session);
+      this.#changed();
+    }, Math.max(1, Date.parse(record.since) + 30 * 60_000 - this.#port.now().getTime()));
+    timer.unref();
+    this.#reminders.set(record.id, timer);
   }
 
   // ---------------------------------------------------------------- what feeds it
@@ -510,6 +547,8 @@ export class InboxBoard {
   }
 
   #closeApproval(record: InboxApproval, reported: ApprovalOutcome): InboxApproval {
+    this.#clock.clearTimeout(this.#reminders.get(record.id));
+    this.#reminders.delete(record.id);
     // Copy the outcome too: adapters must not smuggle arbitrary native payload into a delta or archive.
     const outcome: ApprovalOutcome = { choice: reported.choice, by: reported.by, via: reported.via, at: reported.at,
       ...(reported.userId !== undefined ? { userId: reported.userId } : {}),
@@ -523,7 +562,10 @@ export class InboxBoard {
     });
     this.#approvals.delete(record.id);
     this.#restored.delete(record.id);
-    if (this.#fallbacks.get(record.sessionId)?.id === record.id) this.#fallbacks.delete(record.sessionId);
+    if (this.#fallbacks.get(record.sessionId)?.id === record.id) {
+      this.#fallbacks.delete(record.sessionId);
+      this.#promptKeys.delete(record.sessionId);
+    }
     this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', closed, 'approval') });
     this.#changed();
     return closed;
@@ -576,10 +618,13 @@ export class InboxBoard {
         const previous = this.#fallbacks.get(sessionId), command = row.command ?? previous?.command;
         const subject = approvalSubject(command !== undefined ? { command } : {});
         const record: InboxApproval = { ...row, id: previous?.id ?? `${sessionId}:${randomUUID()}`, since: previous?.since ?? row.since,
+          ...(this.#promptKeys.has(sessionId) ? { approvalPrompt: this.#promptKeys.get(sessionId)! } : {}),
+          ...(previous?.reminderAt ? { reminderAt: previous.reminderAt } : {}),
           ...(subject.command !== undefined ? { command: subject.command } : {}),
           kind: command ? 'command' : 'other', subject, choices: [], answerIn: 'tui', state: 'pending' };
         this.#fallbacks.set(sessionId, record);
         this.#approvals.set(record.id, record);
+        this.#remindApproval(record);
         if (!isDeepStrictEqual(previous, record)) {
           this.#waitApproval(record);
           p.emit({ type: 'approval', approval: p.visibility.place('inbox', record, 'approval') });

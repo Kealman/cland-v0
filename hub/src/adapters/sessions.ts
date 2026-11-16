@@ -2665,7 +2665,8 @@ export class Sessions {
       }
       this.#table.update(p.name, { harnessSessionId });
     }
-    const meaning = adapter.interpret(frame.event, payload, p, frame.at ?? this.#transportClock.now().getTime());
+    const at = frame.at ?? this.#transportClock.now().getTime();
+    const meaning = adapter.interpret(frame.event, payload, p, at, this.#acceptsHookState(p.sessionId, at));
     for (const id of meaning.confirms ?? []) this.#confirm(p, id);
     this.#recordHarness(p, meaning);
     if (meaning.usage) {
@@ -2685,7 +2686,7 @@ export class Sessions {
       if (meaning.failureMessages) void meaning.failureMessages.then((messages) => this.#notifyTurnSenders(p.sessionId, error, messages, meaning.failureDedupe));
     }
     if (!meaning.state) return { applied: Boolean(meaning.model || meaning.subagent || meaning.usage || meaning.rateLimits) };
-    const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? this.#transportClock.now().getTime(), ...(meaning.approvalCommand !== undefined ? { approvalCommand: meaning.approvalCommand } : {}) }, true);
+    const applied = this.#signal(p.sessionId, { state: meaning.state, source: frame.event.startsWith('mod-') ? 'mod' : 'hook', at: frame.at ?? this.#transportClock.now().getTime(), ...(meaning.approvalCommand !== undefined ? { approvalCommand: meaning.approvalCommand } : {}), ...(meaning.approvalPrompt !== undefined ? { approvalPrompt: meaning.approvalPrompt } : {}) }, true);
     return { applied, state: this.#core.sessionState(p.sessionId) };
   }
 
@@ -2741,13 +2742,17 @@ export class Sessions {
   }
 
   /** Every Sessions state writer records the provenance of the same episode. */
-  #setObservedState(sessionId: string, name: string, state: SessionState, source: string, push = false, approvalCommand?: string): boolean {
+  #setObservedState(sessionId: string, name: string, state: SessionState, source: string, push = false, approvalCommand?: string, approvalPrompt?: string): boolean {
     const previous = this.#stateObservation.get(sessionId);
     const repeatedPollBusy = !push && source === 'poll' && state === 'busy'
       && this.#core.sessionState(sessionId) === 'busy' && previous?.state === 'busy'
       && previous.source === 'poll' && !previous.push;
     this.#stateObservation.set(sessionId, { state, source, at: repeatedPollBusy ? previous.at : this.#transportClock.now().getTime(), push });
-    return this.#core.setSessionState(sessionId, name, state, source, approvalCommand);
+    return this.#core.setSessionState(sessionId, name, state, source, approvalCommand, approvalPrompt);
+  }
+
+  #acceptsHookState(sessionId: string, at: number): boolean {
+    return at >= (this.#lastAt.get(sessionId) ?? 0);
   }
 
   #signal(sessionId: string, signal: StateSignal, push: boolean): boolean {
@@ -2760,7 +2765,7 @@ export class Sessions {
     const now = this.#transportClock.now().getTime();
     const current = this.#core.sessionState(sessionId);
     if (push) {
-      if (signal.at < (this.#lastAt.get(sessionId) ?? 0)) {
+      if (!this.#acceptsHookState(sessionId, signal.at)) {
         this.#log({ event: 'signal-stale', session: p.name, state: signal.state, source: signal.source });
         return false;
       }
@@ -2776,7 +2781,7 @@ export class Sessions {
     // only push signals order each other: a poll reads a snapshot, and a hook that started before it still counts
     if (push) this.#lastAt.set(sessionId, Math.max(signal.at, this.#lastAt.get(sessionId) ?? 0));
     const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
-    const changed = this.#setObservedState(sessionId, name, signal.state, signal.source, push, signal.approvalCommand);
+    const changed = this.#setObservedState(sessionId, name, signal.state, signal.source, push, signal.approvalCommand, signal.approvalPrompt);
     // Every idle drains never-attempted work; only busy-to-idle retries attempted input.
     if (signal.state === 'idle') {
       this.#core.flushQueued(name);

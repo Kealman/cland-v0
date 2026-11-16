@@ -12,6 +12,10 @@ import { claudeComponentOwner } from './claude-component-fixture.ts';
 import { fakeHarness, type FakeHarness } from './fakes/harness.ts';
 import { connectUi, eventually, inProcessSpoke, projectHub, tempProject, type FrameClient, type SpokeOptions } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
+import { noticeCards } from '../src/remote/cards.ts';
+import type { Inbox, InboxApproval } from '../src/protocol.ts';
+import { testMessenger } from './fakes/messenger.ts';
+import { signalPayload } from '../src/cli/hook.ts';
 type Harness = HarnessProcessView;
 type Status = { sessions: Array<{ name: string; sessionId: string; state: string }>; harnesses: Harness[] };
 async function status(ui: FrameClient): Promise<Status> {
@@ -25,12 +29,13 @@ const harness = async (ui: FrameClient, name: string): Promise<Harness> => {
   return h;
 };
 const hubLog = (root: string) => readFile(join(root, '.cland/log/hub.log'), 'utf8');
-async function fixture(t: TestContext, ownedSetup = false) {
+async function fixture(t: TestContext, ownedSetup = false, withRemotes = false) {
   const root = await tempProject(t);
   const clock = new FakeClock();
   let fake!: FakeHarness;
   let hostState!: AdapterHost;
-  const hubOptions = { clock, adapters: [(host, clock) => {
+  const remotes = withRemotes ? [testMessenger('telegram', 'telegram'), testMessenger('discord', 'discord')] : [];
+  const hubOptions = { clock, gatewayRemotes: remotes, adapters: [(host, clock) => {
     hostState = host;
     // Only interpretation needs the production adapter's bounded prompt history; no native methods run.
     const interpreter = new ClaudeCodeAdapter(host, { clock, bin: 'unused-claude', env: { HOME: root } });
@@ -59,7 +64,7 @@ async function fixture(t: TestContext, ownedSetup = false) {
   };
   const connectPeer = owner ? owner.spoke : (options: SpokeOptions) => inProcessSpoke(t, options);
   const peer = (name: string, process: Harness) => connectPeer({ cwd: root, discover: true, name, assignRole: false, sessionId: process.sessionId, launchToken: fake.spawns.findLast(s => s.name === name)!.launchToken! });
-  return { root, ui, clock, fake, launch, signal, peer, host: hostState, dispatcher };
+  return { root, ui, clock, fake, launch, signal, peer, host: hostState, dispatcher, remotes };
 }
 
 test('in-process Claude signal order drops an older Stop arriving after the next turn start regardless of elapsed time', async t => {
@@ -85,6 +90,130 @@ test('in-process Claude signal order drops an older Stop arriving after the next
   const completed = await f.signal('coord', launched.sessionId, 'turn-end', { at: stopAt + 2 });
   assert.deepEqual(completed.value, { applied: true, state: 'idle' });
   assert.equal((await harness(ui, 'coord')).state, 'idle');
+});
+
+test('Claude pending sub-agent permission keeps one terminal card across parent turn boundaries', async t => {
+  const f = await fixture(t, false, true);
+  const p = await f.launch('coord', { role: 'coordinator', harness: 'claude-code' });
+  const inbox = async () => {
+    const reply = await f.ui.request({ type: 'inbox.list' });
+    assert.equal(reply.ok, true);
+    return reply.value as Inbox;
+  };
+  const payload = signalPayload({ hook_event_name: 'PermissionRequest', agent_id: 'child', prompt_id: 'child-turn', tool_use_id: 'permission-one', tool_name: 'Bash', tool_input: { command: 'pwd' } });
+  const receipts = f.remotes.map(remote => remote.client.waitFor(frame => frame.type === 'approval' && (frame.approval as InboxApproval).session === 'coord'));
+  await f.signal('coord', p.sessionId, 'permission', payload);
+  const first = noticeCards(await inbox()).filter(c => c.kind === 'approval');
+  assert.equal(first.length, 1);
+  for (const frame of await Promise.all(receipts)) {
+    assert.equal(frame.type, 'approval');
+    if (frame.type === 'approval') assert.equal((frame.approval as InboxApproval).id, first[0]!.id);
+  }
+  for (let i = 0; i < 6; i++) {
+    await f.signal('coord', p.sessionId, 'turn-end', { prompt_id: `parent-${i}` });
+    await f.signal('coord', p.sessionId, 'permission', payload);
+    assert.deepEqual(noticeCards(await inbox()).filter(c => c.kind === 'approval'), first);
+  }
+  await f.ui.request({ type: 'hub.status', flushLogs: true });
+  const notices = (await hubLog(f.root)).split('\n').filter(line => line.includes('"event":"event-announced"') && line.includes('"lifecycle":"waiting for approval"'));
+  assert.equal(notices.length, 1, 'one announcement feeds the subscribed Agents clients');
+});
+
+test('Claude new permission and a resolved permission each announce a fresh terminal card', async t => {
+  const f = await fixture(t);
+  const p = await f.launch('coord', { role: 'coordinator', harness: 'claude-code' });
+  const payload = { agent_id: 'child', prompt_id: 'child-turn', tool_use_id: 'one', tool_name: 'Bash', approvalCommand: 'pwd' };
+  const card = async () => noticeCards((await f.ui.request({ type: 'inbox.list' })).value as Inbox).find(c => c.kind === 'approval')!;
+  await f.signal('coord', p.sessionId, 'permission', payload);
+  const first = await card();
+  await f.signal('coord', p.sessionId, 'permission', { ...payload, tool_use_id: 'two' });
+  const second = await card();
+  assert.notEqual(second.id, first.id);
+  await f.signal('coord', p.sessionId, 'tool-done', { ...payload, tool_use_id: 'two' });
+  assert.equal(await card(), undefined);
+  await f.signal('coord', p.sessionId, 'permission', { ...payload, tool_use_id: 'two' });
+  assert.notEqual((await card()).id, second.id);
+  await f.signal('coord', p.sessionId, 'tool-done', { ...payload, tool_use_id: 'one' });
+  assert.ok(await card(), 'an unrelated tool completion leaves the prompt pending');
+  await f.signal('coord', p.sessionId, 'subagent-stop', { agent_id: 'child' });
+  assert.equal(await card(), undefined);
+});
+
+test('Claude metadata arriving before an older accepted permission preserves its prompt identity', async t => {
+  const f = await fixture(t);
+  const p = await f.launch('coord', { role: 'coordinator', harness: 'claude-code' });
+  const at = f.clock.now().getTime();
+  await f.signal('coord', p.sessionId, 'subagent-start', { at: at + 2, agent_id: 'child' });
+  const payload = { at: at + 1, agent_id: 'child', prompt_id: 'child-turn', tool_use_id: 'one', tool_name: 'Bash' };
+  const accepted = await f.signal('coord', p.sessionId, 'permission', payload);
+  assert.deepEqual(accepted.value, { applied: true, state: 'waiting for approval' });
+  const card = async () => noticeCards((await f.ui.request({ type: 'inbox.list' })).value as Inbox).find(c => c.kind === 'approval');
+  const first = await card();
+  assert.ok(first);
+  await f.signal('coord', p.sessionId, 'turn-end', { at: at + 3, prompt_id: 'parent' });
+  assert.deepEqual(await card(), first);
+  const stale = await f.signal('coord', p.sessionId, 'permission', { ...payload, tool_use_id: 'stale', at: at + 2 });
+  assert.deepEqual(stale.value, { applied: false, state: 'waiting for approval' });
+  await f.signal('coord', p.sessionId, 'turn-end', { at: at + 4, prompt_id: 'parent' });
+  assert.deepEqual(await card(), first);
+  await f.signal('coord', p.sessionId, 'permission', { ...payload, at: at + 5 });
+  assert.deepEqual(await card(), first);
+  await f.ui.request({ type: 'hub.status', flushLogs: true });
+  const notices = (await hubLog(f.root)).split('\n').filter(line => line.includes('"event":"event-announced"') && line.includes('"lifecycle":"waiting for approval"'));
+  assert.equal(notices.length, 1);
+});
+
+for (const elapsedMinutes of [10, 31]) test(`Claude replacing a permission after ${elapsedMinutes} minutes starts a fresh reminder interval`, async t => {
+  const f = await fixture(t);
+  const p = await f.launch('coord', { role: 'coordinator', harness: 'claude-code' });
+  const payload = { agent_id: 'child', tool_use_id: 'one', tool_name: 'Bash' };
+  const card = async () => noticeCards((await f.ui.request({ type: 'inbox.list' })).value as Inbox).find(c => c.kind === 'approval')!;
+  await f.signal('coord', p.sessionId, 'permission', payload);
+  const first = await card();
+  f.clock.block(elapsedMinutes * 60_000 - 1);
+  await f.clock.advance(1);
+  await f.signal('coord', p.sessionId, 'permission', { ...payload, tool_use_id: 'two' });
+  const replacement = await card();
+  assert.notEqual(replacement.id, first.id);
+  assert.equal(replacement.since, f.clock.now().toISOString());
+  if (elapsedMinutes < 30) {
+    f.clock.block((30 - elapsedMinutes) * 60_000 - 1);
+    await f.clock.advance(1);
+    assert.deepEqual(await card(), replacement, 'the old deadline cannot remind the replacement');
+  }
+  f.clock.block((elapsedMinutes < 30 ? elapsedMinutes : 30) * 60_000 - 1);
+  assert.deepEqual(await card(), replacement);
+  await f.clock.advance(1);
+  const reminder = await card();
+  assert.equal(reminder.id, replacement.id);
+  assert.equal(reminder.since, f.clock.now().toISOString());
+  assert.notEqual(reminder.since, replacement.since);
+  assert.deepEqual(reminder.card, replacement.card);
+});
+
+test('Claude pending permission reminds once at thirty minutes on the hub clock', async t => {
+  const f = await fixture(t);
+  const p = await f.launch('coord', { role: 'coordinator', harness: 'claude-code' });
+  await f.signal('coord', p.sessionId, 'permission', { tool_use_id: 'one', tool_name: 'Bash', approvalCommand: 'pwd' });
+  const card = async () => noticeCards((await f.ui.request({ type: 'inbox.list' })).value as Inbox).find(c => c.kind === 'approval')!;
+  const first = await card();
+  f.clock.block(30 * 60_000 - 1);
+  assert.deepEqual(await card(), first);
+  await f.clock.advance(1);
+  const reminder = await card();
+  assert.notEqual(reminder.since, first.since);
+  assert.equal(reminder.id, first.id);
+  assert.deepEqual(reminder.card, first.card);
+  f.clock.block(2 * 60 * 60_000 - 1);
+  await f.clock.advance(1);
+  assert.deepEqual(await card(), reminder);
+  await f.signal('coord', p.sessionId, 'tool-done', { tool_use_id: 'one' });
+  assert.equal(await card(), undefined);
+  await f.signal('coord', p.sessionId, 'permission', { tool_use_id: 'two', tool_name: 'Bash' });
+  await f.signal('coord', p.sessionId, 'tool-done', { tool_use_id: 'two' });
+  f.clock.block(30 * 60_000 - 1);
+  await f.clock.advance(1);
+  assert.equal(await card(), undefined, 'a resolved prompt never reminds');
 });
 
 test('in-process Claude failures retain sender attribution across delayed prompt starts', async (t) => {

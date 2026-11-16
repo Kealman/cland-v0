@@ -270,7 +270,7 @@ export type ApprovalChoice = 'once' | 'always' | 'deny';
 export type ApprovalOutcome = { userId?: string; choice: ApprovalChoice | 'answered in the harness' | 'withdrawn'; note?: string; by: string; via: HumanActionVia | 'harness'; at: string };
 export type ApprovalSubject = { command?: string; cwd?: string; reason?: string; files?: string[]; change?: string };
 /** One harness request, retaining the original inbox fields for existing clients. */
-export type ApprovalRecord = { layer?: Layer; id: string; session: string; sessionId: string; role?: string; label: string; harness: string | null; kind: 'command' | 'file change' | 'other'; subject: ApprovalSubject; choices: ApprovalChoice[]; answerIn: 'hub' | 'tui'; attach: string | null; since: string; topic?: string; state: 'pending' | 'answering' | 'closed'; outcome?: ApprovalOutcome; command?: string };
+export type ApprovalRecord = { layer?: Layer; id: string; session: string; sessionId: string; role?: string; label: string; harness: string | null; kind: 'command' | 'file change' | 'other'; subject: ApprovalSubject; choices: ApprovalChoice[]; answerIn: 'hub' | 'tui'; attach: string | null; since: string; topic?: string; state: 'pending' | 'answering' | 'closed'; outcome?: ApprovalOutcome; command?: string; approvalPrompt?: string; reminderAt?: string };
 export type InboxApproval = ApprovalRecord;
 export type InboxPlan = { layer?: Layer; id: string; subject: string; title: string; stages?: number; lanes?: number; items?: number; since: string };
 

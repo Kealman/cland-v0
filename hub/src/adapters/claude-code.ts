@@ -269,6 +269,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #bridges = new Map<string, { send: (frame: InjectFrame) => boolean; generation: string | null }>();
   readonly #pending = new Map<string, Pending>();
   readonly #prompts = new Map<string, Map<string, Prompt>>();
+  readonly #approvalWaits = new Map<string, { key: string; agent: string | undefined; prompt: string | undefined; tool: string | undefined; command: string | undefined }>();
   /** Running totals and the last usage the mod reported, by session id. */
   readonly #usage = new Map<string, SessionUsage>();
   /** Sessions being stopped: still watched, but their exit is the stop's to report. */
@@ -817,12 +818,37 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     pending.resolve();
   }
 
-  interpret(event: string, payload: Record<string, unknown>, p?: HarnessProcess, at = this.#clock.now().getTime()): Interpretation {
+  interpret(event: string, payload: Record<string, unknown>, p?: HarnessProcess, at = this.#clock.now().getTime(), stateCurrent = true): Interpretation {
     // Hooks may learn the native conversation before discovery does (including /clear).
     // Sessions persists it; keep the watched launch on that same authoritative identity.
     const watched = p && this.#watched.get(p.sessionId);
     if (watched && typeof payload.session_id === 'string' && payload.session_id) watched.harnessSessionId = payload.session_id;
     const meaning = interpret(event, payload);
+    if (p && stateCurrent) {
+      const pending = this.#approvalWaits.get(p.sessionId);
+      const agent = typeof payload.agent_id === 'string' ? payload.agent_id : undefined;
+      const prompt = typeof payload.prompt_id === 'string' ? payload.prompt_id : undefined;
+      const tool = typeof payload.tool_use_id === 'string' ? payload.tool_use_id : undefined;
+      if (event === 'permission' && meaning.state === 'waiting for approval') {
+        const key = JSON.stringify([agent ?? null, tool ?? prompt ?? null]);
+        this.#approvalWaits.set(p.sessionId, { key, agent, prompt, tool, command: meaning.approvalCommand });
+        meaning.approvalPrompt = key;
+      } else if (pending) {
+        const sameOwner = pending.agent ? agent === pending.agent : !agent;
+        const resolved = event === 'session-end' || sameOwner && (
+          event === 'subagent-stop' || event === 'tool-done' && (pending.tool ? tool === pending.tool : !pending.prompt || prompt === pending.prompt)
+          || (event === 'turn-start' || event === 'turn-end') && (!pending.prompt || prompt === pending.prompt));
+        if (resolved) {
+          this.#approvalWaits.delete(p.sessionId);
+          if (!meaning.state) meaning.state = event === 'session-end' ? 'unknown' : 'busy';
+        }
+        else if (meaning.state) {
+          meaning.state = 'waiting for approval';
+          if (pending.command !== undefined) meaning.approvalCommand = pending.command;
+          meaning.approvalPrompt = pending.key;
+        }
+      }
+    }
     if (watched && meaning.state) this.#noteActivity(watched.sessionId);
     const dead = p && (p.host ?? 'local') !== 'local' && event === 'turn-end' && payload.hook_event_name === 'StopFailure' ? deadLoginReason(this.harness, payload) : undefined;
     if (p && dead) this.#host.loginDead?.(p.sessionId, {reason:dead});
@@ -898,6 +924,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#clearMissing(sessionId);
     for (const prompt of this.#prompts.get(sessionId)?.values() ?? []) prompt.resolve?.([]);
     this.#prompts.delete(sessionId);
+    this.#approvalWaits.delete(sessionId);
     const watched = this.#watched.get(sessionId);
     if (watched) this.#directoryState.watched.delete(watched);
     this.#watched.delete(sessionId);
@@ -1045,7 +1072,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
             this.#clearMissing(p.sessionId);
             this.#host.recordPid(p.sessionId, entry.pid, started ?? null, entry.sessionId, identity);
           }
-          if ((this.#activity.get(p.sessionId)?.revision ?? 0) <= d.observationRevision) this.#host.signal(p.sessionId, { state: stateOfAgent(entry), source: 'poll', at });
+          if ((this.#activity.get(p.sessionId)?.revision ?? 0) <= d.observationRevision) this.#host.signal(p.sessionId, { state: this.#approvalWaits.has(p.sessionId) ? 'waiting for approval' : stateOfAgent(entry), source: 'poll', at });
         }
       }));
       for (const p of [...this.#watched.values()]) {
@@ -1322,6 +1349,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#bridges.clear();
     for (const prompts of this.#prompts.values()) for (const prompt of prompts.values()) prompt.resolve?.([]);
     this.#prompts.clear();
+    this.#approvalWaits.clear();
     if (this.#timer) this.#clock.clearInterval(this.#timer);
     this.#timer = null;
     for (const timer of this.#reexecTimers.values()) this.#clock.clearTimeout(timer);
@@ -1351,6 +1379,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#bridges.clear();
     for (const prompts of this.#prompts.values()) for (const prompt of prompts.values()) prompt.resolve?.([]);
     this.#prompts.clear();
+    this.#approvalWaits.clear();
     if (this.#timer) this.#clock.clearInterval(this.#timer);
     this.#timer = null;
     for (const timer of this.#reexecTimers.values()) this.#clock.clearTimeout(timer);

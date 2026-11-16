@@ -24,7 +24,7 @@ import { literalRmRefusal } from './literal-rm.ts';
 export { HOOK_USAGE } from './usage.ts';
 
 /** The payload fields the hub reads; the prompt itself never leaves the session, only the message ids it carries. */
-const KEPT = ['session_id', 'prompt_id', 'hook_event_name', 'tool_name', 'notification_type', 'agent_id', 'agent_type', 'model', 'source', 'reason', 'message', 'usage', 'isAborted', 'ids', 'error', 'error_details', 'rateLimits'] as const;
+const KEPT = ['session_id', 'prompt_id', 'tool_use_id', 'hook_event_name', 'tool_name', 'notification_type', 'agent_id', 'agent_type', 'model', 'source', 'reason', 'message', 'usage', 'isAborted', 'ids', 'error', 'error_details', 'rateLimits'] as const;
 
 function flag(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);
