@@ -165,9 +165,10 @@ test('cland init on a repository with history: git status shows exactly the comm
   assert.equal(await readlink(join(root, '.claude', 'skills')), '../.agents/skills');
   await lstat(join(root, '.claude', 'skills', 'tdd', 'SKILL.md'));
 
-  // every managed file or block names the version that wrote it; the vendored skill files carry no mark of their
+  assert.match(await readFile(join(root, '.cland/.gitignore'), 'utf8'), /^# managed by cland — rewritten by cland;/);
+  // Other managed files or blocks name the version that wrote them; the vendored skill files carry no mark of their
   // own (upstream's text, byte for byte): the manifest's mark, checked here, covers every file it lists
-  for (const f of ['.cland/.gitignore', '.cland/config.toml', '.cland/roles.toml', '.cland/tasks/.gitkeep', 'AGENTS.md', 'docs/agents/domain.md', 'docs/agents/issue-tracker.md', 'docs/agents/triage-labels.md', '.agents/skills/.cland-manifest.json']) {
+  for (const f of ['.cland/config.toml', '.cland/roles.toml', '.cland/tasks/.gitkeep', 'AGENTS.md', 'docs/agents/domain.md', 'docs/agents/issue-tracker.md', 'docs/agents/triage-labels.md', '.agents/skills/.cland-manifest.json']) {
     assert.match(await readFile(join(root, f), 'utf8'), new RegExp(`managed by cland ${VERSION.replace(/\./g, '\\.')}`), f);
   }
   const settings = JSON.parse(await readFile(join(root, '.claude', 'settings.json'), 'utf8')) as { hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>> };
@@ -294,7 +295,6 @@ test('cland update after a version bump rewrites the managed parts to the new ve
   // the managed parts were rewritten; the skills' contents and roles.toml did not change
   assert.deepEqual(changed(before, after), [
     '.agents/skills/.cland-manifest.json',
-    '.cland/.gitignore',
     '.cland/config.toml',
     '.cland/tasks/.gitkeep',
     '.claude/settings.json',

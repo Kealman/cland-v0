@@ -21,7 +21,8 @@ export const MANAGED_BY = `managed by cland ${VERSION}`;
  * `.cland/.gitignore`: everything volatile, QA runs and their evidence (`qa/`, decision D14) included. What is
  * meant to be committed — `tasks/`, `roles.toml`, `crew.toml`, `config.toml`, `RULES.md` and this file — is deliberately absent.
  */
-export const GITIGNORE = `${MANAGED_MARK} ${VERSION} — rewritten by cland; remove this line to take the file over.
+// Startup refreshes this file: keep its bytes stable across version bumps so covers remain valid.
+export const GITIGNORE = `${MANAGED_MARK} — rewritten by cland; remove this line to take the file over.
 # Volatile hub state: never committed. tasks/, roles.toml, crew.toml, config.toml and RULES.md are.
 hub.db*
 hub.json

@@ -1,5 +1,5 @@
 // `cland init` and `cland update` (spec 4.9, decision #17): what cland provisions into a project, idempotently.
-// Every managed file or block carries "managed by cland <version>"; a file without the mark is the project's own and
+// Managed files carry "managed by cland" (usually with a version); a file without the mark is the project's own and
 // is never written. Running it again changes nothing; after a version change it rewrites the managed parts only.
 //
 //   .cland/.gitignore, config.toml, crew.toml, roles.toml and RULES.md (written once, then the human's), tasks/.gitkeep

@@ -8,6 +8,43 @@ import { join } from 'node:path';
 import { candidateTree, committedTree, committedTreeOrThrow } from '../src/verification-tree.ts';
 import { prepareMergeBatch } from '../src/hub/merge-batch-territory.ts';
 import { eventually, tempProject } from './harness.ts';
+import { GITIGNORE } from '../src/project.ts';
+
+test('startup preparation preserves cover identity across a version bump and retains ignore policy in identity', async t => {
+  // Native Git proves the committed and dirty cover identities; no hub process is needed.
+  assert.equal(await readFile(new URL('../../.cland/.gitignore', import.meta.url), 'utf8'), GITIGNORE,
+    'the repository commits its startup migration before taking covers');
+  const root = await tempProject(t);
+  const env = fixtureEnvironment(root, process.env);
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root, env: fixtureEnvironment(root, process.env), timeout: 5000 })).stdout.trim();
+  const prepare = async (version: string) => {
+    const result = await promisify(execFile)(process.execPath, ['--input-type=module', '-e',
+      `import { ensureSkeleton, layout, MANAGED_BY } from ${JSON.stringify(new URL('../src/project.ts', import.meta.url).href)}; ensureSkeleton(layout(process.cwd())); console.log(MANAGED_BY);`],
+    { cwd: root, env: fixtureEnvironment(root, process.env, { CLAND_VERSION_OVERRIDE: version }), timeout: 5000 });
+    assert.equal(result.stdout.trim(), `managed by cland ${version}`, 'the startup module loaded the requested fake version');
+  };
+  await git('init', '-q');
+  await prepare('0.4.0');
+  const ignore = join(root, '.cland/.gitignore');
+  const legacy = (await readFile(ignore, 'utf8')).replace(/^# managed by cland[^\n]*/, '# managed by cland 0.3.2 — rewritten by cland; remove this line to take the file over.');
+  await writeFile(ignore, legacy);
+  await prepare('0.4.0');
+  assert.equal(await readFile(ignore, 'utf8'), GITIGNORE, 'legacy headers migrate to the versionless policy once');
+  await git('add', '.');
+  await git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Prepared');
+  const head = await git('rev-parse', 'HEAD');
+  const tree = await candidateTree(root, head, env);
+  assert.ok(tree);
+  const before = await readFile(ignore, 'utf8');
+  await prepare('0.4.1');
+  assert.equal(await candidateTree(root, head, env), tree, 'a bumped startup leaves a clean covered candidate');
+  assert.equal(await readFile(ignore, 'utf8'), before, 'a version bump changes no managed ignore bytes');
+  await writeFile(ignore, `${before}new-policy/\n`);
+  assert.equal(await candidateTree(root, head, env), null, 'real ignore-policy changes dirty the candidate');
+  await git('add', '.');
+  await git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Policy');
+  assert.notEqual(await committedTree(root, await git('rev-parse', 'HEAD'), env), tree, 'committed policy changes still invalidate covers');
+});
 
 test('strict historical identity retains Git failure output while cache lookup returns null', async t => {
   // T3: real Git failure-output contract, without a fake executable.
