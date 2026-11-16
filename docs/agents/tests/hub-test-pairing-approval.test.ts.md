@@ -29,6 +29,10 @@ diagnostic. Old Inbox/hello compatibility remains in
 `hub/test/pairing-codes.test.ts`. Keep strict recorded Neovim consumers green when
 changing the request union.
 
+The known-invalid frame case checks `invalid_argument` and field names for code,
+messenger, user and topic title; code failures include the pairing alphabet and
+length. A truly unknown type retains its error-only refusal.
+
 Both numeric-persistence cases also retain the optional pairingApproved notification
 identity. The old Remote regression omits both pairing callbacks. Native Discord
 private approval edits use hub-test-discord-pairing.test.ts.md.

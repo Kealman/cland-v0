@@ -658,7 +658,7 @@ export async function connectSocket(path: string): Promise<SocketClient> {
 
 export type FrameClient = {
   /** Send a request (an id is added) and resolve with its `result` frame. */
-  request: (frame: { type: string } & Record<string, unknown>, timeoutMs?: number) => Promise<{ ok: boolean; value?: unknown; error?: string }>;
+  request: (frame: { type: string } & Record<string, unknown>, timeoutMs?: number) => Promise<{ ok: boolean; value?: unknown; error?: string; code?: string }>;
   /** Every frame that was not a result: the welcome, refusals, `message` and `delivery` events. */
   frames: Array<Record<string, unknown>>;
   /** The first frame (seen or yet to come) matching `predicate`. */

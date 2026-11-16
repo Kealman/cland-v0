@@ -7,6 +7,8 @@ import { HubClient, type ConnectionState } from '../src/spoke/hub-client.ts';
 import { FakeClock } from './fake-clock.ts';
 import { beforeDirectories } from './process-cleanup.ts';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
+import { realClock } from '../src/hub/clock.ts';
 
 /** Open a raw socket, send one frame, and collect what comes back until the hub closes it. */
 const rawExchange = async (url: string, frame: unknown): Promise<{ code: number; frames: Array<Record<string, unknown>> }> => {
@@ -80,6 +82,34 @@ test('hello is answered by welcome with the name and the presence table; an unkn
     assert.deepEqual((welcome.presence as Array<{ name: string }>).map((p) => p.name), ['raw']);
     ws.send(JSON.stringify({ type: 'claim_epic', id: 'r1', epic: 'x' }));
     assert.deepEqual(await next(), { type: 'result', id: 'r1', ok: false, error: 'unknown request type "claim_epic"' });
+    const reply = Promise.withResolvers<Record<string, unknown>>();
+    const onMessage = (data: WebSocket.RawData) => {
+      try {
+        const frame = JSON.parse(data.toString()) as Record<string, unknown>;
+        if (frame.type === 'result' && frame.id === 'invalid') reply.resolve(frame);
+      } catch (error) { reply.reject(error); }
+    };
+    const onError = (error: Error) => reply.reject(error);
+    const onClose = (code: number) => reply.reject(new Error(`incomplete status reply: socket closed ${code}`));
+    ws.on('message', onMessage);
+    ws.once('error', onError);
+    ws.once('close', onClose);
+    const observed = within(reply.promise, 2000, realClock,
+      () => new Error('incomplete status reply: no matching result within 2000 ms'));
+    let refused: Record<string, unknown>;
+    try {
+      ws.send(JSON.stringify({ type: 'status', id: 'invalid', text: 42 }), error => { if (error) reply.reject(error); });
+      refused = await observed;
+    } finally {
+      reply.reject(new Error('status reply observer cancelled'));
+      ws.off('message', onMessage);
+      ws.off('error', onError);
+      ws.off('close', onClose);
+      await observed.catch(() => {});
+    }
+    assert.equal(refused.ok, false);
+    assert.equal(refused.code, 'invalid_argument');
+    assert.match(String(refused.error), /text/);
     ws.send(JSON.stringify({ type: 'ping', id: 'r2' }));
     assert.deepEqual(await next(), { type: 'result', id: 'r2', ok: true, value: { pong: true } });
     ws.close();

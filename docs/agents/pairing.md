@@ -45,6 +45,10 @@ in single mode or `pairing.approve {messenger, code, user}` in users mode from a
 connection on the local Unix socket, or Neovim on parent-owned stdio. It returns `{pairing}` with numeric ids as
 strings and the display name. An attributed shell, other client, web connection
 or remote cannot grant access. `cland remote approve <messenger> <code>` prints the paired name and id.
+The CLI checks the code before connecting: exactly 8 uppercase characters from
+`A-H`, `J-N`, `P-Z` and `2-9`. A malformed `pairing.approve` frame returns
+`invalid_argument` naming the field and, for `code`, its format. Unknown frame
+types retain their `unknown request type` error; older error-only replies remain supported.
 `cland remote unpair <messenger>` forgets that messenger’s binding in single mode.
 In users mode both approve and unpair require `--user <name>`; unpair removes
 only that user’s binding and omission refuses with the paired user names. Remotes receive neither pairing

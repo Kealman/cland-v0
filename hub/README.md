@@ -1,6 +1,8 @@
 # Hub documentation
 
 Subsystem reference and implementation guidance live in `docs/hub/`.
+The [remote command reference](../docs/hub/remote-commands.md) describes local
+approval-code validation and known-invalid versus unknown request refusals.
 The [closed-item wording guard](../docs/hub/running.md) covers Markdown docs and
 site MDX prose against the candidate checkout's tracker.
 Nightly soak deadline admission and timeout execution inventories are described

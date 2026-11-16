@@ -1,4 +1,5 @@
 import { parsePoolName } from './host/pool-name.ts';
+import { isPairingCode, PAIRING_CODE_FORMAT } from './remote/pairing-code.ts';
 // The hub ↔ spoke protocol. One integer version, bumped on any incompatible change.
 // Frames travel as JSON text over one WebSocket per spoke.
 
@@ -468,73 +469,142 @@ export function isAck(f: Record<string, unknown>): f is Ack {
   return f.type === 'ack' && typeof f.id === 'string';
 }
 
-export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
-  if (f.type === 'suite.start') return isClientRequest(f);
-  if (typeof f.id !== 'string') return false;
-  switch (f.type) {
-    case 'rule.add':
-    case 'rule.edit':
-    case 'rule.retire':
-    case 'rule.list':
-    case 'rule.show':
-      return isClientRequest(f);
-    case 'event.subscribe':
-    case 'event.unsubscribe':
-    case 'event.subscriptions':
-      return true;
-    case 'merge.queue':
-      return true;
-    case 'merge':
-      return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string') && (f.cancel === undefined || typeof f.cancel === 'boolean');
-    case 'artifact.create':
-    case 'artifact.list':
-      return isClientRequest(f);
-    case 'artifact.keep':
-    case 'artifact.archive':
-    case 'artifact.move':
-    case 'artifact.promote':
-      return true;
-    case 'verification.decline':
-      return typeof f.request === 'string' && typeof f.reason === 'string';
-    case 'who':
-    case 'ping':
-      return true;
-    case 'history':
-      return (f.limit === undefined || typeof f.limit === 'number') && (f.with === undefined || typeof f.with === 'string') && (f.topic === undefined || typeof f.topic === 'string') && isAgentsHistoryFilter(f);
-    case 'role.handover':
-      return typeof f.to === 'string' && (typeof f.note === 'string' || isObject(f.note) || f.note === undefined) && (f.then === undefined || typeof f.then === 'string');
-    case 'role.state':
-      return f.role === undefined || typeof f.role === 'string';
-    case 'status':
-      return typeof f.text === 'string';
-    case 'rename':
-      return typeof f.name === 'string';
-    case 'topic.create':
-      return typeof f.title === 'string' && (f.item === undefined || typeof f.item === 'string');
-    case 'resolve':
-      return typeof f.topic === 'string';
-    case 'ask.forward':
-      return typeof f.ask === 'string';
-    case 'ask.answer':
-      return typeof f.ask === 'string' && typeof f.text === 'string';
-    case 'ask':
-      return (
-        typeof f.topic === 'string' &&
-        typeof f.question === 'string' &&
-        Array.isArray(f.options) &&
-        f.options.every((o) => typeof o === 'string') &&
-        (f.free === undefined || typeof f.free === 'boolean')
-      );
-    case 'send':
-      return (
-        (f.kind === undefined || isSendKind(f.kind)) &&
-        (f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string'))) &&
-        typeof f.text === 'string' &&
-        (f.replyTo === undefined || typeof f.replyTo === 'string') &&
-        (f.topic === undefined || typeof f.topic === 'string')
-      );
-    default:
-      return false;
+class InvalidRequestField extends Error {
+  readonly field: string;
+  constructor(field: string) { super(field); this.field = field; }
+}
+
+function invalid(field: string): never { throw new InvalidRequestField(field); }
+
+/** Uses the same validation as admission; no second request-type or field registry. */
+export function requestValidationFailure(f: Record<string, unknown>, spoke = false): Extract<HubFrame, { type: 'result'; ok: false }> {
+  let field = 'type';
+  const valid = (spoke ? isSpokeRequest : isClientRequest)({ ...f, id: typeof f.id === 'string' ? f.id : '?' }, value => { field = value; });
+  if (valid || field !== 'type' && typeof f.id !== 'string') field = 'id';
+  const id = typeof f.id === 'string' ? f.id : '?';
+  if (field === 'type') return { type: 'result', id, ok: false, error: `unknown request type "${String(f.type)}"` };
+  const error = f.type === 'pairing.approve' && field === 'code' ? PAIRING_CODE_FORMAT : `invalid ${field} for ${String(f.type)}`;
+  return { type: 'result', id, ok: false, code: 'invalid_argument', error };
+}
+
+export function isSpokeRequest(f: Record<string, unknown>, issue?: (field: string) => void): f is SpokeRequest {
+  try {
+    if (f.type === 'suite.start') return isClientRequest(f, issue);
+    if (typeof f.id !== 'string') return invalid('id');
+    switch (f.type) {
+      case 'rule.add':
+      case 'rule.edit':
+      case 'rule.retire':
+      case 'rule.list':
+      case 'rule.show':
+        return isClientRequest(f, issue);
+      case 'event.subscribe':
+      case 'event.unsubscribe':
+      case 'event.subscriptions':
+        return true;
+      case 'merge.queue':
+        return true;
+      case 'merge':
+        {
+          if (!(typeof f.item === 'string')) invalid('item');
+          if (!((f.override === undefined || typeof f.override === 'string'))) invalid('override');
+          if (!((f.cancel === undefined || typeof f.cancel === 'boolean'))) invalid('cancel');
+          return true;
+        }
+      case 'artifact.create':
+      case 'artifact.list':
+        return isClientRequest(f, issue);
+      case 'artifact.keep':
+      case 'artifact.archive':
+      case 'artifact.move':
+      case 'artifact.promote':
+        return true;
+      case 'verification.decline':
+        {
+          if (!(typeof f.request === 'string')) invalid('request');
+          if (!(typeof f.reason === 'string')) invalid('reason');
+          return true;
+        }
+      case 'who':
+      case 'ping':
+        return true;
+      case 'history':
+        {
+          if (!((f.limit === undefined || typeof f.limit === 'number'))) invalid('limit');
+          if (!((f.with === undefined || typeof f.with === 'string'))) invalid('with');
+          if (!((f.topic === undefined || typeof f.topic === 'string'))) invalid('topic');
+          if (!(isAgentsHistoryFilter(f))) invalid('item/session');
+          return true;
+        }
+      case 'role.handover':
+        {
+          if (!(typeof f.to === 'string')) invalid('to');
+          if (!((typeof f.note === 'string' || isObject(f.note) || f.note === undefined))) invalid('note');
+          if (!((f.then === undefined || typeof f.then === 'string'))) invalid('then');
+          return true;
+        }
+      case 'role.state':
+        {
+          if (!(f.role === undefined || typeof f.role === 'string')) invalid('role');
+          return true;
+        }
+      case 'status':
+        {
+          if (!(typeof f.text === 'string')) invalid('text');
+          return true;
+        }
+      case 'rename':
+        {
+          if (!(typeof f.name === 'string')) invalid('name');
+          return true;
+        }
+      case 'topic.create':
+        {
+          if (!(typeof f.title === 'string')) invalid('title');
+          if (!((f.item === undefined || typeof f.item === 'string'))) invalid('item');
+          return true;
+        }
+      case 'resolve':
+        {
+          if (!(typeof f.topic === 'string')) invalid('topic');
+          return true;
+        }
+      case 'ask.forward':
+        {
+          if (!(typeof f.ask === 'string')) invalid('ask');
+          return true;
+        }
+      case 'ask.answer':
+        {
+          if (!(typeof f.ask === 'string')) invalid('ask');
+          if (!(typeof f.text === 'string')) invalid('text');
+          return true;
+        }
+      case 'ask':
+        {
+          if (!(typeof f.topic === 'string')) invalid('topic');
+          if (!(typeof f.question === 'string')) invalid('question');
+          if (!(Array.isArray(f.options))) invalid('options');
+          if (!(f.options.every((o) => typeof o === 'string'))) invalid('options');
+          if (!((f.free === undefined || typeof f.free === 'boolean'))) invalid('free');
+          return true;
+        }
+      case 'send':
+        {
+          if (!((f.kind === undefined || isSendKind(f.kind)))) invalid('kind');
+          if (!((f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string'))))) invalid('to');
+          if (!(typeof f.text === 'string')) invalid('text');
+          if (!((f.replyTo === undefined || typeof f.replyTo === 'string'))) invalid('replyTo');
+          if (!((f.topic === undefined || typeof f.topic === 'string'))) invalid('topic');
+          return true;
+        }
+      default:
+        return invalid('type');
+    }
+  } catch (error) {
+    if (!(error instanceof InvalidRequestField)) throw error;
+    issue?.(error.field);
+    return false;
   }
 }
 
@@ -1042,206 +1112,494 @@ export function isClientHello(f: Record<string, unknown>): f is ClientHello {
   return f.type === 'hello' && typeof f.protocol === 'number' && (f.secret === undefined || typeof f.secret === 'string') && typeof f.client === 'string' && (f.features === undefined || Array.isArray(f.features) && f.features.every(feature => typeof feature === 'string')) && (f.resume === undefined || isObject(f.resume) && typeof f.resume.epoch === 'string' && Number.isSafeInteger(f.resume.seq) && Number(f.resume.seq) >= 0);
 }
 
-export function isClientRequest(f: Record<string, unknown>): f is ClientRequest {
-  if (typeof f.id !== 'string') return false;
-  switch (f.type) {
-    case 'resume':
-      return typeof f.epoch === 'string' && Number.isSafeInteger(f.seq) && Number(f.seq) >= 0;
-    case 'demo.start':
-      return typeof f.epic === 'string' && (f.commit === undefined || typeof f.commit === 'string');
-    case 'demo.exec':
-      return typeof f.epic === 'string' && Array.isArray(f.command) && f.command.length > 0 && f.command.every(c => typeof c === 'string' && !c.includes('\0'));
-    case 'demo.stop':
-    case 'demo.status':
-      return typeof f.epic === 'string' && (f.commit === undefined || typeof f.commit === 'string');
-    case 'visibility.set':
-      return typeof f.surface === 'string' && ['topics', 'sessions', 'artifacts'].includes(f.surface) && typeof f.target === 'string' && f.target.length > 0 && (f.mode === 'pin' || f.mode === 'mute');
-    case 'suite.slot':
-      if (f.check !== undefined && f.check !== true) return false;
-      if (f.check === true) {
-        const lease = f.lease as Record<string, unknown> | undefined;
-        return lease === undefined || typeof lease === 'object' && lease !== null && Object.hasOwn(lease, 'pid') && Number.isSafeInteger(lease.pid) && Number(lease.pid) > 0 && Object.hasOwn(lease, 'started') && typeof lease.started === 'string' && Object.hasOwn(lease, 'token') && typeof lease.token === 'string' && lease.token.length > 0;
-      }
-      // Normal package runners reserve their existing human slot.
-    case 'suite.forced':
-      return ['full', 'hub-only', 'hub-selected', 'nvim-only', 'web-only'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.head === 'string' && Number.isSafeInteger(f.pid) && Number(f.pid) > 0 && typeof f.token === 'string' && f.token.length > 0;
-    case 'suite.start':
-      return suiteStartIssues(f).length === 0;
-    case 'suite.cancel':
-      return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
-    case 'suite.classify':
-      return typeof f.suite === 'string' && f.suite.trim().length > 0 && f.cause === 'load-flake' && typeof f.note === 'string' && f.note.trim().length > 0;
-    case 'models.list':
-      return ['claude-code', 'codex', 'opencode'].includes(String(f.harness)) && (f.account === undefined || typeof f.account === 'string' && f.account.length > 0) && (f.refresh === undefined || typeof f.refresh === 'boolean');
-    case 'account.clear':
-      return typeof f.account === 'string' && f.account.length > 0;
-    case 'account.poll':
-    case 'account.list':
-    case 'suite.queue':
-      return true;
-    case 'push':
-    case 'sync':
-      return true;
-    case 'publish':
-      return typeof f.branch === 'string' && typeof f.item === 'string' && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
-    case 'release.preflight':
-    case 'release':
-      return (f.version === undefined || typeof f.version === 'string') && (f.item === undefined || typeof f.item === 'string') && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
-    case 'merge.queue':
-      return true;
-    case 'merge':
-      return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string') && (f.cancel === undefined || typeof f.cancel === 'boolean');
-    case 'artifact.url':
-    case 'artifact.delete':
-      return typeof f.artifact === 'string' && /^A-[1-9][0-9]*$/.test(f.artifact);
-    case 'artifact.list':
-      return (f.before === undefined || typeof f.before === 'string') && (f.topic === undefined || typeof f.topic === 'string') && (f.artifact === undefined || typeof f.artifact === 'string');
-    case 'artifact.create':
-    case 'artifact.keep':
-    case 'artifact.archive':
-    case 'artifact.move':
-    case 'prompt.send':
-    case 'artifact.promote':
-      return true;
-    case 'rule.add':
-      return typeof f.text === 'string' && typeof f.scope === 'string' && typeof f.reason === 'string' && (f.title === undefined || typeof f.title === 'string');
-    case 'rule.edit':
-      return Number.isSafeInteger(f.number) && Number(f.number) > 0 && ['title', 'text', 'scope', 'reason'].every(key => f[key] === undefined || typeof f[key] === 'string');
-    case 'rule.retire':
-      return Number.isSafeInteger(f.number) && Number(f.number) > 0 && typeof f.reason === 'string';
-    case 'rule.show':
-      return Number.isSafeInteger(f.number) && Number(f.number) > 0;
-    case 'rule.list':
-      return (f.all === undefined || typeof f.all === 'boolean') && (f.role === undefined || typeof f.role === 'string');
-    case 'config.set':
-    case 'crew.set':
-      return typeof f.key === 'string' && f.value !== undefined;
-    case 'user.add':
-      return typeof f.name === 'string' && (f.displayName === undefined || typeof f.displayName === 'string');
-    case 'user.invite':
-      return typeof f.name === 'string';
-    case 'auth.mode':
-      return f.mode === 'users';
-    case 'auth.reset':
-      return true;
-    case 'user.list':
-      return f.setup === undefined || typeof f.setup === 'boolean';
-    case 'web.revoke':
-      return typeof f.session === 'string' && f.session.length > 0;
-    case 'task.migrate':
-      return f.dryRun === true;
-    case 'crew.show':
-    case 'executor.status':
-    case 'executor.reap':
-    case 'hub.subscriptions':
-      return (f.history === undefined || typeof f.history === 'boolean') && (f.flushLogs === undefined || typeof f.flushLogs === 'boolean');
-    case 'hub.status':
-      return (f.history === undefined || typeof f.history === 'boolean') && (f.flushLogs === undefined || typeof f.flushLogs === 'boolean') && (f.releaseTools === undefined || typeof f.releaseTools === 'boolean');
-    case 'web.link':
-      return f.qr === undefined || typeof f.qr === 'boolean';
-    case 'remote.test':
-    case 'remote.unpair':
-      return (f.messenger === 'telegram' || f.messenger === 'discord') && (f.user === undefined || typeof f.user === 'string');
-    case 'login.add':
-      return typeof f.harness === 'string' && ['claude-code','codex','opencode'].includes(f.harness) && (f.kind === undefined || f.kind === 'disk' || f.kind === 'key') && ['name','account','pool'].every(key => f[key] === undefined || typeof f[key] === 'string');
-    case 'login.remove':
-    case 'login.snapshot':
-    case 'login.signin':
-      return typeof f.name === 'string' && /^[a-z0-9][a-z0-9-]{0,31}$/.test(f.name);
-    case 'login.set':
-      return typeof f.name === 'string' && /^[a-z0-9][a-z0-9-]{0,31}$/.test(f.name) && typeof f.exclusive === 'boolean';
-    case 'login.signed-in':
-      return typeof f.name === 'string' && (f.code === null || Number.isSafeInteger(f.code) && Number(f.code) >= 0 && Number(f.code) <= 255);
-    case 'login.list': return f.name === undefined || typeof f.name === 'string' && /^[a-z0-9][a-z0-9-]{0,31}$/.test(f.name);
-    case 'host.providers': return f.provider === undefined || f.provider === 'digitalocean';
-    case 'host.status': return f.roleLogins === undefined || typeof f.roleLogins === 'boolean';
-    case 'host.list': return true;
-    case 'host.create':
-    case 'host.prepare':
-      if (f.pool === undefined) return true;
-      if (typeof f.pool !== 'string') return false;
-      try { parsePoolName(f.pool); return true; } catch { return false; }
-    case 'host.stop':
-    case 'host.destroy':
-    case 'host.revoke':
-      return typeof f.host === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(f.host) && f.host !== 'local';
-    case 'pairing.approve':
-      return (f.messenger === 'telegram' || f.messenger === 'discord') && typeof f.code === 'string' && /^[A-HJ-NP-Z2-9]{8}$/.test(f.code) && (f.user === undefined || typeof f.user === 'string');
-    case 'remote.status':
-    case 'web.session':
-    case 'web.sessions':
-    case 'hub.stop':
-    case 'hub.reload':
-    case 'topic.list':
-    case 'role.list':
-      return true;
-    case 'executor.prepare':
-      return f.report === undefined || typeof f.report === 'string';
-    case 'executor.retire-legacy':
-      return typeof f.confirmRegisteredHubs === 'boolean';
-    case 'inbox.list':
-      return f.archive === undefined || typeof f.archive === 'boolean';
-    case 'inbox.decline':
-      return typeof f.request === 'string';
-    case 'inbox.read':
-      return typeof f.message === 'string';
-    case 'subscribe':
-      return isEventsFilter(f.filter);
-    case 'events.list':
-      return (f.before === undefined || (typeof f.before === 'string' && (/^(0|[1-9]\d*)$/.test(f.before) && Number.isSafeInteger(Number(f.before)) || /^events:[A-Za-z0-9_-]+$/.test(f.before)))) && (f.limit === undefined || (typeof f.limit === 'number' && Number.isInteger(f.limit) && f.limit > 0)) && isEventsFilter(f.filter);
-    case 'worktree.list':
-      return true;
-    case 'worktree.prune':
-      return (f.items === undefined || (Array.isArray(f.items) && f.items.every((i) => typeof i === 'string'))) && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
-    case 'approval.answer':
-      return typeof f.approval === 'string' && ['once', 'always', 'deny'].includes(String(f.choice)) && (f.note === undefined || typeof f.note === 'string');
-    case 'topic.answer':
-      return typeof f.ask === 'string' && (f.declined === undefined || typeof f.declined === 'boolean') && (f.reason === undefined || typeof f.reason === 'string') && (f.option === undefined || typeof f.option === 'number') && (f.text === undefined || typeof f.text === 'string') && (f.as === undefined || isObject(f.as) && typeof f.as.name === 'string' && (f.as.sessionId === undefined || typeof f.as.sessionId === 'string') && (f.as.shell === undefined || typeof f.as.shell === 'boolean'));
-    case 'role.launch':
-      return typeof f.role === 'string' && isObject(f.fields) && Object.values(f.fields).every(value => typeof value === 'string');
-    case 'role.set':
-      return typeof f.session === 'string' && typeof f.role === 'string' && (f.note === undefined || typeof f.note === 'string' || isObject(f.note)) && (f.move === undefined || typeof f.move === 'boolean') && (f.item === undefined || typeof f.item === 'string');
-    case 'role.state':
-      return typeof f.role === 'string' && (f.session === undefined || typeof f.session === 'string');
-    case 'role.clear':
-      return typeof f.session === 'string';
-    case 'session.history':
-      return typeof f.session === 'string' && f.session.length > 0 && (f.limit === undefined || typeof f.limit === 'number' && Number.isSafeInteger(f.limit) && f.limit > 0) && (f.before === undefined || isMessageSeq(f.before));
-    case 'topic.history':
-      return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number') && (f.before === undefined || typeof f.before === 'string' || isMessageSeq(f.before)) && (f.after === undefined || isMessageSeq(f.after)) && (f.before === undefined || f.after === undefined) && isAgentsHistoryFilter(f);
-    case 'topic.withdraw':
-      return typeof f.topic === 'string' && typeof f.message === 'string';
-    case 'artifact.upload':
-      if (f.artifacts !== undefined && (!Array.isArray(f.artifacts) || !f.artifacts.every(id => typeof id === 'string'))) return false;
-      return typeof f.topic === 'string' && (f.caption === undefined || typeof f.caption === 'string') && Array.isArray(f.files) && (f.kind === undefined || f.kind === 'message' || f.kind === 'decision' || f.kind === 'question') && (f.to === undefined || Array.isArray(f.to) && f.to.every(t => typeof t === 'string')) && (f.replyTo === undefined || typeof f.replyTo === 'string');
-    case 'topic.send':
-      return (
-        typeof f.topic === 'string' &&
-        typeof f.text === 'string' &&
-        (f.kind === undefined || f.kind === 'message' || f.kind === 'decision' || f.kind === 'question') &&
-        (f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string'))) &&
-        (f.replyTo === undefined || typeof f.replyTo === 'string')
-      );
-    case 'hygiene.unmute':
-      return typeof f.a === 'string' && typeof f.b === 'string';
-    case 'topic.rename':
-      return typeof f.topic === 'string' && typeof f.title === 'string';
-    case 'topic.delete':
-    case 'topic.close':
-    case 'topic.resolve':
-      return typeof f.topic === 'string';
-    case 'topic.create':
-      return typeof f.title === 'string' && (f.item === undefined || typeof f.item === 'string');
-    case 'marks.get':
-      return true;
-    case 'marks.set':
-      return (f.events === undefined || typeof f.events === 'string' && Number.isFinite(Date.parse(f.events)))
-        && (f.plans === undefined || isObject(f.plans) && Object.values(f.plans).every(v => typeof v === 'string'))
-        && (f.import === undefined || typeof f.import === 'boolean');
-    case 'topic.read':
-      return typeof f.topic === 'string' && (f.upTo === undefined || typeof f.upTo === 'string');
-    default:
-      return false;
+export function isClientRequest(f: Record<string, unknown>, issue?: (field: string) => void): f is ClientRequest {
+  try {
+    if (typeof f.id !== 'string') return invalid('id');
+    switch (f.type) {
+      case 'resume':
+        {
+          if (!(typeof f.epoch === 'string')) invalid('epoch');
+          if (!(Number.isSafeInteger(f.seq))) invalid('seq');
+          if (!(Number(f.seq) >= 0)) invalid('seq');
+          return true;
+        }
+      case 'demo.start':
+        {
+          if (!(typeof f.epic === 'string')) invalid('frame.epic');
+          if (!((f.commit === undefined || typeof f.commit === 'string'))) invalid('commit');
+          return true;
+        }
+      case 'demo.exec':
+        {
+          if (!(typeof f.epic === 'string')) invalid('frame.epic');
+          if (!(Array.isArray(f.command))) invalid('command');
+          if (!(f.command.length > 0)) invalid('command');
+          if (!(f.command.every(c => typeof c === 'string' && !c.includes('\0')))) invalid('command');
+          return true;
+        }
+      case 'demo.stop':
+      case 'demo.status':
+        {
+          if (!(typeof f.epic === 'string')) invalid('frame.epic');
+          if (!((f.commit === undefined || typeof f.commit === 'string'))) invalid('commit');
+          return true;
+        }
+      case 'visibility.set':
+        {
+          if (!(typeof f.surface === 'string')) invalid('surface');
+          if (!(['topics', 'sessions', 'artifacts'].includes(f.surface))) invalid('surface');
+          if (!(typeof f.target === 'string')) invalid('target');
+          if (!(f.target.length > 0)) invalid('target');
+          if (!((f.mode === 'pin' || f.mode === 'mute'))) invalid('mode');
+          return true;
+        }
+      case 'suite.slot':
+        if (f.check !== undefined && f.check !== true) return invalid('check');
+        if (f.check === true) {
+          const lease = f.lease as Record<string, unknown> | undefined;
+          {
+            if (!(lease === undefined || typeof lease === 'object' && lease !== null && Object.hasOwn(lease, 'pid') && Number.isSafeInteger(lease.pid) && Number(lease.pid) > 0 && Object.hasOwn(lease, 'started') && typeof lease.started === 'string' && Object.hasOwn(lease, 'token') && typeof lease.token === 'string' && lease.token.length > 0)) invalid('lease');
+            return true;
+          }
+        }
+        // Normal package runners reserve their existing human slot.
+      case 'suite.forced':
+        {
+          if (!(['full', 'hub-only', 'hub-selected', 'nvim-only', 'web-only'].includes(String(f.mode)))) invalid('mode');
+          if (!(typeof f.cwd === 'string')) invalid('cwd');
+          if (!(typeof f.head === 'string')) invalid('head');
+          if (!(Number.isSafeInteger(f.pid))) invalid('pid');
+          if (!(Number(f.pid) > 0)) invalid('pid');
+          if (!(typeof f.token === 'string')) invalid('token');
+          if (!(f.token.length > 0)) invalid('token');
+          return true;
+        }
+      case 'suite.start':
+        { const issues = suiteStartIssues(f); if (issues.length) invalid(issues.join('; ')); return true; }
+      case 'suite.cancel':
+        {
+          if (!(f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0))) invalid('suite');
+          return true;
+        }
+      case 'suite.classify':
+        {
+          if (!(typeof f.suite === 'string')) invalid('suite');
+          if (!(f.suite.trim().length > 0)) invalid('suite');
+          if (!(f.cause === 'load-flake')) invalid('cause');
+          if (!(typeof f.note === 'string')) invalid('note');
+          if (!(f.note.trim().length > 0)) invalid('note');
+          return true;
+        }
+      case 'models.list':
+        {
+          if (!(['claude-code', 'codex', 'opencode'].includes(String(f.harness)))) invalid('harness');
+          if (!((f.account === undefined || typeof f.account === 'string' && f.account.length > 0))) invalid('account');
+          if (!((f.refresh === undefined || typeof f.refresh === 'boolean'))) invalid('refresh');
+          return true;
+        }
+      case 'account.clear':
+        {
+          if (!(typeof f.account === 'string')) invalid('account');
+          if (!(f.account.length > 0)) invalid('account');
+          return true;
+        }
+      case 'account.poll':
+      case 'account.list':
+      case 'suite.queue':
+        return true;
+      case 'push':
+      case 'sync':
+        return true;
+      case 'publish':
+        {
+          if (!(typeof f.branch === 'string')) invalid('branch');
+          if (!(typeof f.item === 'string')) invalid('item');
+          if (!((f.dryRun === undefined || typeof f.dryRun === 'boolean'))) invalid('dryRun');
+          return true;
+        }
+      case 'release.preflight':
+      case 'release':
+        {
+          if (!((f.version === undefined || typeof f.version === 'string'))) invalid('version');
+          if (!((f.item === undefined || typeof f.item === 'string'))) invalid('item');
+          if (!((f.dryRun === undefined || typeof f.dryRun === 'boolean'))) invalid('dryRun');
+          return true;
+        }
+      case 'merge.queue':
+        return true;
+      case 'merge':
+        {
+          if (!(typeof f.item === 'string')) invalid('item');
+          if (!((f.override === undefined || typeof f.override === 'string'))) invalid('override');
+          if (!((f.cancel === undefined || typeof f.cancel === 'boolean'))) invalid('cancel');
+          return true;
+        }
+      case 'artifact.url':
+      case 'artifact.delete':
+        {
+          if (!(typeof f.artifact === 'string')) invalid('artifact');
+          if (!(/^A-[1-9][0-9]*$/.test(f.artifact))) invalid('artifact');
+          return true;
+        }
+      case 'artifact.list':
+        {
+          if (!((f.before === undefined || typeof f.before === 'string'))) invalid('before');
+          if (!((f.topic === undefined || typeof f.topic === 'string'))) invalid('topic');
+          if (!((f.artifact === undefined || typeof f.artifact === 'string'))) invalid('artifact');
+          return true;
+        }
+      case 'artifact.create':
+      case 'artifact.keep':
+      case 'artifact.archive':
+      case 'artifact.move':
+      case 'prompt.send':
+      case 'artifact.promote':
+        return true;
+      case 'rule.add':
+        {
+          if (!(typeof f.text === 'string')) invalid('text');
+          if (!(typeof f.scope === 'string')) invalid('scope');
+          if (!(typeof f.reason === 'string')) invalid('reason');
+          if (!((f.title === undefined || typeof f.title === 'string'))) invalid('title');
+          return true;
+        }
+      case 'rule.edit':
+        {
+          if (!(Number.isSafeInteger(f.number))) invalid('number');
+          if (!(Number(f.number) > 0)) invalid('number');
+          if (!(['title', 'text', 'scope', 'reason'].every(key => f[key] === undefined || typeof f[key] === 'string'))) invalid('title/text/scope/reason');
+          return true;
+        }
+      case 'rule.retire':
+        {
+          if (!(Number.isSafeInteger(f.number))) invalid('number');
+          if (!(Number(f.number) > 0)) invalid('number');
+          if (!(typeof f.reason === 'string')) invalid('reason');
+          return true;
+        }
+      case 'rule.show':
+        {
+          if (!(Number.isSafeInteger(f.number))) invalid('number');
+          if (!(Number(f.number) > 0)) invalid('number');
+          return true;
+        }
+      case 'rule.list':
+        {
+          if (!((f.all === undefined || typeof f.all === 'boolean'))) invalid('all');
+          if (!((f.role === undefined || typeof f.role === 'string'))) invalid('role');
+          return true;
+        }
+      case 'config.set':
+      case 'crew.set':
+        {
+          if (!(typeof f.key === 'string')) invalid('key');
+          if (!(f.value !== undefined)) invalid('value');
+          return true;
+        }
+      case 'user.add':
+        {
+          if (!(typeof f.name === 'string')) invalid('name');
+          if (!((f.displayName === undefined || typeof f.displayName === 'string'))) invalid('displayName');
+          return true;
+        }
+      case 'user.invite':
+        {
+          if (!(typeof f.name === 'string')) invalid('name');
+          return true;
+        }
+      case 'auth.mode':
+        {
+          if (!(f.mode === 'users')) invalid('mode');
+          return true;
+        }
+      case 'auth.reset':
+        return true;
+      case 'user.list':
+        {
+          if (!(f.setup === undefined || typeof f.setup === 'boolean')) invalid('setup');
+          return true;
+        }
+      case 'web.revoke':
+        {
+          if (!(typeof f.session === 'string')) invalid('session');
+          if (!(f.session.length > 0)) invalid('session');
+          return true;
+        }
+      case 'task.migrate':
+        {
+          if (!(f.dryRun === true)) invalid('dryRun');
+          return true;
+        }
+      case 'crew.show':
+      case 'executor.status':
+      case 'executor.reap':
+      case 'hub.subscriptions':
+        {
+          if (!((f.history === undefined || typeof f.history === 'boolean'))) invalid('history');
+          if (!((f.flushLogs === undefined || typeof f.flushLogs === 'boolean'))) invalid('flushLogs');
+          return true;
+        }
+      case 'hub.status':
+        {
+          if (!((f.history === undefined || typeof f.history === 'boolean'))) invalid('history');
+          if (!((f.flushLogs === undefined || typeof f.flushLogs === 'boolean'))) invalid('flushLogs');
+          if (!((f.releaseTools === undefined || typeof f.releaseTools === 'boolean'))) invalid('releaseTools');
+          return true;
+        }
+      case 'web.link':
+        {
+          if (!(f.qr === undefined || typeof f.qr === 'boolean')) invalid('qr');
+          return true;
+        }
+      case 'remote.test':
+      case 'remote.unpair':
+        {
+          if (!((f.messenger === 'telegram' || f.messenger === 'discord'))) invalid('messenger');
+          if (!((f.user === undefined || typeof f.user === 'string'))) invalid('user');
+          return true;
+        }
+      case 'login.add':
+        {
+          if (!(typeof f.harness === 'string')) invalid('harness');
+          if (!(['claude-code','codex','opencode'].includes(f.harness))) invalid('harness');
+          if (!((f.kind === undefined || f.kind === 'disk' || f.kind === 'key'))) invalid('kind');
+          if (!(['name','account','pool'].every(key => f[key] === undefined || typeof f[key] === 'string'))) invalid('name/account/pool');
+          return true;
+        }
+      case 'login.remove':
+      case 'login.snapshot':
+      case 'login.signin':
+        {
+          if (!(typeof f.name === 'string')) invalid('name');
+          if (!(/^[a-z0-9][a-z0-9-]{0,31}$/.test(f.name))) invalid('name');
+          return true;
+        }
+      case 'login.set':
+        {
+          if (!(typeof f.name === 'string')) invalid('name');
+          if (!(/^[a-z0-9][a-z0-9-]{0,31}$/.test(f.name))) invalid('name');
+          if (!(typeof f.exclusive === 'boolean')) invalid('exclusive');
+          return true;
+        }
+      case 'login.signed-in':
+        {
+          if (!(typeof f.name === 'string')) invalid('name');
+          if (!((f.code === null || Number.isSafeInteger(f.code) && Number(f.code) >= 0 && Number(f.code) <= 255))) invalid('code');
+          return true;
+        }
+      case 'login.list': { if (!(f.name === undefined || typeof f.name === 'string' && /^[a-z0-9][a-z0-9-]{0,31}$/.test(f.name))) invalid('name'); return true; }
+      case 'host.providers': { if (!(f.provider === undefined || f.provider === 'digitalocean')) invalid('provider'); return true; }
+      case 'host.status': { if (!(f.roleLogins === undefined || typeof f.roleLogins === 'boolean')) invalid('roleLogins'); return true; }
+      case 'host.list': return true;
+      case 'host.create':
+      case 'host.prepare':
+        if (f.pool === undefined) return true;
+        if (typeof f.pool !== 'string') return invalid('pool');
+        try { parsePoolName(f.pool); return true; } catch { return invalid('pool'); }
+      case 'host.stop':
+      case 'host.destroy':
+      case 'host.revoke':
+        {
+          if (!(typeof f.host === 'string')) invalid('host');
+          if (!(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(f.host))) invalid('host');
+          if (!(f.host !== 'local')) invalid('host');
+          return true;
+        }
+      case 'pairing.approve':
+        {
+          if (!((f.messenger === 'telegram' || f.messenger === 'discord'))) invalid('messenger');
+          if (!(isPairingCode(f.code))) invalid('code');
+          if (!((f.user === undefined || typeof f.user === 'string'))) invalid('user');
+          return true;
+        }
+      case 'remote.status':
+      case 'web.session':
+      case 'web.sessions':
+      case 'hub.stop':
+      case 'hub.reload':
+      case 'topic.list':
+      case 'role.list':
+        return true;
+      case 'executor.prepare':
+        {
+          if (!(f.report === undefined || typeof f.report === 'string')) invalid('report');
+          return true;
+        }
+      case 'executor.retire-legacy':
+        {
+          if (!(typeof f.confirmRegisteredHubs === 'boolean')) invalid('confirmRegisteredHubs');
+          return true;
+        }
+      case 'inbox.list':
+        {
+          if (!(f.archive === undefined || typeof f.archive === 'boolean')) invalid('archive');
+          return true;
+        }
+      case 'inbox.decline':
+        {
+          if (!(typeof f.request === 'string')) invalid('request');
+          return true;
+        }
+      case 'inbox.read':
+        {
+          if (!(typeof f.message === 'string')) invalid('message');
+          return true;
+        }
+      case 'subscribe':
+        {
+          if (!(isEventsFilter(f.filter))) invalid('filter');
+          return true;
+        }
+      case 'events.list':
+        {
+          if (!((f.before === undefined || (typeof f.before === 'string' && (/^(0|[1-9]\d*)$/.test(f.before) && Number.isSafeInteger(Number(f.before)) || /^events:[A-Za-z0-9_-]+$/.test(f.before)))))) invalid('before');
+          if (!((f.limit === undefined || (typeof f.limit === 'number' && Number.isInteger(f.limit) && f.limit > 0)))) invalid('limit');
+          if (!(isEventsFilter(f.filter))) invalid('filter');
+          return true;
+        }
+      case 'worktree.list':
+        return true;
+      case 'worktree.prune':
+        {
+          if (!((f.items === undefined || (Array.isArray(f.items) && f.items.every((i) => typeof i === 'string'))))) invalid('items');
+          if (!((f.dryRun === undefined || typeof f.dryRun === 'boolean'))) invalid('dryRun');
+          return true;
+        }
+      case 'approval.answer':
+        {
+          if (!(typeof f.approval === 'string')) invalid('approval');
+          if (!(['once', 'always', 'deny'].includes(String(f.choice)))) invalid('choice');
+          if (!((f.note === undefined || typeof f.note === 'string'))) invalid('note');
+          return true;
+        }
+      case 'topic.answer':
+        {
+          if (!(typeof f.ask === 'string')) invalid('ask');
+          if (!((f.declined === undefined || typeof f.declined === 'boolean'))) invalid('declined');
+          if (!((f.reason === undefined || typeof f.reason === 'string'))) invalid('reason');
+          if (!((f.option === undefined || typeof f.option === 'number'))) invalid('option');
+          if (!((f.text === undefined || typeof f.text === 'string'))) invalid('text');
+          if (!((f.as === undefined || isObject(f.as) && typeof f.as.name === 'string' && (f.as.sessionId === undefined || typeof f.as.sessionId === 'string') && (f.as.shell === undefined || typeof f.as.shell === 'boolean')))) invalid('as');
+          return true;
+        }
+      case 'role.launch':
+        {
+          if (!(typeof f.role === 'string')) invalid('role');
+          if (!(isObject(f.fields))) invalid('fields');
+          if (!(Object.values(f.fields).every(value => typeof value === 'string'))) invalid('fields');
+          return true;
+        }
+      case 'role.set':
+        {
+          if (!(typeof f.session === 'string')) invalid('session');
+          if (!(typeof f.role === 'string')) invalid('role');
+          if (!((f.note === undefined || typeof f.note === 'string' || isObject(f.note)))) invalid('note');
+          if (!((f.move === undefined || typeof f.move === 'boolean'))) invalid('move');
+          if (!((f.item === undefined || typeof f.item === 'string'))) invalid('item');
+          return true;
+        }
+      case 'role.state':
+        {
+          if (!(typeof f.role === 'string')) invalid('role');
+          if (!((f.session === undefined || typeof f.session === 'string'))) invalid('session');
+          return true;
+        }
+      case 'role.clear':
+        {
+          if (!(typeof f.session === 'string')) invalid('session');
+          return true;
+        }
+      case 'session.history':
+        {
+          if (!(typeof f.session === 'string')) invalid('session');
+          if (!(f.session.length > 0)) invalid('session');
+          if (!((f.limit === undefined || typeof f.limit === 'number' && Number.isSafeInteger(f.limit) && f.limit > 0))) invalid('limit');
+          if (!((f.before === undefined || isMessageSeq(f.before)))) invalid('before');
+          return true;
+        }
+      case 'topic.history':
+        {
+          if (!(typeof f.topic === 'string')) invalid('topic');
+          if (!((f.limit === undefined || typeof f.limit === 'number'))) invalid('limit');
+          if (!((f.before === undefined || typeof f.before === 'string' || isMessageSeq(f.before)))) invalid('before');
+          if (!((f.after === undefined || isMessageSeq(f.after)))) invalid('after');
+          if (!((f.before === undefined || f.after === undefined))) invalid('before');
+          if (!(isAgentsHistoryFilter(f))) invalid('item/session');
+          return true;
+        }
+      case 'topic.withdraw':
+        {
+          if (!(typeof f.topic === 'string')) invalid('topic');
+          if (!(typeof f.message === 'string')) invalid('message');
+          return true;
+        }
+      case 'artifact.upload':
+        if (f.artifacts !== undefined && (!Array.isArray(f.artifacts) || !f.artifacts.every(id => typeof id === 'string'))) return invalid('artifacts');
+        {
+          if (!(typeof f.topic === 'string')) invalid('topic');
+          if (!((f.caption === undefined || typeof f.caption === 'string'))) invalid('caption');
+          if (!(Array.isArray(f.files))) invalid('files');
+          if (!((f.kind === undefined || f.kind === 'message' || f.kind === 'decision' || f.kind === 'question'))) invalid('kind');
+          if (!((f.to === undefined || Array.isArray(f.to) && f.to.every(t => typeof t === 'string')))) invalid('to');
+          if (!((f.replyTo === undefined || typeof f.replyTo === 'string'))) invalid('replyTo');
+          return true;
+        }
+      case 'topic.send':
+        {
+          if (!(typeof f.topic === 'string')) invalid('topic');
+          if (!(typeof f.text === 'string')) invalid('text');
+          if (!((f.kind === undefined || f.kind === 'message' || f.kind === 'decision' || f.kind === 'question'))) invalid('kind');
+          if (!((f.to === undefined || (Array.isArray(f.to) && f.to.every((t) => typeof t === 'string'))))) invalid('to');
+          if (!((f.replyTo === undefined || typeof f.replyTo === 'string'))) invalid('replyTo');
+          return true;
+        }
+      case 'hygiene.unmute':
+        {
+          if (!(typeof f.a === 'string')) invalid('a');
+          if (!(typeof f.b === 'string')) invalid('b');
+          return true;
+        }
+      case 'topic.rename':
+        {
+          if (!(typeof f.topic === 'string')) invalid('topic');
+          if (!(typeof f.title === 'string')) invalid('title');
+          return true;
+        }
+      case 'topic.delete':
+      case 'topic.close':
+      case 'topic.resolve':
+        {
+          if (!(typeof f.topic === 'string')) invalid('topic');
+          return true;
+        }
+      case 'topic.create':
+        {
+          if (!(typeof f.title === 'string')) invalid('title');
+          if (!((f.item === undefined || typeof f.item === 'string'))) invalid('item');
+          return true;
+        }
+      case 'marks.get':
+        return true;
+      case 'marks.set':
+        {
+          if (!((f.events === undefined || typeof f.events === 'string' && Number.isFinite(Date.parse(f.events))))) invalid('events');
+          if (!((f.plans === undefined || isObject(f.plans) && Object.values(f.plans).every(v => typeof v === 'string')))) invalid('plans');
+          if (!((f.import === undefined || typeof f.import === 'boolean'))) invalid('import');
+          return true;
+        }
+      case 'topic.read':
+        {
+          if (!(typeof f.topic === 'string')) invalid('topic');
+          if (!((f.upTo === undefined || typeof f.upTo === 'string'))) invalid('upTo');
+          return true;
+        }
+      default:
+        return invalid('type');
+    }
+  } catch (error) {
+    if (!(error instanceof InvalidRequestField)) throw error;
+    issue?.(error.field);
+    return false;
   }
 }
 

@@ -8,6 +8,11 @@ metadata:
 
 Implement the work described by the user in the spec or tickets.
 
+Request validators distinguish known-invalid fields (`invalid_argument`) from
+unknown types. Pairing codes share the CLI/protocol format module; preserve
+error-only older-hub replies when changing request diagnostics. See
+[remote commands](../../../docs/hub/remote-commands.md).
+
 Doctor's release-tool check (`[release] web_bundle = true`) asks the running hub
 for an opt-in gh executable lookup, never auth/network. Old/offline hub results
 stay unknown. Missing release tools name the hub PATH and require restart with

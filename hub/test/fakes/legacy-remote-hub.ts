@@ -8,7 +8,7 @@ import { abortable, within } from '../../src/executor/droplet/deadline.ts';
 import { realClock, type Clock } from '../../src/hub/clock.ts';
 import { testSetupWaitMs } from '../until.ts';
 
-type Options = { clock?: Clock; setupTimeoutMs?: number; signal?: AbortSignal; publishListening?: boolean; legacyStatus?: boolean; hubStatus?: () => unknown; remoteStatus?: () => unknown; hostStatus?: () => unknown; logins?: () => unknown; users?: () => unknown; holdUsers?: () => void };
+type Options = { clock?: Clock; setupTimeoutMs?: number; signal?: AbortSignal; publishListening?: boolean; legacyStatus?: boolean; approveError?: string; hubStatus?: () => unknown; remoteStatus?: () => unknown; hostStatus?: () => unknown; logins?: () => unknown; users?: () => unknown; holdUsers?: () => void };
 
 // Literal previous wire shape: no stopCause field, including for a stopped remote.
 const LEGACY_STATUS = { remotes: [{
@@ -66,6 +66,8 @@ export function legacyRemoteHubFixture(t: TestContext, root: string, options: Op
             ? { type: 'result', id: frame.id, ok: true, value: options.remoteStatus() }
             : frame.type === 'remote.status' && options.legacyStatus
             ? { type: 'result', id: frame.id, ok: true, value: LEGACY_STATUS }
+            : frame.type === 'pairing.approve' && options.approveError
+            ? { type: 'result', id: frame.id, ok: false, error: options.approveError }
             : frame.type === 'pairing.approve'
             ? { type: 'result', id: frame.id, ok: true, value: { pairing: { userId: '12345', chatId: '23456', guildId: null, name: 'Old hub human' } } }
             : { type: 'result', id: frame.id, ok: false, error: 'invalid request' }) + '\n');

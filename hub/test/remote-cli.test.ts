@@ -15,6 +15,25 @@ import { join } from 'node:path';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import type { Inbox } from '../src/protocol.ts';
 
+test('remote approve rejects malformed synthetic codes locally with the format', async t => {
+  const root = await tempProject(t);
+  const legacy = await legacyRemoteHub(t, root);
+  for (const code of ['000000', 'ABCDEFGI', 'abcdefgh', 'ABCDEFG', 'ABCDEFGHJ']) {
+    const result = await cland(root, 'remote', 'approve', 'telegram', code);
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /code.*8 characters.*A-H.*J-N.*P-Z.*2-9/);
+  }
+  assert.deepEqual(legacy.requests, [], 'local validation sends no request');
+});
+
+test('remote approve preserves an older hub error-only refusal', async t => {
+  const root = await tempProject(t);
+  await legacyRemoteHubFixture(t, root, { approveError: 'unknown request type "pairing.approve"' }).start();
+  const result = await cland(root, 'remote', 'approve', 'telegram', 'ABCDEFGH');
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /unknown request type "pairing.approve"/);
+});
+
 for (const via of ['telegram', 'discord'] as const) test(`remote approve ${via} prints the stored paired name and numeric id`, async t => {
   const root = await tempProject(t);
   const remote = testMessenger(via, via);

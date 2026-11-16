@@ -93,6 +93,7 @@ import {
   isClientRequest,
   isHello,
   isSpokeRequest,
+  requestValidationFailure,
   parseFrame,
   type HubFrame,
   type RemoteVia,
@@ -1879,8 +1880,7 @@ export class Dispatcher {
 
     const spokeRequest = (frame: Record<string, unknown>, me: string) => {
       if (!isSpokeRequest(frame)) {
-        const id = typeof frame.id === 'string' ? frame.id : '?';
-        peer.send({ type: 'result', id, ok: false, error: `unknown request type "${String(frame.type)}"` });
+        peer.send(requestValidationFailure(frame, true));
         return;
       }
       try {
@@ -2023,8 +2023,7 @@ export class Dispatcher {
           error: 'Inbox notifications retired: use the events view (events.list) to see what happened.' });
       }
       if (!isClientRequest(frame)) {
-        const id = typeof frame.id === 'string' ? frame.id : '?';
-        peer.send({ type: 'result', id, ok: false, error: `unknown request type "${String(frame.type)}"` });
+        peer.send(requestValidationFailure(frame));
         return;
       }
       const answer = (value: unknown) => {

@@ -107,6 +107,28 @@ for (const receipt of [true, false]) test(`shutdown drains a held replacement no
   assert.deepEqual(remote.replacements, [{ pairing: first, text: 'This project is now paired with another chat.' }]);
 });
 
+test('known invalid fields name the field while unknown request types retain their refusal', async t => {
+  const root = await tempProject(t);
+  const hub = await projectHub(t, root);
+  const ui = await connectUi(t, hub.discovery, 'nvim');
+  for (const [frame, field] of [
+    [{ type: 'pairing.approve', messenger: 'telegram', code: '000000' }, 'code'],
+    [{ type: 'pairing.approve', messenger: 'other', code: 'ABCDEFGH' }, 'messenger'],
+    [{ type: 'pairing.approve', messenger: 'telegram', code: 'ABCDEFGH', user: 1 }, 'user'],
+    [{ type: 'topic.create', title: 7 }, 'title'],
+  ] as const) {
+    const result = await ui.request(frame);
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 'invalid_argument');
+    assert.match(result.error!, new RegExp(field));
+    if (field === 'code') assert.match(result.error!, /8 characters.*A-H.*J-N.*P-Z.*2-9/);
+  }
+  const unknown = await ui.request({ type: 'fixture.unknown' });
+  assert.equal(unknown.ok, false);
+  assert.equal(unknown.error, 'unknown request type "fixture.unknown"');
+  assert.equal(unknown.code, undefined);
+});
+
 test('expired, missing, malformed and wrong-messenger codes grant no access', async t => {
   const root = await tempProject(t);
   const clock = new FakeClock();

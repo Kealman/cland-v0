@@ -9,6 +9,7 @@ import { askHubFrame } from './socket-client.ts';
 import type { Pairing } from '../remote/state.ts';
 import type { RemoteStatusResult } from '../protocol.ts';
 import { remoteStopDetails } from '../remote/notices.ts';
+import { isPairingCode, PAIRING_CODE_FORMAT } from '../remote/pairing-code.ts';
 
 export async function runRemote(args: string[], cwd = process.cwd()): Promise<number> {
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: { json: { type: 'boolean' }, user: { type: 'string' } } });
@@ -19,6 +20,7 @@ export async function runRemote(args: string[], cwd = process.cwd()): Promise<nu
       || (sub === 'unpair' || sub === 'test') && positionals.length === 2);
   if (!valid)
     throw new Error(`usage: cland remote <command>\n${REMOTE_USAGE}`);
+  if (sub === 'approve' && !isPairingCode(code)) throw new Error(PAIRING_CODE_FORMAT);
   const discovery = readDiscovery(hubDiscovery(cwd));
   if (!discovery) throw new Error('no hub runs for this project — run cland hub start');
   const frame = sub === 'status' ? { type: 'remote.status' }

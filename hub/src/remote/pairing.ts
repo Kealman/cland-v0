@@ -1,9 +1,9 @@
 import { randomBytes } from 'node:crypto';
+import { PAIRING_ALPHABET } from './pairing-code.ts';
 import type { Clock, ClockTimer } from '../hub/clock.ts';
 import type { InboxPairing, RemoteVia } from '../protocol.ts';
 import type { Pairing, RemoteState } from './state.ts';
 
-const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /** Project-owned pairing requests; the platform supplies numeric identity, never a frame actor. */
 export class PairingCodes {
@@ -30,7 +30,7 @@ export class PairingCodes {
     if (previous) return this.#reply(messenger, identity.userId, previous.code);
     if (waiting.length >= 3) return 'Three pairing codes are already waiting; ask the project owner to resolve them.';
     let code: string;
-    do { code = [...randomBytes(8)].map(byte => ALPHABET[byte & 31]).join(''); }
+    do { code = [...randomBytes(8)].map(byte => PAIRING_ALPHABET[byte & 31]).join(''); }
     while (remote.requests().some(request => request.code === code));
     const now = this.#clock.now().getTime();
     remote.putRequest({ ...identity, code, created: new Date(now).toISOString(), expires: new Date(now + (messenger === 'telegram' ? 3600_000 : 900_000)).toISOString() });

@@ -17,6 +17,12 @@ cland remote test telegram [--json]
 
 Use `discord` in the same forms. Approval consumes the live code and prints the
 stored display name and numeric id. Unpair removes only that messenger's binding.
+Approval codes contain exactly 8 uppercase characters from `A-H`, `J-N`, `P-Z`
+and `2-9`. The CLI rejects other formats locally before contacting the hub.
+Known request types with malformed fields return `ok: false`,
+`code: "invalid_argument"` and an `error` naming the field; malformed approval codes
+also name this format. Truly unknown types keep `unknown request type` in
+`error`. Older hubs can omit `code`; clients continue displaying their `error`.
 The three management frames (`remote.status`, `remote.unpair`, `remote.test`)
 and `pairing.approve` accept only an unattributed human CLI or Neovim on the Unix
 socket, or Neovim on parent-owned stdio. Web, remotes and session shells refuse;
