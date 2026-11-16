@@ -186,6 +186,7 @@
     "hub/test/doctor-run.test.ts": "T2",
     "hub/test/doctor-users.test.ts": "T2",
     "hub/test/doctor.test.ts": "T2",
+    "hub/test/duration-duplicates.test.ts": "T2",
     "hub/test/duration-legacy.test.ts": "T3",
     "hub/test/durations-refresh.test.ts": "T1",
     "hub/test/durations-runner-budget.test.ts": "T1",

@@ -5,6 +5,17 @@ import { durationBudgetContext, DurationInspectionError } from '../src/suite-dur
 import type { DurationManifest } from '../src/suite-durations.ts';
 
 const duration = 'hub/test/durations.json', tier = 'hub/test/tiers.json', file = 'hub/test/one.test.ts';
+
+test('candidate duration snapshots report duplicates without changing enforce mode or effective values', async t => {
+  const f = snapshot();
+  f.files[`head:${duration}`] = f.files[`head:${duration}`]!.replace('"allow":{}', '"allow":{"slow":{"seconds":48},"slow":{"seconds":24}}');
+  const warnings: string[] = [];
+  t.mock.method(console, 'warn', (line: string) => warnings.push(line));
+  const context = await durationBudgetContext('/in-memory', { head: 'head', git: f.git });
+  assert.equal(context?.manifest.budget.mode, 'enforce');
+  assert.deepEqual(context?.manifest.allow.slow, { seconds: 24 });
+  assert.deepEqual(warnings, ['duration duplicate (report only): allow["slow"] first={"seconds":48} duplicate={"seconds":24}']);
+});
 function snapshot(mode: 'report' | 'enforce' = 'enforce') {
   const manifest: DurationManifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { mode, testSeconds: 5, fileSeconds: 60 },
     files: { [file]: { seconds: 1, tests: 1 } }, tests: { [`${file}::old`]: 1 }, allow: {} };

@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { DURATION_MANIFEST, type DurationManifest, type TestTiming } from './suite-durations.ts';
+import { DURATION_MANIFEST, parseDurationManifest, type DurationManifest, type TestTiming } from './suite-durations.ts';
 import { TIER_MANIFEST, type Tier, type TierManifest, type DurationHistory } from './suite-shards.ts';
 import type { DurationBudgetContext, SourceTestIdentity } from './suite-duration-budget.ts';
 import { sourceTestIdentities } from './suite-test-identities.ts';
@@ -41,7 +41,7 @@ export async function durationBudgetContext(cwd: string, options: { head?: strin
   try {
     const text = options.head ? await optional(options.head, DURATION_MANIFEST) : await source(DURATION_MANIFEST).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
     if (text === null) return null;
-    manifest = JSON.parse(text) as DurationManifest;
+    manifest = parseDurationManifest(text);
     operation = 'candidate tier manifest';
     const tierText = options.head ? await optional(options.head, TIER_MANIFEST) : await source(TIER_MANIFEST);
     if (tierText === null) { if (manifest.budget.mode === 'enforce') throw new Error('missing required tiers'); return null; }
@@ -56,6 +56,7 @@ export async function durationBudgetContext(cwd: string, options: { head?: strin
     operation = 'base duration manifest';
     const baseText = await optional(options.base, DURATION_MANIFEST);
     if (baseText === null) return context;
+    // Historical comparison only: report candidate defects, not old baseline defects.
     const baseManifest = JSON.parse(baseText) as DurationManifest;
     operation = 'base tier manifest';
     const baseTierText = await optional(options.base, TIER_MANIFEST);

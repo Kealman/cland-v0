@@ -4,6 +4,29 @@ import test from 'node:test';
 import { durationBudgetReport, taskDurationReport, type DurationBudgetContext } from '../src/suite-duration-budget.ts';
 import { durationAllowanceStanzas, lintDurationManifest, type DurationManifest } from '../src/suite-durations.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
+import { parseDurationManifest } from '../src/suite-durations.ts';
+
+test('duration manifest reports both allowance values without changing the effective value', t => {
+  const warnings: string[] = [];
+  t.mock.method(console, 'warn', (line: string) => warnings.push(line));
+  const source = '{"version":1,"budget":{"testSeconds":5,"fileSeconds":60},"files":{},"tests":{},"allow":{"slow":{"seconds":48},"slow":{"seconds":24}}}';
+  const parsed = parseDurationManifest(source);
+  assert.deepEqual(parsed.allow.slow, { seconds: 24 });
+  assert.deepEqual(warnings, ['duration duplicate (report only): allow["slow"] first={"seconds":48} duplicate={"seconds":24}']);
+});
+
+test('duration duplicates include escaped baseline keys and repeated equal values in each map', t => {
+  const warnings: string[] = [];
+  t.mock.method(console, 'warn', (line: string) => warnings.push(line));
+  const parsed = parseDurationManifest(String.raw`{"files":{"a":{"seconds":1,"tests":1},"\u0061":{"seconds":2,"tests":2}},"tests":{"a":1,"\u0061":2,"a":2},"allow":{"a":{"seconds":3,"reason":"a, } \\\""},"a":{"seconds":4}},"source":{"tests":{"a":1,"a":2}}}`);
+  assert.deepEqual(parsed.tests, { a: 2 });
+  assert.deepEqual(warnings, [
+    'duration duplicate (report only): files["a"] first={"seconds":1,"tests":1} duplicate={"seconds":2,"tests":2}',
+    'duration duplicate (report only): tests["a"] first=1 duplicate=2',
+    'duration duplicate (report only): tests["a"] first=1 duplicate=2',
+    'duration duplicate (report only): allow["a"] first={"seconds":3,"reason":"a, } \\\\\\\""} duplicate={"seconds":4}',
+  ]);
+});
 
 const manifest = (): DurationManifest => ({ version: 1, source: { artifacts: [], commit: 'base' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {} });
 

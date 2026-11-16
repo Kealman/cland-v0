@@ -1,10 +1,12 @@
 import { fileURLToPath } from 'node:url';
 import { lintTests, testLintReport } from '../src/test-lint.ts';
 import { testLintPolicy, lintRefusalLines, shrinkTestLint } from '../src/test-lint-policy.ts';
+import { readDurationManifest } from '../src/suite-durations.ts';
 
 const args = process.argv.slice(2);
 const details = args.includes('--details');
 const cwd = args.find(arg => !['--shrink', '--details'].includes(arg)) ?? fileURLToPath(new URL('../../', import.meta.url));
+await readDurationManifest(cwd); // Duplicate diagnostics are advisory, outside refusal counts.
 if (args.includes('--shrink')) await shrinkTestLint(cwd);
 for (const line of testLintReport(await lintTests(cwd), { detailedReachable: true, summaryOnly: !details })) console.log(line);
 const findings = await testLintPolicy(cwd);

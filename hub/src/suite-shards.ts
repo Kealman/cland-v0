@@ -9,7 +9,7 @@ import { touchesMachineResources } from './test-lint.ts';
 import { suiteLimits } from './suite-limits.ts';
 import type { SuiteMode, SuiteSelection } from './suite-selection.ts';
 import { HUB_SMOKE, NVIM_SMOKE, WEB_SMOKE } from './suite-selection.ts';
-import { DURATION_MANIFEST, durationOwners, lintDurationManifest, readDurationManifest, type DurationManifest } from './suite-durations.ts';
+import { DURATION_MANIFEST, durationOwners, lintDurationManifest, parseDurationManifest, readDurationManifest, type DurationManifest } from './suite-durations.ts';
 import { QUARANTINE_MANIFEST, lintQuarantineManifest, readQuarantineManifest } from './suite-quarantine.ts';
 import { lintDurationIdentities } from './suite-test-identities.ts';
 
@@ -167,6 +167,7 @@ async function legacyDurationKeys(git: (args: string[]) => Promise<string>, head
   try { ref = (await git(['merge-base', base, head])).trim(); }
   catch { ref = head; } // Standalone repositories may not have origin/dev.
   try {
+    // Historical provenance only; duplicate notices belong to candidate readers.
     const manifest = JSON.parse(await git(['show', `${ref}:${DURATION_MANIFEST}`])) as DurationManifest;
     // The original schema predates the one-time migration. Thereafter only
     // explicitly legacy keys survive; new expiring entries cannot convert.
@@ -197,7 +198,7 @@ export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.Pr
   if (paths.includes(DURATION_MANIFEST)) {
     try {
       const durationSource = await source(DURATION_MANIFEST);
-      const manifest = JSON.parse(durationSource) as DurationManifest;
+      const manifest = parseDurationManifest(durationSource);
       lintDurationManifest(manifest);
       const ownerCwd = (await git(['rev-parse', '--show-toplevel'])).trim();
       const legacyKeys = await legacyDurationKeys(git, history.head, history.base);

@@ -1705,6 +1705,11 @@ needs that time:
 ```
 
 These entries go in `allow`; a file exception does not exempt individual tests.
+The shared manifest reader and `npm run check` lint report duplicate keys in
+`files`, `tests` and `allow`, naming the map, decoded key and both values.
+These duplicate diagnostics are always report-only, independent of the budget
+mode: they do not affect exit status or refusal counts. JSON's last value stays
+effective. Immutable candidate lint uses the same reader logic.
 The working-tree and immutable-candidate manifest lint names missing or TODO
 reasons, missing or closed owner items, invalid dates, excessive date spans,
 and expired allowances (expiry is midnight UTC). D72 allows at most 31 days

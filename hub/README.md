@@ -103,6 +103,11 @@ tree before landing; [running](../docs/hub/running.md) describes skipped-file an
 covering-run notices.
 - [Standing duration allowance owners](../docs/hub/standing-duration-allowance-owners.md)
 
+The shared duration manifest reader, including `npm run check` lint and immutable
+candidate lint, reports duplicate `files`, `tests` and `allow` keys with both
+values. Duplicate notices remain report-only regardless of budget mode, leave
+exit status and refusal counts unchanged, and retain JSON's last value.
+
 `npm run test:tiers` and the Coordinator heartbeat report dated duration
 allowances expiring within five days, including the UTC expiry and owner.
 The warning is report-only; the existing expired-manifest refusal still applies.

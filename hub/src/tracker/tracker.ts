@@ -1,4 +1,4 @@
-import { DURATION_MANIFEST } from '../suite-durations.ts';
+import { DURATION_MANIFEST, parseDurationManifest } from '../suite-durations.ts';
 import { isCustomRole } from '../names.ts';
 import { isDeepStrictEqual } from 'node:util';
 import { summary as bodySummary, outline, sentences } from './summary.ts';
@@ -2087,7 +2087,7 @@ export class Tracker {
     resumed(() => {
       let allow: Record<string, { owner?: unknown }>;
       try {
-        const manifest = JSON.parse(text);
+        const manifest = parseDurationManifest(text);
         if (!manifest || typeof manifest.allow !== 'object' || manifest.allow === null || Array.isArray(manifest.allow)) throw new Error('invalid allowances');
         allow = manifest.allow;
       } catch {
