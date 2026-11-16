@@ -12,6 +12,21 @@ import { layout } from '../src/project.ts';
 import { FakeClock } from './fake-clock.ts';
 import { tempProject } from './harness.ts';
 import { assertStartupReplies } from './startup-replies-fixture.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+
+test.beforeEach(async context => {
+  assert.ok('after' in context, 'beforeEach runs in a test context');
+  const t = context;
+  const root = await tempProject(t);
+  const previous = process.env;
+  // Exercise the same outer-session boundary in suite workers and standalone
+  // runs. The CLI and askHub read process.env rather than accepting an env.
+  process.env = fixtureEnvironment(root, {
+    ...previous, CLAND_SESSION_NAME: 'outer-status-fixture', CLAND_SESSION_ID: 'outer-status-id',
+    CLAND_LAUNCH_TOKEN: 'synthetic-invalid-credential', CLAND_HUB_FILE: `${root}/outer-hub.json`,
+  });
+  t.after(() => { process.env = previous; });
+});
 
 async function fixture(t: test.TestContext, holdStatus?: () => void) {
   const root = await tempProject(t), l = { ...layout(root), socket: fixtureSocketPath(root, 'status.sock') }, clock = new FakeClock();

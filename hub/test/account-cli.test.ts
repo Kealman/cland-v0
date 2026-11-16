@@ -7,6 +7,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { runAccount } from '../src/cli/account.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 
 test('CLI refresh keeps a held poll alive beyond the ordinary three-second read deadline', { timeout: 5000 }, async t => {
   const root = await mkdtemp(join(tmpdir(), 'account-cli-'));
@@ -15,6 +16,7 @@ test('CLI refresh keeps a held poll alive beyond the ordinary three-second read 
   await mkdir(join(root, '.cland'));
   await writeFile(discovery, JSON.stringify({ root, socket, port: 0, secret: 'test', pid: process.pid, version: 'test' }));
   const held = Promise.withResolvers<{ peer: Socket; id: string }>();
+  const received: Array<Record<string, unknown>> = [];
   const peers = new Set<Socket>();
   const server = createServer(peer => {
     peers.add(peer);
@@ -26,6 +28,7 @@ test('CLI refresh keeps a held poll alive beyond the ordinary three-second read 
         const nl = buffer.indexOf('\n');
         if (nl < 0) break;
         const frame = JSON.parse(buffer.slice(0, nl));
+        received.push(frame);
         buffer = buffer.slice(nl + 1);
         if (frame.type === 'hello') peer.write(JSON.stringify({ type: 'welcome', name: 'cli', presence: [] }) + '\n');
         if (frame.type === 'account.list') peer.write(JSON.stringify({ type: 'result', id: frame.id, ok: true, value: { accounts: [{ name: 'default:claude-code', harness: 'claude-code', path: null, windows: [{ label: '5h', usedPercent: 21, resetsAt: '2099-10-20T00:00:00Z' }], at: '2026-10-16T12:00:00Z', source: { kind: 'session', session: 'second' } }] } }) + '\n');
@@ -36,8 +39,9 @@ test('CLI refresh keeps a held poll alive beyond the ordinary three-second read 
   await new Promise<void>(resolve => server.listen(socket, resolve));
   t.after(async () => { for (const peer of peers) peer.destroy(); await new Promise<void>(resolve => server.close(() => resolve())); await rm(root, { recursive: true, force: true }); });
   // This is the CLI process environment, not an embedded hub's environment.
-  const previous = process.env.CLAND_HUB_FILE;
-  process.env.CLAND_HUB_FILE = discovery;
+  const previous = process.env;
+  const outer = { CLAND_SESSION_NAME: 'outer-account-fixture', CLAND_SESSION_ID: 'outer-account-id', CLAND_LAUNCH_TOKEN: 'synthetic-invalid-credential' };
+  process.env = fixtureEnvironment(root, { ...previous, ...outer }, { CLAND_HUB_FILE: discovery });
   const output: string[] = [];
   const stdout = t.mock.method(process.stdout, 'write', (chunk: unknown) => { output.push(String(chunk)); return true; });
   t.mock.timers.enable({ apis: ['setTimeout'] });
@@ -51,9 +55,14 @@ test('CLI refresh keeps a held poll alive beyond the ordinary three-second read 
     output.length = 0;
     assert.equal(await runAccount(['list'], root), 0);
     assert.match(output.join(''), /default:claude-code.*5h 21%.*session second/);
+    assert.deepEqual(received.filter(frame => frame.type !== 'hello').map(frame => frame.type), ['account.list', 'account.poll', 'account.list']);
+    for (const frame of received) {
+      assert.equal(Object.hasOwn(frame, 'as'), false, 'scratch peer must not receive the outer session actor');
+      for (const value of Object.values(outer)) assert.equal(JSON.stringify(frame).includes(value), false, 'scratch peer must not receive outer session identity or credential');
+    }
   } finally {
     t.mock.timers.reset();
     stdout.mock.restore();
-    if (previous === undefined) delete process.env.CLAND_HUB_FILE; else process.env.CLAND_HUB_FILE = previous;
+    process.env = previous;
   }
 });

@@ -1,5 +1,11 @@
 # hub/test/hub-status-component.test.ts
 
+The file's serial beforeEach scopes `process.env` through the shared
+`fixtureEnvironment` and restores it after each case. Its inherited base includes
+a synthetic outer crew identity and discovery path, so standalone session shells
+and sealed suite workers exercise the same isolation boundary. `runHub` and
+`askHub` read the ambient environment; no outer session may reach the scratch hub.
+
 The startup relay records exact UTF-8 JSON result frames, with envelope and
 newline, for status, rules, General history, artifacts, open item summaries,
 events, sessions and accounts. It retains the rendered completion assertion and

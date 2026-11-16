@@ -10,6 +10,11 @@ import { doctor, report, toolchain, check } from './doctor-fixture.ts';
 test('inherited low priority appears in the startup log and CLI diagnostics', async t => {
   const root = await tempProject(t);
   const tools = await toolchain(t);
+  // runHub reads process.env; use the shared sealed toolchain environment,
+  // just as the doctor calls below do, instead of the outer crew identity.
+  const previous = process.env;
+  process.env = tools.env;
+  t.after(() => { process.env = previous; });
   const entries: Record<string, unknown>[] = [];
   let probes = 0;
   await projectHub(t, root, {}, {

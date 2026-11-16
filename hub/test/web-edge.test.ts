@@ -3,7 +3,8 @@ import { connect } from 'node:net';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, request, type IncomingHttpHeaders } from 'node:http';
-import { askHub } from '../src/cli/socket-client.ts';
+import { askHubFrame } from '../src/cli/socket-client.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import type { HubStatus } from '../src/protocol.ts';
 import { toolchain, report, check } from './doctor-fixture.ts';
 import { mkdir, readFile, symlink, writeFile } from 'node:fs/promises';
@@ -43,7 +44,7 @@ test('an occupied web port disables only the web edge and doctor reports its rea
   const logs: Record<string, unknown>[] = [];
   const running = await projectHub(t, root, {}, { clock: new FakeClock(), log: entry => logs.push(entry) });
   assert.equal(readDiscovery(join(root, '.cland/hub.json'))!.webPort, port);
-  const status = await askHub(running.discovery, 'hub.status') as HubStatus;
+  const status = await askHubFrame(running.discovery, { type: 'hub.status' }, 3000, fixtureEnvironment(root, process.env)) as HubStatus;
   assert.equal(status.web?.port, port);
   assert.equal(status.web?.available, false);
   assert.match(status.web?.reason ?? '', /EADDRINUSE/);
@@ -186,7 +187,7 @@ test('configured web bind is independent of the spoke loopback listener', async 
   // Loopback alias stands in for a LAN interface without exposing the fixture.
   await writeFile(join(root, '.cland/config.toml'), '[web]\nbind = "::1"\n');
   const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
-  const status = await askHub(hub.discovery, 'hub.status') as HubStatus;
+  const status = await askHubFrame(hub.discovery, { type: 'hub.status' }, 3000, fixtureEnvironment(root, process.env)) as HubStatus;
   assert.equal(status.web?.bind, '::1');
   assert.equal(status.spokeBind, '127.0.0.1');
   const addresses = await Promise.all([

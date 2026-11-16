@@ -7,16 +7,136 @@ import assert from 'node:assert/strict';
 import { appendFile, copyFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createServer, type Socket } from 'node:net';
+import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { parse as parseYaml } from 'yaml';
 import { runImportGithub, type GhRunner } from '../src/cli/task-import.ts';
 import { FakeClock } from './fake-clock.ts';
 import { clandWithEnv, connectUi, projectHub, tempProject, type CliResult, type Discovery } from './harness.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { pathFixture } from './executable-path-fixture.ts';
+import type { FixtureStep } from '../../test-support/fixture-work.ts';
+import { until } from './until.ts';
+import { access } from 'node:fs/promises';
 
 const FAKE_GH_DIR = fileURLToPath(new URL('./fixtures/fake-gh', import.meta.url));
 const FIXTURE = fileURLToPath(new URL('./fixtures/github-acme-widgets.json', import.meta.url));
 const REPO = 'acme/widgets';
 
 type Env = { fixture: string; log: string };
+
+const outerImport = { CLAND_SESSION_NAME: 'outer-import-fixture', CLAND_SESSION_ID: 'outer-import-id', CLAND_LAUNCH_TOKEN: 'synthetic-invalid-credential' };
+
+function importPeerFixture(t: TestContext) {
+  // Registers the work join/removal guard before acquiring even the root.
+  const owned = pathFixture(t, 'cland-import-peer-');
+  return { close: owned.close, run: (check: (f: { root: string; env: Env; frames: Array<Record<string, unknown>>; step: FixtureStep }) => Promise<void>) => owned.run(async (root, step) => {
+    const previous = process.env;
+    let peer: ReturnType<typeof createServer> | undefined;
+    let listening: Promise<void> | undefined;
+    let cleanupError: unknown;
+    guardDirectoryRemoval(root, () => { if (cleanupError) throw cleanupError; });
+    const connections = new Set<Socket>();
+    try {
+      await step(() => mkdir(join(root, '.cland')));
+      const env = { fixture: join(root, 'gh-fixture.json'), log: join(root, 'gh-calls.log') };
+      await step(() => copyFile(FIXTURE, env.fixture));
+      await step(async () => { process.env = fixtureEnvironment(root, previous, outerImport); });
+      const socket = fixtureSocketPath(root, 'import-peer.sock');
+      const frames: Array<Record<string, unknown>> = [];
+      peer = createServer(connection => {
+        connections.add(connection);
+        connection.on('close', () => connections.delete(connection));
+        let pending = '';
+        connection.on('data', chunk => {
+          pending += String(chunk);
+          for (;;) {
+            const end = pending.indexOf('\n');
+            if (end < 0) break;
+            const frame = JSON.parse(pending.slice(0, end));
+            pending = pending.slice(end + 1);
+            frames.push(frame);
+            connection.write(JSON.stringify(frame.type === 'hello'
+              ? { type: 'welcome' }
+              : { type: 'result', id: frame.id, ok: true, value: { results: [] } }) + '\n');
+          }
+        });
+      });
+      listening = step(() => new Promise<void>((resolve, reject) => { peer!.once('error', reject); peer!.listen(socket, resolve); }));
+      await listening; // Captured before awaiting: finally also adopts a late listen.
+      await step(() => writeFile(join(root, '.cland/hub.json'), JSON.stringify({ root, socket, port: 0, secret: 'test', pid: process.pid, version: 'test' })));
+      await step(() => check({ root, env, frames, step }));
+    } finally {
+      try {
+        await listening?.catch(() => {});
+        for (const connection of connections) connection.destroy();
+        if (peer?.listening) await new Promise<void>((resolve, reject) => peer!.close(error => error ? reject(error) : resolve()));
+      } catch (error) { cleanupError = error; throw error; }
+      finally { process.env = previous; }
+    }
+  }) };
+}
+
+test('in-process GitHub import excludes the outer credential at the socket peer', async t => {
+  const fixture = importPeerFixture(t);
+  await fixture.run(async ({ root, env, frames, step }) => {
+    // The peer observer is armed before the CLI; a successful human actor can
+    // otherwise mask a leaked ambient credential.
+    await step(() => runImport(root, env));
+    assert.deepEqual(frames.map(frame => frame.type), ['hello', 'task.import']);
+    assert.deepEqual(frames[1]!.as, { name: 'human' });
+    for (const value of Object.values(outerImport)) assert.equal(JSON.stringify(frames).includes(value), false);
+  });
+});
+
+for (const fail of [false, true]) test(`import peer joins held work before disposal${fail ? ' after setup failure' : ''}`, async t => {
+  const release = Promise.withResolvers<void>();
+  let fixture: ReturnType<typeof importPeerFixture> | undefined, sequence: Promise<void> | undefined;
+  beforeDirectories(t, async () => {
+    const closing = fixture?.close();
+    release.resolve();
+    await sequence?.catch(() => {});
+    await closing;
+  }); // Release/join is owned before admission, including an interrupted test.
+  fixture = importPeerFixture(t);
+  const previous = process.env;
+  let entered = false, directory = '', later = false, completed = false;
+  sequence = fixture.run(async ({ root, step }) => {
+    directory = root;
+    await step(async () => {
+      entered = true;
+      await release.promise;
+      await writeFile(join(root, 'held-write'), 'complete');
+      assert.equal(await readFile(join(root, 'held-write'), 'utf8'), 'complete');
+      completed = true;
+      if (fail) throw new Error('synthetic setup failure');
+    });
+    await step(async () => { later = true; await writeFile(join(root, 'forbidden-write'), 'late'); });
+  });
+  const rejected = assert.rejects(sequence, fail ? /synthetic setup failure/ : /fixture work admission closed/);
+  void rejected.catch(() => {});
+  try {
+    await until(() => entered, { what: 'import peer admitted held file work', timeoutMs: 1000 });
+    const scoped = process.env;
+    const closing = fixture.close();
+    assert.equal(completed, false);
+    await access(directory);
+    assert.equal(process.env, scoped, 'environment remains owned until work joins');
+    release.resolve();
+    await rejected;
+    await closing;
+    assert.equal(completed, true);
+    assert.equal(later, false, 'closing fences the next file operation');
+    assert.equal(process.env, previous);
+    await assert.rejects(access(directory), { code: 'ENOENT' });
+  } finally {
+    const closing = fixture.close();
+    release.resolve();
+    await sequence.catch(() => {});
+    await closing;
+  }
+});
 
 function cland(cwd: string, env: Env, ...args: string[]): Promise<CliResult> {
   return clandWithEnv(cwd, {
@@ -51,10 +171,14 @@ async function runImport(root: string, env: Env, ...args: string[]): Promise<Sum
     return JSON.stringify([fixture[path]]);
   };
   let stdout = '', stderr = '';
-  const code = await runImportGithub(['--as', 'human', '--repo', REPO, ...args, '--json'], root, {
-    out: text => { stdout += text; }, err: text => { stderr += text; },
-  }, {}, gh);
-  return JSON.parse(ok({ code, stdout, stderr }).stdout) as Summary;
+  const previous = process.env;
+  process.env = fixtureEnvironment(root, previous);
+  try {
+    const code = await runImportGithub(['--as', 'human', '--repo', REPO, ...args, '--json'], root, {
+      out: text => { stdout += text; }, err: text => { stderr += text; },
+    }, {}, gh);
+    return JSON.parse(ok({ code, stdout, stderr }).stdout) as Summary;
+  } finally { process.env = previous; }
 }
 
 /** Every item file in the project, by name. */
