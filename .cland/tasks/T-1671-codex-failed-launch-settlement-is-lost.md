@@ -5,17 +5,16 @@ title: "Codex and OpenCode failed-launch settlement is lost across a hub restart
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-326
+parent: E-1885
 blocked_by:
   - T-1607
 regression_of: T-1606
 topic: null
 branch: null
 created: 2026-11-04T02:35:52.074Z
-updated: 2026-11-04T08:11:02.776Z
+updated: 2026-11-16T07:29:19.470Z
 ---
 
 ## Summary

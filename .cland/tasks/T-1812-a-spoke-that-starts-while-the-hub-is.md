@@ -5,15 +5,14 @@ title: "A spoke that starts while the hub is down never connects: no hub.json at
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1885
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-11T06:00:56.866Z
-updated: 2026-11-11T06:00:56.866Z
+updated: 2026-11-16T07:29:16.902Z
 ---
 
 ## Summary

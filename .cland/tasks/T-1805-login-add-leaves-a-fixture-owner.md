@@ -5,17 +5,16 @@ title: login-add leaves a fixture-owner registry whose roots list a removed fixt
 state: open
 status: backlog
 size: M
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1882
 blocked_by: []
 regression_of: T-1777
 found_by: review
 topic: null
 branch: null
 created: 2026-11-10T12:19:52.954Z
-updated: 2026-11-14T22:17:25.602Z
+updated: 2026-11-16T07:28:58.535Z
 ---
 
 ## Summary

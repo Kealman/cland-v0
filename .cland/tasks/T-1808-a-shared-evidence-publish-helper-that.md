@@ -5,15 +5,14 @@ title: A shared evidence-publish helper that calls artifact.create only after a 
 state: open
 status: backlog
 size: M
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1887
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-11T00:11:39.952Z
-updated: 2026-11-11T00:11:39.952Z
+updated: 2026-11-16T07:29:26.767Z
 ---
 
 ## Summary

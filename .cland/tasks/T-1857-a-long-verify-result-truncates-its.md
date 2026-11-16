@@ -5,15 +5,14 @@ title: A long verify result truncates its executor, lifetime and cost line in de
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1883
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T16:41:38.895Z
-updated: 2026-11-14T16:41:38.895Z
+updated: 2026-11-16T07:29:05.053Z
 ---
 
 ## Summary

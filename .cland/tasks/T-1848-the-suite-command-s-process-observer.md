@@ -5,15 +5,14 @@ title: The suite command's process observer drops inspection failures without a 
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1883
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T02:03:07.406Z
-updated: 2026-11-14T02:03:07.406Z
+updated: 2026-11-16T07:29:02.330Z
 ---
 
 ## Summary

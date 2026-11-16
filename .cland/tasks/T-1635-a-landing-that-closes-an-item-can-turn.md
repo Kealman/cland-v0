@@ -5,15 +5,14 @@ title: A landing that closes an item can turn the closed-item wording lint red o
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-326
+parent: E-1883
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T15:55:22.884Z
-updated: 2026-11-02T15:55:22.884Z
+updated: 2026-11-16T07:29:03.407Z
 ---
 
 ## Summary

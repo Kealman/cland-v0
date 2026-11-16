@@ -5,15 +5,14 @@ title: One pending sub-agent permission prompt sends a new Telegram approval car
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1886
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-08T18:34:49.448Z
-updated: 2026-11-08T18:34:49.448Z
+updated: 2026-11-16T07:29:22.085Z
 ---
 
 ## Summary

@@ -5,15 +5,14 @@ title: Cancellable FrameClient request and waitFor in the shared test client, so
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1881
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T19:47:41.913Z
-updated: 2026-11-15T19:47:41.913Z
+updated: 2026-11-16T07:28:53.009Z
 ---
 
 ## Summary

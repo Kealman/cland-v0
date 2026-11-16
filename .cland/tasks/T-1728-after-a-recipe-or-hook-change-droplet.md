@@ -5,16 +5,15 @@ title: After a recipe or hook change, droplet runs keep booting the old snapshot
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-326
+parent: E-1883
 blocked_by: []
 regression_of: T-1709
 topic: null
 branch: null
 created: 2026-11-06T18:48:43.508Z
-updated: 2026-11-06T18:48:43.508Z
+updated: 2026-11-16T07:29:06.104Z
 ---
 
 ## Summary

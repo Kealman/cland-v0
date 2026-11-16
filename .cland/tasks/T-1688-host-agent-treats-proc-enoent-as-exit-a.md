@@ -5,16 +5,15 @@ title: Host agent treats /proc ENOENT as exit; a hidepid or foreign-namespace /p
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1884
 blocked_by: []
 regression_of: T-1684
 topic: null
 branch: null
 created: 2026-11-05T11:59:40.426Z
-updated: 2026-11-05T11:59:40.426Z
+updated: 2026-11-16T07:29:11.162Z
 ---
 
 ## Summary

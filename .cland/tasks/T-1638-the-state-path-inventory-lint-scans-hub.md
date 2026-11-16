@@ -5,16 +5,15 @@ title: The state-path inventory lint scans hub source within its T1 budget
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1883
 blocked_by: []
 regression_of: T-1621
 topic: null
 branch: null
 created: 2026-11-02T17:05:38.472Z
-updated: 2026-11-02T17:05:38.472Z
+updated: 2026-11-16T07:29:07.173Z
 ---
 
 ## Summary

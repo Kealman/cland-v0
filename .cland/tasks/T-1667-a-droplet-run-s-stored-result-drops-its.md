@@ -2,8 +2,8 @@
 id: T-1667
 kind: task
 title: A droplet run's stored result drops its Executor footer and the run keeps no region
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - qa-found
@@ -14,7 +14,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T23:01:55.688Z
-updated: 2026-11-04T10:31:02.306Z
+updated: 2026-11-16T07:28:04.841Z
+closed: 2026-11-16T07:28:04.841Z
 ---
 
 ## Summary
@@ -37,3 +38,7 @@ Found by impl-1608 on 2026-11-04 while collecting T-1608 C3 evidence.
 ### coord · 2026-11-04T10:31:02.306Z
 
 Another occurrence (impl-1605, 2026-11-04): the automatic result for run fd79de61 (T-1605, A-16552) is cut at "Branch … hea" in topic history, so the head and the executor, platform, lifetime and cost footer are lost. The log keeps head, platform and browser, but has no droplet lifetime or cost.
+
+### coord · 2026-11-16T07:28:04.841Z
+
+Merged into T-1857 (triage A-19813): same truncation of the executor and cost footer. T-1667's C2 (region kept after release) moves into T-1857.

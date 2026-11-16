@@ -5,15 +5,14 @@ title: Executor status reports "unknown (inspection deferred)" when the local sn
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1881
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-06T11:49:25.020Z
-updated: 2026-11-06T12:35:53.449Z
+updated: 2026-11-16T07:28:45.458Z
 ---
 
 ## Summary

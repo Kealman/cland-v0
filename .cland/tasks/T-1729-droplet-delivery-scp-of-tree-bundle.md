@@ -5,15 +5,14 @@ title: "Droplet delivery: scp of tree.bundle fails with exit 1 and only the know
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1883
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-06T19:37:35.448Z
-updated: 2026-11-06T19:37:35.448Z
+updated: 2026-11-16T07:29:05.579Z
 ---
 
 ## Summary

@@ -5,15 +5,14 @@ title: projectHub T2 fixtures reach native sysctl through the default lock ident
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1882
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-09T06:56:35.201Z
-updated: 2026-11-09T06:59:01.530Z
+updated: 2026-11-16T07:28:53.543Z
 ---
 
 ## Summary

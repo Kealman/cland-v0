@@ -5,15 +5,14 @@ title: login-metadata-owners test helper closes the borrowed Store even when hub
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1882
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-11T19:29:02.179Z
-updated: 2026-11-11T19:29:02.179Z
+updated: 2026-11-16T07:28:55.756Z
 ---
 
 ## Summary

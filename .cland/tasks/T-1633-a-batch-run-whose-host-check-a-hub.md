@@ -5,15 +5,14 @@ title: A batch run whose host check a hub restart killed holds as inconclusive a
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1883
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T11:11:55.194Z
-updated: 2026-11-02T11:54:41.978Z
+updated: 2026-11-16T07:29:01.238Z
 ---
 
 ## Summary

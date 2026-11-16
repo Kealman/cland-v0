@@ -5,15 +5,14 @@ title: The host agent's run operation buffers unbounded command output before it
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1884
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T23:52:24.965Z
-updated: 2026-11-02T23:52:24.965Z
+updated: 2026-11-16T07:29:10.633Z
 ---
 
 ## Summary

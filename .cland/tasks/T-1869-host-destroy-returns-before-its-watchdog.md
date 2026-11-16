@@ -5,15 +5,14 @@ title: Host destroy returns before its watchdog's exit is joined (watchdog alive
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1884
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T11:15:22.624Z
-updated: 2026-11-15T11:15:22.624Z
+updated: 2026-11-16T07:29:12.186Z
 ---
 
 ## Summary

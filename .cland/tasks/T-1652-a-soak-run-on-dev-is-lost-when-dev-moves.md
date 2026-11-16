@@ -5,16 +5,15 @@ title: "A soak run on dev is lost when dev moves during its host gate: it bundle
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1883
 blocked_by: []
 regression_of: T-1015
 topic: null
 branch: null
 created: 2026-11-03T03:03:13.829Z
-updated: 2026-11-03T03:03:13.829Z
+updated: 2026-11-16T07:29:03.951Z
 ---
 
 ## Summary

@@ -9,12 +9,12 @@ labels:
   - ready-for-agent
   - bug
 assignee: null
-parent: C-325
+parent: E-1883
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-01T10:39:22.454Z
-updated: 2026-11-01T10:39:22.454Z
+updated: 2026-11-16T07:29:00.164Z
 ---
 
 ## Summary

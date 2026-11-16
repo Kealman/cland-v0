@@ -5,16 +5,15 @@ title: hub-lock-readers.test.ts calls lockHostIdentity directly and spawns sysct
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1882
 blocked_by: []
 regression_of: T-1617
 topic: null
 branch: null
 created: 2026-11-02T19:53:37.392Z
-updated: 2026-11-02T19:53:37.392Z
+updated: 2026-11-16T07:28:54.099Z
 ---
 
 ## Summary

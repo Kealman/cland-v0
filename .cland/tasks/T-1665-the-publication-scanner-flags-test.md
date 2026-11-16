@@ -5,15 +5,14 @@ title: The publication scanner flags test titles and prose containing 'bearer' a
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-326
+parent: E-1887
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T21:49:08.624Z
-updated: 2026-11-03T21:49:08.624Z
+updated: 2026-11-16T07:29:23.621Z
 ---
 
 ## Summary

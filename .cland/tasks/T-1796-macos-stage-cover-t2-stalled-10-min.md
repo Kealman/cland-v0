@@ -5,15 +5,14 @@ title: macOS stage cover T2 stalled 10 min after its last file passed (command e
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1881
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-09T18:33:53.922Z
-updated: 2026-11-09T18:33:53.922Z
+updated: 2026-11-16T07:28:46.517Z
 ---
 
 ## Summary

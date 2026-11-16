@@ -5,15 +5,14 @@ title: Historical /private/tmp fixture residue cleanup with positive closure pro
 state: open
 status: backlog
 size: M
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1882
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T07:01:05.627Z
-updated: 2026-11-15T07:01:05.627Z
+updated: 2026-11-16T07:28:59.093Z
 ---
 
 ## Summary

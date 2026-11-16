@@ -5,15 +5,14 @@ title: startServer's port retry spins without bound when freePort keeps returnin
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1885
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-11T18:14:27.445Z
-updated: 2026-11-11T18:14:46.091Z
+updated: 2026-11-16T07:29:16.353Z
 ---
 
 ## Summary

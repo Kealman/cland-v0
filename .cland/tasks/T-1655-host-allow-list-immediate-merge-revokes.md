@@ -5,16 +5,15 @@ title: host-allow-list 'immediate merge revokes every host lease' runs 5.1–6.7
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1883
 blocked_by: []
 regression_of: T-1597
 topic: null
 branch: null
 created: 2026-11-03T05:03:24.374Z
-updated: 2026-11-03T05:03:24.374Z
+updated: 2026-11-16T07:29:08.257Z
 ---
 
 ## Summary

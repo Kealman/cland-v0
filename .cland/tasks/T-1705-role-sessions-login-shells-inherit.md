@@ -6,17 +6,16 @@ state: open
 status: backlog
 size: M
 labels:
-  - needs-triage
   - security
 assignee: null
-parent: C-325
+parent: E-1884
 blocked_by: []
 regression_of: T-651
 found_by: qa
 topic: null
 branch: null
 created: 2026-11-06T10:31:30.250Z
-updated: 2026-11-06T10:31:30.250Z
+updated: 2026-11-16T07:30:03.291Z
 ---
 
 ## Summary
@@ -44,3 +43,12 @@ Containment for the QA run: qa-678 scanned 1,236 scratch files (with a positive 
 
 - [ ] C1. A test shows that a role session's tool shell started the way the harness starts it has zero provider credential names, even with a planted rc that exports one (test, red before the fix).
 - [ ] C2. The chosen approach and any setup step for the human are documented (docs).
+
+## Comments
+
+### coord · 2026-11-16T07:30:03.291Z
+
+The human decided on 2026-11-16 at 07:25Z (ask 8e3dd5ab, triage A-19813): fix it on the product side in 0.4.1 (E-1884).
+- The hub reads the provider token from its own secret store instead of the environment.
+- `cland doctor` warns when a shell startup file exports a provider credential.
+- No session changes the human's `~/.zshrc`. The Coordinator asks the human separately to move the export into the hub's launch environment.

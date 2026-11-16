@@ -5,16 +5,15 @@ title: login-snapshots ten-thousand-login budget case slowed by T-1784's capacit
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1883
 blocked_by: []
 regression_of: T-1784
 topic: null
 branch: null
 created: 2026-11-11T02:13:21.099Z
-updated: 2026-11-11T02:13:21.099Z
+updated: 2026-11-16T07:29:07.710Z
 ---
 
 ## Summary

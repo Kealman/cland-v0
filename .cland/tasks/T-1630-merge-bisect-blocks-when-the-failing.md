@@ -5,15 +5,14 @@ title: Merge bisect blocks when the failing test file belongs to the omitted mem
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1883
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T07:20:05.309Z
-updated: 2026-11-02T08:06:27.539Z
+updated: 2026-11-16T07:29:00.717Z
 ---
 
 ## Summary

@@ -5,15 +5,14 @@ title: The managed .cland/.gitignore header rewrite after a version bump moves t
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1888
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T23:32:23.381Z
-updated: 2026-11-15T23:32:23.381Z
+updated: 2026-11-16T07:29:28.359Z
 ---
 
 ## Summary

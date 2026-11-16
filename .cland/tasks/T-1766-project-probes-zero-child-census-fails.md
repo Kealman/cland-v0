@@ -2,8 +2,8 @@
 id: T-1766
 kind: task
 title: project-probes zero-child census fails when the file runs outside the suite runner
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-08T20:50:12.497Z
-updated: 2026-11-08T20:50:12.497Z
+updated: 2026-11-16T07:28:07.500Z
+closed: 2026-11-16T07:28:07.500Z
 ---
 
 ## Summary
@@ -30,3 +31,9 @@ updated: 2026-11-08T20:50:12.497Z
 
 - [ ] C1. A direct `node --test hub/test/project-probes.test.ts` on macOS and Linux passes, or the file refuses with a clear message naming the runner it needs (test).
 - [ ] C2. The census counts only processes the test's own harness spawns, independent of the invocation (test).
+
+## Comments
+
+### coord · 2026-11-16T07:28:07.500Z
+
+Merged into T-1768 (triage A-19813): the `{execFileSync: 1}` is `fixtureLockIdentity`'s native `sysctl` fallback when `CLAND_TEST_LOCK_IDENTITY` is unset (`hub/test/harness.ts:468`). It's the same class.

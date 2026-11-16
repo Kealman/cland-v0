@@ -5,15 +5,14 @@ title: heartbeat-digest.test.ts hung 632 s with no output in a Linux T1 run and 
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1881
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-13T00:27:22.788Z
-updated: 2026-11-13T00:27:22.788Z
+updated: 2026-11-16T07:28:45.992Z
 ---
 
 ## Summary

@@ -2,8 +2,8 @@
 id: T-1658
 kind: task
 title: Load-gate replay attributes a test registered in a shared helper module to the helper file and replays nothing
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T06:03:45.647Z
-updated: 2026-11-03T06:03:45.647Z
+updated: 2026-11-16T07:28:04.309Z
+closed: 2026-11-16T07:28:04.309Z
 ---
 
 ## Summary
@@ -27,3 +28,9 @@ Either the load gate replays the entry file that imported the registering helper
 ## Acceptance criteria
 
 - [ ] C1. A T3 test registered through a shared helper either passes load-gate replay through its entry file, or is refused by test lint with a message naming the entry-file fix; there is no silent 0/5 (test).
+
+## Comments
+
+### coord · 2026-11-16T07:28:04.309Z
+
+Merged into T-1575 (triage A-19813): same root cause (`hub/test/load-gate.ts` launches the source file of `test()`). T-1658's lint option is kept as an alternative fix for T-1575.

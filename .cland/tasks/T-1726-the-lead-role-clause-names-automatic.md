@@ -5,15 +5,14 @@ title: The Lead role clause names automatic host pushes, as E-1532's Contents pr
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-326
+parent: E-1885
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-06T16:26:33.070Z
-updated: 2026-11-06T16:26:33.070Z
+updated: 2026-11-16T07:29:17.930Z
 ---
 
 ## Summary

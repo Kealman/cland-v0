@@ -5,15 +5,14 @@ title: The web connection clones the whole retained askCards map on every card d
 state: open
 status: backlog
 size: M
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1886
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-12T22:58:19.834Z
-updated: 2026-11-12T22:58:19.834Z
+updated: 2026-11-16T07:29:22.589Z
 ---
 
 ## Summary

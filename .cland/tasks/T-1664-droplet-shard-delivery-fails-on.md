@@ -2,8 +2,8 @@
 id: T-1664
 kind: task
 title: Droplet shard delivery fails on 'Connection timed out during banner exchange' and the shard is lost instead of retried
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T21:00:19.244Z
-updated: 2026-11-03T21:00:19.244Z
+updated: 2026-11-16T07:28:09.313Z
+closed: 2026-11-16T07:28:09.313Z
 ---
 
 ## Summary
@@ -32,3 +33,9 @@ When delivery to a fresh droplet fails with a transport-level SSH error (banner 
 
 - [ ] C1. With a fake droplet whose sshd times out at banner exchange for the first N attempts, delivery retries within a bound and the shard runs; the log names each failed attempt and its cause (test).
 - [ ] C2. When every attempt fails, the shard's droplet is replaced once within the run, and only after that is the shard reported as an infrastructure not-run, with no test counted as failed (test).
+
+## Comments
+
+### coord · 2026-11-16T07:28:09.313Z
+
+Closed as fixed by T-1842 (f84b99014, 2026-11-14), per triage A-19813: `run.ts` `#upload` now retries every delivery file once and logs each attempt (docs/hub/running.md). The unbuilt C2 (replace the droplet once) moves to the new retro-improvements ticket on delivery fail-fast in R-1880.

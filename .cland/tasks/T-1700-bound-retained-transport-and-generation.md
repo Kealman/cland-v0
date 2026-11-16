@@ -5,15 +5,14 @@ title: Bound retained transport and generation ownership receipts
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1885
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-05T20:18:31.073Z
-updated: 2026-11-05T20:18:31.073Z
+updated: 2026-11-16T07:29:18.463Z
 ---
 
 ## Summary

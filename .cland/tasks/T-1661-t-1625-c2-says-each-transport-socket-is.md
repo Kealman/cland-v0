@@ -5,16 +5,15 @@ title: T-1625 C2 says each transport socket is mode 0700; the contract checks th
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-326
+parent: E-1887
 blocked_by: []
 regression_of: T-1625
 topic: null
 branch: null
 created: 2026-11-03T11:05:50.288Z
-updated: 2026-11-03T11:05:50.288Z
+updated: 2026-11-16T07:29:25.689Z
 ---
 
 ## Summary

@@ -5,15 +5,14 @@ title: A shared recording-Host test helper so Host doubles stay coherent when Ho
 state: open
 status: backlog
 size: M
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1882
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T16:28:22.539Z
-updated: 2026-11-04T16:28:22.539Z
+updated: 2026-11-16T07:28:56.875Z
 ---
 
 ## Summary

@@ -5,15 +5,14 @@ title: Paid host offers can act on pool terms that changed after the human's yes
 state: open
 status: backlog
 size: M
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1884
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T18:10:52.958Z
-updated: 2026-11-14T18:10:52.958Z
+updated: 2026-11-16T07:29:15.848Z
 ---
 
 ## Summary

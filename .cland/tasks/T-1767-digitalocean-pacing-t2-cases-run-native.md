@@ -5,15 +5,14 @@ title: digitalocean-pacing T2 cases run native process cleanup through the fake 
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1882
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-09T06:51:21.971Z
-updated: 2026-11-09T06:51:21.971Z
+updated: 2026-11-16T07:28:55.207Z
 ---
 
 ## Summary

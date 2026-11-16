@@ -5,15 +5,14 @@ title: Session recovery resumes by name from a stale snapshot and can resume a r
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1885
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T15:48:11.031Z
-updated: 2026-11-04T15:48:11.031Z
+updated: 2026-11-16T07:29:18.968Z
 ---
 
 ## Summary

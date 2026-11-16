@@ -5,15 +5,14 @@ title: "LoginBinder's selectForLaunch still walks rejected reader-intent history
 state: open
 status: backlog
 size: M
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1884
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T23:04:20.883Z
-updated: 2026-11-10T23:04:29.649Z
+updated: 2026-11-16T07:29:15.302Z
 ---
 
 ## Summary

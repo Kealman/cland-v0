@@ -5,15 +5,14 @@ title: "Explorer protocol recordings key on unrelated archive-loading state: the
 state: open
 status: backlog
 size: M
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1886
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T10:27:55.575Z
-updated: 2026-11-10T10:27:55.575Z
+updated: 2026-11-16T07:29:23.121Z
 ---
 
 ## Summary

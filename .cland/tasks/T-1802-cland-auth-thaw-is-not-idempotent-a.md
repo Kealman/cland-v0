@@ -5,10 +5,9 @@ title: "cland-auth thaw is not idempotent: a replay after a lost thaw receipt is
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1884
 blocked_by:
   - T-1781
 regression_of: T-1776
@@ -16,7 +15,7 @@ found_by: review
 topic: null
 branch: null
 created: 2026-11-10T08:10:09.103Z
-updated: 2026-11-10T08:10:18.197Z
+updated: 2026-11-16T07:29:11.668Z
 ---
 
 ## Summary

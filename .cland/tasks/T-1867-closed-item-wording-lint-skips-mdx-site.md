@@ -5,15 +5,14 @@ title: Closed-item wording lint skips .mdx site pages
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1887
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T08:06:05.841Z
-updated: 2026-11-15T08:06:05.841Z
+updated: 2026-11-16T07:29:25.171Z
 ---
 
 ## Summary

@@ -2,8 +2,8 @@
 id: T-1648
 kind: task
 title: The cross-session suite-cancel refusal test sometimes finds its worker already gone
-state: open
-status: backlog
+state: closed
+status: done
 size: XS
 labels:
   - needs-triage
@@ -14,7 +14,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T01:29:18.151Z
-updated: 2026-11-03T01:29:30.513Z
+updated: 2026-11-16T07:28:02.987Z
+closed: 2026-11-16T07:28:02.987Z
 ---
 
 ## Summary
@@ -35,3 +36,7 @@ Assert the refusal through the suite's own state: the run is still active, there
 ### coord · 2026-11-03T01:29:30.513Z
 
 Hub dev-t3 search for 75e7f4e4 classified this as "already-fixed (already fixed on dev at 20c4f9511)". T-1541 (5a0ce079, landed between the red head 3536669d and 20c4f951) edited `hub/test/suite-cancel.test.ts`, so it may have removed the cause. Triage: close as fixed by T-1541 if this identity stays green across the next three periodic dev T3 runs. Otherwise keep the fix described above.
+
+### coord · 2026-11-16T07:28:02.987Z
+
+Merged into T-1689 (R-1880 triage A-19813, approved by the human 2026-11-16 07:25Z): same test and assertion (`suite-cancel.test.ts:131–141`). It recurred after T-1541, so T-1541 didn't fix it.

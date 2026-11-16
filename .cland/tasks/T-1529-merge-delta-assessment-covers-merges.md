@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T17:22:39.945Z
-updated: 2026-10-31T17:22:39.945Z
+updated: 2026-11-16T07:30:06.481Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Compare the committed merge with its conflicted auto-merge. Admit the merge as d
 
 - [ ] C1. A replay of the 14 conflicted heads in A-15012 records an assessment for each resolution that is docs/help-only, and none for code resolutions. Native receipts are included for T-1503 8054bba9 and T-1504 c3d85e32.
 - [ ] C2. A positive and a negative fixture: a docs-only resolution is assessed, and a resolution touching code or tests is not. The existing conflict-free path keeps passing.
+
+## Comments
+
+### coord · 2026-11-16T07:30:06.481Z
+
+Deferred with T-1486 by the human on 2026-11-16 (ask 8e3dd5ab, triage A-19813). It stays in Follow-ups.

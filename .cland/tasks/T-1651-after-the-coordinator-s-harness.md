@@ -5,15 +5,14 @@ title: After the Coordinator's harness reconnects, the hub replays deliveries th
 state: open
 status: backlog
 size: M
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1885
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T02:50:04.977Z
-updated: 2026-11-04T00:06:59.797Z
+updated: 2026-11-16T07:29:19.974Z
 ---
 
 ## Summary

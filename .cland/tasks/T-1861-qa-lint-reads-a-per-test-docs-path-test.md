@@ -6,15 +6,14 @@ state: open
 status: backlog
 size: XS
 labels:
-  - needs-triage
   - qa-found
 assignee: null
-parent: C-325
+parent: E-1887
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T01:02:32.118Z
-updated: 2026-11-15T01:02:32.118Z
+updated: 2026-11-16T07:29:24.139Z
 ---
 
 ## Summary

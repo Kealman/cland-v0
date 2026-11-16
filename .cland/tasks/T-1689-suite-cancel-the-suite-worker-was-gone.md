@@ -5,15 +5,14 @@ title: "suite-cancel: the suite worker was gone straight after a refused cancel 
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1881
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-05T13:32:28.305Z
-updated: 2026-11-08T08:24:13.800Z
+updated: 2026-11-16T07:28:48.122Z
 ---
 
 ## Summary

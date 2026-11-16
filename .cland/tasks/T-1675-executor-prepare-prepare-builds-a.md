@@ -2,8 +2,8 @@
 id: T-1675
 kind: task
 title: executor-prepare 'prepare builds a reusable snapshot' sees 'unknown (inspection deferred)' instead of 'current' under macOS cover load
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T11:54:51.017Z
-updated: 2026-11-04T11:54:51.017Z
+updated: 2026-11-16T07:28:06.206Z
+closed: 2026-11-16T07:28:06.206Z
 ---
 
 ## Summary
@@ -32,3 +33,9 @@ The assertion is never weakened.
 
 - [ ] C1. The deferral condition is named, with a reproduction under load (evidence).
 - [ ] C2. The case passes 20/20 under a macOS load like the cover's, with its assertion unchanged (evidence).
+
+## Comments
+
+### coord · 2026-11-16T07:28:06.206Z
+
+Merged into T-1724 (triage A-19813): T-1675 is the test symptom, and T-1724 names the cause, `within(this.#key(), 250)` at `executor/droplet/droplet.ts:443`.

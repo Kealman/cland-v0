@@ -5,15 +5,14 @@ title: cland release fails with a bare "gh auth failed (ENOENT)" when the hub's 
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1888
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T23:29:25.796Z
-updated: 2026-11-15T23:29:25.796Z
+updated: 2026-11-16T07:29:27.827Z
 ---
 
 ## Summary

@@ -5,16 +5,15 @@ title: cland doctor reports a remote hub that refuses admission as 'does not ans
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-326
+parent: E-1884
 blocked_by: []
 regression_of: T-1600
 topic: null
 branch: null
 created: 2026-11-03T17:52:10.072Z
-updated: 2026-11-03T17:52:10.072Z
+updated: 2026-11-16T07:29:13.192Z
 ---
 
 ## Summary

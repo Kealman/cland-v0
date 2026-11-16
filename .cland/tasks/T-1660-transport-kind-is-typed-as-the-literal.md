@@ -5,16 +5,15 @@ title: Transport.kind is typed as the literal 'ssh', so a second carrier must ch
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-326
+parent: E-1884
 blocked_by: []
 regression_of: T-1625
 topic: null
 branch: null
 created: 2026-11-03T08:38:44.056Z
-updated: 2026-11-03T08:38:44.056Z
+updated: 2026-11-16T07:29:12.692Z
 ---
 
 ## Summary

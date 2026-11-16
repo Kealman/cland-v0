@@ -5,15 +5,14 @@ title: Hub stop cannot cancel a hung worktree prune git; it can outlive the hub
 state: open
 status: backlog
 size: M
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1885
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T10:12:33.598Z
-updated: 2026-11-14T10:26:14.715Z
+updated: 2026-11-16T07:29:21.031Z
 ---
 
 ## Summary

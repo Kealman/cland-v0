@@ -5,15 +5,14 @@ title: A finished suite with no lease stays in verify queue as an active remote 
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1883
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-13T12:41:29.355Z
-updated: 2026-11-13T12:41:29.355Z
+updated: 2026-11-16T07:29:04.494Z
 ---
 
 ## Summary

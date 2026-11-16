@@ -5,15 +5,14 @@ title: Branch tip moves recompute explorer summaries and demo freshness for the 
 state: open
 status: backlog
 size: M
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1885
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T23:57:57.064Z
-updated: 2026-11-02T23:57:57.064Z
+updated: 2026-11-16T07:29:20.529Z
 ---
 
 ## Summary

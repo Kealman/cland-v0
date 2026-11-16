@@ -5,15 +5,14 @@ title: Validate against the real Claude Code binary that it starts no new turn o
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-326
+parent: E-1885
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T17:37:23.637Z
-updated: 2026-11-04T17:37:23.637Z
+updated: 2026-11-16T07:30:04.637Z
 ---
 
 ## Summary
@@ -28,3 +27,9 @@ A QA check against the real Claude Code binary, in an authorised account under a
 
 - [ ] C1. A recorded real-binary receipt (version, the timeline of hooks around TERM) confirms or refutes the assumption (evidence).
 - [ ] C2. If it's refuted, a follow-up item is filed with the observed hook timeline (evidence).
+
+## Comments
+
+### coord · 2026-11-16T07:30:04.637Z
+
+The human decided on 2026-11-16 at 07:25Z (ask 8e3dd5ab, triage A-19813): one short, sealed real-binary QA run, late in 0.4.1 (E-1885), under the human's grant. If it refutes the expectation, a follow-up is filed. The current behaviour is safe, because the row stays held.

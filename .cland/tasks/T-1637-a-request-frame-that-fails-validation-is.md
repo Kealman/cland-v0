@@ -5,15 +5,14 @@ title: A request frame that fails validation is reported as an unknown request t
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-326
+parent: E-1886
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T16:48:05.147Z
-updated: 2026-11-02T16:48:05.147Z
+updated: 2026-11-16T07:29:21.528Z
 ---
 
 ## Summary

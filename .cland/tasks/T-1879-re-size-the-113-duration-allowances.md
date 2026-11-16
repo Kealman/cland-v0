@@ -3,17 +3,18 @@ id: T-1879
 kind: task
 title: Re-size the 469 duration allowances renewed on 2026-11-16 from the v0.4.0 release logs (C-216 entries expire 2026-11-23)
 state: open
-status: backlog
+status: in progress
 size: S
+criterion_seq: 3
 labels:
   - release-blocker
 assignee: null
 parent: R-1880
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1531
+branch: t/T-1879-re-size-the-113-duration-allowances
 created: 2026-11-16T07:04:58.109Z
-updated: 2026-11-16T07:08:56.321Z
+updated: 2026-11-16T07:26:26.945Z
 ---
 
 ## Summary
@@ -35,5 +36,29 @@ For the E-880 legacy entries, follow D72 and D73: they stay owned by E-880 until
 ## Acceptance criteria
 
 - [ ] C1. Every renewed C-216 allowance is re-sized or removed from a named log sample before 2026-11-23 00:00 UTC, and `npm run test:tiers` and the manifest lint pass at a simulated date after that (test).
+  - failed: rev-35 [reviewer] · 2026-11-16T07:26:26.944Z · note Wrong normalized C-216 default/removal decision and incomplete recent passing-sample census invalidate requested evidence-based allowance decisions.
 - [ ] C2. The E-880 entries are re-sized or removed from a named sample, or kept with D72's owner and a reason naming the sample, before 2026-12-16 (test).
-- [ ] C3. Expiry warnings reach the Coordinator far enough ahead to act, at least 5 days, or a filed item says why not (test).
+  - failed: rev-35 [reviewer] · 2026-11-16T07:26:26.944Z · note Ten E-880 selected peaks fit normalizedT3 defaults but were retained using generic5s/60s budgets; recompute removals using production tier policy.
+- [x] C3. Expiry warnings reach the Coordinator far enough ahead to act, at least 5 days, or a filed item says why not (test).
+  - done: impl-1879 · 2026-11-16T07:18:06.268Z
+
+## Comments
+
+### impl-1879 · 2026-11-16T07:14:55.944Z
+
+Rule 20 warning consumer sweep: durationAllowanceWarnings/readDurationAllowanceWarnings -> hub/src/hub/server.ts default heartbeat reader and hub/src/hub/dispatch.ts periodic report. hub/test/heartbeat.test.ts and hub/test/suite-soak-component.test.ts assert warning text and are migrated. CLI hub/test/lint-tiers.ts now imports shared reader; durations.test.ts scratch CLI import fixture migrated. Search covered hub/nvim/web, .agents shipped skills, qa briefs, docs and all tiers via symbol names plus warning text (48h/48-hour/duration allowance/durationWarnings). Neovim/web consume ordinary message text without duration-specific parsing; protocol fields and persisted shapes unchanged, so old message strings remain compatible. docs/hub/running.md, hub/README.md, docs/agents/tests.md updated. 469 entries: C-216 100 removed/38 resized; E-880 200 removed/130 resized/1 unchanged ratchet cap per Coordinator decision 12ad0b5a. Date requirement superseded by Coordinator e38c475c: green added+6d23h, red at expiry; E-880 green added+30d.
+
+### rev-35 · 2026-11-16T07:26:26.945Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1879-source-1
+commit: d7bf02097765203299c44d24d6500194e0569152
+scope: full
+findings: [{"severity":"medium","text":"Generated sizing used raw object tiers and generic5s/60s instead of normalizedT3 10s/120s.23 audit budgets wrong;11 selected under-default retentions (1C-216/10E-880), including host-ssh and OpenCode file, contradict remove-if-fits policy. Recompute all469 through production tier reader.","file":"hub/test/durations.json","line":12529},{"severity":"medium","text":"Passing recent batch A-19743 omitted from census; integrated load pass30.659327257s exceeds selected29.121779533. Case46->43.683/file49 removal unsupported. Include comprehensive recent batch census and follow Coordinator92ff24e2 keep46/49 unless larger positive sample; preserve original469 lineage.","file":"hub/test/durations.json","line":13772}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+A-19814 completed Standards/Spec review. Independently streamed all72selected logs:468 positive test/file maxima match chosen corpus, no arithmetic mismatch.469rows exactly cover changed allowance keys;25unrelated unchanged, report mode and ratchet exception retained. Two confirmed sizing/census defects remain, warning implementation has no new finding. Corrected date requirements e38c475c/8576bc01 respected.807consumer/16unknown union and honest A-19812 original capture limits retained. C3 unverified pending configured evidence, not failed for unexecuted phases. Hold released; consolidate fixes, fresh exact-head source review before verification. No Reviewer runtime/provenance rerun.
+
+Criteria: C1 failed (Wrong normalized C-216 default/removal decision and incomplete recent passing-sample census invalidate requested evidence-based allowance decisions.), C2 failed (Ten E-880 selected peaks fit normalizedT3 defaults but were retained using generic5s/60s budgets; recompute removals using production tier policy.).

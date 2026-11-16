@@ -7,14 +7,13 @@ status: backlog
 size: S
 labels:
   - qa-found
-  - needs-triage
 assignee: null
-parent: C-325
+parent: E-1882
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T14:47:20.399Z
-updated: 2026-11-12T18:00:32.067Z
+updated: 2026-11-16T07:28:57.965Z
 ---
 
 ## Summary

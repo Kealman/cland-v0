@@ -8,13 +8,13 @@ size: S
 labels:
   - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-1884
 blocked_by:
   - T-1589
 topic: null
 branch: null
 created: 2026-11-02T05:50:22.553Z
-updated: 2026-11-02T05:50:22.553Z
+updated: 2026-11-16T07:29:08.812Z
 ---
 
 ## Summary

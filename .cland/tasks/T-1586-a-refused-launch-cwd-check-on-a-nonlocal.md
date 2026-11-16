@@ -8,14 +8,14 @@ size: S
 labels:
   - ready-for-agent
 assignee: null
-parent: C-326
+parent: E-1884
 blocked_by: []
 regression_of: T-1553
 found_by: qa
 topic: null
 branch: null
 created: 2026-11-02T01:53:50.628Z
-updated: 2026-11-02T01:53:50.628Z
+updated: 2026-11-16T07:29:13.733Z
 ---
 
 ## Summary

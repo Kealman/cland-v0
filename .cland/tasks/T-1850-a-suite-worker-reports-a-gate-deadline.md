@@ -5,15 +5,14 @@ title: A suite worker reports a gate-deadline expiry as 'hub stopped before work
 state: open
 status: backlog
 size: XS
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-325
+parent: E-1883
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T03:47:22.789Z
-updated: 2026-11-14T03:47:22.789Z
+updated: 2026-11-16T07:29:02.866Z
 ---
 
 ## Summary

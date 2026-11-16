@@ -5,15 +5,14 @@ title: Per-item guidance keeps landing in the implement skill, making it the rem
 state: open
 status: backlog
 size: S
-labels:
-  - needs-triage
+labels: []
 assignee: null
-parent: C-216
+parent: E-1887
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T01:51:41.764Z
-updated: 2026-11-03T01:51:41.764Z
+updated: 2026-11-16T07:29:27.297Z
 ---
 
 ## Summary
