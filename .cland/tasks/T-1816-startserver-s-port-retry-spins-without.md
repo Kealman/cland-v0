@@ -3,7 +3,7 @@ id: T-1816
 kind: task
 title: startServer's port retry spins without bound when freePort keeps returning an already-attempted port
 state: open
-status: backlog
+status: planned
 size: XS
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-11T18:14:27.445Z
-updated: 2026-11-16T07:29:16.353Z
+updated: 2026-11-16T07:31:17.187Z
 ---
 
 ## Summary

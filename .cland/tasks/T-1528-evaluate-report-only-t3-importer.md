@@ -3,7 +3,7 @@ id: T-1528
 kind: task
 title: Evaluate report-only T3 importer selection for merge batches (T-1490 class)
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T17:17:41.198Z
-updated: 2026-11-16T07:29:29.952Z
+updated: 2026-11-16T07:31:26.139Z
 ---
 
 ## Summary

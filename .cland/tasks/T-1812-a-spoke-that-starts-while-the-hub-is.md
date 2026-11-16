@@ -3,7 +3,7 @@ id: T-1812
 kind: task
 title: "A spoke that starts while the hub is down never connects: no hub.json at startup means no endpoint for its lifetime"
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-11T06:00:56.866Z
-updated: 2026-11-16T07:29:16.902Z
+updated: 2026-11-16T07:31:17.452Z
 ---
 
 ## Summary

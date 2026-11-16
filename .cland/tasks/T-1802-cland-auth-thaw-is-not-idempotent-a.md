@@ -3,7 +3,7 @@ id: T-1802
 kind: task
 title: "cland-auth thaw is not idempotent: a replay after a lost thaw receipt is refused when the disk is already unfrozen"
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -15,7 +15,7 @@ found_by: review
 topic: null
 branch: null
 created: 2026-11-10T08:10:09.103Z
-updated: 2026-11-16T07:29:11.668Z
+updated: 2026-11-16T07:31:14.508Z
 ---
 
 ## Summary

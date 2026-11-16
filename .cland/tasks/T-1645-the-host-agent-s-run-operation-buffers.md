@@ -3,7 +3,7 @@ id: T-1645
 kind: task
 title: The host agent's run operation buffers unbounded command output before its reply cap
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T23:52:24.965Z
-updated: 2026-11-16T07:29:10.633Z
+updated: 2026-11-16T07:31:13.901Z
 ---
 
 ## Summary

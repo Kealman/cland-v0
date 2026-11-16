@@ -3,7 +3,7 @@ id: T-1902
 kind: task
 title: Review-class analysis of not-clear verdicts
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - retro-improvement
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T07:29:47.285Z
-updated: 2026-11-16T07:29:47.285Z
+updated: 2026-11-16T07:31:26.665Z
 ---
 
 ## Summary

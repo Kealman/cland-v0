@@ -3,7 +3,7 @@ id: T-1900
 kind: task
 title: Ready and landing events wake the Coordinator
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - retro-improvement
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T07:29:46.895Z
-updated: 2026-11-16T07:29:46.895Z
+updated: 2026-11-16T07:31:26.283Z
 ---
 
 ## Summary

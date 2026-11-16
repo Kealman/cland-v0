@@ -3,7 +3,7 @@ id: T-1841
 kind: task
 title: heartbeat-digest.test.ts hung 632 s with no output in a Linux T1 run and stalled a task verify
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-13T00:27:22.788Z
-updated: 2026-11-16T07:28:45.992Z
+updated: 2026-11-16T07:31:06.406Z
 ---
 
 ## Summary

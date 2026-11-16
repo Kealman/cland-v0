@@ -3,7 +3,7 @@ id: T-1677
 kind: task
 title: hub-lifecycle test expects a literal hub.sock path and fails when TMPDIR is longer
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - qa-found
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T14:47:20.577Z
-updated: 2026-11-16T07:28:56.303Z
+updated: 2026-11-16T07:31:09.218Z
 ---
 
 ## Summary

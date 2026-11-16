@@ -3,7 +3,7 @@ id: T-1700
 kind: task
 title: Bound retained transport and generation ownership receipts
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-05T20:18:31.073Z
-updated: 2026-11-16T07:29:18.463Z
+updated: 2026-11-16T07:31:18.447Z
 ---
 
 ## Summary

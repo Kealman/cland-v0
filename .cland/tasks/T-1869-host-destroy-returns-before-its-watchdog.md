@@ -3,7 +3,7 @@ id: T-1869
 kind: task
 title: Host destroy returns before its watchdog's exit is joined (watchdog alive ~10 s after destroyed)
 state: open
-status: backlog
+status: planned
 size: XS
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T11:15:22.624Z
-updated: 2026-11-16T07:29:12.186Z
+updated: 2026-11-16T07:31:14.880Z
 ---
 
 ## Summary

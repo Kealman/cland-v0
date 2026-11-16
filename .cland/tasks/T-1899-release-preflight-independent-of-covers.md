@@ -3,7 +3,7 @@ id: T-1899
 kind: task
 title: Release preflight independent of covers
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - retro-improvement
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-16T07:29:46.730Z
-updated: 2026-11-16T07:29:48.675Z
+updated: 2026-11-16T07:31:24.921Z
 ---
 
 ## Summary

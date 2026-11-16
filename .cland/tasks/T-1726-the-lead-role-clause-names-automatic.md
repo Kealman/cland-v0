@@ -3,7 +3,7 @@ id: T-1726
 kind: task
 title: The Lead role clause names automatic host pushes, as E-1532's Contents promise
 state: open
-status: backlog
+status: planned
 size: XS
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-06T16:26:33.070Z
-updated: 2026-11-16T07:29:17.930Z
+updated: 2026-11-16T07:31:18.085Z
 ---
 
 ## Summary

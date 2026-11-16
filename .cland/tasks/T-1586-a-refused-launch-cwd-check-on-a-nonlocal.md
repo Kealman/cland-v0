@@ -3,7 +3,7 @@ id: T-1586
 kind: task
 title: A refused launch-cwd check on a nonlocal host names the host's refusal
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ found_by: qa
 topic: null
 branch: null
 created: 2026-11-02T01:53:50.628Z
-updated: 2026-11-16T07:29:13.733Z
+updated: 2026-11-16T07:31:15.744Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1889
 kind: task
 title: Load-aware test waits on local runs
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - retro-improvement
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T07:29:44.705Z
-updated: 2026-11-16T07:29:44.705Z
+updated: 2026-11-16T07:31:24.305Z
 ---
 
 ## Summary

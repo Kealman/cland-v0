@@ -8,11 +8,12 @@ size: XS
 labels: []
 assignee: null
 parent: E-1881
-blocked_by: []
+blocked_by:
+  - T-1889
 topic: null
 branch: null
 created: 2026-11-09T20:40:55.555Z
-updated: 2026-11-16T07:28:49.715Z
+updated: 2026-11-16T07:31:29.879Z
 ---
 
 ## Summary

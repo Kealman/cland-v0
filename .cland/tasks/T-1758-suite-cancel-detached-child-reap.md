@@ -9,11 +9,12 @@ labels:
   - ready-for-agent
 assignee: null
 parent: E-1881
-blocked_by: []
+blocked_by:
+  - T-1889
 topic: null
 branch: null
 created: 2026-11-07T16:25:55.075Z
-updated: 2026-11-16T07:28:48.664Z
+updated: 2026-11-16T07:31:29.390Z
 ---
 
 ## Summary

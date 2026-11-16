@@ -3,7 +3,7 @@ id: T-1861
 kind: task
 title: qa lint reads a per-test docs path (.test.ts.md) as a missing test file
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - qa-found
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T01:02:32.118Z
-updated: 2026-11-16T07:29:24.139Z
+updated: 2026-11-16T07:31:21.619Z
 ---
 
 ## Summary

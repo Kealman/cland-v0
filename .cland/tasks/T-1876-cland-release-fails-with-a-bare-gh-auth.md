@@ -3,7 +3,7 @@ id: T-1876
 kind: task
 title: cland release fails with a bare "gh auth failed (ENOENT)" when the hub's PATH has no gh; doctor doesn't check gh on the hub's PATH
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T23:29:25.796Z
-updated: 2026-11-16T07:29:27.827Z
+updated: 2026-11-16T07:31:24.561Z
 ---
 
 ## Summary

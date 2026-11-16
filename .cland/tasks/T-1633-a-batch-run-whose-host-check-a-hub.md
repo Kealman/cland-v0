@@ -3,7 +3,7 @@ id: T-1633
 kind: task
 title: A batch run whose host check a hub restart killed holds as inconclusive after a green rerun
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T11:11:55.194Z
-updated: 2026-11-16T07:29:01.238Z
+updated: 2026-11-16T07:31:11.529Z
 ---
 
 ## Summary

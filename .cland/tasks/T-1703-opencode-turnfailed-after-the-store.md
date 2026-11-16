@@ -3,7 +3,7 @@ id: T-1703
 kind: task
 title: OpenCode turnFailed after the store closes throws "database is not open" in the pending-permission adapter test
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -14,7 +14,7 @@ found_by: droplet
 topic: null
 branch: null
 created: 2026-11-06T05:22:20.125Z
-updated: 2026-11-16T07:28:44.922Z
+updated: 2026-11-16T07:31:05.793Z
 ---
 
 ## Summary

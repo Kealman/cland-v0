@@ -3,7 +3,7 @@ id: T-1850
 kind: task
 title: A suite worker reports a gate-deadline expiry as 'hub stopped before worker admission completed'
 state: open
-status: backlog
+status: planned
 size: XS
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T03:47:22.789Z
-updated: 2026-11-16T07:29:02.866Z
+updated: 2026-11-16T07:31:12.504Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1697
 kind: task
 title: Host agent checkpoint writes share one fixed '.new' temp name; a concurrent or late checkpoint fails with ENOENT
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-05T19:31:45.062Z
-updated: 2026-11-16T07:28:43.828Z
+updated: 2026-11-16T07:31:04.838Z
 ---
 
 ## Summary

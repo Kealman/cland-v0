@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T07:28:33.288Z
-updated: 2026-11-16T07:28:33.288Z
+updated: 2026-11-16T07:31:12.759Z
 ---
 
 ## Goal
@@ -28,3 +28,32 @@ QA reads each child's verified criteria and the epic's cover evidence on dev, an
 
 - [ ] C1. Every child item is closed with its criteria verified, or closed with a recorded reason (merged, fixed elsewhere, deferred by the human).
 - [ ] C2. A green Linux droplet cover and, at the epic's close, a green macOS cover exist at one dev tree that contains every child's landing (evidence).
+
+## Plan
+
+```yaml
+stages:
+  - name: stage 1
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1626
+      - - T-1645
+      - - T-1688
+      - - T-1802
+      - - T-1869
+      - - T-1660
+      - - T-1662
+      - - T-1586
+      - - T-1705
+  - name: stage 2
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1656
+      - - T-1672
+      - - T-1807
+      - - T-1858
+```

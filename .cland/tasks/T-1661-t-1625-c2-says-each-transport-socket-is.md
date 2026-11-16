@@ -3,7 +3,7 @@ id: T-1661
 kind: task
 title: T-1625 C2 says each transport socket is mode 0700; the contract checks the run directory at 0700 and the sockets as 0600 nodes
 state: open
-status: backlog
+status: planned
 size: XS
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ regression_of: T-1625
 topic: null
 branch: null
 created: 2026-11-03T11:05:50.288Z
-updated: 2026-11-16T07:29:25.689Z
+updated: 2026-11-16T07:31:22.593Z
 ---
 
 ## Summary

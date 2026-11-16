@@ -3,7 +3,7 @@ id: T-1768
 kind: task
 title: projectHub T2 fixtures reach native sysctl through the default lock identity
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-09T06:56:35.201Z
-updated: 2026-11-16T07:28:53.543Z
+updated: 2026-11-16T07:31:07.867Z
 ---
 
 ## Summary

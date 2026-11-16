@@ -3,7 +3,7 @@ id: T-1665
 kind: task
 title: The publication scanner flags test titles and prose containing 'bearer' as credentials, forcing presentation omissions in every QA run
 state: open
-status: backlog
+status: planned
 size: XS
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T21:49:08.624Z
-updated: 2026-11-16T07:29:23.621Z
+updated: 2026-11-16T07:31:21.360Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1724
 kind: task
 title: Executor status reports "unknown (inspection deferred)" when the local snapshot-key read exceeds its 250 ms bound under load
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-06T11:49:25.020Z
-updated: 2026-11-16T07:28:45.458Z
+updated: 2026-11-16T07:31:06.043Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1817
 kind: task
 title: login-metadata-owners test helper closes the borrowed Store even when hub.stop rejected
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-11T19:29:02.179Z
-updated: 2026-11-16T07:28:55.756Z
+updated: 2026-11-16T07:31:09.068Z
 ---
 
 ## Summary

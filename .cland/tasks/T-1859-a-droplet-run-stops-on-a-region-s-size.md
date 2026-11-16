@@ -3,7 +3,7 @@ id: T-1859
 kind: task
 title: A droplet run stops on a region's 'size not available' instead of trying the next region
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T18:24:03.472Z
-updated: 2026-11-16T07:29:29.421Z
+updated: 2026-11-16T07:31:25.777Z
 ---
 
 ## Summary

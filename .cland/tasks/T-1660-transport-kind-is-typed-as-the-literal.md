@@ -3,7 +3,7 @@ id: T-1660
 kind: task
 title: Transport.kind is typed as the literal 'ssh', so a second carrier must change the shared contract type
 state: open
-status: backlog
+status: planned
 size: XS
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ regression_of: T-1625
 topic: null
 branch: null
 created: 2026-11-03T08:38:44.056Z
-updated: 2026-11-16T07:29:12.692Z
+updated: 2026-11-16T07:31:15.138Z
 ---
 
 ## Summary

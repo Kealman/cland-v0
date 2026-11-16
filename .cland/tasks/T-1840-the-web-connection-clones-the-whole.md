@@ -3,7 +3,7 @@ id: T-1840
 kind: task
 title: The web connection clones the whole retained askCards map on every card delta and inbox publication
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-12T22:58:19.834Z
-updated: 2026-11-16T07:29:22.589Z
+updated: 2026-11-16T07:31:19.872Z
 ---
 
 ## Summary

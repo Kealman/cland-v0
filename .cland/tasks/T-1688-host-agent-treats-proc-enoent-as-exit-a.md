@@ -3,7 +3,7 @@ id: T-1688
 kind: task
 title: Host agent treats /proc ENOENT as exit; a hidepid or foreign-namespace /proc can make a live process read as exited
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ regression_of: T-1684
 topic: null
 branch: null
 created: 2026-11-05T11:59:40.426Z
-updated: 2026-11-16T07:29:11.162Z
+updated: 2026-11-16T07:31:14.259Z
 ---
 
 ## Summary

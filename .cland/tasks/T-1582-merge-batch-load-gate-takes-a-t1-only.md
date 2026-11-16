@@ -3,7 +3,7 @@ id: T-1582
 kind: task
 title: Merge batch load gate takes a T1-only batch as its T3 baseline and repeats every T3 test five times
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-01T10:39:22.454Z
-updated: 2026-11-16T07:29:00.164Z
+updated: 2026-11-16T07:31:10.921Z
 ---
 
 ## Summary

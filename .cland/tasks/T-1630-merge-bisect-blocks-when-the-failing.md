@@ -3,7 +3,7 @@ id: T-1630
 kind: task
 title: Merge bisect blocks when the failing test file belongs to the omitted member
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T07:20:05.309Z
-updated: 2026-11-16T07:29:00.717Z
+updated: 2026-11-16T07:31:11.281Z
 ---
 
 ## Summary

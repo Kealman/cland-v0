@@ -3,7 +3,7 @@ id: T-1576
 kind: task
 title: A waiting soak runner loses its suite ticket ("suite ticket disappeared while waiting") and the occasion is lost
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-01T03:15:12.553Z
-updated: 2026-11-16T07:29:01.780Z
+updated: 2026-11-16T07:31:11.889Z
 ---
 
 ## Summary

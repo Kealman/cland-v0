@@ -8,12 +8,13 @@ size: S
 labels: []
 assignee: null
 parent: E-1881
-blocked_by: []
+blocked_by:
+  - T-1889
 regression_of: T-1686
 topic: null
 branch: null
 created: 2026-11-05T19:05:01.746Z
-updated: 2026-11-16T07:28:52.474Z
+updated: 2026-11-16T07:31:30.906Z
 ---
 
 ## Summary

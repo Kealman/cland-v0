@@ -3,7 +3,7 @@ id: T-1626
 kind: task
 title: The droplet executor and the host carrier share one ssh binary selector
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T05:50:22.553Z
-updated: 2026-11-16T07:29:08.812Z
+updated: 2026-11-16T07:31:13.659Z
 ---
 
 ## Summary

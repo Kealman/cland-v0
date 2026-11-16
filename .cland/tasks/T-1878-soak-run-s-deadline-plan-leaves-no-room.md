@@ -3,7 +3,7 @@ id: T-1878
 kind: task
 title: "Soak run's deadline plan leaves no room for Web: d5150de3 timed out (exit 124) in the Web tier after T0–T4 passed"
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T04:19:13.815Z
-updated: 2026-11-16T07:29:28.889Z
+updated: 2026-11-16T07:31:25.529Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1662
 kind: task
 title: cland doctor reports a remote hub that refuses admission as 'does not answer'
 state: open
-status: backlog
+status: planned
 size: XS
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ regression_of: T-1600
 topic: null
 branch: null
 created: 2026-11-03T17:52:10.072Z
-updated: 2026-11-16T07:29:13.192Z
+updated: 2026-11-16T07:31:15.495Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1637
 kind: task
 title: A request frame that fails validation is reported as an unknown request type
 state: open
-status: backlog
+status: planned
 size: XS
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T16:48:05.147Z
-updated: 2026-11-16T07:29:21.528Z
+updated: 2026-11-16T07:31:19.380Z
 ---
 
 ## Summary

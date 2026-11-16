@@ -3,7 +3,7 @@ id: T-1804
 kind: task
 title: "Explorer protocol recordings key on unrelated archive-loading state: the same task.plan/task.view frame records a new entry once closed archive rows arrive"
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T10:27:55.575Z
-updated: 2026-11-16T07:29:23.121Z
+updated: 2026-11-16T07:31:20.230Z
 ---
 
 ## Summary

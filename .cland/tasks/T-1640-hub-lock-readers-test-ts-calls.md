@@ -3,7 +3,7 @@ id: T-1640
 kind: task
 title: hub-lock-readers.test.ts calls lockHostIdentity directly and spawns sysctl on macOS
 state: open
-status: backlog
+status: planned
 size: XS
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ regression_of: T-1617
 topic: null
 branch: null
 created: 2026-11-02T19:53:37.392Z
-updated: 2026-11-16T07:28:54.099Z
+updated: 2026-11-16T07:31:08.109Z
 ---
 
 ## Summary

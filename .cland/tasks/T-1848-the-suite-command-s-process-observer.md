@@ -3,7 +3,7 @@ id: T-1848
 kind: task
 title: The suite command's process observer drops inspection failures without a receipt
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T02:03:07.406Z
-updated: 2026-11-16T07:29:02.330Z
+updated: 2026-11-16T07:31:12.142Z
 ---
 
 ## Summary

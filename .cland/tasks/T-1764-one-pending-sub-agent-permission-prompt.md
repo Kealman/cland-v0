@@ -3,7 +3,7 @@ id: T-1764
 kind: task
 title: One pending sub-agent permission prompt sends a new Telegram approval card at every coord turn boundary
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-08T18:34:49.448Z
-updated: 2026-11-16T07:29:22.085Z
+updated: 2026-11-16T07:31:19.624Z
 ---
 
 ## Summary

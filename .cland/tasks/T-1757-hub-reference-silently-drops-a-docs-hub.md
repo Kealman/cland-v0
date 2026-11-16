@@ -3,7 +3,7 @@ id: T-1757
 kind: task
 title: Hub reference silently drops a docs/hub index entry whose line carries a description
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-07T16:15:56.538Z
-updated: 2026-11-16T07:29:24.638Z
+updated: 2026-11-16T07:31:21.983Z
 ---
 
 ## Summary

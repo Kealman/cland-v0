@@ -3,7 +3,7 @@ id: T-1767
 kind: task
 title: digitalocean-pacing T2 cases run native process cleanup through the fake API close
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-09T06:51:21.971Z
-updated: 2026-11-16T07:28:55.207Z
+updated: 2026-11-16T07:31:08.713Z
 ---
 
 ## Summary

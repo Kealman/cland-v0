@@ -3,7 +3,7 @@ id: T-1769
 kind: task
 title: Spend lock contention retry waits on the hub FakeClock, so T2 projectHub fixtures deadlock
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-09T07:45:15.143Z
-updated: 2026-11-16T07:28:54.681Z
+updated: 2026-11-16T07:31:08.464Z
 ---
 
 ## Summary

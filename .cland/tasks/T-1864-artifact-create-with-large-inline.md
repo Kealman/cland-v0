@@ -3,7 +3,7 @@ id: T-1864
 kind: task
 title: artifact.create with large inline content times out at 300 s with an unknown outcome
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T04:42:50.038Z
-updated: 2026-11-16T07:29:17.405Z
+updated: 2026-11-16T07:31:17.817Z
 ---
 
 ## Summary

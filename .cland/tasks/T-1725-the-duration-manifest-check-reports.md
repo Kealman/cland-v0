@@ -3,7 +3,7 @@ id: T-1725
 kind: task
 title: The duration manifest check reports duplicate allowance and baseline keys
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-06T12:32:46.395Z
-updated: 2026-11-16T07:28:59.631Z
+updated: 2026-11-16T07:31:10.669Z
 ---
 
 ## Summary
