@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1538
 branch: t/T-1697-host-agent-checkpoint-writes-share-one
 created: 2026-11-05T19:31:45.062Z
-updated: 2026-11-16T09:06:39.141Z
+updated: 2026-11-16T09:54:38.387Z
 ---
 
 ## Summary
@@ -95,3 +95,7 @@ Criteria: C1 verified, C2 verified.
 ### impl-1697 · 2026-11-16T09:06:39.141Z
 
 C3 disposition/revised acceptance from Coordinator decisions7d5d5de1 and73d24380 (2026-11-16): (a)10 loaded Linux Docker --init runs, entry one-minute load>=8, of originally failing case 'lost native release reply settles without replaying native stop', selected via --test-name-pattern, each bounded60s; (b)2 full-file loaded claude-code-remote.test.ts runs bounded325s (file allowance), all cases passing. Same reviewed58f83349e. Original C3 ten full files is superseded by this explicit decision. No CPU-priority tuning. Initial load prerequisite attempt ran no test. Sample1 at entryload8.04/post11.54 was cut at generic180s while progressing:22 case passes, file cancelled1/native exit1; target case passed7.925692545s. It is INCOMPLETE at the file bound, not a checkpoint failure, and counts toward neither revised part. Full raw receipt will be preserved; no checkpoint ENOENT was observed. Repetitions resume in queued slot after impl-1731.
+
+### impl-1697 · 2026-11-16T09:54:38.387Z
+
+Revised C3 partial evidence A-19943: ten selected original-case runs101–110 have exact generated name/1pass each, nativeexit0/no skips or cancellations, entryload8.10–9.89. Fullfile11145/45 passing identities,0 skips/cancels,284.002s,entry10.22. Fullfile112 cut at325s:39 case passes/0failedcases/1filecancellation; incomplete and excluded. All at58f83349e, Linuxarm64 Node24.21/Docker--init/networknone/cpu4, no browser. Facts separately validate exit+generated case summaries and current-source hashes; positive-control secret scan clean. Configured verification remains greenA-19883 separately. One fullfile remains. Coordinator f4261b26 authorizes one requeued fullfile at325s/lower generator floor/entry>=8/no priority tuning; stop and report if it again reaches bound while progressing. Queue after impl-1703 and impl-1724. C3 not marked done.

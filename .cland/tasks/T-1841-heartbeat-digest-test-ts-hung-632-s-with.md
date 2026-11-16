@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-1546
 branch: t/T-1841-heartbeat-digest-test-ts-hung-632-s-with
 created: 2026-11-13T00:27:22.788Z
-updated: 2026-11-16T09:53:13.727Z
+updated: 2026-11-16T09:53:53.224Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ Find why the file can hang under the full T1 run on Linux (an unresolved timer o
 
 - [ ] C1. The hang is located from the A-19160 log and the file's code (the file started but its only test never did, so test-process startup or import), and the item records what the log cannot settle (test).
 - [ ] C2. A test file that starts but begins no test within a named bound, well under the runner's no-output limit, fails at once with the runner's stall evidence from T-1796, not after the 10-minute stall guard (test, red before the fix); heartbeat-digest.test.ts passes five lone Linux repetitions (evidence).
+
+## Comments
+
+### impl-1841 · 2026-11-16T09:53:53.224Z
+
+C1 finding from A-19160 (Linux x64, Node24.21, droplet, bac216bee8662af959eec209800682884f45a508): final events are file-start for heartbeat-digest.test.ts, followed by `in flight: hub/test/heartbeat-digest.test.ts :: /home/runner/cland/hub/test/heartbeat-digest.test.ts (running 632 s)`. There is no start event for its only test. This localizes the stall to test-process startup/import, before the synchronous test body. The body uses an in-memory Store, FakeClock.now/block, and synchronous digest/assertions; it creates no timer, promise, socket or shared resource. The runtime import graph has no top-level await or initiated async work. No fake-clock defect was found. The historical log lacks PID/native-exit/pipe receipts, so it cannot distinguish native spawn/bootstrap/import blockage or establish the exact native cause. Per Coordinator decision 69815e1a, T-1841 will add a runner first-test-start bound after T-1796's diagnostics land; no test-local async import workaround.

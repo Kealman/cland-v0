@@ -3,7 +3,7 @@ id: T-1843
 kind: task
 title: A finished suite with no lease stays in verify queue as an active remote run and holds a remote slot across restarts
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1543
 branch: t/T-1843-a-finished-suite-with-no-lease-stays-in
 created: 2026-11-13T12:41:29.355Z
-updated: 2026-11-16T09:53:24.129Z
+updated: 2026-11-16T09:55:36.688Z
 ---
 
 ## Summary
@@ -29,9 +29,11 @@ A suite that has finished, or whose lease and droplet are gone, leaves the activ
 - [x] C1. A remote run whose suite record is finished and whose lease is gone is absent from `cland verify queue` and does not count against `remote_budget`, both live and after a hub restart (test).
   - done: impl-1843 · 2026-11-16T08:53:28.876Z
   - verified: rev-35 [reviewer] · run rev-35-1843-final-1 · 2026-11-16T09:29:13.317Z · commit ae5664ce0e9c6788bb7eb4176ca32af91766b24a
+  - verified: rev-35 [reviewer] · run rev-35-1843-merge-delta-1 · 2026-11-16T09:55:24.336Z · commit f66be0d2f1818458c7d400e6fb09aff918eebc09
 - [x] C2. A run that ended without a posted result gets exactly one posted result naming the missing receipt, after which the heartbeat no longer lists it (test).
   - done: impl-1843 · 2026-11-16T08:59:02.953Z
   - verified: rev-35 [reviewer] · run rev-35-1843-final-1 · 2026-11-16T09:29:13.317Z · commit ae5664ce0e9c6788bb7eb4176ca32af91766b24a
+  - verified: rev-35 [reviewer] · run rev-35-1843-merge-delta-1 · 2026-11-16T09:55:24.337Z · commit f66be0d2f1818458c7d400e6fb09aff918eebc09
 
 ## Comments
 
@@ -122,5 +124,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final same-head C1/C2 verified, A-19936/A-19935. Independently streamed6389base tests/700files and255separate load tests/files, all pass. Nine required new identities each ordinary+5; all five prior refusal failures now pass unchanged; no persistence tier-mismatch records. All selected220T1/425T2/55Web files positive, no missing receipt. Preserves120original hits/1402table rows and conservative manifest union1499; broader267T3/17T4 deferred. A-19909 remains failed own-change history; capture/report-only boundaries retained. Clean head unchanged; no Reviewer runtime work. Hold released; Coordinator landing gate remains.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-35 · 2026-11-16T09:55:24.337Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1843-merge-delta-1
+commit: f66be0d2f1818458c7d400e6fb09aff918eebc09
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear, A-19944. Coordinator575feeb6 in topic-1425 independently read: docs-only resolution verify waiver plus three merged-head checks. Parents match; own suites/test blobs unchanged; only running.md/README differ from both parent trees, documentation preserves both entries/policies. A-19941 reports sequential typecheck/lint/wording exit0 below load12; raw capture limits retained. C1/C2 prior verified evidence A-19933/A-19936 carries under explicit waiver, not fresh merged-head runtime. A-19909 remains failed history. Clean head, no Reviewer runtime/merge work; hold released.
 
 Criteria: C1 verified, C2 verified.
