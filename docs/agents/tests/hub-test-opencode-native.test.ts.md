@@ -1,5 +1,11 @@
 # hub/test/opencode-native.test.ts
 
+The late-turn-failure regression captures OpenCode's `AdapterHost.turnFailed`,
+proves live failure reporting, then awaits hub shutdown and positively checks
+that storage is closed. Calling the captured callback must neither throw nor
+append a lifecycle notice. This T2 scripted seam deterministically reproduces
+the teardown race without starting a native harness (T-1703).
+
 The scripted fixture uses the production default, the `cland-role` instruction
 entry, unless a test passes `roleInstructions` explicitly.
 

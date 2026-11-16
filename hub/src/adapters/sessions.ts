@@ -2786,6 +2786,8 @@ export class Sessions {
   }
 
   #turnFailed(sessionId: string, error: string, messages: string[], replay?: TurnReplay): void {
+    // An adapter's pending turn can settle after Sessions and storage close.
+    if (this.#closed) return;
     const p = this.#table.bySessionId(sessionId);
     if (!p || p.status !== 'running') return;
     const text = `${this.#core.label(p.name)}: its turn failed: ${error}`;

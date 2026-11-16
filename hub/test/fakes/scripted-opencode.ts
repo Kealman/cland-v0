@@ -142,9 +142,11 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions?: boolea
   t.mock.method(OpenCodeClient.prototype, 'request', async (method: string, path: string, body?: unknown) => native.request(method, path, body));
   t.mock.method(OpenCodeClient.prototype, 'events', native.events.bind(native));
   let adapter!: OpenCodeAdapter;
+  let adapterHost!: AdapterHost;
   let process!: HarnessProcess;
   let launchToken: string | undefined;
   const factory = (host: AdapterHost) => {
+    adapterHost = host;
     const lifecycle = fakeHarness('opencode', { host, clock });
     if (process) lifecycle.scriptResume(process.name, 'found');
     adapter = new OpenCodeAdapter({ ...host, reconnected: id => { native.reconnected++; host.reconnected?.(id); } }, { clock, env: { HOME: root }, ...(roleInstructions === undefined ? {} : { roleInstructions }) });
@@ -223,5 +225,5 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions?: boolea
     await ui.request({ type: 'subscribe' });
     await eventually('new hub native snapshot applied', () => native.reconnected > before || undefined);
   }
-  return { root, get discovery() { return discovery; }, clock, native, get ui() { return ui; }, peer, sender, coord, get adapter() { return adapter; }, process, restartHub, records, log, send, reply, reconnect, states, row, idle, markStates, state };
+  return { root, get discovery() { return discovery; }, clock, native, get ui() { return ui; }, peer, sender, coord, get adapter() { return adapter; }, get adapterHost() { return adapterHost; }, stopHub: () => hub.stop(), process, restartHub, records, log, send, reply, reconnect, states, row, idle, markStates, state };
 }

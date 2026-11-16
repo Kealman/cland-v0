@@ -14,6 +14,21 @@ import type { ApprovalRecord, Message, SessionUsage } from '../src/protocol.ts';
 const command = 'touch approved && echo done';
 const failure = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
 
+test('an OpenCode turn failure after hub storage closes is ignored', async t => {
+  const f = await scriptedOpenCode(t);
+  const host = f.adapterHost;
+  const turnFailed = host.turnFailed;
+  assert.ok(turnFailed);
+  turnFailed(f.process.sessionId, 'failure while open', []);
+  assert.match(await f.log(), /failure while open/);
+  await f.stopHub();
+  assert.throws(() => host.adapterState!.read('closed-store-control'), /database is not open/);
+  const logPath = join(f.root, '.cland/log/hub.log');
+  const before = await readFile(logPath, 'utf8');
+  assert.doesNotThrow(() => turnFailed(f.process.sessionId, 'late failure', []));
+  assert.equal(await readFile(logPath, 'utf8'), before, 'late failure emits no lifecycle notice');
+});
+
 test('scripted OpenCode close retains lifecycle ownership until the adapter drain finishes', { timeout: 5000 }, async t => {
   const lifecycleClose = FakeHarness.prototype.close;
   const receipts: string[] = [];
