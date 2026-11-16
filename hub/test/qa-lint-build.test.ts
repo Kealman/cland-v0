@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { treeSources } from '../src/git-tree-sources.ts';
 import { lintQaBrief } from '../src/qa-lint.ts';
+import { qaBuildSourceFile } from '../src/qa-lint-references.ts';
 import ts from 'typescript';
 import { CLI_ENTRY, tempProject } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
@@ -43,6 +44,17 @@ test('qa lint reads named tests and selectors from the requested commit rather t
   assert.equal(current.code, 0, current.stderr);
   assert.match(current.stdout, new RegExp(git('rev-parse', 'HEAD')));
   assert.equal(lint('--commit', old).code, 1);
+  const guide = 'docs/agents/tests/web-test-card.test.ts.md';
+  await mkdir(join(root, 'docs/agents/tests'), { recursive: true });
+  await writeFile(join(root, guide), '# Card test guidance');
+  git('add', 'docs'); git('commit', '-qm', 'Test guidance');
+  await writeFile(join(root, 'brief.md'), '`' + guide + '`');
+  const docs = lint();
+  assert.equal(docs.code, 0, docs.stderr);
+  assert.match(docs.stdout, new RegExp(git('rev-parse', 'HEAD')));
+  assert.equal(lint('--commit', old).stderr, `brief.md:1: file ${guide} is absent from the build\n`);
+  await writeFile(join(root, 'brief.md'), '`docs/agents/tests/missing.test.ts.md`');
+  assert.equal(lint().stderr, 'brief.md:1: file docs/agents/tests/missing.test.ts.md is absent from the build\n');
   await writeFile(join(root, 'brief.md'), '`web/test/missing.test.ts`');
   assert.match(lint().stderr, /test file.*missing.*absent/);
   assert.equal(lint('--commit', 'not-a-commit').code, 2);
@@ -79,7 +91,7 @@ test('committed brief corpus has no false absent file or title reports against t
   const files = git('--git-dir', repo, 'ls-tree', '-r', '--name-only', sha).trim().split('\n');
   const briefs = files.filter(file => file.startsWith('qa/briefs/') && file.endsWith('.md'));
   assert.ok(briefs.length > 0, 'committed corpus is nonempty');
-  const selected = files.filter(file => briefs.includes(file) || file.startsWith('web/src/') || /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file));
+  const selected = files.filter(file => briefs.includes(file) || qaBuildSourceFile(file));
   const read = await treeSources(repo, sha, selected, fixtureEnvironment(root, process.env));
   const build = new Map(await Promise.all(selected.map(async file => [file, await read(file)] as const)));
   const oracle = new Map<string, Set<string>>();
@@ -97,6 +109,16 @@ test('committed brief corpus has no false absent file or title reports against t
     visit(ast); oracle.set(file, names); return names;
   };
   const falseAbsences: string[] = [];
+  const existingFileReportedAbsent = (message: string): boolean => {
+    const missingFile = /^(?:test )?file (.+) is absent/.exec(message);
+    if (!missingFile) return false;
+    const path = missingFile[1]!.replace(/^\.\//, '');
+    return files.some(file => file === path || !path.includes('/') && file.endsWith('/' + path));
+  };
+  const guideControl = 'docs/agents/tests/hub-test-skills-onboarding.test.ts.md';
+  assert.ok(files.includes(guideControl), 'planted guide diagnostic names a committed guide');
+  assert.equal(existingFileReportedAbsent(`file ${guideControl} is absent from the build`), true, 'oracle detects planted false guide absence');
+  assert.equal(existingFileReportedAbsent('file docs/agents/tests/no-such-guide-control.test.ts.md is absent from the build'), false);
   let absent = 0;
   let unresolved = 0;
   let findings = 0;
@@ -106,11 +128,7 @@ test('committed brief corpus has no false absent file or title reports against t
     for (const finding of lintQaBrief(source, build)) {
       findings++;
       if (/unresolved/.test(finding.message)) unresolved++;
-      const missingFile = /^test file (.+) is absent/.exec(finding.message);
-      if (missingFile) {
-        const path = missingFile[1]!.replace(/^\.\//, '');
-        if (files.some(file => file === path || !path.includes('/') && file.endsWith('/' + path))) falseAbsences.push(`${brief}:${finding.line}: ${finding.message}`);
-      }
+      if (existingFileReportedAbsent(finding.message)) falseAbsences.push(`${brief}:${finding.line}: ${finding.message}`);
       const named = /^test title (.+) is absent/.exec(finding.message);
       if (!named) continue;
       absent++;

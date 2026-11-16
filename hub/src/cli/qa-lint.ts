@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { treeSources } from '../git-tree-sources.ts';
-import { qaBriefNeedsBuild } from '../qa-lint-references.ts';
+import { qaBriefNeedsBuild, qaBuildSourceFile } from '../qa-lint-references.ts';
 import { lintQaBrief } from '../qa-lint.ts';
 import { QA_LINT_USAGE } from './usage.ts';
 
@@ -26,7 +26,7 @@ export async function runQaLint(args: string[], cwd = process.cwd(), io: Output 
     try {
       const git = async (argv: string[]) => (await promisify(execFile)('git', ['-c', 'gc.auto=0', ...argv], { cwd, encoding: 'utf8', timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
       sha = (await git(['rev-parse', '--verify', '--end-of-options', `${commit ?? 'HEAD'}^{commit}`])).trim();
-      const files = (await git(['ls-tree', '-r', '-z', '--name-only', sha])).split('\0').filter(file => /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file) || file.startsWith('web/src/'));
+      const files = (await git(['ls-tree', '-r', '-z', '--name-only', sha])).split('\0').filter(qaBuildSourceFile);
       const read = await treeSources(cwd, sha, files);
       build = new Map(await Promise.all(files.map(async file => [file, await read(file)] as const)));
     } catch (error) {

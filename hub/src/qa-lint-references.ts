@@ -1,9 +1,16 @@
 // Read source syntax only: a brief must never execute tests to discover their names.
 import type { QaLintFinding } from './qa-lint.ts';
 
-const testFiles = (text: string): string[] => [...text.matchAll(/(?<![\w/.-])((?:[\w.-]+\/)*[\w.-]+\.(?:test|spec)\.[cm]?[jt]sx?)\b/g)].map(m => m[1]!);
+const guidePath = /(?<![\w/.-])docs\/agents\/tests\/[\w.-]+\.md\b/g;
+const guideFiles = (text: string): string[] => [...text.matchAll(guidePath)].map(m => m[0]);
+const testFiles = (text: string): string[] => [...text.replace(guidePath, ' ').matchAll(/(?<![\w/.-])((?:[\w.-]+\/)*[\w.-]+\.(?:test|spec)\.[cm]?[jt]sx?)\b/g)].map(m => m[1]!);
+
+export function qaBuildSourceFile(file: string): boolean {
+  return /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file) || file.startsWith('web/src/') || /^docs\/agents\/tests\/[\w.-]+\.md$/.test(file);
+}
 
 export function qaBriefNeedsBuild(source: string): boolean {
+  if (guideFiles(source).length) return true;
   return testFiles(source).length > 0 || /\btest(?: title| named| titled)?\s*:?\s*`|\btests(?: titles)?:\s*`|--test-name-pattern|\bselector:\s*`|\b(?:locator|querySelector(?:All)?)\(\s*[\'"]/i.test(source);
 }
 
@@ -155,6 +162,7 @@ export function lintQaReferences(source: string, build: ReadonlyMap<string, stri
     ];
     for (const selector of selectors) if (!selectorPresent(selector, web)) add(`selector ${JSON.stringify(selector)} is absent from web/src at the build`);
     const files = testFiles(line);
+    for (const file of guideFiles(line)) if (!build.has(file)) add(`file ${file} is absent from the build`);
     for (const file of files) {
       const candidates = resolveFile(file);
       if (!candidates.length) add(`test file ${file} is absent from the build`);
@@ -169,7 +177,7 @@ export function lintQaReferences(source: string, build: ReadonlyMap<string, stri
     const scope = files.length ? files.flatMap(resolveFile) : mentioned.size ? [...mentioned] : [...build.keys()].filter(file => /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file));
     const names = namesIn(scope);
     const ambiguous = scope.some(file => titles.get(file)?.ambiguous);
-    for (const title of titleRefs.filter(title => !testFiles(title).length)) if (!names.includes(title)) add(ambiguous ? `test title ${JSON.stringify(title)} is unresolved at the build (ambiguous regex/division or brace context); use generated cases` : `test title ${JSON.stringify(title)} is absent from the build's named test files; use declared or generated cases`);
+    for (const title of titleRefs.filter(title => !testFiles(title).length && !guideFiles(title).length)) if (!names.includes(title)) add(ambiguous ? `test title ${JSON.stringify(title)} is unresolved at the build (ambiguous regex/division or brace context); use generated cases` : `test title ${JSON.stringify(title)} is absent from the build's named test files; use declared or generated cases`);
     for (const pattern of patterns) {
       let regexp: RegExp;
       try { regexp = new RegExp(pattern); }

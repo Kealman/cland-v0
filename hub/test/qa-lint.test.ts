@@ -148,6 +148,31 @@ test('brief test files resolve in the build inventory including ambiguous basena
   assert.match(findings[1]!.message, /ambiguous.*shared.*full path/);
 });
 
+test('brief per-test docs references retain their full path and check file presence', () => {
+  const build = new Map([
+    ['docs/agents/tests/hub-test-current.test.ts.md', '# Test guidance'],
+    ['hub/test/current.test.ts', "test('current case', () => {});"],
+  ]);
+  const brief = '`docs/agents/tests/hub-test-current.test.ts.md`\n`docs/agents/tests/hub-test-missing.test.ts.md`\n`hub/test/current.test.ts` test: `current case`\n`hub/test/missing.test.ts`';
+  assert.deepEqual(lintQaBrief(brief, build), [
+    { line: 2, message: 'file docs/agents/tests/hub-test-missing.test.ts.md is absent from the build' },
+    { line: 4, message: 'test file hub/test/missing.test.ts is absent from the build' },
+  ]);
+});
+
+test('guide references in singular and plural title syntax remain file references', () => {
+  const guide = 'docs/agents/tests/current.test.ts.md';
+  const missing = 'docs/agents/tests/missing.test.ts.md';
+  const build = new Map([[guide, '# Guide'], ['hub/test/current.test.ts', "test('present title', () => {});"]]);
+  for (const label of ['test:', 'test title:', 'Tests:']) {
+    const brief = label + ' `' + guide + '`\n' + label + ' `' + missing + '`\nTests: `present title`, `missing title`';
+    assert.deepEqual(lintQaBrief(brief, build), [
+      { line: 2, message: 'file ' + missing + ' is absent from the build' },
+      { line: 3, message: 'test title "missing title" is absent from the build\'s named test files; use declared or generated cases' },
+    ]);
+  }
+});
+
 test('brief test titles and Node patterns match declarations in their named build files', () => {
   const build = new Map([
     ['hub/test/current.test.ts', "// test('comment only', () => {});\nconst prose = 'not a test';\ntest('current case', () => {});\ntest(`literal template`, () => {});"],

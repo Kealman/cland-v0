@@ -167,6 +167,10 @@ The run is three writes, in this order: the evidence files, the `runs.jsonl` lin
 - The verdict is refused or fails after the lines are in: the lines stay, they are the record. Fix the cause (for example a wrong `commit`), write only the verdict again with the same `run`, and report. A later verdict of the same kind replaces the earlier one. Never rerun the cases to "retry" a verdict.
 - The run is interrupted: lines already appended stay. A new run id covers the rest; the verdict names the cases that have no line `BLOCKED`.
 
+Per-test guide references under `docs/agents/tests/*.md` are checked as complete
+Markdown paths at the selected build commit, independently of test-file and
+title references. Keep their `.md` suffix in briefs.
+
 ## Cases
 
 Each `qa/cases/<ID>.lua` opens with its catalogue header, a comment block of exactly these fields, so the catalogue is the files:

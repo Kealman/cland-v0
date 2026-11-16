@@ -87,7 +87,7 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Adapters and sessions](../docs/hub/adapters-and-sessions.md): managed Claude Bash guard refuses computed and unquoted-glob rm/rmdir targets; OpenCode server launch bounds port selections at eight, including repeated ports, within its launch deadline.
 - [The tracker](../docs/hub/the-tracker.md)
 - [Running](../docs/hub/running.md): executor API endpoint declarations, per-token request budgets and shared dependency preparation for local batch/probe checkouts.
-- [Artifacts](../docs/hub/artifacts.md)
+- [Artifacts](../docs/hub/artifacts.md) (includes offline QA brief lint; per-test Markdown guide references are checked by full path at the selected commit)
 - [Coordinator account refusal procedure](../docs/hub/coordinator-account-refusal-procedure.md)
 - [Coordinator session procedure](../docs/hub/coordinator-session-procedure.md)
 - [Coordinator heartbeat procedure](../docs/hub/coordinator-heartbeat-procedure.md)
