@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-1542
 branch: null
 created: 2026-11-16T07:28:33.146Z
-updated: 2026-11-16T08:22:13.119Z
+updated: 2026-11-16T13:41:02.337Z
 ---
 
 ## Goal
@@ -46,6 +46,7 @@ stages:
       - - T-1848
       - - T-1850
       - - T-1843
+      - - T-1907
   - name: stage 2
     qa:
       scope: none

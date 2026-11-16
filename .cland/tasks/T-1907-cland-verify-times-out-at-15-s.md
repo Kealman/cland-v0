@@ -3,16 +3,16 @@ id: T-1907
 kind: task
 title: cland verify times out at 15 s ("submission sent; no reply") while the hub admits the run, three times in a row on 2026-11-16
 state: open
-status: backlog
+status: in progress
 size: S
 labels: []
 assignee: null
 parent: E-1883
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1907-cland-verify-times-out-at-15-s
 created: 2026-11-16T08:08:22.188Z
-updated: 2026-11-16T08:08:22.188Z
+updated: 2026-11-16T13:41:48.165Z
 ---
 
 ## Summary

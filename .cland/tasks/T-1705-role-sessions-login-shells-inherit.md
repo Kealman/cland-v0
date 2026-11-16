@@ -3,7 +3,7 @@ id: T-1705
 kind: task
 title: Role sessions' login shells inherit DIGITALOCEAN_TOKEN from the human's shell startup file despite the launch credential filter
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - security
@@ -12,10 +12,10 @@ parent: E-1884
 blocked_by: []
 regression_of: T-651
 found_by: qa
-topic: null
-branch: null
+topic: topic-1552
+branch: t/T-1705-role-sessions-login-shells-inherit
 created: 2026-11-06T10:31:30.250Z
-updated: 2026-11-16T07:31:16.099Z
+updated: 2026-11-16T13:41:35.991Z
 ---
 
 ## Summary
