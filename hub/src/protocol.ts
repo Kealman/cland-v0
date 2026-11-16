@@ -761,7 +761,7 @@ export type ClientRequest =
   | { type: 'crew.set'; id: string; key: string; value: unknown }
   | { type: 'config.set'; id: string; key: string; value: unknown }
   | { type: 'hub.subscriptions'; id: string }
-  | { type: 'hub.status'; id: string; flushLogs?: boolean; history?: boolean }
+  | { type: 'hub.status'; id: string; flushLogs?: boolean; history?: boolean; releaseTools?: boolean }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
   | { type: 'hub.stop'; id: string }
   | { type: 'hub.reload'; id: string }
@@ -905,6 +905,8 @@ export type SuiteSummary = {
 };
 
 export type HubStatus = {
+  /** Opt-in local executable lookup, never auth or network. Absent on older hubs. */
+  releaseTools?: { gh: boolean };
   hostSnapshotLeftovers?: Array<{path:string;cause:string}> | null;
   /** Optional for compatibility with earlier hubs. No probe is performed by status. */
   hosts?: import('./transport/transport.ts').HostTunnelStatus[];
@@ -1131,8 +1133,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'executor.status':
     case 'executor.reap':
     case 'hub.subscriptions':
-    case 'hub.status':
       return (f.history === undefined || typeof f.history === 'boolean') && (f.flushLogs === undefined || typeof f.flushLogs === 'boolean');
+    case 'hub.status':
+      return (f.history === undefined || typeof f.history === 'boolean') && (f.flushLogs === undefined || typeof f.flushLogs === 'boolean') && (f.releaseTools === undefined || typeof f.releaseTools === 'boolean');
     case 'web.link':
       return f.qr === undefined || typeof f.qr === 'boolean';
     case 'remote.test':

@@ -266,7 +266,10 @@ source-build and pure render tests supply pre-merge evidence.
 
 For cland’s opt-in committed `[release] web_bundle = true`, see
 [prebuilt Web release assets](../hub/prebuilt-web-release-assets.md#prebuilt-web-release-assets).
-The release machine needs an installed, already-authenticated gh. Dry-run checks
+The running hub needs an installed, already-authenticated gh on its own PATH.
+`cland doctor` warns on a missing hub-side gh when `web_bundle` is enabled,
+without an auth or network call. A release ENOENT names the missing binary and
+the hub PATH lookup; restart the hub with the tool on PATH. Dry-run checks
 it before approval and builds/caches the pinned archive; include repo, tag, both
 filenames, byte sizes and SHA-256 in the single release ask. On `web-bundle`
 follow-up failure, keep `release.tmp` and `.cland/release-web/` and retry the same

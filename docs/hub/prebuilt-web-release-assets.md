@@ -4,7 +4,7 @@ For cland itself, `[release] web_bundle = true` in the committed dev config
 opts into publishing `cland-web.tar.gz` and `cland-web.tar.gz.sha256`. Generated
 and older configs default to false, so ordinary projects gain no build or gh
 requirement. The release machine needs Node/npm, Git, tar, network access for
-locked dependencies, and an installed `gh` already authenticated to github.com
+locked dependencies, and an installed `gh` on the running hub's own PATH, already authenticated to github.com
 with release-write access. No login is started, no credential is put in argv,
 and gh’s authentication output is not copied to hub logs.
 

@@ -19,7 +19,7 @@ cache notice's original occasion/executor; `--fresh` forces execution. See
 
 
 For committed `[release] web_bundle = true` (cland product only), the release
-machine needs installed, already-authenticated gh and network access for locked
+hub needs installed, already-authenticated gh on its own PATH and network access for locked
 build dependencies. Dry-run checks gh before approval, builds/caches the pinned
 commit and names repo, tag, archive/checksum filenames, byte sizes and SHA-256.
 Include all those facts in step 3’s single approval. Generated/older configs default
@@ -27,6 +27,9 @@ to false. Publication creates a draft as needed, uploads and reads back both
 assets, then publishes it. On `web-bundle` follow-up failure, preserve
 `release.tmp` and `.cland/release-web/`, repair the obstruction, and retry the
 same item/version. Never clobber conflicting remote assets or start a new login.
+`cland doctor` checks hub-side gh lookup only when `web_bundle` is enabled,
+without auth/network calls. ENOENT names the missing tool and hub PATH; restart
+the hub with the tool on PATH. Offline/older hubs report lookup unknown.
 See [Web release assets](../../../docs/hub/prebuilt-web-release-assets.md#prebuilt-web-release-assets).
 
 For a configured `[release.homebrew] tap`, include the preview's tap repository,

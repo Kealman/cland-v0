@@ -1,4 +1,5 @@
 import { selectHostPool } from '../host/pools.ts';
+import { which } from '../doctor/report.ts';
 import {removeLogin} from '../host/login-remove.ts';
 import { installLoginRelease } from '../host/login-release.ts';
 import { addKeyLogin } from '../host/login-keys.ts';
@@ -2528,7 +2529,7 @@ export class Dispatcher {
               const verification = this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null } : undefined;
               const full = control.status();
               const { harnesses: _harnesses, ...compact } = full;
-              const base = frame.history === true ? full : compact;
+              const base = { ...(frame.history === true ? full : compact), ...(frame.releaseTools === true ? { releaseTools: { gh: which('gh', this.#options.env ?? process.env, full.root) !== null } } : {}) };
               const tracker = this.#options.tracker;
               return { type: 'result', id: frame.id, ok: true, value: { ...base, hostSnapshotLeftovers:this.#suites?this.#suites.hostSnapshotLeftovers():[], hosts: tunnelStatuses(full.root, core.store.hosts.list()), mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status(frame.history === true) ?? [], recentSuites: this.#suites?.recentStatus() ?? [], ...(frame.history === true ? { covers: this.#suites?.covers() ?? [] } : {}), ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(transport.edge !== 'gateway'), requests: { ...this.#guard.counters } } satisfies HubStatus };
             };

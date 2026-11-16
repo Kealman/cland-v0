@@ -8,6 +8,11 @@ metadata:
 
 Implement the work described by the user in the spec or tickets.
 
+Doctor's release-tool check (`[release] web_bundle = true`) asks the running hub
+for an opt-in gh executable lookup, never auth/network. Old/offline hub results
+stay unknown. Missing release tools name the hub PATH and require restart with
+the tool on PATH; caller-side GitHub auth checks remain separate.
+
 Doctor's sign-in mode check reads config mode and hub `user.list` counts only;
 see `docs/hub/cland-doctor.md` and the doctor-users per-test guide. Refused
 counts stay unknown with reload guidance; offline counts name hub start.

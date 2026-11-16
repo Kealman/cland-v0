@@ -2,7 +2,7 @@
 // Plain text by default (pasteable into an item comment); colour only on a terminal; JSON for scripts and tests.
 import { accessSync, constants, statSync } from 'node:fs';
 import { access, stat } from 'node:fs/promises';
-import { delimiter, isAbsolute, join, resolve } from 'node:path';
+import { delimiter, isAbsolute, resolve } from 'node:path';
 
 export type Verdict = 'ok' | 'warn' | 'fail';
 
@@ -59,15 +59,14 @@ const executable = (path: string): boolean => {
   }
 };
 
-/** Where `name` resolves: a path (absolute or relative to `cwd`) as given, else the first executable on `PATH`; null when none. */
+/** POSIX exec lookup: unset PATH uses its default; empty/relative entries use the child's cwd. */
+const executableCandidates = (name: string, env: NodeJS.ProcessEnv, cwd: string): string[] => name.includes('/')
+  ? [isAbsolute(name) ? name : resolve(cwd, name)]
+  : (env.PATH ?? '/usr/bin:/bin').split(delimiter).map(dir => resolve(cwd, dir, name));
+
+/** Where `name` resolves for a child with this environment and cwd; null when none. */
 export function which(name: string, env: NodeJS.ProcessEnv, cwd: string = process.cwd()): string | null {
-  if (name.includes('/')) {
-    const path = isAbsolute(name) ? name : resolve(cwd, name);
-    return executable(path) ? path : null;
-  }
-  for (const dir of (env.PATH ?? '').split(delimiter)) {
-    if (!dir) continue;
-    const path = join(dir, name);
+  for (const path of executableCandidates(name, env, cwd)) {
     if (executable(path)) return path;
   }
   return null;
@@ -75,7 +74,7 @@ export function which(name: string, env: NodeJS.ProcessEnv, cwd: string = proces
 
 /** The same lookup for request handlers, without synchronous filesystem calls. */
 export async function whichAsync(name: string, env: NodeJS.ProcessEnv, cwd = process.cwd()): Promise<string | null> {
-  const candidates = name.includes('/') ? [isAbsolute(name) ? name : resolve(cwd, name)] : (env.PATH ?? '').split(delimiter).filter(Boolean).map(dir => resolve(cwd, dir, name));
+  const candidates = executableCandidates(name, env, cwd);
   for (const path of candidates) {
     try { if ((await stat(path)).isFile()) { await access(path, constants.X_OK); return path; } }
     catch { /* Try the next PATH entry. */ }

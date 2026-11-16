@@ -1006,7 +1006,7 @@ export type ClientRequest =
   | { type: 'crew.set'; id: string; key: string; value: unknown }
   | { type: 'config.set'; id: string; key: string; value: unknown }
   | { type: 'hub.subscriptions'; id: string }
-  | { type: 'hub.status'; id: string; flushLogs?: boolean; history?: boolean }
+  | { type: 'hub.status'; id: string; flushLogs?: boolean; history?: boolean; releaseTools?: boolean }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
   | { type: 'hub.stop'; id: string }
   | { type: 'hub.reload'; id: string }
@@ -1141,6 +1141,8 @@ export type SuiteSummary = {
 };
 
 export type HubStatus = {
+  /** Opt-in local executable lookup, never auth or network. Absent on older hubs. */
+  releaseTools?: { gh: boolean };
   hostSnapshotLeftovers?: Array<{path:string;cause:string}> | null;
   hosts?: Array<{ watches?: Array<{path:string;branch:string;state:string;cause?:string}>; name: string; state: 'up' | 'connecting' | 'down'; since: string | null; reason?: string; lastProbe: { at: string; ok: boolean } | null; reconnects: number }>;
   /** Actual spoke listener address; absent on older or stdio-only hubs. */

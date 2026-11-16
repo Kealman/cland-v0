@@ -77,7 +77,7 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
   recorded size, minimum hosts and hourly price.
 - [cland init and cland update](../docs/hub/cland-init-and-cland-update.md)
 - [Prebuilt Web release assets](../docs/hub/prebuilt-web-release-assets.md)
-- [cland doctor](../docs/hub/cland-doctor.md): toolchain, remote readiness, read-only hosts diagnostics and sign-in mode with hub-backed users counts.
+- [cland doctor](../docs/hub/cland-doctor.md): toolchain, remote readiness, read-only hosts diagnostics and sign-in mode with hub-backed users counts. With `[release] web_bundle = true`, also checks gh resolution on the running hub's PATH without auth or network calls; missing tools need a hub restart with the tool on PATH.
 - [The project's hub](../docs/hub/the-projects-hub.md)
 - [Adapters and sessions](../docs/hub/adapters-and-sessions.md): managed Claude Bash guard refuses computed and unquoted-glob rm/rmdir targets.
 - [The tracker](../docs/hub/the-tracker.md)

@@ -1,5 +1,19 @@
 ## cland doctor
 
+With `[release] web_bundle = true`, `release gh` asks the running hub for a
+metadata-only executable lookup on the hub's own PATH. A missing `gh` warns:
+install it on that PATH and restart the hub. This check runs no `gh`, auth or
+network command; the existing caller-side `gh`/`gh auth` checks for a GitHub
+remote remain separate. Disabled/default `web_bundle` adds no release lookup.
+An offline hub or an older reply without `releaseTools` stays unknown with
+start/restart guidance. `hub.status` includes `{releaseTools:{gh:boolean}}` only
+when requested with `releaseTools:true`; ordinary status replies stay unchanged.
+Executable lookup follows POSIX child-process PATH rules: an unset PATH uses
+`/usr/bin:/bin`; empty and relative entries resolve from the release's working
+directory, including when the hub started elsewhere. The shared synchronous and
+asynchronous resolver use the same candidate list for doctor, setup and Git
+maintenance. Absolute PATH entries keep their existing selection.
+
 A role on an unconfigured pool adds `host <role> placement` with `warn` and
 `role <role>: pool <pool> is not configured`, even when no pools exist. The fix
 configures that pool's provider or moves the role to `local`, then reloads.

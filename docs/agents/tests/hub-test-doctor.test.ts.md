@@ -1,5 +1,14 @@
 # hub/test/doctor.test.ts
 
+Release-tool regressions use a fake command rejection (ENOENT), executable
+placeholders that cannot run, and scratch in-process hubs with a different PATH
+from the caller. They cover missing/present gh, disabled web_bundle, offline
+lookup and a literal previous hub.status reply without releaseTools. No real
+gh/auth/network call is made. Ordinary status requests retain the old shape.
+The release lookup also covers empty and relative PATH entries from the release
+root, even when the hub process cwd differs. Shared native PATH conformance and
+absolute-PATH consumer regressions live in executable-path.test.ts (T3).
+
 `doctor.test.ts` exercises the public report in process with injected tool replies
 and a scratch `projectHub`. `toolchain` builds its environment through
 `fixtureEnvironment`; pass that environment to `runDoctor`. The project hub

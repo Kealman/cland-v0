@@ -8,6 +8,83 @@ import { connectUi, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { doctor, report, update, initialised, toolchain, check, notOk, HARNESS_DIRS, NVIM_VERSION, probeCalls } from './doctor-fixture.ts';
 import { rolesTemplate } from '../src/roles/template.ts';
+import { assetCommand, checkWebRelease } from '../src/release-web.ts';
+import { checkReleaseTools } from '../src/doctor/release.ts';
+import { legacyRemoteHubFixture } from './fakes/legacy-remote-hub.ts';
+import { which, whichAsync } from '../src/doctor/report.ts';
+
+test('release tool lookup follows empty and relative hub PATH entries from the release root', async t => {
+  const tools = await toolchain(t), root = await initialised(t, tools.env);
+  await mkdir(join(root, 'bin'));
+  for (const file of ['gh', 'bin/gh']) {
+    await writeFile(join(root, file), 'placeholder: lookup only\n');
+    await chmod(join(root, file), 0o755);
+  }
+  const { fixtureEnvironment } = await import('./fixture-environment.ts');
+  await writeFile(join(root, '.cland/config.toml'), '[release]\nweb_bundle = true\n');
+  for (const PATH of ['', ':empty-bin', 'bin']) {
+    const env = fixtureEnvironment(root, tools.env, { PATH });
+    const expected = join(root, PATH === 'bin' ? 'bin/gh' : 'gh');
+    assert.equal(which('gh', env, root), expected);
+    assert.equal(await whichAsync('gh', env, root), expected);
+    const hub = await projectHub(t, root, env, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
+    assert.equal((await checkReleaseTools(root, tools.env))[0]!.verdict, 'ok', `PATH=${JSON.stringify(PATH)}`);
+    await hub.stop();
+  }
+});
+
+test('release tool lookup stays unknown with a previous hub status shape', async t => {
+  const tools = await toolchain(t), root = await initialised(t, tools.env);
+  await writeFile(join(root, '.cland/config.toml'), '[release]\nweb_bundle = true\n');
+  const offline = await checkReleaseTools(root, tools.env);
+  assert.match(offline[0]!.detail, /unknown.*hub not running/);
+  await legacyRemoteHubFixture(t, root, { hubStatus: () => ({ pid: 1, port: 0, socket: 'legacy', version: '0.4.0', root: '/', startedAt: '2026-11-01T00:00:00Z', uptimeMs: 1, sessions: [] }) }).start();
+  const legacy = await checkReleaseTools(root, tools.env);
+  assert.equal(legacy[0]!.verdict, 'warn');
+  assert.match(legacy[0]!.detail, /unknown.*did not report/);
+  assert.match(legacy[0]!.fix ?? '', /restart.*hub/);
+});
+
+test('release tool lookup resolves executable placeholders without executing gh', async t => {
+  const tools = await toolchain(t), root = await initialised(t, tools.env);
+  const bin = join(root, 'bin');
+  await mkdir(bin);
+  await writeFile(join(bin, 'gh'), 'not an executable program: lookup only\n');
+  await chmod(join(bin, 'gh'), 0o755);
+  const { fixtureEnvironment } = await import('./fixture-environment.ts');
+  await writeFile(join(root, '.cland/config.toml'), '[release]\nweb_bundle = true\n');
+  await projectHub(t, root, fixtureEnvironment(root, tools.env, { PATH: bin }), { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
+  assert.deepEqual(await checkReleaseTools(root, tools.env), [{ name: 'release gh', verdict: 'ok', detail: "gh resolves on the hub's own PATH (auth and network not checked)" }]);
+});
+
+test('release names gh, the hub PATH and the restart fix when gh is missing', async t => {
+  const root = await tempProject(t);
+  const { fixtureEnvironment } = await import('./fixture-environment.ts');
+  const command = assetCommand(async () => { throw Object.assign(new Error('synthetic private diagnostic'), { code: 'ENOENT' }); });
+  await assert.rejects(checkWebRelease(root, fixtureEnvironment(root, process.env, { PATH: join(root, 'empty-bin') }), command), /gh.*hub.s.*PATH.*restart.*hub/i);
+});
+
+test('doctor checks the hub PATH for release gh only with web_bundle enabled', async t => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  const { fixtureEnvironment } = await import('./fixture-environment.ts');
+  const hubEnv = fixtureEnvironment(root, tools.env, { PATH: join(root, 'empty-bin') });
+  await writeFile(join(root, '.cland/config.toml'), '[release]\nweb_bundle = true\n');
+  const hub = await projectHub(t, root, hubEnv, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
+  probeCalls.length = 0;
+  const result = await report(root, tools.env, []);
+  const c = check(result.report, 'release gh');
+  assert.equal(c.verdict, 'warn');
+  assert.match(c.detail, /gh.*hub.s.*PATH/);
+  assert.match(c.fix ?? '', /restart.*hub.*gh.*PATH/);
+  assert.equal(result.code, 0, notOk(result.report).join('\n'));
+  assert.ok(!probeCalls.some(c => /\/gh$/.test(c.bin)), 'lookup adds no auth or network probe');
+  const ui = await connectUi(t, hub.discovery);
+  const ordinary = await ui.request({ type: 'hub.status' });
+  assert.ok(ordinary.ok && !('releaseTools' in (ordinary.value as object)), 'old requests retain their shape');
+  await writeFile(join(root, '.cland/config.toml'), '[release]\nweb_bundle = false\n');
+  assert.ok(!(await report(root, tools.env, [])).report.checks.some(c => c.name === 'release gh'));
+});
 
 test('doctor uses its fixture environment rather than the parent crew session', async t => {
   const tools = await toolchain(t);

@@ -8,6 +8,7 @@ import { territoryGitAsync } from './territory.ts';
 import { suiteCommand } from './suite-command.ts';
 import { webBundleState } from './web-bundle.ts';
 import type { Resumed } from './hub/worktrees.ts';
+import { missingReleaseTool } from './release-tools.ts';
 
 export const WEB_ARCHIVE = 'cland-web.tar.gz';
 export const WEB_CHECKSUM = `${WEB_ARCHIVE}.sha256`;
@@ -15,13 +16,15 @@ export type WebReleasePlan = { repo: string; directory: string; sha256: string; 
 export type WebReleaseResult = Omit<WebReleasePlan, 'directory' | 'published'> & { archive: string; checksum: string; status: 'planned' | 'published' };
 const exec = promisify(execFile);
 export type AssetCommand = (file: string, args: string[], cwd: string, env: NodeJS.ProcessEnv) => Promise<string>;
-const command: AssetCommand = async (file, args, cwd, env) => {
-  try { return (await exec(file, args, { cwd, env: { ...env, GH_HOST: 'github.com', GH_PROMPT_DISABLED: '1' }, timeout: 120_000, maxBuffer: 1024 * 1024 })).stdout; }
+export const assetCommand = (execute: (file: string, args: string[], options: { cwd: string; env: NodeJS.ProcessEnv; timeout: number; maxBuffer: number }) => Promise<{ stdout: string }> = exec): AssetCommand => async (file, args, cwd, env) => {
+  try { return (await execute(file, args, { cwd, env: { ...env, GH_HOST: 'github.com', GH_PROMPT_DISABLED: '1' }, timeout: 120_000, maxBuffer: 1024 * 1024 })).stdout; }
   catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') throw new Error(missingReleaseTool(file));
     // gh may include authentication diagnostics; never copy its output into a hub log.
     throw new Error(`${file} ${args[0]} failed (${(err as NodeJS.ErrnoException).code ?? 'incomplete'}); check the release machine's tools and existing gh authentication`);
   }
 };
+const command = assetCommand();
 
 export const webReleaseResult = (plan: WebReleasePlan, status: WebReleaseResult['status']): WebReleaseResult => {
   const { directory: _directory, published: _published, ...facts } = plan;
