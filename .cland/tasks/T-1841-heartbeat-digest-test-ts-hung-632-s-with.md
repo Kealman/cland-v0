@@ -2,8 +2,8 @@
 id: T-1841
 kind: task
 title: heartbeat-digest.test.ts hung 632 s with no output in a Linux T1 run and stalled a task verify
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -14,7 +14,8 @@ blocked_by:
 topic: topic-1546
 branch: t/T-1841-heartbeat-digest-test-ts-hung-632-s-with
 created: 2026-11-13T00:27:22.788Z
-updated: 2026-11-16T14:22:03.717Z
+updated: 2026-11-16T15:12:31.345Z
+closed: 2026-11-16T15:11:55.995Z
 ---
 
 ## Summary
@@ -104,3 +105,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; independent A-20156 ledger and final note just published. A-20149 same-head positive6424ordinary tests/703files plus300separate load tests/files, allpass; all18startup/phase identities ordinary+5, heartbeat ordinary/file positive. C1 historical startup/import boundary and unknown exact cause retained. C2 ordinary local/droplet paths and native-exit cleanup boundary verified under narrowed criteria; five prior-base lone Linux heartbeat passes cover identical source only. T-1911 repetition implementation/default native fault/fullT3/T4 remain excluded/deferred.988manifest+original explicit sets1046rows:703positive,268T3/17T4deferred,58source references, no missing lower/Web. Actual LinuxNode24.21/browser156/build1248 footer confirmed, no cache/skips. Report-only and original producer/candidate/red limits preserved. No Reviewer runtime; hold released.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T15:11:55.995Z
+
+Merged a48588f9f48903dc05bbd85b21e393986a68559b onto dev.

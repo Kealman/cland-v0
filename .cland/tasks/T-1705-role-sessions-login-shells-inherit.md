@@ -3,7 +3,7 @@ id: T-1705
 kind: task
 title: Role sessions' login shells inherit DIGITALOCEAN_TOKEN from the human's shell startup file despite the launch credential filter
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ found_by: qa
 topic: topic-1552
 branch: t/T-1705-role-sessions-login-shells-inherit
 created: 2026-11-06T10:31:30.250Z
-updated: 2026-11-16T14:41:22.653Z
+updated: 2026-11-16T16:07:53.739Z
 ---
 
 ## Summary
@@ -44,8 +44,12 @@ Containment for the QA run: qa-678 scanned 1,236 scratch files (with a positive 
 
 - [x] C1. The hub reads the provider token from its own secret store with no provider credential in its environment, cland doctor warns, names only, when a planted shell startup file exports a provider credential, and a role session's tool shell started the way the harness starts it has zero provider credential names once no startup file exports one (test, red before the fix).
   - done: impl-1705 · 2026-11-16T14:40:13.589Z
+  - verified: rev-35 [reviewer] · run rev-35-1705-final-1 · 2026-11-16T15:14:05.341Z · commit 67f2473c4e950cb34d8c4572470da856a7d33f79
+  - verified: rev-35 [reviewer] · run rev-35-1705-merge-1 · 2026-11-16T16:07:53.462Z · commit af14a01115b3d68ca539eba0f0c701ba37beffcc
 - [x] C2. The chosen approach and any setup step for the human are documented (docs).
   - done: impl-1705 · 2026-11-16T14:40:13.736Z
+  - verified: rev-35 [reviewer] · run rev-35-1705-final-1 · 2026-11-16T15:14:05.341Z · commit 67f2473c4e950cb34d8c4572470da856a7d33f79
+  - verified: rev-35 [reviewer] · run rev-35-1705-merge-1 · 2026-11-16T16:07:53.462Z · commit af14a01115b3d68ca539eba0f0c701ba37beffcc
 
 ## Comments
 
@@ -127,3 +131,33 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Narrow Coordinator-approved inventory delta clear A-20172 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20172-t-1705-narrow-inventory-delta-clear-at-67f2473c4.md. Five files read; single captured HOME lookup registered only at exact file/expression/immediate-context with read-only/names-only/no-write reason. Named-file scan behavior unchanged. T1 regression retains other expression/context/file rejection and existing planted/whole-source guards. Docs/index scoped. A-20171 red/20-of-20 development receipts preserve precommit/native unknowns; A-20169 remains failed history. Latest b1b35f2e reconciles previously pending committed-head test:lint exit0,0refusals/122 report-only, guide-index/wording0 findings; typecheck producer exit0. Prior full source repairs A-20162 retained. C1/C2 done/unverified until new exact-head configured evidence. Hold released; mode-free verify in authorized window at67f2473c4, no broad/full/all request or extra dev merge.
+
+### rev-35 · 2026-11-16T15:14:05.341Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1705-final-1
+commit: 67f2473c4e950cb34d8c4572470da856a7d33f79
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear A-20208 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20208-t-1705-final-exact-head-evidence-verdict-with-shell-qualification.md with A-20204 detailed named receipts/1097-path conservative ledger. A-20198 exact-head6422ordinary passes/705files,0fail/cancel,4zsh prerequisite skips; separate230load passes/files. Required store/doctor/held-work/exact HOME controls ordinary+5; formerly failed inventory full file pass. AllT1/T2/Web and changedT3 file pass;267T3/17T4deferred. Four Linux zsh modes are explicitly unexecuted, not passes. Separate clean6878513e9 macOS A-20164 4/4/no skips covers six emulated modes; shell/fixture/environment/work/cleanup blobs independently identical through sole five-file doctor/inventory delta, permitting narrowly qualified platform coverage carry with original raw/native/hash limits, no native harness proof. C1/C2verified under documented human-only migration/no-isolation scope; actual human rc migration not claimed. Exact provenance/browser checked; advisory budgets not enforced passes; failed A-20169 and prior capture/consumer limits retained. Hold released; Coordinator owns enqueue/landing. No Reviewer runtime.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-35 · 2026-11-16T16:07:53.462Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1705-merge-1
+commit: af14a01115b3d68ca539eba0f0c701ba37beffcc
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge-delta clear A-20234. Whole-tree parent comparison has no unexpected non-overlap paths; all33 task paths outside five shared files are unchanged. Reviewed shared skill/index/README/help fixture and combined running.md hunk: secret-store/migration guidance retained with exact regional422 fallback; obsolete blanket create-retry denial removed. Task production/tests unchanged; daemon credential and inherited droplet boundary inspected. Coordinator9ce8d8fe/7525817f explicitly waives new verify for docs-only resolution after three checks; A-20233 records merged-head root typecheck/test:lint/separate wording exit0, report-only findings and tool-return provenance limits retained. C1/C2 reverified under that waiver with A-20208/A-20204 prior evidence qualifications, not a new merged-head runtime pass. Four Linuxzsh skips and separate limited MacA-20164 remain distinct, no native harness/human migration claim; old redA-20169 retained. Hold released; Coordinator owns enqueue/landing.
+
+Criteria: C1 verified, C2 verified.

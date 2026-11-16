@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-15T23:30:34.106Z
+updated: 2026-11-16T16:07:47.058Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -598,3 +598,7 @@ Hub restart #75 (2026-11-14 01:17:14Z, stand-in, launchd). Reason: human's answe
 ### human · 2026-11-15T23:30:34.106Z
 
 Hub restart #76 (2026-11-15 23:29:45Z, stand-in, launchd). Reason: cland release --dry-run for R-1530 failed with 'gh auth failed (ENOENT)' because the hub's PATH (inherited from the stand-in's zsh -ic launch) lacked /opt/homebrew/bin (T-1876); coord asked for a restart with it added. Gate: E-1539 closed, all R-1530 children closed, merge queue empty, no run, droplets 0, dev=origin/dev=58f403462, load 2.0. Stop: launchctl remove cland-hub-r75 → hub 5828 gone in 2 s (uptime 45 h). Serve: launchctl submit cland-hub-r76 with PATH=<nvm bin>:/opt/homebrew/bin:$PATH → listening 23:29:58Z, serving 23:30:02Z. Gap stop→serve 17 s. New hub 30658, port 53942, web 56935, nice 0, ppid 1, env check 2, PATH contains /opt/homebrew/bin (verified on the serving pid), one launchd job. Coord 66570: bridge-closed 23:29:45Z → bridge-connected 23:30:02Z → session-resumed → coordinator-filled 23:30:16Z → injected 23:30:17Z; one bridge. doctor 37 ok 4 warn 0 fail. Recipe note: the launchd recipe now exports /opt/homebrew/bin in PATH for every future restart.
+
+### human · 2026-11-16T16:07:47.058Z
+
+Hub restart #77 (2026-11-16 16:04:54Z, stand-in, launchd). Reason: T-1843 (ghost remote slot reconciliation) landed at b57847bca and applies at hub start; coord go after batch run c9c83d2d finished its host T0 and delivery upload (I held the first request because that run was mid-acquire). Gate: dev=origin/dev=b57847bca, root clean, load 2.9, two remote runs waived by coord (T-1907 278ae9f0, batch c9c83d2d), no local run. Stop: launchctl remove cland-hub-r76 → hub 30658 gone in 3 s (uptime 16.6 h). Serve: launchctl submit cland-hub-r77 → listening 16:05:12Z, serving 16:05:17Z. Gap stop→serve 23 s. New hub 88226, port 51318, web 56935, nice 0, ppid 1, env check 2, /opt/homebrew/bin on PATH, one launchd job. Coord 61301: bridge-closed 16:04:54Z, one inject-unconfirmed at 16:06:44Z, coordinator-vacant → coordinator-filled 16:06:46Z, injected 16:06:49Z (about 110 s without a confirmed injection, self-healed, one bridge). Both remote runs survived with live watchdogs. doctor 37 ok 5 warn 0 fail.

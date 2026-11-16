@@ -3,7 +3,7 @@ id: T-1861
 kind: task
 title: qa lint reads a per-test docs path (.test.ts.md) as a missing test file
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1558
 branch: t/T-1861-qa-lint-reads-a-per-test-docs-path-test
 created: 2026-11-15T01:02:32.118Z
-updated: 2026-11-16T14:56:28.510Z
+updated: 2026-11-16T15:27:54.650Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ When the lint extracts test-file references, it treats a `docs/agents/tests/*.te
 
 - [x] C1. A brief naming an existing `docs/agents/tests/<name>.test.ts.md` gets no absent-test finding, and a brief naming a missing one gets one absent-file finding for that docs path (test).
   - done: impl-1861 · 2026-11-16T14:55:57.876Z
+  - verified: rev-37 [reviewer] · run rev-37-1861-final-1 · 2026-11-16T15:27:54.476Z · commit 4a0515df1c62b279d8c3440312ebbb69141e6f3b
 - [x] C2. `cland qa lint qa/briefs/E-1313.md` at the fix head no longer reports `hub-test-skills-onboarding.test.ts`, and its other findings are unchanged (test).
   - done: impl-1861 · 2026-11-16T14:47:26.872Z
+  - verified: rev-37 [reviewer] · run rev-37-1861-final-1 · 2026-11-16T15:27:54.476Z · commit 4a0515df1c62b279d8c3440312ebbb69141e6f3b
 
 ## Comments
 
@@ -56,3 +58,31 @@ Criteria: C1 failed (An existing guide in title-like syntax still receives a fal
 ### impl-1861 · 2026-11-16T14:56:28.510Z
 
 Review corrections pushed at 4a0515df1c62b279d8c3440312ebbb69141e6f3b; new evidence A-20191, original provenance limits A-20182. Normalized consumers: production extractor/build-needed detection/CLI inventory migrated; T1 qa-lint singular/plural guide-title classification migrated; T1 exact-export compatibility owning QA_LINT_USAGE commands.json row migrated; T2 cli-help exact assertion retained and passed9/9; T2 qa-lint-cli dispatch unaffected; T1 suite-admission text-only caller unaffected; T3 qa-lint-build independent diagnostic membership parser migrated with planted existing-guide false-absence positive control and genuinely missing-guide negative control (red observed before parser change), compiler title and real-test oracle retained. CLI and corpus source-selection share exported predicate. Shipped QA skill/help/reference/test docs migrated; E-1537-stage-4 historical baseline retained. Exact-head E-1313 CLI in sealed checkout of 4a0515df1 has same six unrelated findings, only original false guide finding removed. Fresh source review requested; no configured verification yet.
+
+### rev-37 · 2026-11-16T14:57:08.415Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1861-source-2
+commit: 4a0515df1c62b279d8c3440312ebbb69141e6f3b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected full source review A-20192: Standards clear, Spec clear; all three source1 medium findings resolved. Frozen owning help row exactly matches committed export with assertions retained; singular/plural guide-title exclusion keeps real title checks; corpus oracle consumes both absence diagnostics and detects planted existing-guide false absence before scanning. Independently hashed A-20191 launcher and compared exact-head native E-1313 stderr: six unrelated findings byte-identical, expected exit1 not clean-brief evidence. Targeted correction tests are candidate tool excerpts; original raw/hash limits remain A-20182. No configured run yet; whole-source lint completion pending as of request. C1/C2 left unverified for same-head evidence settlement. No Reviewer runtime.
+
+### rev-37 · 2026-11-16T15:27:54.476Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1861-final-1
+commit: 4a0515df1c62b279d8c3440312ebbb69141e6f3b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear, C1/C2 verified. A-20216 independently matches dba711bf/A-20215 canonical tree bedab34375a03fd2c96e95bf03bb324e428c0e10 and head to source-clear A-20192. Both guide regressions ordinary pass+explicit5/5 load; exact-help1/full-help9/CLI2 preserved; changed T3 three cases pass once with candidate HEAD corpus receipt and planted oracle controls. C2 exact-head A-20191 replay retains six unrelated stderr findings byte-identical and removes only the false guide finding; expected native lint exit1 is retained drift, not clean-brief evidence. Host T0, Linux x64 droplet Node24.21/Nvim0.12.5 allT1/fallbackallT2/selectedT3/Web exit0, hubaggregate6436pass no fail/cancel/skip/todo; actual HeadlessShell1248/CfT156.0.8078.4, uncached. RemainingT3/T4 unexecuted/deferred; duration/lint/ratchet advisories report-only including existing corpus timing. No Reviewer runtime. Standards clear, Spec clear; findings[].
+
+Criteria: C1 verified, C2 verified.

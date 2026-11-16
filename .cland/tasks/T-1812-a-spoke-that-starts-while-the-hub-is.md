@@ -2,8 +2,8 @@
 id: T-1812
 kind: task
 title: "A spoke that starts while the hub is down never connects: no hub.json at startup means no endpoint for its lifetime"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1553
 branch: t/T-1812-a-spoke-that-starts-while-the-hub-is
 created: 2026-11-11T06:00:56.866Z
-updated: 2026-11-16T14:20:57.626Z
+updated: 2026-11-16T15:11:27.730Z
+closed: 2026-11-16T15:11:27.730Z
 ---
 
 ## Summary
@@ -96,3 +97,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-1812 · 2026-11-16T14:20:57.626Z
 
 Count correction to my previous run summary: A-20155 independently records 6417 unscoped passing test-finish events and 704 unscoped file passes, separately 225 load-gate test/file passes. My earlier inference that aggregate 6417 included repetitions (from summed tier summaries) was unsupported and is withdrawn. C1–C3 each have ordinary pass + 5/5 scoped load passes. Final reviewer evidence clear rev-37-1812-final-1 verifies all criteria at a612f507f; hub status ready, no holds. Claim retained; no further source changes or merge by Implementer.
+
+### coord · 2026-11-16T15:11:27.730Z
+
+Merged 50bf074d8a41fad8c18da1181d0d5d8bab766bed onto dev.

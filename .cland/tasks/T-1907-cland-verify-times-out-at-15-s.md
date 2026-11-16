@@ -3,7 +3,7 @@ id: T-1907
 kind: task
 title: cland verify times out at 15 s ("submission sent; no reply") while the hub admits the run, three times in a row on 2026-11-16
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1555
 branch: t/T-1907-cland-verify-times-out-at-15-s
 created: 2026-11-16T08:08:22.188Z
-updated: 2026-11-16T14:55:24.691Z
+updated: 2026-11-16T15:48:53.378Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ Find what the hub does between receiving a verify submission and replying. Reply
 
 ## Acceptance criteria
 
-- [ ] C1. A verify submission on a quiet machine returns the run id within the CLI bound, with the slow step measured and named (test with a fake slow step).
-  - failed: rev-36 [reviewer] · 2026-11-16T14:55:24.690Z · note Configured T2 hangs in an existing accounting consumer because detached admission ends its scripted clock driver before scheduler settlement.
+- [x] C1. A verify submission on a quiet machine returns the run id within the CLI bound, with the slow step measured and named (test with a fake slow step).
+  - done: impl-1907 · 2026-11-16T15:44:07.794Z
 - [x] C2. A real timeout still reports "submission sent; check the queue" and never resubmits (test).
   - done: impl-1907 · 2026-11-16T13:47:40.977Z
 
@@ -204,3 +204,16 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Failed-evidence complete; A-20188 actual ledger and new note. Preceding source clearance missed this clock-driver path.5681ordinary testpass/1cancelled;604filepass/1fail;225separate load passes/files. CLI7cases/file, including C1/C2, are positive but whole run not clear. Manifest989:604pass,1fail,44T2+55Webunexecuted,285T3/T4deferred. T0/T1green,T2exit1,Webnotrun; browsernull/uncached LinuxNode24.21 confirmed. Report-only diagnostics separate. No shared defect or retry authorization; hold released for Coordinator redesign and fresh source/fullfiles/new verify. No Reviewer runtime.
 
 Criteria: C1 failed (Configured T2 hangs in an existing accounting consumer because detached admission ends its scripted clock driver before scheduler settlement.).
+
+### rev-36 · 2026-11-16T15:48:53.378Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1907-source-5
+commit: 61ffc95cfc3638d46e9f7e02a3b48d751e4a5c8c
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear after Coordinator wire-only redesign; Standards0/Spec0. A-20229 traces the durable callback shared by socket/RPC, immediate start-promise outcome ownership, restored await#check/#starting shutdown join, and byte-identical restoration of unit fixture/remote-budget/guide to78393cf43. C1/C2 assertions and old reply/help fields retained; close-component wire readers now await actual machine/publication receipts and drive reservation settlement. A-20226 candidate61-case proofs and captured limitations remain distinct from immutable configured evidence; A-20228 normalizes206 retained reference paths with planned/deferred/helper boundaries. C1/C2 remain unverified until exact-head mode-free configured result; prior A-20135/A-20184 reds retained. Proceed in authorized verify window.

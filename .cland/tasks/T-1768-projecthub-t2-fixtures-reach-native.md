@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1557
 branch: t/T-1768-projecthub-t2-fixtures-reach-native
 created: 2026-11-09T06:56:35.201Z
-updated: 2026-11-16T14:52:20.073Z
+updated: 2026-11-16T15:54:07.303Z
 ---
 
 ## Summary
@@ -22,8 +22,10 @@ A T2 test that starts `projectHub` without an explicit `lockIdentity` reaches na
 
 ## Acceptance criteria
 
-- [ ] C1. `projectHub` under T2 defaults to a fixture lock identity with no native process call; native identity stays opt-in for T3 (test).
-- [ ] C2. An enforce-mode tripwire run over the projectHub-based T2 files reports no native process call from projectHub's own default hub lock path (lock identity or process-start probe); other native calls the run finds are recorded in an artifact for a follow-up item (test).
+- [ ] C1. projectHub under T2 defaults to a fixture lock identity with no native process call; native identity stays opt-in, used explicitly by T3 and by the T2 files whose native CLI reads the lock, which T-1915 then classifies (test).
+  - failed: rev-35 [reviewer] · 2026-11-16T15:54:07.303Z · note Regression fixtures still lack ownership over initial tempProject acquisition; post-root controls do not prove this failure path.
+- [x] C2. An enforce-mode tripwire run over the projectHub-based T2 files reports no native process call from projectHub's own default hub lock path (lock identity or process-start probe); other native calls the run finds are recorded in an artifact for a follow-up item (test).
+  - done: impl-1768 · 2026-11-16T15:46:56.814Z
 
 ## Comments
 
@@ -50,3 +52,37 @@ Complete per-file rule 20 sweep published as A-20184 (use the complete consumer 
 ### impl-1768 · 2026-11-16T14:52:20.073Z
 
 Inventory artifact id correction: A-20185, durable path /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20185-t-1768-complete-consumer-sweep-by-tier-and-identity-choice.md.
+
+### impl-1768 · 2026-11-16T15:16:06.157Z
+
+Coordinator narrowed scope after 239-file census: ten existing native CLI reader files explicitly opt into shared nativeIdentityProjectHub (auth-mode, config-reload-component, config-set, hub-priority, hub-status-component, merge-queue, roles-component, startup-ready-component, suite-protocol, suite-wait-metrics). Their T2 classification and remaining findings move to T-1915. Default fixture remains synthetic; runner-provided identity is retained. Findings A-20205, raw A-20206, original dev/head comparisons A-20200. Typecheck now passes locally (macOS Node 24.21.0).
+
+### rev-35 · 2026-11-16T15:33:02.074Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1768-source-1
+commit: 036abd7bb154f3a4c6797a86555cc5bcd230d8a8
+scope: full
+findings: [{"severity":"medium","text":"Final ...options overwrites probes.processes for valid {processes:undefined}, despite earlier fake fallback computation. serveProject/acquireLock then uses native processStarted. Normalize resolved fake-probe process table after options while preserving explicit tables/native opt-in; add owned zero-child explicit-undefined control. No documented exclusion/owner (claimant confirmed).","file":"hub/test/harness.ts","line":527},{"severity":"medium","text":"Three new callbacks (standalone identity, two-lifetime ledger loop, lifecycle native identity) have no whole admitted-work fence/join before root disposal; late projectHub/startup/until/readFile/next loop can race teardown. Existing resource stops/census do not join body. Register shared owner before acquisition, adopt late resources, fence/join before disposal/env restoration, retain roots on missing settlement; add owned held-work/startup-failure control.","file":"hub/test/project-probes.test.ts","line":59}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Complete full21-file pass A-20219 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20219-t-1768-full-fixture-lock-source-review-at-036abd7bb.md. Synthetic/runner defaults/native wrappers/ledger injection otherwise consistent; production unchanged. Coordinator70e9ae33/a1c5a8d7 ten-file native compatibility exception and T-1915 scope honored. A-20185 all653 path tiers independently match; A-20205/06 239direct census is212exit0/25completedfail/2incomplete, not tier pass or current-head universal coverage. A-20212–14 positives and A-20218 original producer/capture/unknowns retained; dynamic Claude caller remains unknown. C1failed,C2done/unverified. Hold released for consolidated fixes/fresh head source request before verification; no Reviewer runtime or broad/full/all request/dev merge.
+
+Criteria: C1 failed (Optional undefined process table can restore native probing; new regression sequences lack failure-path whole-work ownership.).
+
+### rev-35 · 2026-11-16T15:54:07.303Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1768-source-2
+commit: bfd6c195327c29a3322ba279adda2a89596cb5eb
+scope: full
+findings: [{"severity":"medium","text":"The three corrected callbacks and held controls still await tempProject before constructing their work owner. Cleanup during initial account/root acquisition can finish before a late root is adopted. Compose the existing test-support fixtureWork before acquisition, capture late root/resources before the next fenced step, and join the whole sequence before removal/restoration; retain a held initial-acquisition control. This is the remaining part of the previous lifetime finding.","file":"hub/test/project-probes.test.ts","line":64}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Complete seven-file repair pass recorded in A-20230. processes:undefined normalization is fixed; explicit tables/native defaults and accepted ten compatibility exceptions preserved. Sole remaining medium is pre-root acquisition ownership; implementer confirms no earlier owner. A-20227 positive normal/post-root receipts retained with stated provenance limits, not proof of initial-root closure. C2 remains done/unverified. Pin released for consolidated correction using shared owner, then fresh source review at a clean committed head before verify; no dev merge required.
+
+Criteria: C1 failed (Regression fixtures still lack ownership over initial tempProject acquisition; post-root controls do not prove this failure path.).

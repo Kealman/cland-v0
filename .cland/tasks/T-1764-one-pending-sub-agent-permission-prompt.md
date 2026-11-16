@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1554
 branch: t/T-1764-one-pending-sub-agent-permission-prompt
 created: 2026-11-08T18:34:49.448Z
-updated: 2026-11-16T14:31:55.105Z
+updated: 2026-11-16T15:18:12.854Z
 ---
 
 ## Summary
@@ -32,12 +32,15 @@ One pending Claude Code permission prompt, raised by a sub-agent of the Coordina
 - [x] C1. A session that re-enters `waiting for approval` for the same pending prompt, with no state in between other than the same wait, sends no new remote card or Agents notice (test).
   - done: impl-1764 · 2026-11-16T14:02:34.573Z
   - verified: rev-38 [reviewer] · run rev-38-1764-final-1 · 2026-11-16T14:31:54.527Z · commit 0c9f608455c75b936c7c671bf29f4911f76d1aa8
+  - verified: rev-38 [reviewer] · run rev-38-1764-delta-1 · 2026-11-16T15:18:10.739Z · commit 9a6083a6befd6a9a4a6107912bdeacc6670106ee
 - [x] C2. A new prompt, or the same session entering a wait again after it resolved, still announces once (test).
   - done: impl-1764 · 2026-11-16T13:50:52.174Z
   - verified: rev-38 [reviewer] · run rev-38-1764-final-1 · 2026-11-16T14:31:54.527Z · commit 0c9f608455c75b936c7c671bf29f4911f76d1aa8
+  - verified: rev-38 [reviewer] · run rev-38-1764-delta-1 · 2026-11-16T15:18:10.739Z · commit 9a6083a6befd6a9a4a6107912bdeacc6670106ee
 - [x] C3. A still-pending prompt sends at most one reminder, after a fixed interval on the hub clock (test).
   - done: impl-1764 · 2026-11-16T14:02:37.420Z
   - verified: rev-38 [reviewer] · run rev-38-1764-final-1 · 2026-11-16T14:31:54.527Z · commit 0c9f608455c75b936c7c671bf29f4911f76d1aa8
+  - verified: rev-38 [reviewer] · run rev-38-1764-delta-1 · 2026-11-16T15:18:10.739Z · commit 9a6083a6befd6a9a4a6107912bdeacc6670106ee
 
 ## Comments
 
@@ -89,5 +92,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final same-head evidence clear; C1,C2,C3 verified, no findings. A-20167 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20167-t-1764-final-c1-c3-evidence-clear-at-0c9f60845.md) reconciles source-clear A-20128, task.verify and uncached run5a689759/A-20165. Independently reproduced candidate9e4c6b56b1ced35c50b5be9fb92c30f6c990ec37 from pinned full Git tree. HostT0/T1/allT2fallback/selectedT4/Web exit0; streamed6421 ordinary pass +30 separate load pass records, no negatives/skips/cancels. All26 Claude session cases and5 remote-neutral cases pass; six exact approval cases each base1+load5, including both review regression classes. Selected inbox-verifier-load T4 passes once; its repeats and remainingT3/T4 unexecuted/deferred, not a full higher-tier pass. Linuxx64Node24.21/Neovim0.12.5, isolated HeadlessShell1248/CfT156.0.8078.4. Budget/lint/ratchet/skip-reason checks report-only, existing advisories retained. Fake-harness/messenger evidence; no real messenger or native Claude approval claim. Reviewer ran no tests/probes/browser.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-38 · 2026-11-16T15:18:10.739Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1764-delta-1
+commit: 9a6083a6befd6a9a4a6107912bdeacc6670106ee
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge-delta clear, no findings. A-20210 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20210-t-1764-merge-delta-clear-at-9a6083a6b-under-coordinator-waiver.md) records independent Coordinator decisions60ec0c69/f2ed8fcc and explicit docs-only rule6 no-new-verify waiver. README keeps both watchdog and approval notification entries. Approval implementation/tests unchanged from verified first parent; Sessions inherits only unrelated #turnFailed closed guard. Changed-wording searches in hub/test+nvim/test find no exact consumer. A-20209 records merged-head macOSNode24.21 typecheck/test:lint/wording exit0; report-only advisories retained. C1-C3 carried under this waiver through reviewed source-equivalent approval paths. ACTUAL runtime remains A-20165/run5a689759 at first parent0c9f60845, as settled A-20167; no merged-head runtime/browser/configured verify, cache pass or new wall-time claim. Remaining integrated/higher-tier coverage remains deferred/Coordinator-owned. Reviewer read only.
 
 Criteria: C1 verified, C2 verified, C3 verified.

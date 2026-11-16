@@ -2,8 +2,8 @@
 id: T-1843
 kind: task
 title: A finished suite with no lease stays in verify queue as an active remote run and holds a remote slot across restarts
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1543
 branch: t/T-1843-a-finished-suite-with-no-lease-stays-in
 created: 2026-11-13T12:41:29.355Z
-updated: 2026-11-16T14:55:55.968Z
+updated: 2026-11-16T15:59:58.762Z
+closed: 2026-11-16T15:59:58.762Z
 ---
 
 ## Summary
@@ -30,10 +31,12 @@ A suite that has finished, or whose lease and droplet are gone, leaves the activ
   - verified: rev-35 [reviewer] · run rev-35-1843-final-1 · 2026-11-16T09:29:13.317Z · commit ae5664ce0e9c6788bb7eb4176ca32af91766b24a
   - verified: rev-35 [reviewer] · run rev-35-1843-merge-delta-1 · 2026-11-16T09:55:24.336Z · commit f66be0d2f1818458c7d400e6fb09aff918eebc09
   - done: impl-1843 · 2026-11-16T14:22:11.753Z
+  - verified: rev-36 [reviewer] · run rev-36-1843-merge-final-1 · 2026-11-16T14:59:33.310Z · commit b49d84679978ef52258d8dd57489fe79b4075c74
 - [x] C2. A run that ended without a posted result gets exactly one posted result naming the missing receipt, after which the heartbeat no longer lists it (test).
   - verified: rev-35 [reviewer] · run rev-35-1843-final-1 · 2026-11-16T09:29:13.317Z · commit ae5664ce0e9c6788bb7eb4176ca32af91766b24a
   - verified: rev-35 [reviewer] · run rev-35-1843-merge-delta-1 · 2026-11-16T09:55:24.337Z · commit f66be0d2f1818458c7d400e6fb09aff918eebc09
   - done: impl-1843 · 2026-11-16T14:22:12.003Z
+  - verified: rev-36 [reviewer] · run rev-36-1843-merge-final-1 · 2026-11-16T14:59:33.310Z · commit b49d84679978ef52258d8dd57489fe79b4075c74
 
 ## Comments
 
@@ -184,3 +187,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Merge source clear; independent static ledger A-20129 and source note just published. Parents and automatic hub/src/test subtrees confirmed; README alone manually resolves both recovery/regional-capacity entries. Read inherited Suites timeout inventories, log/progress/stall diagnostics, provider/fake and cleanup interactions; no merge finding. Coordinator9036c7be supersedes carry: old sixteen native receipts do NOT carry, despite identical direct test blobs. C1/C2 not newly verified; fresh sixteen merged-head full files, terminal compiler/lint checks and final exact-head configured run required. A-20130 typecheck0 reported, lint pending; old reds/candidate/capture limits preserved. No Reviewer runtime. Hold released for authorized checks/slots.
+
+### rev-36 · 2026-11-16T14:59:33.310Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1843-merge-final-1
+commit: b49d84679978ef52258d8dd57489fe79b4075c74
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head C1/C2 verified. A-20193 independently preserves6683ordinary test/719filepasses,265separate load tests/files, all11own identities base+5, prior dry-run/stage-cover regressions freshpositive and no cache/persistence tier mismatch. A-20161 NEW16full native files independently parsed130/130, code0/signalnull/no timeout/errors, source+manifest hashes match; old982receipts do NOT carry.1505-row union retains all1499oldrows:719configuredpositive,16freshMacmanual,237remainingT3/17T4deferred,516source references; no missing lower/Web. Exact head/uncachedLinuxNode24.21/browser156/build1248 confirmed. Original red/candidate/producer/report-only/QA limits retained. No Reviewer runtime. Hold released; hub/Coordinator retain landing/integrated gates.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T15:59:58.762Z
+
+Merged b57847bca2c2ebd9beb8e62651bd49faa9e8d97e onto dev.
