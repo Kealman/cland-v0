@@ -131,6 +131,5 @@ read of all three linked provider pages; a passing test alone cannot refresh a
 quote. The web multi-user section retains its component-label guard.
 The host-revoke guard derives the settlement budget from the launch and host
 declarations read as source, checks help and public wording against it and keeps
-the CLI's separate frame margin explicit. It proves no native timing result. Count
-tracker ids manually in any changed `.mdx` lines: the closed-item lint reads
-Markdown only.
+the CLI's separate frame margin explicit. It proves no native timing result. Run
+the closed-item wording lint for changed site `.mdx` prose as well as Markdown.

@@ -62,7 +62,7 @@ or empty records; `skill-provenance-merge.test.ts` proves native Git merge,
 `merge-tree` and one-parent squash preservation after copying the shipped skills.
 
 The closed-item wording guard (`hub/test/lint-closed-item-wording.ts`) checks
-repository `README*.md` files, `docs/**/*.md` and `site/src/content/docs/**/*.md`
+repository `README*.md` files, `docs/**/*.md` and `site/src/content/docs/**/*.{md,mdx}`
 against `.cland/tasks/*.md`,
 excluding dependency, Git and worktree directories. It fails with file/line
 diagnostics when a line combines a closed item reference with `until`, `stand-in`,
@@ -75,6 +75,16 @@ reasons do not exempt a line. An inline exemption applies only to its own line.
 In-memory fixture tracker controls run at T0 without a test worker; `--self-test`
 runs only those controls, and `--help` describes the command. The guard uses the
 candidate checkout's tracker state, without contacting a running hub.
+MDX front matter, fenced code, complete import/export statements and JSX tags/attributes are
+ignored, retaining line numbers and component child prose. Markdown scanning is
+unchanged. The MDX positive control uses the production document patterns with
+a planted closed-item phrase; syntax controls assert exact original lines for
+component children, prose after a multiline tag, inline-code references and
+prose following multiline ESM (with and without semicolons). The existing
+TypeScript parser identifies ESM statement boundaries.
+Use `/usr/bin/time -p node hub/test/lint-closed-item-wording.ts` before and after
+scope changes to measure the full local command (startup, fixtures, globbing and
+tracker parsing included), separately from suite measurements.
 
 The T0 dictionary membership guard (`hub/test/lint-dictionary-membership.ts`)
 checks every `in` expression in `hub/src` with the TypeScript compiler API.

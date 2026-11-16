@@ -69,7 +69,8 @@ as `typescript` for the compiler API used by `hub/test/executor.test.ts` and
 API. Adoption was gated on matching diagnostic codes, files and lines on both
 clean projects and planted strict-option/import errors (T-427).
 
-The T0 closed-item wording guard checks repository Markdown READMEs and docs
+The T0 closed-item wording guard checks repository Markdown READMEs and docs,
+including site Markdown and MDX pages,
 against the candidate checkout's tracker. It reports lines that combine closed
 item references with future-work wording. Fix stale claims; retain historical
 records or unrelated runtime descriptions with a reason-required line exemption.

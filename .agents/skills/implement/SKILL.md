@@ -114,7 +114,7 @@ Run typechecking and targeted single test files while implementing. Merge batche
 
 For README/docs edits, follow [documentation placement](../../../docs/agents/documentation.md).
 
-For README/docs edits, run `node hub/test/lint-closed-item-wording.ts` against the
+For README/docs edits (including site MDX prose), run `node hub/test/lint-closed-item-wording.ts` against the
 candidate tracker. Fix landed-work claims; document any historical or unrelated
 runtime wording with the reason-required line exemption in
 `docs/agents/tests.md` (closed-item wording guard).

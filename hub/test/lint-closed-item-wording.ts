@@ -2,16 +2,54 @@
 import assert from 'node:assert/strict';
 import { glob, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, matchesGlob } from 'node:path';
+import ts from 'typescript';
 import { normalizeId, parseItem } from '../src/tracker/item.ts';
 
 type Document = { path: string; text: string };
+const documentPatterns = ['**/README*.md', 'docs/**/*.md', 'site/src/content/docs/**/*.{md,mdx}'];
+
+function mdxProse(text: string): string {
+  const blank = (value: string): string => value.replace(/[^\r\n]/g, ' ');
+  let fence: { marker: string; length: number } | undefined;
+  let frontmatter = false;
+  let prose = text.split(/\r?\n/).map((line, index) => {
+    if (index === 0 && line === '---') { frontmatter = true; return blank(line); }
+    if (frontmatter) {
+      if (line === '---') frontmatter = false;
+      return blank(line);
+    }
+    const marker = /^\s{0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (fence) {
+      if (marker && marker[1]![0] === fence.marker && marker[1]!.length >= fence.length && !marker[2]!.trim()) fence = undefined;
+      return blank(line);
+    }
+    if (marker) { fence = { marker: marker[1]![0]!, length: marker[1]!.length }; return blank(line); }
+    return line;
+  }).join('\n');
+  // MDX ESM can span lines and omit semicolons. Let the existing compiler
+  // parser identify its statement boundary rather than guessing at braces.
+  const esm = /^[ \t]*(?:import|export)\s/gm;
+  let match: RegExpExecArray | null;
+  while ((match = esm.exec(prose))) {
+    const statement = ts.createSourceFile('document.tsx', prose.slice(match.index), ts.ScriptTarget.Latest, false, ts.ScriptKind.TSX).statements[0];
+    if (!statement) continue;
+    const statementEnd = match.index + statement.end;
+    const commentEnd = ts.getTrailingCommentRanges(prose, statementEnd)?.at(-1)?.end ?? statementEnd;
+    const newline = prose.indexOf('\n', commentEnd);
+    const end = newline < 0 ? prose.length : newline;
+    prose = prose.slice(0, match.index) + blank(prose.slice(match.index, end)) + prose.slice(end);
+    esm.lastIndex = end;
+  }
+  // Strip tags and their attributes, retaining children (including same-line prose).
+  return prose.replace(/<\/?[A-Za-z][\w.:-]*(?:"[^"]*"|'[^']*'|\{[^}]*\}|[^'"<>])*\/?\s*>/g, blank);
+}
 
 function findings(documents: Document[], tracker: string[]): string[] {
   const closed = new Set(tracker.map(text => parseItem(text).fm).filter(item => item.state === 'closed').map(item => normalizeId(item.id)));
   const failures: string[] = [];
   for (const document of documents) {
-    const lines = document.text.split(/\r?\n/);
+    const lines = (document.path.endsWith('.mdx') ? mdxProse(document.text) : document.text).split(/\r?\n/);
     const exempt = (line: string): boolean => Boolean(/<!--\s*cland-allow-closed-wording:\s*([^\n]*?)\s*-->/.exec(line)?.[1]?.trim());
     lines.forEach((line, index) => {
       const previous = lines[index - 1] ?? '';
@@ -64,14 +102,50 @@ assert.deepEqual(findings([{ path: 'README.md', text: 'PENDING e-90004 and T-900
   'README.md:1: closed item E-90004 with pending wording',
   'README.md:1: closed item T-90004 with pending wording',
 ]);
+const mdxFixture = { path: 'site/src/content/docs/docs/fixture.mdx', text: 'Wait until T-90001 lands.' };
+assert.deepEqual(findings([mdxFixture].filter(document => documentPatterns.some(pattern => matchesGlob(document.path, pattern))), tracker), [
+  'site/src/content/docs/docs/fixture.mdx:1: closed item T-90001 with until wording',
+]);
+assert.deepEqual(findings([{ path: mdxFixture.path, text: [
+  '---',
+  'title: Pending T-90001',
+  '---',
+  'import Pending from "T-90001"; // Pending T-90001',
+  'export const pending = "T-90001";',
+  '```jsx',
+  'Pending T-90001',
+  '```',
+  '<Screenshot title="Pending T-90001" />',
+  '<Aside title="Pending T-90001">Wait until T-90001 lands.</Aside>',
+  '<Screenshot',
+  ' title="Pending T-90001"',
+  '/> Pending T-90001.',
+  'Pending `T-90001`.',
+].join('\n') }], tracker), [
+  `${mdxFixture.path}:10: closed item T-90001 with until wording`,
+  `${mdxFixture.path}:13: closed item T-90001 with pending wording`,
+  `${mdxFixture.path}:14: closed item T-90001 with pending wording`,
+]);
+assert.deepEqual(findings([{ path: mdxFixture.path, text: [
+  'import {',
+  '  pending as T90001, // Pending T-90001',
+  '} from "./components";',
+  'export const example = {',
+  '  label: "Pending T-90001",',
+  '};',
+  'export const other = {',
+  '  label: "Pending T-90001"',
+  '}',
+  'Wait until T-90001 lands.',
+].join('\n') }], tracker), [`${mdxFixture.path}:10: closed item T-90001 with until wording`]);
 console.log('closed-item wording lint: fixture diagnostics passed');
 
 if (process.argv.includes('--help')) {
-  console.log('Usage: node hub/test/lint-closed-item-wording.ts [--help | --self-test]\nScan README*.md throughout the repository, docs/**/*.md and site/src/content/docs/**/*.md against .cland/tasks. Report same-line closed item references with until, stand-in, pending or later ticket wording (default tracker prefixes and T-n aliases). A same/previous-line <!-- cland-allow-closed-wording: reason --> exempts historical records or unrelated runtime wording. Unknown/open ids are ignored. In-memory fixture controls always run. --self-test skips repository reads.');
+  console.log('Usage: node hub/test/lint-closed-item-wording.ts [--help | --self-test]\nScan README*.md throughout the repository, docs/**/*.md and site/src/content/docs/**/*.{md,mdx} against .cland/tasks. MDX ignores front matter, fenced code, complete import/export statements and JSX tags/attributes while retaining child prose and line numbers. Report same-line closed item references with until, stand-in, pending or later ticket wording (default tracker prefixes and T-n aliases). A same/previous-line <!-- cland-allow-closed-wording: reason --> exempts historical records or unrelated runtime wording. Unknown/open ids are ignored. In-memory fixture controls always run. --self-test skips repository reads.');
 } else if (!process.argv.includes('--self-test')) {
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const paths = new Set<string>();
-  for await (const path of glob(['**/README*.md', 'docs/**/*.md', 'site/src/content/docs/**/*.md'], {
+  for await (const path of glob(documentPatterns, {
     cwd: root, exclude: ['**/node_modules/**', '**/.git/**', '**/.cland/**'],
   })) paths.add(path);
   const documents: Document[] = [];
