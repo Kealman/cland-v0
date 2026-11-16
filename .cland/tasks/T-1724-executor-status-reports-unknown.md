@@ -3,8 +3,9 @@ id: T-1724
 kind: task
 title: Executor status reports "unknown (inspection deferred)" when the local snapshot-key read exceeds its 250 ms bound under load
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 2
 labels: []
 assignee: null
 parent: E-1881
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-1539
 branch: t/T-1724-executor-status-reports-unknown
 created: 2026-11-06T11:49:25.020Z
-updated: 2026-11-16T07:33:17.107Z
+updated: 2026-11-16T07:43:34.823Z
 ---
 
 ## Summary
@@ -25,7 +26,8 @@ Decide what the 250 ms bound is for. If it's status responsiveness, keep it and 
 
 ## Acceptance criteria
 
-- [ ] C1. A test that holds the key computation past 250 ms reports `unknown (inspection deferred)` once, and the next status read after the computation completes reports `current` (test, red before the fix).
+- [x] C1. A test that holds the key computation past 250 ms reports `unknown (inspection deferred)` once, and the next status read after the computation completes reports `current` (test, red before the fix).
+  - done: impl-1724 · 2026-11-16T07:42:58.189Z
 - [ ] C2. executor-prepare.test.ts passes 10/10 on macOS at a one-minute load of 12 or more, with its assertions unchanged (evidence).
 
 ## Comments

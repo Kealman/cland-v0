@@ -3,8 +3,9 @@ id: T-1697
 kind: task
 title: Host agent checkpoint writes share one fixed '.new' temp name; a concurrent or late checkpoint fails with ENOENT
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels: []
 assignee: null
 parent: E-1881
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-1538
 branch: t/T-1697-host-agent-checkpoint-writes-share-one
 created: 2026-11-05T19:31:45.062Z
-updated: 2026-11-16T07:37:24.513Z
+updated: 2026-11-16T07:43:35.263Z
 ---
 
 ## Summary
@@ -32,8 +33,10 @@ In impl-1692's Linux container evidence (T-1692; `docker run --init`, arm64 Node
 
 ## Acceptance criteria
 
-- [ ] C1. The failing order is named with a deterministic reproduction (test, red before the fix).
-- [ ] C2. Concurrent checkpoints of one file never fail and never leave a partial file, and the last completed write wins (test).
+- [x] C1. The failing order is named with a deterministic reproduction (test, red before the fix).
+  - done: impl-1697 · 2026-11-16T07:43:11.702Z
+- [x] C2. Concurrent checkpoints of one file never fail and never leave a partial file, and the last completed write wins (test).
+  - done: impl-1697 · 2026-11-16T07:43:31.973Z
 - [ ] C3. claude-code-remote passes 10/10 under CPU load in a Linux container run with `docker run --init` (evidence).
 
 ## Comments

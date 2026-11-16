@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1536
 branch: t/T-1877-the-managed-cland-gitignore-header
 created: 2026-11-15T23:32:23.381Z
-updated: 2026-11-16T07:40:02.353Z
+updated: 2026-11-16T07:40:27.893Z
 ---
 
 ## Summary

@@ -5,6 +5,7 @@ title: OpenCode turnFailed after the store closes throws "database is not open" 
 state: open
 status: in progress
 size: S
+criterion_seq: 2
 labels: []
 assignee: null
 parent: E-1881
@@ -14,7 +15,7 @@ found_by: droplet
 topic: topic-1540
 branch: t/T-1703-opencode-turnfailed-after-the-store
 created: 2026-11-06T05:22:20.125Z
-updated: 2026-11-16T07:38:20.364Z
+updated: 2026-11-16T07:43:49.708Z
 ---
 
 ## Summary
@@ -27,7 +28,8 @@ Make OpenCode adapter callbacks such as turnFailed, arriving after Sessions or i
 
 ## Acceptance criteria
 
-- [ ] C1. A deterministic test delivers an OpenCode turnFailed after the store closes and shows it red before the fix and green after.
+- [x] C1. A deterministic test delivers an OpenCode turnFailed after the store closes and shows it red before the fix and green after.
+  - done: impl-1703 · 2026-11-16T07:42:11.838Z
 - [ ] C2. opencode-adapter.test.ts passes 10/10 on Linux under load (evidence).
 
 ## Comments
@@ -35,3 +37,7 @@ Make OpenCode adapter callbacks such as turnFailed, arriving after Sessions or i
 ### impl-1703 · 2026-11-16T07:38:20.364Z
 
 C1 deterministic red/green captured in A-19832. Captured OpenCode AdapterHost.turnFailed after awaited hub shutdown and positive closed-store control fails with database is not open before the two-line Sessions fence; full scripted T2 file passes 33/33 after. No shared reply, schema, or wire contract changes. Linux Docker load run in progress under exclusive slot.
+
+### impl-1703 · 2026-11-16T07:43:49.708Z
+
+C2 incomplete: Linux Docker sample1 green 21/21 at load8.15; sample2 red20/21 at load10.64 due unrelated restart fixture cleanup: native process identity unavailable for pid1761, native exit observed, listed descendants not confirmed gone. Reported shared-defect candidate to lead T-1703; holding native diagnosis/repeats. Both pending-permission cases passed; neither had database-is-not-open. Slot released.
