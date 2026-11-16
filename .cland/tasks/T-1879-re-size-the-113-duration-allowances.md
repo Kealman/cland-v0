@@ -2,8 +2,8 @@
 id: T-1879
 kind: task
 title: Re-size the 469 duration allowances renewed on 2026-11-16 from the v0.4.0 release logs (C-216 entries expire 2026-11-23)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1531
 branch: t/T-1879-re-size-the-113-duration-allowances
 created: 2026-11-16T07:04:58.109Z
-updated: 2026-11-16T08:16:11.810Z
+updated: 2026-11-16T09:00:03.165Z
+closed: 2026-11-16T09:00:03.165Z
 ---
 
 ## Summary
@@ -101,3 +102,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear, A-19877/A-19876. C1/C2/C3 verified under effective Coordinator date/exception decisions retained in A-19829. A-19875 independently streamed: 6404 base tests/701 files, separate 215 load tests/files, all positive; all five required warning identities pass, pure case base+5. All 807 consumers/16 unknown flags retained, zero missing selected-tier file receipts; broader T3/T4 and historical capture limits remain explicit. Current manifest hash/head/tree unchanged, clean worktree. Report-only budget/lint advisories not promoted. No Reviewer runtime work. Hold released; Coordinator landing gate remains.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-16T09:00:03.165Z
+
+Merged 9ea19673464b3b428a59251bb7be60a6f5e94cf0 onto dev.

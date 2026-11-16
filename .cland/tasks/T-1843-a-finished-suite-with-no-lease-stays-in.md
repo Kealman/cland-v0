@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1543
 branch: t/T-1843-a-finished-suite-with-no-lease-stays-in
 created: 2026-11-13T12:41:29.355Z
-updated: 2026-11-16T08:40:14.095Z
+updated: 2026-11-16T08:59:03.504Z
 ---
 
 ## Summary
@@ -27,9 +27,9 @@ A suite that has finished, or whose lease and droplet are gone, leaves the activ
 ## Acceptance criteria
 
 - [x] C1. A remote run whose suite record is finished and whose lease is gone is absent from `cland verify queue` and does not count against `remote_budget`, both live and after a hub restart (test).
-  - done: impl-1843 · 2026-11-16T08:30:19.680Z
+  - done: impl-1843 · 2026-11-16T08:53:28.876Z
 - [x] C2. A run that ended without a posted result gets exactly one posted result naming the missing receipt, after which the heartbeat no longer lists it (test).
-  - done: impl-1843 · 2026-11-16T08:38:10.831Z
+  - done: impl-1843 · 2026-11-16T08:59:02.953Z
 
 ## Comments
 
@@ -64,3 +64,33 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Replacement full source clear, A-19895. A-19885 classification finding resolved: no invented notRun, known nonzero failure and surviving identities preserved; four controls cover production periodic/result-summary semantics including prior genuine refusal. C1 occupancy/restart/report flow unchanged. C1/C2 pending configured same-head named/file evidence. A-19886/A-19891 capture/consumer limits retained; terminal lint receipt93cd27ed noted. No Reviewer runtime work. Hold released for authorized mode-free verify.
+
+### rev-35 · 2026-11-16T08:51:03.151Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1843-evidence-1
+commit: 5f9cb4cc1356bee53fa17708edb1032fc85c1c43
+scope: evidence
+findings: [{"severity":"medium","text":"Recovery precedes normal first result materialization for genuine pre-execution refusals and invents collection-loss text. A-19909 has five existing shard/periodic cause regressions. Preserve original proven refusal causes and distinguish expected receipt absence from lost execution evidence.","file":"hub/src/hub/suites.ts","line":1426},{"severity":"medium","text":"Both new T1 queue tests invoke real LocalExecutor.holder native compatibility/lock inspection; A-19909:11366–11367 records child_process.spawn tripwires. Fake this pure scheduler boundary while retaining real queue assertions.","file":"hub/test/suite-persistence.test.ts","line":47}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Failed-evidence pass completed, A-19911/A-19909. Ordinary1705pass/5fail,218passing/2failing T1 files; separate245load tests/files positive. T2/Web unexecuted, browser provenance null. Six new case passes do not override reached failures/tripwires. Both gaps confirmed by implementer; no flake/retry classification. Prior source clear retained as history. No Reviewer runtime work. Hold released for consolidated correction and fresh source review before a new authorized verification.
+
+Criteria: C1 failed (New T1 queue controls reach native holder inspection instead of an isolated semantic fake.), C2 failed (Configured T1 has five own-change failures because recovery corrupts original pre-execution refusal causes before first result materialization.).
+
+### rev-35 · 2026-11-16T08:56:20.951Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1843-source-3
+commit: d785a6c515d45144edb48004f5dc6bfe0a427640
+scope: full
+findings: [{"severity":"medium","text":"The notRun early return skips repair for a restored terminal refusal with both log/result lost. Terminal restore returns true, normal writing is skipped, and missing log reading fails before publication/heartbeat clearance. Materialize report inputs while preserving exact original refusal outcome/cause; cover both-files-missing restart recovery.","file":"hub/src/hub/suites.ts","line":1429}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full source pass A-19918. Original refusal-cause and T1 holder-boundary findings resolved, but blanket notRun exclusion creates a remaining C2 recovery gap, confirmed source-only by implementer45b22a51. C1 source isolation corrected; final configured evidence still pending. A-19909 remains failed history; candidate A-19916 and capture/consumer limits retained. No Reviewer runtime work. Hold released for consolidated correction/fresh source review before verification.
+
+Criteria: C2 failed (Restored terminal original notRun records with both report files lost still cannot publish or clear heartbeat.).

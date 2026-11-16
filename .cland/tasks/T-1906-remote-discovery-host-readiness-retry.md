@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-16T07:55:28.994Z
-updated: 2026-11-16T07:55:28.994Z
+updated: 2026-11-16T08:55:01.541Z
 ---
 
 ## Summary
@@ -32,3 +32,9 @@ After T-1889 lands, re-measure. If these waits are setup or observation waits, t
 
 - [ ] C1. Each of the two waits is classified as a setup wait (scaled) or a behaviour bound (exact, named), with the reason in the test (test).
 - [ ] C2. The file passes 20/20 in a Linux `--init` container at a 1-minute load of at least 10, with assertions unchanged (evidence).
+
+## Comments
+
+### coord · 2026-11-16T08:55:01.541Z
+
+A third fixed wait in the same file, found by impl-1731 (T-1731 mix 7, 2026-11-16 08:54Z, Linux `--init`, Node 24.21, load 8.23 at start and 12.70 at end): `remote-discovery-host.test.ts:147` "changed host secret atomically replaces prior discovery and reaches up" failed with `changed publication completed before up: not within 2000 ms`, together with the two identities already named here. The scope of T-1906 widens to every fixed real-time `eventually`/`until` bound in `remote-discovery-host.test.ts`. Classify each one as a setup wait (scaled) or a behaviour bound (exact and named), as in C1.
