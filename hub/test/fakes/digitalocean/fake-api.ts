@@ -97,12 +97,13 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (left > 0) { splitReads.set(path, left - 1); return false; }
     splitReads.delete(path); return true;
   };
-  const faults = { volumeSnapshotRegions: [] as string[], volumeDelete404Reads: 0, loseVolumeCreateResponse: 0, loseCreateResponse: 0, bootFailed: false, allocateAddressEarly: false, rateLimits: 0, retryAfter: '1', rateLimitReset: '', omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, createLimit: false, createRetryHeaders: false, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
+  const faults = { malformedCreate: false, volumeSnapshotRegions: [] as string[], volumeDelete404Reads: 0, loseVolumeCreateResponse: 0, loseCreateResponse: 0, bootFailed: false, allocateAddressEarly: false, rateLimits: 0, retryAfter: '1', rateLimitReset: '', omitSnapshotIds: [] as number[], omitDropletIds: [] as number[], omitKeyIds: [] as number[], dropletDelete404Reads: 0, keyDelete404Reads: 0, snapshotDelete404Reads: 0, getDelayMs: 0, getDelayPath: '',  create: 0, createLimit: false, createRetryHeaders: false, delayMs: 0, delayPath: '', activeAfter: 2, deletePolls: 0, archiveOnDelete: false, stripTagsOnDelete: false, dropletResponseId: 0, keyDeletePolls: 0, keyDeleteFailures: [] as number[], deleteError: 0, deleteFailures: [] as Array<number | 'timeout'>, echoToken: false, actionAfter: 2, failAction: '', deleteSnapshot: 0, visibilityPolls: 0, snapshotAfter: 0, snapshotHiddenPolls: 0, catalogueError: 0, loseDeleteSnapshot: 0, failCatalogueAfterDelete: false };
   let beforeDropletRead: ((id: number) => Promise<void>) | undefined;
   let beforeDropletList: (() => Promise<void>) | undefined;
   let beforeKeyRead: (() => Promise<void>) | undefined;
   let beforeKeyList: (() => Promise<void>) | undefined;
   let beforeCreate: (() => Promise<void>) | undefined;
+  const createRefusals: Record<string, { status: number; id: string; message: string }> = {};
   let beforeSizes: (() => Promise<void>) | undefined;
   let beforeImport: (() => Promise<void>) | undefined;
   let beforeSnapshotDelete: ((id: number) => Promise<void>) | undefined;
@@ -175,7 +176,10 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (method === 'GET' && path === '/regions') return answer(200, { regions });
     if (method === 'POST' && path === '/droplets') {
       try { await beforeCreate?.(); } catch { return answer(500, { id: 'lease-missing', message: 'lease not armed before create' }); }
+      const refusal = createRefusals[String(body?.region)];
+      if (refusal) return answer(refusal.status, { id: refusal.id, message: refusal.message });
       if (faults.create) return { status: faults.create, value: { id: faults.createLimit ? 'droplet_limit' : 'refused', message: faults.echoToken ? token : 'create refused' }, ...(faults.createRetryHeaders ? { headers: { 'Retry-After': faults.retryAfter } } : {}) };
+      if (faults.malformedCreate) return answer(202, {});
       const droplet: Droplet = { id: nextId++, name: String(body!.name), tags: body!.tags as string[], created_at: clock.now().toISOString(), status: 'new', networks: { v4: [] } };
       if (!scripted) {
         const directory = join(stateRoot, `droplet-${droplet.id}`);
@@ -385,6 +389,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     beforeKeyRead: (check: () => Promise<void>) => { beforeKeyRead = check; },
     beforeKeyList: (check: () => Promise<void>) => { beforeKeyList = check; },
     beforeSizes: (check: () => Promise<void>) => { beforeSizes = check; },
+    createRefusals,
     beforeCreate: (check: () => Promise<void>) => { beforeCreate = check; },
     beforeImport: (check: () => Promise<void>) => { beforeImport = check; },
     beforeSnapshotDelete: (check: (id: number) => Promise<void>) => { beforeSnapshotDelete = check; },

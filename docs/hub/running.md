@@ -320,7 +320,14 @@ configured lifetime plus ten minutes.
 The droplet lifecycle uses DigitalOcean's REST API. Set `DIGITALOCEAN_TOKEN` in the
 shell that starts the hub. Each API call reads it at use and sends it only in the
 Authorization header; cland never prints, logs or saves its value, or sends it to a droplet. Calls
-have a 15-second bound and do not retry creates. The lifecycle needs permission
+have a 15-second bound. A create refused with exactly `422 unprocessable_entity:
+Size is not available in this region` advances to the next catalog-supported
+configured region (also present in the prepared snapshot for verification).
+Each refusal is appended to the verification run log. Exhaustion reports one
+provider-capacity reason listing the refused regions and releases the lease's
+spend reservation after cleanup. Other refusals and ambiguous creates keep their
+existing handling; API pacing and the acquisition deadline apply across attempts.
+The lifecycle needs permission
 to read the account, sizes and regions, and to create, read and delete droplets
 and account SSH keys. See the [DigitalOcean API reference](https://docs.digitalocean.com/reference/api/reference/).
 

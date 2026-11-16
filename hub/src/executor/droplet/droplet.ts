@@ -5,7 +5,7 @@ import { acquireLockWithRetry } from '../../hub/lock.ts';
 import type { Store } from '../../hub/store.ts';
 import type { LogFn } from '../../log.ts';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { basename } from 'node:path';
 import { realpathSync } from 'node:fs';
@@ -183,7 +183,7 @@ export class DropletExecutor implements Executor {
     if (spent + reserved + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
   }
 
-  async acquire(run: Pick<RunRef, 'id' | 'size'>, deadline: string, demo?: DropletLease['demo'], snapshotConfig?: ProjectConfig): Promise<DropletLease> {
+  async acquire(run: Pick<RunRef, 'id' | 'size'> & Partial<Pick<RunRef, 'log'>>, deadline: string, demo?: DropletLease['demo'], snapshotConfig?: ProjectConfig): Promise<DropletLease> {
     this.#abort.signal.throwIfAborted();
     const config = snapshotConfig ?? await this.#config();
     const runDeadline = Date.parse(deadline);
@@ -201,7 +201,7 @@ export class DropletExecutor implements Executor {
     catch (error) { await this.release(lease); throw error; }
   }
 
-  async #acquire(run: Pick<RunRef, 'id'>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string; demo?: DropletLease['demo'] }, config: ProjectConfig): Promise<DropletLease> {
+  async #acquire(run: Pick<RunRef, 'id'> & Partial<Pick<RunRef, 'log'>>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string; demo?: DropletLease['demo'] }, config: ProjectConfig): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);
     const api = (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock));
     const { size, regions, image } = input;
@@ -211,7 +211,8 @@ export class DropletExecutor implements Executor {
     if (!Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
     if (input.minDiskSize !== undefined && (!Number.isFinite(selected.disk) || selected.disk! < input.minDiskSize)) throw new Error(`prepared snapshot disk does not fit size ${size}`);
     const offered = await api.regions(runDeadline);
-    const region = regions.find(r => selected.regions.includes(r) && offered.some(o => o.slug === r && o.available && o.sizes.includes(size)));
+    const candidates = regions.filter(r => selected.regions.includes(r) && offered.some(o => o.slug === r && o.available && o.sizes.includes(size)));
+    const region = candidates[0];
     if (!region) throw new ProviderCapacityUnavailable(`droplet size ${size} unavailable in regions ${regions.join(', ')}`);
     const created = this.clock.now().toISOString();
     const id = randomUUID();
@@ -236,10 +237,29 @@ export class DropletExecutor implements Executor {
       await this.#save(lease);
       const limit = Math.min(runDeadline, Date.parse(lease.deadline), this.clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_ACQUIRE_MS', 300000, this.#env));
       if (this.clock.now().getTime() >= limit) throw new Error('droplet acquisition deadline reached');
-      lease.createStarted = this.clock.now().toISOString();
-      await this.#save(lease);
-      const droplet = await api.create({ name, tags: lease.tags, size, region, image, ssh_keys: [key.id], ...(input.user_data ? { user_data: input.user_data } : {}) }, limit);
-      lease.createFinished = this.clock.now().toISOString();
+      let droplet: Droplet | undefined;
+      const refusals: string[] = [];
+      for (const candidate of candidates) {
+        lease.region = candidate;
+        lease.createStarted = this.clock.now().toISOString();
+        delete lease.createFinished;
+        await this.#save(lease);
+        try {
+          droplet = await api.create({ name, tags: lease.tags, size, region: candidate, image, ssh_keys: [key.id], ...(input.user_data ? { user_data: input.user_data } : {}) }, limit);
+          if (!droplet || !Number.isSafeInteger(droplet.id) || droplet.id <= 0) throw new DigitalOceanError(0, 'response', 'missing valid droplet in create response');
+          lease.createFinished = this.clock.now().toISOString();
+          break;
+        } catch (error) {
+          if (!(error instanceof DigitalOceanError) || error.status !== 422 || error.id !== 'unprocessable_entity' || error.message !== 'DigitalOcean 422 unprocessable_entity: Size is not available in this region') throw error;
+          lease.createFinished = this.clock.now().toISOString();
+          await this.#save(lease);
+          const reason = `${candidate}: ${error.message}`;
+          refusals.push(reason);
+          if (run.log) await appendFile(run.log, `Droplet region refused: ${reason}\n`);
+        }
+      }
+      if (refusals.length === candidates.length) throw new ProviderCapacityUnavailable(`droplet size ${size} unavailable: ${refusals.join('; ')}`);
+      if (!droplet) throw new Error('droplet create did not return a resource');
       lease.resource = droplet.id;
       await this.#save(lease);
       do {
