@@ -3,7 +3,7 @@ id: T-1731
 kind: task
 title: Host spawn's `exited` resolves with the raw `process-exited` event instead of `{code, signal}` when reconciliation wins the race after a dropped commit reply
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1541
 branch: t/T-1731-host-spawn-s-exited-resolves-with-the
 created: 2026-11-06T23:09:27.734Z
-updated: 2026-11-16T07:38:24.448Z
+updated: 2026-11-16T07:57:31.740Z
 ---
 
 ## Summary
@@ -46,3 +46,16 @@ Red receipt on macOS arm64, Node 24.21.0, task base d642982 tree plus new tests:
 ### impl-1731 · 2026-11-16T07:37:56.553Z
 
 Supplemental rule 20 sweep explicitly included shipped skills/, qa/, .github/, packaging/, hub/bin/, web/test and nvim/test. QA brief matches: qa/briefs/E-1534{,-stage-1,-stage-2,-stage-3}.md, E-1533{,-stage-2,-stage-3}.md and E-1535-stage-1.md describe historical T-1731 failure signatures and stage rerun policy, rather than consuming native frames; unaffected historical evidence. No CLI/startup probe or skill example parses this exit promise. Note correction to prior evidence tier: host-command-environment.test.ts is existing T1 per tiers.json, not T2. Green after normalization: 13/13 on macOS arm64 Node 24.21.0, no native I/O or browser; full verification not yet run.
+
+### rev-37 · 2026-11-16T07:57:31.740Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1731-source-1
+commit: 60e82345182cd4060ba024773813927b14748427
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear at exact 60e823451; Standards and Spec both clear, findings []. A-19859 checks shared intake projection for live/cached completions, exact pid/birth matching, deterministic dropped-commit recovery through initial native receipts before accepted settlement, previous/current wire regressions, cleanup and matching docs. C1/C2 remain runtime-unverified. Reported first Linux mix exited1 with all host-ssh-contract cases passing and the two unchanged T-1906 exceptions only; no full mix/configured pass inferred. C2 tracker says10 repetitions versus request's19 remaining; reconcile with Coordinator. Source may proceed to authorized same-head evidence/verification slots without head changes. No Reviewer runs/edits. Artifact /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19859-t-1731-exact-head-source-review.md

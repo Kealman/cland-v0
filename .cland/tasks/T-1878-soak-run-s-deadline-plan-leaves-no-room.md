@@ -3,7 +3,7 @@ id: T-1878
 kind: task
 title: "Soak run's deadline plan leaves no room for Web: d5150de3 timed out (exit 124) in the Web tier after T0–T4 passed"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1537
 branch: t/T-1878-soak-run-s-deadline-plan-leaves-no-room
 created: 2026-11-16T04:19:13.815Z
-updated: 2026-11-16T07:52:54.986Z
+updated: 2026-11-16T08:06:46.366Z
 ---
 
 ## Summary
@@ -28,8 +28,8 @@ Find out why the soak's deadline plan admitted a selection that reached the dead
 
 - [x] C1. With the recorded durations of A-19799, the soak plan either fits all selected tiers with real margin or trims repetitions, shown by a test over a fake duration manifest (test).
   - done: impl-1878 · 2026-11-16T07:46:10.173Z
-- [ ] C2. A soak that times out names its unexecuted tiers and files in the result, as unexecuted, never as passed (test).
-  - failed: rev-38 [reviewer] · 2026-11-16T07:52:54.986Z · note Local timeouts omit execution inventory, and broad remote inventories can truncate later tier states and artifact/provenance from capped reporting.
+- [x] C2. A soak that times out names its unexecuted tiers and files in the result, as unexecuted, never as passed (test).
+  - done: impl-1878 · 2026-11-16T08:04:21.539Z
 
 ## Comments
 
@@ -55,3 +55,16 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Complete first Standards/Spec source pass in A-19853. Two medium C2 findings; no other findings, including lows. C1's conservative serial base cost and existing margin/refusal/repetition policy are supported by source and checked against A-19799 baseline/projection records. A-19837 and 4ff6e702 are explicitly transcribed development-candidate red/green summaries, not same-head configured receipts. No criteria verified in source pass. Fix both C2 gaps on a fresh head and request new source review before verification. Reviewer read only; no tests, native/browser runs or edits.
 
 Criteria: C2 failed (Local timeouts omit execution inventory, and broad remote inventories can truncate later tier states and artifact/provenance from capped reporting.).
+
+### rev-35 · 2026-11-16T08:06:46.366Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1878-source-2
+commit: 2685356bcbc82b741441bb13f34d911b4f28957b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Replacement full Standards/Spec source clear, A-19874. Both A-19853 C2 source findings resolved: local execution inventory preserves worker progress; complete durable lists plus bounded per-tier summaries and broad report control. Conservative C1 planning unchanged. C1/C2 pending configured same-head named/file evidence and selected-tier disposition; A-19871 is explicitly candidate development output, not that receipt. No Reviewer runtime work. Hold released for authorized mode-free verification window.

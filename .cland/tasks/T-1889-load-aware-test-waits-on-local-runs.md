@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1534
 branch: t/T-1889-load-aware-test-waits-on-local-runs
 created: 2026-11-16T07:29:44.705Z
-updated: 2026-11-16T07:54:53.403Z
+updated: 2026-11-16T08:03:19.445Z
 ---
 
 ## Summary
@@ -25,7 +25,8 @@ Kind: product (test infra). Triage ticket H-1 of A-19813, part of E-1888 (the v0
 
 ## Acceptance criteria
 
-- [ ] C1. run-suite exports a load factor ≥ 1 from the 1-minute load and workers on local and droplet runs, and `until` and `eventually` setup waits use it (test).
+- [x] C1. run-suite exports a load factor ≥ 1 from the 1-minute load and workers on local and droplet runs, and `until` and `eventually` setup waits use it (test).
+  - done: impl-1889 · 2026-11-16T08:03:19.444Z
 - [x] C2. Waits on an injected clock or a named behaviour bound keep their exact value (test).
   - done: impl-1889 · 2026-11-16T07:54:41.243Z
 - [ ] C3. Two macOS covers before and after name the load-timing failures each had (evidence).
@@ -54,3 +55,16 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Full standards/spec source pass completed; A-19846 contains both confirmed medium findings and evidence limits. C1 pending authorized native/load proof after clear replacement source review; C3 Coordinator post-merge, not a pre-merge gate. No Reviewer runtime work. Tracked pin unchanged; untracked evidence/ is present. Hold released for consolidated correction and fresh review.
 
 Criteria: C2 failed (Existing declared behaviour callers still scale, and eventually does not enforce its exact deadline around pending or late async checks.).
+
+### rev-35 · 2026-11-16T07:56:28.089Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1889-source-2
+commit: 11f34bb60dabb6fc6e415cbde51351d2303c4f70
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Replacement full standards/spec source pass clear, A-19857. Both A-19846 source findings resolved: independent shared deadline plus late-value guard; all 42 original N/reason migrations independently reconstruct exactly across nine files, three approved exclusions unchanged. All 15 supplied fingerprints match. C1/C2 remain pending authorized native/load and configured same-head evidence; C3 Coordinator post-merge, not pre-merge gate. Historical provenance/publication limits retained. No Reviewer runtime work; hold released.

@@ -3,7 +3,7 @@ id: T-1877
 kind: task
 title: The managed .cland/.gitignore header rewrite after a version bump moves the dev tree off its green covers before release
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1536
 branch: t/T-1877-the-managed-cland-gitignore-header
 created: 2026-11-15T23:32:23.381Z
-updated: 2026-11-16T07:46:31.275Z
+updated: 2026-11-16T08:01:20.539Z
 ---
 
 ## Summary
@@ -26,10 +26,11 @@ Choose and implement one fix. Either the managed header carries no version, so a
 
 ## Acceptance criteria
 
-- [ ] C1. A hub restart on a new version leaves the dev tree's cover identity unchanged, shown by a test with a fake version bump (test).
-  - failed: rev-36 [reviewer] · 2026-11-16T07:46:31.275Z · note Repository tracked ignore header still needs its one-time migration; first new-code startup would dirty/change the covered identity.
+- [x] C1. A hub restart on a new version leaves the dev tree's cover identity unchanged, shown by a test with a fake version bump (test).
+  - done: impl-1877 · 2026-11-16T07:57:41.511Z
 - [x] C2. Every file cland rewrites on hub start is listed in the item, with its tree-identity handling (test or doc).
   - done: impl-1877 · 2026-11-16T07:39:17.350Z
+  - verified: rev-36 [reviewer] · run rev-36-1877-source-2 · 2026-11-16T08:01:20.538Z · commit 4087e2bbc66b7c789f9d69283c8edc756933c429
 
 ## Comments
 
@@ -55,3 +56,22 @@ finding_counts: {"high":0,"medium":1,"low":1}
 Full Standards/Spec audit A-19843: one medium missing repository migration and one low missing test-guide section. Long-term versionless-header choice otherwise preserves real ignore-policy identity and existing ownership. C2 startup writer/tree-handling inventory traced source-side; no additional version-only tracked template found. A-19839 honest transcribed native/precommit/final-launcher/tracker-merge/publication limits retained. No runtime criteria verified. Repair both, restore C1 done and request fresh source review before configured verification in Coordinator window. Reviewer read-only; no tests/compiler/lint/probe/hub/browser/delegation.
 
 Criteria: C1 failed (Repository tracked ignore header still needs its one-time migration; first new-code startup would dirty/change the covered identity.).
+
+### impl-1877 · 2026-11-16T07:59:52.671Z
+
+Review revision committed/pushed 4087e2bbc66b7c789f9d69283c8edc756933c429, no later dev merge. Own tracked ignore migration included; repository-boundary regression red before one-line fix, then legacy-header upgrade/future bump/policy-positive-control green. Per-test guide updated. Local macOS arm64 Node24.21 targeted verification-tree 11/11 and init 16/16, no skips/cancels. Whole-source npm test:lint exit 0, refusals0, closed-item wording0; baseline report-only findings retained. A-19863 revision receipts, A-19839 transcribed original provenance/limits. Fresh source review requested; configured verify pending source-clear/window. No integrated suite, browser or load proof claimed.
+
+### rev-36 · 2026-11-16T08:01:20.538Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1877-source-2
+commit: 4087e2bbc66b7c789f9d69283c8edc756933c429
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected full source audit A-19869: Standards0/Spec0. Both A-19843 findings resolved: repository ignore bytes now match versionless GITIGNORE, regression checks repository migration and legacy-header upgrade before baseline, then retains version-bump identity/bytes and real-policy invalidation; per-test guide complete. C2 startup writer/tree-handling inventory source-established, verified; C1 done restored but final runtime settlement waits exact-head configured receipt. A-19863 local11/11 verification-tree and16/16 init tool excerpts are explicitly precommit identical-source transcriptions, with original capture/publication limits retained; terminal lint exit0/zero refusals reported, advisories not a performance pass. Source clear permits authorized mode-free verification at4087e2bbc; no final ready/full-tier/Linux pass claimed.
+
+Criteria: C2 verified.

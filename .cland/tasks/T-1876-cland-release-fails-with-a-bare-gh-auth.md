@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1535
 branch: t/T-1876-cland-release-fails-with-a-bare-gh-auth
 created: 2026-11-15T23:29:25.796Z
-updated: 2026-11-16T07:46:09.159Z
+updated: 2026-11-16T08:01:37.612Z
 ---
 
 ## Summary
@@ -29,7 +29,7 @@ When a release tool isn't found (ENOENT), the release error says which binary is
 - [x] C1. A release whose hub PATH lacks `gh` refuses with a message naming `gh`, the hub's PATH and the restart fix (test).
   - done: impl-1876 · 2026-11-16T07:40:05.621Z
 - [ ] C2. `cland doctor` warns when `web_bundle` is on and `gh` isn't on the hub's PATH, with the fix, and makes no network call (test).
-  - failed: rev-37 [reviewer] · 2026-11-16T07:46:09.159Z · note Hub-side lookup differs from release executable resolution for empty/relative PATH components; missing PATH is also conflated with empty.
+  - failed: rev-35 [reviewer] · 2026-11-16T08:01:37.612Z · note New native resolver regression fixtures lack complete failure-path producer ownership before root disposal (rule 12).
 
 ## Comments
 
@@ -51,3 +51,18 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Full source review at exact d5294969f: not clear. One medium Spec/shared-fact finding at hub/src/hub/dispatch.ts:2532 (details A-19842). C1 error guidance and sanitized fallback are present; runtime criteria remain unverified. Default status shape and prior-wire unknown handling are preserved; docs/help/golden/skills align otherwise. No Reviewer runs or edits. A-19838 local results are reported summaries; hub-status-component 4/8 remains a failed fixture observation assigned by Coordinator to E-1882, not a pass. Corrected head needs fresh source review before mode-free verify within an authorized machine window. A-19842: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19842-t-1876-source-review-hub-path-lookup-semantics.md
 
 Criteria: C2 failed (Hub-side lookup differs from release executable resolution for empty/relative PATH components; missing PATH is also conflated with empty.).
+
+### rev-35 · 2026-11-16T08:01:37.612Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1876-source-2
+commit: 272860efef214504ad784ddf11d66bd2b71c44cb
+scope: full
+findings: [{"severity":"medium","text":"New native fixture bodies lack a stop/admission fence and whole-sequence join before root disposal; per-child completion/census does not join setup and later loop admissions on interruption. Both test bodies need an owner registered before acquisition and a held-work failure-path control.","file":"hub/test/executable-path.test.ts","line":20}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full source pass A-19870. Prior A-19842 PATH selection finding resolved; one new medium fixture-lifetime finding confirmed by implementer from source. Product release guidance/opt-in/old-wire handling otherwise aligned. C1/C2 not finally verified; candidate success and report-only lint do not prove failure-path ownership or configured coverage. No Reviewer runtime work. Hold released for correction and fresh review.
+
+Criteria: C2 failed (New native resolver regression fixtures lack complete failure-path producer ownership before root disposal (rule 12).).

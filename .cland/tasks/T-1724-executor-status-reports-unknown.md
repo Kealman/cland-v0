@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1539
 branch: t/T-1724-executor-status-reports-unknown
 created: 2026-11-06T11:49:25.020Z
-updated: 2026-11-16T07:54:49.906Z
+updated: 2026-11-16T08:04:57.113Z
 ---
 
 ## Summary
@@ -29,7 +29,7 @@ Decide what the 250 ms bound is for. If it's status responsiveness, keep it and 
 - [x] C1. A test that holds the key computation past 250 ms reports `unknown (inspection deferred)` once, and the next status read after the computation completes reports `current` (test, red before the fix).
   - done: impl-1724 · 2026-11-16T07:42:58.189Z
 - [ ] C2. executor-prepare.test.ts passes 10/10 on macOS at a one-minute load of 12 or more, with its assertions unchanged (evidence).
-  - failed: rev-38 [reviewer] · 2026-11-16T07:47:47.410Z · note Retained old-key consumption can still violate the unchanged native pin-move stale assertion; required loaded native evidence is pending.
+  - failed: rev-38 [reviewer] · 2026-11-16T07:58:18.690Z · note Pending-key consumption still admits an earlier base sample; frozen help consumer also remains unmigrated, and native loaded evidence is not yet executed.
 
 ## Comments
 
@@ -59,3 +59,31 @@ Consumer sweep before adding optional DropletDependencies.prepareBase: searched 
 ### impl-1724 · 2026-11-16T07:53:34.557Z
 
 Status semantic sweep addendum (Coordinator 591dd4b7): current is now explicitly against local refs/remotes/origin/dev; summary adds local=origin/dev@short-SHA without changing JSON fields or freshness strings. CLI executor status prints summary, so receives the explicit local commit; command help updated. Neovim has no executor.status reader or parser in nvim/lua/cland; generic CLI forwarding receives same summary. Web VerifyLine consumes spend only through ExecutorStatus subset, so unaffected and no UI migration. Doctor's image checks use host pool-image staleParts rather than DropletExecutor.inspect, unchanged. QA T-271 reads JSON freshness and parses its existing snapshot fields; current/stale strings unchanged and pin changes followed by refresh/prepare remain coherent. E-418/E-418-stage-2 count status calls/read spend unchanged; other QA status captures render summary or costs/leases and retain their fields. docs/hub/running.md and hub/README/help now name local reference and refresh condition. prepareKey gains additive refresh=true argument; existing direct/native, pool and fake callers retain default behavior. Inspection requests refresh=false on a distinct in-flight identity, never sharing fetch-enabled work. Existing scripted prepareKey ignores extra argument safely; scriptedMachine centrally supplies new local-base identity. Native no-network Git wrapper test added with positive control (default prepareKey refuses fetch); not yet executed due native slot requirement.
+
+### rev-38 · 2026-11-16T07:58:18.690Z
+
+verdict: review
+result: not clear
+by: rev-38 [reviewer]
+run: rev-38-1724-source-2
+commit: ab0ce484ead2f4ef9d478a856dcf1585c47566ba
+scope: full
+findings: [{"severity":"medium","text":"Base validation starts while the retained key may still be pending: read base A, move to B, then complete key A within the same inspection budget; Promise.all accepts stale [A,A] as current. Read the base after key availability within the original total250ms and regress this pending-key crossing.","file":"hub/src/executor/droplet/droplet.ts","line":289},{"severity":"medium","text":"The new local-ref help line is absent from frozen commands.json EXECUTOR_USAGE; cli-usage-compatibility's exact deepEqual must fail. Update this command block while retaining other frozen exports/assertions.","file":"hub/src/cli/usage/executor.ts","line":2}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Consolidated full revised-design pass A-19860: original completed-before-change race is guarded, local-only status semantics and consumer/docs migration match Coordinator decisions, but pending-key base validation still precedes consumption. One medium Spec finding and one medium Standards/help-consumer finding; no others. Read current base after retained key availability under one exact250ms bound; fix the frozen help block and add the crossing control, then request fresh source review. C1/C2 runtime verification remains pending; candidate summaries/lint are not native/configured evidence. Reviewer read only and ran no tests.
+
+Criteria: C2 failed (Pending-key consumption still admits an earlier base sample; frozen help consumer also remains unmigrated, and native loaded evidence is not yet executed.).
+
+### rev-38 · 2026-11-16T08:04:57.113Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1724-source-3
+commit: 97c53bd59cd835c9877d4b2e06f425b7d572e1bf
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, no findings. A-19873 contains complete Standards/Spec assessment: base validation now begins after key availability within the original total250ms; pending/completed crossing controls and exact current/stale assertions remain; frozen EXECUTOR_USAGE now matches. Coordinator-approved local-ref-only status/default-refresh preparation behavior and consumer/docs migration remain consistent. No criteria verified in source pass. C1 executed evidence, C2 macOS10/10>=12 plus launch20/20>=8, native no-network wrapper/positive control and same-head configured verification remain pending. Prior C2 failed mark awaits actual evidence and done restoration. Run no further source changes; use assigned exclusive native slot and allowed mode-free verify window at this exact head. Reviewer read only; ran no tests/probes.

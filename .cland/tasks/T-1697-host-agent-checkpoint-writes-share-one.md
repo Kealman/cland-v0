@@ -3,7 +3,7 @@ id: T-1697
 kind: task
 title: Host agent checkpoint writes share one fixed '.new' temp name; a concurrent or late checkpoint fails with ENOENT
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1538
 branch: t/T-1697-host-agent-checkpoint-writes-share-one
 created: 2026-11-05T19:31:45.062Z
-updated: 2026-11-16T07:50:20.197Z
+updated: 2026-11-16T08:00:27.314Z
 ---
 
 ## Summary
@@ -57,3 +57,20 @@ findings: [{"severity":"medium","text":"Recursive readdir materializes retained 
 finding_counts: {"high":0,"medium":2,"low":0}
 
 Full source not clear: two medium recovery findings, Standards and Spec, detailed in A-19849. Unique wx pid/UUID temps, per-write close/sync/rename cleanup and missing-parent propagation are sound by source. Coordinator permits collision proof while original missing-parent producer remains unproven. C1/C2 remain runtime-unverified; no criterion failed because findings address the explicit orphan recovery requirement and rule 23, rather than a demonstrated failing concurrency assertion. C3 remains pending 10 exact-head full-file loaded Linux Docker --init runs after corrected-head source clear, in authorized slots. Lead confirmed both findings. No Reviewer runs or edits. Artifact /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19849-t-1697-source-review-bounded-complete-orphan-recovery.md
+
+### impl-1697 · 2026-11-16T07:56:40.926Z
+
+A-19849 corrections: cleanupCheckpointTemps is replaced (only consumers were server.ts and the storage T1 test) by one checkpointRecovery owner. Streaming opendir buffer32, 32 visited entries per turn, <=32 candidate observations per flush, scheduled start after persisted agent.pid/listener admission, synchronous cancellation and joined directory close. Recovery deletes are the durable progress receipts; no retained snapshot materialized. Exact external code basenames applied.json/restart-result.json precede runDir traversal; entry supplies its computed owned code directory, server default uses runDir's code sibling. No recursion into code generations. New private AgentOptions optional fields have no request/wire consumers; ordinary serveAgent callers remain compatible. Six T1 green; corrected hub typecheck green. Added T3 lifecycle readiness/close test remains unexecuted pending exclusive slot. Historical missing-parent producer unproven. Original producer excerpts/candidate linkage A-19856.
+
+### rev-37 · 2026-11-16T08:00:27.314Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1697-source-2
+commit: 58f83349eca11d94485f534251e0ab0951f94d9a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Reworked recovery source clear at exact58f83349e; Standards and Spec clear, findings []. Both A-19849 findings resolved: streamed bounded scheduled recovery outside readiness, synchronous cancellation/join on close, exact external code basenames without generation traversal. Reviewed new T1 work-budget/external controls, unexecuted native lifecycle test, per-write publication, caller compatibility, docs and regenerated closure hashes. C1/C2/C3 remain runtime-unverified. Coordinator b3dcad69 authorizes source clear before lifecycle run; assigned slot must supply that exact-head receipt plus10 loaded full-file Linux --init C3 runs, separately from configured verification. A-19856 preserves predecessor red/green provenance, not corrected-head evidence. No Reviewer runs/edits. Artifact A-19867 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19867-t-1697-corrected-recovery-source-review.md

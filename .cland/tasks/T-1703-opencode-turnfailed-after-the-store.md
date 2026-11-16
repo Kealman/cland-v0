@@ -15,7 +15,7 @@ found_by: droplet
 topic: topic-1540
 branch: t/T-1703-opencode-turnfailed-after-the-store
 created: 2026-11-06T05:22:20.125Z
-updated: 2026-11-16T07:54:07.438Z
+updated: 2026-11-16T07:58:54.230Z
 ---
 
 ## Summary
@@ -60,3 +60,16 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Full source audit A-19852: one confirmed medium test build blocker; no additional Spec findings. Product closed fence is correctly before table lookup, and runtime test positively proves live reporting/closed storage/late no-op through owned shutdown. A-19851 transcribed candidate/provenance/consumer limits retained. C2 still incomplete: raw native sample2 remains red under narrow Coordinator T-1905 counting disposition; remaining8 native samples and same-head verify pending. No criteria verified/final ready. Fix/narrow, restore mark and request fresh source review; no silent receipt carry or provenance-only reruns. Reviewer read-only, no tests/compiler/probes/Docker/delegation.
 
 Criteria: C1 failed (New deterministic regression fails pinned-head TypeScript with TS2722 on optional turnFailed calls; narrow callback before accepting implementation.).
+
+### rev-36 · 2026-11-16T07:58:54.230Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1703-source-2
+commit: ffe84f8ed6fead1bcca412fef153dc70148393f7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected full source audit A-19862: Standards0/Spec0; sole optional-callback type blocker repaired with const capture/assert.ok, all live/closed-store/late-no-op/log assertions intact. A-19858 successful typing/lint completions explicitly transcribed; A-19854 independently parsed20 named passes and20 clean summaries/exits, maximum case3.364272875s retained without performance pass. Explicit bounded carry: only T2 callback narrowing changed; product/native/helper bytes unchanged, so A-19841's two predecessor native samples remain usable at original candidate linkage limits and narrow Coordinator T-1905 counting exception, never relabelled exact-head executions. Actual sample2 remains red. C1 done restored; C2 incomplete, remaining8 loaded native files and exact-head mode-free verify pending. No criteria verified/final ready. Source clear at ffe84f8ed permits authorized evidence work; any source change requires fresh review.
