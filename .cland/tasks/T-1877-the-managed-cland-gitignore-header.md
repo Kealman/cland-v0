@@ -3,16 +3,16 @@ id: T-1877
 kind: task
 title: The managed .cland/.gitignore header rewrite after a version bump moves the dev tree off its green covers before release
 state: open
-status: planned
+status: in progress
 size: S
 labels: []
 assignee: null
 parent: E-1888
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1536
+branch: t/T-1877-the-managed-cland-gitignore-header
 created: 2026-11-15T23:32:23.381Z
-updated: 2026-11-16T07:31:25.173Z
+updated: 2026-11-16T07:32:53.973Z
 ---
 
 ## Summary

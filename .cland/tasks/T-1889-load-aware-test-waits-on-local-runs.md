@@ -3,17 +3,17 @@ id: T-1889
 kind: task
 title: Load-aware test waits on local runs
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - retro-improvement
 assignee: null
 parent: E-1888
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1534
+branch: t/T-1889-load-aware-test-waits-on-local-runs
 created: 2026-11-16T07:29:44.705Z
-updated: 2026-11-16T07:31:24.305Z
+updated: 2026-11-16T07:32:46.300Z
 ---
 
 ## Summary

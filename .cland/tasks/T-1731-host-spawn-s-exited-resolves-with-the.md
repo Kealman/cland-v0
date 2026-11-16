@@ -3,7 +3,7 @@ id: T-1731
 kind: task
 title: Host spawn's `exited` resolves with the raw `process-exited` event instead of `{code, signal}` when reconciliation wins the race after a dropped commit reply
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - flaky
@@ -11,9 +11,9 @@ assignee: null
 parent: E-1881
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1731-host-spawn-s-exited-resolves-with-the
 created: 2026-11-06T23:09:27.734Z
-updated: 2026-11-16T07:31:05.427Z
+updated: 2026-11-16T07:33:08.767Z
 ---
 
 ## Summary

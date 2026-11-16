@@ -3,16 +3,16 @@ id: T-1697
 kind: task
 title: Host agent checkpoint writes share one fixed '.new' temp name; a concurrent or late checkpoint fails with ENOENT
 state: open
-status: planned
+status: in progress
 size: S
 labels: []
 assignee: null
 parent: E-1881
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1538
+branch: t/T-1697-host-agent-checkpoint-writes-share-one
 created: 2026-11-05T19:31:45.062Z
-updated: 2026-11-16T07:31:04.838Z
+updated: 2026-11-16T07:33:04.895Z
 ---
 
 ## Summary

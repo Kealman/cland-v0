@@ -3,7 +3,7 @@ id: T-1879
 kind: task
 title: Re-size the 469 duration allowances renewed on 2026-11-16 from the v0.4.0 release logs (C-216 entries expire 2026-11-23)
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1531
 branch: t/T-1879-re-size-the-113-duration-allowances
 created: 2026-11-16T07:04:58.109Z
-updated: 2026-11-16T07:26:26.945Z
+updated: 2026-11-16T07:33:07.660Z
 ---
 
 ## Summary
@@ -35,12 +35,12 @@ For the E-880 legacy entries, follow D72 and D73: they stay owned by E-880 until
 
 ## Acceptance criteria
 
-- [ ] C1. Every renewed C-216 allowance is re-sized or removed from a named log sample before 2026-11-23 00:00 UTC, and `npm run test:tiers` and the manifest lint pass at a simulated date after that (test).
-  - failed: rev-35 [reviewer] · 2026-11-16T07:26:26.944Z · note Wrong normalized C-216 default/removal decision and incomplete recent passing-sample census invalidate requested evidence-based allowance decisions.
-- [ ] C2. The E-880 entries are re-sized or removed from a named sample, or kept with D72's owner and a reason naming the sample, before 2026-12-16 (test).
-  - failed: rev-35 [reviewer] · 2026-11-16T07:26:26.944Z · note Ten E-880 selected peaks fit normalizedT3 defaults but were retained using generic5s/60s budgets; recompute removals using production tier policy.
+- [x] C1. Every renewed C-216 allowance is re-sized or removed from a named log sample before 2026-11-23 00:00 UTC, and `npm run test:tiers` and the manifest lint pass at a simulated date after that (test).
+  - done: impl-1879 · 2026-11-16T07:32:43.437Z
+- [x] C2. The E-880 entries are re-sized or removed from a named sample, or kept with D72's owner and a reason naming the sample, before 2026-12-16 (test).
+  - done: impl-1879 · 2026-11-16T07:32:43.754Z
 - [x] C3. Expiry warnings reach the Coordinator far enough ahead to act, at least 5 days, or a filed item says why not (test).
-  - done: impl-1879 · 2026-11-16T07:18:06.268Z
+  - done: impl-1879 · 2026-11-16T07:32:43.963Z
 
 ## Comments
 
@@ -62,3 +62,7 @@ finding_counts: {"high":0,"medium":2,"low":0}
 A-19814 completed Standards/Spec review. Independently streamed all72selected logs:468 positive test/file maxima match chosen corpus, no arithmetic mismatch.469rows exactly cover changed allowance keys;25unrelated unchanged, report mode and ratchet exception retained. Two confirmed sizing/census defects remain, warning implementation has no new finding. Corrected date requirements e38c475c/8576bc01 respected.807consumer/16unknown union and honest A-19812 original capture limits retained. C3 unverified pending configured evidence, not failed for unexecuted phases. Hold released; consolidate fixes, fresh exact-head source review before verification. No Reviewer runtime/provenance rerun.
 
 Criteria: C1 failed (Wrong normalized C-216 default/removal decision and incomplete recent passing-sample census invalidate requested evidence-based allowance decisions.), C2 failed (Ten E-880 selected peaks fit normalizedT3 defaults but were retained using generic5s/60s budgets; recompute removals using production tier policy.).
+
+### impl-1879 · 2026-11-16T07:32:42.892Z
+
+Corrected both medium review findings at df5624c4d2d6bf5cb0fe48ce9f22ba1e009bf8a3; no dev merge after first review. A-19815 replaces A-19807: all469 original inputs preserved, 429 suite logs in Nov9–Nov16 07:10Z across all branches/occasions, 396 explicit platform receipts and 33 unknown-platform exclusions retained. Production readTierAssignments + TIER_BUDGETS replace raw object-tier/generic defaults. Counts C-216100 remove/36 resize/2 explicit keep caps46/49; E-880206 remove/124 resize/1 ratchet keep. A19743 included; identical peak also in duplicate A19742. Fresh native full command receipts A-19816 at exact head: targeted8+23+2+18+38 tests green sequentially on macOS arm64 Node24.21.0, no browser. test:tiers, hub typecheck, wording lint green. Date proof whole manifest green Nov22 23Z/red Nov23 00Z; renewed125-entry E-880 subset green Dec16 23Z/red Dec17 00Z, 63 excluded keys listed with earliest expiry Nov23. Byte-preservation check green for25 unrelated allowance values and outside allow except two renamed heartbeat baselines. A-19817 preserves807 consumer/16 unknown graph union with explicit executed versus deferred status. Launchers A-19818/19/20; narrowed token/bearer scan with synthetic positive control before new publications, exact scope in A-19816. Original provenance gaps remain in A-19812, not replaced by new receipt claims. Configured suite remains pending fresh source review.
