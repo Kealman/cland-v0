@@ -3,7 +3,7 @@ id: T-1841
 kind: task
 title: heartbeat-digest.test.ts hung 632 s with no output in a Linux T1 run and stalled a task verify
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-1546
 branch: t/T-1841-heartbeat-digest-test-ts-hung-632-s-with
 created: 2026-11-13T00:27:22.788Z
-updated: 2026-11-16T13:51:25.324Z
+updated: 2026-11-16T14:22:03.717Z
 ---
 
 ## Summary
@@ -30,8 +30,10 @@ Find why the file can hang under the full T1 run on Linux (an unresolved timer o
 - [x] C1. The hang is located from the A-19160 log and the file's code (the file started but its only test never did, so test-process startup or import), and the item records what the log cannot settle (test).
   - done: impl-1841 · 2026-11-16T13:19:37.829Z
   - verified: rev-36 [reviewer] · run rev-36-1841-source-3 · 2026-11-16T13:51:25.324Z · commit 11eb236a624e56f4bd9f6dc12e18bca58d0d8844
+  - verified: rev-36 [reviewer] · run rev-36-1841-final-1 · 2026-11-16T14:22:03.272Z · commit 11eb236a624e56f4bd9f6dc12e18bca58d0d8844
 - [x] C2. A test file that starts but begins no test within a named bound, well under the runner's no-output limit, fails at once with the runner's stall evidence from T-1796, on the local suiteCommand tier path and the droplet run-suite path, not after the 10-minute stall guard (test, red before the fix); repetition children are T-1911; heartbeat-digest.test.ts passes five lone Linux repetitions (evidence).
   - done: impl-1841 · 2026-11-16T13:48:45.301Z
+  - verified: rev-36 [reviewer] · run rev-36-1841-final-1 · 2026-11-16T14:22:03.272Z · commit 11eb236a624e56f4bd9f6dc12e18bca58d0d8844
 
 ## Comments
 
@@ -87,3 +89,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final source review A-20112: prior close-before-sweep finding resolved per Coordinator d6c9e63b. Finish follows guarded native exit + timeout cleanup; existing sweep-before-close preserved, delegation ends before repetition waiting. Explicit finish and new native-exit/open-pipe fake controls cover outer reclaim; no other findings under c4374931 narrowed C2/T-1911 split. C1 diagnosis verified from A-19160 file-only start/632s and synchronous body; exact historical cause unknown. A-20108 candidate23/23, prior67/static and five prior-base Linux heartbeat passes with identical blob remain distinctly scoped; no configured/current watchdog execution claim. C2 waits exact-head mode-free result. No Reviewer runtime; hold released for authorized verification.
 
 Criteria: C1 verified.
+
+### rev-36 · 2026-11-16T14:22:03.272Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1841-final-1
+commit: 11eb236a624e56f4bd9f6dc12e18bca58d0d8844
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; independent A-20156 ledger and final note just published. A-20149 same-head positive6424ordinary tests/703files plus300separate load tests/files, allpass; all18startup/phase identities ordinary+5, heartbeat ordinary/file positive. C1 historical startup/import boundary and unknown exact cause retained. C2 ordinary local/droplet paths and native-exit cleanup boundary verified under narrowed criteria; five prior-base lone Linux heartbeat passes cover identical source only. T-1911 repetition implementation/default native fault/fullT3/T4 remain excluded/deferred.988manifest+original explicit sets1046rows:703positive,268T3/17T4deferred,58source references, no missing lower/Web. Actual LinuxNode24.21/browser156/build1248 footer confirmed, no cache/skips. Report-only and original producer/candidate/red limits preserved. No Reviewer runtime; hold released.
+
+Criteria: C1 verified, C2 verified.

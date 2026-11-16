@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1543
 branch: t/T-1843-a-finished-suite-with-no-lease-stays-in
 created: 2026-11-13T12:41:29.355Z
-updated: 2026-11-16T12:59:53.371Z
+updated: 2026-11-16T14:55:55.968Z
 ---
 
 ## Summary
@@ -29,11 +29,11 @@ A suite that has finished, or whose lease and droplet are gone, leaves the activ
 - [x] C1. A remote run whose suite record is finished and whose lease is gone is absent from `cland verify queue` and does not count against `remote_budget`, both live and after a hub restart (test).
   - verified: rev-35 [reviewer] · run rev-35-1843-final-1 · 2026-11-16T09:29:13.317Z · commit ae5664ce0e9c6788bb7eb4176ca32af91766b24a
   - verified: rev-35 [reviewer] · run rev-35-1843-merge-delta-1 · 2026-11-16T09:55:24.336Z · commit f66be0d2f1818458c7d400e6fb09aff918eebc09
-  - done: impl-1843 · 2026-11-16T12:31:07.581Z
+  - done: impl-1843 · 2026-11-16T14:22:11.753Z
 - [x] C2. A run that ended without a posted result gets exactly one posted result naming the missing receipt, after which the heartbeat no longer lists it (test).
   - verified: rev-35 [reviewer] · run rev-35-1843-final-1 · 2026-11-16T09:29:13.317Z · commit ae5664ce0e9c6788bb7eb4176ca32af91766b24a
   - verified: rev-35 [reviewer] · run rev-35-1843-merge-delta-1 · 2026-11-16T09:55:24.337Z · commit f66be0d2f1818458c7d400e6fb09aff918eebc09
-  - done: impl-1843 · 2026-11-16T12:31:07.815Z
+  - done: impl-1843 · 2026-11-16T14:22:12.003Z
 
 ## Comments
 
@@ -171,3 +171,16 @@ Source clear A-20072 after artifact-only A-20070/A-20071 correction; product hea
 ### impl-1843 · 2026-11-16T12:59:53.371Z
 
 Completed accepted A-20027 native-consumer plan: all16 remaining direct result-line T3 files passed at clean982d350da/tree d9e7bfdb,130/130 tests, no fail/cancel/skip/timeout/producer errors. Per-file output+native receiptsA-20073–A-20088; reconciled path/tier/provenance packetA-20089. Reviewed producerA-20070, two checked exclusive slots, isolated account/provider fixture environments; no full runtime-suite claim. T-1859-first devmerge/delta review and new final-head verification remain pending. Prior failed batch/bisect and excluded setup receipt remain history.
+
+### rev-36 · 2026-11-16T14:07:36.547Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1843-merge-source-2
+commit: b49d84679978ef52258d8dd57489fe79b4075c74
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge source clear; independent static ledger A-20129 and source note just published. Parents and automatic hub/src/test subtrees confirmed; README alone manually resolves both recovery/regional-capacity entries. Read inherited Suites timeout inventories, log/progress/stall diagnostics, provider/fake and cleanup interactions; no merge finding. Coordinator9036c7be supersedes carry: old sixteen native receipts do NOT carry, despite identical direct test blobs. C1/C2 not newly verified; fresh sixteen merged-head full files, terminal compiler/lint checks and final exact-head configured run required. A-20130 typecheck0 reported, lint pending; old reds/candidate/capture limits preserved. No Reviewer runtime. Hold released for authorized checks/slots.

@@ -3,7 +3,7 @@ id: T-1907
 kind: task
 title: cland verify times out at 15 s ("submission sent; no reply") while the hub admits the run, three times in a row on 2026-11-16
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1555
 branch: t/T-1907-cland-verify-times-out-at-15-s
 created: 2026-11-16T08:08:22.188Z
-updated: 2026-11-16T13:56:48.830Z
+updated: 2026-11-16T14:55:24.691Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ Find what the hub does between receiving a verify submission and replying. Reply
 
 ## Acceptance criteria
 
-- [x] C1. A verify submission on a quiet machine returns the run id within the CLI bound, with the slow step measured and named (test with a fake slow step).
-  - done: impl-1907 · 2026-11-16T13:54:30.551Z
+- [ ] C1. A verify submission on a quiet machine returns the run id within the CLI bound, with the slow step measured and named (test with a fake slow step).
+  - failed: rev-36 [reviewer] · 2026-11-16T14:55:24.690Z · note Configured T2 hangs in an existing accounting consumer because detached admission ends its scripted clock driver before scheduler settlement.
 - [x] C2. A real timeout still reports "submission sent; check the queue" and never resubmits (test).
   - done: impl-1907 · 2026-11-16T13:47:40.977Z
 
@@ -140,3 +140,67 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source clear A-20118: Standards0/Spec0. Only frozen SUITE_USAGE block changed; exact bytes match all40-block fixture. C1 observes prearmed CLI output/actual result consumption, separate barrier/output bounds, compatibility held through fake deadline, no unrelated UI race; finally releases/joins submission and owned hub shutdown/settle covers scheduler. Production unchanged: durable save/dedupe before detached tracked #check, failure posting/close join retained. A-20115 repaired candidate8/8/typecheck/lint and negative control remain qualified; recovered older scheduling5tests4pass1cancelled exit1 stays incomplete. A-20111 original67-path/unknown/native and tier corrections retained. No criteria verified before same-head configured receipt. Hold released, mode-free verify permitted at exact pin in authorized window; no full/all request or additional dev merge. No Reviewer runtime.
+
+### rev-35 · 2026-11-16T14:14:04.281Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1907-evidence-1
+commit: 13fbcdcc18846f2d9e7a5ef21a02b55177a120bf
+scope: evidence
+findings: [{"severity":"medium","text":"New unconditional launch()→suites.settled() joins provider launchWork before returning admission. Both suite-remote-budget held-acquisition cases await launch before releasing beforeCreate, producing a deterministic circular wait. A-20135 ordinary cases timedOut/cancelled ~120s and file failed. Coordinator b42edc99 assigns this regression to T-1907; audit admission consumers and use explicit suitable scheduler receipts/joins, preserve held-gate ownership and add fixture-contract regression.","file":"hub/test/suite-unit-fixture.ts","line":147}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-20138 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20138-t-1907-failed-configured-evidence-and-fixture-deadlock.md independently accounts A-20135: 1714 ordinary passes/2 cancelled;221 file passes/1 fail, separate210load passes/files. T0 pass;T1 exit1;T2/Web unexecuted;T3 deferred,no T4 claim. Exact head/normalized tree/platform checked;browser null. Prior source clear missed the fixture contract defect and cannot establish readiness. C1 failed;C2 done but unverified. Report-mode advisories are separate. Complete failed-evidence pass; hold released for Coordinator-authorized correction and fresh source request, no Reviewer retry authorization.
+
+Criteria: C1 failed (Configured T1 fails due changed admission-policy fixture deadlock; CLI responsiveness T2 did not execute.).
+
+### impl-1907 · 2026-11-16T14:22:08.649Z
+
+Failed run b540c497 preserved (A-20135/A-20138): T1 1714 ordinary pass/2 cancelled,221 file pass/1failure; separate210loadpasses; T2/Web unexecuted. Not shared; fixture regression repaired per Coordinator b42edc99. Complete expanded rule20 inventory/disposition (102 normalized direct/fixture-family paths +89skill/QA references) and reproduction/fullfile receipts: A-20158 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20158-t-1907-scheduler-consumer-repair-and-full-file-evidence.md. Production dispatch/batch/fileJob/devT3/periodic callers consume durable id or later reported/outcome receipt, unchanged. Unit fixture now exposes admit() versus explicit settled launch(); held-provider ETA and cleanup use admit plus entered/release receipts. Component fixture consumes results/settle joins; native suite fixture uses workerPid/lifecyclePid; remote fixture uses machine/report receipts; close-component moved three queue/notice reads after actual starts, and drives reservation owner via verificationSettled rather than completed submission. Direct suite.test/queue-policy/host-flush-native use pid/report/delivered/queued snapshot receipts; dry runs have no detached scheduler. No additional production contract change.
+
+Fixture contract mutation red: adding settled to admit fails admission receipt within500ms. Fullfile repair greens: remote-budget19/19+scheduling7/7 combined26/26; suite-close-component14/14. Precommit local macOS arm64 Node24.21.0 scripted fakes/scratch Git; no browser/provider/harness/network. Earlier component attempt13pass/1cancelled and bounded localETA cancellation preserved incomplete. Fresh hub typecheck and whole-source test lint completed exit0,0refusals/122existing report-only findings; closed-wording0. Artifact drafting pending lint is now completed. No additional dev merge; new source review before any verify.
+
+### rev-36 · 2026-11-16T14:25:37.797Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1907-source-3
+commit: 49ce79d257c1b81674fa69e9236806f81051106c
+scope: full
+findings: [{"severity":"medium","text":"New admission control's success-only derived pending lacks immediate rejection observation during until; finally await pending can skip explicit settled join. Same task C1 verify-submission.test.ts:110 has raw f.submit() with the same gap. Original tracked admission observer does not own derived rejection. Claimant a7312594/653f3e41 confirms both. Observe success/error immediately, retain error as assertion cause, and unconditionally join scheduler after release via nested finally.","file":"hub/test/suite-remote-budget.test.ts","line":30}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Completed full consolidated source pass; one shared Standards medium at two admission proofs, no additional production/spec finding. Prior held-provider circular wait resolved by admit/settled split; component reads follow start receipts and cancellation drives reservation completion. Expanded production/fixture consumer sweep checked; original102+89/67 and raw/precommit/native deferrals retained. Candidate full-file greens remain separate from failed A-20135 (T1 cancellations, T2/Web unexecuted). C2 unverified. Source pin released for consolidated error-observer/always-join fix; fresh source review before new verification. No Reviewer runtime.
+
+Criteria: C1 failed (Admission proofs leave rejection unobserved during bounded observations and can skip explicit scheduler join on rejection.).
+
+### rev-36 · 2026-11-16T14:31:47.972Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1907-source-4
+commit: 5b2763e8df8aa17f6321a0e599c14e061bc96618
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Correction from49ce79d resolves A-20163 at both proofs: immediate success/error outcomes consume rejection, original error explicitly rethrown, nested finally always joins scheduler after gate release. CLI setup still requires genuine compatibility entry or early error; stdout/deadline/durable-id/frame assertions intact. Production/consumer sweep unchanged; no new finding. Reported precommit26/26/full typecheck/lint green retain capture limits; old failed A-20135 remains failed. C1/C2 await exact-head configured result. Source clear, hold released for authorized mode-free verify/window. Full source note just published; no Reviewer runtime.
+
+### rev-36 · 2026-11-16T14:55:24.691Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1907-evidence-2
+commit: 5b2763e8df8aa17f6321a0e599c14e061bc96618
+scope: evidence
+findings: [{"severity":"medium","text":"launch() awaits suites.settled outside machine.waits.run after admit returns; accounting=true tracked failed acquire cleanup needs FakeClock retry advances, but no driver remains. Existing suite-accounting unconfirmed cleanup test awaits launch before starting its driver and cancels at240s (A-20184:30110; filefail30113). Claimant confirms no advancing owner. Coordinatorbaf8e722 requires restoring awaited in-process #check and moving early admission to socket/RPC only, reverting fixture adaptations and full-file accounting/remote-budget/close-component proofs.","file":"hub/test/suite-unit-fixture.ts","line":154}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Failed-evidence complete; A-20188 actual ledger and new note. Preceding source clearance missed this clock-driver path.5681ordinary testpass/1cancelled;604filepass/1fail;225separate load passes/files. CLI7cases/file, including C1/C2, are positive but whole run not clear. Manifest989:604pass,1fail,44T2+55Webunexecuted,285T3/T4deferred. T0/T1green,T2exit1,Webnotrun; browsernull/uncached LinuxNode24.21 confirmed. Report-only diagnostics separate. No shared defect or retry authorization; hold released for Coordinator redesign and fresh source/fullfiles/new verify. No Reviewer runtime.
+
+Criteria: C1 failed (Configured T2 hangs in an existing accounting consumer because detached admission ends its scripted clock driver before scheduler settlement.).
