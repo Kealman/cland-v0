@@ -3,7 +3,7 @@ id: T-1876
 kind: task
 title: cland release fails with a bare "gh auth failed (ENOENT)" when the hub's PATH has no gh; doctor doesn't check gh on the hub's PATH
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1535
 branch: t/T-1876-cland-release-fails-with-a-bare-gh-auth
 created: 2026-11-15T23:29:25.796Z
-updated: 2026-11-16T08:01:37.612Z
+updated: 2026-11-16T08:21:26.045Z
 ---
 
 ## Summary
@@ -28,8 +28,8 @@ When a release tool isn't found (ENOENT), the release error says which binary is
 
 - [x] C1. A release whose hub PATH lacks `gh` refuses with a message naming `gh`, the hub's PATH and the restart fix (test).
   - done: impl-1876 · 2026-11-16T07:40:05.621Z
-- [ ] C2. `cland doctor` warns when `web_bundle` is on and `gh` isn't on the hub's PATH, with the fix, and makes no network call (test).
-  - failed: rev-35 [reviewer] · 2026-11-16T08:01:37.612Z · note New native resolver regression fixtures lack complete failure-path producer ownership before root disposal (rule 12).
+- [x] C2. `cland doctor` warns when `web_bundle` is on and `gh` isn't on the hub's PATH, with the fix, and makes no network call (test).
+  - done: impl-1876 · 2026-11-16T08:18:24.513Z
 
 ## Comments
 
@@ -66,3 +66,7 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Full source pass A-19870. Prior A-19842 PATH selection finding resolved; one new medium fixture-lifetime finding confirmed by implementer from source. Product release guidance/opt-in/old-wire handling otherwise aligned. C1/C2 not finally verified; candidate success and report-only lint do not prove failure-path ownership or configured coverage. No Reviewer runtime work. Hold released for correction and fresh review.
 
 Criteria: C2 failed (New native resolver regression fixtures lack complete failure-path producer ownership before root disposal (rule 12).).
+
+### impl-1876 · 2026-11-16T08:21:26.045Z
+
+Implementation/review evidence now uses durable artifacts: normalized contract/consumer dispositions by tier A-19850 (supersedes the removed worktree inventory named in the first comment); PATH resolver red A-19844; native PATH/absolute consumer receipts A-19861, superseded for fixture ownership by A-19878; deterministic held-work FS interruption red/green A-19879. Shared which/whichAsync use one POSIX candidate list. Final correction shares pathFixture between native and held-work control; cleanup fences/join complete setup/native continuations before removal. Typecheck passed and final whole-source lint is running; source review then exact-head mode-free verification remain required. QA policy none, no separate QA brief.

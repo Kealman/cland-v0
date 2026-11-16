@@ -3,7 +3,7 @@ id: T-1879
 kind: task
 title: Re-size the 469 duration allowances renewed on 2026-11-16 from the v0.4.0 release logs (C-216 entries expire 2026-11-23)
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1531
 branch: t/T-1879-re-size-the-113-duration-allowances
 created: 2026-11-16T07:04:58.109Z
-updated: 2026-11-16T07:36:31.817Z
+updated: 2026-11-16T08:16:11.810Z
 ---
 
 ## Summary
@@ -37,10 +37,13 @@ For the E-880 legacy entries, follow D72 and D73: they stay owned by E-880 until
 
 - [x] C1. Every renewed C-216 allowance is re-sized or removed from a named log sample before 2026-11-23 00:00 UTC, and `npm run test:tiers` and the manifest lint pass at a simulated date after that (test).
   - done: impl-1879 · 2026-11-16T07:32:43.437Z
+  - verified: rev-35 [reviewer] · run rev-35-1879-final-1 · 2026-11-16T08:16:11.647Z · commit df5624c4d2d6bf5cb0fe48ce9f22ba1e009bf8a3
 - [x] C2. The E-880 entries are re-sized or removed from a named sample, or kept with D72's owner and a reason naming the sample, before 2026-12-16 (test).
   - done: impl-1879 · 2026-11-16T07:32:43.754Z
+  - verified: rev-35 [reviewer] · run rev-35-1879-final-1 · 2026-11-16T08:16:11.647Z · commit df5624c4d2d6bf5cb0fe48ce9f22ba1e009bf8a3
 - [x] C3. Expiry warnings reach the Coordinator far enough ahead to act, at least 5 days, or a filed item says why not (test).
   - done: impl-1879 · 2026-11-16T07:32:43.963Z
+  - verified: rev-35 [reviewer] · run rev-35-1879-final-1 · 2026-11-16T08:16:11.647Z · commit df5624c4d2d6bf5cb0fe48ce9f22ba1e009bf8a3
 
 ## Comments
 
@@ -79,3 +82,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-19829 records corrected source clear. All469 input rows/decisions preserved; production normalized tiers/budgets and current manifest entries independently match. Streamed429logs (316Linux/80Mac/33unavailable platform):468positiveLinux peaks all match audit, includesA19743. Counts C216100remove/36resize/2keep46/49; E880206remove/124resize/1ratchet.25unrelated unchanged; mode report, original baseline only2title renames. Effective date controls/targeted89test positives in new A19816 checked, manifest hash matches;807consumer/16unknown union and capture limits retained. Previous findings resolved. C1–C3 unverified pending configured same-head receipt; hold released, mode-free verify at unchanged head permitted. No Reviewer runtime work.
+
+### impl-1879 · 2026-11-16T08:12:43.906Z
+
+Same reviewed-head configured verify a9f2ed5e-4242-464c-be60-b6697167d609 passed: A-19875 at df5624c4d2d6bf5cb0fe48ce9f22ba1e009bf8a3, verification tree71c9976539b7d03574686b4e5f01daf716ae14d0, no cache. Native recorded counts6404/6404 pass, no fail/cancel/skip/todo. T0 local macOS exit0; Linux x64 droplet c-8 nyc1 Node24.21.0 ran T1 220 files/1660 tests, all-T2 fallback425 files/4242 tests plus Neovim package cases, changed T3 one file/23 tests, Web55 files/292 tests. T4 and remaining T3 unexecuted here; remaining T3 belongs to merge-batch/integrated coverage. Browser receipt Chrome Headless Shell1248 / Google Chrome for Testing156.0.8078.4. Duration budgets, lint findings and skip-reason census remain report mode; report-only overages are not assertion failures. Independently read positive suite-progress finish receipts for exact names: 'allowance warnings report five days before expiry without refusing valid manifests' (ordinary plus five load repetitions), 'Coordinator heartbeat delivers every allowance entering the 5-day UTC expiry window', 'a held manifest read uses the heartbeat firing clock at the 5-day boundary', 'periodic dev T3 posts a hub-owned structured red result to the Coordinator', and 'cover-log remote-docs fixture refresh keeps npm test:tiers admitted'. Current HEAD unchanged and worktree clean. Final evidence settlement belongs to Reviewer; Coordinator handles ready/enqueue and merged-current-dev lint preflight under rule36.
+
+### rev-35 · 2026-11-16T08:16:11.647Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1879-final-1
+commit: df5624c4d2d6bf5cb0fe48ce9f22ba1e009bf8a3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear, A-19877/A-19876. C1/C2/C3 verified under effective Coordinator date/exception decisions retained in A-19829. A-19875 independently streamed: 6404 base tests/701 files, separate 215 load tests/files, all positive; all five required warning identities pass, pure case base+5. All 807 consumers/16 unknown flags retained, zero missing selected-tier file receipts; broader T3/T4 and historical capture limits remain explicit. Current manifest hash/head/tree unchanged, clean worktree. Report-only budget/lint advisories not promoted. No Reviewer runtime work. Hold released; Coordinator landing gate remains.
+
+Criteria: C1 verified, C2 verified, C3 verified.

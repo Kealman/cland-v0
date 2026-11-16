@@ -3,16 +3,16 @@ id: T-1843
 kind: task
 title: A finished suite with no lease stays in verify queue as an active remote run and holds a remote slot across restarts
 state: open
-status: backlog
+status: in progress
 size: S
 labels: []
 assignee: null
 parent: E-1883
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1843-a-finished-suite-with-no-lease-stays-in
 created: 2026-11-13T12:41:29.355Z
-updated: 2026-11-16T07:29:04.494Z
+updated: 2026-11-16T08:22:29.269Z
 ---
 
 ## Summary
