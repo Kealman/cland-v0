@@ -99,6 +99,12 @@ Selection rechecks the sender's role, send permission and item ownership. A clos
 
 `send` accepts `kind: "progress" | "report" | "question" | "decision" | "request"`; an omitted kind is `report`, and other values are refused. Reports, questions and decisions use the normal turn-starting delivery path. Progress notes stay `queued`, start no turn, and reach each recipient as one ordered digest with its next ordinary delivery. A reconnect's role clause leaves progress held. The digest carries each note's sender, message id, topic and attachments, followed by the triggering delivery, in one harness input on Claude Code, Codex and OpenCode. A message to the human is recorded immediately, whatever its kind.
 
+A lead's ready report starts an idle Coordinator's turn through that report path.
+The hub's ready status event also starts the supervising lead's turn (`digest: now`);
+other default task events wait for its next turn. A queued landing sends a
+`merge-queue-landed` report to the requester and pre-closure claimant, starting
+an idle Coordinator's turn when it is a recipient.
+
 A `request` is addressed only to the human: omit `to` or give `[]`, set `request` to `review`, `qa` or `handover`, and set `subject` to a known item (`T-n`), artifact (`A-n`) or session name. Any session, whatever its role and without a human mention, may send one. Other message kinds retain their permission rules. A request defaults to General or the named `topic`. Addressees, missing/unknown subjects, invalid request values, and `request`/`subject` on another kind are refused with the fix. Request first lines are never parsed; `review request T-n` addressed to a verifier retains the separate crew routing convention.
 
 ```json

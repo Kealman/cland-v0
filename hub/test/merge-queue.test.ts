@@ -26,6 +26,7 @@ import { beforeDirectories } from './process-cleanup.ts';
 import { MergeError } from '../src/merge.ts';
 import { TaskMerges } from '../src/hub/merge.ts';
 import { HubCore } from '../src/hub/core.ts';
+import { completeJournalLines } from './journal-lines.ts';
 
 async function checkoutClandFixture(cwd: string) {
   // Fake batch checkouts carry the runner that real cland candidates contain.
@@ -63,14 +64,14 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = 
     const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), clock, git, readBase: async () => 'dev', env: fixtureEnvironment(root, process.env) });
     try { await seed(tracker); } finally { await tracker.stop(); }
   }
-  const { discovery, dispatcher, stop } = await projectHub(t, root, {}, { clock, scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...options });
+  const { discovery, dispatcher, stop, fakes } = await projectHub(t, root, {}, { clock, scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...options });
   await tips.refresh();
   const ui = await connectUi(t, discovery);
   const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', sessionId: 'review-id', role: 'reviewer' });
   const { item } = await value<{ item: ItemView }>(ui, { type: 'task.create', title: 'Parser', size: 'M', branch: 't/parser' });
   assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'review-1' })).ok, true);
   await until(async () => { await clock.advance(100); return (await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.status === 'ready'; }, { what: 'reviewed task ready', timeoutMs: 1500 });
-  return { root, ui, dispatcher, item, clock, heads, surfaces, manifests, history, rev, tips, stop, enqueuedAt: clock.now().toISOString() };
+  return { root, ui, dispatcher, item, clock, heads, surfaces, manifests, history, rev, tips, stop, fakes, enqueuedAt: clock.now().toISOString() };
 }
 
 function demoLease(clock: FakeClock, epic: string): DropletLease {
@@ -588,7 +589,7 @@ for (const mode of ['ordinary', 'rename', 'shared', 'unavailable', 'refused-retr
   t.mock.method(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
   t.mock.method(LocalExecutor.prototype, 'cancel', async () => {});
   const candidateHead = 'f'.repeat(40), tree = 'e'.repeat(40);
-  const { root, ui, item, clock } = await setup.wait('landing hub/UI readiness', () => fixture(setup.fixtures, { durationContext: null, candidate: {
+  const { root, ui, item, clock, fakes } = await setup.wait('landing hub/UI readiness', () => fixture(setup.fixtures, { durationContext: null, candidate: {
     head: async () => candidateHead, tree: async () => tree,
     inspect: async () => ({ head: candidateHead, tree, branch: '', selection: { mode: 'full', files: [], reason: 'batch' }, tierPlan: [], budgetBase: undefined }),
   }, batchRepository: {
@@ -597,12 +598,35 @@ for (const mode of ['ordinary', 'rename', 'shared', 'unavailable', 'refused-retr
     checkout: async candidate => checkoutClandFixture(candidate.cwd), remove: async () => {},
   } }));
 
-  const coord = await setup.wait('landing spoke readiness', () => inProcessSpoke(setup.fixtures, { discover: true, cwd: root, name: 'coord', sessionId: 'landing-requester', role: 'coordinator' }));
+  const launched = mode === 'ordinary' ? await value<{ process: { sessionId: string } }>(ui, { type: 'session.launch', name: 'coord', harness: 'claude-code', role: 'coordinator' }) : null;
+  const coord = await setup.wait('landing spoke readiness', () => inProcessSpoke(setup.fixtures, { discover: true, cwd: root, name: 'coord', sessionId: launched?.process.sessionId ?? 'landing-requester', role: 'coordinator' }));
   const impl = mode === 'shared' ? coord : await setup.wait('landing spoke readiness', () => inProcessSpoke(setup.fixtures, { discover: true, cwd: root, name: 'impl', sessionId: 'landing-claimant', role: 'implementer' }));
   await value(ui, { type: 'task.edit', item: item.id, assignee: mode === 'shared' ? 'coord' : 'impl' });
   const claimed = await impl.call<{ ok: boolean; error?: string }>('task.claim', { id: item.id });
   assert.equal(claimed.ok, true, claimed.error);
   const topic = (await value<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Landing', item: item.id })).topic.id;
+  const claude = fakes['claude-code']!;
+  if (mode === 'ordinary') {
+    await until(() => claude.injections.some(injection => injection.message.kind === 'role' && injection.outcome === 'accept'), { what: 'Coordinator role input accepted', timeoutMs: 1500 });
+    claude.idle('coord');
+    const progress = await impl.call<{ ok: boolean; outcomes: Array<{ outcome: string }> }>('send', { to: ['coordinator'], topic, kind: 'progress', text: 'Routine implementation progress' });
+    assert.equal(progress.ok, true);
+    assert.equal(progress.outcomes[0]?.outcome, 'queued');
+    await coord.call('who');
+    assert.equal(coord.events.some(event => event.params.content.includes('Routine implementation progress')), false);
+    assert.equal(claude.injections.some(injection => injection.message.text === 'Routine implementation progress'), false);
+    const ready = await impl.call<{ ok: boolean }>('send', { to: ['coordinator'], topic, kind: 'report', text: 'Ready for queue admission' });
+    assert.equal(ready.ok, true);
+    await until(() => coord.events.some(event => event.params.content.includes('Ready for queue admission')), { what: 'ready report channel delivery recorded', timeoutMs: 1500 });
+    const delivered = coord.events.find(event => event.params.content.includes('Ready for queue admission'))!;
+    assert.match(delivered.params.content, /Routine implementation progress[\s\S]*Ready for queue admission/);
+    await until(() => claude.injections.some(injection => injection.message.text === 'Ready for queue admission'), { what: 'ready report injected into idle Claude', timeoutMs: 1500 });
+    await until(async () => {
+      const { messages } = await value<{ messages: Array<{ text: string; stage: string }> }>(ui, { type: 'topic.history', topic });
+      return ['Routine implementation progress', 'Ready for queue admission'].every(text => messages.some(message => message.text === text && message.stage === 'injected'));
+    }, { what: 'ready report and progress injection persisted', timeoutMs: 1500 });
+    claude.idle('coord');
+  }
   assert.equal((mode === 'human' ? await value<{ queued: number }>(ui, { type: 'merge', item: item.id }) : await coord.call<{ queued: number }>('merge', { item: item.id })).queued, 1);
   await clock.advance(601_000);
   let batch = (await value<{ batch: MergeBatchStatus }>(ui, { type: 'merge.queue' })).batch.id;
@@ -633,6 +657,15 @@ for (const mode of ['ordinary', 'rename', 'shared', 'unavailable', 'refused-retr
   const reports = messages.filter(message => message.text.startsWith(`merge-queue-landed ${item.id}:`));
   assert.equal(reports.length, 1, 'one landing report per completed queue admission');
   const report = reports[0]!;
+  if (mode === 'ordinary') {
+    await until(() => claude.injections.some(injection => injection.message.id === report.id), { what: 'landing injected into idle Claude', timeoutMs: 1500 });
+    assert.equal(claude.injections.filter(injection => injection.message.id === report.id).length, 1);
+    await until(async () => {
+      await value(ui, { type: 'hub.status', flushLogs: true });
+      const records = completeJournalLines(await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).filter(Boolean).map(line => JSON.parse(line));
+      return records.some(record => record.event === 'injected' && record.id === report.id && record.session === 'coord');
+    }, { what: 'landing injection persisted', timeoutMs: 1500 });
+  }
   assert.equal(report.kind, 'report');
   assert.deepEqual([...report.to].sort(), mode === 'human' ? ['impl'] : mode === 'shared' ? ['coord'] : mode === 'rename' ? ['impl', 'renamed-coord'] : ['coord', 'impl']);
   assert.equal(report.text, `merge-queue-landed ${item.id}: merged ${commit} onto dev; batch ${batch}`);

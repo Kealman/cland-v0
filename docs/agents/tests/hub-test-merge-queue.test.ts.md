@@ -1,5 +1,18 @@
 # hub/test/merge-queue.test.ts
 
+T-1900: The ordinary landing case launches an in-process fake Claude Coordinator,
+waits for accepted role input, and makes it idle. A lead's progress note remains
+queued without channel delivery or native input; the following ready report
+delivers it in the ordered digest. After making Claude idle again, completion
+of the fake batch must inject the exact landing report once without another
+message to wake it. Named `until` waits use the shared load-scaled deadline
+helper (1500 ms base), rather than a product latency bound. The executor and Git
+remain fake; this proves routing and injection, excluding native Claude behaviour.
+Changing the landing notice to progress makes the injection wait fail.
+The ready report and progress reach persisted `injected` history stages. Landing
+uses the journal's exact message id and Coordinator `injected` receipt: its
+aggregate history stage also includes the spoke-only claimant's delivery.
+
 T-1232 uses the sealed projectHub fixture, fake batch repository and FakeClock.
 Throw only for `noticeTo`'s `merge-batch-result` notice after preparation fails;
 observe the exact `merge-batch-report-failed` log within a bound, then assert
