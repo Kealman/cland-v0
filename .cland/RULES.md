@@ -1,5 +1,5 @@
 # Project rules
-<!-- cland: rule high-water 28 -->
+<!-- cland: rule high-water 37 -->
 
 ## 1 Briefs address the role
 Scope: coordinator, lead, implementer, aide
@@ -259,3 +259,84 @@ Origin: message:general/b11733e1-431a-4495-b4b7-fc73d4d3079c
 Reason: The phone-asks fixture pinned 2026-10-23 while the browser computed a 7-day archive window from the real clock. At 12:00Z on 2026-10-30 every head went red with no code change, dev stayed red for 2.5 h, and a culprit search blamed an innocent landing (T-1485). Rule batch 5 (A-14855) P1.
 
 A test that fixes a date gives the same clock to every reader of time in its scope (the hub, the browser page's Date, file stamps, retention windows and expiries), or leaves all of them real. It never combines a fixed date with a window computed from the real clock. A fixture date that must age is set relative to the run's clock, and native timers keep running.
+
+## 29 Overlap epics
+Scope: coordinator
+Date: 2026-11-16
+Status: active
+Origin: message:general/e3828f89-2d4e-42f5-8823-2439e1ac27ba
+Reason: v0.4.0 ran one epic at a time after its first three days, and landings fell from 1.26 to about 0.5 an hour, with about 9 h of ramps between epics (retro A-19803 §3.1, §7 #3; triage A-19813 P-1).
+
+Cut the next epic and write its DoD brief at the predecessor's last-stage review. The successor's stage 1 may start on the predecessor's merged interfaces before the predecessor's DoD SHA.
+
+## 30 Fewer, paired stage closes
+Scope: coordinator
+Date: 2026-11-16
+Status: active
+Origin: message:general/e3828f89-2d4e-42f5-8823-2439e1ac27ba
+Reason: v0.4.0 had 32 stages and 9 demos. Stage-close sequences held dev frozen for about 122 h, of which about 62 h were beyond the green path (A-19803 §3.2, §7 #1; triage A-19813 P-2).
+
+Plan epics with at most three after-stage gates. Pair stage QAs on one cover pair whenever all their items are landed.
+
+## 31 Coordinator watch
+Scope: coordinator
+Date: 2026-11-16
+Status: active
+Origin: message:general/e3828f89-2d4e-42f5-8823-2439e1ac27ba
+Reason: T-1795 sat ready and unqueued for 3.6 h while the Coordinator was silent, and an Implementer idled 90 min waiting for a cover-quiet release nobody sent (A-19803 §3.8; triage A-19813 P-3).
+
+Keep a ready-and-landing watcher armed at all times, and post "quiet over" explicitly when a cover-quiet window ends. This applies until ready and landing events start a Coordinator turn by themselves (H-12).
+
+## 32 Root commits during hub runs
+Scope: all
+Date: 2026-11-16
+Status: active
+Origin: message:general/e3828f89-2d4e-42f5-8823-2439e1ac27ba
+Reason: A root fast-forward raced a soak's bundling and aborted it on "HEAD changed" (11-06), and a verify host gate wrote into a preservation slot's inventory (A-19803 §3.8, §7 #10; triage A-19813 P-4; interim until T-1652).
+
+Make no root commit while a hub run is acquiring or bundling its tree. A preservation slot also pauses verify submissions from that machine.
+
+## 33 Config commits search the tests
+Scope: all
+Date: 2026-11-16
+Status: active
+Origin: message:general/e3828f89-2d4e-42f5-8823-2439e1ac27ba
+Reason: Two Coordinator config commits turned dev red through tests that pin the repository's config: e818d2dc on 2026-11-01 (T-1581) and 9ad12275c on 2026-11-13 (A-19803 §3.3; triage A-19813 P-5).
+
+Before any commit that changes `.cland/config.toml` or another repository-pinned config, search hub/test and nvim/test for the changed key and run every matching test file.
+
+## 34 Release preflight before covers
+Scope: coordinator
+Date: 2026-11-16
+Status: active
+Origin: message:general/e3828f89-2d4e-42f5-8823-2439e1ac27ba
+Reason: v0.4.0's release found `gh` missing from the hub's PATH (T-1876), then saw the managed .gitignore header move the tree off its green covers (T-1877). Each cost a full suite or a restart after the demo (A-19803 §7 #8; triage A-19813 P-6).
+
+Run `cland release --item <R> --dry-run` and a `gh` check on the hub's PATH right after the release epic's brief, before any release or stage cover. Restart the hub on the version-bumped build before the release covers. This applies until a release preflight mode exists (H-11).
+
+## 35 Delivery retries
+Scope: coordinator
+Date: 2026-11-16
+Status: active
+Origin: message:general/e3828f89-2d4e-42f5-8823-2439e1ac27ba
+Reason: T-1827's batch failed delivery ten times on droplets, plus twice locally, during the 20.4 h network outage of 11-12/13, with four hub restarts (A-19803 §5, §7 #7; triage A-19813 P-7).
+
+An undelivered droplet run gets at most two resubmissions. After that, ask the human and switch the executor or region, instead of retrying.
+
+## 36 Merge dev and lint before enqueue
+Scope: coordinator, implementer
+Date: 2026-11-16
+Status: active
+Origin: message:general/e3828f89-2d4e-42f5-8823-2439e1ac27ba
+Reason: About half of v0.4.0's 49 red first batches were interactions that the item's mode-free verify could not see, such as whole-source lints beside a parallel landing (A-19803 §3.3, §7 #4; triage A-19813 P-8).
+
+Before an item is enqueued, its head is checked merged with current dev: the whole-source lints and the closed-item wording lint run there. A finding goes back to the lead, not into the queue. This applies until the enqueue preflight does it itself (H-13).
+
+## 37 Local load ceiling
+Scope: all
+Date: 2026-11-16
+Status: active
+Origin: message:general/e3828f89-2d4e-42f5-8823-2439e1ac27ba
+Reason: The hub exited on "tracker storage stalled" at load 15–36 on 2026-11-05, and load-timing flakes dominated the red macOS covers (A-19803 §3.2, §5; triage A-19813 P-9).
+
+Run at most one heavy local run (a full suite, a stress loop, a T3 or native file batch) per machine at a time, and start no new local run above a 1-minute load of 20.
