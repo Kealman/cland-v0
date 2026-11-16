@@ -52,11 +52,24 @@ After the branch is confirmed reaped, removal completes and the unchanged
 managed leader remains a positive signal control.
 
 After native parent exit during teardown, re-read every listed descendant against
-its own captured birth before settling the branch. The Linux/Darwin injected
+its own captured birth before settling the branch. A matching captured descendant
+already sent SIGKILL stays in the bounded drain loop; it does not turn the exited
+parent into an unknown identity. The Linux/Darwin `zombie parent drains its
+captured live descendant before settling` cases hold the zombie PID alive while
+the spoke remains live through the first post-signal snapshot, then positively
+remove the spoke before cleanup returns. The Linux/Darwin injected
 `exited parent confirms its captured descendant … before cleanup` matrix covers
 gone and same-second replacement receipts plus unchanged-live and unreadable
-refusals after the group signal. A parent exit alone grants no descendant exit
+refusals after the group signal. The unchanged-live control advances the deadline
+and checks the bounded failure with captured PID diagnostics. A parent exit alone grants no descendant exit
 receipt or signal authority; preserve unrecorded branches too.
+
+The Linux/Darwin escaped-group controls keep a captured child's native birth
+unchanged while reparenting it into another group at the signal boundary. The
+live case must hit the bounded drain failure and retain its root; the positive
+exit case must observe the child gone before root removal. Post-signal liveness
+uses PID and birth independently of group. Pre-signal group authority remains
+unchanged, and the escaped group is never signalled from its new membership.
 
 Descendant liveness accepts only ESRCH as absent. The injected EIO and EPERM
 controls combine unreadable native birth with liveness failure after the group

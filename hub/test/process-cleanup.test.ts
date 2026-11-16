@@ -204,6 +204,80 @@ await assert.rejects(fs.stat(dir), { code: 'ENOENT' });
   });
 }
 
+for (const platform of ['linux', 'darwin']) for (const outcome of ['live', 'exited']) test(`${platform} escaped-group captured writer ${outcome} retains its root until exit`, () => {
+  assert.deepEqual(probe(`
+const { ownDirectory } = await import(${JSON.stringify(modulePath)});
+const fs = await import('node:fs/promises');
+const dir = await fs.mkdtemp(process.cwd() + '/escaped-group-');
+rows = [
+ { pid: 420543, parent: process.pid, group: 420543, started: start, command: 'parent' },
+ { pid: 420544, parent: 420543, group: 420543, started: start, command: 'spoke' }
+];
+const seed = captureProcess(420543);
+const remove = ownDirectory(undefined, dir, { beforeRemove: () => cleanupProcesses(undefined, [seed], undefined, 'owned-run', []) });
+const kill = process.kill;
+process.kill = (pid, signal) => {
+ if (signal === undefined || signal === 0) return kill(pid, signal);
+ signals.push({ pid, signal });
+ rows[0].nativeState = 'Z';
+ rows[1].group = 420544; rows[1].parent = 1;
+ if (${JSON.stringify(outcome)} === 'live') {
+  let now = Date.now(); Date.now = () => now += 6000;
+ } else {
+  let reads = 0;
+  const finish = () => { if (++reads === 4) rows = rows.filter(r => r.pid !== 420544); };
+  if (process.platform === 'linux') onStat = pid => { if (pid === 420544) finish(); };
+  else {
+   const native = cp.execFileSync;
+   cp.execFileSync = (command, args, ...options) => { if (command === '/usr/bin/perl') finish(); return native(command, args, ...options); };
+   syncBuiltinESMExports();
+  }
+ }
+ return true;
+};
+if (${JSON.stringify(outcome)} === 'live') {
+ await assert.rejects(remove(), /did not exit after SIGKILL.*420544/);
+ assert.ok(await fs.stat(dir), 'live same-birth writer keeps its root');
+ assert.ok(rows.some(r => r.pid === 420544), 'escaped writer is still live');
+ rows = []; // Positive disappearance receipt permits subsequent fixture removal.
+ await remove();
+} else {
+ await remove();
+ assert.equal(rows.some(r => r.pid === 420544), false, 'positive child exit precedes root removal');
+}
+await assert.rejects(fs.stat(dir), { code: 'ENOENT' });
+`, '', platform), [{ pid: -420543, signal: 'SIGKILL' }]);
+});
+
+for (const platform of ['linux', 'darwin']) test(`${platform} zombie parent drains its captured live descendant before settling`, () => {
+  assert.deepEqual(probe(`
+rows = [
+ { pid: 420543, parent: process.pid, group: 420543, started: start, command: 'parent' },
+ { pid: 420544, parent: 420543, group: 420543, started: start, command: 'spoke' }
+];
+const seed = captureProcess(420543);
+const kill = process.kill;
+let reads = 0;
+const finish = () => { if (++reads === 4) rows = rows.filter(r => r.pid !== 420544); };
+process.kill = (pid, signal) => {
+ if (signal === undefined || signal === 0) return kill(pid, signal);
+ signals.push({ pid, signal });
+ rows[0].nativeState = 'Z';
+ if (process.platform === 'linux') onStat = pid => { if (pid === 420544) finish(); };
+ else {
+  const native = cp.execFileSync;
+  cp.execFileSync = (command, args, ...options) => { if (command === '/usr/bin/perl') finish(); return native(command, args, ...options); };
+  syncBuiltinESMExports();
+ }
+ return true;
+};
+await cleanupProcesses(undefined, [seed], undefined, 'owned-run', []);
+assert.equal(rows.length, 1, 'live spoke must be drained before cleanup settles');
+assert.equal(rows[0].nativeState, 'Z', 'unreaped zombie is harmless');
+assert.doesNotThrow(() => process.kill(420543, 0), 'zombie still answers alive');
+`, '', platform), [{ pid: -420543, signal: 'SIGKILL' }]);
+});
+
 for (const platform of ['linux', 'darwin']) {
   for (const outcome of ['gone', 'replaced', 'live', 'unreadable', 'EIO', 'EPERM']) test(`${platform} exited parent confirms its captured descendant ${outcome} before cleanup`, () => {
     assert.deepEqual(probe(`
@@ -226,6 +300,9 @@ process.kill = (pid, signal) => {
    return kill(checkedPid, checkedSignal);
   };
  }
+ if (${JSON.stringify(outcome)} === 'live') {
+  let now = Date.now(); Date.now = () => now += 6000; // Advance the drain deadline without a real timeout.
+ }
  let reads = 0;
  const finish = () => {
   if (${JSON.stringify(outcome)} === 'gone') rows = rows.filter(r => r.pid !== 420544);
@@ -245,7 +322,7 @@ process.kill = (pid, signal) => {
 };
 const cleanup = cleanupProcesses(undefined, [seed], undefined, 'owned-run', []);
 if (['live', 'unreadable', 'EIO', 'EPERM'].includes(${JSON.stringify(outcome)})) {
- await assert.rejects(cleanup, /native process identity|injected liveness EIO/, 'surviving or unproven child keeps the fixture');
+ await assert.rejects(cleanup, /native process identity|injected liveness EIO|did not exit after SIGKILL/, 'surviving or unproven child keeps the fixture');
  assert.ok(rows.some(r => r.pid === 420544));
 } else {
  await cleanup;

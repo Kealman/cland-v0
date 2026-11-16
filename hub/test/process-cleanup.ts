@@ -66,7 +66,7 @@ function processes(pids?: number[], groups: number[] = []): ProcessRow[] {
     return { ...row, identity, ...(exited.has(row.pid) ? { nativeExited: true } : {}), ...(!identity ? { identityError: exited.has(row.pid) ? 'native exit observed; listed descendants are not confirmed gone' : errors.get(row.pid) ?? 'native birth unavailable or changed across ownership snapshot' } : {}) };
   });
 }
-function requireIdentities(expected: Iterable<ProcessIdentity>, current: ProcessRow[]): void {
+function requireIdentities(expected: Iterable<ProcessIdentity>, current: ProcessRow[], draining = false): void {
   const captured = new Map([...expected].map(target => [target.pid, target]));
   for (const target of captured.values()) {
     if (target.pid === process.pid) continue; // the invoking worker can never be a cleanup target
@@ -85,11 +85,15 @@ function requireIdentities(expected: Iterable<ProcessIdentity>, current: Process
       branch.delete(row.pid);
       const exited = new Set<number>();
       const identities = processIdentities([...branch], undefined, pid => exited.add(pid));
-      if ([...branch].every(pid => {
+      const unresolved = [...branch].filter(pid => {
         const original = captured.get(pid)?.identity;
         const identity = identities.get(pid);
-        return exited.has(pid) || !alive(pid) || original != null && identity != null && original !== identity;
-      })) continue;
+        // Once signalled, an independently captured live descendant belongs in
+        // the bounded drain loop. It does not invalidate its exited parent.
+        return !(exited.has(pid) || !alive(pid) || original != null && identity != null && (original !== identity || draining));
+      });
+      if (!unresolved.length) continue;
+      throw new Error(`native process identity unavailable for pid ${target.pid}; fixture preserved; native exit observed; unresolved descendant pids: ${unresolved.join(', ')}`);
     }
     if (row && (!target.identity || !row.identity) && alive(target.pid)) throw new Error(`native process identity unavailable for pid ${target.pid}; fixture preserved; captured: ${target.identityError ?? (target.identity ? 'known' : 'missing')}; current: ${row.identityError ?? (row.identity ? 'known' : 'missing')}`);
   }
@@ -389,12 +393,12 @@ async function cleanupDiscoveredProcesses(root?: string, seeds: ProcessIdentity[
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
     const inspected = processes(targets.map(target => target.pid));
-    requireIdentities(targets, inspected);
+    requireIdentities(targets, inspected, true);
     const remaining = inspected.filter(row => targets.some(target => target.pid === row.pid && target.identity != null && target.identity === row.identity));
     if (remaining.length === 0) { bridgeReceipt(); return targets.length; }
     await pause(50);
   }
-  throw new Error('owned test processes did not exit after SIGKILL');
+  throw new Error(`owned test processes did not exit after SIGKILL; fixture preserved; captured pids: ${targets.map(target => target.pid).join(', ')}`);
 }
 
 /** Kill registered identities and verified descendants in their captured groups, without a machine scan.
@@ -490,9 +494,11 @@ async function cleanupRecordedProcesses(seeds: ProcessIdentity[], report?: (line
   const deadline = Date.now() + 5000;
   while (targets.some(target => alive(target.pid))) {
     const inspected = processes(targets.map(target => target.pid));
-    requireIdentities(targets, inspected);
-    if (!inspected.some(verified)) break;
-    if (Date.now() >= deadline) throw new Error('owned test processes did not exit after SIGKILL');
+    requireIdentities(targets, inspected, true);
+    // A changed group revokes signal authority, not the captured writer's life.
+    // Settlement follows the native birth even if the child escaped its group.
+    if (!inspected.some(row => targets.some(target => target.pid === row.pid && target.identity != null && target.identity === row.identity))) break;
+    if (Date.now() >= deadline) throw new Error(`owned test processes did not exit after SIGKILL; fixture preserved; captured pids: ${targets.map(target => target.pid).join(', ')}`);
     await pause(50);
   }
   for (const seed of seeds) settled.add(seed);
