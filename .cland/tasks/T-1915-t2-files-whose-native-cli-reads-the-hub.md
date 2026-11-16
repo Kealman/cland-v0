@@ -3,7 +3,7 @@ id: T-1915
 kind: task
 title: T2 files whose native CLI reads the hub lock, and other native calls in T2 found by T-1768's census, need a tier or a hermetic seam
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-16T15:13:39.720Z
-updated: 2026-11-16T15:14:03.751Z
+updated: 2026-11-16T22:18:29.377Z
 ---
 
 ## Summary

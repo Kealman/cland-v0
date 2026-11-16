@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-16T17:54:39.234Z
+updated: 2026-11-16T22:13:53.049Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -610,3 +610,7 @@ Hub restart #77 (2026-11-16 16:04:54Z, stand-in, launchd). Reason: T-1843 (ghost
 ### human · 2026-11-16T17:54:39.234Z
 
 Hub start #78 after a Mac reboot (2026-11-16 17:45:38Z, stand-in, launchd). Reason: sysmond service lost (pgrep 'sysmond service not found', T-1922, ask a509b72e); the human rebooted the Mac because even the terminal would not open, then asked the stand-in to start everything. Previous hub 88226 logged 'stopped' at 17:41:22Z. Boot load 26 → waited for load < 10. Serve: launchctl submit cland-hub-r78 → listening 17:45:55Z, 'restoring sessions' 17:46:53Z, serving 17:47:53Z (136 s under boot load). Hub 2124, port 49183, web 56935, nice 0, ppid 1, env check 2, /opt/homebrew/bin on PATH, one launchd job; dev=origin/dev=f4288109d. Coord: session resume coord --relaunch at 17:48Z (job 3837cb54, pid 7131); first role set refused 'no hello received'; coordinator-filled 17:48:24Z; six inject-unconfirmed 17:49–17:51Z; hub at ~107% CPU refused socket connections around 17:51Z (ECONNREFUSED seen by coord, hub pid unchanged); coord spoke bye 17:52:50Z → hello and coordinator-filled 17:54:15Z; role set repeated in between. Crew rows from before the reboot all exited; coord relaunched impl-1916 and impl-1919. Merge queue resumed by itself (batch 0a1b5c9f). The three orphan droplets from the sysmond incident are no longer tagged.
+
+### human · 2026-11-16T22:13:53.049Z
+
+Hub restart #79 (2026-11-16 22:10:34Z, stand-in, launchd). Reason: T-1919 (2bdf1ff0f, deliveryIds OR-query behind the day's 100% CPU stalls), T-1916 (0e093db62, ghost remote run) and T-1907 (4c4fe3f98) on dev; coord go with one remote batch run waived (a368be07, host T0 done, tree on its droplet). Gate: dev=origin/dev=e824406ae, root clean, no local run, load 2.1. Stop: launchctl remove cland-hub-r78 → hub 2124 gone in 3 s. Serve: launchctl submit cland-hub-r79 → listening 22:10:46Z, serving 22:12:07Z (startup replay 81 s). Gap stop→serve 94 s, over the 60 s target; coord's spoke still came back: hello and coordinator-filled 22:12:35Z, injected 22:12:35Z, no relaunch. New hub 1948, port 57941, web 56935, nice 0, ppid 1, env check 2, /opt/homebrew/bin on PATH, one launchd job. merge queue answered at once and kept batch 58622224; remote run a368be07 survived (watchdog alive). Ghost run b33e7940 (listed since 2026-11-12, T-1843/T-1916) is gone from verify queue after this start. doctor 35 ok 8 warn 0 fail.

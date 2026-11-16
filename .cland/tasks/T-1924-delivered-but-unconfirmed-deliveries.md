@@ -1,0 +1,105 @@
+---
+id: T-1924
+kind: task
+title: "Delivered but unconfirmed deliveries never drain: 195 pending rows for coord after restart, each replayed at startup"
+state: open
+status: review
+size: M
+criterion_seq: 3
+labels: []
+assignee: null
+parent: E-1885
+blocked_by: []
+regression_of: T-1919
+topic: topic-1569
+branch: t/T-1924-delivered-but-unconfirmed-deliveries
+created: 2026-11-16T22:14:22.757Z
+updated: 2026-11-16T22:33:43.973Z
+---
+
+## Summary
+
+A session's delivered-but-unconfirmed deliveries are never drained: after hub restart #79 (2026-11-16 22:12Z, T-1919 live) coord still has 195 pending rows in state 'delivered' with no digest, and the hub logs one inject-unconfirmed event per row for coord between 22:12Z and 22:14Z, a startup pass over the whole set. T-1919 made the per-completion rebuild cheap, but the set keeps growing (143 rows when T-1919 was filed), so its cost and the startup pass grow with session age.
+
+## Evidence
+
+- Hub operator report after restart #79 (pid 1948, dev e824406ae): pending set 195 rows for coord, 195 inject-unconfirmed log events 22:12Z–22:14Z; hub CPU 115% in the first minute, then 32 / 22 / 2 / 10%.
+- T-1919 (2bdf1ff0f) diagnosis: 143 unconfirmed coord deliveries rebuilt through the deliveryIds OR query on every injection completion.
+
+## Acceptance criteria
+
+- [x] C1. Exact native or digest receipts settle only their captured delivery; a submitted Claude input whose turn receipt times out becomes durably reported, is never claimed received, and leaves the automatic pending work; hundreds of such rows stay bounded across a hub restart (test).
+  - done: impl-1924 · 2026-11-16T22:32:38.634Z
+- [x] C2. Hub startup does no per-row inject-unconfirmed pass over already-received rows; a regression measures the startup work for a session with 200 such rows.
+  - done: impl-1924 · 2026-11-16T22:25:07.688Z
+- [x] C3. A row that was truly never received is still retried or reported, as today.
+  - done: impl-1924 · 2026-11-16T22:25:07.799Z
+  - verified: rev-38 [reviewer] · run rev-38-1924-source-2 · 2026-11-16T22:33:43.973Z · commit da8954a3bf4aa0733564c29255340a57eb2423d4
+
+## Comments
+
+### impl-1924 · 2026-11-16T22:16:53.008Z
+
+Rule 20 consumer inventory before implementation: Store record/appendNoticeRecipients/#bindProgress/claimRoleQueue, deliveryRoot/deliveryIds/deliveryMessage, markDelivered/startInjection/markInjected/markUncertain/retryUncertain, uninjected/isUninjected, hasPendingWork/unacknowledgedCount/retryCandidate/deafCandidate, launch brief activation/cancellation and digest release; HubCore ack/markInjected/startInjection/flushQueued, verifier reservations and rename; Sessions #recoverHeld/#retry on startup/discovery/reconnect/idle, #inject completion and #confirm native hooks, #unconfirmed backoff/deaf supervision and heartbeat admission. Adapter consumers: Claude exact turn-start IDs, Codex RPC confirmations/native turn reconciliation, OpenCode prompt receipt; spoke/client ack remains transport acceptance. Wire/UI history and stages consume injected state through core stage publication. Full field/function search across hub/src, hub/test, shared, nvim, web, shipped skills, QA briefs and docs: specific affected tests and unaffected reasons will be attached with final implementation. Sequence-only deaf-confirmed watermark is warning suppression, not exact delivery evidence.
+
+### impl-1924 · 2026-11-16T22:23:11.870Z
+
+Outcome-consumer migration audit: reuse existing uncertain, no new state/wire value. Production changes: ClaudeCodeAdapter inject deadline emits InjectUncertain(batchReport=true), Sessions forwards presentation hint, HubCore existing markUncertain persists every exact root/digest before reports, Inbox batches only opted-in reports. Unchanged consumers: Store uninjected/isUninjected/hasPendingWork/startup restore already exclude uncertain; digests retain fixed membership; heartbeat/deafCandidate retains delivered-only policy; retryCandidate/retryUncertain explicitly handle uncertain; markInjected accepts late exact receipt; stages intentionally render uncertain as delivered; identity/mention/rename retention includes uncertain. Codex, OpenCode, fakes default batchReport=false; no receipt semantics changed. Journal, workbench and Web consume existing delivery-uncertain notification and delivered stage unchanged. Previous wire shape remains unchanged (no protocol fields). Tests searched every tier via state/function/frame names: store.test.ts, journal-async, human-hold, verifier-resolver/routing, fake-harness-capabilities, codex-adapter/delivery/native, claude-code-adapter and inject-stalled. Only Claude timeout expectations change; retained T-1919 pending and generic rejection/backoff regressions remain unchanged. Shipped skill/QA/startup searches found no direct timeout-specific outcome assertion to migrate; related docs updated.
+
+### rev-38 · 2026-11-16T22:28:09.003Z
+
+verdict: review
+result: not clear
+by: rev-38 [reviewer]
+run: rev-38-1924-source-1
+commit: ffd9e9a71d42826293bc241b723bf296f80036da
+scope: full
+findings: [{"severity":"medium","text":"Existing real Claude adapter timeout assertion still requires inject-unconfirmed, now replaced by inject-uncertain. Migrate this prior-wire-shape regression and its test guide, preserving negative/late-receipt assertions; complete rule20 consumer audit.","file":"hub/test/claude-code-schedule.test.ts","line":408},{"severity":"medium","text":"New 200-row test lacks whole-case ownership before acquisition. Registered per-generation cleanup does not fence/join async body continuations, including second-generation storage reopen after first.close. Use shared admitted-work ownership with held-work cancellation proof before roots can be removed.","file":"hub/test/inject-stalled.test.ts","line":24}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Full source review T-1924 at pushed ffd9e9a71d42826293bc241b723bf296f80036da; diff e824406ae...ffd9e9a71, one task commit, 13 files. No Reviewer runtime or browser; source-only review.
+
+Standards:
+- Medium — hub/test/claude-code-schedule.test.ts:408 still requires inject-unconfirmed after advancing the real Claude adapter's exact receipt timeout. New ClaudeCodeAdapter timeout emits InjectUncertain and Sessions logs inject-uncertain instead. This existing previous-wire-shape re-exec regression will fail at this head. Migrate its outcome oracle while preserving the legacy injected acknowledgement negative and late exact envelope positive; update docs/agents/tests/hub-test-claude-code-schedule.test.ts.md:7 too. Rule20 inventory missed this direct timeout consumer; rerun the consumer search rather than relying only on listed changed files.
+- Medium — hub/test/inject-stalled.test.ts:24 new 200-row callback has no pre-acquisition whole-case owner. tempProject, fake spawn, clock advances, adapter.close and first.close cross awaits; after cancellation its continuation can reopen second-generation Store/ProcessTable after registered resource/directory cleanup. retainedDeliveryFixture's onCleanup owns acquired generations, but does not fence/join this body or capture late continuation work. Enroll the shared whole-work normal/signal owner before first acquisition, adopt roots and resources, and retain a deterministic held-work cancellation control proving root retention, fenced continuation and joined cleanup (rules9/12).
+
+Spec:
+The main production change follows the approved design: accepted Claude timeout becomes existing uncertain before report, exact receipt and manual retry remain available, no cumulative watermark. Immediate pre-submit bridge failures retain plain Error retry policy. Batch reporting keeps O(sessions) pending summary state and flushes on Inbox close; existing wire shape/state stays unchanged. The missed consumer and unsafe regression lifetime prevent clearing C1's tested guarantee.
+
+Rule15: new adapter fixture uses shared fixtureEnvironment and disposable root, no new child launcher or inherited credentials overlay. Rule17: claimant reports direct local macOS Node24.21 T2 inject-stalled24/24 and T3 claude-code-adapter6/6 using sealed fake Claude, no browser; these are partial claims, not configured verification or coverage of the missed schedule case. No configured verify run at review time. No full-suite pass, Linux pass or timing claim made here.
+Rule20: item and A-20414 list broad consumers and unchanged uncertain wire semantics, but the concrete timeout assertion above disproves the claimed complete migration. Keep the old-wire regression in the correction.
+
+No source criterion verified on this not-clear pass. C1 failed for incomplete timeout consumer migration and regression ownership; C2/C3 remain run-dependent/unverified. Fix both together, obtain a fresh exact-head source review before configured verification.
+Artifact A-20419: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20419-t-1924-source-review-not-clear-at-ffd9e9a71.md
+
+Criteria: C1 failed (Existing Claude re-exec timeout consumer still requires the old outcome; new retained-storage test lacks whole-case cancellation ownership.).
+
+### impl-1924 · 2026-11-16T22:30:36.331Z
+
+Source-review corrections: broad timeout/log/class search found and migrated claude-code-schedule.test.ts:408 and its guide. This is the previous-wire-shape re-exec consumer: submission ack still cannot confirm; unrelated turn cannot confirm; late exact envelope still injects. All 46 schedule tests pass locally (macOS, Node24.21.0, T2 scripted native edge, no process/browser). 200-row scenario now uses whole-case caseDeadlines run/step with shared normal/signal cleanup enrolled before root acquisition; root adopted inside acquisition; phase waits bounded. Added deterministic cancellation of the actual scenario between first storage drain and second acquisition; verifies retained root on release, joined continuation, fenced reopen, eventual root removal. Entire inject-stalled file passes 25/25 locally. Production source unchanged since ffd9e9a71; prior T3 6/6 is ancestor evidence, not a fresh current-head configured receipt.
+
+### rev-38 · 2026-11-16T22:33:43.973Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1924-source-2
+commit: da8954a3bf4aa0733564c29255340a57eb2423d4
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source correction review at da8954a3bf4aa0733564c29255340a57eb2423d4; origin task tip confirmed. Reviewed e824406ae...da8954a3b with correction ffd9e9a71...da8954a3b; production source unchanged since first review.
+
+Standards: no findings. Both A-20419 mediums resolved. claude-code-schedule:408 now asserts exact inject-uncertain and preserves legacy submission-ack/unrelated-turn negatives plus exact-envelope late receipt positive; guide matches. The 200-row scenario enrolls shared normal/signal cleanup before root acquisition, adopts root inside acquisition, uses whole-sequence run with step admission around awaited phases and owned bounded waits. Retained generations register with the proxied cleanup context. Shared join fences admission before release, waits the body/pending operations before hooks remove directories. Cancellation control executes that same scenario, holds after first storage closes, observes root retained on release, joins rejection/cleanup, asserts reopen refused and root ENOENT. No new native process in correction. Renamed duration manifest key retains historical value; not treated as a new measurement.
+
+Spec: no findings. Production uses existing uncertain state for accepted Claude receipt timeout; persists exact root/digest before operational report, excludes automatic replay and allows late exact receipt/manual retry. Pre-submit bridge failures remain ordinary Error and retain retry/report path (C3 established by source). Aggregate notification path and per-ID log receipts remain as reviewed. 200 uncertain plus 200 exact-confirmed regression retains one summary/zero restart injection assertions.
+
+Rule15 scratch root/shared final environment builder preserved. Rule20 correction migrates missed previous-wire timeout consumer and guide; item/A-20414/A-20422 contain inventory. Targeted source searches at this head found timeout references in corrected native/schedule tests, guide, duration key and historical tracker snapshot content (historical content unaffected); generic inject-unconfirmed consumers retain other failure classes. No new wire/state value requires old-hub fallback; prior-wire legacy acknowledgement negative remains tested.
+
+C3 verified from source preservation. C1/C2 runtime outcomes remain unverified pending configured same-head evidence. Source clear permits authorized mode-free verify, not final suite clearance.
+
+No Reviewer tests or browser. A-20422 reports claimant local macOS Node24.21 corrected-source T2 inject-stalled25/25 and schedule46/46, typecheck/static/test-lint/wording checks; no current-head configured run. Native6/6 at ancestor ffd9e9a71 is ancestor-only evidence. Existing advisory lint findings are report-only; no full suite/Linux/timing or coverage claim inferred.
+A-20423: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20423-t-1924-source-correction-clear-at-da8954a3b.md
+
+Criteria: C3 verified.

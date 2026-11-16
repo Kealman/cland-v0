@@ -3,7 +3,7 @@ id: T-1921
 kind: task
 title: A transient git failure in the landing lint drops a green batch member and forces the remaining members to rerun the full batch on a new tree
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T16:50:10.827Z
-updated: 2026-11-16T16:50:10.827Z
+updated: 2026-11-16T22:18:05.721Z
 ---
 
 ## Summary

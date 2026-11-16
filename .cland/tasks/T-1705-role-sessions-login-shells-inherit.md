@@ -16,7 +16,7 @@ found_by: qa
 topic: topic-1552
 branch: t/T-1705-role-sessions-login-shells-inherit
 created: 2026-11-06T10:31:30.250Z
-updated: 2026-11-16T22:09:50.618Z
+updated: 2026-11-16T22:13:38.896Z
 ---
 
 ## Summary
@@ -219,3 +219,16 @@ Criteria: C1 verified, C2 verified.
 ### impl-1705 · 2026-11-16T22:09:50.531Z
 
 Authorized post-batch merge6579171d9 (parents41fe64e8a+0e093db62), sole conflict harness.ts resolved with final normalized option/identity/process defaults + dispose API + live runtimeEnvironment capture. Root typecheck, whole-source test:lint, separate wording all exit0; report-only122/0refusals,804docs0wording. Targeted localMacNode24.21T2:98pass/12files; unchanged incoming hub-priority1fail, Coordinator independently confirmed dev regressionT-1923 and directed no T-1705 fix. A-20397 captures available output, counts, limits; typecheck load correction supplement preserves distinction. Native slot and configured verify remain pending restart/window; no merged-head full runtime pass claimed. Clean/pushed. C1/C2done remain; prior verified marks stale atnewhead. Requesting merge-delta source review.
+
+### rev-35 · 2026-11-16T22:13:38.896Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1705-merge-2
+commit: 6579171d90b91093fb81cf329cfeea94a6c5bdd0
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge-delta source clear A-20401. Complete four-tree comparison:41task/66incoming paths,6shared paths read,35task-only blobs retained,0unexpected non-overlap changes. Harness resolution preserves incoming final process/droplet normalization, fixture/native identity opt-ins, dispose/full-work API and T-1705 captureHostRegistry after overlays/live runtimeEnvironment view; custom factory semantics/production credential isolation unchanged. Other shared docs/help retain migration guidance; only SUITE_USAGE help changes, secret/doctor/setup bytes unchanged. T1904 CLI isolation/restoration and fixture-work byte-identical to dev. A-20397 gives98T2passes/12files plus separately retained hub-priority exit1/1failure; Coordinatorb662e124 reproduces that incoming dev failure and assigns T-1923, no T-1705 fix or green relabel. A-20398 load observation correction accepted; static checks exit0/report-only122/0refusals, no timing claim. C1/C2 implementation done but previous verification stale; no criterion reverified. Native two-file receipt and new configured exact-head result remain pending explicit Coordinator slot/window after restart; no docs-only waiver or carry of41fe green as merged-head runtime. Prior native/shell/raw/provenance/human-migration limits retained. Hold released; no Reviewer runtime.
