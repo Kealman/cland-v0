@@ -5,6 +5,8 @@ description: Write an item or stage QA brief, request QA as the lead, or run the
 
 A QA run has one file at its centre: the brief, `qa/briefs/T-<n>.md`, committed with the work and self-contained, because a rescue run cannot ask. Headless-grid cases are Lua files, `qa/cases/<ID>.lua`, run with `cland --headless --qa`; other surfaces use the brief’s commands or computer-use steps and `qa-record.sh note`. Every case ends as one line of `.cland/qa/runs.jsonl`; the run ends as one verdict on the item.
 
+The publication scanner rejects Bearer values in Authorization headers, including short values, and standalone Bearer values with at least 16 token characters (excluding `=` padding). Ordinary short words after “bearer” remain publishable; short standalone credentials still need manual redaction. See the demo recording policy for token characters and scan limits.
+
 Before running or recording QA, check `node --version` against cland's shipped `node-engines.json` beside this skill's recorder. This file
 travels with `cland init`/`update` and release packaging; the host project's
 `package.json` does not define cland's runtime contract. With nvm, source `"${NVM_DIR:-$HOME/.nvm}/nvm.sh"`,

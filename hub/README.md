@@ -33,6 +33,7 @@ documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merg
 - [File startup watchdog](../docs/hub/running.md): typed file-start receipts get 30 seconds of load-scaled setup headroom, capped at half the admitted no-output timeout, before the existing owned stall cleanup runs.
 - [Topics](../docs/hub/topics.md)
 - [Native fixture inventory](../qa/briefs/T-1806-inventory.md): shared exact name-set checks and scratch-only host socket routing.
+- [Demo publication policy](../docs/agents/qa-demo-recording.md): remote QA captures reject Bearer credentials in Authorization headers and standalone token runs of at least 16 characters; short prose remains publishable. Manual captures still require redaction and scanning.
 - [Thread runs and fold lines](../docs/hub/thread-runs-and-fold-lines.md)
 - [Asks and the inbox](../docs/hub/asks-and-the-inbox.md), including internal hub cards and synchronous answer handlers; [login wait cards](../docs/hub/logins.md#login-wait-cards) share one prompt per pool/harness shortage
 

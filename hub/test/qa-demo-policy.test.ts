@@ -3,6 +3,74 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { assertPublishable, validateDemoResult } from '../../.agents/skills/qa/qa-demo-policy.ts';
 
+for (const header of [true, false]) {
+  test(`demo publication refuses synthetic ${header ? 'header' : 'standalone'} credentials`, () => {
+    const fake = 'fixture'.repeat(10);
+    const text = `${header ? 'Authorization: ' : ''}${['Bear', 'er'].join('')} ${fake}`;
+    for (const value of [text, encodeURIComponent(text), { message: text }, JSON.stringify({ message: text })]) {
+      assert.throws(() => assertPublishable(value), { message: 'secret scan refused publication' });
+    }
+  });
+}
+
+for (const text of [
+  'C2: Unix upgrade refuses wrong bearer like loopback',
+  'C2: Unix upgrade refuses missing bearer like loopback',
+  'C1 host bearer welcomes only its role-holding launch session',
+  'bearer and',
+  'bearer welcomes',
+]) {
+  test(`demo publication accepts prose: ${text}`, () => {
+    for (const value of [text, encodeURIComponent(text), { message: text }, JSON.stringify({ message: text })]) {
+      assert.doesNotThrow(() => assertPublishable(value));
+    }
+  });
+}
+
+test('demo publication distinguishes short header values and the standalone token boundary', () => {
+  const scheme = ['Bear', 'er'].join('');
+  assert.throws(() => assertPublishable(`aUtHoRiZaTiOn:\t${scheme.toLowerCase()} x`), /secret scan refused publication/);
+  assert.throws(() => assertPublishable(`${scheme} ${'x'.repeat(16)}`), /secret scan refused publication/);
+  assert.doesNotThrow(() => assertPublishable(`${scheme} ${'x'.repeat(15)}`));
+});
+
+for (const serialized of [false, true]) {
+  test(`demo publication refuses short ${serialized ? 'serialized' : 'structured'} header credentials`, () => {
+    for (const whitespace of [' ', '\t', '\n']) {
+      const metadata = { headers: { aUtHoRiZaTiOn: `${['Bear', 'er'].join('')}${whitespace}x` } };
+      const value = serialized ? JSON.stringify(metadata) : metadata;
+      assert.throws(() => assertPublishable(value), { message: 'secret scan refused publication' });
+      if (serialized) {
+        assert.throws(() => assertPublishable(encodeURIComponent(value as string)), /secret scan refused publication/);
+        assert.throws(() => assertPublishable(JSON.stringify({ message: value })), /secret scan refused publication/);
+      }
+    }
+  });
+}
+
+test('demo publication refuses token-shaped credentials in partial array header fragments', () => {
+  const fragment = `capture prefix {"headers":{"Authorization":["${['Bear', 'er'].join('')} ${'fixture'.repeat(10)}"`;
+  assert.throws(() => assertPublishable(fragment), { message: 'secret scan refused publication' });
+});
+
+for (const serialized of [false, true]) {
+  test(`demo publication refuses short ${serialized ? 'serialized' : 'parsed'} array header credentials`, () => {
+    for (const detail of [
+      [`${['Bear', 'er'].join('')} x`],
+      ['harmless', [`${['Bear', 'er'].join('')}\tx`]],
+      { values: ['harmless', `${['Bear', 'er'].join('')}\nx`] },
+    ]) {
+      const metadata = { headers: { Authorization: detail } };
+      const value = serialized ? JSON.stringify(metadata) : metadata;
+      assert.throws(() => assertPublishable(value), { message: 'secret scan refused publication' });
+      if (serialized) {
+        assert.throws(() => assertPublishable(encodeURIComponent(value as string)), /secret scan refused publication/);
+        assert.throws(() => assertPublishable(JSON.stringify({ message: value })), /secret scan refused publication/);
+      }
+    }
+  });
+}
+
 test('demo PASS requires every independently expected fact key, including false and zero facts', () => {
   const result = { result: 'PASS', evidence: [], facts: { connected: true, count: 0, replayed: false } };
   assert.doesNotThrow(() => validateDemoResult(result, 0, ['connected', 'count', 'replayed']));
@@ -19,6 +87,7 @@ test('demo publication refuses sign-in links, bearer credentials and provider ke
     `http://127.0.0.1:7777/auth?token=${fake}`,
     ['sk', 'proj', fake].join('-'), ['dop', 'v1', fake].join('_'), ['ghp', fake].join('_'),
     `Authorization: ${['Bear', 'er'].join('')} ${fake}`,
+    `${['Bear', 'er'].join('')} ${fake}`,
     `${['OPENAI', 'API', 'KEY'].join('_')}=${fake}`,
   ];
   for (const text of secrets) {
