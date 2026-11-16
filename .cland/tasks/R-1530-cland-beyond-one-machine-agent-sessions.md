@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T18:03:30.138Z
-updated: 2026-11-16T06:16:41.451Z
+updated: 2026-11-16T07:02:52.248Z
 closed: 2026-11-16T06:16:41.451Z
 ---
 
@@ -161,3 +161,52 @@ tap commit 2702f52d74b40e48dbb5d1bd67c0e1d374ae1ce9
 Web bundle published: Kealman/cland-v0 v0.4.0
 cland-web.tar.gz 1732491 bytes; cland-web.tar.gz.sha256 83 bytes
 sha256 144d56154ce24965a036bb4bbfbb1520e1c4e778f123fc929ee9fde38f9088ee
+
+### qa-678 · 2026-11-16T06:23:46.237Z
+
+verdict: qa
+result: clear
+by: qa-678 [qa]
+run: qa-r1530-post-2026-11-16-qa678-1
+commit: b0246c8ac3d99bf2c7ee8871f853b5282b9ef271
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| POST-01 | hub-api / public Git | PASS | P1-remote.txt, P1-tag-type.txt, P2-tag.txt |
+| POST-02 | hub-api / published annotation | PASS | P2-notes-facts.json, release-item-notes.md, P2-tag.txt |
+| POST-03 | hub-api / public HTTPS | PASS | release-metadata.json, P3-assets-facts.json |
+| POST-04 | hub-api / public Git and HTTPS | PASS | P4-tap-remote.txt, Formula-cland.rb, P4-formula-facts.json |
+| POST-05 | hub-api / local refs and tracker | PASS | P5-root-main.txt, P5-territory-main.txt, P5-release-state.json |
+
+QA clear R-1530. Run qa-r1530-post-2026-11-16-qa678-1; published commit b0246c8ac3d99bf2c7ee8871f853b5282b9ef271; QA qa-678. All five checks in Coordinator request 40483a4d-1a0b-4e83-831c-648c9f76b796 passed. There are no criterion ids on R-1530, so no criterion marks are made. Findings: none (high 0, medium 0, low 0).
+
+The whole brief is the five-check request, explicitly designated under Coordinator exception 87171e14-561c-4a18-9375-2a6c73dbd1f5. No committed brief was required for this read-only post-release audit. task.hold returned exactly “R-1530 is closed”; no hold was obtained, the item was not reopened, and no alternative hold route was attempted. The requested verdict is on the already-closed release.
+
+Published refs from anonymous git ls-remote: GitHub main is b0246c8ac3d99bf2c7ee8871f853b5282b9ef271; refs/tags/v0.4.0 is annotated tag object 493e869828085df3ee89269ec48fede6802b0ea0; its peeled commit is b0246c8ac3d99bf2c7ee8871f853b5282b9ef271. The exact object was fetched into a disposable repository and cat-file confirms type tag and its commit target.
+
+The tag message begins with all 23532 characters of R-1530's Notes as committed at the release SHA, followed by the nine exact epic deliverables generated from their Goals, matching the release's source format. Notes SHA-256: d1fb43191a19e92925e520f41bd3bf07d869261ee827a06f274e57da194b135a. The current closed item's Notes are unchanged. GitHub release body equals the complete tag annotation text (ignoring only final line-ending whitespace). The retained text shows the release notes and appended commit notes, not merely a title match.
+
+[GitHub release v0.4.0](https://github.com/Kealman/cland-v0/releases/tag/v0.4.0) exists, draft=false. Its exact asset set is cland-web.tar.gz (1732491 bytes) and cland-web.tar.gz.sha256 (83 bytes). Anonymous downloads succeeded. The downloaded archive has 1732491 bytes and SHA-256 144d56154ce24965a036bb4bbfbb1520e1c4e778f123fc929ee9fde38f9088ee, matching both the request and the checksum file. GitHub's digest field agrees too. Archive contents were not executed or installed.
+
+Kealman/homebrew-tap main is 2702f52d74b40e48dbb5d1bd67c0e1d374ae1ce9. [Formula/cland.rb at that commit](https://github.com/Kealman/homebrew-tap/blob/2702f52d74b40e48dbb5d1bd67c0e1d374ae1ce9/Formula/cland.rb) and the independently downloaded main file are byte-identical. The formula names https://codeload.github.com/Kealman/cland-v0/tar.gz/refs/tags/v0.4.0 and SHA-256 02c862542884527ebdd8026d02417a6b897c1eb16db0b3d4883cad0078944d3f. The actual downloaded tag tarball is 39152239 bytes with that exact checksum. No Homebrew installation ran.
+
+Root refs/heads/main and local territory refs/heads/main both equal b0246c8ac3d99bf2c7ee8871f853b5282b9ef271. R-1530 is closed and contains the Coordinator's 2026-11-16 release comment naming the same commit, tap commit, bundle size and hashes.
+
+Execution was local macOS arm64, Node v24.21.0 (shipped contract >=24.13.0 <25). All Git and HTTP children ran from a disposable root with scratch HOME/XDG/TMPDIR and fixtureEnvironment followed by scratchGitEnvironment, all overlays inside the builder. Immediate credential-shaped-name gates were zero. Recorder Git resolution also passed through the same shared seal and absolute /usr/bin/git; five unique recorder lines name the exact published commit. No suite, test, browser, GUI, demo lease or installer ran. No performance or suite coverage is claimed; droplet lifetime/cost is not applicable.
+
+The initial isolated gh api read exited 4 because authentication was unavailable. P0-gh.txt preserves the diagnostic. No login or credential access was attempted. Coordinator 6cf1d3d2-3257-489c-963b-89fd7c047076 authorized anonymous HTTPS GETs for those reads with every assertion unchanged; this is an environment fact, not a product finding. Public API, raw file and asset requests sent no credential or Authorization header. Six public HTTPS reads sufficed, well below the anonymous API rate limit; only one was an api.github.com request.
+
+Evidence contains declared text outputs only, filtered before writing. Binary downloads, disposable Git data, HOME/XDG directories and local environment files are not exported. A publication scan with a synthetic positive control precedes publication. Scratch data is retained until this verdict, then removed by the exact owned path. No remote ref, release, tap, live project config or human account was written.
+
+Rule proposal sent in topic-1528: post-release requests should explicitly permit anonymous public reads when isolated gh cannot authenticate, so checks never require a login solely to inspect public artifacts.
+
+Evidence A-19801: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19801-r-1530-v0-4-0-post-release-qa-five-public-artifact-checks-clear/report.md. Publication scan: 38 files, 1491 lines, zero refusals, positive control refused.
+
+### coord · 2026-11-16T07:02:52.248Z
+
+Retrospective of the v0.4.0 run:
+- Coordinator retro: A-19803, `.cland/artifacts/A-19803-v0-4-0-r-1530-coordinator-retrospective-where-the-time-and-the-digitalocean-mone.md`. It has the timeline per epic, the time budget, droplet spend by occasion, day and epic window, the incidents, the decisions, ranked changes and a reconciliation with cland-impl's figures.
+- The human's HTML overview, by cland-impl: claude.ai artifact AzfEFdvyR3T1ifQWAqgu5d.
+- Post-release QA: clear, A-19801.
