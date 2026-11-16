@@ -1,0 +1,106 @@
+---
+title: 'v0.4: the crew beyond one machine'
+description: 'v0.4.0 lets cland run agent sessions on pools of remote Linux hosts it creates and destroys itself, with harness logins on their own disks and a users mode for the web. Fifteen days, 235 landings, and every host path proven on fakes only: the live run on real hosts was dropped, and this post says what that leaves unproven.'
+date: 2026-11-16
+release: v0.4.0
+tags: [retrospective, hosts, digitalocean]
+---
+
+import BarChart from '../../components/BarChart.astro';
+import Stats from '../../components/Stats.astro';
+
+v0.4.0 shipped on November 16 at 06:17 UTC. Until now every agent session cland ran lived on the maintainer's Mac. With 0.4 the hub stays on the Mac, but it can launch sessions on small remote Linux hosts that it creates, packs with work, watches and destroys by itself. DigitalOcean is the first provider.
+
+One thing comes before everything else in this post. **Every host path in 0.4.0 was proven against fakes**: a fake host provider, a fake DigitalOcean API and a fake SSH transport, with "hosts" running as processes on one machine. A live run on real DigitalOcean hosts was planned and then dropped by the maintainer on November 15. No test created a real host, volume or key. If you turn agent hosts on, you will be among the first to run them on real machines. The section [What we have not proven](#what-we-have-not-proven) lists exactly what that leaves open.
+
+The crew: the Coordinator on Claude Code, and Implementers, Reviewers and QA on Codex.
+
+## What 0.4 does
+
+**Sessions on remote hosts.** Claude Code, Codex and OpenCode all run on a host. The Coordinator and the Aide always stay on the Mac: launching either of them anywhere else is refused. A small host agent, `cland host serve`, starts the harnesses on the host, keeps their process table and adds worktrees. Every commit a session makes on a host reaches the project's territory without the session pushing, and `cland verify` waits for that push. Sessions survive a hub restart, a lost tunnel and a host agent restart. `cland session attach` opens an `ssh -t` to a host session.
+
+**Pools the hub sizes by itself.** A role goes on a pool, such as `agents`, with a size, a region, slots, `min_hosts` and `max_hosts`. The hub packs launches onto the fullest host that fits, starts a host when none has room, and stops an empty one after 20 minutes. A launch that cannot be placed waits with its reason ("waiting for a host", "waiting for host … to boot") and starts when room appears. It is never turned into a question for you.
+
+**Logins.** A harness sign-in on a host is a login. Each Claude Code, Codex or OpenCode sign-in is made by the harness's own flow on its own 1 GiB provider volume, which follows the work from host to host. cland mounts it and never reads it. When a pool needs another login, you get one card: "Not enough … logins. Create one?" Signing in runs the harness's own flow in your terminal over `ssh -t`, or from the web or the phone as a card with its link and code. When a harness reports a dead login, sessions already running keep running, and you get a "sign in again" card.
+
+**Users.** The web workbench can now admit more than one person. `cland auth mode users` switches the project to users mode. An admin invites people with a one-time link, and they sign in with a passkey or a password. Messages, answers, approvals and artifacts record who did them, and each Telegram or Discord pairing belongs to one user. Every user is an admin in 0.4.0.
+
+**Seeing it.** Both workbenches show a Hosts row per pool, such as "agents 2/4 hosts · 7/16 slots · logins claude 2/3, codex 1/1". The row turns red at once when a host is unreachable. `cland doctor` checks the provider token, the pool images, the logins, host reachability and the spend. `cland setup` has two new optional steps, for the sign-in mode and for agent hosts. Both default to No. The new docs pages are [Hosts, pools and logins](/docs/hosts/) and [Users and sign-in modes](/docs/users/).
+
+## Decisions behind it
+
+**1. Nothing new listens on a network address.** The hub keeps one SSH connection per host, with a pinned host key. That tunnel forwards only Unix sockets: the hub's socket, the session's spoke, a per-host git socket and the host agent's socket. There is no TCP forward.
+
+**2. A host can push only its own work.** A host may push only the task branches it has leased. A push to `dev`, to another host's branch, or a branch deletion is refused.
+
+**3. Secrets stay where they are.** The provider token stays with the hub on the Mac, and hosts boot without any hub secret, provider token or stray API key. cland never reads a login disk and never keeps a harness's session tokens. A static key, such as an OpenCode key, is read from a hidden prompt or stdin, stored encrypted, and handed to a session only in its start environment.
+
+**4. Money has hard edges.** Hosts get their own daily spend cap, $3 by default. At the DigitalOcean price we checked on November 15, $0.07143 an hour for `s-4vcpu-8gb`, that buys about 42 host-hours. At the cap no new host starts. Each host has a 12-hour lease, renewed while it works, and a detached watchdog deletes the host at the deadline even when the hub is gone. Every deletion of a droplet, key or volume is confirmed by reading it back. In `cland setup`, each paid step asks its own yes and names its price, and `--yes` does not count as one.
+
+**5. Passkeys without a new dependency.** Passkeys and passwords are built on Node's own crypto.
+
+## How it was built
+
+The build started on October 31, minutes after v0.3.2 shipped, and ran for 15.3 days. Nine epics went through 32 stages. Each stage closed on a full test run on a Linux cloud machine and another on the Mac, and each epic closed on a QA demo of its Definition of done against the fakes.
+
+**One epic at a time was slow.** For the first two and a half days three epics ran side by side, and the crew landed 1.26 tasks an hour. From November 3 the remaining epics built on each other, so only one was ever open, and landings fell to between 0.46 and 0.79 an hour.
+
+**The Mac's test runs went red on timing.** 41 of the 122 stage, epic and release test runs went red, 29 of 63 on the Mac and 12 of 59 on Linux, and three more Linux runs timed out or never reached their machine. Most of the red came from load-timing flakes, not real bugs. The Coordinator estimates they cost about 58 hours. One stage alone took 18.6 hours to close.
+
+**Twenty hours without a landing.** On November 12 and 13 the Mac's network path to the cloud test machines degraded. Test runs failed to reach them again and again, switching regions did not fix it, and nothing landed for 20.4 hours. The crew got moving again by running merge batches locally, and two fixes came out of it: uploads to a test machine now retry, and a local batch gets its dependencies.
+
+**Review stayed strict.** There were 1,075 review verdicts on 208 tasks, and 33% of them were not clear. A task went through a median of four review rounds.
+
+<BarChart
+  title="Where the 366 hours went"
+  rows={[
+    { label: 'Building and landing, one epic at a time', bars: [{ value: 200, text: '~200 h' }] },
+    { label: 'Red test runs from timing flakes', bars: [{ value: 58, text: '~58 h' }] },
+    { label: 'Closing stages and epic demos on the green path', bars: [{ value: 45, text: '~45 h' }] },
+    { label: 'Network outage, test runs not delivered', bars: [{ value: 22, text: '~22 h' }] },
+    { label: 'Waiting on the human and the model quota', bars: [{ value: 20, text: '~20 h' }] },
+    { label: 'Real bugs QA found', bars: [{ value: 12, text: '~12 h' }] },
+  ]}
+  caption="The Coordinator's estimate from its running log. The causes overlap, and smaller rows are left out."
+/>
+
+<Stats
+  items={[
+    { value: '15.3 days', label: 'from the first task to the release' },
+    { value: '235', label: 'tasks landed: 208 for the release, 27 bug and debt fixes' },
+    { value: '9', label: 'epics, each closed on a QA demo against the fakes' },
+    { value: '6,361 → 8,573', label: 'tests in the suite' },
+    { value: '1,075', label: 'review verdicts, 33% not clear' },
+    { value: '$108', label: 'of cloud test machines, about $7 a day' },
+  ]}
+/>
+
+## What we have not proven
+
+None of the following was verified on real hosts:
+
+- how long a real host takes to boot on its pool image;
+- Claude Code, Codex and OpenCode sign-ins on a real host, from the terminal or from a card on the phone;
+- whether a running Claude Code or Codex session picks up re-signed tokens without a relaunch;
+- whether the Mac stays signed in to Codex after a Codex sign-in on a host;
+- a hub restart under load with sessions on real hosts;
+- idle stop, with the login volume detached and attached again at the next start;
+- real spend against DigitalOcean's bill;
+- the real DigitalOcean API for hosts and volumes, and building a real pool image;
+- the tunnel over a real network, its reconnects and its outage rules;
+- passkeys on a real phone or browser: the tests used a virtual authenticator;
+- users mode on real Telegram and Discord.
+
+Running the hub in Kubernetes is not in 0.4.0. It needs hub changes, and 0.4.0 carries those, but the rest comes in 0.4.x.
+
+## Known issues
+
+- **Keep the DigitalOcean token out of your shell startup file.** If `~/.zshrc` or another startup file exports `DIGITALOCEAN_TOKEN`, a role session's login shell can read it. Until the fix, export the token only in the shell that starts the hub.
+- `cland release` reports a bare "gh auth failed" when the hub's PATH lacks `gh`. Start the hub with Homebrew's bin on its PATH.
+- In all, 56 bugs and 27 tech-debt items were open at the release.
+
+## What's next
+
+The Coordinator's retrospective ranks the process changes by the time they would have saved, and the first is to stop holding every stage on a full run on a loaded Mac. On the product side, 0.4.x is where Kubernetes, the Fly provider, single sign-on and roles beyond admin will come. There is no date. Like every release, it ships when the maintainer says so.
+
+To upgrade: `brew upgrade cland`, or see the [install docs](/docs/install/).
