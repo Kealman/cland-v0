@@ -103,6 +103,7 @@ test('the signed-in web edge cannot approve a live pairing even with a Neovim he
 // handler, without publishing, invoking Git or acquiring provider resources.
 const refusedCases: Array<{ frame: { type: string } & Record<string, unknown>; localError?: RegExp }> = [
   { frame: { type: 'release', item: 'R-999', dryRun: true }, localError: /^no item T-999$/ },
+  { frame: { type: 'release.preflight', item: 'R-999' }, localError: /^no item T-999$/ },
   { frame: { type: 'publish', branch: 'marketing', item: 'T-999', dryRun: true }, localError: /^no item T-999$/ },
   { frame: { type: 'config.set', key: 'plan.approval', value: 'human' } },
   { frame: { type: 'crew.set', key: 'reviewer.keep_context', value: true } },

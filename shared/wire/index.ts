@@ -753,7 +753,7 @@ export type RoleState = {
 export type RoleHolder = { name: string; role: string | null; label: string; live: boolean };
 
 // hub/src/protocol.ts
-export type ReleaseRequest = { type: 'release'; id: string; version?: string; item?: string; dryRun?: boolean };
+export type ReleaseRequest = { type: 'release' | 'release.preflight'; id: string; version?: string; item?: string; dryRun?: boolean };
 
 // hub/src/protocol.ts
 export type BatchSuite = { id: string; members: MergeQueueEntry[]; diagnostic?: { key: string; files: string[]; steps?: ('check' | 'test' | 'T1' | 'T2' | 'T3' | 'T4' | 'Web')[] } };

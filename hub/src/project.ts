@@ -152,6 +152,8 @@ export function ensureSkeleton(l: Layout): string {
 }
 
 /** Shared managed ignore writer; unmarked project-owned files remain untouched. */
+export const gitignoreNeedsRewrite = (current: string | null): boolean => current === null || (current.startsWith(MANAGED_MARK) && current !== GITIGNORE);
+
 export function ensureGitignore(l: Layout): void {
   let current: string | null = null;
   try {
@@ -159,7 +161,7 @@ export function ensureGitignore(l: Layout): void {
   } catch {
     /* absent */
   }
-  if (current === null || (current.startsWith(MANAGED_MARK) && current !== GITIGNORE)) writeFileSync(l.gitignore, GITIGNORE);
+  if (gitignoreNeedsRewrite(current)) writeFileSync(l.gitignore, GITIGNORE);
 }
 
 /** Written whole or not at all (a reader never sees half a file), mode 0600: it carries the secret. */

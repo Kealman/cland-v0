@@ -123,6 +123,7 @@ import { TaskMerges, MergeCleanupIncomplete, type MergeCleanupStop } from './mer
 import { Releases } from './releases.ts';
 import { PushError } from '../territory-push.ts';
 import { ReleaseError } from '../release.ts';
+import { releasePermissionTool } from '../release-tools.ts';
 import { MergeError } from '../merge.ts';
 import { TaskWorktrees, type SessionCwd } from './worktrees.ts';
 import type { AccountPoller } from '../accounts/poller.ts';
@@ -766,7 +767,7 @@ export class Dispatcher {
     const core = this.#options.core;
     const roles = core.roles;
     const grants = connection.role === null ? undefined : roles?.get().get(connection.role)?.permissions.tools;
-    const type = String(frame.type);
+    const type = releasePermissionTool(String(frame.type));
     const tool = type.startsWith('event.') ? type.slice(6) : type === 'artifact.list' || type === 'merge.queue' ? 'history' : type;
     if (['rule.add', 'rule.edit', 'rule.retire'].includes(type) && !['coordinator', 'aide'].includes(connection.role ?? '')) {
       this.#refuse(connection, frame, peer, type, 'rule writes belong to the human, Coordinator or Aide; propose the rule to the Coordinator in your item topic', '', answer);
@@ -973,7 +974,7 @@ export class Dispatcher {
 
   /** The table's view of a spoke frame, or null when it is no tool the table knows. */
   #toolCall(connection: Caller, frame: Record<string, unknown>): ToolCall | null {
-    const type = String(frame.type);
+    const type = releasePermissionTool(String(frame.type));
     const tool = type.startsWith('event.') ? type.slice(6) : type === 'artifact.list' || type === 'merge.queue' ? 'history' : type;
     if (!KNOWN_TOOLS.includes(tool) && !(connection.role === 'aide' && (tool === 'role.state' || tool.startsWith('session.')))) return null;
     const item = typeof frame.item === 'string' ? frame.item.trim() || null : null;
@@ -2977,8 +2978,8 @@ export class Dispatcher {
           return artifact(frame as ArtifactCreate | ArtifactList, () => this.#asSession(frame));
         }
         if (frame.type === 'prompt.send' || (frame.type === 'topic.send' && frame.artifacts !== undefined)) return attachedSend(frame, () => this.#asSession(frame));
-        if (isClientRequest(frame) && (frame.type === 'release' || frame.type === 'sync' || frame.type === 'push' || frame.type === 'publish')) {
-          const tool = frame.type;
+        if (isClientRequest(frame) && (frame.type === 'release' || frame.type === 'release.preflight' || frame.type === 'sync' || frame.type === 'push' || frame.type === 'publish')) {
+          const tool = releasePermissionTool(frame.type);
           const allowedRole = (role: string | null | undefined) => role === 'coordinator' || (tool === 'push' && role === 'aide');
           const roles = tool === 'push' ? 'Coordinator or an Aide' : 'Coordinator';
           if (caller && (client !== 'cli' || !allowedRole(caller.role))) return this.#refuse(caller, frame, peer, tool, `${tool} belongs to the human or the ${roles} from its own shell`);
@@ -2996,7 +2997,7 @@ export class Dispatcher {
             }
           };
           const actor = caller ? sessionActor(caller, UNKNOWN_SESSION) : { id: 'human', name: 'human', role: null, human: true };
-          const operation = frame.type === 'publish' ? this.#releases.publish(frame.branch, frame.item, frame.dryRun === true, this.#options.projectConfig?.().publish.allowPaths ?? defaultConfig('').publish.allowPaths, resumed, authorize, actor) : frame.type === 'release' ? this.#releases.release(frame.version, frame.dryRun === true, resumed, authorize, actor, frame.item) : frame.type === 'push' ? this.#releases.push(resumed, authorize) : this.#releases.sync(resumed, authorize);
+          const operation = frame.type === 'publish' ? this.#releases.publish(frame.branch, frame.item, frame.dryRun === true, this.#options.projectConfig?.().publish.allowPaths ?? defaultConfig('').publish.allowPaths, resumed, authorize, actor) : frame.type === 'release.preflight' ? this.#releases.preflight(frame.version, frame.item, resumed, authorize) : frame.type === 'release' ? this.#releases.release(frame.version, frame.dryRun === true, resumed, authorize, actor, frame.item) : frame.type === 'push' ? this.#releases.push(resumed, authorize) : this.#releases.sync(resumed, authorize);
           later(tool, operation.then(
             (value): HubFrame => resumed(() => ({ type: 'result', id: frame.id, ok: true, value })),
             (err: unknown) => resumed(() => Dispatcher.#failure(frame.id, err)),

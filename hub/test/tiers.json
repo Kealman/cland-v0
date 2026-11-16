@@ -564,6 +564,8 @@
     "hub/test/quarantine-runner.test.ts": "T3",
     "hub/test/quarantine.test.ts": "T1",
     "hub/test/release-item.test.ts": "T3",
+    "hub/test/release-preflight-component.test.ts": "T2",
+    "hub/test/release-preflight.test.ts": "T1",
     "hub/test/release-t3-component.test.ts": "T2",
     "hub/test/release.test.ts": "T3",
     "hub/test/remote-cli.test.ts": "T2",

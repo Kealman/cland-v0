@@ -63,6 +63,7 @@ export const WEB_AUTHORITY = {
   'publish': 'publishes project files',
   'push': 'pushes project history',
   'release': 'publishes a release',
+  'release.preflight': 'inspects release tools and existing authentication on the hub machine',
   'resume': true,
   'host.create': 'requires the local human CLI or Neovim',
   'host.providers': 'requires the local human CLI or Neovim',

@@ -37,7 +37,43 @@ test('release help prints usage without a project hub or release work', async t 
     assert.equal(result.stderr, '');
     assert.match(result.stdout, /release <vX\.Y\.Z> \[--dry-run\] \[--json\]/);
     assert.match(result.stdout, /release --item T-n/);
+    assert.match(result.stdout, /--preflight/);
   }
+});
+
+test('release preflight CLI uses a distinct frame and prints every advisory finding with exit zero', async t => {
+  const root = await tempProject(t);
+  const socket = fixtureSocketPath(root, 'hub.sock');
+  await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/hub.json'), JSON.stringify({ root, socket, port: 0, secret: 'test', pid: process.pid, version: 'test' }));
+  const peers = new Set<Socket>();
+  const requests: unknown[] = [];
+  const report = { preflight: true, mode: 'report', version: 'v0.4.1', commit: 'head', checks: [
+    { name: 'tool:gh', status: 'refused', detail: 'gh missing on hub PATH' },
+    { name: 'clean-root', status: 'refused', detail: 'dirty root' },
+  ] };
+  const server = createServer(peer => {
+    peers.add(peer); peer.on('close', () => peers.delete(peer));
+    let buffer = ''; peer.setEncoding('utf8');
+    peer.on('data', chunk => {
+      buffer += chunk;
+      for (;;) {
+        const nl = buffer.indexOf('\n'); if (nl < 0) break;
+        const frame = JSON.parse(buffer.slice(0, nl)); buffer = buffer.slice(nl + 1);
+        if (frame.type === 'hello') peer.write(JSON.stringify({ type: 'welcome', name: 'cli', presence: [] }) + '\n');
+        else { requests.push({ type: frame.type, item: frame.item }); peer.write(JSON.stringify({ type: 'result', id: frame.id, ok: true, value: report }) + '\n'); }
+      }
+    });
+  });
+  beforeDirectories(t, async () => { for (const peer of peers) peer.destroy(); await new Promise<void>(resolve => server.close(() => resolve())); });
+  await new Promise<void>(resolve => server.listen(socket, resolve));
+  const plain = await cland(root, 'release', '--item', 'R-1', '--preflight');
+  assert.equal(plain.code, 0, plain.stderr);
+  assert.match(plain.stdout, /refused: tool:gh: gh missing/);
+  assert.match(plain.stdout, /refused: clean-root: dirty root/);
+  const json = await cland(root, 'release', '--item', 'R-1', '--preflight', '--json');
+  assert.equal(json.code, 0, json.stderr); assert.deepEqual(JSON.parse(json.stdout), report);
+  assert.deepEqual(requests, [{ type: 'release.preflight', item: 'R-1' }, { type: 'release.preflight', item: 'R-1' }]);
 });
 
 for (const [command, usage] of [

@@ -215,6 +215,8 @@ Used by `/wayfinder`. The **map** is a single item with **child** items as ticke
 hub or performing Git/network work. Sync, publish, push and merge support the
 same help flags; release, sync and publish share the release usage block.
 
+Immediately after the release epic brief, before stage or release covers, the Coordinator runs `cland release --item T-n --preflight` and resolves every refused or unknown setup check. This report-only hub check needs no green covers and makes no GitHub write; exit 0 is not readiness evidence. The final release dry-run remains required. See the `release` skill.
+
 Only `cland publish <branch> --item T-n` pushes to GitHub outside a release. The Coordinator runs it from its own shell, or the human runs it. Before merging the marketing branch, run the command with `--dry-run`, share its commits, paths, source and resulting tips, and obtain the human's approval through an `ask`, just as for release. Re-preview and ask again if the approved build changes. See the `release` skill for the full procedure. Existing projects with explicit role grants add `publish` to the Coordinator’s tools in `.cland/roles.toml`; custom role files are kept by update.
 
 The command selects branch-only commits that dev lacks, so unreleased product commits inherited from dev stay private. Every changed path in every commit must match `[publish] allow_paths` in `.cland/config.toml`: exact paths or directory prefixes ending in `/**`. Defaults are `site/**`, `docs/brand/**`, `README.md`, `LICENSE` and `.github/workflows/pages.yml`. A mixed-path commit or merge commit refuses the entire publish. The dry run prepares exact tips without moving refs.

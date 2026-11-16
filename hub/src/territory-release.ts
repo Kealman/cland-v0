@@ -11,6 +11,7 @@ import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promise
 import { join, resolve } from 'node:path';
 import { defaultBranch, hasTerritory, territoryGitAsync as git, territoryPath } from './territory.ts';
 import { ReleaseError, type ReleaseResult, type SyncResult } from './release.ts';
+import { packageVersionCheck } from './release-preflight.ts';
 import type { Resumed } from './hub/worktrees.ts';
 import { isSemverVersion } from './tracker/item.ts';
 
@@ -174,7 +175,7 @@ export async function releaseGit(root: string, version: string | undefined, dryR
     const text = await git(root, ['show', `${state.dev}:package.json`], undefined, undefined, env);
     resumed(() => {
       const pkg = JSON.parse(text) as { version?: unknown } | null;
-      if (pkg && Object.hasOwn(pkg, 'version') && pkg.version !== name.slice(1)) {
+      if (pkg && Object.hasOwn(pkg, 'version') && packageVersionCheck('package.json', pkg.version, name).status !== 'ok') {
         throw new ReleaseError('release-version', `dev's package.json says ${pkg.version}, the release is ${name}: commit the bump on dev, merge it, then preview again`);
       }
     });

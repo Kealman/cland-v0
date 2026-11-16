@@ -372,7 +372,7 @@ export type Hello = {
   role?: string;
 };
 
-export type ReleaseRequest = { type: 'release'; id: string; version?: string; item?: string; dryRun?: boolean };
+export type ReleaseRequest = { type: 'release' | 'release.preflight'; id: string; version?: string; item?: string; dryRun?: boolean };
 
 export type DependencyInstall = { files: string[]; command: 'npm install'; cwd: string };
 export type MergeQueueEntry = { dependencies?: DependencyInstall; item: string; branch: string; head: string; verdictBase: string; enqueued: string; by: { id: string; name: string; role: string | null } };
@@ -1084,6 +1084,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return true;
     case 'publish':
       return typeof f.branch === 'string' && typeof f.item === 'string' && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
+    case 'release.preflight':
     case 'release':
       return (f.version === undefined || typeof f.version === 'string') && (f.item === undefined || typeof f.item === 'string') && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
     case 'merge.queue':

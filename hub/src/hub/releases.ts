@@ -1,4 +1,6 @@
 import { webReleaseDescription } from '../release-web.ts';
+import { inspectRelease } from '../release-preflight-native.ts';
+import type { ReleasePreflight } from '../release-preflight.ts';
 import { homebrewDescription } from '../homebrew.ts';
 import { publishGit, clearPublishReceipt, type PublishResult } from '../territory-publish.ts';
 import { pushDev, PushError, type PushResult } from '../territory-push.ts';
@@ -112,6 +114,24 @@ export class Releases {
       try { this.log({ event: err instanceof PushError && err.code === 'push-outcome-unknown' ? 'push-outcome-unknown' : 'push-refused', error: String(err) }); } catch { /* preserve the original error */ }
       throw err;
     }));
+  }
+
+  preflight(version: string | undefined, item: string | undefined, resumed: Resumed, authorize: () => void): Promise<ReleasePreflight> {
+    return this.worktrees.serial(async () => {
+      resumed(authorize);
+      const itemChecks: ReleasePreflight['checks'] = [];
+      if (item !== undefined) {
+        const view = await this.tracker.viewAsync(item, resumed);
+        resumed(() => {
+          authorize();
+          if (view.kind !== this.tracker.ladder.top) itemChecks.push({ name: 'item', status: 'refused', detail: `${view.id} is not a release item` });
+          if (version !== undefined && version !== `v${view.version}`) itemChecks.push({ name: 'item-version', status: 'refused', detail: 'explicit version disagrees with the release item' });
+          version = view.version ? `v${view.version}` : undefined;
+        });
+      }
+      const result = await inspectRelease(this.tracker.root, version, this.#env, () => resumed(authorize));
+      return resumed(() => { authorize(); return { ...result, checks: [...itemChecks, ...result.checks] }; });
+    });
   }
 
   release(version: string | undefined, dryRun: boolean, resumed: Resumed, authorize: () => void, actor: Actor, item?: string) {
