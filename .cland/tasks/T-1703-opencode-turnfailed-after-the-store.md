@@ -2,8 +2,8 @@
 id: T-1703
 kind: task
 title: OpenCode turnFailed after the store closes throws "database is not open" in the pending-permission adapter test
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -15,7 +15,8 @@ found_by: droplet
 topic: topic-1540
 branch: t/T-1703-opencode-turnfailed-after-the-store
 created: 2026-11-06T05:22:20.125Z
-updated: 2026-11-16T10:16:01.734Z
+updated: 2026-11-16T14:01:36.893Z
+closed: 2026-11-16T14:01:36.893Z
 ---
 
 ## Summary
@@ -103,3 +104,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; C1/C2 verified under Coordinator 6ef8f819's explicit ten target-case receipt bar and rev-36 A-19862 bounded carry of the first two earlier-candidate samples. A-19958 records final verdict; A-19957 independently reconciles raw ten target positives, twenty focused positives, exact-head A-19887 ordinary+five load receipts and all 984 manifest dispositions. Eight native files clean, sample 2 actually failed and sample 4 failed/cancelled root: both remain raw shared T-1905 history, not ten clean final-tree files. 6382 base tests/701 files plus separate five load tests/files all positive; unselected 266 T3/16 T4 deferred. Native completion/capture/tree/publication limits and report-only advisories retained; no Reviewer runtime. Coordinator retains landing/integrated-stage gates.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T14:01:36.893Z
+
+Merged 64941afb8c3dc70ac2a573bfd6dae635ee22367f onto dev.

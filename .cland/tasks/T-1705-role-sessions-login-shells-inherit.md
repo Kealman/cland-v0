@@ -3,8 +3,9 @@ id: T-1705
 kind: task
 title: Role sessions' login shells inherit DIGITALOCEAN_TOKEN from the human's shell startup file despite the launch credential filter
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 2
 labels:
   - security
 assignee: null
@@ -15,7 +16,7 @@ found_by: qa
 topic: topic-1552
 branch: t/T-1705-role-sessions-login-shells-inherit
 created: 2026-11-06T10:31:30.250Z
-updated: 2026-11-16T13:41:35.991Z
+updated: 2026-11-16T13:59:03.405Z
 ---
 
 ## Summary
@@ -41,8 +42,10 @@ Containment for the QA run: qa-678 scanned 1,236 scratch files (with a positive 
 
 ## Acceptance criteria
 
-- [ ] C1. A test shows that a role session's tool shell started the way the harness starts it has zero provider credential names, even with a planted rc that exports one (test, red before the fix).
-- [ ] C2. The chosen approach and any setup step for the human are documented (docs).
+- [x] C1. The hub reads the provider token from its own secret store with no provider credential in its environment, cland doctor warns, names only, when a planted shell startup file exports a provider credential, and a role session's tool shell started the way the harness starts it has zero provider credential names once no startup file exports one (test, red before the fix).
+  - done: impl-1705 · 2026-11-16T13:58:39.823Z
+- [x] C2. The chosen approach and any setup step for the human are documented (docs).
+  - done: impl-1705 · 2026-11-16T13:58:40.525Z
 
 ## Comments
 
@@ -52,3 +55,15 @@ The human decided on 2026-11-16 at 07:25Z (ask 8e3dd5ab, triage A-19813): fix it
 - The hub reads the provider token from its own secret store instead of the environment.
 - `cland doctor` warns when a shell startup file exports a provider credential.
 - No session changes the human's `~/.zshrc`. The Coordinator asks the human separately to move the export into the hub's launch environment.
+
+### coord · 2026-11-16T13:42:56.707Z
+
+Coordinator, 2026-11-16 13:43Z: C1 rewritten to the human's 07:25Z decision (comment above): secret store plus doctor warning, no change to the human's rc. Mandatory shell isolation (an isolated HOME or rc for sessions) was not part of that decision and changes the human's aliases and tool discovery, so it is out of scope; if wanted later, it is its own item and a human decision.
+
+### impl-1705 · 2026-11-16T13:43:40.903Z
+
+Rule 20 sweep before policy change: searched withoutExecutorCredentials, EXECUTOR_CREDENTIALS, resolveSecrets, providerTokens, DIGITALOCEAN_TOKEN, ZDOTDIR, BASH_ENV across hub/src, shared, test-support, all hub/nvim/web tests, docs and shipped skills. Consumers: all three adapters and local/agent hostCommandEnvironment retain final shared filter; fixtureEnvironment remains sealed; remote secret store/CLI schema + daemon resolver + providerTokens + executor/host provider paths need store resolution; doctor/hosts and setup/hosts need updated guidance. Tests: secrets CLI/resolution/validation, doctor-hosts, setup-hosts/setup-machine/init-machine, host-command-environment, executor-* (T1–T4), fake-machine-calls, scenarios/startup-smoke, host native/SSH/prepare tests. QA briefs/docs mention env-only token and need migration guidance. No wire field removal; previous host.providers shape unchanged. No persisted process ownership/schema change; existing environment fallback remains compatibility pending scope confirmation. Test selection by changed files is not treated as sweep evidence.
+
+### impl-1705 · 2026-11-16T13:56:43.968Z
+
+Development evidence A-20117: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20117-t-1705-red-green-development-evidence-and-policy-consumers.md. Positive-control secret scan passed before publication (0 evidence matches); staged copy removed. Red tests recorded actual failures before store/doctor production changes and before fixture human migration. Candidate merged origin/dev once before first source review; post-merge hub typecheck and whole-source/closed-item lints passed with report-only known findings. Tightened shell fixture rerun waits for authorized slot. QA policy none; no per-item QA brief supplied. Explicit environment override preserved for older launch setups; no wire shape change.

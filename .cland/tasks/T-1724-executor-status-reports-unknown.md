@@ -2,8 +2,8 @@
 id: T-1724
 kind: task
 title: Executor status reports "unknown (inspection deferred)" when the local snapshot-key read exceeds its 250 ms bound under load
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1539
 branch: t/T-1724-executor-status-reports-unknown
 created: 2026-11-06T11:49:25.020Z
-updated: 2026-11-16T10:31:58.003Z
+updated: 2026-11-16T14:02:12.143Z
+closed: 2026-11-16T14:02:12.143Z
 ---
 
 ## Summary
@@ -140,3 +141,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; C1/C2 verified under current amended C2 (ten complete files, >=8 entry1mload, macOS or Linux --init/4CPU/network-none). A-19970 independently reconciles twoMac+eightLinux files/all60 exact case passes,0fail/cancel/skip/todo/timeout, per-file native0/null and Linux three-source-hash maps matching reviewed commit. High Mac end loads stopped later files; outer refusal exits1 are retained and not counted as passing producers. A-19969 retained launchers/cleanup joins and explicitly transcribed owner/absence facts checked; unknown binary paths/slot1 source/per-burner Linux native fields remain labelled, no provenance rerun. A-19904 supplies independently audited uncached same-head configured6389base+225load passes, allT1/all-fallbackT2/changedT3/Web, exact browser/platform; otherT3/T4 coverage remains deferred/unexecuted. Duration/lint/ratchet report-only, no performance pass. No findings, source edits or new run requested; no per-item QA required. Reviewer read only.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T14:02:12.143Z
+
+Merged 265afdb850b8b61018d06d834d02144eedbd6f93 onto dev.

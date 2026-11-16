@@ -2,8 +2,8 @@
 id: T-1859
 kind: task
 title: A droplet run stops on a region's 'size not available' instead of trying the next region
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1549
 branch: t/T-1859-a-droplet-run-stops-on-a-region-s-size
 created: 2026-11-14T18:24:03.472Z
-updated: 2026-11-16T12:09:02.070Z
+updated: 2026-11-16T14:02:42.477Z
+closed: 2026-11-16T14:02:42.477Z
 ---
 
 ## Summary
@@ -85,3 +86,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear A-20026; independent named/consumer reconciliation A-20025. C1 fallback and C2 exhaustion ordinary passes at A-20024:1521/1526, all nine file cases positive; seven new identities each also have five positive load case/file finishes. Held ownership, malformed non-capacity/reservation fence and neighbouring 400/422/500 controls retained. Parsed6405 ordinary tests/702 files plus separate245 load tests/files positive, no negatives;221T1/426T2/55Web executed,268T3/17T4 deferred. All78 original inventory heading entries/74 unique paths retained in1019-row conservative union, not complete runtime/transitive coverage. Clean exact head/provenance and actual browser confirmed. Report-only/capture/synthetic-provider limits remain; no Reviewer runtime. Hold released; Coordinator retains landing and integrated-stage gates.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T14:02:42.477Z
+
+Merged a7880ac415409400e3cb53a6c0230b4be27b8f52 onto dev.

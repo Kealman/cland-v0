@@ -2,8 +2,8 @@
 id: T-1697
 kind: task
 title: Host agent checkpoint writes share one fixed '.new' temp name; a concurrent or late checkpoint fails with ENOENT
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1538
 branch: t/T-1697-host-agent-checkpoint-writes-share-one
 created: 2026-11-05T19:31:45.062Z
-updated: 2026-11-16T13:02:58.415Z
+updated: 2026-11-16T14:03:23.016Z
+closed: 2026-11-16T14:03:23.016Z
 ---
 
 ## Summary
@@ -160,3 +161,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final repaired-head evidence clear; C1–C3 verified. Independently reconciled af2a9ba3/A-20090 exact5532c4f12 and canonical6522edbf9156009c95dc4671e62778b4023c4814, uncachedLinuxx64 droplet Node24.21/Nvim0.12.5, pinned Headless Shell1248 Chrome156.0.8078.4. LocalT0/allT1/fallback allT2/changedT3twofiles17cases/Web passed;6403base test+703file passes,240separate load test+240file passes, zero negative finishes. Storage6names each1base+5load; closure5base; lifecycle1base; all16host-prepared named base passes/file pass including repaired completed-append durable-result failure. Exact current-head local16/16 A-20067 remains supplemental. C3 explicitly carried ORIGINAL58f83349e A-19959/A-19961 under Coordinator0ebe9a71 and unchanged production/closure/C3-test Git proof A-20069; not new-head loaded execution. Revised10target+2full receipts remain valid; incomplete1/112 excluded. C1/C2 now refreshed from current-head run; prior batch red retained history. RemainingT3/T4 unexecuted here; budgets/lint/ratchet report-only, QA none. No Reviewer runs/edits. A-20091 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20091-t-1697-final-repaired-head-configured-evidence.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-16T14:03:23.016Z
+
+Merged 56bfb920b3978871982d112664bd6db38eda044b onto dev.

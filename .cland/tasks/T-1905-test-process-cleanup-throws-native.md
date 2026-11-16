@@ -2,8 +2,8 @@
 id: T-1905
 kind: task
 title: Test process cleanup throws "native process identity unavailable" for a child whose exit was already observed, under Linux load
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1545
 branch: t/T-1905-test-process-cleanup-throws-native
 created: 2026-11-16T07:44:00.478Z
-updated: 2026-11-16T10:09:27.457Z
+updated: 2026-11-16T14:03:57.504Z
+closed: 2026-11-16T14:00:55.654Z
 ---
 
 ## Summary
@@ -110,3 +111,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head audit A-19954 / independent ledger A-19950: C1/C2 verified. A-19948 run93669eee passed at reviewed39ff848af; all67 cleanup cases/file have positive finishes, including six new escaped-group/zombie cases and all refusal/identity controls. A-19931/A-19937 independently supply10 clean full21/21 native Linux --init files, child code0/signalnull/unbounded, all identical21 passing names, sampled entry/end load>=10. Attempt4 remains raw T-1703 red/not counted under Coordinator5f8e2a0a; ten clean among11, no cleanup refusal. A-19951 preserves actual slot2 controllers/close mapping, missing slot1 source snapshot/launch hashes and physical-lock gap remain explicit. Configured6447 base tests/701 files plus separate210 load test/file passes;984 manifest paths =701 positive +266 configured-T3/17T4 deferrals, no lower/Web gap. A-19952 retains all359 prior refs,139 configured files independently matched,1 manual-C2,125 deferred,94 source refs. Exact Linux/Node/recorded browser provenance36980, no cache/skips; report-only budgets/lint/ratchet not performance pass. Full remaining integrated tiers/QA separate. Hub/Coordinator own ready/landing.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T14:00:55.654Z
+
+Merged 22abbaf227644336ba06d877ea37d21f838599c0 onto dev.

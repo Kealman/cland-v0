@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-1546
 branch: t/T-1841-heartbeat-digest-test-ts-hung-632-s-with
 created: 2026-11-13T00:27:22.788Z
-updated: 2026-11-16T13:39:29.717Z
+updated: 2026-11-16T13:51:25.324Z
 ---
 
 ## Summary
@@ -29,8 +29,9 @@ Find why the file can hang under the full T1 run on Linux (an unresolved timer o
 
 - [x] C1. The hang is located from the A-19160 log and the file's code (the file started but its only test never did, so test-process startup or import), and the item records what the log cannot settle (test).
   - done: impl-1841 · 2026-11-16T13:19:37.829Z
-- [x] C2. A test file that starts but begins no test within a named bound, well under the runner's no-output limit, fails at once with the runner's stall evidence from T-1796, not after the 10-minute stall guard (test, red before the fix); heartbeat-digest.test.ts passes five lone Linux repetitions (evidence).
-  - done: impl-1841 · 2026-11-16T13:39:13.644Z
+  - verified: rev-36 [reviewer] · run rev-36-1841-source-3 · 2026-11-16T13:51:25.324Z · commit 11eb236a624e56f4bd9f6dc12e18bca58d0d8844
+- [x] C2. A test file that starts but begins no test within a named bound, well under the runner's no-output limit, fails at once with the runner's stall evidence from T-1796, on the local suiteCommand tier path and the droplet run-suite path, not after the 10-minute stall guard (test, red before the fix); repetition children are T-1911; heartbeat-digest.test.ts passes five lone Linux repetitions (evidence).
+  - done: impl-1841 · 2026-11-16T13:48:45.301Z
 
 ## Comments
 
@@ -56,3 +57,33 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Full source audit A-20098 plus tracker-mark correction: Standards0 additional/Spec1 medium. C1 diagnosis source-established from A-19160:1981 sole file start and :1985 in-flight632s, synchronous body, exact native startup/import cause unknown; no C1 tracker verification mark is recorded because verified requires a clear verdict. Prior five lone Linux receipts A-19942 positive/heartbeat blob unchanged, not new watchdog executions. A-20097 retains121/28 normalized source sets and candidate/raw/hash/publication limits; typecheck predates final isolation edit, no exact-head verify. Local guard/test cleanup/arithmetic extraction otherwise consistent. Hold releases with this stored verdict; fresh shared-owner correction/source review before verification, no provenance rerun requested.
 
 Criteria: C2 failed (New startup watchdog is absent from the droplet/package-runner path that produced A-19160.).
+
+### rev-35 · 2026-11-16T13:47:09.716Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1841-source-2
+commit: b95ae2d9404b70fdc9aa22dc8d0227172861b08c
+scope: full
+findings: [{"severity":"medium","text":"New tierFinished awaits child close before the existing sweep(holder) normal-exit writer cleanup. If a coordinator exits with an inherited pipe writer, close waits on that writer while the cleanup owner is unreachable. phaseGuard.result only joins cleanup on guard-triggered stalls; claimant confirms no earlier normal-exit owner. Preserve cleanup-before-close and end delegation at the Coordinator-approved boundary, with the requested fake exited-parent/inherited-pipe reclaim control. This is an in-scope marker ordering regression, not deferred T-1911 implementation.","file":"hub/test/run-suite.ts","line":328}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full narrowed-C2 pass A-20105: one medium Standards finding, no additional Spec finding. Shared ordinary local/droplet guard wiring otherwise read; repetition implementation belongs to T-1911 per c4374931. Prior source/evidence/hash/consumer/capture limits retained; new two helper tests do not exercise wait-before-sweep. C1 source-established but not marked verified in not-clear verdict. Hold released for Coordinator-authorized exact delta B reported e2b120ed: preserve original sweep-before-close, document exit/timeout-cleanup marker boundary and add one fake inherited-pipe/native-exit control, then fresh source review. No Reviewer runtime.
+
+Criteria: C2 failed (Marker lifetime delta introduces a close wait before normal-exit inherited-writer cleanup, potentially hanging the runner.).
+
+### rev-36 · 2026-11-16T13:51:25.324Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1841-source-3
+commit: 11eb236a624e56f4bd9f6dc12e18bca58d0d8844
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final source review A-20112: prior close-before-sweep finding resolved per Coordinator d6c9e63b. Finish follows guarded native exit + timeout cleanup; existing sweep-before-close preserved, delegation ends before repetition waiting. Explicit finish and new native-exit/open-pipe fake controls cover outer reclaim; no other findings under c4374931 narrowed C2/T-1911 split. C1 diagnosis verified from A-19160 file-only start/632s and synchronous body; exact historical cause unknown. A-20108 candidate23/23, prior67/static and five prior-base Linux heartbeat passes with identical blob remain distinctly scoped; no configured/current watchdog execution claim. C2 waits exact-head mode-free result. No Reviewer runtime; hold released for authorized verification.
+
+Criteria: C1 verified.
