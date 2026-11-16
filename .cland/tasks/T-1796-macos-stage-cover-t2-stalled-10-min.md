@@ -2,8 +2,8 @@
 id: T-1796
 kind: task
 title: macOS stage cover T2 stalled 10 min after its last file passed (command end 1, no failing test)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1547
 branch: t/T-1796-macos-stage-cover-t2-stalled-10-min
 created: 2026-11-09T18:33:53.922Z
-updated: 2026-11-16T11:20:35.203Z
+updated: 2026-11-16T13:12:43.545Z
+closed: 2026-11-16T13:12:43.545Z
 ---
 
 ## Summary
@@ -25,9 +26,11 @@ The macOS local stage cover e50b7ddb at dev 700f88ce (A-18171) ended `exit 1; st
 - [x] C1. The stall report keeps the evidence that tells what kept the T2 command alive after its last file finished: the command still alive, or an inherited pipe writer after it exited, with bounded process names and pids captured before cleanup. A-18171's own survivor is recorded on the item as unknown, since its log has no native evidence (test).
   - verified: rev-36 [reviewer] · run rev-36-1796-final-1 · 2026-11-16T10:56:15.371Z · commit 2b2ea08a47a34306e84a1e78cf02e2608513a93f
   - done: impl-1796 · 2026-11-16T11:17:50.503Z
+  - verified: rev-36 [reviewer] · run rev-36-1796-merge-final-1 · 2026-11-16T11:48:05.386Z · commit 446d8ae90ea6b0037d0cec4e9927cc76540bec00
 - [x] C2. The stall report's "last started tests" lists only tests that started without finishing (test).
   - verified: rev-36 [reviewer] · run rev-36-1796-final-1 · 2026-11-16T10:56:15.371Z · commit 2b2ea08a47a34306e84a1e78cf02e2608513a93f
   - done: impl-1796 · 2026-11-16T11:17:50.716Z
+  - verified: rev-36 [reviewer] · run rev-36-1796-merge-final-1 · 2026-11-16T11:48:05.386Z · commit 446d8ae90ea6b0037d0cec4e9927cc76540bec00
 
 ## Comments
 
@@ -121,3 +124,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized merge-delta source audit A-19984: Standards0/Spec0. Both parents confirmed (prior clear2b2ea08a4/captureddev6e6b709de). Only manual conflict semantic matcher resolves exact union of suite-stall namespace plus execution-summary/unexecuted/incomplete-tier retention. Task command/tests unchanged; summary pointer and imported execution/interruption evidence coexist without dropping prior state. Auto docs/index retain both families. Coordinator18153b51/0c5a8fd9 one-merge plan read directly; later dev not required/remerged. A-19983 local focused5/5 task files, hung-component5/5,summary4/4,typecheck/lint completions retain candidate/raw/report-only limits. Prior configured A-19975 belongs old parent, no new-head runtime carry or criteria verification. Source clear at446d8ae90 permits required new authorized mode-free verify/window then same-head evidence settlement; historical survivor remains unknown.
+
+### rev-36 · 2026-11-16T11:48:05.386Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1796-merge-final-1
+commit: 446d8ae90ea6b0037d0cec4e9927cc76540bec00
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final audit A-20008 / independent union A-20007: run9ec39727/A-20004 passed exact reviewed446d8ae90; C1/C2 verified anew, old parent marks superseded.15 task base passes and eight new5/5 extras positive; all5 execution-inventory interaction cases and inherited mapped guards positive; selected imported executable-pathT3 two native cases/file passed once. Deduplicated6406 base test/703 file passes plus separate250 load test/file passes.987-path conservative union preserves all prior984+three additions:703 positive +267T3/17T4 deferrals, no lower/Web gap. Exact Linux/Node/browser provenance37062/execution tree652048b1 distinct from Git tree6fcc6d60; no cache/skips. A-20006 actual selection and A-19983/predecessor capture/report-only limits retained; A-19975 not carried. Historical survivor unknown, actual native stall cleanup/fullT3/T4/integrated QA unclaimed. Hub/Coordinator own ready/landing.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T13:12:43.545Z
+
+Merged f6c633fae418114e334a19f0ec4e8bea8c555292 onto dev.

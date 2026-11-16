@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1538
 branch: t/T-1697-host-agent-checkpoint-writes-share-one
 created: 2026-11-05T19:31:45.062Z
-updated: 2026-11-16T10:19:01.377Z
+updated: 2026-11-16T13:02:58.415Z
 ---
 
 ## Summary
@@ -34,16 +34,20 @@ In impl-1692's Linux container evidence (T-1692; `docker run --init`, arm64 Node
 ## Acceptance criteria
 
 - [x] C1. The failing order is named with a deterministic reproduction (test, red before the fix).
-  - done: impl-1697 · 2026-11-16T07:43:11.702Z
   - verified: rev-37 [reviewer] · run rev-37-1697-evidence-1 · 2026-11-16T08:33:11.053Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
   - verified: rev-37 [reviewer] · run rev-37-1697-final-1 · 2026-11-16T10:19:00.934Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
+  - done: impl-1697 · 2026-11-16T12:33:53.127Z
+  - verified: rev-37 [reviewer] · run rev-37-1697-final-2 · 2026-11-16T13:02:57.946Z · commit 5532c4f12c118e3622d6a30bd4e7c34a393b3f39
 - [x] C2. Concurrent checkpoints of one file never fail and never leave a partial file, and the last completed write wins (test).
-  - done: impl-1697 · 2026-11-16T07:43:31.973Z
   - verified: rev-37 [reviewer] · run rev-37-1697-evidence-1 · 2026-11-16T08:33:11.053Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
   - verified: rev-37 [reviewer] · run rev-37-1697-final-1 · 2026-11-16T10:19:00.934Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
+  - done: impl-1697 · 2026-11-16T12:33:53.295Z
+  - verified: rev-37 [reviewer] · run rev-37-1697-final-2 · 2026-11-16T13:02:57.946Z · commit 5532c4f12c118e3622d6a30bd4e7c34a393b3f39
 - [x] C3. claude-code-remote passes 10/10 under CPU load in a Linux container run with `docker run --init` (evidence).
-  - done: impl-1697 · 2026-11-16T10:16:16.059Z
   - verified: rev-37 [reviewer] · run rev-37-1697-final-1 · 2026-11-16T10:19:00.934Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
+  - done: impl-1697 · 2026-11-16T12:33:53.424Z
+  - verified: rev-37 [reviewer] · run rev-37-1697-source-3 · 2026-11-16T12:35:07.242Z · commit 5532c4f12c118e3622d6a30bd4e7c34a393b3f39
+  - verified: rev-37 [reviewer] · run rev-37-1697-final-2 · 2026-11-16T13:02:57.947Z · commit 5532c4f12c118e3622d6a30bd4e7c34a393b3f39
 
 ## Comments
 
@@ -120,5 +124,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final same-head evidence clear; C1–C3 verified. C3 uses Coordinator7d5d5de1/73d24380's explicit revised bar (10 exact-case selections at60s plus2 complete full files at325s) and final requeue authorizationf4261b26. Independently parsed A-19959 raw logs/native summaries:101–110 exactly1 required named pass each,111/201 identical45-name passing sets,100 required completed case executions; all completed nativeexit0/signalnull/no timeout/skip/cancel. Entry loads8.10–9.89 targeted and10.22/8.33 full, Linux VM/proc one-minute; full process durations284.002s/267.457s exclude Docker/copy/warmup. Linuxarm64 Docker--init/networknone/cpu4 Node24.21, no browser. Four recorded source hashes independently match pinned storage/server/entry/closure Git blobs at reviewed58f83349e. Attempts1/112 retained as incomplete,22/39 named passes and one file cancellation each/nativeexit1; excluded from C3. Historical missing-parent producer remains unproven within accepted scope. C1/C2/configured evidence A-19884 remains valid:1270b05e/A-19883 exact canonical3efbcc01925d47cdfb6557e4c27b35aeb5364ad9, uncachedLinuxx64droplet/pinnedHeadlessShell1248Chrome156.0.8078.4, T0/allT1/allT2fallback/changedT3lifecycleonce/Web green6387base+702files and240separate load tests/files. RemainingT3/T4 unexecuted there; budgets/lint report-only, QA none. No Reviewer runs/edits. A-19961 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19961-t-1697-final-revised-c3-and-same-head-verdict.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1697 · 2026-11-16T12:04:07.715Z
+
+Batch red consumer sweep follow-up (Coordinator4516573c; no commit/push until bisect verdict): rg .json.new / quoted .new across hub/test+nvim/test, then broad .new search. Actual storage-dependent fault consumer: host-prepared.test.ts:304 fixed .json.new directory, being migrated to removing the empty prepared-results directory after append completion/before sole checkpoint writer, asserting ENOENT and retaining all ownership/effect/plan assertions. Unaffected consumers: host-agent-storage unit fixtures explicitly test both unique temps and preserved legacy .new; host-agent-restart restart.new belongs to code-delivery.ts shell publication, not storage.checkpoint; host-relaunch-native processes.json.new is a synthetic staging writer testing exclusion of the entire fake-host directory, not production checkpoint basename behavior; fakes/fake-host reboot-control.<token>.new is its independent publication owner; rulebook-file.test.ts ${path}.new is its independent rulebook atomic rewrite. Remaining broad .new hits are constructors/properties/spreads, including all nvim hits. No other checkpoint-temp collision injector found. Local fix is test/docs only; production bytes unchanged.
+
+### rev-37 · 2026-11-16T12:35:07.242Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1697-source-3
+commit: 5532c4f12c118e3622d6a30bd4e7c34a393b3f39
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source refresh clear, findings []. Only host-prepared fault injector+guide changed; complete Git diff checked. Awaited native append finishes before owned empty result directory removal; sole result checkpoint then rejects ENOENT. Effect-once/fence/pending/committing-plan/incomplete-close assertions retained, no production/test-hook change. Independently confirmed old58f83349e=new5532c4f12 subtree objects:hub/src182552040ea3ba210215e7959417bd71a053c2ea,hub/bin71fb3c2513601cee41ff5fab06981034e6470a02,shared4dd8c0d3d1346cf448fa57f42f875356a0a200e8,nvim/lua5ca83848587e34aaf91c790ca95f7122c70734ee,web/srcd1f6f22428196d168fe81b76f4695bf69b3a7d23; closure blob823461d2a8132b00fc48e334e89fc838f6e52fba,C3 test4b7bed481c7550537e2c070509d5a1c5aa08d3d2. Coordinator0ebe9a71 authorizes C3 carry on this proof; refreshed C3 from A-19959/A-19961 ORIGINAL HEAD58f83349e, not new-head loaded executions. C1/C2 await fresh configured5532c4f12 run. A-20067 reports exact-head macOSarm64 Node24.21 native full host-prepared16/16 exit0/9.103s; typecheck green/lint pending at request, no configured pass claimed. No dev merge or Reviewer runs/edits. A-20069 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20069-t-1697-prepared-result-repair-source-and-authorized-c3-carry.md
+
+Criteria: C3 verified.
+
+### rev-37 · 2026-11-16T13:02:57.947Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1697-final-2
+commit: 5532c4f12c118e3622d6a30bd4e7c34a393b3f39
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final repaired-head evidence clear; C1–C3 verified. Independently reconciled af2a9ba3/A-20090 exact5532c4f12 and canonical6522edbf9156009c95dc4671e62778b4023c4814, uncachedLinuxx64 droplet Node24.21/Nvim0.12.5, pinned Headless Shell1248 Chrome156.0.8078.4. LocalT0/allT1/fallback allT2/changedT3twofiles17cases/Web passed;6403base test+703file passes,240separate load test+240file passes, zero negative finishes. Storage6names each1base+5load; closure5base; lifecycle1base; all16host-prepared named base passes/file pass including repaired completed-append durable-result failure. Exact current-head local16/16 A-20067 remains supplemental. C3 explicitly carried ORIGINAL58f83349e A-19959/A-19961 under Coordinator0ebe9a71 and unchanged production/closure/C3-test Git proof A-20069; not new-head loaded execution. Revised10target+2full receipts remain valid; incomplete1/112 excluded. C1/C2 now refreshed from current-head run; prior batch red retained history. RemainingT3/T4 unexecuted here; budgets/lint/ratchet report-only, QA none. No Reviewer runs/edits. A-20091 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20091-t-1697-final-repaired-head-configured-evidence.md
 
 Criteria: C1 verified, C2 verified, C3 verified.

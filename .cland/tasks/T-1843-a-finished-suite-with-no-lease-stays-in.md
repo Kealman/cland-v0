@@ -3,7 +3,7 @@ id: T-1843
 kind: task
 title: A finished suite with no lease stays in verify queue as an active remote run and holds a remote slot across restarts
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1543
 branch: t/T-1843-a-finished-suite-with-no-lease-stays-in
 created: 2026-11-13T12:41:29.355Z
-updated: 2026-11-16T09:55:36.688Z
+updated: 2026-11-16T12:59:53.371Z
 ---
 
 ## Summary
@@ -27,13 +27,13 @@ A suite that has finished, or whose lease and droplet are gone, leaves the activ
 ## Acceptance criteria
 
 - [x] C1. A remote run whose suite record is finished and whose lease is gone is absent from `cland verify queue` and does not count against `remote_budget`, both live and after a hub restart (test).
-  - done: impl-1843 · 2026-11-16T08:53:28.876Z
   - verified: rev-35 [reviewer] · run rev-35-1843-final-1 · 2026-11-16T09:29:13.317Z · commit ae5664ce0e9c6788bb7eb4176ca32af91766b24a
   - verified: rev-35 [reviewer] · run rev-35-1843-merge-delta-1 · 2026-11-16T09:55:24.336Z · commit f66be0d2f1818458c7d400e6fb09aff918eebc09
+  - done: impl-1843 · 2026-11-16T12:31:07.581Z
 - [x] C2. A run that ended without a posted result gets exactly one posted result naming the missing receipt, after which the heartbeat no longer lists it (test).
-  - done: impl-1843 · 2026-11-16T08:59:02.953Z
   - verified: rev-35 [reviewer] · run rev-35-1843-final-1 · 2026-11-16T09:29:13.317Z · commit ae5664ce0e9c6788bb7eb4176ca32af91766b24a
   - verified: rev-35 [reviewer] · run rev-35-1843-merge-delta-1 · 2026-11-16T09:55:24.337Z · commit f66be0d2f1818458c7d400e6fb09aff918eebc09
+  - done: impl-1843 · 2026-11-16T12:31:07.815Z
 
 ## Comments
 
@@ -141,3 +141,33 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta clear, A-19944. Coordinator575feeb6 in topic-1425 independently read: docs-only resolution verify waiver plus three merged-head checks. Parents match; own suites/test blobs unchanged; only running.md/README differ from both parent trees, documentation preserves both entries/policies. A-19941 reports sequential typecheck/lint/wording exit0 below load12; raw capture limits retained. C1/C2 prior verified evidence A-19933/A-19936 carries under explicit waiver, not fresh merged-head runtime. A-19909 remains failed history. Clean head, no Reviewer runtime/merge work; hold released.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-35 · 2026-11-16T12:34:49.692Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1843-source-5
+commit: 982d350da1750e2acdee6551366b343ff00e6c8b
+scope: full
+findings: [{"severity":"medium","text":"Proposed sixteen-file native producer has no enclosing failure owner: child-error rejection/capture exception bypasses timer clear, captured stop join, flush and terminal receipt. ownProcess(undefined,...) does not join that path; claimant confirms. Rule12: own launch/capture/completion/error/timeout through outer attempt-all finally, join captured cleanup before terminal receipt and label incomplete producer errors. Correct/review the future producer artifact before running; preserve existing normal receipts and original artifact, no provenance rerun.","file":".cland/artifacts/A-20039-t-1843-bounded-isolated-native-file-producer.mjs","line":34}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Completed A-20068 full post-bisect pass. No new committed product/test Standards or Spec finding: narrowed recovery excludes cache/legacy report-only inputs while retaining terminal timestamped recovery/refusal repair. One medium blocks proposed native producer, not the product guard. Exact red/green normal-completion receipts A-20034/36/37/38 read; A-20035 setup failure excluded. A-20027 sixteen direct T3 consumers and new configured run remain pending; C1/C2 not newly verified or failed solely for pending evidence. Correct future producer artifact without moving product head if possible, request re-review before native work. Old failed landing/bisect and precommit/capture/lock limits retained. Hold released.
+
+### rev-35 · 2026-11-16T12:42:14.886Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1843-source-6
+commit: 982d350da1750e2acdee6551366b343ff00e6c8b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear A-20072 after artifact-only A-20070/A-20071 correction; product head remains unchanged. Prior sole medium is resolved: outer launch/capture/error/signal/timeout ownership, consumed callbacks, captured-birth cleanup join, separate exact-close observation, flush before receipt, explicit incomplete outcomes and retained roots. No native failure experiment or new runtime pass claimed. Product guard/test correction remains Standards0/Spec0 as read in A-20068. C1/C2 unverified at this head; prior raw/candidate/publication/lock and failed-landing limits retained. A-20027 sixteen direct T3 consumer files remain planned. Coordinator T-1859-first ordering, later authorized dev/README merge/delta review and final-head mode-free verify remain required. Capture actual clean head/tree around future slots; caller-supplied label alone is not immutable head proof. Hold released; no final-ready claim.
+
+### impl-1843 · 2026-11-16T12:59:53.371Z
+
+Completed accepted A-20027 native-consumer plan: all16 remaining direct result-line T3 files passed at clean982d350da/tree d9e7bfdb,130/130 tests, no fail/cancel/skip/timeout/producer errors. Per-file output+native receiptsA-20073–A-20088; reconciled path/tier/provenance packetA-20089. Reviewed producerA-20070, two checked exclusive slots, isolated account/provider fixture environments; no full runtime-suite claim. T-1859-first devmerge/delta review and new final-head verification remain pending. Prior failed batch/bisect and excluded setup receipt remain history.
