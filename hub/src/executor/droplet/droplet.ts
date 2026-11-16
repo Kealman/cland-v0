@@ -15,7 +15,7 @@ import { restoreWatchdogDeletions, accountRelease, durableJson, leaseDir, liveLe
 import { testTiming, type WatchdogOptions } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots, claimSnapshotStorage, recoverPoolSnapshots } from './snapshot-recovery.ts';
-import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
+import { prepareBase, prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
 import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend, sweepProjects } from './spend.ts';
 import { DropletRun } from './run.ts';
 import type { Executor, PrepareOptions, ReapOptions, Released, RunRef } from '../executor.ts';
@@ -45,6 +45,8 @@ export class DropletExecutor implements Executor {
   #sweepState: 'idle' | 'reconciling' | 'sweeping' | 'deferred' = 'idle';
   #taggedDroplets: number | null = null;
   #keyWork = new Map<string, Promise<PrepareKey>>();
+  #inspectionWork = new Map<string, Promise<PrepareKey | null>>();
+  readonly #baseReads = new Set<Promise<string>>();
   readonly #reaps = new Set<Promise<Reaped>>();
   readonly #releases = new Map<string, Promise<Released>>();
   readonly #leaseChanges = new Map<string, Promise<unknown>>();
@@ -264,14 +266,39 @@ export class DropletExecutor implements Executor {
     }
   }
 
-  async #key(capturedProvision?: string): Promise<PrepareKey> {
+  async #key(capturedProvision?: string, local = false): Promise<PrepareKey> {
     const provision = capturedProvision ?? (await this.#config()).verification.provision;
-    let work = this.#keyWork.get(provision);
+    const identity = JSON.stringify([provision, local]);
+    let work = this.#keyWork.get(identity);
     if (!work) {
-      work = (this.dependencies.prepareKey ?? prepareKey)(this.root, this.#env, provision).finally(() => { this.#keyWork.delete(provision); });
-      this.#keyWork.set(provision, work);
+      work = (this.dependencies.prepareKey ?? prepareKey)(this.root, this.#env, provision, !local).finally(() => { this.#keyWork.delete(identity); });
+      this.#keyWork.set(identity, work);
     }
     return work;
+  }
+
+  async #inspectKey(): Promise<{ key: PrepareKey | null; base: string } | null> {
+    const provision = (await this.#config()).verification.provision;
+    // Retain a timed-out observation until a later status read consumes it.
+    // Successful consumption removes it: later reads must observe source changes.
+    let work = this.#inspectionWork.get(provision);
+    if (!work) {
+      work = this.#key(provision, true).catch(() => null);
+      this.#inspectionWork.set(provision, work);
+    }
+    // Validate only once the key is consumable. A base read started in parallel
+    // could finish before a pending old key, accepting A after the ref moved B.
+    const observation = work.then(async key => {
+      const base = (this.dependencies.prepareBase ?? prepareBase)(this.root, this.#env);
+      this.#baseReads.add(base);
+      void base.then(() => this.#baseReads.delete(base), () => this.#baseReads.delete(base));
+      return { key, currentBase: await base };
+    });
+    try {
+      const { key, currentBase } = await within(observation, 250, this.clock);
+      if (this.#inspectionWork.get(provision) === work) this.#inspectionWork.delete(provision);
+      return { key: key?.base === currentBase ? key : null, base: currentBase };
+    } catch { return null; }
   }
 
   submitPrepare(report: (text: string) => void, authorize: () => void = () => {}): { state: 'submitted'; summary: string } {
@@ -371,6 +398,8 @@ export class DropletExecutor implements Executor {
     this.#abort.abort(new Error('hub is stopping; executor lease retained for reconciliation'));
     await this.#prepareWork;
     await Promise.allSettled(this.#poolWork);
+    await Promise.allSettled(this.#inspectionWork.values());
+    await Promise.allSettled(this.#baseReads);
     await Promise.allSettled(this.#reaps);
   }
 
@@ -440,7 +469,8 @@ export class DropletExecutor implements Executor {
       const job = this.#prepareJob;
       const jobState = job?.state;
       const snapshot = await readSnapshot(this.root);
-      const key = snapshot ? await within(this.#key(), 250, this.clock).catch(() => null) : null;
+      const inspection = snapshot ? await this.#inspectKey() : null;
+      const key = inspection?.key;
       const freshness = snapshot && key ? staleParts(snapshot, key) : [];
       const freshnessText = snapshot && !key ? 'unknown (inspection deferred)' : freshness.length ? `stale: ${freshness.join('|')}` : 'current';
       const prepare = this.#prepareJob ? { ...this.#prepareJob, elapsedMs: (this.#prepareJob.finished ? Date.parse(this.#prepareJob.finished) : this.clock.now().getTime()) - Date.parse(this.#prepareJob.started) } : null;
@@ -458,7 +488,7 @@ export class DropletExecutor implements Executor {
       // A job may replace/restore the record while provider and Git reads yield.
       // Return a coherent snapshot and terminal job state from the same observation.
       if (job !== this.#prepareJob || jobState !== job?.state) continue;
-      const summary = [`executor: ${this.#sweepState}`, snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshnessText} key=${JSON.stringify({ ...snapshot.key, provision: snapshot.key.provision ?? 'none', lock: snapshot.key.lock ?? 'none' })}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}${l.attention ? `; operator attention: ${l.attention.reason === 'deletion-unconfirmed' ? 'deletion not confirmed' : l.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out' : `identity mismatch (${l.attention.fields.join(', ')})`}, provider status ${l.attention.observed.status}` : ''}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
+      const summary = [`executor: ${this.#sweepState}`, snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshnessText} local=origin/dev@${inspection?.base.slice(0, 12) ?? 'unknown'} key=${JSON.stringify({ ...snapshot.key, provision: snapshot.key.provision ?? 'none', lock: snapshot.key.lock ?? 'none' })}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}${l.attention ? `; operator attention: ${l.attention.reason === 'deletion-unconfirmed' ? 'deletion not confirmed' : l.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out' : `identity mismatch (${l.attention.fields.join(', ')})`}, provider status ${l.attention.observed.status}` : ''}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
       return { reconciliation: this.#sweepState, spend, snapshotRecovery, snapshot: snapshot ? { ...snapshot, freshness: freshnessText } : null, prepare, token, leases, todayCostUsd, taggedDroplets, ...(providerError ? { providerError } : {}), summary };
     }
   }

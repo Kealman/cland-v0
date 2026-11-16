@@ -27,10 +27,17 @@ export const sameKey = (a: PrepareKey, b: PrepareKey): boolean => a.node === b.n
 
 export async function recipeDigest(): Promise<string> { return hash(await readFile(fileURLToPath(new URL('./provision.sh', import.meta.url)))); }
 
-export async function prepareKey(root: string, env: NodeJS.ProcessEnv = process.env, capturedProvision?: string): Promise<PrepareKey> {
+/** Read the same local base ref as the key computation, without network I/O. */
+export async function prepareBase(root: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
+  const output = (await exec('git', ['rev-parse', '--verify', 'refs/remotes/origin/dev'], { cwd: root, env: machineEnv(env), timeout: 30000, maxBuffer: 1024 })).stdout.trim();
+  if (!/^[a-f0-9]{40,64}$/.test(output)) throw new Error('prepared base identity unavailable');
+  return output;
+}
+
+export async function prepareKey(root: string, env: NodeJS.ProcessEnv = process.env, capturedProvision?: string, refresh = true): Promise<PrepareKey> {
   const git = async (...args: string[]) => (await exec('git', args, { cwd: root, env: machineEnv(env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout;
-  await git('fetch', 'origin', 'dev');
-  const base = (await git('rev-parse', 'origin/dev')).trim();
+  if (refresh) await git('fetch', 'origin', 'dev');
+  const base = await prepareBase(root, env);
   const node = (await exec(process.execPath, ['--version'], { cwd: root, env: machineEnv(env), timeout: 10000 })).stdout.trim();
   if (!/^v\d+\.\d+\.\d+$/.test(node)) throw new Error('invalid Node prepare pin');
   const provisionPath = capturedProvision ?? parseConfig(await readFile(join(root, '.cland/config.toml'), 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; }), 'project', env).verification.provision;

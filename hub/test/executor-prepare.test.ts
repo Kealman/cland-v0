@@ -17,7 +17,8 @@ import { readLeases } from '../src/executor/droplet/lease.ts';
 import { DropletRun } from '../src/executor/droplet/run.ts';
 import { symlink, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { prepareKey, type Snapshot } from '../src/executor/droplet/prepare.ts';
+import { keyHash, snapshotPath, prepareKey, type Snapshot } from '../src/executor/droplet/prepare.ts';
+import { shellQuote } from '../src/executor/droplet/machine.ts';
 import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
 import { FakeClock } from './fake-clock.ts';
 import { drive } from './remote-clock.ts';
@@ -120,6 +121,36 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
   });
 });
 
+test('snapshot inspection uses only local Git commands and names the compared ref commit', async t => {
+  const root = await tempProject(t);
+  await git(root, 'init', '-q', '-b', 'dev');
+  await writeFile(join(root, 'README.md'), 'Local base\n');
+  await git(root, 'add', '.'); await git(root, 'commit', '-qm', 'Base');
+  await git(root, 'remote', 'add', 'origin', root);
+  const key = await prepareKey(root, fixtureEnvironment(root, process.env));
+  await mkdir(join(root, '.cland/run/executor'), { recursive: true });
+  await writeFile(snapshotPath(root), JSON.stringify({ image: 123, name: 'local', key, keyHash: keyHash(key), regions: ['lon1'] }));
+  const bin = join(root, 'bin'); await mkdir(bin);
+  const commands = join(root, 'git-commands');
+  const realGit = (await exec('which', ['git'], { env: fixtureEnvironment(root, process.env) })).stdout.trim();
+  await writeFile(join(bin, 'git'), `#!/bin/sh\nprintf '%s\\n' "$1" >> ${shellQuote(commands)}\ncase "$1" in fetch|ls-remote) echo 'network command refused' >&2; exit 97;; esac\nexec ${shellQuote(realGit)} "$@"\n`, { mode: 0o755 });
+  const env = fixtureEnvironment(root, process.env, { PATH: `${bin}:${process.env.PATH}` });
+  await assert.rejects(prepareKey(root, env), /network command refused/, 'positive control: default prepare refreshes');
+  await writeFile(commands, '');
+  const backend = new DropletExecutor(root, undefined, () => {}, env);
+  try {
+    const status = await eventually('local snapshot inspection completed', async () => {
+      const value = await backend.inspect();
+      return value.snapshot?.freshness === 'unknown (inspection deferred)' ? undefined : value;
+    });
+    assert.equal(status.snapshot?.freshness, 'current');
+    assert.ok(status.summary.includes(`local=origin/dev@${key.base.slice(0, 12)}`));
+    const observed = (await readFile(commands, 'utf8')).trim().split('\n');
+    assert.ok(observed.includes('rev-parse'));
+    assert.equal(observed.some(command => command === 'fetch' || command === 'ls-remote'), false);
+  } finally { await backend.close(); }
+});
+
 test('prepare keys hash committed hook bytes without Neovim fields and ignore local hook edits', async context => {
   const { wait, fixtures: t } = caseDeadlines(context);
   await wait('native hook-key controls', async () => {
@@ -195,7 +226,7 @@ test('prepare builds a reusable snapshot, reports its key and replaces it after 
     const status = await eventually('snapshot is prepared', async () => {
       const result = await ui.request({ type: 'executor.status' });
       const value = result.value as { snapshot?: { image: number; key: { node: string; lock: string; base: string }; freshness: string }; prepare?: { state: string } };
-      return value?.snapshot && value.prepare?.state !== 'running' ? value : undefined;
+      return value?.snapshot && value.prepare?.state !== 'running' && value.snapshot.freshness !== 'unknown (inspection deferred)' ? value : undefined;
     }, 15000);
     assert.equal(status.snapshot!.freshness, 'current');
     assert.equal('nvim' in status.snapshot!.key, false);

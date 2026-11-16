@@ -18,6 +18,7 @@ import { keyHash, readSnapshot, snapshotPath, type Snapshot } from '../src/execu
 import { readLeases } from '../src/executor/droplet/lease.ts';
 import { Machine } from '../src/executor/droplet/machine.ts';
 import { diagnosticResult } from '../src/hub/merge-batches.ts';
+import { defaultConfig } from '../src/init/config.ts';
 
 async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
   const root = await tempProject(t);
@@ -87,6 +88,98 @@ async function sweep<T>(f: Awaited<ReturnType<typeof fixture>>, what: string, ch
   return eventually(what, async () => { await f.clock.advance(200); return drive(f, Promise.resolve().then(check)); });
 }
 const prepare = (ui: Awaited<ReturnType<typeof connectUi>>) => ui.request({ type: 'executor.prepare' });
+
+for (const movedBeforeConsumption of [false, true]) {
+test(`snapshot inspection consumes a completed deferred key with base moved before consumption=${movedBeforeConsumption}`, async t => {
+  const f = await fixture(t);
+  await f.stop();
+  await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+  await writeFile(snapshotPath(f.root), JSON.stringify({ image: 123, name: 'prepared', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'] }));
+  const release = Promise.withResolvers<void>();
+  const entered = Promise.withResolvers<void>();
+  const completed = Promise.withResolvers<void>();
+  let first = true;
+  const backend = new DropletExecutor(f.root, undefined, () => {}, f.env, undefined, {
+    ...f.dependencies,
+    prepareBase: async () => f.key.base,
+    prepareKey: async () => {
+      if (first) { first = false; entered.resolve(); await release.promise; completed.resolve(); }
+      else await f.dependencies.wait!(300);
+      return structuredClone(f.key);
+    },
+  });
+  const observation = async (work: ReturnType<DropletExecutor['inspect']>) => {
+    let value: Awaited<typeof work> | undefined;
+    void work.then(result => { value = result; });
+    return eventually('inspection result published', async () => {
+      await f.clock.advance(250);
+      return value;
+    });
+  };
+  try {
+    const inspecting = backend.inspect();
+    await eventually('inspection entered held key computation', () => entered.promise.then(() => true));
+    await f.clock.advance(250);
+    assert.equal((await inspecting).snapshot?.freshness, 'unknown (inspection deferred)');
+    release.resolve();
+    await completed.promise;
+    if (movedBeforeConsumption) f.moveBase();
+    // A new computation is deliberately also slower than the exact status budget.
+    // The completed observation must be consumed, rather than discarded/restarted.
+    const next = backend.inspect();
+    const current = await observation(next);
+    if (movedBeforeConsumption) {
+      assert.notEqual(current.snapshot?.freshness, 'current', 'an old deferred key cannot claim current after the base moves');
+      return;
+    }
+    assert.equal(current.snapshot?.freshness, 'current');
+    assert.ok(current.summary.includes(`local=origin/dev@${f.key.base.slice(0, 12)}`));
+    f.moveBase();
+    const changed = backend.inspect();
+    await observation(changed);
+    // If the changed read was deferred, its next observation must still be stale.
+    const stale = backend.inspect();
+    const value = await observation(stale);
+    assert.equal(value.snapshot?.freshness, 'stale: base');
+  } finally { release.resolve(); await backend.close(); }
+});
+}
+
+test('snapshot inspection validates the base after a pending key becomes consumable', async t => {
+  const f = await fixture(t);
+  await f.stop();
+  await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+  await writeFile(snapshotPath(f.root), JSON.stringify({ image: 123, name: 'prepared', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'] }));
+  const keyEntered = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const inspectionEntered = Promise.withResolvers<void>();
+  let observing = false;
+  const backend = new DropletExecutor(f.root, undefined, () => {}, f.env, () => {
+    if (observing) inspectionEntered.resolve();
+    return defaultConfig('inspection');
+  }, {
+    ...f.dependencies,
+    prepareKey: async () => { const captured = structuredClone(f.key); keyEntered.resolve(); await release.promise; return captured; },
+    prepareBase: async () => f.key.base,
+  });
+  try {
+    const deferred = backend.inspect();
+    await eventually('held key computation entered', () => keyEntered.promise.then(() => true));
+    await f.clock.advance(250);
+    assert.equal((await deferred).snapshot?.freshness, 'unknown (inspection deferred)');
+    observing = true;
+    const inspecting = backend.inspect();
+    await eventually('second inspection captured applied configuration', () => inspectionEntered.promise.then(() => true));
+    // Drain ready continuations without advancing the budget: the old parallel
+    // validation can capture A here while the admitted key is still held.
+    await f.clock.advance(0);
+    f.moveBase();
+    release.resolve();
+    const status = await inspecting;
+    assert.equal(status.snapshot?.freshness, 'unknown (inspection deferred)');
+    assert.ok(status.summary.includes(`local=origin/dev@${f.key.base.slice(0, 12)}`));
+  } finally { release.resolve(); await backend.close(); }
+});
 
 test('prepare is a hub-owned control reserved for the human and Coordinator', async t => {
   const root = await tempProject(t);

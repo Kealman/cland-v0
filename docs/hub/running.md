@@ -431,6 +431,14 @@ rollback to the old image.
 ids, sizes, regions, ages and deadlines, whether each watchdog is alive, today's
 spent and reserved USD against the daily cap, the shared ledger path, and the
 number of droplets tagged `cland`.
+Snapshot freshness compares against the local `refs/remotes/origin/dev` commit;
+the snapshot status line names it as `local=origin/dev@<short SHA>` (or `unknown`
+when inspection is deferred). Status never fetches or runs `ls-remote`. A key
+read that exceeds 250 ms continues in the background for one later observation;
+consumption checks the local base again and discards a key from an older base.
+`current` therefore means current against that named local commit. Remote changes
+become visible when the local ref refreshes; `executor prepare` still fetches
+`origin dev` by default before preparing its key and snapshot.
 `cland executor reap [--json]` deletes this project's tagged droplets with no live
 lease, and unowned `cland` droplets past their lifetime plus ten minutes. Known
 leases use their own recorded deadline: a short-lived scratch hub preserves a

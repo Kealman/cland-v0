@@ -130,6 +130,10 @@ Host checkout checkpoint acquisition uses the existing bounded backoff for up to
 
 Public cross-host relaunch admission uses the same checkout checkpoint policy before adapter drain: acquire with the bounded backoff, then refresh task eligibility, destination registration and exact row ownership before admission. Prune observes Host state first and refreshes row, tip, leases and synchronous item eligibility after those asynchronous observations, immediately before cleanup admission. An item reopened during an occupant query retains its branch and removing checkpoint.
 
+Executor status compares snapshot freshness to local `refs/remotes/origin/dev`,
+names its short commit as `local=origin/dev@<SHA>`, and never fetches. Preparation
+still fetches `origin dev` by default. See [executor status](../docs/hub/running.md).
+
 Executor images support an optional `[verification] provision` repository script, run
 as root before runner preparation. Snapshot keys include the running recipe and
 committed hook digests; see [prepared snapshots](../docs/hub/running.md#controls-and-the-prepared-snapshot).

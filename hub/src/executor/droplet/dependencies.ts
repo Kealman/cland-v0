@@ -9,7 +9,7 @@ import { machineEnv, type Machine } from './machine.ts';
 import type { runBundle, DropletRun } from './run.ts';
 import { armWatchdog, stopWatchdog, watchdogAlive } from './watchdog.ts';
 import type { HostGate, RunRef } from '../executor.ts';
-import type { prepareBundle, prepareKey } from './prepare.ts';
+import type { prepareBase, prepareBundle, prepareKey } from './prepare.ts';
 
 export type Provider = Pick<DigitalOceanApi, keyof DigitalOceanApi>;
 export type MachineTransport = Pick<Machine, keyof Machine>;
@@ -34,6 +34,7 @@ export type DropletDependencies = {
   run?: RemoteRun;
   host?: typeof processHost;
   prepareKey?: typeof prepareKey;
+  prepareBase?: typeof prepareBase;
   prepareBundle?: typeof prepareBundle;
   runBundle?: typeof runBundle;
 };
