@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1538
 branch: t/T-1697-host-agent-checkpoint-writes-share-one
 created: 2026-11-05T19:31:45.062Z
-updated: 2026-11-16T08:33:11.053Z
+updated: 2026-11-16T09:06:39.141Z
 ---
 
 ## Summary
@@ -91,3 +91,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Partial evidence settlement: C1/C2 verified, C3 pending/unverified, not final item settlement. Independently reconciled A-19883/run1270b05e at source-clear58f83349e and canonical tree3efbcc01925d47cdfb6557e4c27b35aeb5364ad9; uncached Linux x64 droplet Node24.21/Nvim0.12.5, pinned Headless Shell1248 Chrome156.0.8078.4. T0/allT1/fallback allT2/changedT3 lifecycle once/Web complete.6387 base test+702 file passes; separate240 load test+240 file passes; no negative finishes. Each six storage generated names has1 base+5 load passes; closure5 base; new lifecycle1 base pass/file receipt. RemainingT3/T4 not run here; budgets/lint/ratchet report-only. A-19856 red/green plus exact-head receipts establish C1/C2; historical missing-parent producer still unproven. C3's10 loaded full-file Linux Docker --init repetitions remain separate. No Reviewer runs/edits. A-19884 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19884-t-1697-configured-evidence-c1-and-c2-c3-pending.md
 
 Criteria: C1 verified, C2 verified.
+
+### impl-1697 · 2026-11-16T09:06:39.141Z
+
+C3 disposition/revised acceptance from Coordinator decisions7d5d5de1 and73d24380 (2026-11-16): (a)10 loaded Linux Docker --init runs, entry one-minute load>=8, of originally failing case 'lost native release reply settles without replaying native stop', selected via --test-name-pattern, each bounded60s; (b)2 full-file loaded claude-code-remote.test.ts runs bounded325s (file allowance), all cases passing. Same reviewed58f83349e. Original C3 ten full files is superseded by this explicit decision. No CPU-priority tuning. Initial load prerequisite attempt ran no test. Sample1 at entryload8.04/post11.54 was cut at generic180s while progressing:22 case passes, file cancelled1/native exit1; target case passed7.925692545s. It is INCOMPLETE at the file bound, not a checkpoint failure, and counts toward neither revised part. Full raw receipt will be preserved; no checkpoint ENOENT was observed. Repetitions resume in queued slot after impl-1731.

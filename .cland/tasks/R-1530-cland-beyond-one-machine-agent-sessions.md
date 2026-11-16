@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T18:03:30.138Z
-updated: 2026-11-16T07:02:52.248Z
+updated: 2026-11-16T09:16:11.354Z
 closed: 2026-11-16T06:16:41.451Z
 ---
 
@@ -210,3 +210,7 @@ Retrospective of the v0.4.0 run:
 - Coordinator retro: A-19803, `.cland/artifacts/A-19803-v0-4-0-r-1530-coordinator-retrospective-where-the-time-and-the-digitalocean-mone.md`. It has the timeline per epic, the time budget, droplet spend by occasion, day and epic window, the incidents, the decisions, ranked changes and a reconciliation with cland-impl's figures.
 - The human's HTML overview, by cland-impl: claude.ai artifact AzfEFdvyR3T1ifQWAqgu5d.
 - Post-release QA: clear, A-19801.
+
+### coord · 2026-11-16T09:16:11.354Z
+
+Correction to the Coordinator retro A-19803, §1 and §4.6: "41 of 122 covers were not green" mixes two counts. Measured: 41 of 122 went red (29 of 63 macOS and 12 of 59 Linux), plus 1 Linux timeout and 2 undelivered Linux runs, so 44 of 122 were not green. The macOS share (29 of 63, 46 %) and every other figure are unchanged. Found while reviewing the v0.4 build-log article, 2026-11-16.

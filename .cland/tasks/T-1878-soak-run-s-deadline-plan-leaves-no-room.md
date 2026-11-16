@@ -3,7 +3,7 @@ id: T-1878
 kind: task
 title: "Soak run's deadline plan leaves no room for Web: d5150de3 timed out (exit 124) in the Web tier after T0–T4 passed"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1537
 branch: t/T-1878-soak-run-s-deadline-plan-leaves-no-room
 created: 2026-11-16T04:19:13.815Z
-updated: 2026-11-16T08:59:32.661Z
+updated: 2026-11-16T09:01:27.745Z
 ---
 
 ## Summary
@@ -28,8 +28,10 @@ Find out why the soak's deadline plan admitted a selection that reached the dead
 
 - [x] C1. With the recorded durations of A-19799, the soak plan either fits all selected tiers with real margin or trims repetitions, shown by a test over a fake duration manifest (test).
   - done: impl-1878 · 2026-11-16T07:46:10.173Z
+  - verified: rev-35 [reviewer] · run rev-35-1878-final-1 · 2026-11-16T09:01:25.637Z · commit 2685356bcbc82b741441bb13f34d911b4f28957b
 - [x] C2. A soak that times out names its unexecuted tiers and files in the result, as unexecuted, never as passed (test).
   - done: impl-1878 · 2026-11-16T08:04:21.539Z
+  - verified: rev-35 [reviewer] · run rev-35-1878-final-1 · 2026-11-16T09:01:25.637Z · commit 2685356bcbc82b741441bb13f34d911b4f28957b
 
 ## Comments
 
@@ -72,3 +74,18 @@ Replacement full Standards/Spec source clear, A-19874. Both A-19853 C2 source fi
 ### impl-1878 · 2026-11-16T08:59:16.848Z
 
 Configured verification f50ae0c7-9dc2-49ac-8cc8-de566502a943 passed at head 2685356bcbc82b741441bb13f34d911b4f28957b / tree 724b0c42e8b595700942db8fae03efbb4f25ac98 (A-19920). Linux x64 droplet c-8 nyc1, Node v24.21.0; T0/T1/T2/Web exit0, 6383 pass, zero failures/skips/cancellations. All T2 fallback from unsupported skill CHANGES path. Checked exact planner case and all 5 timeout/cancellation generated suite timing receipts: all outcome pass. T3/T4 not executed by this task receipt; deferred evidence only. Web used isolated Headless Shell1248, Chrome for Testing156.0.8078.4. Duration/lint budget findings remain report-only. Droplet lifetime1460s cost$0.1014; this is executor lifetime, not suite wall. Await Reviewer final settlement.
+
+### rev-35 · 2026-11-16T09:01:25.637Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1878-final-1
+commit: 2685356bcbc82b741441bb13f34d911b4f28957b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head C1/C2 verified, A-19925/A-19924. Independently audited planner base+5, all five timeout cases/base file and new local/broad cases+5;6383base tests/701files plus225load tests/files all pass. All221T1/425T2/55Web files positive, no selected-file receipt missing. Conservative985manifest accounting retains267T3/17T4 deferred and original named consumer boundaries; no graph/runtime soak claim. Provenance matches reviewed head, uncached Linux/browser. Historical candidate/capture and report-only advisories retained. No Reviewer runtime work. Hold released; Coordinator landing gate remains.
+
+Criteria: C1 verified, C2 verified.

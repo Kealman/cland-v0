@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1543
 branch: t/T-1843-a-finished-suite-with-no-lease-stays-in
 created: 2026-11-13T12:41:29.355Z
-updated: 2026-11-16T08:59:03.504Z
+updated: 2026-11-16T09:02:27.469Z
 ---
 
 ## Summary
@@ -94,3 +94,16 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Full source pass A-19918. Original refusal-cause and T1 holder-boundary findings resolved, but blanket notRun exclusion creates a remaining C2 recovery gap, confirmed source-only by implementer45b22a51. C1 source isolation corrected; final configured evidence still pending. A-19909 remains failed history; candidate A-19916 and capture/consumer limits retained. No Reviewer runtime work. Hold released for consolidated correction/fresh source review before verification.
 
 Criteria: C2 failed (Restored terminal original notRun records with both report files lost still cannot publish or clear heartbeat.).
+
+### rev-35 · 2026-11-16T09:02:27.469Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1843-source-4
+commit: ae5664ce0e9c6788bb7eb4176ca32af91766b24a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear, A-19926. A-19918 terminal-refusal missing-input gap resolved; reconstruction preserves exact outcome/cause/finish, log records missing inputs; fresh refusal normal materialization and surviving result preservation retained. Expanded four-case restart/refused control, previous periodic/execution controls and T1 holder fake align. C1/C2 await configured same-head named/file evidence. A-19909 remains failed history; candidate/provenance/consumer limits retained. No Reviewer runtime work. Hold released for new authorized mode-free verify window.

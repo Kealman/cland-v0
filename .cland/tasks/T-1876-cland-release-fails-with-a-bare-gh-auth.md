@@ -3,7 +3,7 @@ id: T-1876
 kind: task
 title: cland release fails with a bare "gh auth failed (ENOENT)" when the hub's PATH has no gh; doctor doesn't check gh on the hub's PATH
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1535
 branch: t/T-1876-cland-release-fails-with-a-bare-gh-auth
 created: 2026-11-15T23:29:25.796Z
-updated: 2026-11-16T08:23:48.881Z
+updated: 2026-11-16T09:07:30.666Z
 ---
 
 ## Summary
@@ -28,8 +28,10 @@ When a release tool isn't found (ENOENT), the release error says which binary is
 
 - [x] C1. A release whose hub PATH lacks `gh` refuses with a message naming `gh`, the hub's PATH and the restart fix (test).
   - done: impl-1876 · 2026-11-16T07:40:05.621Z
+  - verified: rev-35 [reviewer] · run rev-35-1876-final-1 · 2026-11-16T09:07:30.478Z · commit ec6da8d1e3c4e36720efdf6781ecae158268239a
 - [x] C2. `cland doctor` warns when `web_bundle` is on and `gh` isn't on the hub's PATH, with the fix, and makes no network call (test).
   - done: impl-1876 · 2026-11-16T08:18:24.513Z
+  - verified: rev-35 [reviewer] · run rev-35-1876-final-1 · 2026-11-16T09:07:30.478Z · commit ec6da8d1e3c4e36720efdf6781ecae158268239a
 
 ## Comments
 
@@ -83,3 +85,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Consolidated full Standards/Spec source clear, A-19881. Both prior source findings resolved, including pre-acquisition whole-sequence ownership, late-root guard, fenced steps and deterministic held-work control. Product PATH correction unchanged. C1/C2 remain pending configured same-head named/file evidence; prior inline native 2/2 is not a final-head receipt. E-1882 and historical capture limits retained. No Reviewer runtime work. Hold released for authorized mode-free verification window.
+
+### rev-35 · 2026-11-16T09:07:30.478Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1876-final-1
+commit: ec6da8d1e3c4e36720efdf6781ecae158268239a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head C1/C2 verified, A-19929/A-19928. All5doctor cases ordinary+5; held-work ordinary+5; actual changedT3 native2/2 plus whole file pass on final head.6388base tests/702files and240separate load tests/files all positive; all220T1/426T2/1changedT3/55Web files pass. Preserved all404 A-19850 paths and conservative manifest/helper superset1209, zero missing selected files; broader267T3/17T4 deferred. Prior E-1882/candidate capture/withdrawn-head history remains scoped. Report-mode advisories not enforcement passes. No Reviewer runtime work. Hold released; Coordinator landing gate remains.
+
+Criteria: C1 verified, C2 verified.
