@@ -2,8 +2,8 @@
 id: T-1867
 kind: task
 title: Closed-item wording lint skips .mdx site pages
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1559
 branch: t/T-1867-closed-item-wording-lint-skips-mdx-site
 created: 2026-11-15T08:06:05.841Z
-updated: 2026-11-16T15:36:12.023Z
+updated: 2026-11-16T18:48:23.316Z
+closed: 2026-11-16T18:48:23.316Z
 ---
 
 ## Summary
@@ -86,3 +87,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear A-20221 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20221-t-1867-final-same-head-mdx-lint-evidence-verdict.md with A-20220 conservative991manifest-row ledger. C1verified: exact-head A-20217 actual host T0 fixture diagnostics pass87, expanded792docs/1911items/0findings88, T0exit0 at104. Source-reviewed production-pattern MDX positive/multiline/ASI/comment/following-prose controls thereby executed, not inferred only from aggregate.6431ordinary test passes/705files, separate210load passes/files,0fail/cancel/skip; allT1/T2/Web pass;269T3/17T4deferred. Exact provenance and actual browser checked; report-only budget/lint/known prerequisite warnings retained, no performance-gate claim. A-20173/A-20187 candidate/raw/hash limits and pinned historical QA counts retained. Hold released; Coordinator owns ready/enqueue/landing. No Reviewer runtime/live publication.
 
 Criteria: C1 verified.
+
+### coord · 2026-11-16T18:48:23.316Z
+
+Merged 020aef2e09bb5c5d929c1ffdc99ef4c9a2207715 onto dev.

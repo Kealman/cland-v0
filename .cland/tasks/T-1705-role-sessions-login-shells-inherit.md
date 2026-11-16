@@ -3,7 +3,7 @@ id: T-1705
 kind: task
 title: Role sessions' login shells inherit DIGITALOCEAN_TOKEN from the human's shell startup file despite the launch credential filter
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ found_by: qa
 topic: topic-1552
 branch: t/T-1705-role-sessions-login-shells-inherit
 created: 2026-11-06T10:31:30.250Z
-updated: 2026-11-16T16:10:54.194Z
+updated: 2026-11-16T22:09:50.618Z
 ---
 
 ## Summary
@@ -43,13 +43,15 @@ Containment for the QA run: qa-678 scanned 1,236 scratch files (with a positive 
 ## Acceptance criteria
 
 - [x] C1. The hub reads the provider token from its own secret store with no provider credential in its environment, cland doctor warns, names only, when a planted shell startup file exports a provider credential, and a role session's tool shell started the way the harness starts it has zero provider credential names once no startup file exports one (test, red before the fix).
-  - done: impl-1705 · 2026-11-16T14:40:13.589Z
   - verified: rev-35 [reviewer] · run rev-35-1705-final-1 · 2026-11-16T15:14:05.341Z · commit 67f2473c4e950cb34d8c4572470da856a7d33f79
   - verified: rev-35 [reviewer] · run rev-35-1705-merge-1 · 2026-11-16T16:07:53.462Z · commit af14a01115b3d68ca539eba0f0c701ba37beffcc
+  - done: impl-1705 · 2026-11-16T20:48:12.970Z
+  - verified: rev-35 [reviewer] · run rev-35-1705-final-2 · 2026-11-16T21:27:32.815Z · commit 41fe64e8a86a5a853e130186e1f337fb7b67ea3c
 - [x] C2. The chosen approach and any setup step for the human are documented (docs).
-  - done: impl-1705 · 2026-11-16T14:40:13.736Z
   - verified: rev-35 [reviewer] · run rev-35-1705-final-1 · 2026-11-16T15:14:05.341Z · commit 67f2473c4e950cb34d8c4572470da856a7d33f79
   - verified: rev-35 [reviewer] · run rev-35-1705-merge-1 · 2026-11-16T16:07:53.462Z · commit af14a01115b3d68ca539eba0f0c701ba37beffcc
+  - done: impl-1705 · 2026-11-16T20:48:13.090Z
+  - verified: rev-35 [reviewer] · run rev-35-1705-final-2 · 2026-11-16T21:27:32.815Z · commit 41fe64e8a86a5a853e130186e1f337fb7b67ea3c
 
 ## Comments
 
@@ -171,3 +173,49 @@ Enqueued at af14a0111 under the rule 6 docs-only waiver. The full mode-free veri
 - `npm run test:lint` 0 refusals;
 - closed-item wording lint: 793 documents, 0 findings.
 No new verify; the merge-queue batch adds T1+T3 on the integrated tree.
+
+### hub · 2026-11-16T20:35:53.660Z
+
+Merge-delta assessment (report-only)
+{"reviewed":"af14a01115b3d68ca539eba0f0c701ba37beffcc","head":"a648fa5d991fd586c9fea0dcbe24d8ab593bf268","dev":"020aef2e09bb5c5d929c1ffdc99ef4c9a2207715","mergeBase":"b57847bca2c2ebd9beb8e62651bd49faa9e8d97e","mode":"report","rule":"conservative-runtime-coupling-v1","result":"overlapping","branchPaths":[".agents/skills/implement/CHANGES/T-1705-provider-credentials.md",".agents/skills/implement/SKILL.md","docs/agents/secrets.md","docs/agents/tests/hub-test-doctor-hosts.test.ts.md","docs/agents/tests/hub-test-secrets-environment.test.ts.md","docs/agents/tests/hub-test-secrets.test.ts.md","docs/agents/tests/hub-test-state-paths-lint.test.ts.md","docs/agents/tests/index.md","docs/hub/cland-doctor.md","docs/hub/cland-setup.md","docs/hub/host-providers.md","docs/hub/project-secrets.md","docs/hub/provider-credential-migration.md","docs/hub/running.md","hub/README.md","hub/src/cli/doctor.ts","hub/src/cli/usage/doctor.ts","hub/src/cli/usage/secret.ts","hub/src/cli/usage/setup.ts","hub/src/doctor/hosts.ts","hub/src/doctor/shell-credentials.ts","hub/src/host/provider-tokens.ts","hub/src/hub/daemon.ts","hub/src/remote/secrets.ts","hub/src/setup/steps/hosts.ts","hub/test/doctor-hosts.test.ts","hub/test/durations.json","hub/test/fixtures/cli-usage/commands.json","hub/test/secrets-environment.test.ts","hub/test/secrets-fixture.ts","hub/test/secrets-resolution.test.ts","hub/test/secrets.test.ts","hub/test/setup-hosts.test.ts","hub/test/state-paths-inventory.ts","hub/test/state-paths-lint.test.ts","site/src/content/docs/docs/hosts.md","site/src/content/docs/docs/verification-and-release.mdx","site/test/hosts-docs.test.ts"],"devPaths":[".agents/skills/implement/CHANGES/T-1867-mdx-wording.md",".agents/skills/implement/SKILL.md",".agents/skills/qa/CHANGES/T-1861-guide-references.md",".agents/skills/qa/SKILL.md",".agents/skills/qa/qa-demo-policy.ts",".cland/tasks/E-1883-merge-queue-verification-delivery-and.md",".cland/tasks/E-1885-sessions-the-hub-and-recovery-0-4-1.md",".cland/tasks/T-1637-a-request-frame-that-fails-validation-is.md",".cland/tasks/T-1640-hub-lock-readers-test-ts-calls.md",".cland/tasks/T-1665-the-publication-scanner-flags-test.md",".cland/tasks/T-1705-role-sessions-login-shells-inherit.md",".cland/tasks/T-1725-the-duration-manifest-check-reports.md",".cland/tasks/T-1764-one-pending-sub-agent-permission-prompt.md",".cland/tasks/T-1768-projecthub-t2-fixtures-reach-native.md",".cland/tasks/T-1812-a-spoke-that-starts-while-the-hub-is.md",".cland/tasks/T-1816-startserver-s-port-retry-spins-without.md",".cland/tasks/T-1841-heartbeat-digest-test-ts-hung-632-s-with.md",".cland/tasks/T-1843-a-finished-suite-with-no-lease-stays-in.md",".cland/tasks/T-1861-qa-lint-reads-a-per-test-docs-path-test.md",".cland/tasks/T-1867-closed-item-wording-lint-skips-mdx-site.md",".cland/tasks/T-1904-hub-status-component-test-ts-fails-4-8.md",".cland/tasks/T-1907-cland-verify-times-out-at-15-s.md",".cland/tasks/T-1915-t2-files-whose-native-cli-reads-the-hub.md",".cland/tasks/T-1916-a-remote-run-still-marked-running-whose.md",".cland/tasks/T-1917-hub-lock-readers-test-ts-still-reports.md",".cland/tasks/T-1918-suite-admission-responsive-test-ts.md",".cland/tasks/T-1919-each-injection-completion-rebuilds-every.md",".cland/tasks/T-1920-the-publication-scanner-s-header-context.md",".cland/tasks/T-1921-a-transient-git-failure-in-the-landing.md",".cland/tasks/T-1922-when-pgrep-fails-while-exiting-0-macos.md",".cland/tasks/T-204-incident-log-lost-suite-runs-and-stalled.md","docs/agents/qa-brief-lint.md","docs/agents/qa-demo-recording.md","docs/agents/tests.md","docs/agents/tests/hub-test-duration-duplicates.test.ts.md","docs/agents/tests/hub-test-opencode-host.test.ts.md","docs/agents/tests/hub-test-qa-demo-policy.test.ts.md","docs/agents/tests/hub-test-qa-lint-build.test.ts.md","docs/agents/tests/hub-test-qa-lint.test.ts.md","docs/agents/tests/hub-test-remote-docs.test.ts.md","docs/agents/tests/hub-test-suite-duration-budget.test.ts.md","docs/agents/tests/hub-test-suite-duration-context.test.ts.md","docs/agents/tests/index.md","docs/hub/adapters-and-sessions.md","docs/hub/running.md","hub/README.md","hub/src/adapters/opencode/server.ts","hub/src/cli/qa-lint.ts","hub/src/cli/usage/qa-lint.ts","hub/src/qa-lint-references.ts","hub/src/suite-duration-context.ts","hub/src/suite-durations.ts","hub/src/suite-shards.ts","hub/src/tracker/tracker.ts","hub/test/duration-duplicates.test.ts","hub/test/fixtures/cli-usage/commands.json","hub/test/lint-closed-item-wording.ts","hub/test/lint-tests.ts","hub/test/opencode-host.test.ts","hub/test/qa-demo-policy.test.ts","hub/test/qa-lint-build.test.ts","hub/test/qa-lint.test.ts","hub/test/suite-duration-budget.test.ts","hub/test/suite-duration-context.test.ts","hub/test/tiers.json","site/src/content/docs/docs/items.mdx"],"overlap":[".agents/skills/implement/SKILL.md","docs/agents/tests/index.md","docs/hub/running.md","hub/README.md","hub/test/fixtures/cli-usage/commands.json"],"dependency":{"status":"unknown","reason":"import graph incomplete or budget exceeded"},"patchIdCurrent":true}
+Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove behavioral independence.
+
+### impl-1705 · 2026-11-16T20:39:43.409Z
+
+Post-bisect diagnosis at authorized current-dev merge a648fa5d9: minimal native C1/C2 ready/reopen case reproduced original assertion (startup restores durable machine address; actual undefined/expected true), exit1. Root cause candidate confirmed by source: serveProject now clones the supplied env for private provider resolution; projectHub still returns its old supplied env as hostEnvironment. Startup restores fake membership on private runtime env; test sees stale caller env. Runtime join tests write membership into stale caller env while registry/carrier reads private env. Missed T3 consumers: host-create-ready.test.ts (reopen, direct create/settlement/held readiness), host-runtime-join.test.ts (dynamic admission/reopen). Related shared helper consumers and createHostRegistry injection owners being inventoried before correcting helper view. No credential value read; no real provider/network.
+
+### impl-1705 · 2026-11-16T20:44:28.791Z
+
+Rule20 correction: the missed contract was object identity/live runtime updates, not only credential names or reply fields. serveProject legitimately owns a private env copy; projectHub.hostEnvironment must expose that actual host-registry env, not the original launch input. Existing createHostRegistry seam now captures the authoritative env while honoring injected factories; no Daemon/wire API addition or production credential-isolation reversal. Direct consumer sweep (normalized tiers): T3 host-create-ready, host-runtime-join, fixture-socket-lifecycle, host-destroy-native; T2 secrets, host-create-admission, doctor-hosts, session-pool-placement, web-hosts-authority, host-stop, host-status; Web hosts-view, hosts. All migrate via shared projectHub helper view; custom factory observer remains honored. Two failing T3 files now unchanged12/12+5/5 at919b5b234; other2 T3 and Web runtime not locally rerun, deferred to configured/batch selection. Historical QA E-1537-stage-1 uses this fixture and remains pinned, not rewritten. Before this correction the broad conservative transitive ledger did not establish migration of these mutable-identity consumers.
+
+### rev-35 · 2026-11-16T20:51:45.649Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1705-source-4
+commit: 41fe64e8a86a5a853e130186e1f337fb7b67ea3c
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Post-bisect complete5-file correction/context clear A-20384. Existing registry factory seam captures authoritative private runtime env, preserves custom factory/default function/return semantics and exposes it via hostEnvironment; production credential copy/filtering not reverted, no Daemon/wire additions. Expanded existing owned secretSequence case checks both live mutation directions/custom factory and retains provider-store assertions; three guides explain identity boundary. Coordinator239d1f98 merge/fix authorization checked; no runtimefix waiver. A-20383 retains exactred at mergeda648, unchanged native12/12+5/5 at919, doc-only paragraph delta to41fe and7T2files68/68 at41fe. FourT3/sevenT2/twoWeb+QA/production inventory corrects earlier missed mutable-identity semantics;2otherT3/Web unexecuted/deferred. Native/tool-return/raw/hash/signal/source-linkage limits and prior batch/bisect/oldgreen history retained; current request completes root static checks exit0/report-only122/0refusals. C1/C2done/unverified pending new exacthead configured result, human migration waits landing. Hold released; new mode-free verify only in newly authorized Coordinator window, then evidence settlement. No Reviewer runtime.
+
+### rev-35 · 2026-11-16T21:27:32.815Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1705-final-2
+commit: 41fe64e8a86a5a853e130186e1f337fb7b67ea3c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Post-bisect final evidence clear A-20392 with A-20391 current named receipts/1103-path conservative ledger. Exact reviewed41fe64e8a remains clean; configured d2d251c4/A-20385 same-head green:6592ordinary passes/715files,0fail/cancel,4explicit /bin/zsh prerequisite skips; separate230load passes/files. Required store+both live-env mutation directions, names-only doctor, held-work and narrow HOME inventory cases ordinary+5positive. All224T1/428fallbackT2/55Web and8selectedT3files102passing identities complete;261T3/17T4unexecuted. All7 direct T2 and2Web consumers positive. Formerly failing host-create-ready12/12/runtime-join5/5 remain separate nativeMac919 receipts with doc-only finaldelta; no Linux receipt inferred. OlderMac six shell-mode emulations stay historical at687 with unchanged commands/helper/filter/work and newer inherited cleanup explicitly qualified;4Linuxzsh skips are not passes, no installed native-harness/human migration claim. Exact provenance/actualbrowser checked; budgets/lint/ratchet/skipchecks report mode retained. Prior batch red, bisect, failed inventory and original raw/hash/signal/search limits preserved. C1/C2verified under approved human-only migration/no-mandatory-isolation scope. Hold released; Coordinator owns enqueue/landing and deferred human credential migration. No Reviewer runtime.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1705 · 2026-11-16T22:09:50.531Z
+
+Authorized post-batch merge6579171d9 (parents41fe64e8a+0e093db62), sole conflict harness.ts resolved with final normalized option/identity/process defaults + dispose API + live runtimeEnvironment capture. Root typecheck, whole-source test:lint, separate wording all exit0; report-only122/0refusals,804docs0wording. Targeted localMacNode24.21T2:98pass/12files; unchanged incoming hub-priority1fail, Coordinator independently confirmed dev regressionT-1923 and directed no T-1705 fix. A-20397 captures available output, counts, limits; typecheck load correction supplement preserves distinction. Native slot and configured verify remain pending restart/window; no merged-head full runtime pass claimed. Clean/pushed. C1/C2done remain; prior verified marks stale atnewhead. Requesting merge-delta source review.

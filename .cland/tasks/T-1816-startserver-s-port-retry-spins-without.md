@@ -2,8 +2,8 @@
 id: T-1816
 kind: task
 title: startServer's port retry spins without bound when freePort keeps returning an already-attempted port
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1562
 branch: t/T-1816-startserver-s-port-retry-spins-without
 created: 2026-11-11T18:14:27.445Z
-updated: 2026-11-16T17:08:42.572Z
+updated: 2026-11-16T18:47:14.267Z
+closed: 2026-11-16T18:47:14.267Z
 ---
 
 ## Summary
@@ -85,3 +86,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final exact-head evidence clear, C1/C2 verified; A-20302. Independently matched 7e37f560/A-20300 provenance/canonical tree6f907682a45c43a762a640660bc060c5994f2187 to reviewed head; each exact port-regression case has ordinary pass +five recorded load passes/5of5, full Host14/14+file. HostT0/allT1/fallbackallT2/Web exit0, hub6465pass/0fail/cancel/skip/todo. Linuxx64 droplet Node24.21/Nvim0.12.5; actual HeadlessShell1248/CfT156.0.8078.4, uncached. T3/T4 unexecuted/deferred; budgets/lint/ratchet report-only. Earlier A-20262 transport failure/incomplete marks retained as history, no new source change. Scripted Host proof not native OpenCode binary evidence. Standards/Spec clear; findings[]. No Reviewer runtime.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T18:47:14.267Z
+
+Merged 2a5df555f66b85901a7995d78dd56a74f495a93f onto dev.

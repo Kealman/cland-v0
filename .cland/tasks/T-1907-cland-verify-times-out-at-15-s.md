@@ -2,8 +2,8 @@
 id: T-1907
 kind: task
 title: cland verify times out at 15 s ("submission sent; no reply") while the hub admits the run, three times in a row on 2026-11-16
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1555
 branch: t/T-1907-cland-verify-times-out-at-15-s
 created: 2026-11-16T08:08:22.188Z
-updated: 2026-11-16T16:18:59.321Z
+updated: 2026-11-16T21:22:07.972Z
+closed: 2026-11-16T21:22:07.972Z
 ---
 
 ## Summary
@@ -234,3 +235,7 @@ finding_counts: {"high":0,"medium":0,"low":1}
 Final clear with one low diagnostic finding; C1/C2 verified. A-20239 verdict + A-20238 independent receipt ledger establish exact-head278ae9f0/A-20237:6416 ordinary tests/704 files pass, separate220load tests/files, no nonpass/skip. All61 required compatibility cases and both new names base1+load5 pass; prior hung accounting/budget/close cases now have positive finishes. Exact actual browser/platform captured; budgets/lint report-only. Retained206consumer references classify56 configured pass,33T3/T4 deferred,117source/helper/client/skill/QA references; full989manifest no missing lower/Web finish. Earlier failed/incomplete/provenance limits retained. XS Tech debt to lead: separately bound entered setup at responsive:30; cleanup already owns release and successful evidence remains valid.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T21:22:07.972Z
+
+Merged 4c4fe3f985a1199de985bfe2936feb06a0b41b66 onto dev.

@@ -2,8 +2,8 @@
 id: T-1764
 kind: task
 title: One pending sub-agent permission prompt sends a new Telegram approval card at every coord turn boundary
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1554
 branch: t/T-1764-one-pending-sub-agent-permission-prompt
 created: 2026-11-08T18:34:49.448Z
-updated: 2026-11-16T15:18:12.854Z
+updated: 2026-11-16T21:22:48.244Z
+closed: 2026-11-16T21:22:48.244Z
 ---
 
 ## Summary
@@ -109,3 +110,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Merge-delta clear, no findings. A-20210 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20210-t-1764-merge-delta-clear-at-9a6083a6b-under-coordinator-waiver.md) records independent Coordinator decisions60ec0c69/f2ed8fcc and explicit docs-only rule6 no-new-verify waiver. README keeps both watchdog and approval notification entries. Approval implementation/tests unchanged from verified first parent; Sessions inherits only unrelated #turnFailed closed guard. Changed-wording searches in hub/test+nvim/test find no exact consumer. A-20209 records merged-head macOSNode24.21 typecheck/test:lint/wording exit0; report-only advisories retained. C1-C3 carried under this waiver through reviewed source-equivalent approval paths. ACTUAL runtime remains A-20165/run5a689759 at first parent0c9f60845, as settled A-20167; no merged-head runtime/browser/configured verify, cache pass or new wall-time claim. Remaining integrated/higher-tier coverage remains deferred/Coordinator-owned. Reviewer read only.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-16T21:22:48.244Z
+
+Merged 6b9ebc39c630a2f02da55619b00b6f8e3a70bd7c onto dev.

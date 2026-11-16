@@ -2,8 +2,8 @@
 id: T-1919
 kind: task
 title: Each injection completion rebuilds every unconfirmed delivery through an OR query that scans the session's whole delivery history (~13 s hub CPU per call with 74 pending)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1566
 branch: t/T-1919-each-injection-completion-rebuilds-every
 created: 2026-11-16T16:27:53.597Z
-updated: 2026-11-16T18:23:29.439Z
+updated: 2026-11-16T22:04:39.043Z
+closed: 2026-11-16T22:04:39.043Z
 ---
 
 ## Summary
@@ -28,8 +29,10 @@ Make `uninjected()` cost proportional to the pending rows rather than to the ses
 
 - [x] C1. With a session holding 20,000 delivery rows and 75 unconfirmed deliveries, one injection completion runs a bounded number of indexed queries, none of them a scan over the session's delivery history, and its delivery results are unchanged (test, red before the fix; query plan or a counted fake store as the measure).
   - done: impl-1919 · 2026-11-16T17:12:16.750Z
+  - verified: rev-35 [reviewer] · run rev-35-1919-final-1 · 2026-11-16T18:27:50.858Z · commit 470f3f69922fd6bd76b6b02b6b455a8345b6e788
 - [x] C2. `deliveryIds` returns the same ids as before for message-id matches, digest-id matches and both together (test).
   - done: impl-1919 · 2026-11-16T16:38:53.597Z
+  - verified: rev-35 [reviewer] · run rev-35-1919-final-1 · 2026-11-16T18:27:50.858Z · commit 470f3f69922fd6bd76b6b02b6b455a8345b6e788
 
 ## Comments
 
@@ -110,3 +113,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Failed-evidence pass complete A-20319: A-20317 autoexit1/remote machine lost, T2 interrupted at merge-recovery file and merge-queue due case306s, no completed failing test; no source defect/physical-cause classification inferred. Actual294/295 both repaired outer UPDATE plans are INTEGER PRIMARY KEY(rowid), inner keyedUNION; all4new names ordinary+5load positive. SourceA-20304 unchanged/valid, no sourcefinding. C1/C2 remain done/unverified, not failed solely for infrastructure loss.3396ordinary tests/382completefiles+20load positives=printed3416completed; T0/T1 complete, T2partial, T4/Web unexecuted,T3deferred. Exactprovenance18615 norm1c054762 Linuxx64Node24.21uncached/browsernull; report-only/original provenance limits and older contrary-plan history retained. Hold released; replacement only after Coordinator infrastructure disposition/granted window, no Reviewer retry authorization/submission or runtime.
+
+### rev-35 · 2026-11-16T18:27:50.858Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1919-final-1
+commit: 470f3f69922fd6bd76b6b02b6b455a8345b6e788
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear A-20334; complete named-plan/992manifest ledger A-20333. A-20332 independently5081ordinary passes/549files+20load positives, nofail/cancel/skip. All4new names ordinary+5; actual294/295 BOTH outer INTEGER PRIMARY KEY(rowid) with keyed innerUNION, stronger retained-uncertain/cross-session workload and durable completion/count assertions preserve semantics. Prior state-only finding resolved. C1/C2verified. T0/all224T1/323selectedT2/1mappedT4base/Websmoke complete;104T2/269T3/16T4/54Web unexecuted, noT4reps. Downstream progress/heartbeat/topic-withdraw file receipts positive; QA/native/transitive limits retained A-20278. Exactprovenance27711 norm1c054762 Linuxx64Node24.21Nvim0.12.5uncached, actualbrowser27578 isolated1248/CfT156.0.8078.4; report-only advisories not enforced gates. Old A-20299 contrary-plan green/A-20301 notclear and A-20317 infrastructure partial/A-20319 retained; Coordinator35fb5a80 infrastructure disposition accepted. Original producer/raw/hash/signal/search limits unchanged, no benchmark/liveCPU claim. Hold released; Coordinator owns ready/enqueue/landing. No Reviewer runtime or extra run requested.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T22:04:39.043Z
+
+Merged 2bdf1ff0f584f52e4ca28b84d0391cfd650ecc62 onto dev.

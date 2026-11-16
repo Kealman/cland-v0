@@ -2,8 +2,8 @@
 id: T-1768
 kind: task
 title: projectHub T2 fixtures reach native sysctl through the default lock identity
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1557
 branch: t/T-1768-projecthub-t2-fixtures-reach-native
 created: 2026-11-09T06:56:35.201Z
-updated: 2026-11-16T16:47:15.128Z
+updated: 2026-11-16T21:22:25.576Z
+closed: 2026-11-16T21:22:25.576Z
 ---
 
 ## Summary
@@ -116,3 +117,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear A-20290, detailed named/992manifest ledger A-20286. A-20277 independently6488 ordinary tests/709files, separate235load tests/files, no negatives/skips; all224T1/427T2/55Web plus3changedT3files31identities. Required7probes+5lifecycle cases positive; five newT2identities each base+5, ten compatibility files and27identity/5env cases pass. Remaining266T3/17T4 unexecuted. C1/C2verified under narrowed own-default-lock scope: finalMac enforceA-20235 seven zero-child cases+source normalization and original scoped enforce census/other-owner dispositions; no all239green/currentfullMac claim. Old212exit0/25fail/2incomplete census and original source/native/raw/hash limits retained forT-1915. Exact head/provenance37453 normalized85ba9f32, Linuxx64Node24.21Nvim0.12.5uncached; actualWeb34863 isolatedHeadlessShell1248/CfT156.0.8078.4. Report-only duration/lint/ratchet notices not enforced passes. Source unchanged/clean, original653consumer paths retained. Hold released; Coordinator owns readiness/enqueue/landing. No Reviewer runtime or extra run requested.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T21:22:25.576Z
+
+Merged 84f58ecdb674ca273974fc32c0a270e41dc7dbb2 onto dev.

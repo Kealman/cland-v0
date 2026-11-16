@@ -2,8 +2,8 @@
 id: T-1665
 kind: task
 title: The publication scanner flags test titles and prose containing 'bearer' as credentials, forcing presentation omissions in every QA run
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1564
 branch: t/T-1665-the-publication-scanner-flags-test
 created: 2026-11-03T21:49:08.624Z
-updated: 2026-11-16T17:21:29.900Z
+updated: 2026-11-16T18:47:33.752Z
+closed: 2026-11-16T18:47:33.751Z
 ---
 
 ## Summary
@@ -97,3 +98,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear/C1 verified; A-20308. Independently matched74782459/A-20307 canonicaltree7559eb3e4a4476a5587981b38b95f76066e2fc78/head to sourceclearA-20273. Both synthetic credential controls/five exact prose-title negatives base+5/5load; all13new controls have explicit5of5, policy18ordinary passes plus recorder23preservation cases/filepasses. HostT0/allT1/fallbackallT2/Web exit0,hub6476pass/0fail/cancel/skip/todo. Linuxx64droplet Node24.21/Nvim0.12.5 actualHeadlessShell1248/CfT156.0.8078.4,uncached; T3/T4unexecuted/deferred,advisories report-only. Scope retains Coordinator5b823075 S Follow-upsT-1920 exclusions for pair-list/property-key short values and permitted deferred docs; no certification of those forms. Standards/Spec clear within scope;findings[]. No Reviewer runtime.
 
 Criteria: C1 verified.
+
+### coord · 2026-11-16T18:47:33.751Z
+
+Merged 58c75d1e3bbea6b149b9a4a2cd85ddaad294f044 onto dev.

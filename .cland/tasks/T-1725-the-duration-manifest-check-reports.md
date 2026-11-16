@@ -2,8 +2,8 @@
 id: T-1725
 kind: task
 title: The duration manifest check reports duplicate allowance and baseline keys
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1561
 branch: t/T-1725-the-duration-manifest-check-reports
 created: 2026-11-06T12:32:46.395Z
-updated: 2026-11-16T17:23:58.555Z
+updated: 2026-11-16T18:47:50.445Z
+closed: 2026-11-16T18:47:50.445Z
 ---
 
 ## Summary
@@ -120,3 +121,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; C1/C2 verified. A-20311 verdict + independent A-20310 confirm exact-head eaac8ea3/A-20309:6469 ordinary test/707file passes, separate240load tests/files, no nonpass/skip. Actual CLI report-only key/both-values/unchanged-exit case,14budget,6context,19owner-close cases and all six new base+5 names have positive finishes. All96 retained paths classified16 configured pass/13T3-T4 deferred/67source-helper-reference; full993manifest707passes269T3/17T4defer, no missing lower/Web receipt. Actual HeadlessShell1248/CfT156.0.8078.4, Linuxx64/Node24.21, uncached; hostT0/T1/T2/Web0. Report-only budgets/lint and all earlier candidate/failed/provenance/native/QA limitations retained; no additional run.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T18:47:50.445Z
+
+Merged 01d2f05a4db1e33ba51374cb9f5ab18b7bcc96c2 onto dev.

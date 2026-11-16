@@ -2,8 +2,8 @@
 id: T-1916
 kind: task
 title: "A remote run still marked running whose droplet no longer exists keeps its remote slot after T-1843 (ghost b33e7940 survived restart #77)"
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -14,7 +14,8 @@ regression_of: T-1843
 topic: topic-1565
 branch: t/T-1916-a-remote-run-still-marked-running-whose
 created: 2026-11-16T16:07:55.388Z
-updated: 2026-11-16T17:35:39.403Z
+updated: 2026-11-16T22:04:54.417Z
+closed: 2026-11-16T22:04:54.417Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ At hub start and on each remote reconciliation, treat a remote run whose record 
 
 - [x] C1. A persisted remote run in the running state, whose droplet the fake provider no longer lists, is absent from `verify queue` and frees its slot after a hub start (test, red before the fix).
   - done: impl-1916 · 2026-11-16T16:57:12.074Z
-- [ ] C2. It gets exactly one posted result naming the missing machine; a run whose droplet still exists, and a run whose provider read fails or times out (inventory unknown), both keep their slot (test).
-  - failed: rev-36 [reviewer] · 2026-11-16T17:35:39.403Z · note Required same-head configured run9759d489 exited1 remote machine lost during Web; nine Web files lack completion, so final verification remains incomplete despite positive task matrices.
+  - verified: rev-36 [reviewer] · run rev-36-1916-final-1 · 2026-11-16T18:31:34.025Z · commit f83e202730fe01870ffa609cada5e528c5c45330
+- [x] C2. It gets exactly one posted result naming the missing machine; a run whose droplet still exists, and a run whose provider read fails or times out (inventory unknown), both keep their slot (test).
+  - done: impl-1916 · 2026-11-16T18:29:01.500Z
+  - verified: rev-36 [reviewer] · run rev-36-1916-final-1 · 2026-11-16T18:31:34.025Z · commit f83e202730fe01870ffa609cada5e528c5c45330
 
 ## Comments
 
@@ -103,3 +106,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Evidence not clear; no new source finding. A-20327 verdict/A-20326 independent ledger preserve all13 new identities base1+load5 and all helper/accounting/protocol/cover/persistence file passes. T0/T1/T2 completed; scheduler exit1 remote machine lost during Web, seven start ids unfinished/nine Web files missing, T3/T4 deferred. Hub aggregate6126 completed-phase passes;6435 ordinary+275load finish passes=6710 observed before interruption are distinct, no full-pass substitution. C1 stays done/unverified; C2 failed only for incomplete required task verification, not a failed matrix assertion. Same clean source-clear head; actual machine-loss cause/classification unknown. Lead owns investigation/retry decision; no code edit or extra run requested/authorized. Earlier scope/provenance/advisory/native/QA limits retained.
 
 Criteria: C2 failed (Required same-head configured run9759d489 exited1 remote machine lost during Web; nine Web files lack completion, so final verification remains incomplete despite positive task matrices.).
+
+### rev-36 · 2026-11-16T18:31:34.025Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1916-final-1
+commit: f83e202730fe01870ffa609cada5e528c5c45330
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; C1/C2 verified from authorized complete same-head retryd9abbdfa/A-20335. A-20338 verdict/A-20337 independent ledger establish6476 ordinary tests/706files and separate275load tests/files, no nonpass/unfinished/skip. All13required new identities base1+load5 and positive helper5/accounting24/protocol16/cover21/persistence23 files. All172retained refs accounted62configured pass/26T3-T4defer/84source-helper; full992manifest706passes269T3/17T4defer, no lower/Webmissing. Exacthead, actual HeadlessShell1248/CfT156.0.8078.4/LinuxNode24.21, uncached; T0/T1/T2/Web0. Earlier9759 interruption/A-20326/27 retained under Coordinator0a7fe54d sysmond disposition; prior failed/unknown/provenance and report-only advisories stay explicit. Scoped source3 accepted behavior unchanged, no new findings or further run requested.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T22:04:54.417Z
+
+Merged 0e093db62ab29fee4202f7d7ccc560b783b85ec8 onto dev.

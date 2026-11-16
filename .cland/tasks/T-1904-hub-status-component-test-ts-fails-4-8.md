@@ -2,8 +2,8 @@
 id: T-1904
 kind: task
 title: "hub-status-component.test.ts fails 4/8 in a crew session's shell: in-process CLI cases inherit the session's CLAND_* identity and hit the scratch hub's credential check"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1556
 branch: t/T-1904-hub-status-component-test-ts-fails-4-8
 created: 2026-11-16T07:40:00.448Z
-updated: 2026-11-16T15:42:47.870Z
+updated: 2026-11-16T21:21:41.998Z
+closed: 2026-11-16T21:21:41.998Z
 ---
 
 ## Summary
@@ -113,3 +114,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; C1/C2 verified. A-20225 verdict and independent A-20224 reconcile configured f8f72ba8/A-20222 at source-cleared 1077b33e7: 6434 ordinary tests/705 files pass, separate 225 load test/file passes, no nonpass/skip. All eight status names and every changed file have positive current finishes; original import cases pass and three new import cases each base1+load5. All72 retained consumers classified:50 configured pass,16T3 deferred,6 helper/source references. Entire991manifest has705 positive file finishes,269T3/17T4 deferred, no missing lower/Web file. HostT0/LinuxT1/T2/Web exit0; actual HeadlessShell1248/CfT156.0.8078.4 captured. Candidate standalone/provenance limits, report-only budgets/lint and T-1913/T-1914 boundaries retained; no fullT3/T4/native-provider/QA claim.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T21:21:41.998Z
+
+Merged 802acd529fbd5b530e386535aed994caef7fce53 onto dev.

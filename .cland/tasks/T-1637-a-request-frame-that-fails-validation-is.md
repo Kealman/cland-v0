@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1563
 branch: t/T-1637-a-request-frame-that-fails-validation-is
 created: 2026-11-02T16:48:05.147Z
-updated: 2026-11-16T17:19:21.319Z
+updated: 2026-11-16T18:53:43.010Z
 ---
 
 ## Summary
@@ -29,9 +29,11 @@ A known request type whose arguments fail validation is refused as `invalid_argu
 - [x] C1. `cland remote approve telegram 000000` exits 1 with a message naming the code format, not `unknown request type` (test).
   - done: impl-1637 · 2026-11-16T16:25:59.420Z
   - verified: rev-37 [reviewer] · run rev-37-1637-final-1 · 2026-11-16T17:19:20.885Z · commit 6c994b387dc3677b6dcf9a25a4f11c46320f1871
+  - verified: rev-35 [reviewer] · run rev-35-1637-merge-1 · 2026-11-16T18:53:42.852Z · commit a5895f9948ade1e51692dbcdf240c35fbc002b5b
 - [x] C2. A known frame type with an invalid field is refused as invalid_argument naming the field, and a truly unknown type still reads `unknown request type` (test).
   - done: impl-1637 · 2026-11-16T16:32:57.348Z
   - verified: rev-37 [reviewer] · run rev-37-1637-final-1 · 2026-11-16T17:19:20.885Z · commit 6c994b387dc3677b6dcf9a25a4f11c46320f1871
+  - verified: rev-35 [reviewer] · run rev-35-1637-merge-1 · 2026-11-16T18:53:42.852Z · commit a5895f9948ade1e51692dbcdf240c35fbc002b5b
 
 ## Comments
 
@@ -96,5 +98,28 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final exact-head evidence clear; C1/C2 verified. A-20306 independently reconciles86c389bc/A-20305 head/canonicaltree30f05459c6431a3d4ee5346bd17307ed436ac487 to sourceclearA-20291. Exact local-malformed/client-field/old-error-only cases base+5/5load; bounded raw-spoke invalid/unknown case basepass; help/permission preservation files pass. HostT0/allT1/shared-protocol fallbackallT2/Web exit0, hub6466pass/0fail/cancel/skip/todo. Linuxx64droplet Node24.21/Nvim0.12.5 actualHeadlessShell1248/CfT156.0.8078.4,uncached. T3/T4unexecuted/deferred; budgets/lint/ratchet report-only. Prior pre-admission refusal/candidate limits remain historical. Standards/Spec clear;findings[]. No Reviewer runtime.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T18:52:30.124Z
+
+Coordinator, 2026-11-16 18:55Z: rule 6 docs-only waiver evidence for merge head a5895f994 (6c994b387 + dev 020aef2e0). The full mode-free verify 86c389bc passed at 6c994b387. The only manual resolution is `hub/README.md`, keeping both entries (A-20345). At the merged head:
+- typecheck exit 0;
+- test:lint exit 0 with 0 refusals;
+- closed-item wording lint, 0 findings (all from impl-1637).
+I searched hub/test and nvim/test for `hub/README.md`. The two files that read its content both pass at a5895f994: `test-docs.test.ts` 4/4 and `web-readme.test.ts` 4/4, both T1, exit 0. The other matches use the path only as a string literal. No new verify; it enqueues after the merge-delta review clears.
+
+### rev-35 · 2026-11-16T18:53:42.852Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1637-merge-1
+commit: a5895f9948ade1e51692dbcdf240c35fbc002b5b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge-delta clear A-20346. Independently compared retained AUTO_MERGE467db5ff to final: only3README conflict-marker lines removed, both references retained; no manual source/test/config resolution. Whole-tree nonoverlap comparison clean;15of18 task paths identical to accepted parent including all task production/tests; reviewed shared skill/README/command fixture, onlyQA_LINT_USAGE changes andREMOTE_USAGE preserved. Coordinator2b184469/7ea5da30 docs-only rule6 waiver applies after three checks; A-20345 records exact merged-head fullroot typecheck/test:lint/separatewording exit0,798docs/1921items/0findings,122report-only/0refusals and raw-stream limits. C1/C2 reverified under explicitwaiver+qualified parentrev37finalA20306/run86c389bcA20305, not a new merge-head runtime pass. Parent6466ordinary/225load hostT0/LinuxT1/T2/Web andT3/T4deferral/source/native/real-account limits retained. Hold released; Coordinator owns enqueue/landing; no Reviewer runtime.
 
 Criteria: C1 verified, C2 verified.

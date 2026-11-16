@@ -2,8 +2,8 @@
 id: T-1861
 kind: task
 title: qa lint reads a per-test docs path (.test.ts.md) as a missing test file
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1558
 branch: t/T-1861-qa-lint-reads-a-per-test-docs-path-test
 created: 2026-11-15T01:02:32.118Z
-updated: 2026-11-16T15:27:54.650Z
+updated: 2026-11-16T18:48:10.956Z
+closed: 2026-11-16T18:48:10.956Z
 ---
 
 ## Summary
@@ -86,3 +87,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear, C1/C2 verified. A-20216 independently matches dba711bf/A-20215 canonical tree bedab34375a03fd2c96e95bf03bb324e428c0e10 and head to source-clear A-20192. Both guide regressions ordinary pass+explicit5/5 load; exact-help1/full-help9/CLI2 preserved; changed T3 three cases pass once with candidate HEAD corpus receipt and planted oracle controls. C2 exact-head A-20191 replay retains six unrelated stderr findings byte-identical and removes only the false guide finding; expected native lint exit1 is retained drift, not clean-brief evidence. Host T0, Linux x64 droplet Node24.21/Nvim0.12.5 allT1/fallbackallT2/selectedT3/Web exit0, hubaggregate6436pass no fail/cancel/skip/todo; actual HeadlessShell1248/CfT156.0.8078.4, uncached. RemainingT3/T4 unexecuted/deferred; duration/lint/ratchet advisories report-only including existing corpus timing. No Reviewer runtime. Standards clear, Spec clear; findings[].
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T18:48:10.956Z
+
+Merged e6fb31ce882132d774b2fa18f4ba12db9a3d2a67 onto dev.

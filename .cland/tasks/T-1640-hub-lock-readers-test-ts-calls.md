@@ -2,8 +2,8 @@
 id: T-1640
 kind: task
 title: hub-lock-readers.test.ts calls lockHostIdentity directly and spawns sysctl on macOS
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels: []
@@ -14,7 +14,8 @@ regression_of: T-1617
 topic: topic-1560
 branch: t/T-1640-hub-lock-readers-test-ts-calls
 created: 2026-11-02T19:53:37.392Z
-updated: 2026-11-16T16:49:53.530Z
+updated: 2026-11-16T22:04:17.866Z
+closed: 2026-11-16T22:04:17.866Z
 ---
 
 ## Summary
@@ -63,3 +64,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear A-20294 with A-20293 full992manifest ledger. All14 required ordinary named lock-reader cases/file positive in A-20280; assertions unchanged. C1 narrowed fixture-origin proof combines qualified MacA-20240/41 candidate14→0 mismatch origins/native0/recorded edit-to-commit chronology with exact-head Linux selected compatibility; after12production rows remain rawT-1917, no newfullMac/enforce/native-free-file claim. Independent1764ordinary tests/226files, separate210load passes/files, nofail/cancel/skip. T0/all224T1/selected1T2/Websmoke1 executed;426otherT2/269T3/17T4/54Web unexecuted. Exact provenance11401 norm4eb4de9e Linuxx64Node24.21Nvim0.12.5uncached; actualbrowser11293 isolated1248/CfT156.0.8078.4. Source clean unchanged; static/provenance/hash/signal/report-mode limits retained. C1/C2verified, hold released; Coordinator owns readiness/enqueue/landing. No Reviewer runtime or extra run requested.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T22:04:17.866Z
+
+Merged 8649cf6a33f2b533ee35d6215cc5694f390b1eaa onto dev.
