@@ -3,7 +3,7 @@ id: T-1697
 kind: task
 title: Host agent checkpoint writes share one fixed '.new' temp name; a concurrent or late checkpoint fails with ENOENT
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1538
 branch: t/T-1697-host-agent-checkpoint-writes-share-one
 created: 2026-11-05T19:31:45.062Z
-updated: 2026-11-16T09:54:38.387Z
+updated: 2026-11-16T10:19:01.377Z
 ---
 
 ## Summary
@@ -36,10 +36,14 @@ In impl-1692's Linux container evidence (T-1692; `docker run --init`, arm64 Node
 - [x] C1. The failing order is named with a deterministic reproduction (test, red before the fix).
   - done: impl-1697 · 2026-11-16T07:43:11.702Z
   - verified: rev-37 [reviewer] · run rev-37-1697-evidence-1 · 2026-11-16T08:33:11.053Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
+  - verified: rev-37 [reviewer] · run rev-37-1697-final-1 · 2026-11-16T10:19:00.934Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
 - [x] C2. Concurrent checkpoints of one file never fail and never leave a partial file, and the last completed write wins (test).
   - done: impl-1697 · 2026-11-16T07:43:31.973Z
   - verified: rev-37 [reviewer] · run rev-37-1697-evidence-1 · 2026-11-16T08:33:11.053Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
-- [ ] C3. claude-code-remote passes 10/10 under CPU load in a Linux container run with `docker run --init` (evidence).
+  - verified: rev-37 [reviewer] · run rev-37-1697-final-1 · 2026-11-16T10:19:00.934Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
+- [x] C3. claude-code-remote passes 10/10 under CPU load in a Linux container run with `docker run --init` (evidence).
+  - done: impl-1697 · 2026-11-16T10:16:16.059Z
+  - verified: rev-37 [reviewer] · run rev-37-1697-final-1 · 2026-11-16T10:19:00.934Z · commit 58f83349eca11d94485f534251e0ab0951f94d9a
 
 ## Comments
 
@@ -99,3 +103,22 @@ C3 disposition/revised acceptance from Coordinator decisions7d5d5de1 and73d24380
 ### impl-1697 · 2026-11-16T09:54:38.387Z
 
 Revised C3 partial evidence A-19943: ten selected original-case runs101–110 have exact generated name/1pass each, nativeexit0/no skips or cancellations, entryload8.10–9.89. Fullfile11145/45 passing identities,0 skips/cancels,284.002s,entry10.22. Fullfile112 cut at325s:39 case passes/0failedcases/1filecancellation; incomplete and excluded. All at58f83349e, Linuxarm64 Node24.21/Docker--init/networknone/cpu4, no browser. Facts separately validate exit+generated case summaries and current-source hashes; positive-control secret scan clean. Configured verification remains greenA-19883 separately. One fullfile remains. Coordinator f4261b26 authorizes one requeued fullfile at325s/lower generator floor/entry>=8/no priority tuning; stop and report if it again reaches bound while progressing. Queue after impl-1703 and impl-1724. C3 not marked done.
+
+### impl-1697 · 2026-11-16T10:17:07.317Z
+
+C3 DONE under Coordinator's revised bar: final packetA-19959. Ten target runs101–110 exact original case1/1 each; fullfiles111/201 each45/45 complete, no failures/skips/cancellations, native exits0. Fullfile walls284.002s/267.457s exclude Docker/source copy/warmup; entryloads10.22/8.33. Target entryloads8.10–9.89. Linuxarm64 Node24.21 localDocker--init/networknone/cpu4, no browser. Source head58f83349e unchanged/clean; four source hashes match reviewed bytes. Independent recorded-facts check confirms full case-name lists and summaries, not only exit codes. Positive-control secret scan18files/35525bytes/no matches. Original incomplete1/112 retained/excluded. Configured greenA-19883 (Linuxx64 droplet, T0/allT1/allT2 fallback/changedT3once/Web, remainingT3 deferred per queue) stays separate. Final evidence review requested from reviewer in item topic. Claim retained until merge.
+
+### rev-37 · 2026-11-16T10:19:00.934Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1697-final-1
+commit: 58f83349eca11d94485f534251e0ab0951f94d9a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; C1–C3 verified. C3 uses Coordinator7d5d5de1/73d24380's explicit revised bar (10 exact-case selections at60s plus2 complete full files at325s) and final requeue authorizationf4261b26. Independently parsed A-19959 raw logs/native summaries:101–110 exactly1 required named pass each,111/201 identical45-name passing sets,100 required completed case executions; all completed nativeexit0/signalnull/no timeout/skip/cancel. Entry loads8.10–9.89 targeted and10.22/8.33 full, Linux VM/proc one-minute; full process durations284.002s/267.457s exclude Docker/copy/warmup. Linuxarm64 Docker--init/networknone/cpu4 Node24.21, no browser. Four recorded source hashes independently match pinned storage/server/entry/closure Git blobs at reviewed58f83349e. Attempts1/112 retained as incomplete,22/39 named passes and one file cancellation each/nativeexit1; excluded from C3. Historical missing-parent producer remains unproven within accepted scope. C1/C2/configured evidence A-19884 remains valid:1270b05e/A-19883 exact canonical3efbcc01925d47cdfb6557e4c27b35aeb5364ad9, uncachedLinuxx64droplet/pinnedHeadlessShell1248Chrome156.0.8078.4, T0/allT1/allT2fallback/changedT3lifecycleonce/Web green6387base+702files and240separate load tests/files. RemainingT3/T4 unexecuted there; budgets/lint report-only, QA none. No Reviewer runs/edits. A-19961 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19961-t-1697-final-revised-c3-and-same-head-verdict.md
+
+Criteria: C1 verified, C2 verified, C3 verified.

@@ -3,7 +3,7 @@ id: T-1905
 kind: task
 title: Test process cleanup throws "native process identity unavailable" for a child whose exit was already observed, under Linux load
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1545
 branch: t/T-1905-test-process-cleanup-throws-native
 created: 2026-11-16T07:44:00.478Z
-updated: 2026-11-16T09:39:40.482Z
+updated: 2026-11-16T10:09:27.457Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ Find what `alive(pid)` sees for a child whose native exit was observed: a zombie
 
 - [x] C1. Cleanup accepts a child whose captured identity is known and whose exit was observed, including while the zombie is unreaped, and still refuses a live pid with an unknown or mismatched identity (test, red before the fix).
   - done: impl-1905 · 2026-11-16T08:53:39.872Z
+  - verified: rev-36 [reviewer] · run rev-36-1905-final-1 · 2026-11-16T10:09:25.795Z · commit 39ff848afecea7a7bf394dcc3da995f2ea2c8077
 - [x] C2. `opencode-adapter.test.ts` passes 10/10 full-file runs in a Linux `--init` container at a load of at least 10, with no cleanup refusal (evidence).
   - done: impl-1905 · 2026-11-16T09:37:18.261Z
+  - verified: rev-36 [reviewer] · run rev-36-1905-final-1 · 2026-11-16T10:09:25.795Z · commit 39ff848afecea7a7bf394dcc3da995f2ea2c8077
 
 ## Comments
 
@@ -89,3 +91,22 @@ Coordinator disposition09:18: run4 is existing T-1703 defect; no shared fix/head
 ### impl-1905 · 2026-11-16T09:39:40.482Z
 
 C2 marked done: A-19937 + A-19931 retain10 green full Linux --init files at exact source39ff848af among11attempts; known T-1703 attempt4 retained red/not counted per Coordinator. Every green21/21 native exit0/signalnull,0cancel/skip,boundedfalse,entry/end load>=10; all21 generated passing case names independently matched across10green logs. Source unchanged. Mode-free verify93669eee-6991-4eba-a933-64e2209bbfee admitted exact reviewed head. CLI exit75/no reply, single queue check confirmed admitted remote acquiring; never resubmitted. Durable T0 exit0 duration81.322s observed; verify window released. Remote configured runtime result and final actual-selection/consumer reconciliation pending. No final-ready claim.
+
+### impl-1905 · 2026-11-16T10:07:23.961Z
+
+Same-head configured verification93669eee green A-19948: modefull suite infrastructure fallback,allT1/allT2/changedcleanupT3/Web;6447pass6447,0fail/cancel/skip. T1 files220/tests1659,T2 files425/tests4242,T3 files1/tests67,Web files55/tests292. HostT0 exit0/81.322s; dropletLinuxx64 Node24.21.0 Neovim0.12.5,c-8nyc1,lifetime1386s,cost$0.0962. Duration/budget/ratchet and122lint findings remain report-only. Pinned Chrome Headless Shell156.0.8078.4 build1248 installed; independent browser-launch version field not captured. Final A-19952 reconciles all359consumer paths from actual streamed outcomes (140configured/manual executed,125deferred,94indirect refs), replacing generic no-Web planning. A-19951 retains actual slot2 controllers and close->JSON mapping with explicit source-copy/provenance limits and missing slot1original snapshot. Both scanned before publication. C2 A-19937/A-19931 ten clean loaded files among11attempts; knownT1703red excluded. Reviewer holds unchanged39ff848af for final settlement; no further tests or source mutation.
+
+### rev-36 · 2026-11-16T10:09:25.795Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1905-final-1
+commit: 39ff848afecea7a7bf394dcc3da995f2ea2c8077
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head audit A-19954 / independent ledger A-19950: C1/C2 verified. A-19948 run93669eee passed at reviewed39ff848af; all67 cleanup cases/file have positive finishes, including six new escaped-group/zombie cases and all refusal/identity controls. A-19931/A-19937 independently supply10 clean full21/21 native Linux --init files, child code0/signalnull/unbounded, all identical21 passing names, sampled entry/end load>=10. Attempt4 remains raw T-1703 red/not counted under Coordinator5f8e2a0a; ten clean among11, no cleanup refusal. A-19951 preserves actual slot2 controllers/close mapping, missing slot1 source snapshot/launch hashes and physical-lock gap remain explicit. Configured6447 base tests/701 files plus separate210 load test/file passes;984 manifest paths =701 positive +266 configured-T3/17T4 deferrals, no lower/Web gap. A-19952 retains all359 prior refs,139 configured files independently matched,1 manual-C2,125 deferred,94 source refs. Exact Linux/Node/recorded browser provenance36980, no cache/skips; report-only budgets/lint/ratchet not performance pass. Full remaining integrated tiers/QA separate. Hub/Coordinator own ready/landing.
+
+Criteria: C1 verified, C2 verified.

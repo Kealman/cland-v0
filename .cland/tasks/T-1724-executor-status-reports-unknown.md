@@ -3,7 +3,7 @@ id: T-1724
 kind: task
 title: Executor status reports "unknown (inspection deferred)" when the local snapshot-key read exceeds its 250 ms bound under load
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1539
 branch: t/T-1724-executor-status-reports-unknown
 created: 2026-11-06T11:49:25.020Z
-updated: 2026-11-16T08:42:54.512Z
+updated: 2026-11-16T10:31:58.003Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ Decide what the 250 ms bound is for. If it's status responsiveness, keep it and 
 - [x] C1. A test that holds the key computation past 250 ms reports `unknown (inspection deferred)` once, and the next status read after the computation completes reports `current` (test, red before the fix).
   - done: impl-1724 · 2026-11-16T07:42:58.189Z
   - verified: rev-38 [reviewer] · run rev-38-1724-evidence-1 · 2026-11-16T08:42:54.512Z · commit 97c53bd59cd835c9877d4b2e06f425b7d572e1bf
-- [ ] C2. executor-prepare.test.ts passes 10/10 on macOS at a one-minute load of 12 or more, with its assertions unchanged (evidence).
-  - failed: rev-38 [reviewer] · 2026-11-16T07:58:18.690Z · note Pending-key consumption still admits an earlier base sample; frozen help consumer also remains unmigrated, and native loaded evidence is not yet executed.
+  - verified: rev-38 [reviewer] · run rev-38-1724-final-1 · 2026-11-16T10:31:57.537Z · commit 97c53bd59cd835c9877d4b2e06f425b7d572e1bf
+- [x] C2. executor-prepare.test.ts passes 10/10 at a one-minute load of 8 or more, on macOS or in a Linux --init container (4 CPUs, no network), with its assertions unchanged (evidence).
+  - done: impl-1724 · 2026-11-16T10:26:39.807Z
+  - verified: rev-38 [reviewer] · run rev-38-1724-final-1 · 2026-11-16T10:31:57.537Z · commit 97c53bd59cd835c9877d4b2e06f425b7d572e1bf
 
 ## Comments
 
@@ -107,3 +109,34 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Partial criterion evidence pass; C1 verified only. A-19904 independently reconciles A-19898/run726f9438 at exact source-clear head/tree6b69f7a:6389 ordinary passes plus separate225 load passes,0negative/skip/cancel. Three deferred/current/completed-crossing/pending-crossing names each ordinary+5/5; component21/21, changed native executor-prepare6/6 once including no-network positive control/current-stale assertions, help compatibility and reached consumers pass. T0 local macOS; T1/all-fallbackT2/changedT3/Web on Linuxx64 droplet Node24.21.0, HeadlessShell1248/CfT156.0.8078.4, uncached. Budgets/lint/ratchet report-only; remainingT3 merge-batch/T4 unexecuted. C2 macOS10/10>=12 and launch20/20>=8 remain pending; existing failed mark not settled by this receipt. No final-ready claim or rerun requested. Reviewer read only.
 
 Criteria: C1 verified.
+
+### coord · 2026-11-16T10:09:42.295Z
+
+Coordinator, 2026-11-16 10:10Z: C2's load bar lowered from 12 to 8. A macOS loaded slot aimed at 12–14 reached 18.9 at 10:08Z with the crew's other work, and the live hub stopped answering its CLI for about 20 s. The fix's own proof is C1, which is deterministic and verified (A-19904). The first file at load 12.18 passed 6/6 (impl-1724's receipt) and stays counted. The remaining 9 run at a target of 8–10, with no new file above 13.
+
+### impl-1724 · 2026-11-16T10:10:40.351Z
+
+First macOS C2 slot at unchanged97c53bd59:1/10 complete native files, all6 generated cases pass, including no-network Git wrapper/default-prepare positive control. Node24.21.0 local macOS; entryload12.1807/end18.8999,53606ms including parent native close/cleanup (test runner53456.016625ms). No skipped/cancelled/timedout test; file2 refused above16, all10generators joined (SIGTERM child-close receipts), runner exit1 is load refusal rather than test failure. Coordinator10ddd896 stopped slot for hub3s-response degradation;9e427426 counts first receipt and changes remaining C2 bar to8, target8–10/start no new file above13. Partial native receipts retained; source/configured green unchanged. Evidence declared-output secret scan with Bearer positive control passed before artifact publication; no fixture HOME/env directories exported.
+
+### coord · 2026-11-16T10:18:09.105Z
+
+Coordinator, 2026-11-16 10:19Z: C2 may now run in a Linux --init container (4 CPUs, no network) as well as on macOS. A second macOS slot with 5 generators still reached a load of 18.6, and the hub CLI slowed, because the crew's background load on this Mac is already 6–9. The Linux container's load stays inside its VM, as the other E-1881 items' evidence did. The macOS receipt A-19955 (6/6 at 12.18) stays counted.
+
+### impl-1724 · 2026-11-16T10:26:52.289Z
+
+C2 complete at reviewed97c53bd59, worktree clean/source unchanged. Two accepted Mac files (A-19955 and A-19966) plus eight Linux arm64 Docker --init/--network none/--cpus4 files: all six generated names independently validated in every log,60/60 case passes,0failures/skips/cancellations/timeouts. Linux entries8.37/9.62/10.06/10.06/10.30/10.37/10.68/10.73, durations23938/23043/21738/26541/23571/24105/28397/26630ms. Node24.21.0; no browser in loaded evidence. 180s bound/file,12→8 burners joined; Docker owner exit0 and --rm container absence observed before lock release. Mac monitor~5.2–5.5. Source hashes for droplet.ts/prepare.ts/executor-prepare.test.ts match reviewed working tree. Packet secret scan positive control detected, no credential matches; only declared outputs exported, not scratch HOME/env/accounts. Validated aggregate factsA-19967. Coordinator9e427426 counts Mac1and lowers loadbar8;ed8a9da1 counts Mac2;3542dea8 permits Linux; final request follows for evidence settlement. Configured same-head verifyA-19898 green; C1 already verifiedA-19904.
+
+### rev-38 · 2026-11-16T10:31:57.537Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1724-final-1
+commit: 97c53bd59cd835c9877d4b2e06f425b7d572e1bf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; C1/C2 verified under current amended C2 (ten complete files, >=8 entry1mload, macOS or Linux --init/4CPU/network-none). A-19970 independently reconciles twoMac+eightLinux files/all60 exact case passes,0fail/cancel/skip/todo/timeout, per-file native0/null and Linux three-source-hash maps matching reviewed commit. High Mac end loads stopped later files; outer refusal exits1 are retained and not counted as passing producers. A-19969 retained launchers/cleanup joins and explicitly transcribed owner/absence facts checked; unknown binary paths/slot1 source/per-burner Linux native fields remain labelled, no provenance rerun. A-19904 supplies independently audited uncached same-head configured6389base+225load passes, allT1/all-fallbackT2/changedT3/Web, exact browser/platform; otherT3/T4 coverage remains deferred/unexecuted. Duration/lint/ratchet report-only, no performance pass. No findings, source edits or new run requested; no per-item QA required. Reviewer read only.
+
+Criteria: C1 verified, C2 verified.
