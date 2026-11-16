@@ -136,7 +136,10 @@ agent admits work. Private plans retain cleanup ownership across restart. Existi
 logs are preserved; a new log is removed only when its captured inode is still
 empty. Committed process ownership transfers to the agent's existing admission
 and native completion machinery before the child can write. A spawn's `exited`
-resolves from its matching `process-exited` receipt. Reconnection reconciles exact
+resolves to exactly `{code, signal}` from its matching `process-exited` receipt,
+including when recovery observes that receipt before spawn returns. Native event
+identity and authority fields remain internal to the agent protocol.
+Reconnection reconciles exact
 retained native receipts; an unobserved exit remains unknown.
 
 The contract's behavioral cases run through the fake SSH carrier. Only its

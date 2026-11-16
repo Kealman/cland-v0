@@ -21,3 +21,9 @@ The `SSH Claude pre-spawn admission receipt` cases feed the client previous
 wire shape, an unbound native-only receipt, another generation's receipt, and the matching receipt through an
 in-memory agent edge. Only the exact generation grants typed non-admission;
 legacy error text passes through without cleanup authority. No process runs.
+
+The SSH spawn reconciliation cases drop the commit reply and supply the exact
+native receipt during recovery's initial read, before settlement returns the
+accepted spawn. Both the legacy wire shape and extended authority/ended shape
+must resolve `child.exited` to exactly `{code:7, signal:null}`. The shared
+100-microtask receipt bound detects incomplete outcomes without real-time waits.

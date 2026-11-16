@@ -34,6 +34,31 @@ test('ssh Host refuses an older hello without prepared capability and never call
 import { EventEmitter } from 'node:events';
 import { PREPARED_HOST_CAPABILITY } from '../src/host/agent/protocol.ts';
 import { CLAUDE_LAUNCH_CAPABILITY } from '../src/host/agent/claude.ts';
+for(const shape of ['legacy','extended'] as const)test(`SSH spawn reconciles a dropped commit reply with an exact exit result from ${shape} receipts`,async t=>{
+ const native={event:'process-exited',pid:42,identity:'synthetic-birth',code:7,signal:null,...(shape==='extended'?{authority:'closed',ended:true}:{})};
+ let connections=0,settled=false;
+ const host=sshHost({name:'f1',transport:{status:()=>({state:'up'})},connect:async()=>{
+  const recovery=connections++>0;
+  const client=Object.assign(new EventEmitter(),{
+   hello:{protocol:1,version:'test',pid:42,bootId:'test',capabilities:[PREPARED_HOST_CAPABILITY]},
+   close:async()=>{client.emit('closed');},
+   request:async(op:string)=>{
+    if(op==='processes')return [];
+    if(op==='native-receipts')return recovery?[native]:[];
+    if(op==='prepare-spawn')return {token:'synthetic-token'};
+    if(op==='commit-prepared')throw new Error('synthetic lost commit reply');
+    if(op==='settle-prepared'){settled=true;return {state:'accepted',result:{pid:42,identity:'synthetic-birth'}};}
+    throw new Error('unexpected operation '+op);
+   },
+  });
+  return client as unknown as AgentClient;
+ }} as Parameters<typeof sshHost>[0]);
+ t.after(()=>host.close());
+ const child=await receipt(host.spawn({command:'/synthetic/node',args:[],cwd:'/scratch',env:{}}),'reconciled spawn');
+ assert.equal(settled,true,'the dropped commit reply was reconciled');
+ assert.equal(connections,2,'recovery loads the native receipt before settlement returns');
+ assert.deepEqual(await receipt(child.exited,'cached native completion'),{code:7,signal:null});
+});
 // These fakes perform only promise work: bound the receipt by work, not native time.
 async function receipt<T>(promise:Promise<T>,what:string):Promise<T>{
  let settled=false;

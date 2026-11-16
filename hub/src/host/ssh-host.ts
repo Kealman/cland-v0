@@ -51,7 +51,7 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
   };
   const lostConnection=async(value:AgentClient,token:string)=>{unknown.add(token);if(client===value)client=undefined;await closeConnection(value).catch(()=>{});};
   const completions = new Map<string, (value: {code: number | null; signal: string | null}) => void>();
-  const receipts = new Map<string, AgentEvent & {event:'process-exited'}>();
+  const receipts = new Map<string, {code: number | null; signal: string | null}>();
   const key = (pid: number, identity: string) => `${pid}:${identity}`;
   const capacityListeners = new Set<(availableBytes: number) => void>();
   const event = (frame: AgentEvent) => {
@@ -60,8 +60,9 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     if (frame.event === 'ref-moved') { o.log?.(frame); return; }
     if (frame.event !== 'process-exited') return;
     const id = key(frame.pid, frame.identity), resolve = completions.get(id);
-    if (resolve) { completions.delete(id); resolve({ code: frame.code, signal: frame.signal }); }
-    else {receipts.set(id, frame); if(receipts.size>256) receipts.delete(receipts.keys().next().value!);}
+    const exit = { code: frame.code, signal: frame.signal };
+    if (resolve) { completions.delete(id); resolve(exit); }
+    else {receipts.set(id, exit); if(receipts.size>256) receipts.delete(receipts.keys().next().value!);}
   };
   const check = () => { if(o.available && !o.available()) throw new Error(`host ${o.name}: tunnel admission revoked`); if(closed) throw new Error(`host ${o.name}: tunnel Host closed`); if (o.transport.status().state !== 'up') throw new Error(`host ${o.name}: tunnel is not up${o.codeDirectory ? `; requires code directory ${o.codeDirectory}` : ''}`); };
   const request = (connection: AgentClient, op: string, args: Record<string, unknown>, timeoutMs?: number) => {
