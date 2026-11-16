@@ -1,10 +1,33 @@
 // T2: suite reports consume injected candidate selections and worker receipts over real sockets.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, appendFile } from 'node:fs/promises';
+import { LocalExecutor } from '../src/executor/local.ts';
 import { eventually } from './harness.ts';
 import { fixture } from './suite-component-fixture.ts';
 import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
+
+for (const commandOnly of [false, true]) test(`capped stall publication keeps a log pointer and ${commandOnly ? 'command state without census' : 'complete process census'}`, async t => {
+  const f = await fixture(t, 1, '[hygiene]\nmax_text_bytes = 768\n');
+  const census = `suite stall processes ${JSON.stringify({ commandPid: 40001, total: 32, processes: Array.from({ length: 32 }, (_, i) => ({ pid: 40001 + i, name: `worker-${i}` })) })}`;
+  const state = 'suite stall command {"commandPid":40001,"exit":{"code":0,"signal":null},"stdout":"open","stderr":"open"}';
+  const start = LocalExecutor.prototype.start;
+  t.mock.method(LocalExecutor.prototype, 'start', async function (this: LocalExecutor, ...args: Parameters<typeof start>) {
+    await start.apply(this, args);
+    await appendFile(args[1].log, state + '\n' + (commandOnly ? '' : census + '\n') + 'later output '.repeat(1000) + '\n');
+  });
+  await f.launch('auto');
+  const result = await eventually('capped stall result publication', async () => (await f.results())[0]);
+  assert.ok(Buffer.byteLength(result.text, 'utf8') <= 768);
+  assert.match(result.text, /stall process detail: log A-\d+/);
+  const log = (await readFile(result.artifacts[0]!.path, 'utf8')).split('\n');
+  assert.ok(log.includes(state));
+  assert.equal(log.includes(census), !commandOnly);
+  await eventually('capped stall publication settled', async () => {
+    const status = await f.ui.request({ type: 'hub.status', history: true });
+    return (status.value as { suites: Array<{ reported: boolean }> }).suites.every(job => job.reported) ? true : undefined;
+  });
+});
 
 test('candidate selection reaches execution and explains the reserved all-mode refusal', async t => {
   const f = await fixture(t);

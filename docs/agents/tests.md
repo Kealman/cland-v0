@@ -1167,7 +1167,9 @@ transport while launch/inject/turn/stop/resume retain frame coverage.
 
 Package runners set a 120-second default per-test timeout (`[verification].test_timeout`).
 The local verification worker stops a command after ten minutes without stdout
-or stderr (`[verification].stall_timeout`), reports the last started tests, and
+or stderr (`[verification].stall_timeout`), reports up to eight started tests
+without completion receipts, and retains pre-cleanup command exit/pipe state
+plus a bounded owned-process pid/name census in the log. It
 reaps the verified process tree before releasing its leases. Both settings accept
 positive durations such as `"120s"` and `"10m"`; explicit test-level timeouts
 override Node's default. Droplet runs also have their enforced total `run_timeout`.

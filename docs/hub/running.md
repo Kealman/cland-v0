@@ -775,8 +775,19 @@ An explicit test-level timeout still overrides Node's default.
 
 The local verification worker also watches stdout and stderr during check
 and tests. `[verification].stall_timeout` defaults to `"10m"`. After that much
-silence it fails with `stalled: no output for <n> min` and the last eight started
-tests, captured by the package reporter before they finish. It terminates the
+silence it fails with `stalled: no output for <n> min` and up to eight tests
+whose reporter start has no matching completion (cancelled tests remain in flight).
+Before cleanup it records the command's native exit receipt (or pending) and
+stdout/stderr EOF state in a bounded `suite stall command` semantic record,
+before any native inspection can fail. A `suite stall processes` log line retains up to 32
+current birth-matched owned pids and executable names, with a total count;
+it excludes argv and environment values. Inspection uses bounded native probes.
+The command-state record and complete census survive semantic log reduction and cached evidence;
+capped result summaries point to its log artifact with `stall process detail`.
+That pointer also survives when native inspection fails before the census exists.
+An exited command with open pipes distinguishes an inherited writer from a
+command still awaiting exit; missing inspection evidence cannot identify the survivor.
+It terminates the
 verified command tree (including detached test runners and spokes), retaining
 observed child identities if a parent exits before its output pipes close. It sweeps owned
 suite roots, and releases compatibility leases before publishing the result.

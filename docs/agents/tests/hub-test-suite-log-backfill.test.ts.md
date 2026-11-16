@@ -10,3 +10,9 @@ remains registered through fixture drainage. After concurrent cache admission,
 advance the fake scheduler once before awaiting the exact reported receipts;
 a start acknowledgement alone does not prove publication. The 50 MB output and
 shard case retains a full streaming hash comparison and bounded heap/stream checks.
+
+The stall-census case passes 32 pid/name entries followed by 40 noise lines
+through `readSuiteEvidence`, then the capped publication's priority summary.
+It checks the complete JSON fact survives and the summary points to its log.
+The command-only variant omits the census, proving the pre-inspection exit/EOF
+record and capped pointer survive the same streaming reduction and later noise.

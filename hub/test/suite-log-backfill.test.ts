@@ -13,6 +13,23 @@ import { suiteSummary } from '../src/hub/suites.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 
+for (const commandOnly of [false, true]) test(`stall ${commandOnly ? 'command state without census' : 'census'} survives semantic retention and capped reporting after command noise`, async t => {
+  const root = await fs.mkdtemp(join(tmpdir(), 'cland-stall-evidence-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const path = join(root, 'suite.log');
+  const census = { commandPid: 40001, total: 32, processes: Array.from({ length: 32 }, (_, i) => ({ pid: 40001 + i, name: `worker-${i}` })) };
+  const record = `suite stall processes ${JSON.stringify(census)}`;
+  const state = 'suite stall command {"commandPid":40001,"exit":{"code":0,"signal":null},"stdout":"open","stderr":"open"}';
+  await fs.writeFile(path, ['suite command start {"id":"test","name":"T2","line":"fake command"}',
+    state, ...(commandOnly ? [] : [record]), ...Array.from({ length: 40 }, () => 'later output '.repeat(40)), 'suite command end test 1'].join('\n'));
+  const evidence = await readSuiteEvidence(path);
+  assert.ok(evidence.split('\n').includes(state));
+  const retained = evidence.split('\n').find(line => line.startsWith('suite stall processes '));
+  assert.equal(retained, commandOnly ? undefined : record);
+  if (!commandOnly) assert.deepEqual(JSON.parse(retained!.slice('suite stall processes '.length)), census);
+  assert.match(suiteSummary(evidence, [], { logArtifact: 'A-1', priorityOnly: true }), /stall process detail: log A-1/);
+});
+
 test('concurrent admissions stream each retained log once and reuse durable proofs', async t => {
   const f = await suiteUnit(t, { machineReceiptsOnly: true,
     taskLanding: () => ({ tip: f.candidate.head, branch: f.candidate.branch, base: 'dev' }) });

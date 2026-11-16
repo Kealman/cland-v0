@@ -174,6 +174,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
   const executedTiers = tierLines.filter(line => /^tier (?:T[0-4]|Web): exit /.test(line));
   const webPhase = unavailableWebPhase(text);
   const priority = [
+    ...(lines.some(line => line.startsWith('suite stall ')) ? [`stall process detail: log${options.logArtifact ? ' ' + options.logArtifact : ''}`] : []),
     ...lines.filter(line => line.startsWith('shard not run ')),
     ...(webPhase ? [webUnavailableLine(webPhase)] : []),
     ...executedTiers,

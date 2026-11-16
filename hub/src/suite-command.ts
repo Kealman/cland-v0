@@ -5,12 +5,14 @@ import { spawn } from 'node:child_process';
 import { processStartedAsync } from './hub/lock.ts';
 import { endProcess, systemProcesses } from './system-processes.ts';
 import { suiteLimits } from './suite-limits.ts';
+import type { TestProgress } from './suite-progress.ts';
 
-export async function suiteCommand(line: string, cwd: string, env: NodeJS.ProcessEnv = process.env): Promise<{ code: number; cause: string }> {
+const nativeProcesses = { processIdentityAsync, processStartedAsync, systemProcesses, stdioWriters, endProcess };
+export async function suiteCommand(line: string, cwd: string, env: NodeJS.ProcessEnv = process.env, native = nativeProcesses): Promise<{ code: number; cause: string }> {
   const { stallTimeoutMs } = await suiteLimits(cwd, 'local', env);
   const child = spawn('/bin/sh', ['-c', line], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
-  const birth = child.pid ? processIdentityAsync(child.pid, env) : Promise.resolve(null);
-  const identity = child.pid ? processStartedAsync(child.pid) : Promise.resolve(null);
+  const birth = child.pid ? native.processIdentityAsync(child.pid, env) : Promise.resolve(null);
+  const identity = child.pid ? native.processStartedAsync(child.pid) : Promise.resolve(null);
   let cause = '';
   let interrupted = false;
   let ending: Promise<void> | undefined;
@@ -18,14 +20,16 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   let timer: NodeJS.Timeout | undefined;
   let observeTimer: NodeJS.Timeout | undefined;
   let closed = false;
+  let exit: { code: number | null; signal: NodeJS.Signals | null } | undefined;
+  child.once('exit', (code, signal) => { exit = { code, signal }; });
   const owned = new Map<number, { pid: number; started: string; identity: string }>();
   // Preserve proof across parent exit/reparenting. Cwd, command text and group
   // membership alone never admit a process into this ownership set.
   const capture = async () => {
     const started = await identity;
-    const native = await birth;
-    if (child.pid && started && native && !owned.has(child.pid)) owned.set(child.pid, { pid: child.pid, started, identity: native });
-    const rows = await systemProcesses();
+    const nativeBirth = await birth;
+    if (child.pid && started && nativeBirth && !owned.has(child.pid)) owned.set(child.pid, { pid: child.pid, started, identity: nativeBirth });
+    const rows = await native.systemProcesses(undefined, Date.now() + 3000);
     const byPid = new Map(rows.map(row => [row.pid, row]));
     for (let changed = true; changed;) {
       changed = false;
@@ -47,7 +51,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     });
   };
   const partial = new Map<NodeJS.WriteStream, string>();
-  const lastTests: string[] = [];
+  const unfinished = new Map<string, string>();
   const ended = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
     child.once('error', reject);
     child.once('close', (code, signal) => resolve({ code, signal }));
@@ -55,6 +59,10 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   const stop = (reason: string) => {
     if (ending || interrupted) return;
     cause = reason;
+    // Persist the pre-cleanup boundary even if native inspection/termination fails.
+    cause += `; command exit ${exit ? exit.signal ?? exit.code : 'pending'}; stdout ${child.stdout.readableEnded ? 'closed' : 'open'}; stderr ${child.stderr.readableEnded ? 'closed' : 'open'}`;
+    process.stderr.write(`suite stall command ${JSON.stringify({ commandPid: child.pid ?? null, exit: exit ?? null, stdout: child.stdout.readableEnded ? 'closed' : 'open', stderr: child.stderr.readableEnded ? 'closed' : 'open' })}\n`);
+    process.stderr.write(cause + '\n');
     clearTimeout(timer);
     clearTimeout(observeTimer);
     ending = (async () => {
@@ -64,14 +72,18 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
       // Endpoint ownership survives reparenting even before the first ancestry
       // snapshot. Native birth is bracketed around the census and rechecked by
       // endProcess immediately before each signal.
-      const rows = await systemProcesses();
-      for (const row of await stdioWriters([child.stdout, child.stderr], rows, env)) {
+      const rows = await native.systemProcesses(undefined, Date.now() + 3000);
+      for (const row of await native.stdioWriters([child.stdout, child.stderr], rows, env)) {
         if (row.identity) owned.set(row.pid, { pid: row.pid, started: row.started, identity: row.identity });
       }
+      // Do not dump argv or the environment. Only current, birth-matched owners
+      // belong in this bounded diagnostic; a stale census is not a live receipt.
+      const live = rows.filter(row => row.identity && owned.get(row.pid)?.identity === row.identity);
+      process.stderr.write(`suite stall processes ${JSON.stringify({ commandPid: child.pid, total: live.length, processes: live.slice(0, 32).map(row => ({ pid: row.pid, name: row.command.split(/\s/)[0]!.split('/').pop()!.slice(0, 80) })) })}\n`);
       // The root may be gone while inherited pipes are still open. Retained
       // identities still authorize cleanup; endProcess rechecks each before signalling.
       for (const proof of owned.values()) {
-        if (!await endProcess({ pid: proof.pid, pidStarted: proof.started, pidIdentity: proof.identity }, () => {}, 500, undefined, { allowReused: true })) throw new Error('cannot reap silent command tree');
+        if (!await native.endProcess({ pid: proof.pid, pidStarted: proof.started, pidIdentity: proof.identity }, () => {}, 500, undefined, { allowReused: true })) throw new Error('cannot reap silent command tree');
       }
       const pipesClosed = await new Promise<boolean>(resolve => {
         const deadline = setTimeout(() => resolve(false), 500);
@@ -87,7 +99,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     if (ending || interrupted) return;
     timer = setTimeout(() => {
       const minutes = Number((stallTimeoutMs / 60000).toFixed(3));
-      stop(`stalled: no output for ${minutes} min; last started tests: ${lastTests.join(' | ') || '(none reported)'}`);
+      stop(`stalled: no output for ${minutes} min; last started tests: ${[...unfinished.values()].slice(-8).join(' | ') || '(none reported)'}`);
     }, stallTimeoutMs);
   };
   const output = (chunk: string, stream: NodeJS.WriteStream) => {
@@ -98,9 +110,13 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     while ((newline = pending.indexOf('\n')) >= 0) {
       const line = pending.slice(0, newline);
       pending = pending.slice(newline + 1);
-      if (line.startsWith('suite start ')) {
-        lastTests.push(line.slice('suite start '.length).slice(0, 1000));
-        if (lastTests.length > 8) lastTests.shift();
+      if (line.startsWith('suite progress ')) {
+        try {
+          const row = JSON.parse(line.slice('suite progress '.length)) as TestProgress;
+          if (typeof row.id !== 'string' || typeof row.file !== 'string' || typeof row.name !== 'string') continue;
+          if (row.event === 'start') unfinished.set(row.id, JSON.stringify({ file: row.file, name: row.name }).slice(0, 1000));
+          else if (row.event === 'finish' && ['pass', 'fail', 'skip', 'todo'].includes(row.outcome ?? '')) unfinished.delete(row.id);
+        } catch { /* Torn progress cannot erase an observed start. */ }
       }
     }
     partial.set(stream, pending.slice(-16384));
