@@ -2,8 +2,8 @@
 id: T-1889
 kind: task
 title: Load-aware test waits on local runs
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1534
 branch: t/T-1889-load-aware-test-waits-on-local-runs
 created: 2026-11-16T07:29:44.705Z
-updated: 2026-11-16T08:44:44.038Z
+updated: 2026-11-16T09:47:53.750Z
+closed: 2026-11-16T09:47:53.750Z
 ---
 
 ## Summary
@@ -92,3 +93,7 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-11-16T08:44:44.038Z
 
 C3 (macOS covers before and after) is post-merge stage-cover evidence. It can't be checked before enqueue, so the Coordinator moved it to the epic E-1881 as a criterion of its own on 2026-11-16 (decision 6157e34b). T-1889's pre-merge bar is C1 and C2, both verified at 11f34bb60 with green verify d9ae394b (A-19893). The Coordinator runs the after-covers on dev once T-1889 lands.
+
+### coord · 2026-11-16T09:47:53.750Z
+
+Merged b2579dcbf6b00288dbf43009471233357ef518e7 onto dev.

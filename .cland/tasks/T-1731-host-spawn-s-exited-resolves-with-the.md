@@ -3,7 +3,7 @@ id: T-1731
 kind: task
 title: Host spawn's `exited` resolves with the raw `process-exited` event instead of `{code, signal}` when reconciliation wins the race after a dropped commit reply
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1541
 branch: t/T-1731-host-spawn-s-exited-resolves-with-the
 created: 2026-11-06T23:09:27.734Z
-updated: 2026-11-16T08:41:58.750Z
+updated: 2026-11-16T09:27:45.168Z
 ---
 
 ## Summary
@@ -34,7 +34,10 @@ The resolved value also carried `event: 'process-exited'`, `pid`, `identity`, `a
 - [x] C1. With the commit reply dropped and reconciliation forced to settle first, `child.exited` resolves exactly `{code: 7, signal: null}` (test, red before the fix).
   - done: impl-1731 · 2026-11-16T07:38:24.448Z
   - verified: rev-37 [reviewer] · run rev-37-1731-evidence-1 · 2026-11-16T08:41:58.750Z · commit 60e82345182cd4060ba024773813927b14748427
-- [ ] C2. `host-ssh-contract.test.ts` passes 10/10 in the four-file parallel mix under a Linux `--init` container at load 8 or more (evidence).
+  - verified: rev-37 [reviewer] · run rev-37-1731-final-1 · 2026-11-16T09:27:43.562Z · commit 60e82345182cd4060ba024773813927b14748427
+- [x] C2. `host-ssh-contract.test.ts` passes 10/10 in the four-file parallel mix under a Linux `--init` container at load 8 or more (evidence).
+  - done: impl-1731 · 2026-11-16T09:24:50.564Z
+  - verified: rev-37 [reviewer] · run rev-37-1731-final-1 · 2026-11-16T09:27:43.563Z · commit 60e82345182cd4060ba024773813927b14748427
 
 ## Comments
 
@@ -79,3 +82,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Partial evidence clear: C1 verified, C2 remains incomplete/unverified, not final item settlement. A-19894/runac9a6214 matches source-clear60e823451 and independently recomputed canonical tree45ecfa9d1a4bdf267d5dcd5af718f6ef0e3b4301. Uncached Linux x64 droplet Node24.21/Nvim0.12.5, isolated Headless Shell1248 Chrome156.0.8078.4. T0/allT1/fallback allT2/Web passed;6382 base test+700 file passes, separate220 load test+220 file passes, no negatives. File13/13 base; legacy and extended recovery names each1 base+5 load passes. A-19864 original-tool red/green excerpts establish the pre-fix exact-shape failure. Independently confirmed dc05121d7's ssh-host.ts blob equals final parent ad778415d3735d505955ee8569ddc5676e8282f9; older comment base label awaits reconciliation. C2 needs remaining9 loaded four-file Linux --init mixes under the narrow T-1906 exception, which is not a whole-mix/configured pass waiver. NoT3/T4 here; budgets/lint report-only. No Reviewer runs/edits. A-19901 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19901-t-1731-configured-evidence-c1-loaded-mix-pending.md
 
 Criteria: C1 verified.
+
+### rev-37 · 2026-11-16T09:27:43.563Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1731-final-1
+commit: 60e82345182cd4060ba024773813927b14748427
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; C1/C2 verified. Independently parsed all10 original A-19932 TAPs:40 required Host names exactly once per mix,400/400 Host passes,60 result rows/mix,0cancel/skip/todo. Whole-mix592pass/8fail retained (five whole mixes exit1); failures quote 'autonomous retry publishes up: not within 3000 ms', 'explicit incomplete cleanup receipt: not within 2000 ms', and 'changed publication completed before up: not within 2000 ms', exclusively T-1906 identities authorized by Coordinator eb7791e3/3c13e6e3. Entry load8.01–9.55; end7.54–13.33 retained;1f0892fc explicitly accepts entry-only accounting/mix6. C2 is satisfied under that narrow disposition, not10 clean whole-mix passes. Linux Docker --init/network-none/4CPU Node24.21, exact four-file concurrency4; no incomplete file counted. Original missing-zod/load-readiness setup failures and mix7 original accounted:false retained. Corrected source-base provenance reconciled. Configured ac9a6214/A-19894 unchanged uncached60e823451/tree45ecfa9d1a4bdf267d5dcd5af718f6ef0e3b4301 remains green6382base tests/700files plus220load tests/files; Linuxx64 droplet Node24.21/Nvim0.12.5, pinned isolated Headless Shell1248 Chrome156.0.8078.4; T0/allT1/fallback allT2/Web, no taskT3/T4. Budgets/lint report-only, QA none. No Reviewer runs/edits. A-19934 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19934-t-1731-final-same-head-c1-c2-evidence-review.md
+
+Criteria: C1 verified, C2 verified.

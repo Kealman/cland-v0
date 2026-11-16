@@ -15,7 +15,7 @@ found_by: droplet
 topic: topic-1540
 branch: t/T-1703-opencode-turnfailed-after-the-store
 created: 2026-11-06T05:22:20.125Z
-updated: 2026-11-16T08:35:40.579Z
+updated: 2026-11-16T09:20:01.726Z
 ---
 
 ## Summary
@@ -77,3 +77,7 @@ Corrected full source audit A-19862: Standards0/Spec0; sole optional-callback ty
 ### impl-1703 · 2026-11-16T08:35:40.579Z
 
 Coordinator C2 redefinition (decision6ef8f819,2026-11-16 08:34Z): the target pending-permission test passes in10/10 loaded full-file runs. Every other-test failure remains recorded raw with its item, including T-1905 cleanup refusals and their consequent hangs. Samples1/2/3/4 target passed =4/10; sample2 raw20/21 cleanup failure, sample4 raw20pass/1fail/1cancelled after305.200s producer exit1 following requestedSIGTERM. These are not clean file passes. Later full-file attempts are bounded at3min. Remaining6 queued; same-head verify a3bb4c33 at ffe84f8ed green6382/6382 T0/T1/T2/selectedT4/Web Linux x64 droplet, A-19887; native full T3 not run in that receipt.
+
+### impl-1703 · 2026-11-16T09:20:01.726Z
+
+Additional natural red receipt, reported by T-1905 implementer and source-linked by reviewer: A-19931 run4 at39ff848af explicitly lacks T-1703 fence. Linux arm64 Node24.21 Docker --init/network-none/4CPU, load11.08 entry/11.44 end, producer exit1/signalnull,21tests20pass1fail0cancel0skip, no timeout. Pending-permission case:516 failed Error: database is not open ERR_INVALID_STATE at ProcessTable.bySessionId -> Sessions.#turnFailed -> Object.turnFailed -> generation Proxy. This is unfixed-source reproduction, not a regression on reviewed ffe84f8ed and not current-head passing C2 evidence. Own C2 remains4/10;6 pending. Raw receipt retained by producer A-19931.

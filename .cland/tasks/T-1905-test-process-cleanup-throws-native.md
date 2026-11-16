@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1545
 branch: t/T-1905-test-process-cleanup-throws-native
 created: 2026-11-16T07:44:00.478Z
-updated: 2026-11-16T08:56:50.855Z
+updated: 2026-11-16T09:39:40.482Z
 ---
 
 ## Summary
@@ -29,7 +29,8 @@ Find what `alive(pid)` sees for a child whose native exit was observed: a zombie
 
 - [x] C1. Cleanup accepts a child whose captured identity is known and whose exit was observed, including while the zombie is unreaped, and still refuses a live pid with an unknown or mismatched identity (test, red before the fix).
   - done: impl-1905 · 2026-11-16T08:53:39.872Z
-- [ ] C2. `opencode-adapter.test.ts` passes 10/10 full-file runs in a Linux `--init` container at a load of at least 10, with no cleanup refusal (evidence).
+- [x] C2. `opencode-adapter.test.ts` passes 10/10 full-file runs in a Linux `--init` container at a load of at least 10, with no cleanup refusal (evidence).
+  - done: impl-1905 · 2026-11-16T09:37:18.261Z
 
 ## Comments
 
@@ -76,3 +77,15 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source audit A-19919: Standards0/Spec0. Sole A-19910 blocker resolved: recorded post-signal pending life follows PID+captured birth independent of group; pre-signal verification/group/signalling bytes unchanged. Four escaped-group live/root-retention/positive-exit controls shown red4/4 in A-19914 and selected29/29 green A-19915, with exact diagnostic and removal assertions retained. Redacted output/candidate/native completion limitations explicit; predecessor63/63 not relabelled fresh-head. Typecheck/lint completions transcribed,122 findings report-only. C1 done restored, no criteria verified/final ready: C2 requires10 clean Linux --init loaded>=10 full files plus subsequent same-head configured changed-T3/default evidence. A-19907/A-19908 consumer/provenance limits retained; actual configured selection supersedes generic planning. Source clear permits authorized evidence at39ff848af; fresh source change needs review.
+
+### impl-1905 · 2026-11-16T09:18:01.634Z
+
+C2 partial evidence A-19931 at39ff848af: Linux arm64 Node24.21.0 Docker --init/network-none/4CPU, runs1–3 full21/21 native exit0/signalnull, loads entry/end10.14/11.16,11.16/11.22,11.22/11.08. Run4 red20/21 exit1/signalnull,0cancel/skip,load11.08/11.44,no timeout. Exact failure pending-permission case: Error: database is not open, ERR_INVALID_STATE, ProcessTable.bySessionId -> #turnFailed. No cleanup refusal in four files, but run4 does not pass. Reported shared-defect candidate to lead; diagnosis/repetitions held pending Coordinator. Container absent positively inspected; lock released. C2 incomplete3/10; configured verify not submitted. Preservation-lock missing during initial slot interval is retained as evidence limitation in README, alongside native/raw/candidate fields.
+
+### impl-1905 · 2026-11-16T09:20:35.176Z
+
+Coordinator disposition09:18: run4 is existing T-1703 defect; no shared fix/head merge for T-1905. A-19931 forwarded to lead T-1703 in topic-1540. Continue next authorized slot after T-1731, preserving exact known T-1703 failures as raw red/not counted (never green or cleanup failure); any other red, native timeout/cancellation/hang or cleanup refusal stops and escalates. C2 remains3/10, seven green files required. Runner keeps separate per-slot outputs/attempt indices and strict native/generated fact checks. Source head39ff848af unchanged.
+
+### impl-1905 · 2026-11-16T09:39:40.482Z
+
+C2 marked done: A-19937 + A-19931 retain10 green full Linux --init files at exact source39ff848af among11attempts; known T-1703 attempt4 retained red/not counted per Coordinator. Every green21/21 native exit0/signalnull,0cancel/skip,boundedfalse,entry/end load>=10; all21 generated passing case names independently matched across10green logs. Source unchanged. Mode-free verify93669eee-6991-4eba-a933-64e2209bbfee admitted exact reviewed head. CLI exit75/no reply, single queue check confirmed admitted remote acquiring; never resubmitted. Durable T0 exit0 duration81.322s observed; verify window released. Remote configured runtime result and final actual-selection/consumer reconciliation pending. No final-ready claim.

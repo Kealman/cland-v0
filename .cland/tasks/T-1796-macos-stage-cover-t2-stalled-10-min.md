@@ -3,16 +3,16 @@ id: T-1796
 kind: task
 title: macOS stage cover T2 stalled 10 min after its last file passed (command end 1, no failing test)
 state: open
-status: planned
+status: in progress
 size: S
 labels: []
 assignee: null
 parent: E-1881
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1547
+branch: t/T-1796-macos-stage-cover-t2-stalled-10-min
 created: 2026-11-09T18:33:53.922Z
-updated: 2026-11-16T07:31:06.554Z
+updated: 2026-11-16T09:51:02.456Z
 ---
 
 ## Summary

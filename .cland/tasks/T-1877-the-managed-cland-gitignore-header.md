@@ -2,8 +2,8 @@
 id: T-1877
 kind: task
 title: The managed .cland/.gitignore header rewrite after a version bump moves the dev tree off its green covers before release
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1536
 branch: t/T-1877-the-managed-cland-gitignore-header
 created: 2026-11-15T23:32:23.381Z
-updated: 2026-11-16T08:40:47.142Z
+updated: 2026-11-16T09:51:17.952Z
+closed: 2026-11-16T09:47:31.422Z
 ---
 
 ## Summary
@@ -96,3 +97,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head audit A-19896, ledger A-19892: run1470afca/A-19889 passed at reviewed4087e2bbc, unchanged clean source. Independently confirmed C1 named startup migration/version/policy finish34057 pass0.477775126s plus matching timing; all27 changed-native cases and both file finishes positive once. C2 retains same-head source-established startup writer/identity inventory. Deduplicated6407 base tests/702 base files plus separate210 load test/file completions all pass. Conservative984 manifest paths =702 positive files +265 T3/17 T4 occasion deferrals, no missing lower/Web or unclassified path. Local T0 and droplet T1/allfallbackT2/changedT3/Web exit0; exact Linux/Node/HeadlessShell156 provenance36792 retained, no cache/skips. Budgets/lint/ratchet report-only, no performance pass; original transcribed Mac/candidate/publication limits remain explicit. Full remainingT3, T4 and integrated QA unexecuted here. C1/C2 verified; hub/Coordinator own ready/landing.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T09:47:31.422Z
+
+Merged 4a905ab8ea2698e6f9c13bb3ba592aa811f7aa3e onto dev.

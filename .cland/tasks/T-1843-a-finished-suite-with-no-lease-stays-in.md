@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1543
 branch: t/T-1843-a-finished-suite-with-no-lease-stays-in
 created: 2026-11-13T12:41:29.355Z
-updated: 2026-11-16T09:02:27.469Z
+updated: 2026-11-16T09:53:24.129Z
 ---
 
 ## Summary
@@ -28,8 +28,10 @@ A suite that has finished, or whose lease and droplet are gone, leaves the activ
 
 - [x] C1. A remote run whose suite record is finished and whose lease is gone is absent from `cland verify queue` and does not count against `remote_budget`, both live and after a hub restart (test).
   - done: impl-1843 · 2026-11-16T08:53:28.876Z
+  - verified: rev-35 [reviewer] · run rev-35-1843-final-1 · 2026-11-16T09:29:13.317Z · commit ae5664ce0e9c6788bb7eb4176ca32af91766b24a
 - [x] C2. A run that ended without a posted result gets exactly one posted result naming the missing receipt, after which the heartbeat no longer lists it (test).
   - done: impl-1843 · 2026-11-16T08:59:02.953Z
+  - verified: rev-35 [reviewer] · run rev-35-1843-final-1 · 2026-11-16T09:29:13.317Z · commit ae5664ce0e9c6788bb7eb4176ca32af91766b24a
 
 ## Comments
 
@@ -107,3 +109,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear, A-19926. A-19918 terminal-refusal missing-input gap resolved; reconstruction preserves exact outcome/cause/finish, log records missing inputs; fresh refusal normal materialization and surviving result preservation retained. Expanded four-case restart/refused control, previous periodic/execution controls and T1 holder fake align. C1/C2 await configured same-head named/file evidence. A-19909 remains failed history; candidate/provenance/consumer limits retained. No Reviewer runtime work. Hold released for new authorized mode-free verify window.
+
+### rev-35 · 2026-11-16T09:29:13.317Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1843-final-1
+commit: ae5664ce0e9c6788bb7eb4176ca32af91766b24a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head C1/C2 verified, A-19936/A-19935. Independently streamed6389base tests/700files and255separate load tests/files, all pass. Nine required new identities each ordinary+5; all five prior refusal failures now pass unchanged; no persistence tier-mismatch records. All selected220T1/425T2/55Web files positive, no missing receipt. Preserves120original hits/1402table rows and conservative manifest union1499; broader267T3/17T4 deferred. A-19909 remains failed own-change history; capture/report-only boundaries retained. Clean head unchanged; no Reviewer runtime work. Hold released; Coordinator landing gate remains.
+
+Criteria: C1 verified, C2 verified.
