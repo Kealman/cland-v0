@@ -3,7 +3,7 @@ id: T-1876
 kind: task
 title: cland release fails with a bare "gh auth failed (ENOENT)" when the hub's PATH has no gh; doctor doesn't check gh on the hub's PATH
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1535
 branch: t/T-1876-cland-release-fails-with-a-bare-gh-auth
 created: 2026-11-15T23:29:25.796Z
-updated: 2026-11-16T07:41:21.504Z
+updated: 2026-11-16T07:46:09.159Z
 ---
 
 ## Summary
@@ -28,11 +28,26 @@ When a release tool isn't found (ENOENT), the release error says which binary is
 
 - [x] C1. A release whose hub PATH lacks `gh` refuses with a message naming `gh`, the hub's PATH and the restart fix (test).
   - done: impl-1876 · 2026-11-16T07:40:05.621Z
-- [x] C2. `cland doctor` warns when `web_bundle` is on and `gh` isn't on the hub's PATH, with the fix, and makes no network call (test).
-  - done: impl-1876 · 2026-11-16T07:40:09.635Z
+- [ ] C2. `cland doctor` warns when `web_bundle` is on and `gh` isn't on the hub's PATH, with the fix, and makes no network call (test).
+  - failed: rev-37 [reviewer] · 2026-11-16T07:46:09.159Z · note Hub-side lookup differs from release executable resolution for empty/relative PATH components; missing PATH is also conflated with empty.
 
 ## Comments
 
 ### impl-1876 · 2026-11-16T07:34:07.648Z
 
 Contract sweep before edits: searched hub.status, HubStatus, checkWebRelease, AssetCommand, checkToolchain and ToolchainRequirements across hub/web/nvim/shared, skills, QA and docs including all test tiers; inventory at worktree .cland/T-1876-consumers.txt. Plan: additive opt-in hub.status releaseTools boolean and optional releaseTools.gh resolution result. Existing production clients, startup probes, persisted readers, socket fixtures and all prior status requests retain their exact shape; only doctor opts in. Prior wire shape gets an explicit client regression (missing result stays unknown). No existing fields, notices, admission or outcome classes change.
+
+### rev-37 · 2026-11-16T07:46:09.159Z
+
+verdict: review
+result: not clear
+by: rev-37 [reviewer]
+run: rev-37-1876-source-1
+commit: d5294969f470f2544e4f700d5fb4dda4c271a4ca
+scope: full
+findings: [{"severity":"medium","text":"releaseTools.gh uses which(), which skips empty PATH entries and resolves relative entries against process.cwd() instead of the release root; doctor can warn gh is missing although execFile with cwd:root resolves it. Preserve native default PATH semantics too.","file":"hub/src/hub/dispatch.ts","line":2532}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full source review at exact d5294969f: not clear. One medium Spec/shared-fact finding at hub/src/hub/dispatch.ts:2532 (details A-19842). C1 error guidance and sanitized fallback are present; runtime criteria remain unverified. Default status shape and prior-wire unknown handling are preserved; docs/help/golden/skills align otherwise. No Reviewer runs or edits. A-19838 local results are reported summaries; hub-status-component 4/8 remains a failed fixture observation assigned by Coordinator to E-1882, not a pass. Corrected head needs fresh source review before mode-free verify within an authorized machine window. A-19842: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19842-t-1876-source-review-hub-path-lookup-semantics.md
+
+Criteria: C2 failed (Hub-side lookup differs from release executable resolution for empty/relative PATH components; missing PATH is also conflated with empty.).

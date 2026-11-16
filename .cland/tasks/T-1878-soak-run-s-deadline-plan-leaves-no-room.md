@@ -5,6 +5,7 @@ title: "Soak run's deadline plan leaves no room for Web: d5150de3 timed out (exi
 state: open
 status: in progress
 size: S
+criterion_seq: 2
 labels: []
 assignee: null
 parent: E-1888
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-1537
 branch: t/T-1878-soak-run-s-deadline-plan-leaves-no-room
 created: 2026-11-16T04:19:13.815Z
-updated: 2026-11-16T07:41:03.576Z
+updated: 2026-11-16T07:52:54.986Z
 ---
 
 ## Summary
@@ -25,8 +26,10 @@ Find out why the soak's deadline plan admitted a selection that reached the dead
 
 ## Acceptance criteria
 
-- [ ] C1. With the recorded durations of A-19799, the soak plan either fits all selected tiers with real margin or trims repetitions, shown by a test over a fake duration manifest (test).
+- [x] C1. With the recorded durations of A-19799, the soak plan either fits all selected tiers with real margin or trims repetitions, shown by a test over a fake duration manifest (test).
+  - done: impl-1878 · 2026-11-16T07:46:10.173Z
 - [ ] C2. A soak that times out names its unexecuted tiers and files in the result, as unexecuted, never as passed (test).
+  - failed: rev-38 [reviewer] · 2026-11-16T07:52:54.986Z · note Local timeouts omit execution inventory, and broad remote inventories can truncate later tier states and artifact/provenance from capped reporting.
 
 ## Comments
 
@@ -37,3 +40,18 @@ Consumer sweep (rule 20): soakDeadlinePlan caller is hub/src/hub/suites.ts; sele
 ### impl-1878 · 2026-11-16T07:41:03.576Z
 
 Implemented conservative base budgeting and additive timeout execution inventories. Evidence A-19837 records red-before-green at both confirmed seams. Local macOS arm64 Node v24.21.0: planner 1/1, timeout component 3/3, soak component 38/38. Consumer sweep also covers suite-log semantic retention: additive unexecuted/incomplete tier lines retained for dispatch interruptionLines; result.json execution is optional, and legacy/no-tier-plan progress tests remain unchanged. origin/dev fetched and merged once before first review (edbe8da2c, tracker-only fast-forward). Static lint found new guide heading format; corrected. Remaining static checks/typecheck and source review await Coordinator load-hold release; no verification submitted.
+
+### rev-38 · 2026-11-16T07:52:54.986Z
+
+verdict: review
+result: not clear
+by: rev-38 [reviewer]
+run: rev-38-1878-source-1
+commit: 95ddc3cc957ea9f2bda099a46787cc3a1e96e8c9
+scope: full
+findings: [{"severity":"medium","text":"Timeout execution derivation is guarded by remote; a local soak with a tier plan and exit124 gets no execution inventory or unexecuted/incomplete tier report. Share the calculation across executors and retain a local timeout regression.","file":"hub/src/hub/suites.ts","line":1572},{"severity":"medium","text":"Unbounded joined path lists enter priority interruption text before provenance/artifact references; T2 alone is 14,932 bytes in the pinned manifest, so the capped report truncates later tiers and its log pointer. Keep complete durable lists and add a bounded per-tier display with guaranteed artifact link, proven by a broad-plan report test.","file":"hub/src/suite-execution.ts","line":19}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Complete first Standards/Spec source pass in A-19853. Two medium C2 findings; no other findings, including lows. C1's conservative serial base cost and existing margin/refusal/repetition policy are supported by source and checked against A-19799 baseline/projection records. A-19837 and 4ff6e702 are explicitly transcribed development-candidate red/green summaries, not same-head configured receipts. No criteria verified in source pass. Fix both C2 gaps on a fresh head and request new source review before verification. Reviewer read only; no tests, native/browser runs or edits.
+
+Criteria: C2 failed (Local timeouts omit execution inventory, and broad remote inventories can truncate later tier states and artifact/provenance from capped reporting.).
