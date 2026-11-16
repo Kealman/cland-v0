@@ -27,7 +27,7 @@ test('CLI commands from linked worktrees find the main project hub and write onl
   };
   const root = await wait('create temporary project', () => tempProject(fixtures));
   git(root, 'init');
-  const { discovery } = await wait('start routing hub', () => projectHub(fixtures, root, {}, { clock: new FakeClock() }));
+  const { discovery } = await wait('start routing hub', () => projectHub(fixtures, root, {}, { clock: new FakeClock(), lockIdentity: 'native' }));
   const ui = await wait('connect UI', () => connectUi(fixtures, discovery));
   const created = (await wait('UI task.create', () => ui.request({ type: 'task.create', title: 'Main item', size: 'M' }))).value as { item: { path: string } };
   git(root, 'add', '.cland');
@@ -56,7 +56,7 @@ test('CLI commands from linked worktrees find the main project hub and write onl
 test('an initialized non-worktree child remains its own project beside a running parent hub', async (t) => {
   const { wait, fixtures } = caseDeadlines(t);
   const parent = await wait('create temporary project', () => tempProject(fixtures));
-  const { discovery } = await wait('start project hub', () => projectHub(fixtures, parent, {}, { clock: new FakeClock(), harnesses: 'fake' }));
+  const { discovery } = await wait('start project hub', () => projectHub(fixtures, parent, {}, { clock: new FakeClock(), harnesses: 'fake', lockIdentity: 'native' }));
   ok(await wait('CLI task create --size', () => cland(parent, 'task', 'create', '--size', 'M', 'Parent item')));
   const child = join(parent, 'child');
   // Init refuses a target discovered as its parent; mark this fixture's
@@ -68,7 +68,7 @@ test('an initialized non-worktree child remains its own project beside a running
   assert.equal(idle.code, 1, idle.stdout);
   assert.deepEqual(JSON.parse(idle.stdout), { running: false, root: child });
   assert.equal((await wait('CLI task create --size', () => cland(child, 'task', 'create', '--size', 'M', 'Must not reach parent'))).code, 1);
-  const childHub = await wait('start project hub', () => projectHub(fixtures, child, {}, { clock: new FakeClock(), harnesses: 'fake' }));
+  const childHub = await wait('start project hub', () => projectHub(fixtures, child, {}, { clock: new FakeClock(), harnesses: 'fake', lockIdentity: 'native' }));
   assert.notEqual(childHub.discovery.socket, discovery.socket);
   ok(await wait('CLI task create --size', () => cland(child, 'task', 'create', '--size', 'M', 'Child item')));
   assert.match(ok(await wait('CLI task view T-5', () => cland(child, 'task', 'view', 'T-5'))).stdout, /Child item/);
@@ -109,7 +109,7 @@ test('CLAND_HUB_FILE selects the named hub from another project, including a cop
   const root = await wait('create temporary project', () => tempProject(fixtures));
   const other = await wait('create temporary project', () => tempProject(fixtures));
   const { discovery } = await wait('start hub process', () => startDaemon(fixtures, root));
-  const otherHub = await wait('start project hub', () => projectHub(fixtures, other, {}, { clock: new FakeClock(), harnesses: 'fake' }));
+  const otherHub = await wait('start project hub', () => projectHub(fixtures, other, {}, { clock: new FakeClock(), harnesses: 'fake', lockIdentity: 'native' }));
   ok(await wait('CLI task create --size', () => cland(root, 'task', 'create', '--size', 'M', 'Target item')));
   const coord = await wait('connect coordinator spoke', () => inProcessSpoke(fixtures, { discover: true, cwd: root, name: 'coord', role: 'coordinator' }));
   fixtures.after(() => wait('coordinator spoke close', () => coord.close()));

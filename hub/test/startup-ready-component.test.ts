@@ -9,7 +9,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { runHub } from '../src/cli/hub.ts';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import { join } from 'node:path';
-import { connectUi, eventually, projectHub, tempProject, until } from './harness.ts';
+import { connectUi, eventually, nativeIdentityProjectHub as projectHub, tempProject, until } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { readLeases, writeLease } from '../src/executor/droplet/lease.ts';

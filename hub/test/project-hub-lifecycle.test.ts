@@ -6,7 +6,21 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, nativeProjectHub as projectHub, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, nativeProjectHub as projectHub, projectHub as fixtureHub, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { lockHostIdentity } from '../src/hub/lock-identity.ts';
+import { readLock } from '../src/hub/lock.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { FakeClock } from './fake-clock.ts';
+import { fixtureWork } from './fixture-work.ts';
+
+test('projectHub explicitly opts into native lock identity with fake infrastructure probes', async t => {
+  await fixtureWork(t).run(async work => {
+    const root = await work.root(() => tempProject(t));
+    const expected = await work.step(() => lockHostIdentity(process.platform, undefined, fixtureEnvironment(root, process.env)));
+    await work.acquire(() => fixtureHub(t, root, {}, { clock: new FakeClock(), lockIdentity: 'native' }), hub => hub.dispose());
+    assert.deepEqual(readLock(join(root, '.cland/hub.lock'))?.hostIdentity, expected);
+  });
+});
 
 for (const start of [projectHub, startDaemon]) test(`${start.name}: CLI, spoke, Unix socket and WebSocket share the project`, async t => {
   const root = await tempProject(t);

@@ -32,6 +32,7 @@ documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merg
 - [Droplet delivery](../docs/hub/running.md): size-scaled, bounded upload retries, per-attempt run-log receipts and terminal no-lease slot/report recovery under the local run's droplet lifetime.
 - [Regional capacity](../docs/hub/running.md#controls-and-the-prepared-snapshot): the exact create-time size-unavailable 422 tries the next eligible configured region, recording refusals in the run log; other create errors retain their handling.
 - [Test waits](../docs/agents/tests.md#waiting-for-an-observable-condition): phase load headroom for setup and exact injected-clock or named behaviour deadlines.
+- [In-process test fixtures](../docs/agents/tests.md#in-process-harnesses): `projectHub` uses fixture lock identity and process-start facts; T3 selects `lockIdentity: 'native'` and `probes: 'native'` explicitly, or uses `nativeProjectHub`.
 - [File startup watchdog](../docs/hub/running.md): typed file-start receipts get 30 seconds of load-scaled setup headroom, capped at half the admitted no-output timeout, before the existing owned stall cleanup runs.
 - [Topics](../docs/hub/topics.md)
 - [Native fixture inventory](../qa/briefs/T-1806-inventory.md): shared exact name-set checks and scratch-only host socket routing.

@@ -12,16 +12,20 @@ and lapsed guarded takeover (a config parser failure after acquisition is the
 receipt, with final released-lock assertion). The lapsed start case proves launch
 admission only; lock identity tests prove guarded replacement.
 
-Run this file alone with `node --test hub/test/hub-lock-readers.test.ts` after
+This file reads native identity directly; its existing T2 classification is a
+native-reader follow-up, separate from the embedded fixture default. Run this
+file alone with `node --test hub/test/hub-lock-readers.test.ts` after
 cover-quiet releases and disk/load checks. Preserve `edges.test.ts`,
 `orphan-servers.test.ts`, `doctor.test.ts`, `doctor-cli.test.ts`, `daemon.test.ts`
 and `telegram-polling-restart.test.ts` unedited and run them as targeted files;
 the native T3 lifecycle cases are outside ordinary mode-free item verification.
 Every native-to-embedded restart carries captured native `lockIdentity` rather
 than the synthetic fixture identity. Doctor's matrix fixture supplies the same
-captured native identity as its embedded hub through `ProjectReaders.lockOptions`.
-All local embedded hubs use the shared native capture by default; synthetic host
-identity is explicit for foreign-holder negative controls.
+fixture identity as its embedded hub through `ProjectReaders.lockOptions`.
+Embedded hubs use runner-captured identity when available and a standalone
+synthetic identity otherwise. Native CLI interoperability opts in explicitly
+with `lockIdentity: 'native'` or `nativeIdentityProjectHub`; a different synthetic
+identity remains the foreign-holder negative control.
 No real provider, inherited credentials or human browser is used.
 
 Held stop-request failure installs a same-number foreign successor while the

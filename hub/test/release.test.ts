@@ -27,7 +27,7 @@ async function scratchHub(machine: Awaited<ReturnType<typeof scratchMachine>>, r
   const original = process.env;
   try {
     process.env = machine.env;
-    return await projectHub(machine.context, root, {}, { probes: 'native' });
+    return await projectHub(machine.context, root, {}, { probes: 'native', lockIdentity: 'native' });
   } finally { process.env = original; }
 }
 

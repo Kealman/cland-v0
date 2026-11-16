@@ -7,8 +7,12 @@ import { syncBuiltinESMExports } from 'node:module';
 import { promisify } from 'node:util';
 import { FakeClock } from './fake-clock.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
+import { existsSync } from 'node:fs';
+import { fixtureWork } from './fixture-work.ts';
+import { onCleanup } from './process-cleanup.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
 
-// Keep one observation window across imports and both tests: imported modules may
+// Keep one observation window across harness imports and all cases: imported modules may
 // retain a promisified child_process function even after syncBuiltinESMExports.
 let observation: ReturnType<typeof startObservation> | undefined;
 let finishObservation = () => {};
@@ -54,6 +58,101 @@ async function startObservation() {
 
 test('importing the project harness starts zero child processes', async t => {
   await observeChildren(t);
+});
+
+test('projectHub without runner identity persists a fixture identity without native children', async t => {
+  const owner = fixtureWork(t);
+  const inherited = process.env.CLAND_TEST_LOCK_IDENTITY;
+  owner.restore(() => {
+    if (inherited === undefined) delete process.env.CLAND_TEST_LOCK_IDENTITY;
+    else process.env.CLAND_TEST_LOCK_IDENTITY = inherited;
+  });
+  await owner.run(async work => {
+    const { projectHub, tempProject } = await work.step(() => observeChildren(t));
+    const root = await work.root(() => tempProject(t));
+    delete process.env.CLAND_TEST_LOCK_IDENTITY;
+    await work.acquire(() => projectHub(t, root, {}, { clock: new FakeClock(), processes: undefined }), hub => hub.dispose());
+    const { readLock } = await work.step(() => import('../src/hub/lock.ts'));
+    const { join } = await work.step(() => import('node:path'));
+    assert.deepEqual(readLock(join(root, '.cland/hub.lock'))?.hostIdentity,
+      { hostname: 'fixture-host', bootId: 'fixture-boot', pidNamespace: null });
+  });
+});
+
+test('projectHub restart sweeps its fixture executor ledger without native children', async t => {
+  await fixtureWork(t).run(async work => {
+    const { projectHub, tempProject } = await work.step(() => observeChildren(t));
+    const { DigitalOceanApi } = await work.step(() => import('../src/executor/droplet/api.ts'));
+    const { until } = await work.step(() => import('./until.ts'));
+    const { readFile } = await work.step(() => import('node:fs/promises'));
+    const { join } = await work.step(() => import('node:path'));
+    const root = await work.root(() => tempProject(t));
+    for (let lifetime = 0; lifetime < 2; lifetime++) {
+      const clock = new FakeClock();
+      const api = new DigitalOceanApi({}, clock, async () => ({ droplets: [], ssh_keys: [] }));
+      const events: Record<string, unknown>[] = [];
+      const hub = await work.acquire(() => projectHub(t, root, {}, { clock, droplet: { api },
+        syntheticProvider: { token: 'cland-test-lock-probes', api }, log: event => events.push(event) }), hub => hub.dispose());
+      await work.step(() => until(() => work.signal.aborted || events.some(event => event.event === 'executor-sweep'), { what: 'fixture executor sweep completed', timeoutMs: 5000 }));
+      const ledger = JSON.parse(await work.step(() => readFile(join(root, '.cland/executor-state/spend.json'), 'utf8')));
+      assert.deepEqual(ledger.projects, [root]);
+      await work.step(() => hub.dispose());
+    }
+  });
+});
+
+for (const held of ['root acquisition', 'startup', 'read'] as const) test(`fixture cancellation joins held ${held} and fences later admission before removing its root`, async t => {
+  const entered = Promise.withResolvers<void>();
+  const cancelling = Promise.withResolvers<void>();
+  const draining = Promise.withResolvers<void>();
+  const released = Promise.withResolvers<void>();
+  const finish = Promise.withResolvers<void>();
+  let closed = false, completed = false, restored = false, laterAdmission = false;
+  let root: string | undefined;
+  let running: Promise<void> | undefined;
+  let owner: ReturnType<typeof fixtureWork> | undefined;
+  const releaseAndJoin = async () => {
+    released.resolve(); finish.resolve();
+    try { await owner?.dispose(); }
+    finally { await running?.catch(() => {}); }
+  };
+  onCleanup(t, releaseAndJoin);
+  owner = fixtureWork(t);
+  owner.release(() => { cancelling.resolve(); released.resolve(); });
+  owner.restore(() => { assert.equal(completed, true); assert.equal(closed, held !== 'root acquisition'); restored = true; });
+  const hold = async () => { entered.resolve(); await released.promise; draining.resolve(); await finish.promise; completed = true; };
+  running = owner.run(async work => {
+    const { projectHub, tempProject } = await work.step(() => observeChildren(t));
+    const acquiredRoot = await work.root(async () => {
+      root = await tempProject(t);
+      if (held === 'root acquisition') await hold();
+      return root;
+    });
+    await work.acquire(async () => {
+      const hub = await projectHub(t, acquiredRoot, {}, { clock: new FakeClock() });
+      if (held === 'startup') await hold();
+      return hub;
+    }, async hub => { await hub.dispose(); closed = true; });
+    if (held === 'read') await work.step(hold);
+    laterAdmission = true;
+    await work.acquire(() => projectHub(t, acquiredRoot), hub => hub.dispose());
+  });
+  const failed = assert.rejects(running, /fixture work admission closed/);
+  void failed.catch(() => {});
+  let removing: Promise<void> | undefined;
+  try {
+    await within(entered.promise, 5000);
+    removing = owner.dispose(); void removing.catch(() => {});
+    await within(Promise.all([cancelling.promise, draining.promise]), 5000);
+    assert.ok(root);
+    assert.equal(existsSync(root), true, 'owned writer retains the root until its completion');
+    assert.equal(completed, false);
+    finish.resolve();
+    await within(Promise.all([failed, removing]), 5000);
+    assert.equal(completed, true); assert.equal(closed, held !== 'root acquisition'); assert.equal(restored, true);
+    assert.equal(laterAdmission, false);
+    assert.equal(existsSync(root), false, 'root removal follows writer completion and resource closure');
+  } finally { await releaseAndJoin(); await removing; }
 });
 
 test('projectHub defaults launch, signal and stop every harness with zero child processes', async t => {

@@ -1,5 +1,14 @@
 # hub/test/project-hub-lifecycle.test.ts
 
+The native identity case uses `projectHub` with `lockIdentity: 'native'` while
+keeping infrastructure probes fake. Its durable lock record must match an
+independent native identity read under the sealed fixture environment. The
+`nativeProjectHub` wrapper selects the same identity option for CLI interoperability.
+The complete explicit-native case runs under the shared `fixtureWork` owner,
+registered before the initial `tempProject` acquisition. It composes the shared
+admitted-work owner, adopts late roots and joins late startup/resource closure
+before root removal or environment restoration.
+
 T3 checks native CLI/spoke/socket integration and the resource tracker's positive
 timer-leak controls through sealed child test runners. The retained-interval case
 requires the child to exit 1 with both `projectHub leaked resources` and `Timeout`.

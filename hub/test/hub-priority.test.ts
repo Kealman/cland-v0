@@ -1,7 +1,7 @@
 // T2: startup logging and public CLI reports through one in-process project hub.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { projectHub, tempProject } from './harness.ts';
+import { nativeIdentityProjectHub as projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { runHub } from '../src/cli/hub.ts';
 import { captureCli } from './cli-in-process.ts';

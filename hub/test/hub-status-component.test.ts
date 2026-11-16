@@ -117,7 +117,7 @@ test('full status retains a large fragmented response', async t => {
 
 test('default hub status bounds completed suite history and preserves explicit historical diagnostics', async t => {
   const { Store } = await import('../src/hub/store.ts');
-  const { projectHub, connectUi } = await import('./harness.ts');
+  const { nativeIdentityProjectHub: projectHub, connectUi } = await import('./harness.ts');
   const { join } = await import('node:path');
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
@@ -158,7 +158,7 @@ test('default hub status bounds completed suite history and preserves explicit h
 
 test('topic history pages complete messages by bytes and reads the next before-id page', async t => {
   const { Store } = await import('../src/hub/store.ts');
-  const { projectHub, connectUi } = await import('./harness.ts');
+  const { nativeIdentityProjectHub: projectHub, connectUi } = await import('./harness.ts');
   const { join } = await import('node:path');
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
@@ -190,7 +190,7 @@ test('topic history pages complete messages by bytes and reads the next before-i
 
 test('artifact pages are newest first and an exclusive cursor reaches the next page', async t => {
   const { Store } = await import('../src/hub/store.ts');
-  const { projectHub, connectUi } = await import('./harness.ts');
+  const { nativeIdentityProjectHub: projectHub, connectUi } = await import('./harness.ts');
   const { join } = await import('node:path');
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });

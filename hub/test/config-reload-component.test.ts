@@ -11,7 +11,7 @@ import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { RolesFile, ROLES_REFRESH_MS } from '../src/roles/config.ts';
 import { layout } from '../src/project.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { cland, eventually, flushProjectLogs, projectHub, tempProject } from './harness.ts';
+import { cland, eventually, flushProjectLogs, nativeIdentityProjectHub as projectHub, tempProject } from './harness.ts';
 
 const config = (root: string, budget: number) => `[verification]\nlock_path=${JSON.stringify(join(root, "suite.lock"))}\nremote_budget=${budget}\n`;
 

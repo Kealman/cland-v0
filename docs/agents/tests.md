@@ -897,16 +897,21 @@ harness names, so `roles.toml` launch choices still work. The returned `fakes`
 map exposes each adapter. `probes: 'fake'` supplies no-repository Git answers and
 an injected process table; startup and teardown keep their infrastructure probes fake. A test needing branch/provenance facts may override `git` and
 `readBase`; a lock test may override `processes` (`alive` and `started`).
-`projectHub` captures this machine’s native lock identity by default, shared with
-doctor fixture readers; explicit synthetic identity is reserved for foreign-holder
-controls. Linux reads native identity files; macOS uses one bounded sysctl per
-suite-runner invocation under the sealed fixture environment, handed to workers
-through `CLAND_TEST_LOCK_IDENTITY`. Direct harness callers without that value
-capture once on first use per process. `projectHub` defaults to fake
+`projectHub` and doctor fixture readers use the runner-provided
+`CLAND_TEST_LOCK_IDENTITY` when present, and a synthetic fixture identity otherwise,
+without native identity probes. The runner captures the host identity before
+worker tripwires start. T3 fixtures that share a lock with a native CLI or daemon
+opt in with `lockIdentity: 'native'`, independently of their other probes.
+`nativeIdentityProjectHub` selects that option while retaining fake adapters and
+other probes. Ten native CLI lock-reader files explicitly use this wrapper under
+the compatibility exception recorded in T-1915; their tier classification is
+tracked there. Native opt-in reuses the runner's captured identity when present
+and reads the native identity only for standalone calls without that metadata.
+`projectHub` defaults to fake
 harnesses and process probes; explicitly supplied adapters,
 Git, base-reader, territory and process facts take precedence. T3 contracts and lifecycle
 files opt into production defaults by importing `nativeProjectHub` (which passes
-`harnesses: 'native', probes: 'native'`). Either option can also be selected
+`harnesses: 'native', probes: 'native', lockIdentity: 'native'`). Each option can also be selected
 independently. Receipt-only suite fixtures may inject `compatibility` holder/occupied
 observations and a process table for lease identity reads. `serveProject` retains
 its production Git, lock and ps defaults. Import `NO_PS` only from
@@ -914,6 +919,21 @@ its production Git, lock and ps defaults. Import `NO_PS` only from
 probes the OS. For a lower-level fixture, use
 `fakeHarness(flavour, { host, clock })` from `hub/test/fakes/harness.ts`.
 Capabilities and first-clause semantics come from the production adapters.
+
+With fake probes, the droplet fixture also inherits `processes` for executor
+ledger locks unless `droplet.processes` is supplied. `probes: 'native'` retains
+native executor process-start observations. These fixture choices do not change
+production hub identity, heartbeat or process ownership.
+
+New fixture sequences can use `fixtureWork(t)` before their first asynchronous
+step, including `tempProject`, to own the entire body. This fixture-specific
+wrapper composes `test-support/fixture-work.ts`. Its `root` adopts late root
+acquisition with an explicit remover, `acquire` adopts late resources, and `step`
+fences later work after cancellation; disposal joins the body and resource
+closure before root removal. Register deliberate hold releases and environment
+restorations before admission. `projectHub.dispose()` closes both the hub and its
+journal for these owners; `stop()` retains the hub-stop boundary. Failed joins
+retain roots; environment restoration follows positive body/resource settlement.
 
 The test drives `busy(name)`, `idle(name)`, `turn(name, { afterMs, usage, model })`,
 `exit(name, code)` and `crash(name)`. No process or automatic turn starts.

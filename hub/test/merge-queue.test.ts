@@ -5,7 +5,7 @@ import cp from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, inProcessSpoke, projectHub, tempProject, until, type ProjectHubOptions } from './harness.ts';
+import { cland, connectUi, inProcessSpoke, nativeIdentityProjectHub as projectHub, tempProject, until, type ProjectHubOptions } from './harness.ts';
 import { manualTips } from './freshness-harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { dispatcherSpoke, value } from './validation-support.ts';

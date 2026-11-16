@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { mkdir, open, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defaultConfig, renderConfig, parseConfig } from '../src/init/config.ts';
-import { cland, projectHub, tempProject, connectUi } from './harness.ts';
+import { cland, nativeIdentityProjectHub as projectHub, tempProject, connectUi } from './harness.ts';
 
 test('switch creates one first admin, reload preserves it, and reset retains it behind single-mode refusal', async t => {
   const root = await tempProject(t);

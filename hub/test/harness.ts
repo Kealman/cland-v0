@@ -451,9 +451,9 @@ export type ProjectHubOptions = {
   hasTerritory?: typeof import('../src/territory.ts').hasTerritory;
   territoryLock?: typeof import('../src/territory.ts').withTerritoryLockAsync;
   readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
-  /** Native-to-embedded lifecycle fixtures retain the local PID-table identity. */
-  lockIdentity?: import('../src/hub/lock.ts').LockHostIdentity;
-  processes?: import('../src/hub/lock.ts').LockProcessTable;
+  /** T3 native-to-embedded lifecycle fixtures explicitly retain the local PID-table identity. */
+  lockIdentity?: import('../src/hub/lock.ts').LockHostIdentity | 'native';
+  processes?: import('../src/hub/lock.ts').LockProcessTable | undefined;
   candidate?: import('../src/hub/suite-candidate.ts').SuiteCandidate;
   selectSuite?: import('../src/hub/dispatch.ts').DispatcherOptions['selectSuite'];
   durationContext?: import('../src/suite-duration-budget.ts').DurationBudgetContext | null;
@@ -463,15 +463,14 @@ export type ProjectHubOptions = {
   transportClock?: Clock;
 };
 
-let capturedLockIdentity: ReturnType<typeof lockHostIdentity> | undefined;
-/** Embedded hubs share the local CLI's PID table; only identity-only fixtures opt into synthetic hosts. */
-export const fixtureLockIdentity = (env: NodeJS.ProcessEnv) => capturedLockIdentity ??= process.env.CLAND_TEST_LOCK_IDENTITY
+/** Runner-captured identity keeps fixture readers compatible; standalone fixtures never probe the OS. */
+export const fixtureLockIdentity = (env: NodeJS.ProcessEnv, native = false): ReturnType<typeof lockHostIdentity> => process.env.CLAND_TEST_LOCK_IDENTITY
   ? JSON.parse(process.env.CLAND_TEST_LOCK_IDENTITY) as ReturnType<typeof lockHostIdentity>
-  : lockHostIdentity(process.platform, undefined, env);
+  : native ? lockHostIdentity(process.platform, undefined, env) : { hostname: 'fixture-host', bootId: 'fixture-boot', pidNamespace: null };
 
 /** Default project fixture: fake harnesses and probes, with production discovery and socket edges.
  * Explicit adapters and facts take precedence. Hub process lifecycle assertions use startDaemon. */
-export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; hostOwner: Dispatcher['hostOwner']; hostEnvironment: NodeJS.ProcessEnv; stopped: Promise<void>; stop: () => Promise<void>; verificationSettled: () => Promise<void> }> {
+export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; hostOwner: Dispatcher['hostOwner']; hostEnvironment: NodeJS.ProcessEnv; stopped: Promise<void>; stop: () => Promise<void>; dispose: () => Promise<void>; verificationSettled: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
   let sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_ORPHAN_ROOT: root, ...extra }, root);
@@ -504,6 +503,11 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   // callers can override individual facts without restoring the other native probes.
   const gatewayProcesses = fakePollerProcesses();
   gatewayProcesses.rows.set(process.pid, { alive: true, started: 'fixture-hub-start', identity: 'fixture-hub-birth' });
+  const { processes: requestedProcesses, ...hubOptions } = options;
+  // Unknown start identity keeps a live native holder conservative too; an
+  // invented stamp could make another reader mistake this fixture for PID reuse.
+  const lockProcesses = requestedProcesses ?? { alive: pidAlive, started: () => null };
+  const processes = options.probes === 'native' ? requestedProcesses : lockProcesses;
   const probes = options.probes !== 'native' ? {
     gatewayProcesses: gatewayProcesses.processes,
     priorityProbe: () => 0,
@@ -514,14 +518,14 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     readBase: async () => null,
     hasTerritory: async () => false,
     territoryLock: async <T>(_root: string, operation: () => Promise<T>) => operation(),
-    // Unknown start identity keeps a live native holder conservative too; an
-    // invented stamp could make another reader mistake this fixture for PID reuse.
-    lockIdentity: options.lockIdentity ?? fixtureLockIdentity(env),
-    processes: { alive: pidAlive, started: () => null },
   } : {};
+  const droplet = options.probes !== 'native'
+    ? { ...options.droplet, processes: options.droplet?.processes ?? lockProcesses }
+    : options.droplet;
   let daemon;
   try {
-    daemon = await resources.run(() => serveProject(root, { ...probes, ...options, ...(adapters ? { adapters } : {}), env, log: entry => { options.log?.(entry); if (options.processLog !== false) processLog.write({ ...entry, event: String(entry.event) }); }, flushLog: () => processLog.flush() }));
+    const lockIdentity = options.lockIdentity === 'native' ? fixtureLockIdentity(env, true) : options.lockIdentity ?? fixtureLockIdentity(env);
+    daemon = await resources.run(() => serveProject(root, { ...probes, ...hubOptions, ...(processes ? { processes } : {}), lockIdentity, ...(droplet ? { droplet } : {}), ...(adapters ? { adapters } : {}), env, log: entry => { options.log?.(entry); if (options.processLog !== false) processLog.write({ ...entry, event: String(entry.event) }); }, flushLog: () => processLog.flush() }));
     await processLog.flush();
   }
   catch (error) {
@@ -546,13 +550,17 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
       };
     }),
   };
-  return { fakes, hostEnvironment: env, discovery: daemon.discovery, dispatcher, hostOwner: daemon.hub.dispatcher.hostOwner, stopped: daemon.stopped, stop: () => daemon.stop(), verificationSettled: () => resources.run(() => daemon.hub.dispatcher.verificationSettled()) };
+  return { fakes, hostEnvironment: env, discovery: daemon.discovery, dispatcher, hostOwner: daemon.hub.dispatcher.hostOwner, stopped: daemon.stopped, stop: () => daemon.stop(), dispose: stopFixtureHub, verificationSettled: () => resources.run(() => daemon.hub.dispatcher.verificationSettled()) };
 }
 
 /** T3 native contracts/lifecycle: explicitly retain production adapters and Git/ps probes.
  * Individual injected facts or fake adapters still take precedence. */
 export const nativeProjectHub: typeof projectHub = (t, root, extra, options) =>
-  projectHub(t, root, extra, { harnesses: 'native', probes: 'native', ...options });
+  projectHub(t, root, extra, { harnesses: 'native', probes: 'native', lockIdentity: 'native', ...options });
+
+/** Native CLI lock readers only; retain fake adapters and other infrastructure probes. */
+export const nativeIdentityProjectHub: typeof projectHub = (t, root, extra, options) =>
+  projectHub(t, root, extra, { lockIdentity: 'native', ...options });
 
 /** Start a fixture without startup orphan inspection; pass { sweep: true } as the fourth argument to opt in.
  * An explicit CLAND_TEST_SKIP_ORPHAN_SWEEP in env takes precedence. Teardown owns the returned PID. */

@@ -5,7 +5,7 @@ import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
-import { cland, connectSocket, connectUi, eventually, flushProjectLogs, inProcessSpoke, projectHub, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
+import { cland, connectSocket, connectUi, eventually, flushProjectLogs, inProcessSpoke, nativeIdentityProjectHub as projectHub, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; role: string | null; label?: string };
 

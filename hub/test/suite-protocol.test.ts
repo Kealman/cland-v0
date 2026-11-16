@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { lstat, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { cland, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { cland, inProcessSpoke, nativeIdentityProjectHub as projectHub, tempProject } from './harness.ts';
 import { compatibilityHolder, sweep } from '../src/suite-lock.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { Store } from '../src/hub/store.ts';

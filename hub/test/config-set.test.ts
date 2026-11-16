@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, symlink, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
-import { cland, eventually, projectHub, tempProject } from './harness.ts';
+import { cland, eventually, nativeIdentityProjectHub as projectHub, tempProject } from './harness.ts';
 import { writeAtomic } from '../src/init/files.ts';
 import { testMessenger } from './fakes/messenger.ts';
 import type { RemoteSettings } from '../src/remote/configuration.ts';

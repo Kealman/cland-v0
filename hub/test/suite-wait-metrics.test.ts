@@ -5,7 +5,7 @@ import { queueWaitMetrics } from '../src/hub/verification-wait.ts';
 import { Suites, type SuiteJob } from '../src/hub/suites.ts';
 import { Store } from '../src/hub/store.ts';
 import { join } from 'node:path';
-import { tempProject, projectHub, cland, connectUi } from './harness.ts';
+import { tempProject, nativeIdentityProjectHub as projectHub, cland, connectUi } from './harness.ts';
 import type { LogEntry } from '../src/log.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { parseConfig, renderConfig } from '../src/init/config.ts';

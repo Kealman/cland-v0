@@ -8,8 +8,8 @@ and generic sync/async lock preservation. Delayed acquisition must install a fre
 and macOS selection and read failure. It launches no process or browser.
 
 Production hub acquisition opts into `HubLockOptions`; generic locks omit it.
-`projectHub` supplies captured native `lockIdentity` beside its injected process table;
-identity-only foreign controls explicitly supply a synthetic identity. Direct
+`projectHub` supplies runner-captured or standalone synthetic `lockIdentity`
+beside its injected process table; foreign controls explicitly supply a different identity. Direct
 legacy fixtures with a fully injected process table may omit that identity and
 retain legacy lock semantics without native probes. Production always captures
 hostname, native boot id and Linux PID namespace before acquiring the lock.
@@ -20,7 +20,7 @@ for refresh and lost-lock shutdown. Lifecycle consumers, including offline track
 foreign-reader classification; see [reader tests](hub-test-hub-lock-readers.test.ts.md). Mixed hub versions
 on a shared volume are unsupported.
 
-Native-to-embedded lifecycle handoffs carry an explicit `lockIdentity` through
+Native-to-embedded lifecycle handoffs opt into native identity explicitly through
 `pacingOwner` and `ProjectHubOptions`. The T2 regression persists a native-shaped
 same-host lock, proves an explicit foreign identity refuses without PID probes,
 then observes default matching-identity dead-holder reclamation and the replacement's
