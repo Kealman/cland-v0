@@ -19,6 +19,44 @@ import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
+test('an injection completion with a queued reconnect does not reconstruct unrelated pending messages', async t => {
+  const clock = new FakeClock();
+  const core = new HubCore({ clock });
+  const table = new ProcessTable(':memory:', clock);
+  const sessions = new Sessions({ core, table, root: '/virtual/project' });
+  t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
+  const host = sessions.host({ discoveryFile: '', node: '', cli: '', spoke: '' });
+  const fake = fakeHarness('claude-code', { clock, host });
+  sessions.register(fake);
+  const process = await fake.spawn({ name: 'impl', role: 'implementer', model: null, cwd: '/virtual/project' });
+  table.put(process);
+  const joined = core.hello({ type: 'hello', protocol: 2, name: 'impl', role: 'implementer', sessionId: process.sessionId, cwd: '/virtual/project' }, () => true);
+  assert.ok(joined.ok);
+  core.store.transaction(() => {
+    for (let i = 0; i < 19_925; i++) core.store.record({ id: `retained-${i}`, from: 'hub', fromKind: 'hub', via: 'hub', to: ['impl'], text: 'retained', ts: clock.now().toISOString() }, [{ session: 'impl', state: 'injected' }], clock.now().getTime());
+  });
+  fake.scriptInject('impl', ...Array<'hold'>(75).fill('hold'));
+  const ids: string[] = [];
+  for (let i = 0; i < 75; i++) {
+    const { message } = core.sendFromHuman('general', `pending ${i}`, ['impl']);
+    ids.push(message.id);
+    core.ack(joined.connection, message.id);
+  }
+  host.reconnected!(process.sessionId);
+  let rebuilt = 0;
+  let checks = 0;
+  const deliveryMessage = core.store.deliveryMessage.bind(core.store);
+  const isUninjected = core.store.isUninjected.bind(core.store);
+  core.store.deliveryMessage = (...args) => { rebuilt++; return deliveryMessage(...args); };
+  core.store.isUninjected = (...args) => { checks++; return isUninjected(...args); };
+  fake.settle('impl', ids[0]!);
+  await clock.advance(0);
+  assert.equal(core.store.deliveriesOf(ids[0]!).find(d => d.session === 'impl')?.state, 'injected', 'durable completion receipt');
+  assert.equal(rebuilt, 0, 'completed input does not rebuild the other 74 messages');
+  assert.equal(checks, 1, 'one indexed pending check at completion with 20,000 delivery rows');
+  assert.equal(core.store.uninjected('impl').length, 74);
+});
+
 test('an hour of failed idle retries backs off with one log per pending message', async t => {
   // T1 policy seam: memory stores and fake harness signals; transport and native
   // recovery have separate component/contract proofs below and in the T3 files.

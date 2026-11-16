@@ -3110,7 +3110,7 @@ export class Sessions {
         // Adapter close may settle the promise after Sessions and its storage have closed.
         if (this.#closed || !flight.again) return;
         const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
-        if (this.#core.store.uninjected(name).some((m) => m.id === messageId)) this.#inject(sessionId, messageId, undefined, flight.reconnected);
+        if (this.#core.store.isUninjected(messageId, name)) this.#inject(sessionId, messageId, undefined, flight.reconnected);
       });
   }
 

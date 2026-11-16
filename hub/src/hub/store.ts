@@ -312,6 +312,16 @@ update counters set value = max(value, (select coalesce(max(seq), 0) from messag
 
 type Row = Record<string, string | number | null>;
 
+// Shared by the pending list and its single-message completion check.
+const UNINJECTED = `d.state = 'delivered' and d.digest_id is null
+  and coalesce(m.notice, '') != 'progress'
+  and (coalesce(m.notice, '') != 'event' or json_extract(m.notice_detail, '$.digest') = 'now')`;
+
+// Root and digest membership share the same indexed lookup for reads and confirmation.
+const DELIVERY_ROWS = `deliveries.rowid in (
+  select rowid from deliveries where message_id = ? and session = ?
+  union select rowid from deliveries indexed by deliveries_digest where session = ? and digest_id = ?)`;
+
 const toMessage = (row: Row): Message => ({
   ...(typeof row.request_kind === 'string' ? { request: row.request_kind as NonNullable<Message['request']>, subject: row.request_subject as string } : {}),
   ...(typeof row.artifact === 'string' ? { artifact: JSON.parse(row.artifact) as Artifact } : {}),
@@ -1237,15 +1247,18 @@ export class Store implements HygieneMemory {
   markInjected(messageId: string, session: string, confirmedSessionId?: string): boolean {
     return this.#transaction(() => {
       const root = this.deliveryRoot(messageId, session);
+      const rows = [root, session, session, root];
       // A validated native receipt can bind a provisional/legacy null row, but
       // cannot claim a delivery already admitted to another session identity.
-      if (confirmedSessionId && this.#prepare(`select 1 from deliveries where session = ?
-        and (message_id = ? or digest_id = ?) and session_id is not null and session_id != ? limit 1`)
-        .get(session, root, root, confirmedSessionId)) return false;
+      if (confirmedSessionId && this.#prepare(`select 1 from deliveries where ${DELIVERY_ROWS}
+        and session_id is not null and session_id != ? limit 1`)
+        .get(...rows, confirmedSessionId)) return false;
       const identity = this.deliverySessionId(root, session) ?? confirmedSessionId ?? session;
-      const changed = this.#prepare("update deliveries set state = 'injected' where (message_id = ? or digest_id = ?) and session = ? and state in ('delivered', 'uncertain')").run(root, root, session).changes > 0;
-      if (changed && confirmedSessionId) this.#prepare(`update deliveries set session_id = ? where session = ?
-        and (message_id = ? or digest_id = ?) and session_id is null`).run(confirmedSessionId, session, root, root);
+      // Keep secondary state indexes out of the outer update: only the indexed
+      // membership subquery chooses rows, then SQLite visits their native rowids.
+      const changed = this.#prepare(`update deliveries not indexed set state = 'injected' where ${DELIVERY_ROWS} and state in ('delivered', 'uncertain')`).run(...rows).changes > 0;
+      if (changed && confirmedSessionId) this.#prepare(`update deliveries not indexed set session_id = ? where ${DELIVERY_ROWS}
+        and session_id is null`).run(confirmedSessionId, ...rows);
       if (changed) this.clearMeta(`deaf-episode:${identity}`);
       if (changed) this.setMeta(`deaf-confirmed:${identity}`, String((this.#prepare('select max(seq) as seq from messages').get() as Row).seq ?? 0));
       return changed;
@@ -1267,9 +1280,15 @@ export class Store implements HygieneMemory {
 
   /** What the session's spoke accepted but its adapter has not confirmed yet, oldest first: the next idle retries these. */
   uninjected(session: string): Message[] {
-    const rows = this.#prepare("select m.* from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = 'delivered' and d.digest_id is null and coalesce(m.notice, '') != 'progress' and (coalesce(m.notice, '') != 'event' or json_extract(m.notice_detail, '$.digest') = 'now') order by m.seq")
+    const rows = this.#prepare(`select m.* from deliveries d indexed by deliveries_session join messages m on m.id = d.message_id where d.session = ? and ${UNINJECTED} order by m.seq`)
       .all(session) as Row[];
     return rows.map(row => this.deliveryMessage(row.id as string, session)!);
+  }
+
+  /** Test the exact root without reconstructing any pending digest. */
+  isUninjected(messageId: string, session: string): boolean {
+    return this.#prepare(`select 1 from deliveries d join messages m on m.id = d.message_id
+      where d.message_id = ? and d.session = ? and ${UNINJECTED}`).get(messageId, session) !== undefined;
   }
 
   /** Uncertain deliveries require explicit retry, not a staffing reservation. Verification reservations
@@ -1368,8 +1387,8 @@ export class Store implements HygieneMemory {
 
   deliveryIds(messageId: string, session: string): string[] {
     const root = this.deliveryRoot(messageId, session);
-    return (this.#prepare(`select m.id from deliveries d join messages m on m.id = d.message_id
-      where d.session = ? and (d.message_id = ? or d.digest_id = ?) order by m.seq`).all(session, root, root) as Row[]).map(row => row.id as string);
+    return (this.#prepare(`select m.id from deliveries join messages m on m.id = deliveries.message_id
+      where ${DELIVERY_ROWS} order by m.seq`).all(root, session, session, root) as Row[]).map(row => row.id as string);
   }
 
   /** Reconstruct the exact addressee-specific batch; history keeps the original messages individually. */

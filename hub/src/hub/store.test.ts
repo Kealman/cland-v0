@@ -12,6 +12,83 @@ import { isClientRequest, type AskOutcome, type Message, type TopicHistoryFilter
 
 const message = (id: string, from: string, to: string[], text: string, ts = '2026-10-08T12:00:00.000Z'): Message => ({ id, from, fromKind: 'agent', via: 'session', to, text, ts });
 
+test('pending delivery reconstruction uses indexed bounds with a large retained history', t => {
+  const queries = new Set<string>();
+  const db = new DatabaseSync(':memory:');
+  const prepare = db.prepare.bind(db);
+  db.prepare = sql => { queries.add(sql); return prepare(sql); };
+  const store = new Store(':memory:', () => db);
+  try {
+    // Bulk fixture setup avoids measuring 20,000 unrelated admission transactions.
+    db.exec(`with recursive numbers(i) as (values(0) union all select i+1 from numbers where i<19999)
+      insert into messages(id, from_name, from_kind, via, to_json, text, ts, created_at, seq)
+      select 'history-'||i, 'sender', 'agent', 'session', '["receiver"]', 'retained', '2026-10-08T12:00:00.000Z', i, i+1 from numbers;
+      insert into deliveries(message_id, session, state, queued_at)
+      select id, 'receiver', case when seq<=75 then 'delivered' when seq%2=0 then 'uncertain' else 'injected' end, seq from messages;
+      insert into deliveries(message_id, session, state, queued_at)
+      select id, 'elsewhere', 'delivered', seq from messages;`);
+    queries.clear();
+    const started = performance.now();
+    const pending = store.uninjected('receiver');
+    t.diagnostic(`one uninjected(), 20000 rows / 75 pending: ${performance.now() - started} ms (setup excluded)`);
+    assert.deepEqual(pending.map(m => m.id), Array.from({ length: 75 }, (_, i) => `history-${i}`));
+    assert.equal(store.isUninjected('history-0', 'receiver'), true);
+    assert.equal(store.isUninjected('history-19999', 'receiver'), false);
+    assert.equal(store.markInjected('history-0', 'receiver', 'receiver-id'), true);
+    assert.equal(store.isUninjected('history-0', 'receiver'), false);
+    assert.equal(store.deliveriesOf('history-0').find(d => d.session === 'elsewhere')?.state, 'delivered');
+    assert.equal(store.deliveriesOf('history-101').find(d => d.session === 'receiver')?.state, 'uncertain');
+    const plans = [...queries].filter(sql => /select|update/i.test(sql) && /deliveries/.test(sql)).flatMap(sql => {
+      const plan = prepare(`explain query plan ${sql}`).all(...Array(sql.split('?').length - 1).fill('receiver'));
+      t.diagnostic(JSON.stringify({ sql, plan }));
+      if (/^update deliveries/.test(sql)) {
+        const outer = plan.find(row => row.parent === 0 && /^SEARCH deliveries\b/.test(String(row.detail)));
+        assert.match(String(outer?.detail), /USING INTEGER PRIMARY KEY \(rowid=\?\)/, 'confirmation updates visit only captured member rowids');
+      }
+      return plan.map(row => String(row.detail));
+    });
+    assert.ok(plans.length > 0);
+    assert.deepEqual(plans.filter(plan => /SCAN (?:d|deliveries)\b|SEARCH (?:d|deliveries) .*\((?:session|state)=\?\)/.test(plan)), [], 'no lookup scans session or state history');
+  } finally { store.close(); }
+});
+
+test('delivery membership preserves message matches, digest matches and overlapping matches in recorded order', () => {
+  const db = new DatabaseSync(':memory:');
+  const store = new Store(':memory:', () => db);
+  try {
+    for (const id of ['member', 'root', 'other']) store.record(message(id, 'sender', ['receiver'], id), [{ session: 'receiver', state: 'delivered' }], 1000);
+    assert.deepEqual(store.deliveryIds('root', 'receiver'), ['root']);
+    db.prepare('update deliveries set digest_id = ? where message_id = ?').run('root', 'member');
+    assert.deepEqual(store.deliveryIds('root', 'receiver'), ['member', 'root']);
+    assert.deepEqual(store.deliveryIds('member', 'receiver'), ['member', 'root']);
+    db.prepare('update deliveries set digest_id = ? where message_id = ?').run('root', 'root');
+    assert.deepEqual(store.deliveryIds('root', 'receiver'), ['member', 'root'], 'overlapping root occurs once');
+    db.prepare('delete from deliveries where message_id = ?').run('root');
+    assert.deepEqual(store.deliveryIds('root', 'receiver'), ['member'], 'digest-only match');
+    assert.deepEqual(store.deliveryIds('root', 'elsewhere'), []);
+  } finally { store.close(); }
+});
+
+test('single pending check agrees with the pending list for every delivery kind and state', () => {
+  const store = new Store();
+  try {
+    const ids: string[] = [];
+    for (const state of ['queued', 'delivered', 'uncertain', 'injected', 'dropped'] as const) {
+      for (const kind of [undefined, 'progress', 'event'] as const) {
+        for (const digest of ['turn', 'now'] as const) {
+          const id = `${state}-${kind}-${digest}`;
+          ids.push(id);
+          store.record({ ...message(id, 'sender', ['receiver'], id), ...(kind ? { kind } : {}), detail: { digest } }, [{ session: 'receiver', state }], 1000, null, false);
+        }
+      }
+    }
+    const pending = store.uninjected('receiver').map(m => m.id);
+    assert.deepEqual(pending, ['delivered-undefined-turn', 'delivered-undefined-now', 'delivered-event-now']);
+    for (const id of [...ids, 'missing']) assert.equal(store.isUninjected(id, 'receiver'), pending.includes(id), id);
+    assert.equal(store.isUninjected(pending[0]!, 'elsewhere'), false);
+  } finally { store.close(); }
+});
+
 test('ask outcomes and inbox departures preserve option and free-text decisions across Store reopen', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'cland-ask-outcomes-'));
   const file = join(dir, 'hub.db');
