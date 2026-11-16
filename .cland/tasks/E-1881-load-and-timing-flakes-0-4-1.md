@@ -3,6 +3,7 @@ id: E-1881
 kind: epic
 title: Load and timing flakes (0.4.1)
 state: open
+criterion_seq: 3
 labels:
   - v0.4.1
 assignee: null
@@ -11,7 +12,7 @@ blocked_by: []
 topic: topic-1532
 branch: null
 created: 2026-11-16T07:28:32.737Z
-updated: 2026-11-16T07:32:10.597Z
+updated: 2026-11-16T08:44:41.269Z
 ---
 
 ## Goal
@@ -29,6 +30,7 @@ QA reads each child's verified criteria and the epic's cover evidence on dev, an
 - [ ] C1. Every child item is closed with its criteria verified, or closed with a recorded reason (merged, fixed elsewhere, deferred by the human).
 - [ ] C2. A green Linux droplet cover and, at the epic's close, a green macOS cover exist at one dev tree that contains every child's landing (evidence).
 
+- [ ] C3. The macOS covers on dev before T-1889 (the v0.4.0 baseline: 29 of 63 red, A-19803 §8.4) and after T-1889's landing name the load-timing failures each had, and the after-covers show the shared load-scaled waits removing that class (evidence, Coordinator; moved from T-1889 C3 on 2026-11-16).
 ## Plan
 
 ```yaml

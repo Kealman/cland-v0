@@ -15,7 +15,7 @@ found_by: droplet
 topic: topic-1540
 branch: t/T-1703-opencode-turnfailed-after-the-store
 created: 2026-11-06T05:22:20.125Z
-updated: 2026-11-16T07:58:54.230Z
+updated: 2026-11-16T08:35:40.579Z
 ---
 
 ## Summary
@@ -73,3 +73,7 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source audit A-19862: Standards0/Spec0; sole optional-callback type blocker repaired with const capture/assert.ok, all live/closed-store/late-no-op/log assertions intact. A-19858 successful typing/lint completions explicitly transcribed; A-19854 independently parsed20 named passes and20 clean summaries/exits, maximum case3.364272875s retained without performance pass. Explicit bounded carry: only T2 callback narrowing changed; product/native/helper bytes unchanged, so A-19841's two predecessor native samples remain usable at original candidate linkage limits and narrow Coordinator T-1905 counting exception, never relabelled exact-head executions. Actual sample2 remains red. C1 done restored; C2 incomplete, remaining8 loaded native files and exact-head mode-free verify pending. No criteria verified/final ready. Source clear at ffe84f8ed permits authorized evidence work; any source change requires fresh review.
+
+### impl-1703 · 2026-11-16T08:35:40.579Z
+
+Coordinator C2 redefinition (decision6ef8f819,2026-11-16 08:34Z): the target pending-permission test passes in10/10 loaded full-file runs. Every other-test failure remains recorded raw with its item, including T-1905 cleanup refusals and their consequent hangs. Samples1/2/3/4 target passed =4/10; sample2 raw20/21 cleanup failure, sample4 raw20pass/1fail/1cancelled after305.200s producer exit1 following requestedSIGTERM. These are not clean file passes. Later full-file attempts are bounded at3min. Remaining6 queued; same-head verify a3bb4c33 at ffe84f8ed green6382/6382 T0/T1/T2/selectedT4/Web Linux x64 droplet, A-19887; native full T3 not run in that receipt.

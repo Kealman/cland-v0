@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1541
 branch: t/T-1731-host-spawn-s-exited-resolves-with-the
 created: 2026-11-06T23:09:27.734Z
-updated: 2026-11-16T07:57:31.740Z
+updated: 2026-11-16T08:41:58.750Z
 ---
 
 ## Summary
@@ -33,6 +33,7 @@ The resolved value also carried `event: 'process-exited'`, `pid`, `identity`, `a
 
 - [x] C1. With the commit reply dropped and reconciliation forced to settle first, `child.exited` resolves exactly `{code: 7, signal: null}` (test, red before the fix).
   - done: impl-1731 · 2026-11-16T07:38:24.448Z
+  - verified: rev-37 [reviewer] · run rev-37-1731-evidence-1 · 2026-11-16T08:41:58.750Z · commit 60e82345182cd4060ba024773813927b14748427
 - [ ] C2. `host-ssh-contract.test.ts` passes 10/10 in the four-file parallel mix under a Linux `--init` container at load 8 or more (evidence).
 
 ## Comments
@@ -59,3 +60,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear at exact 60e823451; Standards and Spec both clear, findings []. A-19859 checks shared intake projection for live/cached completions, exact pid/birth matching, deterministic dropped-commit recovery through initial native receipts before accepted settlement, previous/current wire regressions, cleanup and matching docs. C1/C2 remain runtime-unverified. Reported first Linux mix exited1 with all host-ssh-contract cases passing and the two unchanged T-1906 exceptions only; no full mix/configured pass inferred. C2 tracker says10 repetitions versus request's19 remaining; reconcile with Coordinator. Source may proceed to authorized same-head evidence/verification slots without head changes. No Reviewer runs/edits. Artifact /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19859-t-1731-exact-head-source-review.md
+
+### impl-1731 · 2026-11-16T08:41:26.915Z
+
+Evidence provenance correction: my first comment's 'base d642982 tree' was incorrectly copied from the epic's older cover tree. Original red/green actually ran against source commit dc05121d7be984867926f6e57c93f2172517dcd9 (raw Git tree07358021c182b39858112e2510d1199a512d3376) plus the displayed two tests then source projection. Subsequent dc05121d7→edbe8da2c merge changed only11 tracker files. Final source head60e82345182cd4060ba024773813927b14748427 has raw tree d7aa63fc68cd8ba754aa2ad4c32f135cbc006947, canonical verification tree45ecfa9d1a4bdf267d5dcd5af718f6ef0e3b4301; ssh-host blob92b4603a24f7e5d26ae4945faa73fcc76a068db8 and test blob6f6f5686a49111343d044108afe337f0dbd97e51. A-19864 retains original command/cwd/exit excerpts; final packet will retain this explicit correction. No provenance-only rerun. Same-head uncached verification ac9a6214/A-19894 passed6382 base tests with no negatives; C2 remains pending9 loaded mixes.
+
+### rev-37 · 2026-11-16T08:41:58.750Z
+
+verdict: review
+result: clear
+by: rev-37 [reviewer]
+run: rev-37-1731-evidence-1
+commit: 60e82345182cd4060ba024773813927b14748427
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Partial evidence clear: C1 verified, C2 remains incomplete/unverified, not final item settlement. A-19894/runac9a6214 matches source-clear60e823451 and independently recomputed canonical tree45ecfa9d1a4bdf267d5dcd5af718f6ef0e3b4301. Uncached Linux x64 droplet Node24.21/Nvim0.12.5, isolated Headless Shell1248 Chrome156.0.8078.4. T0/allT1/fallback allT2/Web passed;6382 base test+700 file passes, separate220 load test+220 file passes, no negatives. File13/13 base; legacy and extended recovery names each1 base+5 load passes. A-19864 original-tool red/green excerpts establish the pre-fix exact-shape failure. Independently confirmed dc05121d7's ssh-host.ts blob equals final parent ad778415d3735d505955ee8569ddc5676e8282f9; older comment base label awaits reconciliation. C2 needs remaining9 loaded four-file Linux --init mixes under the narrow T-1906 exception, which is not a whole-mix/configured pass waiver. NoT3/T4 here; budgets/lint report-only. No Reviewer runs/edits. A-19901 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19901-t-1731-configured-evidence-c1-loaded-mix-pending.md
+
+Criteria: C1 verified.

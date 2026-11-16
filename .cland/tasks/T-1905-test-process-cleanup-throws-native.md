@@ -3,17 +3,18 @@ id: T-1905
 kind: task
 title: Test process cleanup throws "native process identity unavailable" for a child whose exit was already observed, under Linux load
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 2
 labels:
   - flaky
 assignee: null
 parent: E-1882
 blocked_by: []
-topic: null
+topic: topic-1545
 branch: t/T-1905-test-process-cleanup-throws-native
 created: 2026-11-16T07:44:00.478Z
-updated: 2026-11-16T08:35:10.996Z
+updated: 2026-11-16T08:41:54.883Z
 ---
 
 ## Summary
@@ -26,7 +27,8 @@ Find what `alive(pid)` sees for a child whose native exit was observed: a zombie
 
 ## Acceptance criteria
 
-- [ ] C1. Cleanup accepts a child whose captured identity is known and whose exit was observed, including while the zombie is unreaped, and still refuses a live pid with an unknown or mismatched identity (test, red before the fix).
+- [x] C1. Cleanup accepts a child whose captured identity is known and whose exit was observed, including while the zombie is unreaped, and still refuses a live pid with an unknown or mismatched identity (test, red before the fix).
+  - done: impl-1905 · 2026-11-16T08:41:10.609Z
 - [ ] C2. `opencode-adapter.test.ts` passes 10/10 full-file runs in a Linux `--init` container at a load of at least 10, with no cleanup refusal (evidence).
 
 ## Comments
@@ -34,3 +36,11 @@ Find what `alive(pid)` sees for a child whose native exit was observed: a zombie
 ### coord · 2026-11-16T08:34:34.320Z
 
 A second occurrence, worse: in impl-1703's T-1703 loaded sample 4 (2026-11-16 08:28–08:34Z, Docker `--init`, load 10.03, ffe84f8ed), `opencode-adapter.test.ts:438` "a failed OpenCode turn…" hit the same cleanup refusal (pid 1502, native exit observed, descendants not confirmed gone). After every subtest had printed, the file never completed: a spoke stayed alive under the preserved fixture, and it took SIGTERM after 305 s, with file-level cancelled 1 and "Promise resolution is still pending but the event loop has already resolved". So T-1905 also hangs whole files under load, not just fails a case. It hit in 2 of 4 loaded samples of this file. Priority raised: launching now.
+
+### impl-1905 · 2026-11-16T08:37:17.356Z
+
+Rule 20 sweep before change: cleanupOwnedProcesses direct consumers: hub/test/{harness.ts,run-suite.ts,load-gate.ts,web-repetitions.ts,process-cleanup.test.ts,host-create-ready.test.ts,host-create-fixture.ts,transport-ssh.test.ts,host-reboot-native.test.ts,executor-safety.test.ts,transport-contract-fixture.ts,suite-runner.test.ts,host-supervisor.test.ts,ssh-host-fixture.ts,fakes/fake-host.ts}. requireIdentities is private, called at initial acquisition, pre-signal and post-signal drainage in both discovered and recorded cleanup. All keep Promise<void> API and optional identityError shape; no production callers or wire shape changes. Indirect ownProcess/ownDirectory users keep ownership/fixture-retention semantics. Swept field/function names and helper importers across hub, web, nvim, shared, QA and shipped skills/docs, including all tiers. Relevant documentation: docs/agents/tests/hub-test-process-cleanup.test.ts.md. Existing replaced/unreadable identity and unrecorded-descendant tests must stay intact; add captured descendant drainage regression at this existing synthetic seam.
+
+### impl-1905 · 2026-11-16T08:41:41.183Z
+
+Implementation pushed at 20f97dbc6169121eaa99f5de10e9bb31f1b0fbb1 after merge origin/dev (89b8b0bfe). C1 done: A-19897 deterministic red/green and A-19899 native macOS arm64 Node 24.21.0 full-file 63/63, exit 0, cancelled/skipped 0, 10.628s at start load 4.62. npm run test:lint exit 0 (whole-source and closed-item wording 0 findings; advisory/report-only findings unchanged), npm run typecheck exit 0. C2 loaded Linux 10/10 and configured verify pending after source review. Rule 20 full path inventory A-19900 includes indirect helpers, docs, briefs and fixtures across all tiers; correction: production suite-lock.ts imports cleanupProcesses dynamically and ProcessIdentity type, so is an indirect consumer of internal requireIdentities; unchanged API/safety semantics apply. All callers keep existing shape; no wire change.

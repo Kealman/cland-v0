@@ -3,7 +3,7 @@ id: T-1877
 kind: task
 title: The managed .cland/.gitignore header rewrite after a version bump moves the dev tree off its green covers before release
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1536
 branch: t/T-1877-the-managed-cland-gitignore-header
 created: 2026-11-15T23:32:23.381Z
-updated: 2026-11-16T08:01:20.539Z
+updated: 2026-11-16T08:40:47.142Z
 ---
 
 ## Summary
@@ -28,9 +28,11 @@ Choose and implement one fix. Either the managed header carries no version, so a
 
 - [x] C1. A hub restart on a new version leaves the dev tree's cover identity unchanged, shown by a test with a fake version bump (test).
   - done: impl-1877 · 2026-11-16T07:57:41.511Z
+  - verified: rev-36 [reviewer] · run rev-36-1877-final-1 · 2026-11-16T08:40:42.355Z · commit 4087e2bbc66b7c789f9d69283c8edc756933c429
 - [x] C2. Every file cland rewrites on hub start is listed in the item, with its tree-identity handling (test or doc).
   - done: impl-1877 · 2026-11-16T07:39:17.350Z
   - verified: rev-36 [reviewer] · run rev-36-1877-source-2 · 2026-11-16T08:01:20.538Z · commit 4087e2bbc66b7c789f9d69283c8edc756933c429
+  - verified: rev-36 [reviewer] · run rev-36-1877-final-1 · 2026-11-16T08:40:42.355Z · commit 4087e2bbc66b7c789f9d69283c8edc756933c429
 
 ## Comments
 
@@ -75,3 +77,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected full source audit A-19869: Standards0/Spec0. Both A-19843 findings resolved: repository ignore bytes now match versionless GITIGNORE, regression checks repository migration and legacy-header upgrade before baseline, then retains version-bump identity/bytes and real-policy invalidation; per-test guide complete. C2 startup writer/tree-handling inventory source-established, verified; C1 done restored but final runtime settlement waits exact-head configured receipt. A-19863 local11/11 verification-tree and16/16 init tool excerpts are explicitly precommit identical-source transcriptions, with original capture/publication limits retained; terminal lint exit0/zero refusals reported, advisories not a performance pass. Source clear permits authorized mode-free verification at4087e2bbc; no final ready/full-tier/Linux pass claimed.
 
 Criteria: C2 verified.
+
+### impl-1877 · 2026-11-16T08:37:08.590Z
+
+Same-head configured verification1470afca-a5b8-4bff-a308-427fd9cee15b passed at4087e2bbc66b7c789f9d69283c8edc756933c429:6407 pass,0 fail/cancel/skip. T0,T1,full-T2 fallback,Web and changed T3 files init/verification-tree executed;27 changed-T3 identities passed once; no full remaining-T3/T4 cover claimed. Linux x64 droplet c-8 nyc1,Node24.21, lifetime1475s,cost$0.1024; report-only budget/lint diagnostics retained. Artifact A-19889 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-19889-suite-1470afca-a5b8-4bff-a308-427fd9cee15b-auto-at-4087e2b.log. Reviewer receives same-head result automatically; final settlement pending. Head fixed; keeping claim until merge.
+
+### rev-36 · 2026-11-16T08:40:42.355Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1877-final-1
+commit: 4087e2bbc66b7c789f9d69283c8edc756933c429
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head audit A-19896, ledger A-19892: run1470afca/A-19889 passed at reviewed4087e2bbc, unchanged clean source. Independently confirmed C1 named startup migration/version/policy finish34057 pass0.477775126s plus matching timing; all27 changed-native cases and both file finishes positive once. C2 retains same-head source-established startup writer/identity inventory. Deduplicated6407 base tests/702 base files plus separate210 load test/file completions all pass. Conservative984 manifest paths =702 positive files +265 T3/17 T4 occasion deferrals, no missing lower/Web or unclassified path. Local T0 and droplet T1/allfallbackT2/changedT3/Web exit0; exact Linux/Node/HeadlessShell156 provenance36792 retained, no cache/skips. Budgets/lint/ratchet report-only, no performance pass; original transcribed Mac/candidate/publication limits remain explicit. Full remainingT3, T4 and integrated QA unexecuted here. C1/C2 verified; hub/Coordinator own ready/landing.
+
+Criteria: C1 verified, C2 verified.

@@ -3,7 +3,7 @@ id: T-1843
 kind: task
 title: A finished suite with no lease stays in verify queue as an active remote run and holds a remote slot across restarts
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1543
 branch: t/T-1843-a-finished-suite-with-no-lease-stays-in
 created: 2026-11-13T12:41:29.355Z
-updated: 2026-11-16T08:34:54.074Z
+updated: 2026-11-16T08:40:14.095Z
 ---
 
 ## Summary
@@ -28,8 +28,8 @@ A suite that has finished, or whose lease and droplet are gone, leaves the activ
 
 - [x] C1. A remote run whose suite record is finished and whose lease is gone is absent from `cland verify queue` and does not count against `remote_budget`, both live and after a hub restart (test).
   - done: impl-1843 · 2026-11-16T08:30:19.680Z
-- [ ] C2. A run that ended without a posted result gets exactly one posted result naming the missing receipt, after which the heartbeat no longer lists it (test).
-  - failed: rev-35 [reviewer] · 2026-11-16T08:34:54.074Z · note Missing-evidence recovery falsely classifies previously executed runs as not-run and drops available execution/failure identities from reporting.
+- [x] C2. A run that ended without a posted result gets exactly one posted result naming the missing receipt, after which the heartbeat no longer lists it (test).
+  - done: impl-1843 · 2026-11-16T08:38:10.831Z
 
 ## Comments
 
@@ -51,3 +51,16 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Complete full source pass A-19885: one confirmed medium C2 classification finding; no separate C1 source finding. A-19886 arrived afterward and is retained as supplement: original 120 hits, conservative 1402-row inventory and explicit candidate/raw-capture limitations; no runtime coverage inferred. C1 pending fresh source/configured evidence, not failed for authorized pending checks. No Reviewer runtime work. Hold released for consolidated correction and fresh source review before verification.
 
 Criteria: C2 failed (Missing-evidence recovery falsely classifies previously executed runs as not-run and drops available execution/failure identities from reporting.).
+
+### rev-35 · 2026-11-16T08:40:14.095Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1843-source-2
+commit: 5f9cb4cc1356bee53fa17708edb1032fc85c1c43
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Replacement full source clear, A-19895. A-19885 classification finding resolved: no invented notRun, known nonzero failure and surviving identities preserved; four controls cover production periodic/result-summary semantics including prior genuine refusal. C1 occupancy/restart/report flow unchanged. C1/C2 pending configured same-head named/file evidence. A-19886/A-19891 capture/consumer limits retained; terminal lint receipt93cd27ed noted. No Reviewer runtime work. Hold released for authorized mode-free verify.

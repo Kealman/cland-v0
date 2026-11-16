@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1539
 branch: t/T-1724-executor-status-reports-unknown
 created: 2026-11-06T11:49:25.020Z
-updated: 2026-11-16T08:04:57.113Z
+updated: 2026-11-16T08:42:54.512Z
 ---
 
 ## Summary
@@ -28,6 +28,7 @@ Decide what the 250 ms bound is for. If it's status responsiveness, keep it and 
 
 - [x] C1. A test that holds the key computation past 250 ms reports `unknown (inspection deferred)` once, and the next status read after the computation completes reports `current` (test, red before the fix).
   - done: impl-1724 · 2026-11-16T07:42:58.189Z
+  - verified: rev-38 [reviewer] · run rev-38-1724-evidence-1 · 2026-11-16T08:42:54.512Z · commit 97c53bd59cd835c9877d4b2e06f425b7d572e1bf
 - [ ] C2. executor-prepare.test.ts passes 10/10 on macOS at a one-minute load of 12 or more, with its assertions unchanged (evidence).
   - failed: rev-38 [reviewer] · 2026-11-16T07:58:18.690Z · note Pending-key consumption still admits an earlier base sample; frozen help consumer also remains unmigrated, and native loaded evidence is not yet executed.
 
@@ -87,3 +88,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear, no findings. A-19873 contains complete Standards/Spec assessment: base validation now begins after key availability within the original total250ms; pending/completed crossing controls and exact current/stale assertions remain; frozen EXECUTOR_USAGE now matches. Coordinator-approved local-ref-only status/default-refresh preparation behavior and consumer/docs migration remain consistent. No criteria verified in source pass. C1 executed evidence, C2 macOS10/10>=12 plus launch20/20>=8, native no-network wrapper/positive control and same-head configured verification remain pending. Prior C2 failed mark awaits actual evidence and done restoration. Run no further source changes; use assigned exclusive native slot and allowed mode-free verify window at this exact head. Reviewer read only; ran no tests/probes.
+
+### impl-1724 · 2026-11-16T08:41:26.790Z
+
+Configured verification green at unchanged reviewed97c53bd59cd835c9877d4b2e06f425b7d572e1bf: run726f9438-665b-4353-b8f4-23fedf631a7e, log A-19898. Tests6389/pass6389/fail0/cancelled0/skipped0. T0 local macOS exit0,60.753s; Linux x64 droplet c-8 nyc1, Node24.21.0: T1 exit0 (220 files/1659 tests), fallback T2 exit0 (425 files/4245 tests), Web exit0 (55 files/292 tests), changed native executor-prepare T3 one base execution6/6 passing identities (no repetitions); remaining T3 deferred to merge batch; T4 not executed. Duration budgets/ratchet and test lint remain report-only, not enforced; no allowances added. Droplet lifetime1301s, reported cost$0.0904. C2 macOS loaded10/10 (plus launch20/20) still pending; this Linux receipt is not that evidence.
+
+### rev-38 · 2026-11-16T08:42:54.512Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1724-evidence-1
+commit: 97c53bd59cd835c9877d4b2e06f425b7d572e1bf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Partial criterion evidence pass; C1 verified only. A-19904 independently reconciles A-19898/run726f9438 at exact source-clear head/tree6b69f7a:6389 ordinary passes plus separate225 load passes,0negative/skip/cancel. Three deferred/current/completed-crossing/pending-crossing names each ordinary+5/5; component21/21, changed native executor-prepare6/6 once including no-network positive control/current-stale assertions, help compatibility and reached consumers pass. T0 local macOS; T1/all-fallbackT2/changedT3/Web on Linuxx64 droplet Node24.21.0, HeadlessShell1248/CfT156.0.8078.4, uncached. Budgets/lint/ratchet report-only; remainingT3 merge-batch/T4 unexecuted. C2 macOS10/10>=12 and launch20/20>=8 remain pending; existing failed mark not settled by this receipt. No final-ready claim or rerun requested. Reviewer read only.
+
+Criteria: C1 verified.

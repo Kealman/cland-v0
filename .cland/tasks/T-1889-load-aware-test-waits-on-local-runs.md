@@ -3,7 +3,7 @@ id: T-1889
 kind: task
 title: Load-aware test waits on local runs
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1534
 branch: t/T-1889-load-aware-test-waits-on-local-runs
 created: 2026-11-16T07:29:44.705Z
-updated: 2026-11-16T08:03:19.445Z
+updated: 2026-11-16T08:44:44.038Z
 ---
 
 ## Summary
@@ -27,9 +27,10 @@ Kind: product (test infra). Triage ticket H-1 of A-19813, part of E-1888 (the v0
 
 - [x] C1. run-suite exports a load factor ≥ 1 from the 1-minute load and workers on local and droplet runs, and `until` and `eventually` setup waits use it (test).
   - done: impl-1889 · 2026-11-16T08:03:19.444Z
+  - verified: rev-35 [reviewer] · run rev-35-1889-final-1 · 2026-11-16T08:44:07.874Z · commit 11f34bb60dabb6fc6e415cbde51351d2303c4f70
 - [x] C2. Waits on an injected clock or a named behaviour bound keep their exact value (test).
   - done: impl-1889 · 2026-11-16T07:54:41.243Z
-- [ ] C3. Two macOS covers before and after name the load-timing failures each had (evidence).
+  - verified: rev-35 [reviewer] · run rev-35-1889-final-1 · 2026-11-16T08:44:07.874Z · commit 11f34bb60dabb6fc6e415cbde51351d2303c4f70
 
 ## Dependencies
 
@@ -68,3 +69,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Replacement full standards/spec source pass clear, A-19857. Both A-19846 source findings resolved: independent shared deadline plus late-value guard; all 42 original N/reason migrations independently reconstruct exactly across nine files, three approved exclusions unchanged. All 15 supplied fingerprints match. C1/C2 remain pending authorized native/load and configured same-head evidence; C3 Coordinator post-merge, not pre-merge gate. Historical provenance/publication limits retained. No Reviewer runtime work; hold released.
+
+### impl-1889 · 2026-11-16T08:40:17.112Z
+
+Reviewed head11f34bb60 passed configured run d9ae394b-7d8e-4f71-a02e-f8c780f528bf (A-19893):6516/6516, no failures/cancellations/skips. Local T0 exit0; Linuxx64 droplet c-8nyc1 Node24.21,workers2 completed T1/allT2 fallback, changedT3,mappedT4once,Web. RemainingT3 deferred to merge batch; T4repetitions skipped by selection; duration findings report-only. Executor lifetime1791s,cost$0.1244. Focused macOS native1/1 and Linux20/20 loaded T1 at8.02–8.34 retained A-19872. C1/C2 done; final reviewer settlement pending. C3 post-merge, Coordinator, not a premerge gate per decision6157e34b. No source change after source clear.
+
+### rev-35 · 2026-11-16T08:44:07.874Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1889-final-1
+commit: 11f34bb60dabb6fc6e415cbde51351d2303c4f70
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head C1/C2 evidence clear, A-19906/A-19905. C3 explicitly remains Coordinator post-merge under6157e34b and is not marked verified. Independently audited6516base tests/708files and30separate load tests/files, all pass;7wait cases,6new identities each+5, native propagation case/whole file and all selected changedT3/mappedT4 positive.20loaded Linux helper runs in A-19872 independently match saved logs; scoped Mac native receipt retained. All919consumer rows and unresolved caveats retained, zero missing selected-tier file receipts; broaderT3/T4 deferred. Historical capture/publication/report-mode boundaries preserved. Head clean/unchanged, no Reviewer runtime work. Hold released; C3 and landing Coordinator-owned.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T08:44:44.038Z
+
+C3 (macOS covers before and after) is post-merge stage-cover evidence. It can't be checked before enqueue, so the Coordinator moved it to the epic E-1881 as a criterion of its own on 2026-11-16 (decision 6157e34b). T-1889's pre-merge bar is C1 and C2, both verified at 11f34bb60 with green verify d9ae394b (A-19893). The Coordinator runs the after-covers on dev once T-1889 lands.
