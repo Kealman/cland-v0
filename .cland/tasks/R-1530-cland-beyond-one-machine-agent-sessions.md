@@ -3,7 +3,7 @@ id: R-1530
 kind: release
 version: 0.4.0
 title: "cland beyond one machine: agent sessions on pools of remote hosts, logins and users"
-state: open
+state: closed
 labels: []
 assignee: null
 parent: null
@@ -11,7 +11,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T18:03:30.138Z
-updated: 2026-11-15T23:32:34.990Z
+updated: 2026-11-16T06:16:41.451Z
+closed: 2026-11-16T06:16:41.451Z
 ---
 
 ## Goal
@@ -149,3 +150,14 @@ Build order and lanes: E-1531 → E-1532 → E-1533 → E-1534 → E-1535 (hub l
 ### human · 2026-10-31T18:33:55.436Z
 
 Human decision (2026-10-31): the live run before the release happens on THIS project (cland/v0) with its real crew, as 0.3 did for the remotes; the host pool and the logins stay configured afterwards. The sandbox project serves the build's own tries before that. The spec §4 and E-1539 are updated accordingly.
+
+### coord · 2026-11-16T06:16:41.451Z
+
+Released v0.4.0 at b0246c8ac3d99bf2c7ee8871f853b5282b9ef271.
+Homebrew published: Kealman/homebrew-tap main Formula/cland.rb v0.4.0
+https://codeload.github.com/Kealman/cland-v0/tar.gz/refs/tags/v0.4.0
+sha256 02c862542884527ebdd8026d02417a6b897c1eb16db0b3d4883cad0078944d3f
+tap commit 2702f52d74b40e48dbb5d1bd67c0e1d374ae1ce9
+Web bundle published: Kealman/cland-v0 v0.4.0
+cland-web.tar.gz 1732491 bytes; cland-web.tar.gz.sha256 83 bytes
+sha256 144d56154ce24965a036bb4bbfbb1520e1c4e778f123fc929ee9fde38f9088ee
