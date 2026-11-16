@@ -282,6 +282,10 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
     if (this.#stopped) return;
     this.#setState({ kind: 'connecting' });
     const { url, secret } = this.#options.endpoint?.() ?? this.#options;
+    if (!url || !secret) {
+      this.#scheduleReconnect('hub discovery is not available yet');
+      return;
+    }
     const ws = new WebSocket(url, {
       headers: { authorization: `Bearer ${secret}` },
       handshakeTimeout: 10_000,

@@ -5,6 +5,85 @@ import { once } from 'node:events';
 import { WebSocketServer } from 'ws';
 import { DOCUMENTED_TOOLS, inProcessSpoke, until, type Session } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { runSpoke } from '../src/spoke/spoke.ts';
+import { tempProject } from './harness.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { onCleanup } from './process-cleanup.ts';
+
+async function discoveringSpoke(t: import('node:test').TestContext, root: string, clock: FakeClock, file?: string) {
+  const [clientTransport, transport] = InMemoryTransport.createLinkedPair();
+  const runtime = await runSpoke(fixtureEnvironment(root, {}, {
+    CLAND_SESSION_NAME: 'fixture', CLAND_HUB_RECONNECT_MS: '50',
+    ...(file ? { CLAND_HUB_FILE: file } : {}),
+  }), { cwd: root, clock, transport, exit: () => {}, log: () => {} });
+  const client = new Client({ name: 'fixture', version: '1' });
+  onCleanup(t, () => client.close());
+  onCleanup(t, () => runtime.hub?.stop());
+  onCleanup(t, () => runtime.server.close());
+  await client.connect(clientTransport);
+  return { ...runtime, client };
+}
+
+for (const explicit of [false, true]) {
+  test(explicit ? 'C3 an explicit absent discovery file connects when published' : 'C1 a project spoke connects when discovery is published after startup', async t => {
+    const root = await tempProject(t);
+    const directory = join(root, explicit ? 'discovery' : '.cland');
+    await mkdir(directory);
+    const file = join(directory, 'hub.json');
+    const cwd = join(root, 'nested');
+    await mkdir(cwd);
+    const clock = new FakeClock();
+    const spoke = await discoveringSpoke(t, cwd, clock, explicit ? file : undefined);
+    assert.ok(spoke.hub, 'a configured project retains its reconnecting client while discovery is absent');
+    const offline = await spoke.client.callTool({ name: 'who' });
+    assert.equal(offline.isError, true);
+    assert.match(JSON.parse((offline.content as Array<{ text: string }>)[0]!.text).error, /the hub is unreachable .*reconnecting/);
+    await clock.advance(50); // still absent: exercise another discovery attempt
+    const server = new WebSocketServer({ port: 0, host: '127.0.0.1' });
+    onCleanup(t, async () => {
+      for (const peer of server.clients) peer.terminate();
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    });
+    await receipt(once(server, 'listening'));
+    server.on('connection', peer => peer.on('message', data => {
+      const frame = JSON.parse(String(data)) as { type: string; id: string };
+      if (frame.type === 'hello') peer.send(JSON.stringify({ type: 'welcome', protocol: 2, name: 'fixture', presence: [] }));
+      else peer.send(JSON.stringify({ type: 'result', id: frame.id, ok: true, value: { connected: true } }));
+    }));
+    let welcomed = false;
+    const observeWelcome = () => { if (spoke.hub!.state.kind === 'connected') welcomed = true; };
+    spoke.hub.on('state', observeWelcome);
+    try {
+      await writeFile(file, JSON.stringify({ socket: join(root, 'unused.sock'), port: (server.address() as { port: number }).port, secret: 'fixture', pid: 0, version: 'fixture' }));
+      await clock.advance(100);
+      await until(() => welcomed, { what: 'spoke processed the published hub welcome' });
+    } finally { spoke.hub.off('state', observeWelcome); }
+    assert.deepEqual(spoke.hub.state, { kind: 'connected', name: 'fixture' });
+    const result = await spoke.client.callTool({ name: 'who' });
+    assert.equal(JSON.parse((result.content as Array<{ text: string }>)[0]!.text).connected, true);
+    await spoke.hub.stop();
+    assert.equal(clock.pending, 0, 'stop cancels discovery retries and connected timers');
+  });
+}
+
+test('C2 a spoke outside a project stays unconfigured without polling', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const spoke = await discoveringSpoke(t, root, clock);
+  const expected = { ok: false, error: 'this session is not connected to a cland hub: CLAND_HUB_URL and CLAND_HUB_SECRET are not set and no .cland/hub.json was found from the cwd up — run `cland hub start` in the project, or start the session through cland' };
+  assert.equal(spoke.hub, null);
+  assert.equal(clock.pending, 0);
+  await mkdir(join(root, '.cland'));
+  await clock.advance(60_000);
+  const result = await spoke.client.callTool({ name: 'who' });
+  assert.equal(result.isError, true);
+  assert.deepEqual(JSON.parse((result.content as Array<{ text: string }>)[0]!.text), expected);
+  assert.equal(clock.pending, 0);
+});
 
 const calls: Record<string, Record<string, unknown>> = {
   'verification.decline': { request: 'request-id', reason: 'fixture' },

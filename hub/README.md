@@ -20,6 +20,7 @@ documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merg
 - [Web workspace](../docs/hub/web-workspace.md)
 - [Modules](../docs/hub/modules.md)
 - [Web edge](../docs/hub/web-edge.md)
+- [Spoke discovery and reconnect](../docs/hub/web-edge.md#spoke-discovery-retry)
 - [Gateway authority](../docs/hub/gateway-authority.md)
 - [Durable remote outbox](../docs/hub/durable-remote-outbox.md)
 - [Connection events filter](../docs/hub/connection-events-filter.md)

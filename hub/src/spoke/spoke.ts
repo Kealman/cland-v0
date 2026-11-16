@@ -7,6 +7,7 @@ import type { Clock } from '../hub/clock.ts';
 //   CLAND_HUB_SECRET    the per-project secret
 //     both absent: the hub is found through `.cland/hub.json` (CLAND_HUB_FILE names it, else the nearest one
 //     walking up from the cwd), re-read before every reconnect (a restarted hub listens on a new port)
+//     no file yet: the nearest `.cland` directory supplies the pending discovery path
 //   CLAND_SESSION_ID    the harness session id; a restart of the same session takes its name back
 //   CLAND_SESSION_NAME  the name to ask for; an unbound spoke discovering a project hub stays disconnected
 //   CLAND_ROLE          the role the session asks for; a project's hub grants it only to a session it launched for
@@ -16,6 +17,7 @@ import type { Clock } from '../hub/clock.ts';
 //   CLAND_HUB_RECONNECT_MS, CLAND_HUB_KEEPALIVE_MS, CLAND_HUB_REQUEST_TIMEOUT_MS,
 //   CLAND_HUB_WELCOME_TIMEOUT_MS   timings, for tests
 import { randomUUID } from 'node:crypto';
+import { statSync } from 'node:fs';
 import type { Readable, Writable } from 'node:stream';
 import { dirname, join } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -104,6 +106,15 @@ const positive = (raw: string | undefined, fallback: number): number => {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 
+/** A stopped hub removes discovery, but its project directory still configures this spoke. */
+function pendingDiscovery(cwd: string): string | null {
+  for (let dir = cwd; ; dir = dirname(dir)) {
+    try { if (statSync(join(dir, '.cland')).isDirectory()) return join(dir, '.cland', 'hub.json'); }
+    catch { /* No project marker at this ancestor. */ }
+    if (dirname(dir) === dir) return null;
+  }
+}
+
 export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: SpokeOptions = {}): Promise<SpokeRuntime> {
   const log = options.log ?? ((line: string) => { process.stderr.write(`cland-spoke: ${line}\n`); });
   const cwd = options.cwd ?? process.cwd();
@@ -114,7 +125,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
   let secret = env.CLAND_HUB_SECRET?.trim();
   // No hub in the environment: the project's discovery file, read again before every connect.
   let endpoint: (() => { url: string; secret: string } | null) | undefined;
-  const discoveryFile = !url && !secret ? env.CLAND_HUB_FILE?.trim() || findDiscovery(cwd) : null;
+  const discoveryFile = !url && !secret ? env.CLAND_HUB_FILE?.trim() || findDiscovery(cwd) || pendingDiscovery(cwd) : null;
   if (discoveryFile) {
     endpoint = () => {
       const d = readDiscovery(discoveryFile);
@@ -397,7 +408,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
     return { server, hub: null };
   }
 
-  if (!url || !secret) {
+  if ((!url || !secret) && !endpoint) {
     log(notConfigured);
     return { server, hub: null };
   }
@@ -406,8 +417,8 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
   if (discoveryFile) log(`found the hub through ${discoveryFile}`);
   hub = new HubClient({
     ...(options.clock ? { clock: options.clock } : {}),
-    url,
-    secret,
+    url: url ?? '',
+    secret: secret ?? '',
     ...(endpoint ? { endpoint } : {}),
     reconnectMs: positive(env.CLAND_HUB_RECONNECT_MS, 1000),
     keepaliveMs: positive(env.CLAND_HUB_KEEPALIVE_MS, KEEPALIVE_MS),
