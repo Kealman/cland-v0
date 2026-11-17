@@ -2,8 +2,8 @@
 id: T-1848
 kind: task
 title: The suite command's process observer drops inspection failures without a receipt
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1587
 branch: t/T-1848-the-suite-command-s-process-observer
 created: 2026-11-14T02:03:07.406Z
-updated: 2026-11-17T08:19:44.083Z
+updated: 2026-11-17T11:52:57.676Z
+closed: 2026-11-17T11:50:53.103Z
 ---
 
 ## Summary
@@ -30,13 +31,15 @@ A failed process inspection in the suite command's observer leaves one bounded, 
   - verified: rev-35 [reviewer] · run rev-35-1848-final-1 · 2026-11-17T05:36:42.930Z · commit 0fa58ed98f7565c7b9d512835c73f0588959e6b2
   - verified: rev-35 [reviewer] · run rev-35-1848-final-2 · 2026-11-17T06:19:29.570Z · commit 12d730d45aa8c33103459a6f1af8e8ea53a95cd0
   - verified: rev-35 [reviewer] · run rev-35-1848-final-3 · 2026-11-17T07:18:35.868Z · commit 23e9f14f51a711810339d7fb04a2a001fde503e6
-  - done: impl-1848 · 2026-11-17T07:46:52.780Z
   - verified: rev-35 [reviewer] · run rev-35-1848-final-4 · 2026-11-17T08:19:41.445Z · commit f48ac45eb7d82492e4d1d73fad93ca560e46bbcf
+  - done: impl-1848 · 2026-11-17T09:18:57.235Z
+  - verified: rev-35 [reviewer] · run rev-35-1848-final-5 · 2026-11-17T09:54:19.145Z · commit 0707b733e8e990f674e9878bfd36e55f32c1a237
 - [x] C2. A run whose inspection never succeeds reports, in its result, that descendants went unobserved past the named bound (test).
   - verified: rev-35 [reviewer] · run rev-35-1848-final-2 · 2026-11-17T06:19:29.570Z · commit 12d730d45aa8c33103459a6f1af8e8ea53a95cd0
   - verified: rev-35 [reviewer] · run rev-35-1848-final-3 · 2026-11-17T07:18:35.868Z · commit 23e9f14f51a711810339d7fb04a2a001fde503e6
-  - done: impl-1848 · 2026-11-17T07:46:53.219Z
   - verified: rev-35 [reviewer] · run rev-35-1848-final-4 · 2026-11-17T08:19:41.445Z · commit f48ac45eb7d82492e4d1d73fad93ca560e46bbcf
+  - done: impl-1848 · 2026-11-17T09:18:58.097Z
+  - verified: rev-35 [reviewer] · run rev-35-1848-final-5 · 2026-11-17T09:54:19.145Z · commit 0707b733e8e990f674e9878bfd36e55f32c1a237
 
 ## Comments
 
@@ -178,3 +181,35 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Same-head final clear; A-20775 reconciles A-20771/run7c75647a with source A-20751. All four inspection identities ordinary PASS+5/5load; actual worker metadata persistence after cleanup rejection and positive callback/custom isolation controls retained. Six admission/cause controls pass through merged owner. T0/T1/all-T2/three mapped T3/Web exit0,6738ordinary passes/711files plus230separate load passes,0fail/cancel/skip. Source clean/unchanged; normalized treeedf4d636309e5096d140560217c3a94cd9e65e56, uncached Linuxx64/Node24.21.0, isolated HeadlessShell1248/ChromeTesting156.0.8078.4. Three native files120top-level/127typed incl7nested, one base/no reps;266T3/17T4 unexecuted.64existing runtime warning identities unchanged; only two unrelated stack lines603→604, no own-case warning, positive guard assertions are primary evidence. Known exact T-1935 fixture pair retained separately from terminal Finished exit0/hub passed, no retry. Lint123/60/budget/ratchet/skip report-only; native179.668s selected phases excludes machine wait, billing lifetime not suite wall. C1/C2 verified, findings[]. Historical evidence limits retained; no Reviewer runtime/probe/edit/new run/merge.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-35 · 2026-11-17T09:22:55.917Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1848-source-6
+commit: 0707b733e8e990f674e9878bfd36e55f32c1a237
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-20816: third authorized merge delta clear at treede2521d2e0d5946fb81cafd61aced4fa923cb16a; parents f48ac45e+9143ae841. Coordinator15aaa514/assignmentbfaf13ca. Standards0/Spec0 findings. One suite-log resolution retains inspection prefix with upstream central semanticEvidence/shared strict SOAK_RUNNER_STARTED, used by streaming ingestion and reducer; valid/malformed marker controls preserved. Task result/admission/inspection code/fake controls unchanged from prior clearance. A-20811 local45/45 selected T1/T2,full typecheck/lint0/refusals0/124report61files; candidate/commit tree same, document SHA256 independently matchedbec56341...,notrawstream. No new-head configured/T3/T4/Web/load/browser proof, priorA-20771 onlyf48. C1/C2 remain pending same-head final evidence; source clear permits Coordinator window request at unchanged0707. New rules38-43 applied to delta only. No Reviewer runtime/probe/edit.
+
+### rev-35 · 2026-11-17T09:54:19.145Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1848-final-5
+commit: 0707b733e8e990f674e9878bfd36e55f32c1a237
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-20825 same-head final clearance: sourceA-20816 + passed3fc29d2a/A-20823 at0707b733, normtree25664d45a68348c45f08a27ab290a8c361b00814/prov38759. Independent6757ordinarytests/712files allpass,230loadpasses separate; all224T1/429T2/55Web/4mappedT3 complete,no missing/nonpass/fail/cancel/skip. Four inspection identities ordinary+5loads and explicit5/5proofs28415/28422/28525/28540; durable actual result-writer/isolation controls retained. Strict soak summary passes9917;command/worker/summary/backfill complete.64warningidentities unchangedvsA-20771/noneadded,124lint61files/budgets report-only. KnownT1935pair28617–18 fixturetext is not outcomeowner. LinuxNode24.21Nvim.12.5uncached; actualHeadlessShell1248/CfT156browser36184. FourT3files124top+7nestedpass,onebase/noreps;211.820s selectedphasesexclwait notsuitewall. Remaining265T3/all17T4unexecuted; billing1550s/$0.1076 notsuitewall. C1/C2verified; priorf48/oldfailed rounds remainhistorical. No Reviewer runtime/probe/edit.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T11:50:53.103Z
+
+Merged 289a5ab00ea29bf8ae90095f8221029a93d26658 onto dev.

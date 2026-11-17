@@ -2,8 +2,8 @@
 id: T-1626
 kind: task
 title: The droplet executor and the host carrier share one ssh binary selector
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1600
 branch: t/T-1626-the-droplet-executor-and-the-host
 created: 2026-11-02T05:50:22.553Z
-updated: 2026-11-17T09:09:03.613Z
+updated: 2026-11-17T11:51:53.712Z
+closed: 2026-11-17T11:51:53.712Z
 ---
 
 ## Summary
@@ -31,15 +32,23 @@ Found by impl-1589 while building T-1589 (topic-1327, 2026-11-02 05:50Z); T-1589
 ## Acceptance criteria
 
 - [x] C1. The droplet executor and the host carrier resolve `ssh`/`scp` through one selector function.
-  - done: impl-1626 · 2026-11-17T09:07:13.177Z
   - verified: rev-35 [reviewer] · run rev-35-1626-source-3 · 2026-11-17T09:09:03.613Z · commit dbd8391672e8b544d708bf77dc60559461463761
+  - verified: rev-36 [reviewer] · run rev-36-1626-delta-1 · 2026-11-17T09:29:22.595Z · commit b052e6ba2f5f04f9ef2e1a324b7ac4a4a4a380be
+  - done: impl-1626 · 2026-11-17T10:23:09.820Z
+  - verified: rev-36 [reviewer] · run rev-36-1626-delta-2 · 2026-11-17T10:27:04.417Z · commit 1e2341be7639a116fbe4ccfebb71811b03d99ed5
+  - verified: rev-36 [reviewer] · run rev-36-1626-final-1 · 2026-11-17T10:57:30.036Z · commit 1e2341be7639a116fbe4ccfebb71811b03d99ed5
 - [x] C2. Outside its test gate, the executor ignores `CLAND_SSH_BIN`/`CLAND_SCP_BIN` (test).
-  - done: impl-1626 · 2026-11-17T09:07:13.318Z
+  - done: impl-1626 · 2026-11-17T10:23:10.134Z
+  - verified: rev-36 [reviewer] · run rev-36-1626-final-1 · 2026-11-17T10:57:30.036Z · commit 1e2341be7639a116fbe4ccfebb71811b03d99ed5
 - [x] C3. The executor-contract, executor-droplet, executor-prepare and remote-fixture tests pass with their assertions unchanged.
-  - done: impl-1626 · 2026-11-17T09:07:13.585Z
+  - done: impl-1626 · 2026-11-17T10:23:10.665Z
+  - verified: rev-36 [reviewer] · run rev-36-1626-final-1 · 2026-11-17T10:57:30.036Z · commit 1e2341be7639a116fbe4ccfebb71811b03d99ed5
 - [x] C4. `docs/executor-argv-audit` names the selector and the gate.
-  - done: impl-1626 · 2026-11-17T09:07:13.720Z
   - verified: rev-35 [reviewer] · run rev-35-1626-source-3 · 2026-11-17T09:09:03.613Z · commit dbd8391672e8b544d708bf77dc60559461463761
+  - verified: rev-36 [reviewer] · run rev-36-1626-delta-1 · 2026-11-17T09:29:22.595Z · commit b052e6ba2f5f04f9ef2e1a324b7ac4a4a4a380be
+  - done: impl-1626 · 2026-11-17T10:23:10.928Z
+  - verified: rev-36 [reviewer] · run rev-36-1626-delta-2 · 2026-11-17T10:27:04.417Z · commit 1e2341be7639a116fbe4ccfebb71811b03d99ed5
+  - verified: rev-36 [reviewer] · run rev-36-1626-final-1 · 2026-11-17T10:57:30.036Z · commit 1e2341be7639a116fbe4ccfebb71811b03d99ed5
 
 ## Comments
 
@@ -115,3 +124,90 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-20802: full source clearance at treeb5642f627ecfc1b01eb1255cad9dffcc7d26e238. Standards0/Spec0 findings; prior A-20796 scope medium resolved: opt-in explicit contexts on13droplet/2prepare/defaultremote acquisitions, no global inference/refusal, legacy synchronous marker avoids new pending writer. Original assertions unchanged; all5 production files/actual-frame/bootstrap/guard helpers byte-identical to reviewed basis. Exact-head A-20800 local Darwin Node24.21: T3droplet14/14,T3prepare6/6,T4remote-lifecycle6/6,T1contract9/9, each independent exit0/zero fail/cancel/skip. Assembled document SHA256 independently matched9f6f3c62...e968b8c57; not raw-stream hash. Candidate-byte lint/type0 beforecommit/122report59files/zero refusals; previous-head12/12frames+6/6bootstrap remain labelled earlier. Provenance/failure history retained; no configured/Linux/Web/load/QA claim. C1/C4 verified by source; C2/C3 await same-head configured evidence. No Reviewer runtime/probe/edit. Source clearance allows Coordinator window request, not final suite clearance.
 
 Criteria: C1 verified, C4 verified.
+
+### impl-1626 · 2026-11-17T09:18:44.626Z
+
+Coordinator attributed sole configured failure to this item, not shared. c314b4b1/A-20809 stopped after T0 green/T1 red; T2/T3/T4/Web did not execute. Literal assertion: 'run node hub/bin/generate-host-agent-closure.ts'. Assertion actual was committed closure hash20e7693f..., expected current source hash87d1f634... (clarifies digest direction in earlier traffic). Generator changed only hub/src/host/agent/closure.json's shared/executor-credentials.ts hash. Committed only that file as b052e6ba2f5f04f9ef2e1a324b7ac4a4a4a380be/tree87c7f8cfede536fe19e7ceddd16995e4f1b56914. Rule41 build/upload consumer: agent/command-environment.ts imports withoutExecutorCredentials from shared/executor-credentials.ts; agent/package.ts lists it as an exact owner-bound shared leaf. code-delivery.ts agentBundle reads closure.json, reads and hashes every named source including credentials, and carries base64 bytes into installAgent's upload; INSTALL_AGENT rechecks hashes and writes/verifies the package. Thus the changed shared module is consumed by actual agent build/upload, not only tests. Exact-head local Darwinarm64 Node24.21 host-agent-closure.test.ts passed5/5 with zero skips; full lint underway, then typecheck/delta review. No rerun/resubmission of c314b4b1.
+
+### rev-35 · 2026-11-17T09:20:21.192Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1626-final-1
+commit: dbd8391672e8b544d708bf77dc60559461463761
+scope: evidence
+findings: [{"severity":"medium","text":"Generated consumer not migrated: executor-credentials source SHA25687d1f634...e2b284f but committed agent closure retains20e7693f...eb359. Shared leaf is consumed by agent/command-environment/package graph. Sole configured T1 failure requires regeneration; Coordinator72903422 attributes to this item and authorizes closure-only delta/new window. Source review missed this consumer (rules16/20/41).","file":"hub/src/host/agent/closure.json","line":185}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-20814: FAILED c314b4b1/A-20809 atdbd839167, normtree df03139add6b2187445fc1336b3fc1ed3f7935f5. Structured1796ordinarypass/1fail,223pass/1fail file envelopes;30load passes separate. All224T1completed,T0exit0/T1exit1/Finishedexit1. Sole failure closure test finish2526/file2554; assertion10121 calls generator. Source hash/manifest identities independently checked, exact opposite objects from earlier shorthand: actual assertion=old manifest20e..., expected=new source87d.... T2/selectedT3/T4/Web unexecuted,browsernull; contract ordinary positive1703 does not clear fullrun. LinuxNode24.21/Nvim.12.5uncached, billing282s/$0.0196 notsuitewall,report advisories retained. C3failed/C2pending; sourceC1/C4 do not waive gate. No retry of old round; Coordinator-authorized closure-only correction may continue, then delta review/new window. No Reviewer runtime/probe/edit.
+
+Criteria: C3 failed (Configured acceptance remains incomplete: runc314b4b1 fails stale generated agent closure inT1 before T2/T3/T4/Web execute; named native cases are not claimed failed.).
+
+### rev-36 · 2026-11-17T09:29:22.595Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1626-delta-1
+commit: b052e6ba2f5f04f9ef2e1a324b7ac4a4a4a380be
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: clear, zero findings. Spec: clear for the closure-only delta from dbd8391672e8b544d708bf77dc60559461463761 to b052e6ba2f5f04f9ef2e1a324b7ac4a4a4a380be (Git tree 87c7f8cfede536fe19e7ceddd16995e4f1b56914). Uses full source basis rev-35-1626-source-3 / A-20802. Only hub/src/host/agent/closure.json changed: shared/executor-credentials.ts hash now 87d1f63490fe54f160ce8ed5fe0f85f910fd425ef46c2406d0b315a54e2b284f. All 47 entries match raw binary committed blobs; path order/schema and all other source/test/help/fixture/tier bytes are unchanged. Build/upload consumer inspection confirms agentBundle validates these hashes and uploads this graph. C1/C4 static criteria verified using unchanged cleared source plus this corrected packaging metadata. C2/C3 remain unverified pending fresh completed configured evidence at this exact head and Coordinator window. A-20815 local closure 5/5, lint/typecheck tool summaries retain stated provenance limits; reviewer performed no runtime checks. Old configured c314b4b1 / A-20809 remains FAILED/partial at dbd839167, not a pass at this head. Rules 38–43 considered for this pending metadata delta. Full audit and evidence limits: A-20818, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20818-t-1626-closure-only-delta-and-build-upload-hash-audit.md.
+
+Criteria: C1 verified, C4 verified.
+
+### rev-36 · 2026-11-17T09:58:25.576Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1626-evidence-1
+commit: b052e6ba2f5f04f9ef2e1a324b7ac4a4a4a380be
+scope: evidence
+findings: [{"severity":"medium","text":"The changed fake-provider root owner fails its existing queued-issuance drain consumer. A-20824 test finish17276/file17352 and assertion32325 record ENOTEMPTY removing <fake-do root>/executor-state. Replacing ownDirectory's beforeRemove closing guard with setupOwnedDirectory's first dispose hook can initiate api.close/root removal before later admission/storage drainage. Coordinator8bcc34e6 attributes this to T-1626 and requires old/new comparison, exact writer diagnosis, restored drain-before-remove order, queued-issuance red/green regression and full drain-consumer census. Exact writer identity is not established by this review; no reproduction was run.","file":"hub/test/fakes/digitalocean/fake-api.ts","line":32}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-20826 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20826-t-1626-failed-volume-drain-consumer-and-partial-configured-receipts.md records FAILED68c159f1/A-20824 atb052e6ba2, Git tree87c7f8cf versus effective verification tree302158c6. Standards1medium; Spec acceptance incomplete. Actual assertion32325: ENOTEMPTY removing fake-do root/executor-state in unchanged volume drain test14; structured test17276/file17352fail. Coordinator8bcc34e6 attributes to this item's root-owner replacement and authorizes old/new comparison/writer diagnosis/order restoration/red-green/full drain census after this hold releases. Exact writer not diagnosed by Reviewer. T0/T1exit0; all224T1pass; T2exit1 with385filepass/1fail/44unexecuted; finalexit1. Ordinary5888pass/1fail, separate95loadtest passes (19identities each5+proof), combined5983pass/1fail, no unmatched/duplicate finishes. Closure5/5 now positive; contract9/final launch12/bootstrap6 positives remain partial. Selected nativeT3/T4/Web unexecuted, browsernull. C3failed/C2pending; staticC1/C4 retained. Known planted ticket-loss/unrelated-output pair27654–55 is separate from actual disposal failure. LinuxNode24.21uncached, report-only advisories/billing scope retained. Oldc314b4b1 remains failed history; no retry/reproduction/edit by Reviewer. Source/helper direct39path drain snapshot and missing transitive census obligation retained.
+
+Criteria: C3 failed (Configured run68c159f1 fails the changed shared fake-provider queued-issuance drain consumer with ENOTEMPTY; selected native T3/T4 acceptance and Web remain unexecuted, not failed tests.).
+
+### impl-1626 · 2026-11-17T10:06:28.739Z
+
+Rule41 complete drain-consumer census for this correction. Direct source references/acquisitions/type consumers (23): hub/test/host-provider-tokens.test.ts, hub/test/suite-dry-run.test.ts, hub/test/executor-admission.test.ts, hub/test/setup-hosts.test.ts, hub/test/executor-safety.test.ts, hub/test/hosts-state.test.ts, hub/test/host-provider-digitalocean.test.ts, hub/test/host-provider-digitalocean-prepare.test.ts, hub/test/executor-contract.test.ts, hub/test/executor-droplet.test.ts, hub/test/executor-deletion-confirmation.test.ts, hub/test/startup-ready-component.test.ts, hub/test/suite-unit-fixture.ts, hub/test/scenarios/integrated-v04.test.ts, hub/test/droplet-fixture.ts, hub/test/executor-prepare.test.ts, hub/test/daemon.test.ts, hub/test/executor-snapshot-confirmation.test.ts, hub/test/doctor-hosts.test.ts, hub/test/executor-prepare-component.test.ts, hub/test/host-provider-digitalocean-volumes.test.ts, hub/test/digitalocean-pacing.test.ts, hub/test/remote-fixture.ts. Conservative reverse literal-relative-.ts graph over hub/test, 12477389 source bytes read, 81 transitive consumers (includes pure/type importers; not claimed executed): hub/test/close-run-fixture.ts, hub/test/cover-quiet.test.ts, hub/test/daemon.test.ts, hub/test/demo-cap.test.ts, hub/test/demo-provisioning.test.ts, hub/test/demo-release-component.test.ts, hub/test/demo-release.test.ts, hub/test/demo-start.ts, hub/test/demo.test.ts, hub/test/dev-t3-search-component.test.ts, hub/test/dev-t3-search.test.ts, hub/test/digitalocean-pacing.test.ts, hub/test/doctor-hosts.test.ts, hub/test/droplet-fixture.ts, hub/test/durations.test.ts, hub/test/executor-admission-lock.test.ts, hub/test/executor-admission.test.ts, hub/test/executor-contract.test.ts, hub/test/executor-deletion-confirmation.test.ts, hub/test/executor-deletion-watchdog.test.ts, hub/test/executor-droplet.test.ts, hub/test/executor-health.test.ts, hub/test/executor-prepare-component.test.ts, hub/test/executor-prepare-retry.test.ts, hub/test/executor-prepare.test.ts, hub/test/executor-reap-confirmation.test.ts, hub/test/executor-recovery-collection.test.ts, hub/test/executor-run-rules.test.ts, hub/test/executor-run.test.ts, hub/test/executor-safety-case.ts, hub/test/executor-safety-component.test.ts, hub/test/executor-safety-load.test.ts, hub/test/executor-safety.test.ts, hub/test/executor-snapshot-confirmation.test.ts, hub/test/host-provider-digitalocean-prepare.test.ts, hub/test/host-provider-digitalocean-volumes.test.ts, hub/test/host-provider-digitalocean.test.ts, hub/test/host-provider-tokens.test.ts, hub/test/hosts-state.test.ts, hub/test/merge-batch-dependencies.test.ts, hub/test/merge-batches.test.ts, hub/test/remote-cleanup.ts, hub/test/remote-fixture-lifecycle.test.ts, hub/test/remote-fixture-parent.ts, hub/test/remote-fixture.ts, hub/test/remote-scripted.test.ts, hub/test/scenarios/droplet-verify.test.ts, hub/test/scenarios/integrated-v04.test.ts, hub/test/setup-hosts.test.ts, hub/test/startup-ready-component.test.ts, hub/test/state-inventory.test.ts, hub/test/suite-accounting.test.ts, hub/test/suite-cache.test.ts, hub/test/suite-candidate-remote.test.ts, hub/test/suite-close-component.test.ts, hub/test/suite-close-recovery.test.ts, hub/test/suite-close.test.ts, hub/test/suite-coordinator.test.ts, hub/test/suite-cover.test.ts, hub/test/suite-dry-run.test.ts, hub/test/suite-duration-budget.test.ts, hub/test/suite-hung-component.test.ts, hub/test/suite-landed-load.test.ts, hub/test/suite-log-backfill.test.ts, hub/test/suite-persistence.test.ts, hub/test/suite-progress.test.ts, hub/test/suite-queue-policy.test.ts, hub/test/suite-queue.test.ts, hub/test/suite-remote-budget.test.ts, hub/test/suite-remote-log.test.ts, hub/test/suite-remote-process.test.ts, hub/test/suite-scheduling.test.ts, hub/test/suite-soak-component.test.ts, hub/test/suite-soak.test.ts, hub/test/suite-stage-cover.test.ts, hub/test/suite-stage-rules.test.ts, hub/test/suite-task-selection.test.ts, hub/test/suite-unit-fixture.ts, hub/test/test-lint-policy.test.ts, hub/test/verification-commands.test.ts, hub/test/verification-workers.test.ts. Shared factory consumers in remote-fixture, suite-unit-fixture and droplet-fixture propagate ordering to this entire set; direct acquisition owners require provider/admission/lease/spend/store drainage before api.close and directory removal. Explicit testContext paths retain original ownDirectory beforeRemove fence; omitted contexts retain manual api.close behavior. The new setup owner only joins allocation/marker setup, never supplants those lifetime owners. Additional manual QA callers: qa/briefs/E-1537-stage-3.md and qa/briefs/E-1538-stage-1.md use context-free API drivers with explicit close and are unaffected (sync marker/manual lifetime unchanged). Searches covered fakeDigitalOcean, its importers, owner helpers, raw close/root removal, test tiers and QA/docs; frozen CLI fixture unaffected (no user-visible command/text change). Only volume contract, provider contract and executor-contract have been executed in this delta so far; remaining consumers deferred to subsequent configured run/batches/occasions.
+
+### rev-36 · 2026-11-17T10:27:04.417Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1626-delta-2
+commit: 1e2341be7639a116fbe4ccfebb71811b03d99ed5
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-20843 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20843-t-1626-minimal-fixture-rollback-and-exact-head-targeted-evidence.md pins1e2341be/tree56cb9de5, two linear commits afterb052e6ba2/no dev merge. Standards0/Spec0 findings. Coordinator382872e8/9fec707b explicitly narrows fixture change; T1941 independently confirms full ownership hardening/caller migration/regressions assigned separately. fake-api versus originale248bca68 is exactly3added marker lines; original ownDirectory/beforeRemove/mkdtemp/API/caller drainage restored, no new context enrollment/setupOwnedDirectory. Removed hardening helper/regression is scoped toT1941; fakeOnlyFixture positive guard/body owner retained. Original volume file/guide byte-identical; native fixture assertion bytes preserved, only required gate env insertions remain versus original. Production selector/filter/shared credential/closure blobs unchanged from clearedb052; tiers/durations/frozenhelp unchanged. C1/C4 verified; C2/C3 await completed configured evidence at this head. A20841 parsed6whole-file sections independently:18+89+8+14+6+6=141named passes, each exit0/zero fail/cancel/skip; granted serial localDarwinNode24.21 native slot released. Full root lint/typecheck reported0/zero refusals122report59files, provenance/raw/static-stream limits retained.81drain consumers mapped at current head with6current positives/rest deferred/reference; old configured failures and intermediate51f82910 failed/incomplete native round remain historical. No Reviewer runtime/edit/probe, configuredLinux/Web/QA/deployment claim or retry waiver.
+
+Criteria: C1 verified, C4 verified.
+
+### rev-36 · 2026-11-17T10:57:30.036Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1626-final-1
+commit: 1e2341be7639a116fbe4ccfebb71811b03d99ed5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-20849 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20849-t-1626-final-same-head-configured-receipts-and-scoped-native-acceptance.md settles current source plus e8671a60/A-20848 at reviewed1e2341be. Standards0/Spec0 findings; C1–C4verified. Hub passed/Finishedexit0; sourceGit tree56cb9de5 distinguished from uncached verification snapshot a6862629. Independent typed audit:6656ordinary testpass/1platformskip,712ordinary filepasses,90separate loadpasses for18required identities each5+proof; no duplicate/unmatched finishes. All224T1/430T2/55Web, two selectedT3files and one selectedT4guard complete. Required contract8, finalframes12, bootstrap6, closure5, provider89/volume18positive incl formerly failed queued drain. Selected Linux native droplet13pass/1macOSskip and prepare6pass; T4guard1top-level timing/13typed nested passes, no load repetitions. Same-head DarwinA20841 supplies droplet14/prepare6/remote-lifecycle6 including caffeinate; Linux remote-lifecycle file unexecuted and not relabelled. Remaining267T3/16T4unexecuted here. Actual HeadlessShell1248/CfT156.0.8078.4 receipt34710, LinuxNode24.21provenance37283; billing/report-only advisories scoped. Known planted cause pair27599–27600 separate from ownerexit0.81drain paths mapped:53configured-positive,1Darwin-only,19deferred,8helpers. T1941 ownership hardening and all prior failed/intermediate rounds retain dispositions; no retry/deployment/QAclaim. Reviewer only read existing source/receipts; no runtime/edit/merge.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-11-17T11:51:53.712Z
+
+Merged 1cd9883c0c6c27545aa5c6aa2176a097d9368eff onto dev.

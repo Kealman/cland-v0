@@ -2,8 +2,8 @@
 id: T-1633
 kind: task
 title: A batch run whose host check a hub restart killed holds as inconclusive after a green rerun
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1595
 branch: t/T-1633-a-batch-run-whose-host-check-a-hub
 created: 2026-11-02T11:11:55.194Z
-updated: 2026-11-17T08:21:34.523Z
+updated: 2026-11-17T11:51:25.220Z
+closed: 2026-11-17T11:51:25.220Z
 ---
 
 ## Summary
@@ -32,12 +33,15 @@ Merge batch 5d4ff9c3 (T-1632, T-1566, T-1621) was admitted as run a18f9a6a at 10
 - [x] C1. A batch run whose T0 attempt is aborted by a hub stop and rerun green on the restarted hub, with all tiers green, lands without a hold. A component test restarts the hub during the host gate.
   - done: impl-1633 · 2026-11-17T06:52:35.178Z
   - verified: rev-35 [reviewer] · run rev-35-1633-final-1 · 2026-11-17T07:41:33.725Z · commit 4d4a159c1d4c8c2a5ea67adc98647813b817ad6b
+  - verified: rev-35 [reviewer] · run rev-35-1633-final-2 · 2026-11-17T10:10:00.929Z · commit 4641adcfa742936590f903c3af5585f590a39c05
 - [x] C2. An aborted T0 or tier receipt with no later passing receipt for the same run still holds the batch as inconclusive. The existing tests still pass.
   - done: impl-1633 · 2026-11-17T06:52:40.240Z
   - verified: rev-35 [reviewer] · run rev-35-1633-final-1 · 2026-11-17T07:41:33.725Z · commit 4d4a159c1d4c8c2a5ea67adc98647813b817ad6b
+  - verified: rev-35 [reviewer] · run rev-35-1633-final-2 · 2026-11-17T10:10:00.929Z · commit 4641adcfa742936590f903c3af5585f590a39c05
 - [x] C3. The landing notice and the log name the superseded aborted attempt, with its exit code and duration.
   - done: impl-1633 · 2026-11-17T06:52:41.141Z
   - verified: rev-35 [reviewer] · run rev-35-1633-final-1 · 2026-11-17T07:41:33.725Z · commit 4d4a159c1d4c8c2a5ea67adc98647813b817ad6b
+  - verified: rev-35 [reviewer] · run rev-35-1633-final-2 · 2026-11-17T10:10:00.929Z · commit 4641adcfa742936590f903c3af5585f590a39c05
 
 ## Comments
 
@@ -82,3 +86,35 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-11-17T08:21:34.523Z
 
 Coordinator, 08:21Z: removed from the merge queue. The head conflicts with T-1931 in suites.ts and suite-log.ts. T-1931 lands first; T-1633 then merges dev once, gets a delta review and a new verify (rule 6 serialization of hot files).
+
+### rev-35 · 2026-11-17T09:22:56.060Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1633-source-2
+commit: 4641adcfa742936590f903c3af5585f590a39c05
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-20817: authorized postT1931 merge delta clear at tree3137dff50b6de7f6b6edfd95350f17fcb68b499d; parents4d4a159c+9143ae841, Coordinator364446d6/assignment89d5ba68. Standards0/Spec0 findings. suites.ts retains interrupted-host binding and upstream soak calibration/timing imports/calls. suite-log central predicate preserves host bindings+ordinary evidence+shared strict marker for both ingestion/reducer; no broad alternate grammar. Prior bound run/tree/command supersession and negative controls retained. A-20813 localfourT1files131/131,full typing/lint0/refusals0/123report60files; candidate/commit tree match, rawhash/signals unavailable. No configured/T2/T3/T4/Web/native restart claim; priorgreen only4d4. C1-C3 pending final evidence. Coordinator serialization requires T1848 landing then another dev merge/fresh delta review BEFORE eventual verification window; this verdict does not bypass it. No Reviewer runtime/probe/edit.
+
+### rev-35 · 2026-11-17T10:10:00.929Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1633-final-2
+commit: 4641adcfa742936590f903c3af5585f590a39c05
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-20834 final exact-head clearance: sourceA-20817 + passed45f96062/A-20833 at4641adcfa, normtreea22a2c2d5cde244bc7f589e457821ad34fabeca4/prov38123. Coordinator3d97a70c supersedes earlier second-merge requirement;0f85c5b2 granted thisheadwindow. Independently6629ordinarytest/709file passes,225load passes separate; all224T1/429T2/55Web/1mappedT3 complete,no missing/nonpass/fail/cancel/skip; alltiers/Finishedexit0. Bound retry4026/stop-reopen4031/unmatched-abort4036 ordinary +5load each/proofs4207,4226,4335. Source assertions preserve superseded143/35.33s history and bound run/tree/command/step negatives; simulatedcontrollerreopen,notnativehubrestart/latency. Batch90/planner6/soak29/summary6 allpass,strictmarker10049 preserved.64warningsunchangedvsA-20823,123lint60files/budgets report-only. ExactT1935pair28591–92 fixturetextnotoutcome. LinuxNode24.21Nvim.12.5uncached; actualHeadlessShell1248/CfT156browser35509. OneT3file4passonce,noreps;14.151s selectedphasesexclwaitnotwall;268T3/all17T4unexecuted. C1-C3verified. No Reviewer runtime/probe/edit.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-17T11:51:25.220Z
+
+Merged bb9613d63c7ae358c500f9c15f72b97f55d06792 onto dev.

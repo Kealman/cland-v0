@@ -16,7 +16,7 @@ regression_of: T-1576
 topic: topic-1594
 branch: t/T-1935-a-suite-summary-reports-suite-ticket
 created: 2026-11-17T06:37:12.828Z
-updated: 2026-11-17T09:05:30.918Z
+updated: 2026-11-17T12:05:14.631Z
 ---
 
 ## Summary
@@ -30,12 +30,13 @@ The summary takes infrastructure causes only from the runner's own channel (the 
 ## Acceptance criteria
 
 - [x] C1. A run whose test output contains a `suite infrastructure:` line, but whose runner records no infrastructure cause, has a summary with no infrastructure cause (test).
-  - done: impl-1935 · 2026-11-17T08:59:09.344Z
+  - done: impl-1935 · 2026-11-17T09:33:12.935Z
 - [x] C2. A real runner-recorded ticket loss still appears in the summary with its cause (test).
   - done: impl-1935 · 2026-11-17T08:59:09.899Z
 - [x] C3. The readers of the summary's infrastructure lines (heartbeat, digest, merge queue diagnosis, T-204 tooling) are listed with their dispositions (rule 20).
   - done: impl-1935 · 2026-11-17T06:49:14.058Z
   - verified: rev-36 [reviewer] · run rev-36-1935-source-2 · 2026-11-17T07:32:34.249Z · commit 84957a1bb9d8f57d3cedb45b9099db73f6b29ff8
+  - verified: rev-36 [reviewer] · run rev-36-1935-source-5 · 2026-11-17T09:37:45.382Z · commit f8a87410fbbbbae5c7475cf885345bad8722c720
 
 ## Comments
 
@@ -118,3 +119,33 @@ finding_counts: {"high":0,"medium":3,"low":1}
 A-20789 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20789-t-1935-shard-correction-and-rules38-43-consolidated-source-findings.md pins clean f290979e/treecfb8d01b, two linear correction commits after84957a1b/no dev merge. Original shard-prefix Spec finding resolved: shared suiteInfrastructureCauses traverses recorded child outcomes, all3dispatch summaries pass shards??[], incomplete/periodic paths share it, parent wire/notRun unchanged; pure aggregate+opaque-parent and existing live/restored controls retained. New rules38–43 apply to this pending head per Coordinator01058b7b, independently read rule.list. Standards3medium+retained1low/Spec0: fake matrix lacks positively exercised callback/custom/native guard; readSuiteCause and raw uploaded run.ts:236 buffer complete cause files; selected outcome can be overwritten by ancillary read/cleanup errors. Claimants de4dd55f/245c82b2 confirm no hidden guards/caps/preservation. Coordinator ead69ea6 includes run.ts as eighth production file and authorizes consolidated fixes; eight-file limit, further findings separate items. C1/C2failed; no current criteria verified here. All104consumers/frozen fixtures/raw readers/tier-history dispositions retained. A-20776 original pre-final-typing summaryred6/7→green7/7 and closeT2 18/18, TS2379→corrected full typecheck0, exact-head lint0refusals122report-only retained with raw/native/tree limits. Old ed1b37be/A-20758 remainsFAILED PARTIAL, no pass or new configured/native/Web claim. Retained setup-deadline low accepted by Coordinator5f7cdd21; no exception for new mediums. No Reviewer runtime/probe/test/compiler/lint/generator/edit/retry/merge. Consolidate before fresh source review/window; already-cleared old heads are not retroactively judged by new rules.
 
 Criteria: C1 failed (Pending work lacks rule38 positive callback/custom/native launch protection, and both local and uploaded cause readers lack rule42 ingestion bounds.), C2 failed (After selecting a child outcome, cause-read or worker cleanup failure can replace its primary code/cause and drop code75 infrastructure metadata, against rule39.).
+
+### rev-36 · 2026-11-17T09:19:57.279Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1935-source-4
+commit: 18c52b4abf14ad1c675d447a792f7fa67cdc5e9a
+scope: full
+findings: [{"severity":"medium","text":"The new guard's manual module/prototype patches are not cleanup-owned before acquisition/setup. Its catch restores only positive-control failures after installation; the matrix awaits the guard, performs timer/fs/stdout/spawn setup, then registers t.after. An installation or intervening setup throw can leave global guard mutations active across later cases, outside t.mock.restoreAll. Enroll restoration before mutations/caller setup, cover partial installation, and keep the guard through joined fake cleanup before restore. Claimant fc00d325 confirms no earlier owner. This affects new test-helper work within the existing production ceiling.","file":"hub/test/fake-native-guard.ts","line":7},{"severity":"low","text":"Both new older-runner callbacks now join/fence their whole lifetime, but fixture acquisition uses step() without a separately named owner.wait setup deadline. remote-fixture awaits initial tempProject/guard/provider/Git/file setup before later readiness bounds; step/run do not bound that work. Add a named setup wait around fixture acquisition while retaining the fixed owner. Claimant e9e0cf3a confirms; this is a diagnostic gap, not an outstanding lifetime-join defect.","file":"hub/test/executor-run.test.ts","line":317}]
+finding_counts: {"high":0,"medium":1,"low":1}
+
+A-20812 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20812-t-1935-bounded-reader-corrections-and-remaining-guard-setup-lifetime.md pins clean18c52b4a/tree2098dec6, two linear commits afterf290/no dev merge. Standards1medium+retained1low/Spec0. Prior3mediums corrected substantively: shared4096payload+1sentinel reader locally/actual serialized status program, short-read/oversize/read/close metadata handling; selected exit preserved through ancillary read/worker cleanup; functional module/prototype/custom launch denials positively controlled. New medium: manual guard mutations occur before cleanup ownership; matrix does timer/fs/stdout/spawn setup before t.after, while helper catch covers only later positive controls. Claimant fc00d325 confirms no earlier owner. Enroll guard restoration before mutation/setup and retain it through joined fake cleanup. Existing native fixture setup-deadline low at executor-run.test.ts:317 unchanged/accepted. C1failed; C2/C3unverified here. All107consumer paths/frozen/raw/tier-history dispositions retained; production scope remains exact8paths under ead69ea6, pgid EPERM separately filed3786766f. A-20808 original excerpts clarify39/39+VM10/10 before final writer prefix bound, closeT2 18/18 after it, exact-head full lint/typecheck0 with original failed rounds and raw/native/tree limits; no configured/nativeT3/T4/Web/QA/deployment proof. Old ed1b37be remainsFAILED PARTIAL. Coordinator c3eb1460 says await this verdict then fold authorized dev merge+guard fix, fresh merged-head review; extra merge only under T1848/T1633 landing condition. No Reviewer execution/probe/edit/retry/merge.
+
+Criteria: C1 failed (New manual native guard is not cleanup-owned before installation and caller setup; a throw before t.after can leak module/prototype mutations across cases.).
+
+### rev-36 · 2026-11-17T09:37:45.382Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1935-source-5
+commit: f8a87410fbbbbae5c7475cf885345bad8722c720
+scope: delta
+findings: [{"severity":"low","text":"Both new older-runner callbacks now join/fence their whole lifetime, but fixture acquisition uses step() without a separately named owner.wait setup deadline. remote-fixture awaits initial tempProject/guard/provider/Git/file setup before later readiness bounds; step/run do not bound that work. Add a named setup wait around fixture acquisition while retaining the fixed owner. Claimant e9e0cf3a confirms; this is a diagnostic gap, not an outstanding lifetime-join defect.","file":"hub/test/executor-run.test.ts","line":317},{"severity":"low","text":"The union merge interrupts the ticket-loss paragraph after 'It asserts', inserts the timing-marker paragraph, then repeats the ticket-loss introduction at lines 23–24. Reconcile these into two complete paragraphs while retaining the dedicated cause-file explanation. Rule16 and the shared test-guide union-merge guidance require rereading combined advice; this is documentation only.","file":"docs/agents/tests/hub-test-executor-run.test.ts.md","line":16}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+A-20820 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20820-t-1935-owned-native-guard-and-authorized-merge-review.md pins merged head f8a87410/tree1fdc784f and parents18c52b4a/9143ae841. Standards: clear with2low,0medium/high; Spec: clear,0findings. Source4 guard medium fixed: pre-mutation mandatory restorer registration, partial-install restoration, pre-enrolled caller teardown and joined fake cleanup; two observed-restoration fault controls retained. Authorized merge c3eb1460 followed source4 verdict/hold release; run.sh keeps both timing marker/direct cause channel, worker keeps upstream admission owner plus selected-outcome preservation, both test sets remain. Exactly8own production paths; bounded reader/raw status/structured shard helpers and assertions/allowances unchanged where expected. C3 current census108paths verified; C1/C2 remain unverified pending completed configured evidence at this head. A-20819 scopes precommit merged56/56+close18/18 separately from exact-head selected native-fake3/3 and root type/lint0 (0refusals123report60files); original excerpts/raw-native-tree limits retained. No configured/full-tier/Web/QA/deployment claim; old ed1b37be/A-20758 remainsFAILED PARTIAL. Retained accepted native setup-deadline low plus new documentation-only union-merge duplicate/incomplete paragraph low. Independent pgidEPERM/T1936 allocation remain separately filed; hosting source/restart activation remains separate. Reviewer performed only read-only inspection.
+
+Criteria: C3 verified.

@@ -3,16 +3,17 @@ id: T-1804
 kind: task
 title: "Explorer protocol recordings key on unrelated archive-loading state: the same task.plan/task.view frame records a new entry once closed archive rows arrive"
 state: open
-status: planned
+status: in progress
 size: M
+criterion_seq: 3
 labels: []
 assignee: null
 parent: E-1886
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1602
+branch: t/T-1804-explorer-protocol-recordings-key-on
 created: 2026-11-10T10:27:55.575Z
-updated: 2026-11-16T07:31:20.230Z
+updated: 2026-11-17T12:09:41.797Z
 ---
 
 ## Summary
@@ -27,4 +28,10 @@ impl-1778's classification in topic-1461 (2026-11-10 10:27Z). The generated comm
 
 - [ ] C1. Recording keys for explorer frames don't depend on archive-loading progress: two recording runs, with archive rows loaded before and after the frame, produce the same canonical entries (test).
 - [ ] C2. Ordinary replay covers both archive-loading states, or the explorer awaits a defined archive state before capture (test).
-- [ ] C3. `npm run test:nvim-fixtures` run twice in a row leaves no versioned diff (test).
+- [ ] C3. Two back-to-back `npm run test:nvim-fixtures` runs produce no archive-context duplicate keys, and the explorer-component slice after the second run is byte-identical to the deterministic migration; the remaining incidental task.view capture variance belongs to T-1944 (test).
+
+## Comments
+
+### impl-1804 · 2026-11-17T11:46:27.381Z
+
+Consumer search: frame-fixtures canonical/replay consumed by stub-hub; client selects slice paths; frame-refresh and record-nvim-frames hash captured normalized inputs; nvim-fixture-check checks producer outputs and slice membership; boundary/refresh T1 tests cover format. All Neovim T2/T3/T4 consumers reach the shared stub/reader; no production protocol caller changes. QA E-1535-stage-1 reads outputs via parseRecordings (unchanged); docs/evidence/T-709 frame audit describes historical binding (still valid). Frozen protocol-frames catalog and all slices migrated with output-byte preservation; live-protocol-frames unaffected. Producers: stub task.plan builds id/plan/stages/approval/history, Visibility.frame only projects named record fields and never reads items for this shape; task.view value.item layer uses Visibility.currentItems open release and parent reachability. Normalize only these result contexts; keep every open row and its closed ancestors for view.

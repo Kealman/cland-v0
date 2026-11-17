@@ -2,8 +2,8 @@
 id: T-1688
 kind: task
 title: Host agent treats /proc ENOENT as exit; a hidepid or foreign-namespace /proc can make a live process read as exited
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -14,7 +14,8 @@ regression_of: T-1684
 topic: topic-1597
 branch: t/T-1688-host-agent-treats-proc-enoent-as-exit-a
 created: 2026-11-05T11:59:40.426Z
-updated: 2026-11-17T09:11:34.526Z
+updated: 2026-11-17T11:52:47.849Z
+closed: 2026-11-17T11:50:05.596Z
 ---
 
 ## Summary
@@ -33,8 +34,10 @@ Never let observation grant signal or deletion authority.
 
 - [x] C1. With `/proc` behaving as hidepid for a live child, the agent never reports it exited and never deletes its files (test, simulated mount).
   - done: impl-1688 · 2026-11-17T08:20:15.544Z
-- [ ] C2. On an ordinary `/proc`, T-1684's exit-race behaviour is unchanged (test).
-  - failed: rev-35 [reviewer] · 2026-11-17T09:11:34.526Z · note Exceptional cleanup can release signal/process/filesystem mocks and native guard while original corrected-consumer callbacks are still pending.
+  - verified: rev-35 [reviewer] · run rev-35-1688-final-2 · 2026-11-17T09:47:37.433Z · commit 6d0120e0362022f2d484e0c5c03f683d5b052b1d
+- [x] C2. On an ordinary `/proc`, T-1684's exit-race behaviour is unchanged (test).
+  - done: impl-1688 · 2026-11-17T09:16:25.514Z
+  - verified: rev-35 [reviewer] · run rev-35-1688-final-2 · 2026-11-17T09:47:37.433Z · commit 6d0120e0362022f2d484e0c5c03f683d5b052b1d
 
 ## Comments
 
@@ -135,3 +138,35 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-20803 full reworked-test pass, treebc5a30529c6087e98ff3276ae0019be74a83a0a3. Standards1M/Spec0 new findings. Original nested callback ownership and counted/prototype guard corrections check out for normal completion; exceptional release remains. Signal-zero semantics/product assertions/production/closure/tiers unchanged. A-20801 retains candidate5/5, initial typecheck failures then final0; request final lint0/refusals0/126report60files. Raw/immutable invocation pins/native signals absent; no cancellation experiment/configured/Linux/browser claim. Earlier failed584204c0 remains failed. C1 unverified,C2failed. Consolidate lifetime correction and request fresh pushed-head review before new Coordinator window. No Reviewer runtime/probe/edit.
 
 Criteria: C2 failed (Exceptional cleanup can release signal/process/filesystem mocks and native guard while original corrected-consumer callbacks are still pending.).
+
+### rev-35 · 2026-11-17T09:18:00.576Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1688-source-6
+commit: 6d0120e0362022f2d484e0c5c03f683d5b052b1d
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-20810 full source clearance, tree7156b03d8be3c449e62264c5b5dbea972e4e71d3. Standards0/Spec0 findings. Source5 exceptional release resolved: standalone mocks/Date avoid context auto-restore; original parent/nested/raw setup promises independently tracked; named positive join precedes final-zero/restoration, failure skips restoration and retains mocks/guarded roots. Normal counted/prototype controls, step fencing, owner drain, signal-zero semantic and product assertions retained. Only test/guide changed; production/closure/tier/census basis unchanged. A-20807 candidate5/5, initial generic typing fail then full typecheck0; request final lint0/refusals0/126report60files. No exceptional runtime/cancellation/native Linux/browser/configured proof claimed; immutable invocation/raw/signal limits retained. FAILED584204c0 remains failed perA-20797. C1/C2 unverified pending new same-head configured evidence. No Reviewer runtime/probe/edit. Source clear permits new Coordinator window at unchanged head, not a retry/relabel of old round.
+
+### rev-35 · 2026-11-17T09:47:37.433Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1688-final-2
+commit: 6d0120e0362022f2d484e0c5c03f683d5b052b1d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-20822 final same-head clearance from sourceA-20810 + passed6778246b/A-20821, normtree5a8670660e4be1ab31bc01791bd6e97951f7229a/prov37987. Independently streamed6611ordinarytest/708file passes,230loadtest passes separate; all224T1/429T2/55Webcompleted, no missing/nonpass/fail/cancel/skip. T0/T1/T2/Web/Finishedexit0, hubpassed. C1 four hidden controls ordinary+5loads/proofs each; C2 four ordinary exit-race controls + repaired Linux owner consumer four nested,parent,file allpass. Recovery27/27,owner5/5,closure5/5; independently47/47closurehashesmatch. Control-count/final-zero assertions remain reviewed positive isolation evidence, not absence of warnings.64tierwarningidentities unchangedvsA-20787/noneown;126lint60files/budgets report-only. Exact knownT1935pair28557–58 is fixture text, not verdictcause. LinuxNode24.21Nvim.12.5uncached; actual HeadlessShell1248/CfT156browserreceipt35409. All269T3/17T4unexecuted,T3batchdeferred; no native remount/QA claim. Billing1419s/$0.0986 notsuitewall. Failed584204c0 staysfailed; this is new corrected-head round. C1/C2verified; no Reviewer runtime/probe/edit.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T11:50:05.596Z
+
+Merged 6959747f4d70aa1119ba48ec4f1b347cff076da9 onto dev.

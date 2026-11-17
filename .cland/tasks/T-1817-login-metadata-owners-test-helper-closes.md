@@ -2,8 +2,8 @@
 id: T-1817
 kind: task
 title: login-metadata-owners test helper closes the borrowed Store even when hub.stop rejected
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1598
 branch: t/T-1817-login-metadata-owners-test-helper-closes
 created: 2026-11-11T19:29:02.179Z
-updated: 2026-11-17T08:50:36.037Z
+updated: 2026-11-17T11:05:45.015Z
+closed: 2026-11-17T11:05:45.015Z
 ---
 
 ## Summary
@@ -88,3 +89,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Same-head final clear; A-20792 reconciles A-20791/run7756ead7 with A-20777 source. Both rejected-closure/guarded-removal cases pass ordinarily; normal hub→Store/root disposal passes ordinarily plus5/5load. All3runtime consumers pass31cases (6/3/22), preserving Coordinator-approved bug-pinning migrations and other assertions. T0/T1/allT2/Web exit0;6608 ordinary passes/708files plus215 separate load passes, no fail/cancel/skip. Current clean head; normalized verification tree d92ef16b57f756c6e787360804ac886d8abd6acb, uncached Linuxx64/Node24.21.0, actual HeadlessShell1248/ChromeTesting156.0.8078.4. Exactly0/269T3 and0/17T4 files executed.64existing warning identities unchanged, none own-consumer. Actual T-1935 fixture pair retained separately from terminal exit0/hub passed; no retry. Lint122/59 and budgets/ratchet/skip remain report-only. Source was cleared before rules38–43; prior basis preserved. C1-C3 verified, findings[]. Component filesystem/owner proof is not native hub-stop or RSS/timing evidence. Historical provenance limits retained; no Reviewer runtime/probe/edit/new run/merge.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-17T11:05:45.014Z
+
+Merged d7c5e92a3ba8d2d4cfefc0b6024c94ee72063527 onto dev.
