@@ -692,13 +692,25 @@ export class Sessions {
     } finally { resumed(() => this.#reusing.delete(candidate.sessionId)); }
   }
 
+  /** Return diagnostics for the caller to raise after its post-I/O authorization checks. */
+  async #launchCwdError(machine: Host, cwd: string): Promise<Error | null> {
+    const invalid = () => new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
+    try {
+      const info = await machine.statDirectory(cwd);
+      return !info || info.refusal !== null ? invalid() : null;
+    } catch (error) {
+      return machine.name === 'local' ? invalid()
+        : new Error(`host ${machine.name} could not check launch cwd "${cwd}": ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   /** Keep native history independently of the new launch's credential and cleanup ownership. */
   async #restartPool(candidate: HarnessProcess, request: AccountLaunchRequest, role: string | null, cwd: string, brief: Message | undefined, resumed: Resumed, authorize: () => void): Promise<HarnessProcessView> {
-    const info = await this.#hostForLaunch(request).statDirectory(cwd).catch(() => null);
+    const cwdError = await this.#launchCwdError(this.#hostForLaunch(request), cwd);
     const { current, resumeConversation } = resumed(() => {
       authorize();
       this.#checkRolesLaunch(role);
-      if (!info || info.refusal !== null) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
+      if (cwdError) throw cwdError;
       const current = this.#table.bySessionId(candidate.sessionId);
       if (!current || !this.#implementerPool(role) || !this.#reuseEligible(current, role, current.cwd)) throw new Error('idle pool member changed during admission; retry');
       const resumeConversation = this.retainedPool(role) ? current.harnessSessionId : undefined;
@@ -1800,12 +1812,11 @@ export class Sessions {
           if (this.#core.roles?.fresh) { authorize(); admission?.validate(); }
           this.#checkRolesLaunch(role);
           const cwd = resolve(this.#root, request.cwd ?? '.');
-          return { cwd, info: this.#hostForLaunch(request).statDirectory(cwd) };
+          return { cwd, error: this.#launchCwdError(this.#hostForLaunch(request), cwd) };
         } catch (err) { abort(); throw err; }
       });
       const cwd = checking.cwd;
-      let info;
-      try { info = await checking.info; } catch { info = null; }
+      const cwdError = await checking.error;
       const brief = resolvedBrief ?? (request.brief === undefined ? undefined : await this.#resolveBrief(request.name, request.brief, resumed, authorize));
       const selectedRequest = 'resolvedAccount' in effectiveRequest ? effectiveRequest : await this.#accountRequest(effectiveRequest, role, resumed);
       return await resumed(() => {
@@ -1819,7 +1830,7 @@ export class Sessions {
           const reserved = this.#core.nameReservation(request.name, undefined, undefined, request[waitingRetry]);
           if (reserved) throw new Error(reserved);
           this.#core.checkAccountLimit(selectedRequest.resolvedAccount.account ?? `default:${selectedRequest.harness}`);
-          if (!info || info.refusal !== null) throw new InvalidLaunchCwd(`launch cwd "${cwd}" is not an accessible directory`);
+          if (cwdError) throw cwdError;
           reservation = role !== null && this.#core.roles ? this.#core.reserveLaunchRole(request.name, role, request[waitingRetry]) : null;
           if (this.#env.CLAND_TEST_CRASH_AT === 'launch-reserved') process.kill(process.pid, 'SIGKILL');
           return this.#spawnLaunch(selectedRequest, cwd, resumed, reservation, () => { admission?.release(); this.#crewAdmissions.delete(request.name); }, launchToken, identity, brief, () => { authorize(); request[placedLaunch]?.validate?.(); this.#checkRolesLaunch(role); this.#checkCrew(request.name, role); }, resumeConversation, retainedId, completion);

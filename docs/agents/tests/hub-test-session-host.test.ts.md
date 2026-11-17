@@ -19,3 +19,10 @@ Remote registry cases reject missing, malformed, mismatched boot and reused star
 proofs, and verify a matching birth reaches the named Host stop. Remote legacy
 timestamps never upgrade ownership in Sessions or restored LaunchFiles; the
 pending receipt remains retained. Local Host lookup identity stays unchanged.
+
+The remote pool cwd rejection control keeps the idle member and its durable row,
+names the refusing Host and checks that no replacement row or stop was produced.
+
+The new cwd callbacks enter fixtureWork(t) before acquisition. Root adoption,
+resource acquisition and fenced body steps join setup and late owners before
+resource disposal and root removal; exact refusal and process assertions remain.

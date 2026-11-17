@@ -31,3 +31,13 @@ to its file Host so launch-time private-directory ownership is captured from the
 same scratch root as its file operations. Default testHost remains refusing.
 The selected Host's spawn refusal, shared-ignore and no-fallback assertions stay
 unchanged.
+
+Launch cwd controls cover the default refusing test Host, a rejected transport
+check, resolved missing/non-directory metadata and a thrown local check. Assert
+exact error text and optional code, the sole statDirectory operation, no spawn
+and an empty process list after the response. The local failure omits host,
+retaining the previous launch request shape. No native process is launched.
+
+The new cwd callbacks enter fixtureWork(t) before acquisition. Root adoption,
+resource acquisition and fenced body steps join setup and late owners before
+resource disposal and root removal; exact refusal and process assertions remain.

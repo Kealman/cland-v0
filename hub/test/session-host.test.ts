@@ -6,6 +6,7 @@ import { ProcessTable } from '../src/adapters/processes.ts';
 import { HubCore } from '../src/hub/core.ts';
 import { localHost } from '../src/host/local.ts';
 import { fakeHarness } from './fakes/harness.ts';
+import { fixtureWork } from './fixture-work.ts';
 import { tempProject } from './harness.ts';
 
 test('AdapterHost resolves rows and launches to local and launch/relaunch use its directory refusals', async t => {
@@ -206,3 +207,39 @@ test('remote legacy timestamps never acquire signal authority during stop or Lau
   assert.equal((await files.snapshot()).children[0]?.pidIdentity, null);
   assert.equal(calls.includes('stop'), false);
 });
+
+test('remote pool cwd check failure preserves its Host reason before stopping the idle member', async t => fixtureWork(t).run(async work => {
+  const { defaultCrew } = await work.step(() => import('../src/crew.ts'));
+  const { testHost } = await work.step(() => import('../src/host/test-host.ts'));
+  const root = await work.root(() => tempProject(t));
+  const config = defaultCrew();
+  config.crew.implementer!.policy = 'pool';
+  const calls: string[] = [];
+  const remote = testHost('t1', entry => calls.push(String(entry.operation)));
+  const { core, table, sessions } = await work.acquire(async () => {
+    const core = new HubCore({ crew: { get: () => config, set: async () => config } });
+    let table: ProcessTable | undefined;
+    try {
+      table = new ProcessTable(':memory:', core.clock);
+      const sessions = new Sessions({ root, core, table, hosts: [remote] });
+      return { core, table, sessions };
+    } catch (error) {
+      table?.close(); core.close(); core.store.close();
+      throw error;
+    }
+  }, async ({ core, table, sessions }) => {
+    await sessions.close(); table.close(); core.close(); core.store.close();
+  });
+  const fake = fakeHarness('codex', { clock: core.clock, host: sessions.host({ discoveryFile: '', node: '', cli: '', spoke: '' }) });
+  sessions.register(fake);
+  const row = { ...await work.step(() => fake.spawn({ name: 'idle', role: 'implementer', model: null, cwd: root })), host: 't1' };
+  table.put(row);
+  assert.equal(core.hello({ type: 'hello', protocol: 2, name: row.name, role: 'implementer', sessionId: row.sessionId, cwd: root }, () => true).ok, true);
+  fake.idle(row.name);
+  const cwd = `${root}/next`;
+  await work.step(() => assert.rejects(sessions.launch({ name: 'next', role: 'implementer', harness: 'codex', host: 't1', cwd, item: 'T-1' }), { message: `host t1 could not check launch cwd "${cwd}": test host t1 refuses statDirectory` }));
+  assert.deepEqual(calls, ['statDirectory']);
+  assert.deepEqual(fake.stops, []);
+  assert.equal(table.get('next'), null);
+  assert.equal(table.get('idle')?.sessionId, row.sessionId);
+}));

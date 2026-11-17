@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { localHost } from '../src/host/local.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { projectHub, tempProject } from './harness.ts';
+import { fixtureWork } from './fixture-work.ts';
 import { sessionUi } from './session-credential-fixture.ts';
 
 test('unknown launch Host is refused by name before reservation or spawn; legacy launch defaults local', async t => {
@@ -203,3 +204,31 @@ test('production OpenCode launch prepares nonlocal shared ignore and reaches onl
   const listed = await ui.request({ type: 'session.list' });
   assert.deepEqual((listed.value as { processes: unknown[] }).processes, []);
 });
+
+for (const outcome of ['refused', 'failed', 'missing', 'file', 'local-failure'] as const)
+  test(`launch cwd ${outcome} preserves the Host diagnostic and leaves no process row`, async t => fixtureWork(t).run(async work => {
+    const { testHost } = await work.step(() => import('../src/host/test-host.ts'));
+    const root = await work.root(() => tempProject(t));
+    const calls: string[] = [];
+    const remote = testHost('t1', entry => calls.push(String(entry.operation)));
+    const machine = outcome === 'local-failure' ? localHost(fixtureEnvironment(root, process.env)) : remote;
+    if (outcome !== 'refused') machine.statDirectory = async path => {
+      calls.push('statDirectory');
+      if (outcome === 'failed') throw 'fixture transport failed';
+      if (outcome === 'local-failure') throw new Error('fixture local failure');
+      return { refusal: outcome === 'missing' ? `session cwd ${path} no longer exists` : `session cwd ${path} is not a directory`, identity: null };
+    };
+    const hub = await work.acquire(() => projectHub(t, root, {}, { hosts: [machine] }), hub => hub.dispose());
+    const ui = await work.acquire(() => sessionUi(t, hub.discovery), async ui => { await ui.close(); });
+    const result = await work.step(() => ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'codex', ...(outcome === 'local-failure' ? {} : { host: 't1' }) }));
+    assert.equal(result.ok, false);
+    const remoteFailure = outcome === 'refused' || outcome === 'failed';
+    assert.equal(result.error, remoteFailure
+      ? `host t1 could not check launch cwd "${root}": ${outcome === 'refused' ? 'test host t1 refuses statDirectory' : 'fixture transport failed'}`
+      : `launch cwd "${root}" is not an accessible directory`);
+    assert.equal(result.code, remoteFailure ? undefined : 'invalid-cwd');
+    assert.deepEqual(calls, ['statDirectory']);
+    assert.equal(hub.fakes.codex!.spawns.length, 0);
+    const rows = await work.step(() => ui.request({ type: 'session.list' }));
+    assert.deepEqual((rows.value as { processes: unknown[] }).processes, []);
+  }));
