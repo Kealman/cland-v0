@@ -1,5 +1,13 @@
 ## Roles
 
+The generated Lead clause names automatic host publication: on hosts cland pushes
+every commit to the territory without a manual push, and `verify` and `ready`
+flush first. See [publication admission](../agents/host-agent.md#publication-admission)
+for capability and lease requirements and refusal handling. Existing projects keep
+their `.cland/roles.toml`; to adopt this guidance, extend the Lead's work-location
+line with `On hosts cland pushes every commit to the territory; no manual push.`
+and `` `verify` and `ready` flush first; docs/agents/host-agent.md. ``
+
 A session holds at most one role: Coordinator, Lead, Implementer, Reviewer, QA or Aide (spec 4.4, v0.1 §3.3). On a project's hub the role is the hub's state, not the session's (ADR 0001): the human assigns and revokes it, or a launch for the role grants it. A hub with no project (`createHub` in tests) takes a hello's role as declared and delivers no clause.
 
 A Coordinator launches a Lead with `session.launch {"name":"lead-1","role":"lead","item":"T-12"}` (CLI: `cland session launch lead-1 --role lead --item T-12`). The node must be an open container named in `[tracker] levels` (epic or release by default; category and other additional root kinds are led by the Coordinator and cannot have Lead sessions). The hub runs the Lead at the project root, sets `process.item` to the node and takes its durable claim; no task branch or worktree is created. One Lead holds a node, and a Lead claims at most one node. Concurrent launches reserve the node before spawning, and a failed claim stops the new harness. An existing Lead claim must be released before replacement; stop alone retains the claim for resume. A Coordinator or human claim may yield to the launch. Human UI/CLI callers retain their unrestricted access; every agent caller must be the Coordinator, even when another role’s permission file grants `session.launch`, including a name already assigned the Lead role.

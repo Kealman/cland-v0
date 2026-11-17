@@ -53,6 +53,11 @@ for (const [source, definitions] of sources) {
 
     test(`${source} ${role}: shipped clause wording`, () => {
       const clause = definition.clause;
+      if (source === 'defaults' && role === 'lead') {
+        assert.match(clause, /On hosts cland pushes every commit to the territory; no manual push/);
+        assert.match(clause, /`verify` and `ready` flush first/);
+        assert.match(clause, /containers have no task branch\/worktree/);
+      }
       assert.match(clause, /Never move an OpenCode session out of its item's worktree/, `${source} ${role}: worktree guardrail`);
       assert.ok(clause.includes('a declined ask is a decision and never consent'), `${source} ${role}: declined decision`);
       if (role === 'coordinator' || role === 'aide') assert.match(clause, /Tasks need `--size XS\|S\|M\|L`, a `## Summary` of 1–3 sentences and `--regression-of T-n`/);
