@@ -12420,6 +12420,13 @@
     "hub/test/scenarios/integrated-v04.test.ts::v0.4 integrated: remote login, live renewal, two users, busy restart and host sub-cap": 25.482223
   },
   "allow": {
+    "hub/test/transport-kind-types.test.ts::a new transport kind compiles against the unchanged carrier contract": {
+      "seconds": 17.8,
+      "owner": "C-216",
+      "added": "2026-11-17",
+      "expires": "2026-11-24",
+      "reason": "T-1660: the extensibility check compiles the carrier fixture through the full production import graph with the TypeScript compiler API; periodic dev T3 557d7a51 (A-20788, Linux c-8 nyc1, full T2 at load) measured 11.816 s against the 5 s new-identity budget, while T-1660's own verify measured 2.515 s. Cap is 1.5x the worst sample, rounded up. Follow-up: move the case to T3 beside typecheck.test.ts (T-1939)."
+    },
     "hub/test/executor-run.test.ts::remote ticket loss retains its infrastructure cause through collection": {
       "seconds": 10.353,
       "owner": "C-216",

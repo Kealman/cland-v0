@@ -1,5 +1,5 @@
 # Project rules
-<!-- cland: rule high-water 37 -->
+<!-- cland: rule high-water 43 -->
 
 ## 1 Briefs address the role
 Scope: coordinator, lead, implementer, aide
@@ -340,3 +340,57 @@ Origin: message:general/e3828f89-2d4e-42f5-8823-2439e1ac27ba
 Reason: The hub exited on "tracker storage stalled" at load 15–36 on 2026-11-05, and load-timing flakes dominated the red macOS covers (A-19803 §3.2, §5; triage A-19813 P-9).
 
 Run at most one heavy local run (a full suite, a stress loop, a T3 or native file batch) per machine at a time, and start no new local run above a 1-minute load of 20.
+
+## 38 Fake-only tests fake every native boundary they reach
+Scope: all
+Date: 2026-11-17
+Status: active
+Origin: message:general/160e8c63-9f29-40a8-8360-a2466908bbbe
+Reason: On 2026-11-17 green runs still reached native code on four items: T-1848 (the promisify.custom route), T-1869 (lease and ledger lock), T-1915 (sealed identity not reaching cold start) and T-1626 (the fake-hosts gate enrolling an "executor" host). Rule batch A-20783 R1.
+
+A fake-only test injects its fake at every native boundary the code under test reaches: both the callback and util.promisify.custom forms of exec and execFile, acquisition, ledger and lock ownership, and cleanup. It keeps a positively controlled launch guard that fails on any native spawn. A test-only gate selects exactly one thing and never enrols unrelated fixtures. Context captured before a fixture is sealed reaches every acquisition started inside it.
+
+## 39 Outcomes come from the owner's structured receipt
+Scope: all
+Date: 2026-11-17
+Status: active
+Origin: message:general/160e8c63-9f29-40a8-8360-a2466908bbbe
+Reason: 2026-11-17: T-1935 (a fixture's printed "suite ticket lost" became the cause of every green run), T-1662 (a refusal read as "does not answer"), T-1688 (/proc ENOENT treated as exit), T-1850 (a later identity read overwrote the outcome) and T-1848 (cleanup rejection dropped the metadata). Clarifies rules 9 and 25. Rule batch A-20783 R2.
+
+An outcome or cause comes from the producing owner's structured receipt, never from parsing message or log text. Missing metadata stays unknown unless an independent absence receipt confirms it; for example, /proc ENOENT alone is not proof of exit. Once an outcome is selected, a later ancillary failure adds a secondary diagnostic and never overwrites it. New result metadata travels through every exit path, rejection and cleanup failure included.
+
+## 40 Retries never manufacture proof
+Scope: all
+Date: 2026-11-17
+Status: active
+Origin: message:general/160e8c63-9f29-40a8-8360-a2466908bbbe
+Reason: 2026-11-17: T-1633 (a green rerun after a hub restart held as inconclusive), T-1630 (re-enqueue identity) and T-1848 (inspection retries). Rule batch A-20783 R3.
+
+A retry keeps its earlier proofs and never admits a failed round as proof. A later attempt supersedes an earlier one only through an ordered receipt bound to the same run, tree, command and step, and every superseded exit and duration stays reported. A same-head cancel and re-enqueue keeps its request identity and evidence.
+
+## 41 The consumer census includes frozen fixtures and history
+Scope: all
+Date: 2026-11-17
+Status: active
+Origin: message:general/160e8c63-9f29-40a8-8360-a2466908bbbe
+Reason: 2026-11-17: three items missed the frozen help fixture (T-1630, T-1931, T-1869), T-1626 missed a raw CLAND_SSH_BIN reader in provider bootstrap, T-1582 nearly reused T1 proof for T3 files, and T-1757's link parser grew form by form. Rule batch A-20783 R4.
+
+Rule 20's consumer search also covers frozen fixtures that pin exact bytes, such as hub/test/fixtures/cli-usage/commands.json; direct raw readers of a variable or format, not only importers of the shared helper; and tier or classification history, so a file moving from T1 to T3 never borrows T1 proof. A reader of a text format defines its supported grammar once, or refuses unsupported forms loudly in a gate every verify runs.
+
+## 42 Bounds hold while ingesting
+Scope: all
+Date: 2026-11-17
+Status: active
+Origin: message:general/160e8c63-9f29-40a8-8360-a2466908bbbe
+Reason: 2026-11-17: T-1645 (output buffered before the 1 MiB cap refused it), T-1817 (an existsSync check standing in for the removal guard) and T-1936 (a whole-log split). Examples for rule 23. Rule batch A-20783 R5.
+
+A size or memory bound is enforced while data is read, not checked after collection: count the bytes actually kept, then drain to the native close or an explicit incomplete boundary. Proof that a resource or root was kept uses separate receipts, exercised through the real guarded cleanup.
+
+## 43 Claims name the exact object
+Scope: all
+Date: 2026-11-17
+Status: active
+Origin: message:general/160e8c63-9f29-40a8-8360-a2466908bbbe
+Reason: 2026-11-17: T-1661 (directory versus socket mode in T-1625 C2) and T-1660 (a scoped compiler check). Example for rule 17. Rule batch A-20783 R6.
+
+A criterion or claim names the exact object it asserts: which directory or file has the mode, and which files' diagnostics were checked. Selected checks are never presented as whole-project ones, and differently scoped timings are never compared as a speedup.
