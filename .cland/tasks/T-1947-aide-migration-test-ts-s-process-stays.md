@@ -3,17 +3,17 @@ id: T-1947
 kind: task
 title: aide-migration.test.ts's process stays alive with its pipes open after all its tests finish, under full-suite load on macOS, so a local full run stalls for 10 minutes
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1881
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1608
+branch: t/T-1947-aide-migration-test-ts-s-process-stays
 created: 2026-11-17T16:41:11.786Z
-updated: 2026-11-17T16:41:11.786Z
+updated: 2026-11-17T23:19:20.367Z
 ---
 
 ## Summary

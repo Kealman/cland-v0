@@ -3,18 +3,18 @@ id: T-1937
 kind: task
 title: suite-timeouts "verify kills a silent test tree and spoke" races its 1.5 s startup watchdog against the silence watchdog under load
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
   - flaky
 assignee: null
-parent: C-325
+parent: E-1881
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1607
+branch: t/T-1937-suite-timeouts-verify-kills-a-silent
 created: 2026-11-17T07:35:36.084Z
-updated: 2026-11-17T19:17:41.939Z
+updated: 2026-11-17T23:19:04.764Z
 ---
 
 ## Summary

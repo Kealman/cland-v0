@@ -3,7 +3,7 @@ id: T-1736
 kind: task
 title: Discord native history setup test waits for native acquisition with a fixed 2000 ms bound
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1881
 blocked_by:
   - T-1889
-topic: null
-branch: null
+topic: topic-1606
+branch: t/T-1736-discord-native-history-setup-test-waits
 created: 2026-11-07T13:26:06.144Z
-updated: 2026-11-17T23:14:11.074Z
+updated: 2026-11-17T23:18:59.311Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ updated: 2026-11-17T23:14:11.074Z
 
 - [ ] C1. The native acquisition wait in both expansions uses the shared load-scaled setup budget (`testWaitMs()`), and the behaviour bounds (the 1000 ms FakeClock receipt deadline) stay exact and named.
 - [ ] C2. A sweep of `hub/test/telegram-polling-restart.test.ts` and its Discord/Telegram siblings replaces every other fixed real-time setup wait with `testWaitMs()`, listed in an item comment.
+
+## Comments
+
+### coord · 2026-11-17T23:17:35.080Z
+
+New instance, 2026-11-17, from duplicate T-1949: the local macOS stage cover e7494d5d at ca5f70ca4 (A-20922, peak 1-minute load 12.84) failed only telegram-polling-restart "Discord native history setup omitted drains its Store writers and observations", with "owned native acquisition before losing setup receipt: not within 2000 ms" at until.ts:40 via telegram-polling-restart.test.ts:316. Both "Discord native history setup" cases passed 5/5 alone at loads 4.86–5.11. This one fault now costs a full stage cover rerun.

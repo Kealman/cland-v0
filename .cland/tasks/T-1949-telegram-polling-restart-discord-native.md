@@ -2,8 +2,8 @@
 id: T-1949
 kind: task
 title: telegram-polling-restart "Discord native history setup omitted" waits a fixed 2000 ms for the owned native acquisition, which times out under load
-state: open
-status: backlog
+state: closed
+status: done
 size: XS
 labels:
   - needs-triage
@@ -14,7 +14,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T19:49:22.077Z
-updated: 2026-11-17T19:49:22.077Z
+updated: 2026-11-17T23:17:27.700Z
+closed: 2026-11-17T23:17:27.700Z
 ---
 
 ## Summary
@@ -29,3 +30,9 @@ The case waits on the owned acquisition's own receipt, an event or a fake clock,
 
 - [ ] C1. The case cannot fail on a slow acquisition alone: a deliberately delayed acquisition (fake or held) still reaches the drain assertions (test).
 - [ ] C2. 20 of 20 runs of the file under the T3 runner at a 1-minute load of at least 8 pass, with the load recorded per run (native slot).
+
+## Comments
+
+### coord · 2026-11-17T23:17:27.700Z
+
+Duplicate of T-1736 (E-1881 stage 2): the same Discord native history setup case and the same fixed 2000 ms wait. Evidence from A-20922 (macOS stage cover e7494d5d, peak load 12.84) and the 5/5 isolated runs is added to T-1736.

@@ -3,18 +3,18 @@ id: T-1939
 kind: task
 title: transport-kind-types compiler case runs 11.8 s in a loaded full T2; move it to T3 beside typecheck.test.ts
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - needs-triage
 assignee: null
-parent: C-216
+parent: E-1881
 blocked_by: []
 regression_of: T-1660
-topic: null
-branch: null
+topic: topic-1610
+branch: t/T-1939-transport-kind-types-compiler-case-runs
 created: 2026-11-17T08:45:27.406Z
-updated: 2026-11-17T08:45:27.406Z
+updated: 2026-11-17T23:19:32.398Z
 ---
 
 ## Summary

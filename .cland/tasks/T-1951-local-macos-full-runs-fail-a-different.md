@@ -3,18 +3,18 @@ id: T-1951
 kind: task
 title: Local macOS full runs fail a different timing-sensitive test under peak load 12+ (project-hub-lifecycle leaked-timer, release-item version refusal)
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
   - flaky
 assignee: null
-parent: C-325
+parent: E-1881
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1609
+branch: t/T-1951-local-macos-full-runs-fail-a-different
 created: 2026-11-17T21:02:06.583Z
-updated: 2026-11-17T21:02:06.583Z
+updated: 2026-11-17T23:19:29.955Z
 ---
 
 ## Summary
