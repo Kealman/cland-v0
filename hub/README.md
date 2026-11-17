@@ -13,6 +13,8 @@ Merge batch baselines select green receipts per executed tier; see
 That reference also describes same-run host-check retries: a later pass with
 matching tree and command supersedes an aborted attempt while retaining its log
 and notice evidence; unmatched interruptions keep the batch inconclusive.
+The [interaction reference](../docs/hub/additive-interaction-selection-t-1454.md)
+describes the separate report-only T3 importer projection.
 The [logins reference](../docs/hub/logins.md) also covers terminal renewal of an
 existing disk with `cland login signin`, binding-preserving admission and the
 24-hour one-sign-in hint.

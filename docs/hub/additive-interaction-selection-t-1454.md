@@ -1,5 +1,14 @@
 ## Additive interaction selection (T-1454)
 
+Batch reports also carry optional `t3` evidence: `mode: report`, proposed files
+and a reason. Importing and individually unknown T3 files are listed only when
+T3 is absent from the configured batch tiers. Scan failure is unknown (`files:
+null`), rather than an empty set. This projection never changes the execution
+plan, exit status or admission, including with `batch_interaction = run`. Older
+reports without `t3` remain readable. The summary bounds examples to ten paths;
+the persisted selection retains every proposed path and fallback reason.
+
+
 For cland-runner candidates, `[merge] batch_interaction = "report"` defaults to
 recording proposed additions without changing configured batch tiers or Web.
 Explicit `"run"` executes those additions. Existing or generated configs omitting

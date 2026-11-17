@@ -25,7 +25,8 @@ export function batchInteractionSummary(report: import('../suite-selection.ts').
     fallbackCounts[cause] = (fallbackCounts[cause] ?? 0) + 1;
   }
   return { mode: report?.mode ?? 'unavailable', phases: report?.phases ?? [], selectedFileCount: report?.files?.length ?? null,
-    fallbackCounts, examples: report?.files?.slice(0, 10) ?? [] };
+    fallbackCounts, examples: report?.files?.slice(0, 10) ?? [],
+    ...(report?.t3 ? { t3: { mode: 'report' as const, selectedFileCount: report.t3.files?.length ?? null, examples: report.t3.files?.slice(0, 10) ?? [] } } : {}) };
 }
 
 export type BatchCandidate = { base: string; head: string; tree: string; cwd: string; budgetLines: string[] };

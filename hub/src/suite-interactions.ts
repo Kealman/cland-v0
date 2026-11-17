@@ -29,17 +29,26 @@ function broad(selection: SuiteSelection, error: unknown): SuiteSelection {
 
 /** Compare the exact pinned member heads with the prepared candidate. Never subtract existing work. */
 export async function batchInteractionSelection(cwd: string, selection: SuiteSelection, heads: readonly string[], git: Git, scan = importingTests, mode: 'report' | 'run' = 'report'): Promise<SuiteSelection> {
+  let t3: NonNullable<NonNullable<SuiteSelection['batchInteraction']>['t3']> = { mode: 'report', files: null, reason: 'T3 selection unavailable' };
   const finish = (applied: SuiteSelection, files: string[] | null, phases: Array<'T2' | 'Web'>): SuiteSelection => {
-    const batchInteraction = { mode, files, phases, reason: applied.reason };
+    const batchInteraction = { mode, files, phases, reason: applied.reason, t3 };
     return mode === 'run' ? { ...applied, batchInteraction } : { ...selection, batchInteraction,
       reason: `${selection.reason}; batch interaction report only: ${applied.reason}` };
   };
   try {
     const changed = new Set<string>();
     for (const head of heads) for (const file of paths(await git('diff', '--name-only', '-z', '--no-renames', head, 'HEAD'))) changed.add(file);
-    if (!changed.size) return finish(selection, [], []);
+    if (!changed.size) { t3 = { mode: 'report', files: [], reason: 'no sibling delta' }; return finish(selection, [], []); }
     const assignments = await readTierAssignments(cwd);
     if (!assignments) throw new Error('tier assignments unavailable');
+    // Advisory only, independent of the T2/Web execution switch and fallback.
+    try {
+      const uncertain: string[] = [], reasons: string[] = [];
+      const phase = [...assignments].filter(([, tier]) => tier === 'T3').map(([file]) => file);
+      const selected = await scan(cwd, [...changed], phase, (file, error) => { uncertain.push(file); reasons.push(`${file} fallback: ${String(error)}`); });
+      t3 = { mode: 'report', files: selection.tiers?.includes('T3') ? [] : [...new Set([...selected, ...uncertain])].sort(),
+        reason: ['T3 sibling-merge importers', ...reasons].join('; ') };
+    } catch (error) { t3 = { mode: 'report', files: null, reason: `T3 selection unavailable: ${String(error)}` }; }
     const tests: string[] = [];
     const reasons: string[] = [];
     const batchTests: NonNullable<SuiteSelection['batchTests']> = {};

@@ -148,6 +148,11 @@ Run typechecking and targeted single test files while implementing. Merge batche
 
 For README/docs edits, follow [documentation placement](../../../docs/agents/documentation.md).
 
+Batch interaction reports also include advisory T3 importer files, separately
+from the T2/Web run switch. These files are unexecuted projections, including
+when the switch is `run`; null means unknown and older reports may omit them.
+See docs/hub/additive-interaction-selection-t-1454.md.
+
 For README/docs edits (including site MDX prose), run `node hub/test/lint-closed-item-wording.ts` against the
 candidate tracker. Fix landed-work claims; document any historical or unrelated
 runtime wording with the reason-required line exemption in

@@ -13,7 +13,7 @@ import { durationAllowanceOwner } from './suite-durations.ts';
 import { selectWebRepetitionFiles, newWebFiles } from './web-repetitions.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'web-only' | 'full';
-export type SuiteSelection = { loadGateRerun?: { head: string; recent: string[]; passed?: string[]; phases?: string[] }; batchInteraction?: { mode: 'report' | 'run'; files: string[] | null; phases: Array<'T2' | 'Web'>; reason: string }; batchTests?: { T2?: string[]; Web?: string[] }; interactionTests?: string[]; webRepetitionFiles?: string[]; durationCheck?: { files: string[]; owner?: string }; web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export type SuiteSelection = { loadGateRerun?: { head: string; recent: string[]; passed?: string[]; phases?: string[] }; batchInteraction?: { t3?: { mode: 'report'; files: string[] | null; reason: string }; mode: 'report' | 'run'; files: string[] | null; phases: Array<'T2' | 'Web'>; reason: string }; batchTests?: { T2?: string[]; Web?: string[] }; interactionTests?: string[]; webRepetitionFiles?: string[]; durationCheck?: { files: string[]; owner?: string }; web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 export const diagnosticTestFile = (file: string): boolean => /^(?!.*(?:^|\/)\.\.\/)(hub\/(test|src)|nvim\/test|web\/test)\/.*\.test\.ts$/.test(file);
 
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
@@ -271,6 +271,10 @@ export function selectionFromEnv(env: NodeJS.ProcessEnv = process.env): SuiteSel
   if (Object.hasOwn(value, 'batchInteraction')) {
     const report = value.batchInteraction as Record<string, unknown> | null;
     if (!report || !['report', 'run'].includes(String(report.mode)) || typeof report.reason !== 'string' || !Array.isArray(report.phases) || !report.phases.every(tier => tier === 'T2' || tier === 'Web') || report.files !== null && (!Array.isArray(report.files) || !report.files.every(file => typeof file === 'string' && diagnosticTestFile(file)))) throw new Error('invalid batch interaction report');
+    if (Object.hasOwn(report, 't3')) {
+      const t3 = report.t3 as Record<string, unknown> | null;
+      if (!t3 || t3.mode !== 'report' || typeof t3.reason !== 'string' || t3.files !== null && (!Array.isArray(t3.files) || !t3.files.every(file => typeof file === 'string' && diagnosticTestFile(file)))) throw new Error('invalid T3 interaction report');
+    }
   }
   if (Object.hasOwn(value, 'batchTests')) {
     const mask = value.batchTests;
