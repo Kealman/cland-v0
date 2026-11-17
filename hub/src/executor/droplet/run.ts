@@ -1,3 +1,4 @@
+import type { LogFn } from '../../log.ts';
 import { verificationSteps, verificationStepCommand } from '../../verification-plan.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
 import type { DropletDependencies, MachineTransport } from './dependencies.ts';
@@ -11,7 +12,7 @@ import { parseConfig, defaultConfig } from '../../init/config.ts';
 import { basename } from 'node:path';
 import { recordedCommands } from '../../verification-commands.ts';
 import type { RunRef, RunStatus } from '../executor.ts';
-import { Machine, machineEnv, shellQuote as quote } from './machine.ts';
+import { Machine, MachineRequestError, machineEnv, shellQuote as quote } from './machine.ts';
 import { DigitalOceanApi, DigitalOceanError } from './api.ts';
 import { readSnapshot } from './prepare.ts';
 import { writeLease, type DropletLease } from './lease.ts';
@@ -51,12 +52,14 @@ export async function runBundle(run: RunRef, bundle: string, snapshotBase: strin
 
 /** Suite delivery and observation; lifecycle and provider accounting stay in DropletExecutor. */
 export class DropletRun {
+  readonly #holds = new Map<string, { run: string; error: string }>();
+  readonly #logger: LogFn;
   readonly #root: string;
   readonly #machine: MachineTransport;
   readonly #clock: Clock;
   readonly #dependencies: DropletDependencies;
   readonly #env: NodeJS.ProcessEnv;
-  constructor(root: string, env: NodeJS.ProcessEnv = process.env, dependencies: DropletDependencies = {}) { this.#dependencies = dependencies; this.#clock = dependencies.clock ?? realClock; this.#root = root; this.#env = env; this.#machine = dependencies.machine ?? new Machine(root, env); }
+  constructor(root: string, env: NodeJS.ProcessEnv = process.env, dependencies: DropletDependencies = {}, logger: LogFn = () => {}) { this.#logger = logger; this.#dependencies = dependencies; this.#clock = dependencies.clock ?? realClock; this.#root = root; this.#env = env; this.#machine = dependencies.machine ?? new Machine(root, env); }
   async #step<T>(name: string, work: () => Promise<T>): Promise<T> {
     try { return await work(); }
     catch (error) { throw new Error(`delivery ${name}: ${error instanceof Error ? error.message : 'machine request failed'}`); }
@@ -211,7 +214,19 @@ git write-tree
       await writeLease(this.#root, lease);
     }
   }
+  /** End diagnostic ownership after observed recovery or lifecycle settlement. */
+  endObservation(lease: DropletLease, state: string): void {
+    const held = this.#holds.get(lease.lease);
+    if (!held) return;
+    this.#holds.delete(lease.lease);
+    this.#logger({ event: 'executor-local-ssh-hold-leave', ...held, cause: 'local SSH client unavailable', state });
+  }
   async status(lease: DropletLease): Promise<RunStatus> {
+    const status = await this.#status(lease);
+    if (status.state !== 'unknown') this.endObservation(lease, status.state);
+    return status;
+  }
+  async #status(lease: DropletLease): Promise<RunStatus> {
     if (Date.parse(lease.deadline) <= this.#clock.now().getTime()) return { state: 'lost', code: 1, cause: 'remote machine lifetime expired' };
     try {
       if (lease.resource === null) return { state: 'lost', code: 1, cause: 'remote machine lost' };
@@ -222,10 +237,25 @@ git write-tree
       const status = JSON.parse(await this.#machine.exec(lease, `node -e ${quote(program)} ${remoteDir(lease)}`, { timeoutMs: 10000 })) as RunStatus;
       if (lease.execution?.unreachableSince) { delete lease.execution.unreachableSince; await writeLease(this.#root, lease); }
       return status;
-    } catch {
+    } catch (statusError) {
       try {
         if (lease.resource === null) return { state: 'lost', code: 1, cause: 'remote machine lost' };
         const droplet = await (this.#dependencies.api ?? new DigitalOceanApi(this.#env, this.#clock)).droplet(lease.resource);
+        if (droplet.status === 'active' && statusError instanceof MachineRequestError && statusError.localClientUnavailable) {
+          // Local observation was unavailable: do not age a remote-loss claim.
+          // Clear an older network outage too, so recovery gets a fresh bound.
+          if (lease.execution?.unreachableSince) {
+            delete lease.execution.unreachableSince;
+            await writeLease(this.#root, lease);
+          }
+          if (!this.#holds.has(lease.lease)) {
+            const held = { run: lease.run, error: statusError.message };
+            this.#holds.set(lease.lease, held);
+            this.#logger({ event: 'executor-local-ssh-hold-enter', ...held, cause: 'local SSH client unavailable' });
+          }
+          return { state: 'unknown', cause: 'local SSH client unavailable' };
+        }
+        if (droplet.status === 'active' && !(statusError instanceof MachineRequestError && statusError.localClientUnavailable)) this.endObservation(lease, 'unknown');
         if (droplet.status === 'active' && lease.execution) {
           lease.execution.unreachableSince ??= this.#clock.now().toISOString();
           await writeLease(this.#root, lease);

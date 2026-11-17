@@ -13,7 +13,7 @@ import type { prepareBase, prepareBundle, prepareKey } from './prepare.ts';
 
 export type Provider = Pick<DigitalOceanApi, keyof DigitalOceanApi>;
 export type MachineTransport = Pick<Machine, keyof Machine>;
-export type RemoteRun = Pick<DropletRun, keyof DropletRun>;
+export type RemoteRun = Pick<DropletRun, 'deliver' | 'start' | 'status' | 'log' | 'cancel' | 'collectCoverage'>;
 /** Host process ownership is separate from provider state and remote execution. */
 export const processHost = {
   async createKey(dir: string, name: string, env: NodeJS.ProcessEnv): Promise<void> {

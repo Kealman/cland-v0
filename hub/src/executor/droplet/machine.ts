@@ -6,6 +6,18 @@ import { leaseDir, type DropletLease } from './lease.ts';
 
 const run = promisify(execFile);
 type Execute = (file: string, args: string[], options: { env: NodeJS.ProcessEnv; timeout: number; signal?: AbortSignal | undefined; maxBuffer: number }) => Promise<{ stdout: string }>;
+export class MachineRequestError extends Error {
+  readonly localClientUnavailable: boolean;
+  constructor(message: string, localClientUnavailable: boolean) {
+    super(message); this.localClientUnavailable = localClientUnavailable;
+  }
+}
+/** Recognize only native spawn failures and explicit local identity diagnostics.
+ * Network/authentication failures alone do not prove a broken local client. */
+function localClientFailure(code: unknown, stderr: string): boolean {
+  return ['ENOENT', 'EACCES', 'ENOEXEC'].includes(String(code))
+    || /(?:^|\n)(?:No user exists for uid \d+|Load key "[^"\n]+": (?:invalid format|error in libcrypto|Permission denied|bad permissions))(?:[^\n]*)/i.test(stderr);
+}
 /** Keep transport facts, never execFile's message (which contains the command). */
 function failure(kind: string, error: unknown, env: NodeJS.ProcessEnv): Error {
   const detail = error as { code?: unknown; signal?: unknown; stderr?: unknown } | null;
@@ -13,7 +25,7 @@ function failure(kind: string, error: unknown, env: NodeJS.ProcessEnv): Error {
   const signal = typeof detail?.signal === 'string' && /^SIG[A-Z0-9]+$/.test(detail.signal) ? `; signal ${detail.signal}` : '';
   let stderr = typeof detail?.stderr === 'string' ? detail.stderr : '';
   if (env.DIGITALOCEAN_TOKEN) stderr = stderr.replaceAll(env.DIGITALOCEAN_TOKEN, '<REDACTED>');
-  return new Error(`machine ${kind} failed or exceeded its time bound (exit ${code}${signal})${stderr ? `: ${stderr.slice(0, 4096).trim()}` : ''}`);
+  return new MachineRequestError(`machine ${kind} failed or exceeded its time bound (exit ${code}${signal})${stderr ? `: ${stderr.slice(0, 4096).trim()}` : ''}`, localClientFailure(detail?.code, stderr));
 }
 /** Provider credentials stay in API calls, including for local delivery tools. */
 export function machineEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {

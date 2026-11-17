@@ -36,6 +36,8 @@ export class DropletExecutor implements Executor {
   readonly root: string;
   readonly store: Store | undefined;
   readonly logger: LogFn;
+  #observer: DropletRun | undefined;
+  #run() { return this.dependencies.run ?? (this.#observer ??= new DropletRun(this.root, this.#env, this.dependencies, this.logger)); }
   #prepareJob: PrepareJob | null = null;
   #prepareWork: Promise<void> | null = null;
   readonly #poolWork = new Set<Promise<Prepared>>();
@@ -103,12 +105,12 @@ export class DropletExecutor implements Executor {
     }) };
   }
 
-  async deliver(lease: DropletLease, run: RunRef, committedOnly = false) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).deliver(lease, run, committedOnly); }
-  async start(lease: DropletLease, _run: RunRef) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).start(lease); }
-  async status(lease: DropletLease) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).status(lease); }
-  async log(lease: DropletLease, offset: number) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).log(lease, offset); }
-  async cancel(lease: DropletLease, _signal: string) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).cancel(lease); }
-  async collectCoverage(lease: DropletLease, path: string) { return (this.dependencies.run ?? new DropletRun(this.root, this.#env, this.dependencies)).collectCoverage(lease, path); }
+  async deliver(lease: DropletLease, run: RunRef, committedOnly = false) { return this.#run().deliver(lease, run, committedOnly); }
+  async start(lease: DropletLease, _run: RunRef) { return this.#run().start(lease); }
+  async status(lease: DropletLease) { return this.#run().status(lease); }
+  async log(lease: DropletLease, offset: number) { return this.#run().log(lease, offset); }
+  async cancel(lease: DropletLease, _signal: string) { return this.#run().cancel(lease); }
+  async collectCoverage(lease: DropletLease, path: string) { return this.#run().collectCoverage(lease, path); }
   /** A failed transport is not evidence that the provider machine is gone. */
   async confirmMachineMissing(lease: DropletLease): Promise<boolean> {
     if (lease.resource === null) return false;
@@ -440,7 +442,9 @@ export class DropletExecutor implements Executor {
     if (pending) return pending;
     const release = this.#release(lease, deadline).finally(() => { this.#releases.delete(lease.lease); });
     this.#releases.set(lease.lease, release);
-    return release;
+    const result = await release;
+    if (lease.state === 'released') this.#observer?.endObservation(lease, 'released');
+    return result;
   }
 
   async #release(lease: DropletLease, deadline = Infinity): Promise<Released> {

@@ -568,6 +568,19 @@ than `run_timeout` plus ten minutes, naming both values.
 Every ten seconds the hub polls status and up to 256 KiB of log bytes by offset.
 SSH failures leave the run unknown and are retried; an API 404, or five minutes
 unreachable while the API reports active, fails it with `remote machine lost`.
+An explicit local SSH client failure (user lookup, unreadable/invalid private
+key or missing/unexecutable client) with an active provider receipt instead
+returns unknown with `local SSH client unavailable` and clears the unreachable
+timer. Polling resumes when the client works; ordinary connection or
+authentication failures still age the five-minute bound. An unavailable provider
+leaves status unknown without confirming this local-client hold. The hub logs
+`executor-local-ssh-hold-enter` once on entry and
+`executor-local-ssh-hold-leave` on observed recovery, terminal status or confirmed
+release, each with run id, cause and the original bounded/redacted transport
+error text. These transitions are observed per executor lifetime; a restarted
+hub logs a fresh entry if it observes the same hold. Queue, job and UI shapes
+remain unchanged. Lease lifetime,
+run timeout and output-silence limits still apply.
 Cancellation signals the remote process group, collects and destroys the machine.
 A restarted hub reattaches to an active run, resumes at the local log's byte offset
 and posts its result once. An expired lease reports `remote machine lifetime expired`.
