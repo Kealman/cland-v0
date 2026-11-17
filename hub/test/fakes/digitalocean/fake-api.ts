@@ -1,3 +1,5 @@
+import { EXECUTOR_TRANSPORT_MARKER } from '../../../src/host/ssh-binaries.ts';
+import { writeFileSync } from 'node:fs';
 import { clockDelay } from '../../../src/host/clock-delay.ts';
 import { declareDigitalOceanEndpoint } from '../../../src/executor/droplet/endpoint.ts';
 import assert from 'node:assert/strict';
@@ -30,6 +32,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   const stateRoot = await realpath(await mkdtemp(join(tmpdir(), 'cland-fake-do-')));
   let retainRoot = false;
   if (options.testContext) ownDirectory(options.testContext, stateRoot, { beforeRemove: async () => { if (!closing || retainRoot) throw new Error('fake API owner incomplete; root retained'); await closing; } });
+  writeFileSync(join(stateRoot, EXECUTOR_TRANSPORT_MARKER), stateRoot);
   const run = promisify(execFile);
   let accepting = true;
   const active = new Set<Promise<unknown>>();

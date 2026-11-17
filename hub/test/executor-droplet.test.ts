@@ -24,7 +24,7 @@ const exec = promisify(execFile);
 
 async function providerEnv(t: TestContext, api: Awaited<ReturnType<typeof fakeDigitalOcean>>, root: string, lifetimePoll = '25') {
   await preparedDropletFixture(root, api);
-  const env = syntheticProviderEnvironment(await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_EXECUTOR_MARGIN_MS: '1', CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: lifetimePoll, CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '50' }), { token: 'cland-test-lifecycle', endpoint: api.url }) as Record<string, string>;
+  const env = syntheticProviderEnvironment(await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_EXECUTOR_MARGIN_MS: '1', CLAND_DIGITALOCEAN_API: api.url, CLAND_TEST_EXECUTOR_TRANSPORT: '1', CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: lifetimePoll, CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '50' }), { token: 'cland-test-lifecycle', endpoint: api.url }) as Record<string, string>;
   for (const [key, value] of Object.entries(env)) {
     const old = process.env[key]; process.env[key] = value;
     t.after(() => { if (old === undefined) delete process.env[key]; else process.env[key] = old; });
@@ -355,7 +355,7 @@ if (fs.existsSync(${JSON.stringify(join(bin, 'old'))}) && pid !== fs.readFileSyn
 process.stdout.write(result.stdout || ''); process.exit(result.status ?? 1);
 `);
   await chmod(join(bin, 'ps'), 0o700);
-  const env = syntheticProviderEnvironment(await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '60000', PATH: `${bin}:${process.env.PATH}` }), { token: 'cland-test-rearm', endpoint: api.url });
+  const env = syntheticProviderEnvironment(await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_EXECUTOR_TRANSPORT: '1', CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '60000', PATH: `${bin}:${process.env.PATH}` }), { token: 'cland-test-rearm', endpoint: api.url });
   const executor = new DropletExecutor(root, undefined, undefined, env);
   const lease = await executor.acquire({ id: 'rearm-release' }, new Date(Date.now() + 300000).toISOString());
   finish = async () => { await executor.release(lease); };

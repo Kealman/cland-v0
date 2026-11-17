@@ -20,11 +20,15 @@ resolves to `<realpath(root)>/.fixture-sockets/<name>`. Each host has
 `home/.cland-host/run` at 0700,
 `boot-id`, synthetic `host-key.pub`, synthetic `client-key` and `known_hosts`.
 `CLAND_HOST_BOOT_ID_FILE` is supplied to host commands. Fake mode requires it;
-missing boot evidence rejects before agent recovery on every platform. Only
+missing boot evidence rejects before agent recovery on every platform. The host gate's
 `CLAND_FAKE_HOSTS` plus `CLAND_FAKE_HOST_ROOT` enable `sshBinaries(env)` overrides
 via `CLAND_SSH_BIN` / `CLAND_SCP_BIN`.
-The separate droplet executor (`executor/droplet/machine.ts`) still reads these
-overrides ungated for its own fixtures (migration: T-1626).
+The droplet executor uses the same selector with an additional marked executor
+fixture gate described in [shared test procedures](../tests.md#executor-transport-fixtures).
+Executor-contract tests exercise its injected execution boundary without
+launching a native transport; host fixtures retain their existing gate.
+Provider bootstrap also uses the shared selector with its provider-supplied
+fake-host membership; it ignores ungated overrides.
 Point these at the executable `.ts` stand-ins on a PATH with Node 24.
 
 The subset is `-N` master, `-S`/ControlPath, `-O check|exit|forward|cancel`,

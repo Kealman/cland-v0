@@ -14,3 +14,12 @@ export function withoutExecutorCredentials<T extends NodeJS.ProcessEnv>(base: T)
   for (const key of Object.keys(base)) if (!EXECUTOR_CREDENTIALS.has(key)) env[key] = base[key];
   return env as T;
 }
+
+/** Role sessions cannot inherit the executor fixture's transport authority. */
+export function withoutExecutorTransportOverrides(base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {};
+  for (const key of Object.keys(base)) {
+    if (key !== 'CLAND_TEST_EXECUTOR_TRANSPORT' && key !== 'CLAND_TEST_FAKE_MACHINE_ROOT') env[key] = base[key];
+  }
+  return env;
+}

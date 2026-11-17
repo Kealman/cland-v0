@@ -11568,7 +11568,6 @@
     "hub/test/cli-help.test.ts::cland host stop --help exits without a hub": 0.175211,
     "hub/test/digitalocean-pacing.test.ts::aborted scoped droplet GET joins the fake request before returning": 0.003939,
     "hub/test/host-create-admission.test.ts::DigitalOcean create requires a prepared pool before acquisition API calls": 0.361381,
-    "hub/test/host-create-admission.test.ts::DigitalOcean SSH gate records the provision identity and address without fake environment reads": 0.003667,
     "hub/test/host-create-entry.test.ts::host list accepts its JSON alias and refuses other extra arguments": 0.952447,
     "hub/test/host-provider-digitalocean.test.ts::DigitalOcean 422 refusal confirms imported key absence before returning non-acquisition": 0.019458,
     "hub/test/host-provider-digitalocean.test.ts::DigitalOcean 429 refusal confirms imported key absence before returning non-acquisition": 0.022075,

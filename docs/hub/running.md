@@ -408,7 +408,19 @@ an image it refuses with `no prepared snapshot; run cland executor prepare`.
 The image's per-boot script copies the newly injected root key to `runner`.
 Private SSH/SCP calls use the lease key, ignore host SSH config and known-hosts
 files, have explicit time bounds and strip `DIGITALOCEAN_TOKEN` from children.
-`CLAND_SSH_BIN` and `CLAND_SCP_BIN` select alternative transports for tests.
+The executor, host carrier and provider bootstrap share `sshBinaries(env)` from
+`hub/src/host/ssh-binaries.ts`. `CLAND_SSH_BIN` and `CLAND_SCP_BIN` select
+alternative transports with either both nonempty `CLAND_FAKE_HOSTS` and
+`CLAND_FAKE_HOST_ROOT`, or `CLAND_TEST_EXECUTOR_TRANSPORT=1` together with an
+absolute `CLAND_TEST_FAKE_MACHINE_ROOT` containing `.cland-executor-transport-fixture`
+whose contents equal that root. The fake provider creates this marker in its
+disposable root. Without either gate the selector returns `ssh` and `scp` from
+PATH. Final role Host command environments strip the two executor controls
+after all overlays, including restored account rows and OpenCode secrets; fixture hubs retain
+explicit controls. A hub deliberately started with both controls and a valid
+marker can use fake binaries, as with the fake-host gate. The executor
+code and droplet `run.sh` come from the running hub, so deployed changes require
+a hub restart before real runs use them.
 
 `prepare_size` selects the builder; its disk must be no larger than `size`'s disk
 so the resulting snapshot fits a run. Prepare refuses an oversized builder

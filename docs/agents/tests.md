@@ -2111,6 +2111,22 @@ See [hub/test/web-tunnel-guide.test.ts](tests/hub-test-web-tunnel-guide.test.ts.
 
 See [hub/src/hub/store.test.ts](tests/hub-src-hub-store.test.ts.md) and the [per-test index](tests/index.md).
 
+## Executor transport fixtures
+
+The host carrier, provider bootstrap and droplet executor share `sshBinaries(env)`. The existing
+fake-host gate requires both nonempty `CLAND_FAKE_HOSTS` and
+`CLAND_FAKE_HOST_ROOT`. Executor fixtures instead set
+`CLAND_TEST_EXECUTOR_TRANSPORT=1` and an absolute `CLAND_TEST_FAKE_MACHINE_ROOT`.
+That disposable machine root must contain `.cland-executor-transport-fixture`
+with its exact absolute root as contents, created by the fake provider.
+Only then do `CLAND_SSH_BIN` / `CLAND_SCP_BIN` select test executables.
+Missing controls or a missing/mismatched marker leave `ssh` / `scp` from PATH.
+Final role-session Host command environments strip the two executor controls after
+account, restored-row and secret overlays;
+`fixtureEnvironment` drops inherited controls but retains explicit fixture
+overlays for native fixture hub launches. A hub deliberately started with both
+controls and a valid marker can still select fake binaries, like the fake-host gate.
+
 ## Implementer test selection
 
 Typed file-start receipts in verification commands have a startup watchdog:

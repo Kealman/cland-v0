@@ -205,7 +205,7 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}, s
   await git(territory, 'init', '--bare', '-q');
   await git(root, 'remote', 'add', 'origin', territory); await git(root, 'push', '-qu', 'origin', 'dev');
   const api = await fakeDigitalOcean('cland-test-prepare'); onCleanup(t, () => api.close());
-  const overridesEnv = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '2000', CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '50', ...overrides };
+  const overridesEnv = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_DIGITALOCEAN_API: api.url, CLAND_TEST_EXECUTOR_TRANSPORT: '1', CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '2000', CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '50', ...overrides };
   const syntheticProvider = { token: 'cland-test-prepare', endpoint: api.url } as const;
   const env = syntheticProviderEnvironment(await accountFixtureEnvironment(overridesEnv), syntheticProvider) as Record<string, string>;
   const served = await serve(t, root, env, { syntheticProvider });

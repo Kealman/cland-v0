@@ -1,3 +1,4 @@
+import { sshBinaries } from '../../host/ssh-binaries.ts';
 import { withoutExecutorCredentials } from '../../../../shared/executor-credentials.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -45,7 +46,7 @@ export class Machine {
   }
   async exec(lease: DropletLease, command: string, options: { timeoutMs: number; user?: 'root' | 'runner'; signal?: AbortSignal | undefined }): Promise<string> {
     const args = [...this.#options(lease), `${options.user ?? 'runner'}@${lease.address}`, command];
-    try { return (await this.#execute(this.#env.CLAND_SSH_BIN ?? 'ssh', args, { env: machineEnv(this.#env), timeout: Math.max(1, options.timeoutMs), signal: options.signal, maxBuffer: 8 * 1024 * 1024 })).stdout; }
+    try { return (await this.#execute(sshBinaries(this.#env).ssh, args, { env: machineEnv(this.#env), timeout: Math.max(1, options.timeoutMs), signal: options.signal, maxBuffer: 8 * 1024 * 1024 })).stdout; }
     catch (error) { throw failure('command', error, this.#env); }
   }
   /** Shell outcomes cross the transport unchanged; SSH failures still fail the request. */
@@ -62,7 +63,7 @@ export class Machine {
     await this.#copy(lease, [`runner@${lease.address}:${remote}`, local], options.timeoutMs);
   }
   async #copy(lease: DropletLease, paths: string[], timeoutMs: number, signal?: AbortSignal): Promise<void> {
-    try { await this.#execute(this.#env.CLAND_SCP_BIN ?? 'scp', [...this.#options(lease), ...paths], { env: machineEnv(this.#env), timeout: Math.max(1, timeoutMs), signal, maxBuffer: 1024 * 1024 }); }
+    try { await this.#execute(sshBinaries(this.#env).scp, [...this.#options(lease), ...paths], { env: machineEnv(this.#env), timeout: Math.max(1, timeoutMs), signal, maxBuffer: 1024 * 1024 }); }
     catch (error) { throw failure('copy', error, this.#env); }
   }
 }

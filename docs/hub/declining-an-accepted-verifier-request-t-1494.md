@@ -155,7 +155,8 @@ The test-only SSH pairing uses `CLAND_FAKE_HOSTS=f1,f2` and an absolute
 `CLAND_FAKE_HOST_ROOT`. Its shared resolver returns each host directory,
 containing `home/.cland-host/run` (0700),
 `boot-id`, `host-key.pub`, `client-key` and `known_hosts`. `sshBinaries(env)`
-selects system `ssh`/`scp` for the host carrier unless both controls are nonempty; only then may
+selects system `ssh`/`scp` unless the fake-host controls or the marked executor
+fixture gate are complete; the host fixture uses the former. Under that gate,
 `CLAND_SSH_BIN`/`CLAND_SCP_BIN` select the executable Node stand-ins under
 `hub/test/fakes/`. They pin keys, relay Unix sockets (0600), run commands with
 a sealed host HOME and copy files into that HOME. Loopback destination ports
@@ -164,8 +165,8 @@ map through `<resolved host directory>/ports.json` to host Unix sockets; no netw
 asks the live master to signal itself after checking host/boot identity and its
 per-master token; the ownership record publishes only after bind. Commands
 are trusted fixture code, not an operating-system sandbox. The separate droplet
-executor (`executor/droplet/machine.ts`) still reads these binary overrides
-ungated for its own fixtures; T-1626 owns its migration. See
+executor and provider bootstrap share the same selector; executor fixtures use
+the marked-root gate in `docs/agents/tests.md#executor-transport-fixtures`. See
 `docs/agents/tests/hub-test-fake-ssh.test.ts.md` for setup and limits.
 
 `hub/src/host/host.ts` defines the process seam for session Hosts.

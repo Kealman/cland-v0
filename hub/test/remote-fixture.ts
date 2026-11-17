@@ -111,7 +111,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
   // loaded suite workers; a 200 ms readiness bound can kill even their first probe.
   const machineMs = scripted ? 200 : remoteWaitMs(10_000);
   const cleanupMs = scripted ? 500 : remoteWaitMs(10_000);
-  const overrides = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: String(machineMs), CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: String(cleanupMs), CLAND_TEST_DROPLET_RELEASE_MS: String(cleanupMs), CLAND_TEST_EXECUTOR_SWEEP_MS: '200', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '50', ...options.env };
+  const overrides = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_DIGITALOCEAN_API: api.url, CLAND_TEST_EXECUTOR_TRANSPORT: '1', CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: String(machineMs), CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: String(cleanupMs), CLAND_TEST_DROPLET_RELEASE_MS: String(cleanupMs), CLAND_TEST_EXECUTOR_SWEEP_MS: '200', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '50', ...options.env };
   if (options.territory) {
     assert.ok(!scripted, 'territory provisioning is a native Git contract');
     const initialized = await cland(root, 'init');

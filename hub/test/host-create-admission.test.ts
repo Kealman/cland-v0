@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fakeOnlyFixture } from './fake-only-fixture.ts';
 import { tempProject, projectHub, cland } from './harness.ts';
 
 test('C4 create refuses an unprepared pool naming host prepare', async t => {
@@ -61,17 +62,16 @@ test('pre-row admission refusal acquires nothing and publishes no provision reco
  assert.equal(admitted,1);assert.equal(acquired,0);assert.deepEqual(store.hosts.provisions.list(),[]);
 });
 
-test('DigitalOcean SSH gate records the provision identity and address without fake environment reads',async t=>{
+test('DigitalOcean SSH bootstrap pins identity and ignores ungated overrides',async t=>fakeOnlyFixture(t,async root=>{
  const {provisionSsh}=await import('../src/host/provision-ssh.ts');
  const {readFile,stat}=await import('node:fs/promises');
- const root=await tempProject(t),known=join(root,'known_hosts');
+ const known=join(root,'known_hosts');
  const env:NodeJS.ProcessEnv={CLAND_SSH_BIN:'recording-ssh'};
- for(const key of ['CLAND_FAKE_HOST_ROOT','CLAND_FAKE_HOSTS'])Object.defineProperty(env,key,{get(){throw Error('fake environment read');}});
  const calls:Array<{binary:string;args:string[];input?:string|undefined}>=[];
  const record={id:'host-do',pool:'agents',provider:'digitalocean',size:'c-8',region:'lon1',created:'2026-11-08T00:00:00Z',state:'booting' as const,machine:{id:'123',address:'192.0.2.17',architecture:'x86_64' as const,created:'2026-11-08T00:00:00Z'},ssh:{clientKeyPath:join(root,'provider-client-key'),knownHosts:'192.0.2.17 ssh-ed25519 pinned-material\n',home:'/home/agent',node:'node'}};
  const transport=await provisionSsh(record,known,env,async(binary,args,_env,input)=>{calls.push({binary,args,input});});
  await transport.probe(1000);
- assert.equal(calls[0]!.binary,'recording-ssh');assert.equal(calls[0]!.args[calls[0]!.args.indexOf('-i')+1],record.ssh.clientKeyPath);
+ assert.equal(calls[0]!.binary,'ssh');assert.equal(calls[0]!.args[calls[0]!.args.indexOf('-i')+1],record.ssh.clientKeyPath);
  assert.ok(calls[0]!.args.includes('agent@192.0.2.17'));assert.ok(calls[0]!.args.includes('StrictHostKeyChecking=yes'));
  assert.equal(calls[0]!.input,'true\n');assert.equal(await readFile(known,'utf8'),record.ssh.knownHosts);assert.equal((await stat(known)).mode&0o777,0o600);
-});
+}));

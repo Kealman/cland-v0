@@ -692,8 +692,11 @@ Fake SSH tests use the real carrier with `sshBinaries(env)` from
 `CLAND_FAKE_HOST_ROOT` (scratch root) before overriding binaries. Use
 `createFakeHost` and the subprocess seam in
 `docs/agents/tests/hub-test-fake-ssh.test.ts.md`; loopback destination ports
-are Unix mappings, and no stand-in opens TCP. The droplet executor still reads
-these overrides ungated for its separate fixtures (migration: T-1626).
+are Unix mappings, and no stand-in opens TCP. The droplet executor and provider
+bootstrap also use this selector. Executor fixtures use the separate marked-root
+gate described in [test procedures](../agents/tests.md#executor-transport-fixtures).
+Final Host command environments strip both executor controls after account,
+restored-row and secret overlays on local and remote role launches.
 No new role permission applies.
 
 For Host process operations, use the reusable factory contract described in
