@@ -759,7 +759,7 @@ a file. The legacy hermetic manifest admission checks each test's own source onl
 The default dry-run keeps all refusal-relevant checks but omits the report-only
 reachability graph. Use `cland verify --dry-run --diagnostics` (or MCP `verify`
 with `dryRun: true, diagnostics: true`) to include it, with a separate 120-second
-request deadline. The default admission deadline remains 15 seconds. Direct
+request deadline. CLI admission allows 90 seconds for local or remote discovery; the MCP verify tool retains its 15-second default. Direct
 facts are cached by path, source digest and tier entry, bounded to 1024 compact
 records without compiler ASTs. After startup and each observed dev-tip move,
 the hub warms dev's facts in the background, yielding between files; admission
@@ -1376,8 +1376,8 @@ in [suite-cover.test.ts](tests/hub-test-suite-cover.test.ts.md); the T2
 
 Before the first source review, fetch and merge `origin/dev` into the task branch, then commit and push the head to review. After that review, take dev changes only through shared fixes posted by the Coordinator; merge dev again only on its request or after a merge-conflict refusal. Request source review first. Only after a clear source verdict, run `cland verify` at the exact reviewed head. A fix or later merge that changes the head needs a new source review before a new run. The Reviewer settles the final verdict when the same-head result arrives; source-only criteria may be verified earlier, while run-dependent criteria stay unverified until then. The CLI prints the run id, worker PID (null while queued) and hub queue position, then exits. Go idle: the hub delivers one result with the exit code, test counts, failures, branch/head and durable log artifact.
 
-If the CLI writes a submission but receives no reply within 15 seconds, it exits
-75 with ``submission sent; no reply within 15 s; check `cland verify queue` before resubmitting``.
+If the CLI writes a submission but receives no reply within 90 seconds (local or remote discovery; diagnostics: 120 seconds), it exits
+75 with ``submission sent; no reply within 90 s; check `cland verify queue` before resubmitting``.
 This is an unconfirmed submission, not a failed run. Check the queue first. The
 hub persists an idempotency key for the session, worktree, head and requested
 mode: retrying while that run is queued or running returns the same run id and prints

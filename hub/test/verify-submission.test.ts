@@ -17,10 +17,14 @@ import type { Lease, RunRef, RunStatus } from '../src/executor/executor.ts';
 import type { HubFrame, VerificationQueue, HubStatus } from '../src/protocol.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import { until } from './until.ts';
+import { fixtureWork } from './fixture-work.ts';
+type Owned = Parameters<Parameters<ReturnType<typeof fixtureWork>['run']>[0]>[0];
 
-async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' | null = 'result', otherStack = false, slowCompatibility = false) {
-  const root = await tempProject(t, 'verify-submit-');
-  await verificationFixture(root, otherStack ? { stack: 'other', check: '', test: 'true' } : {});
+async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' | null = 'result', otherStack = false, slowCompatibility = false, slowCandidate = false, owned?: Owned, releaseCandidate = Promise.withResolvers<void>()) {
+  const step = <T>(start: () => Promise<T>) => owned ? owned.step(start) : start();
+  const acquire = <T>(start: () => Promise<T>, stop: (value: T) => Promise<void>) => owned ? owned.acquire(start, stop) : start();
+  const root = await (owned ? owned.root(() => tempProject(t, 'verify-submit-')) : tempProject(t, 'verify-submit-'));
+  await step(() => verificationFixture(root, otherStack ? { stack: 'other', check: '', test: 'true' } : {}));
   const clock = new FakeClock();
   const cliClock = new FakeClock();
   let held = true, head = 'a'.repeat(40);
@@ -30,14 +34,17 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' | null =
   const compatibilityEntered = Promise.withResolvers<void>();
   const compatibilityRelease = Promise.withResolvers<void>();
   onCleanup(t, () => compatibilityRelease.resolve());
+  let candidateEntered = false;
+  const candidateRelease = releaseCandidate;
+  onCleanup(t, () => candidateRelease.resolve());
   let submissions = 0;
   let compatibilityWaiting = false;
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { started.resolve(run); });
   t.mock.method(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
   t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
-  await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nexecutor="local"\n');
-  const hub = await projectHub(t, root, {}, { clock, durationContext: null,
+  await step(() => mkdir(join(root, '.cland')));
+  await step(() => writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nexecutor="local"\n'));
+  const hub = await acquire(() => projectHub(t, root, {}, { clock, durationContext: null,
     compatibility: { holder: async () => null, occupied: async () => {
       compatibilityEntered.resolve();
       if (slowCompatibility) {
@@ -48,19 +55,21 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' | null =
       return held;
     } },
     candidate: { head: async () => head, tree: async () => null, inspect: async (_cwd, _mode, _workers, projectTest) => {
+      candidateEntered = true;
+      if (slowCandidate) await candidateRelease.promise;
       inspections.push(projectTest);
       return { head, branch: 'candidate', tree: null,
         selection: { mode: 'hub-selected', files: ['hub/src/example.ts'], reason: 'cland coverage fixture', loadGate: true,
           coverage: { artifact: 'A-1', path: '/fixture/coverage.json', head } }, tierPlan: [], budgetBase: undefined };
     } },
-  });
-  const ui = await connectUi(t, hub.discovery, 'cli');
-  assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-  const spoke = await inProcessSpoke(t, { cwd: root, discover: true, assignRole: false, name: 'impl', sessionId: 'submission-impl', role: 'implementer' });
+  }), hub => hub.dispose());
+  const ui = await acquire(() => connectUi(t, hub.discovery, 'cli'), async ui => { ui.close(); });
+  assert.equal((await step(() => ui.request({ type: 'role.set', session: 'impl', role: 'implementer' }))).ok, true);
+  const spoke = await acquire(() => inProcessSpoke(t, { cwd: root, discover: true, assignRole: false, name: 'impl', sessionId: 'submission-impl', role: 'implementer' }), spoke => spoke.close());
   onCleanup(t, () => spoke.close());
-  await spoke.waitForPresence(['impl']);
-  const item = ((await ui.request({ type: 'task.create', size: 'S', title: 'Submission', assignee: 'impl' })).value as { item: { id: string } }).item.id;
-  const topic = ((await ui.request({ type: 'topic.create', title: 'Submission', item })).value as { topic: { id: string } }).topic.id;
+  await step(() => spoke.waitForPresence(['impl']));
+  const item = ((await step(() => ui.request({ type: 'task.create', size: 'S', title: 'Submission', assignee: 'impl' }))).value as { item: { id: string } }).item.id;
+  const topic = ((await step(() => ui.request({ type: 'topic.create', title: 'Submission', item }))).value as { topic: { id: string } }).topic.id;
   const firstReply = Promise.withResolvers<{ frame: HubFrame; release: () => void }>();
   let delay = !otherStack;
   const sockets = new Set<Socket>();
@@ -85,13 +94,17 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' | null =
       }
     });
   });
-  beforeDirectories(t, async () => {
+  const closeServer = async () => {
     for (const socket of sockets) socket.destroy();
-    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
-  });
+    if (server.listening) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  };
+  beforeDirectories(t, closeServer);
   const socket = fixtureSocketPath(root, 'cli.sock');
-  await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(socket, resolve); });
-  await writeFile(join(root, '.cland/hub.json'), JSON.stringify({ ...hub.discovery, socket }));
+  await acquire(async () => {
+    await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(socket, resolve); });
+    return server;
+  }, closeServer);
+  await step(() => writeFile(join(root, '.cland/hub.json'), JSON.stringify({ ...hub.discovery, socket })));
   const env = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'submission-impl', CLAND_ROLE: 'implementer' };
   const outputs: string[] = [], errors: string[] = [];
   const submitAs = (callerEnv: NodeJS.ProcessEnv, mode: string, extra: string[]) => runSuiteCommand([mode, '--report', topic, '--to', 'impl', '--json', ...extra], root,
@@ -99,7 +112,7 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' | null =
   const submit = (mode = 'auto', ...extra: string[]) => submitAs(env, mode, extra);
   const queue = async () => (await ui.request({ type: 'suite.queue' })).value as VerificationQueue;
   return { root, clock, cliClock, ui, firstReply, submit, queue, outputs, errors, started, receipts, inspections,
-    compatibilityEntered, compatibilityRelease, get submissions() { return submissions; },
+    get candidateEntered() { return candidateEntered; }, candidateRelease, compatibilityEntered, compatibilityRelease, get submissions() { return submissions; },
     get compatibilityWaiting() { return compatibilityWaiting; },
     settle: () => hub.verificationSettled(),
     human: (mode: string, ...extra: string[]) => submitAs({}, mode, extra),
@@ -121,7 +134,7 @@ test('verify returns durable admission before slow scheduler compatibility inspe
     if ('error' in outcome) throw outcome.error;
     assert.equal(outcome.value, 0);
     assert.equal(f.outputs.length, 1);
-    await f.cliClock.advance(15000);
+    await f.cliClock.advance(90000);
     assert.equal(f.compatibilityWaiting, true, 'slow step remains held past the CLI deadline');
     const admission = JSON.parse(f.outputs[0]!);
     assert.equal(admission.position, 1);
@@ -133,6 +146,39 @@ test('verify returns durable admission before slow scheduler compatibility inspe
     try { await pending; }
     finally { await f.settle(); }
   }
+});
+
+test('verify waits for admission when candidate inspection exceeds the former local deadline', async t => {
+  const owner = fixtureWork(t);
+  const release = Promise.withResolvers<void>();
+  owner.release(() => release.resolve());
+  await owner.run(async owned => {
+    const f = await fixture(t, null, false, false, true, owned, release);
+    let outcome: { value: number } | { error: unknown } | undefined;
+    const pending = f.submit().then(value => { outcome = { value }; }, error => { outcome = { error }; });
+    try {
+      await until(() => f.submissions === 1, { what: 'CLI request received', timeoutMs: 1000 });
+      await until(() => f.candidateEntered, { what: 'candidate barrier entered', timeoutMs: 1000 });
+      // Model the observed ~40s admission envelope (15s until disconnect plus
+      // 25.279s until the submission log), with headroom. Not a load benchmark.
+      await f.cliClock.advance(45000);
+      assert.equal(Boolean(outcome), false, 'candidate admission still pending after 45 seconds');
+      f.candidateRelease.resolve();
+      await until(() => outcome !== undefined, { what: 'CLI admission consumed', timeoutMs: 1000 });
+      await pending;
+      assert.ok(outcome);
+      if ('error' in outcome) throw outcome.error;
+      assert.equal(outcome.value, 0);
+      assert.deepEqual(f.errors, []);
+      const admission = JSON.parse(f.outputs[0]!);
+      assert.equal(typeof admission.id, 'string');
+      assert.deepEqual((await f.queue()).waiters.map(run => run.id), [admission.id]);
+      assert.equal(f.submissions, 1);
+    } finally {
+      f.candidateRelease.resolve();
+      try { await pending; } finally { await f.settle(); }
+    }
+  });
 });
 
 test('other-stack verify submits a full project test without cland planning', async t => {
@@ -167,9 +213,9 @@ test('an accepted verify submission times out as unconfirmed and safely retries 
   assert.ok(reply.frame.type === 'result' && reply.frame.ok, JSON.stringify(reply.frame));
   const id = (reply.frame.value as { id: string }).id;
   assert.deepEqual((await f.queue()).waiters.map(run => run.id), [id], 'accepted before the CLI deadline');
-  await f.cliClock.advance(15000);
+  await f.cliClock.advance(90000);
   assert.deepEqual(await pending, { code: 75 });
-  assert.deepEqual(f.errors, ['cland: submission sent; no reply within 15 s; check `cland verify queue` before resubmitting\n']);
+  assert.deepEqual(f.errors, ['cland: submission sent; no reply within 90 s; check `cland verify queue` before resubmitting\n']);
   assert.deepEqual(f.outputs, []);
   assert.equal(f.submissions, 1, 'timeout never automatically resubmits');
   reply.release();
@@ -205,7 +251,7 @@ test('verify never calls an unwritten request a sent submission', async t => {
   const pending = f.submit().then(() => undefined, error => error);
   const reply = await f.firstReply.promise;
   assert.equal(reply.frame.type, 'welcome');
-  await f.cliClock.advance(15000);
+  await f.cliClock.advance(90000);
   assert.match((await pending).message, /the hub did not answer/);
   assert.deepEqual(f.errors, []);
   assert.deepEqual((await f.queue()).waiters, []);
@@ -216,7 +262,7 @@ test('a dry-run timeout never claims a verification was submitted', async t => {
   const pending = f.submit('auto', '--dry-run').then(() => undefined, error => error);
   const reply = await f.firstReply.promise;
   assert.equal('ok' in reply.frame && reply.frame.ok, true, JSON.stringify(reply.frame));
-  await f.cliClock.advance(15000);
+  await f.cliClock.advance(90000);
   assert.match((await pending).message, /the hub did not answer/);
   assert.deepEqual(f.errors, []);
   assert.deepEqual((await f.queue()).waiters, []);

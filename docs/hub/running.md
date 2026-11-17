@@ -295,8 +295,10 @@ fake-clock drivers retain that completion contract.
 Candidate validation, tree hashing and required spend checks still precede
 admission; bundling, host gates and execution follow it. Scheduler work is owned
 by the hub and joined on shutdown; launch failures remain recorded run outcomes
-and produce the usual artifact-backed result. The local CLI reply bound is 15 s
-(remote discovery: 90 s; diagnostics: 120 s). A sent request with no reply exits
+and produce the usual artifact-backed result. The CLI reply bound is 90 s for local and remote discovery
+(diagnostics: 120 s), allowing candidate validation before the durable checkpoint.
+This includes the roughly 40-second admission envelope observed on a local socket;
+it does not wait for execution. A sent request with no reply exits
 75 and says to check `cland verify queue` before resubmitting; it never retries
 automatically. The reply fields retain their previous shape.
 

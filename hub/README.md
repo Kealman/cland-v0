@@ -122,6 +122,8 @@ The warning is report-only; the existing expired-manifest refusal still applies.
 - [Setup and doctor remote readiness](../docs/hub/setup-and-doctor-remote-readiness.md)
 - [Declining an accepted verifier request (T-1494)](../docs/hub/declining-an-accepted-verifier-request-t-1494.md)
 
+Verify CLI admission waits up to 90 seconds locally or remotely (diagnostics:
+120 seconds), including candidate validation before persistence.
 Verify admission returns the persisted run id and queue position before scheduler
 inspection or worker launch. A sent request whose reply times out exits 75; check
 `cland verify queue` before resubmitting. See [verification](../docs/hub/running.md).
