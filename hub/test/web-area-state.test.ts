@@ -2,7 +2,7 @@
 // T1: connectHub's public callback over a scripted browser socket; no network or real clock.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { AskCards } from '../../web/src/ask-cards.ts';
 import { signInCardId } from '../../web/src/signin-index.ts';
 import type { AskCard } from '../../shared/wire/index.ts';
 import { connectHub, type ConnectionState } from '../../web/src/connection.ts';
@@ -238,26 +238,83 @@ test('active sign-in identities update incrementally across live inbox message a
   assert.equal(client.state.askCards?.get(message.id)?.state, 'answered');
 });
 
+test('card delta and inbox publication copy bounded paths with 2000 retained cards', t => {
+  const client = scripted(t);
+  const card: AskCard = { question: 'Retained', options: [], free: true, state: 'answered' };
+  for (let n = 0; n < 2000; n++) client.socket.receive({ type: 'ask', topic: 'general', ask: `retained-${n}`, card });
+  const previous = client.state.askCards!;
+  let visited = 0, copied = 0;
+  const entries = AskCards.prototype.entries;
+  t.mock.method(AskCards.prototype, 'entries', function* (this: AskCards) {
+    for (const entry of entries.call(this)) { visited++; yield entry; }
+  });
+  const slice = Array.prototype.slice;
+  t.after(() => { Array.prototype.slice = slice; });
+  Array.prototype.slice = function(this: unknown[], ...args: Parameters<typeof slice>) {
+    copied += this.length;
+    return slice.apply(this, args);
+  };
+  assert.equal([...previous].length, 2000);
+  assert.equal(visited, 2000, 'positive control counts every retained entry');
+  const delta = (id: string) => client.socket.receive({ type: 'ask', topic: 'general', ask: id, card: { ...card, state: 'open', signInLogin: 'work' } });
+  visited = 0; copied = 0;
+  delta('retained-999');
+  assert.ok(copied <= 'retained-999'.length * 4 * 16, `delta copied ${copied} slots`);
+  assert.equal(visited, 0);
+  assert.equal(previous.get('retained-999')?.state, 'answered', 'published versions remain immutable');
+  assert.equal(client.state.askCards?.get('retained-999')?.state, 'open');
+  const beforeInbox = client.state.askCards;
+  visited = 0; copied = 0;
+  const ts = new Date().toISOString();
+  client.socket.receive({ type: 'inbox', inbox: { asks: [{ id: 'inbox-card', topic: { id: 'general', title: 'General' }, question: 'Sign in', options: [], free: true, from: 'hub', label: 'hub', ts, since: ts, signInLogin: 'inbox-login' }], approvals: [], plans: [], requests: [], messages: [], waiting: [], needsYou: 1 } });
+  assert.ok(copied <= 'inbox-card'.length * 4 * 16, `inbox copied ${copied} slots`);
+  assert.equal(visited, 0);
+  assert.equal(beforeInbox?.has('inbox-card'), false);
+  assert.equal(client.state.askCards?.get('inbox-card')?.question, 'Sign in');
+  assert.equal(signInCardId(client.state, 'inbox-login'), 'inbox-card');
+  assert.deepEqual([...client.state.askCards!.keys()], [...previous.keys(), 'inbox-card'], 'replacement and publication preserve Map order');
+  visited = 0;
+  for (let row = 0; row < 1000; row++) assert.equal(signInCardId(client.state, 'work'), 'retained-999');
+  assert.equal(visited, 0, 'sign-in row lookup never scans retained cards');
+});
+
+test('retained card versions match native Map lookup and insertion order for every consumer', () => {
+  let cards = new AskCards();
+  const reference = new Map<string, AskCard>();
+  const ids = ['remote-ask', 'login-ask', 'inbox-ask', '', 'login', 'login-ask-longer', '日本語', '😀'];
+  for (const [n, id] of [...ids, 'remote-ask', 'login-ask', 'inbox-ask'].entries()) {
+    const before = cards, beforeEntries = [...cards];
+    const card: AskCard = { question: `${id}-${n}`, options: ['Yes', 'No'], free: true, state: n < ids.length ? 'open' : 'answered' };
+    reference.set(id, card); cards = cards.set(id, card);
+    assert.deepEqual([...before], beforeEntries, 'older snapshots retain values and order');
+    assert.deepEqual([...cards], [...reference]);
+    assert.deepEqual([...cards.keys()], [...reference.keys()]);
+    assert.deepEqual([...cards.values()], [...reference.values()]);
+    assert.equal(cards.size, reference.size);
+    for (const id of ids) { assert.deepEqual(cards.get(id), reference.get(id)); assert.equal(cards.has(id), reference.has(id)); }
+    assert.equal(cards.get('missing'), undefined);
+    assert.equal(cards.has('missing'), false);
+    assert.deepEqual(['inbox-ask', 'login-ask', 'remote-ask'].map(id => cards.get(id)), ['inbox-ask', 'login-ask', 'remote-ask'].map(id => reference.get(id)), 'Inbox, sign-in and remote card lookups keep caller order');
+    const visited: [string, AskCard][] = [];
+    cards.forEach((card, id, map) => { assert.equal(map, cards); visited.push([id, card]); });
+    assert.deepEqual(visited, [...reference]);
+  }
+});
+
 test('active sign-in row lookup reads no retained history on a synthetic card inventory', t => {
   const client = scripted(t);
-  const inventory = JSON.parse(readFileSync(new URL('./fixtures/signin-history-inventory.json', import.meta.url), 'utf8')) as { states: Record<'answered' | 'cancelled', number> };
-  class MeasuredCards extends Map<string, AskCard> {
-    iterations = 0; reads = 0;
-    override [Symbol.iterator]() { this.iterations++; return super[Symbol.iterator](); }
-    override get(id: string) { this.reads++; return super.get(id); }
-  }
-  client.socket.receive({ type: 'hosts.state', pools: [] });
-  const history = new MeasuredCards();
-  for (const [state, count] of Object.entries(inventory.states)) for (let n = 0; n < count; n++) history.set(`${state}-${n}`, { question: 'Synthetic retained card', options: [], free: false, state: state as 'answered' | 'cancelled' });
-  assert.equal(history.size, 2008, 'plain synthetic state inventory; no live database data');
-  [...history]; assert.equal(history.iterations, 1, 'positive control observes history iteration'); history.iterations = 0;
-  client.state.askCards = history;
-  client.socket.receive({ type: 'ask', topic: 'general', ask: 'active', card: { question: 'Sign in', options: [], free: true, state: 'open', signInLogin: 'work' } });
-  assert.equal(history.iterations, 1, 'T-1840: existing retained-map publication copy excluded; no new active-index scan');
-  const rendered = new MeasuredCards(client.state.askCards);
-  client.state.askCards = rendered;
+  const terminal: AskCard = { question: 'Retained', options: [], free: false, state: 'answered' };
+  for (let n = 0; n < 2000; n++) client.socket.receive({ type: 'ask', topic: 'general', ask: `retained-${n}`, card: terminal });
+  client.socket.receive({ type: 'ask', topic: 'general', ask: 'active', card: { ...terminal, state: 'open', signInLogin: 'work' } });
+  let iterations = 0, reads = 0;
+  const entries = AskCards.prototype.entries, get = AskCards.prototype.get;
+  t.mock.method(AskCards.prototype, 'entries', function*(this: AskCards) { for (const entry of entries.call(this)) { iterations++; yield entry; } });
+  t.mock.method(AskCards.prototype, 'get', function(this: AskCards, id: string) { reads++; return get.call(this, id); });
+  assert.equal([...client.state.askCards!].length, 2001);
+  assert.equal(iterations, 2001, 'positive control observes retained history');
+  iterations = 0;
   for (let row = 0; row < 1000; row++) assert.equal(signInCardId(client.state, 'work'), 'active');
-  assert.equal(rendered.iterations, 0, 'render/uptime row lookup never iterates retained cards');
-  assert.equal(rendered.reads, 0, 'identity lookup uses only the active index');
+  assert.equal(iterations, 0);
+  assert.equal(reads, 0);
   assert.equal(client.state.signInCards?.size, 1);
 });

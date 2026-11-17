@@ -12,7 +12,7 @@ import { fixtureEnvironment } from '../../hub/test/fixture-environment.ts';
 import { FakeHostProvider } from '../../hub/src/host/provider/fake.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { HostSecretStore, type HostRecords } from '../../hub/src/host/records.ts';
-import { ownDirectory, onCleanup } from '../../hub/test/process-cleanup.ts';
+import { ownDirectory, onCleanup, beforeDirectories, guardDirectoryRemoval } from '../../hub/test/process-cleanup.ts';
 import { hostDirectory } from '../../shared/fake-host-directory.ts';
 import { settledLogin } from '../../hub/test/settled-login-fixture.ts';
 import { hostGenerationKey } from '../../hub/src/adapters/processes.ts';
@@ -23,8 +23,9 @@ import { join } from 'node:path';
 import { ensureWebBuild } from '../../hub/test/web-build.ts';
 import { Store } from '../../hub/src/hub/store.ts';
 import { webFixture, resizePage, pausePageClock } from './harness.ts';
-import { connectUi } from '../../hub/test/harness.ts';
-import type { HubFrame, HostsStatePool } from '../../shared/wire/index.ts';
+import { connectUi, tempProject } from '../../hub/test/harness.ts';
+import { caseDeadlines } from '../../hub/test/case-deadlines.ts';
+import type { AskCard, Inbox, TopicMessage, HubFrame, HostsStatePool } from '../../shared/wire/index.ts';
 import { until, testWaitMs } from '../../hub/test/until.ts';
 
 before(() => ensureWebBuild(fileURLToPath(new URL('../../', import.meta.url))));
@@ -670,5 +671,108 @@ for (const actual of [false, true]) test(`Hosts Add harness choices use only poo
     const loginPool = page.getByRole('region', { name: 'Hosts in logins' });
     await loginPool.getByRole('button', { name: 'Add', exact: true }).click();
     assert.deepEqual(await loginPool.getByLabel('Harness').locator('option').allTextContents(), ['claude-code']);
+  });
+});
+
+
+test('retained cards keep Inbox, Hosts sign-in and remote thread order across delta and inbox publication', async t => {
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  await owner.run(async step => {
+    const f = await step(() => webFixture(owner.fixtures, { project: async () => {
+      const root = await tempProject(owner.fixtures);
+      owner.adoptRoot(root);
+      return { root };
+    }, prepare: async root => {
+      await step(() => mkdir(join(root, '.cland'), { recursive: true }));
+      const store = new Store(join(root, '.cland/hub.db'));
+      try {
+        for (const name of ['first', 'second']) {
+          store.hosts.logins.insert({ name, harness: 'codex', account: name, kind: 'disk', provider: 'fake', region: 'fake-1', volumeId: 'v-' + name, snapshotIds: [], lastSignIn: null });
+          store.hosts.logins.transition(name, 'ready');
+        }
+      } finally { store.close(); }
+    } }));
+    const ts = new Date().toISOString();
+    const cards: Record<string, AskCard> = {
+      'host-z': { question: 'First login', options: [], free: true, state: 'open', signInLogin: 'first' },
+      'host-a': { question: 'Second login', options: [], free: true, state: 'open', signInLogin: 'second' },
+      'remote-z': { question: 'Telegram question', options: ['Keep', 'Wait'], free: true, state: 'open' },
+      'remote-a': { question: 'Discord question', options: ['Keep', 'Wait'], free: true, state: 'open' },
+    };
+    // Three deliberately different caller orders; none matches id sorting or ingestion.
+    const inboxOrder = ['host-a', 'remote-z', 'host-z', 'remote-a'];
+    const hostOrder = ['host-z', 'host-a'], remoteOrder = ['remote-a', 'remote-z'];
+    const messages: TopicMessage[] = remoteOrder.map((id, n) => ({ id, seq: n + 1, topic: 'general', from: 'human', fromKind: 'human', via: id === 'remote-a' ? 'discord' : 'telegram', to: [], text: cards[id]!.question, ts, ask: cards[id]! }));
+    const inbox: Inbox = { asks: inboxOrder.map(id => ({ id, topic: { id: 'general', title: 'General' }, from: 'hub', label: 'hub', ts, since: ts, question: cards[id]!.question, options: cards[id]!.options, free: true, ...(cards[id]!.signInLogin ? { signInLogin: cards[id]!.signInLogin } : {}) })), approvals: [], plans: [], requests: [], messages: [], waiting: [], needsYou: 4 };
+    const pools: HostsStatePool[] = [{ name: 'agents', provider: 'fake', region: 'fake-1', hostCount: 0, maxHosts: 4, slotsUsed: 0, slotsTotal: 0, logins: { codex: { inUse: 0, usable: 2, signedOut: 0 } }, alert: null, hosts: [] }];
+    let push!: (frame: HubFrame) => void;
+    await step(() => f.pageCase(owner.fixtures, async page => {
+      for (const id of ['remote-z', 'host-a', 'remote-a', 'host-z']) push({ type: 'ask', topic: 'general', ask: id, card: cards[id]! });
+      push({ type: 'inbox', inbox });
+      const assertSurfaces = async () => {
+        await page.getByRole('button', { name: 'Inbox', exact: true }).click();
+        const list = page.getByRole('list', { name: 'Inbox objects', exact: true });
+        await list.locator('[data-object-id="host-a"]').waitFor();
+        assert.deepEqual(await list.locator('[data-inbox-section="asks"] [data-object-id]').evaluateAll(nodes => nodes.map(n => n.getAttribute('data-object-id'))), inboxOrder);
+        for (const id of inboxOrder) {
+          await list.locator(`[data-object-id="${id}"]`).click();
+          const card = list.locator(`[data-ask-id="${id}"]`);
+          await card.getByRole('heading', { name: cards[id]!.question, exact: true }).waitFor();
+          assert.equal(await card.getByRole('heading').innerText(), cards[id]!.question);
+        }
+        assert.deepEqual(await list.locator('[data-inbox-section="asks"] [data-object-id]').evaluateAll(nodes => nodes.map(n => n.getAttribute('data-object-id'))), inboxOrder);
+        await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+        const hosts = page.locator('[data-session-slot="hosts"]');
+        await hosts.locator('[data-signin-card="host-z"]').waitFor();
+        assert.deepEqual(await hosts.locator('[data-signin-card]').evaluateAll(nodes => nodes.map(n => n.getAttribute('data-signin-card'))), hostOrder);
+        for (const [n, id] of hostOrder.entries()) {
+          const row = hosts.locator(`[data-login-name="${n === 0 ? 'first' : 'second'}"] [data-signin-card="${id}"]`);
+          assert.ok((await row.innerText()).includes(cards[id]!.question));
+        }
+        await page.getByRole('button', { name: 'Topics', exact: true }).click();
+        await page.locator('[data-object-id="general"]').click();
+        const log = page.getByRole('log', { name: 'General thread', exact: true });
+        await log.locator('[data-ask-id="remote-z"]').waitFor();
+        assert.deepEqual(await log.locator('[data-ask-id]').evaluateAll(nodes => nodes.map(n => n.getAttribute('data-ask-id'))), remoteOrder);
+        for (const id of remoteOrder) {
+          const row = log.locator(`[data-message-id="${id}"]`);
+          assert.equal(await row.getByRole('heading').innerText(), cards[id]!.question);
+          assert.match(await row.innerText(), id === 'remote-a' ? /via Discord/ : /via Telegram/);
+        }
+      };
+      await step(assertSurfaces);
+      const changed = page.getByRole('log', { name: 'General thread', exact: true }).getByRole('heading', { name: 'Telegram updated', exact: true }).waitFor();
+      cards['remote-z'] = { ...cards['remote-z']!, question: 'Telegram updated' };
+      cards['host-a'] = { ...cards['host-a']!, question: 'Second login updated' };
+      push({ type: 'ask', topic: 'general', ask: 'remote-z', card: cards['remote-z'] });
+      push({ type: 'ask', topic: 'general', ask: 'host-a', card: cards['host-a'] });
+      await step(() => changed);
+      // A unique flattened-row fact proves this exact publication was consumed;
+      // its stale question must still not overwrite the newer retained card.
+      const staleQuestion = 'Stale inbox republication receipt';
+      const published = page.locator('[data-object-id="remote-z"]').getByText(staleQuestion, { exact: true }).waitFor();
+      void published.catch(() => {});
+      push({ type: 'inbox', inbox: { ...inbox, asks: inbox.asks.map(row => row.id === 'remote-z' ? { ...row, question: staleQuestion } : row) } });
+      await step(() => page.getByRole('button', { name: 'Inbox', exact: true }).click());
+      await step(() => published);
+      assert.equal(await page.locator('[data-object-id="remote-z"]').getByText(staleQuestion, { exact: true }).innerText(), staleQuestion);
+      await step(assertSurfaces);
+    }, async page => {
+      await step(() => page.routeWebSocket('**/ws', route => {
+        push = frame => route.send(JSON.stringify(frame));
+        const server = route.connectToServer();
+        route.onMessage(message => {
+          const frame = JSON.parse(String(message)) as { type: string; id: string };
+          if (frame.type === 'topic.history') route.send(JSON.stringify({ type: 'result', id: frame.id, ok: true, value: { messages, runs: [], more: false } }));
+          else server.send(message);
+        });
+        server.onMessage(message => {
+          const frame = JSON.parse(String(message)) as HubFrame;
+          if (frame.type === 'hosts.state') frame.pools = pools;
+          if (frame.type === 'snapshot' && frame.domain === 'sessions') frame.value.hosts = pools;
+          route.send(JSON.stringify(frame));
+        });
+      }));
+    }));
   });
 });

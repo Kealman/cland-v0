@@ -169,5 +169,36 @@ The connection maintains the active sign-in index incrementally at every live,
 inbox, message and recovered-card ingestion point. Hosts rows use the production
 constant-time selector and react to index identity changes. The one-second
 uptime render does not enumerate retained terminal/history cards. The T1
-synthetic work-count control and legacy T-1840 exclusion are documented in
+synthetic work-count controls for selector and publication are documented in
 hub-test-web-area-state.test.ts.md.
+
+
+`retained cards keep Inbox, Hosts sign-in and remote thread order across delta
+and inbox publication` uses the existing scratch hub and isolated Headless Shell
+with scripted socket frames. It seeds two real scratch login metadata rows and
+four open cards, with deliberately different insertion, Inbox-row, login-row and
+remote-message orders. Actual Inbox card headings, Hosts sign-in card ids/text,
+and Discord/Telegram topic card ids/headings/provenance are asserted before and
+after live deltas. A subsequent flattened inbox publication carries stale text;
+newer retained card text and each surface's caller order must remain intact.
+The changed remote heading is observed before republication. The final inbox
+frame carries a unique stale question in its flattened row preview: a bounded
+observer is armed before pushing it, and its rendered preview is positively
+asserted before rechecking all three surfaces. Retained card headings must keep
+the newer delta text while that row preview proves exact publication consumption. This is rendering coverage; the T1 radix budget test remains the work
+count evidence. It does not exercise a real remote provider or native sign-in.
+Existing terminal, reconnect, competing-answer, and previous-wire tests remain
+unchanged.
+
+
+That case registers `caseDeadlines` with the shared `beforeDirectories` and
+`guardDirectoryRemoval` adapters before any fixture acquisition. Its whole body
+runs through `owner.run`; webFixture, preparation and pageCase receive the
+proxied `owner.fixtures` context so their teardown hooks are captured, including
+late acquisitions. The project factory adopts the root before returning it.
+Shared steps fence subsequent admission; normal and signal cleanup join the
+complete acquisition/page callback before invoking captured native/root and
+environment teardown. An incomplete join retains the root. The unchanged T2
+`hub/test/case-deadlines.test.ts` controls exercise held acquisition/writers and
+startup/teardown expiry; the normal browser census alone is not cancellation
+coverage.

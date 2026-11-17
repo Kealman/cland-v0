@@ -1,3 +1,4 @@
+import { AskCards } from './ask-cards.ts';
 import { updateSignInIndex } from './signin-index.ts';
 import { PROTOCOL_VERSION, EVENT_KINDS, type AskCard, type ApprovalRecord, type Artifact, type Capabilities, type ClientHello, type EventsPage, type EventsFilter, type EventRow, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type SessionListRows, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
 import { replaceSession, sessionSnapshot, type SessionsState } from './sessions/state.ts';
@@ -146,9 +147,11 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
       request({ ...frame, id } as WorkbenchRequest);
     });
   }
+  let askCards = new AskCards();
   function applyAskCard(id: string, card: AskCard) {
     const signInCards = updateSignInIndex(state.signInCards, id, state.askCards?.get(id), card);
-    state = { ...state, askCards: new Map(state.askCards).set(id, card), signInCards };
+    askCards = askCards.set(id, card);
+    state = { ...state, askCards, signInCards };
   }
   const askTopics = new Map<string, string>();
   const missingSnapshotApprovals = new Set<string>();
@@ -429,7 +432,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
     const recovering = new Set(state.recoveringApprovals);
     const recoveryErrors = new Map(state.approvalRecoveryErrors);
     for (const row of value.approvals) { approvals.set(row.id, row); recovering.delete(row.id); recoveryErrors.delete(row.id); }
-    const cards = new Map(state.askCards);
+    let cards = askCards;
     let signInCards = state.signInCards;
     for (const row of value.asks) {
       askTopics.set(row.id, row.topic.id);
@@ -437,10 +440,11 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
       if (!known || row.signInLogin !== undefined && known.signInLogin !== row.signInLogin) {
         const card = { ...(known ?? { question: row.question, options: row.options, free: row.free, state: 'open' as const }),
           ...(row.signInLogin === undefined ? {} : { signInLogin: row.signInLogin }) };
-        cards.set(row.id, card);
+        cards = cards.set(row.id, card);
         signInCards = updateSignInIndex(signInCards, row.id, known, card);
       }
     }
+    askCards = cards;
     state = { ...state, inbox: value, askCards: cards, ...(signInCards === undefined ? {} : { signInCards }), approvalCards: approvals, recoveringApprovals: recovering, approvalRecoveryErrors: recoveryErrors, sessionAsks: value.asks, needsYou: value.needsYou, approvals: value.approvals.length,
       plans: value.plans.length, waitingTopics: value.waiting.length };
     rows('Inbox', [
