@@ -240,6 +240,7 @@ for(const dropped of [false,true]) test(`Host.run settles oversized escaped outp
  await eventually('bounded command terminal result from the agent',()=>{if(failure)throw failure;return completed;},5000);
  assert.equal(completed!.code,17);assert.match(completed!.error??'',/output exceeds agent frame cap/);
  assert.ok(completed!.stdout.endsWith('stdout-end'));assert.ok(completed!.stderr.endsWith('stderr-end'));
+ assert.ok(Buffer.byteLength(completed!.stdout)<=4096);assert.ok(Buffer.byteLength(completed!.stderr)<=4096);
  const follow=await f.host.run({command:process.execPath,args:['-e',"process.stdout.write('unfenced')"],cwd:f.fake.home,env:{}});
  assert.deepEqual(follow,{code:0,stdout:'unfenced',stderr:''});
 });

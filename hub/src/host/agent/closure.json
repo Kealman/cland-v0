@@ -22,7 +22,7 @@
     },
     {
       "path": "hub/src/host/agent/command.ts",
-      "sha256": "587e946ad515a43492df68e39daf0c05bf47c922f4bced2a0250b129c07ee806"
+      "sha256": "85f3b075679c9ea31dea77f7e1f04cc191f928c7d9b885c5c2e73a3cf87659f4"
     },
     {
       "path": "hub/src/host/agent/entry.ts",
@@ -82,7 +82,7 @@
     },
     {
       "path": "hub/src/host/agent/operations.ts",
-      "sha256": "83006a6c96b407dca5ce6ca222836dca954e27e03872917ebb37218e1b23cbdc"
+      "sha256": "3ec808a994d32931d607f26b201775ee60c3967c93287e878b26bf8912fd3ee4"
     },
     {
       "path": "hub/src/host/agent/package.ts",
@@ -130,7 +130,7 @@
     },
     {
       "path": "hub/src/host/agent/server.ts",
-      "sha256": "c0bf33e459aeaf5e18f3bb5cadcbbe37c57bd660fd06c5db027333487155bbd5"
+      "sha256": "980f79f97d78c5bcd5b62e6d362d892114029361dcff92aa6b9b39d608652e14"
     },
     {
       "path": "hub/src/host/agent/signin-command.ts",

@@ -29,7 +29,8 @@ not leave a permanent fence.
 
 Oversized escaped command output must reach a bounded terminal Host.run result,
 both directly and after loss of the accepted reply. Tests retain the native exit
-code, diagnostic tails and explicit truncation error, then require a subsequent
+code, diagnostic tails bounded to 4096 UTF-8 bytes per stream and explicit
+truncation error, then require a subsequent
 command to succeed. A deadline bounds waiting for the actual result; it is not a
 sleep or a claim about command latency.
 

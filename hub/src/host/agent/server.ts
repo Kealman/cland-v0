@@ -18,7 +18,7 @@ import { AgentProcesses } from './processes.ts';
 import { agentBootId, observeProcesses } from './native.ts';
 import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { checkpoint, checkpointRecovery, type CheckpointRecoveryIO } from './storage.ts';
-import { run as runCommand } from './command.ts';
+import { run as runCommand, CommandOutput } from './command.ts';
 import { agentOperations, parseAgentRun } from './operations.ts';
 import { AGENT_PROTOCOL, PREPARED_HOST_CAPABILITY, MAX_LINE_BYTES, LineDecoder, parseRequest } from './protocol.ts';
 export type AgentOptions = { checkpointRecoveryIO?:CheckpointRecoveryIO; checkpointCodeDir?:string; loginDiskCommand?: typeof runCommand; runDir: string; secret: string; version: string; env?: NodeJS.ProcessEnv; memoryIntervalMs?: number; processHooks?: ProcessHooks; socketChmod?: (path: string) => Promise<void>; cleanupError?: (error: unknown) => void; afterOperation?: (operation: string, connection: Socket) => void; beforeRunCancel?: (token: string) => Promise<void>; runStarted?: (token: string, connection: Socket, signal:AbortSignal) => void | Promise<void> };
@@ -176,7 +176,7 @@ export async function serveAgent(options: AgentOptions) {
                     await options.runStarted?.(token,connection,controller.signal);
                     parsed={...parsed,env:await loginExecutionEnvironment(parsed.env,options.env??process.env)};
                     if(typeof command.claudeGeneration==='string'){await requireSpawnMemory(options.runDir,options.env??process.env);return claude.launch(parsed,command.claudeGeneration,controller.signal);}
-                    return await runCommand(parsed.command,parsed.args,parsed.env,parsed.timeoutMs,false,controller.signal,'utf8',parsed.cwd);
+                    return await runCommand(parsed.command,parsed.args,parsed.env,parsed.timeoutMs,false,controller.signal,'utf8',parsed.cwd,new CommandOutput(MAX_LINE_BYTES));
                   });} finally {commands.delete(token);}
                   break;
                 }

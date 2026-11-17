@@ -6,7 +6,8 @@ import { constants } from 'node:fs';
 import { fileOperations } from './files.ts';
 import { worktreeOperations } from './worktrees.ts';
 import { occupants } from './occupants.ts';
-import { run } from './command.ts';
+import { run, CommandOutput } from './command.ts';
+import { MAX_LINE_BYTES } from './protocol.ts';
 
 /** Base64 plus JSON stays below the protocol's 1 MiB line cap. */
 export const FILE_BYTE_CAP = 512 * 1024;
@@ -103,7 +104,10 @@ export function agentOperations(env: NodeJS.ProcessEnv, signal?: AbortSignal): R
     run: async a => {
       const command=parseAgentRun(a);
       const executionEnv=await loginExecutionEnvironment(command.env,env);
-      return run(command.command,command.args,executionEnv,command.timeoutMs,false,signal,'utf8',command.cwd);
+      const output = new CommandOutput(MAX_LINE_BYTES);
+      const result = await run(command.command,command.args,executionEnv,command.timeoutMs,false,signal,'utf8',command.cwd,output);
+      if (output.overflow) throw new Error('agent result exceeds frame cap');
+      return result;
     },
     worktreeAdd: a => {
       const territory = a.territory === undefined ? undefined : object(a.territory);

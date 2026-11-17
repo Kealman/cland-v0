@@ -204,9 +204,16 @@ that durable fence; settle, close and restart cannot retry Git against it.
 For `run-host`, a serialized command result above half the agent's 1 MiB frame
 budget becomes a bounded terminal result before persistence. It retains the
 native exit code, the final 4096 characters of stdout and stderr, and an explicit
-error naming the cap and original output byte counts. Small results retain their
+error naming the cap and retained output byte counts. Small results retain their
 original bytes. The same stored result serves the first reply and later
 settlement replies, so escaped output and a lost reply cannot prevent completion.
+Generic `run-host` and raw agent `run` commands retain at most 1 MiB of combined
+UTF-8 stdout/stderr during collection. On overflow they retain rolling tails of
+at most 4096 UTF-8 bytes per stream, preserving complete characters, while
+draining both pipes until native close or the existing timeout/cancellation
+boundary. Raw `run` keeps the frame-cap refusal; `run-host` records an explicit
+overflow error with its native exit code and bounded diagnostics. Doctor probes
+using the same helper keep complete output by default.
 Both command paths may add `nativeAdmission: 'no-process'`: the native owner
 recorded an already-aborted signal without a spawn call, a synchronous throw,
 or an error with no observed PID followed by native close. Any observed PID or
