@@ -22,6 +22,7 @@ export function selectRecordings(recordings: Record<string, Recording>, keys: It
   }));
 }
 export function canonical(value: unknown, root: string, at = STUB_NOW) {
+  value = frameRecordingInput(value);
   // Neovim may resolve /tmp or /var through /private while the test keeps the
   // other spelling. Bind both without requiring the recorded paths to exist.
   const aliases = (path: string): string[] => /^\/(?:private\/)?(?:tmp|var)(?:\/|$)/.test(path)
@@ -63,6 +64,38 @@ export function canonical(value: unknown, root: string, at = STUB_NOW) {
       : Array.isArray(v) ? v.map(restore) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k,x]) => [k,restore(x)])) : v;
     return restore(output);
   } };
+}
+/** task.plan has no projected item. task.view's item layer reads the current
+ * open release and descendant membership (Visibility.currentItems). Closed
+ * branches with no open descendant cannot contribute to that membership.
+ * Keep closed ancestors: an open item can still belong through one of them. */
+export function frameRecordingInput(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value;
+  const input = value as Record<string, any>;
+  if (input.frame?.type !== 'result' || !['task.plan','task.view'].includes(input.requestType) || !Array.isArray(input.items)) return value;
+  const byId = new Map(input.items.map((item: Record<string, any>) => [item.id,item]));
+  const retained = new Set<unknown>();
+  for (const item of input.items) if (item.state !== 'closed') {
+    let ancestor: any = item;
+    while (ancestor && !retained.has(ancestor.id)) {
+      retained.add(ancestor.id);
+      ancestor = byId.get(ancestor.parent);
+    }
+  }
+  const normalized = {...input,items:input.requestType === 'task.plan' ? [] : input.items.filter((item: Record<string, any>) => retained.has(item.id))};
+  // Existing recordings already contain binding tokens. Removing context must
+  // reindex those slots just as fresh canonicalization of the raw input does.
+  // Frame fields sort before items, so their tokens and output bytes stay put.
+  const slots = new Map<string,string>();
+  const reindex = (v: any): any => {
+    if (typeof v === 'string' && /^@(uuid|old|recent):\d+@$/.test(v)) {
+      if (!slots.has(v)) slots.set(v, v.replace(/:\d+@$/, `:${slots.size}@`));
+      return slots.get(v);
+    }
+    return Array.isArray(v) ? v.map(reindex) : v && typeof v === 'object'
+      ? Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b)).map(([k,x])=>[k,reindex(x)])) : v;
+  };
+  return reindex(normalized);
 }
 export const recordingKey = (operation: string, input: unknown): string => createHash('sha256').update(JSON.stringify([operation, input])).digest('hex');
 type ReadRecording = (key: string, operation: string, input: unknown) => unknown;

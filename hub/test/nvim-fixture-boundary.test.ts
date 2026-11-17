@@ -6,8 +6,44 @@ import { fileURLToPath } from 'node:url';
 import { nvimHubImports } from '../src/suite-selection.ts';
 import { assertRecordings } from './nvim-fixture-check.ts';
 import { recordedOutput } from './nvim-frame-source.ts';
-import { canonical, packRecordings, unpackRecordings, replayFrame, selectRecordings, recordingReader } from '../../nvim/test/frame-fixtures.ts';
+import { canonical, frameRecordingInput, FRAME_FIXTURES, parseRecordings, recordingKey, packRecordings, unpackRecordings, replayFrame, selectRecordings, recordingReader } from '../../nvim/test/frame-fixtures.ts';
 const root = fileURLToPath(new URL('../../', import.meta.url));
+test('the catalog has one record per normalized explorer input', async () => {
+  const records = parseRecordings(await readFile(FRAME_FIXTURES,'utf8'));
+  const keys = Object.values(records).map(r=>recordingKey(r.operation,frameRecordingInput(r.input)));
+  assert.equal(new Set(keys).size,keys.length,'duplicate normalized recording keys');
+  assert.deepEqual(Object.keys(records).sort(),keys.sort(),'catalog keys use normalized inputs');
+});
+test('explorer result recordings ignore unrelated archive rows and retain changed wire facts', () => {
+  const items = [{id:'R-1',kind:'release',state:'open',version:'0.2.0'}, {id:'E-2',kind:'epic',parent:'R-1',state:'closed'}, {id:'T-3',kind:'task',parent:'E-2',state:'open',status:'review'}];
+  const archive = [{id:'R-30',kind:'release',state:'closed',updated:'2026-01-01T00:00:00Z'}, {id:'T-31',kind:'task',state:'closed'}, {id:'T-32',kind:'task',state:'closed',parent:'C-5'}];
+  for (const requestType of ['task.plan','task.view']) {
+    const frame = {type:'result',ok:true,id:'@request@',value:requestType==='task.plan'?{id:'E-2',plan:null}:{item:items[2]}};
+    const before = {requestType,frame,items};
+    const after = {...before,items:[...items,...archive]};
+    assert.deepEqual(recordedOutput('frame',before),recordedOutput('frame',after));
+    const a=canonical(before,'/fixture').input, b=canonical(after,'/fixture').input;
+    const records=Object.fromEntries([a,b].map(input=>[recordingKey('frame',input),{operation:'frame',input,output:recordedOutput('frame',input)}]));
+    assert.equal(Object.keys(records).length,1,'one canonical entry across archive states');
+    const read=recordingReader(packRecordings(records));
+    for(const input of [a,b]) assert.deepEqual(read(recordingKey('frame',input),'frame',input),recordedOutput('frame',before));
+    const value=requestType==='task.plan'?{id:'E-2',plan:{stages:[{name:'Changed plan'}]}}:{item:{...items[2],title:'Changed wire fact'}};
+    const changed=canonical({...before,frame:{...frame,value}},'/fixture').input;
+    assert.notEqual(recordingKey('frame',a),recordingKey('frame',changed));
+    assert.notDeepEqual(recordedOutput('frame',a),recordedOutput('frame',changed));
+    if(requestType==='task.view') {
+      assert.notDeepEqual(recordedOutput('frame',a),recordedOutput('frame',canonical({...before,items:items.filter(item=>item.id!=='E-2')},'/fixture').input),'closed ancestor carries active membership');
+      assert.notDeepEqual(recordedOutput('frame',a),recordedOutput('frame',canonical({...before,items:[...items,{id:'R-4',kind:'release',state:'open',version:'0.1.0'}]},'/fixture').input),'current release selection remains relevant');
+    }
+  }
+});
+test('metadata migration reindexes timestamp slots after pruning archived context', () => {
+  const input={at:'@recent:0@',frame:{type:'result',value:{item:{id:'T-3',updated:'@recent:1@'}}},items:[{id:'R-30',state:'closed',updated:'@old:2@'},{id:'T-3',state:'open',updated:'@recent:3@'}],requestType:'task.view'};
+  const migrated=frameRecordingInput(input) as typeof input;
+  assert.equal(migrated.items[0]!.updated,'@recent:2@');
+  assert.deepEqual(migrated.frame,input.frame,'wire frame tokens precede context and remain unchanged');
+  assert.deepEqual(frameRecordingInput(migrated),migrated);
+});
 test('T2 Neovim import closures contain no hub runtime or harness', async () => {
   const { tests } = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
   const t2 = Object.keys(tests).filter(file => file.startsWith('nvim/') && (tests[file]?.tier ?? tests[file]) === 'T2');
