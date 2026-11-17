@@ -2,8 +2,8 @@
 id: T-1925
 kind: task
 title: A local SSH client failure (macOS user lookup down) marks healthy droplet runs "remote machine lost" after 300 s
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1574
 branch: t/T-1925-a-local-ssh-client-failure-macos-user
 created: 2026-11-16T22:17:45.854Z
-updated: 2026-11-17T00:17:30.636Z
+updated: 2026-11-17T02:08:47.470Z
+closed: 2026-11-17T02:08:47.470Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ On 2026-11-16 at 17:26Z the hub's Mac lost sysmond and its local user lookup (`s
 
 - [x] C1. When the SSH status check fails because the local client cannot run (a fake ssh that fails before connecting, with a user-lookup or key error) while the provider reports the droplet active, the run is not marked "remote machine lost"; it holds as "local SSH client unavailable" and resumes once the client works again (test, red before the fix).
   - done: impl-1925 · 2026-11-17T00:10:06.350Z
+  - verified: rev-36 [reviewer] · run rev-36-1925-final-1 · 2026-11-17T00:47:57.140Z · commit 1ef31bd95d6a27ce6575a199c11310eb9de57ed8
 - [x] C2. A droplet that the provider reports gone, or that stays unreachable while the local client works, is still marked lost as today (test).
   - done: impl-1925 · 2026-11-17T00:10:06.826Z
+  - verified: rev-36 [reviewer] · run rev-36-1925-final-1 · 2026-11-17T00:47:57.140Z · commit 1ef31bd95d6a27ce6575a199c11310eb9de57ed8
 
 ## Comments
 
@@ -77,3 +80,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear A-20495: Standards0/Spec0. Both A-20486 findings resolved: pre-acquisition shared whole-case ownership joins/fences status and lease I/O before normal/signal directory cleanup; retained production DropletRun emits deduplicated enter/leave via actual hub LogFn with run/cause/original bounded transport error, including recovery/loss/release. Coordinator40597d08 scope met without persisted/wire/UI change. Active-provider/local classification and ordinary-network/404/null/lifetime/provider-unknown controls retained. Authorized shared15757e4d4 cherry-pick61fc1b519 independently stable-patch-identical ca1055f0f1fa1bcd7cd2b9c0c935301d9d365422. A-20484/A-20489 retain local red/green excerpts/consumer dispositions/unknowns; final preflight0 with report-only lint122/59. C1/C2 implementation accepted but unverified until completed same-head configured evidence or explicit Coordinator waiver. No Reviewer runtime. Hold released; claimant follows Coordinator window before verify.
+
+### rev-36 · 2026-11-17T00:47:57.140Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1925-final-1
+commit: 1ef31bd95d6a27ce6575a199c11310eb9de57ed8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear A-20516 with full case/consumer ledger A-20515. Configured8fc8c91b/A-20513 at source-clear1ef31bd95 completed T0/T1/all428T2/Web,6530ordinary test passes/707files;295scoped load tests/files separately,0fail/cancel/skip/unfinished starts. All8required status identities each ordinary1+actual scoped5 with matching5/5proofs, including hold/recovery enter/leave diagnostics, provider-loss leave, five-minute network loss and provider/lifetime precedence. Direct contract/prepare/shared-priority consumers have positive file receipts. Exact head, separate executiontree d9ca1dc7/source treef9e4a9c1, uncached Linuxx64/Node24.21/nvim.12.5 and actual HeadlessShell1248/CfT156.0.8078.4 provenance reconciled. T3/T4 unexecuted, remainingT3 merge-batch;60consumer rows retain13pass/6deferred/41reference dispositions. Report-only budgets/lint122/59/skip checks retained; original red/green/raw/hash/native limits A-20484/A-20489 retained. Source A-20495 plus completed evidence verifies C1/C2. Standards0/Spec0; no Reviewer runtime. Hold released; lead handles normal landing workflow.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T02:08:47.470Z
+
+Merged 6fa0c339073b5ec39bd630e9bd7fae6aac52513a onto dev.

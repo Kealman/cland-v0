@@ -2,8 +2,8 @@
 id: T-1927
 kind: task
 title: cland verify still exits 75 at 15 s while the hub admits the run, after T-1907 landed and the hub restarted onto it
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -14,7 +14,8 @@ regression_of: T-1907
 topic: topic-1573
 branch: t/T-1927-cland-verify-still-exits-75-at-15-s
 created: 2026-11-16T23:30:57.204Z
-updated: 2026-11-17T00:22:01.390Z
+updated: 2026-11-17T01:24:35.595Z
+closed: 2026-11-17T01:24:35.595Z
 ---
 
 ## Summary
@@ -111,3 +112,7 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-11-17T00:22:01.390Z
 
 Third post-restart occurrence, for the record (pre-fix CLI): impl-1925 submitted at 1ef31bd95 at about 00:19Z. The CLI exited 75 with no reply, and the admission event for run 8fc8c91b followed; no retry was made. impl-1927's own submission (run 76b011ca at 23:51Z), from the branch with this fix, returned exit 0 with the run id. impl-1769's (run 6aed7951 at 00:16Z, also pre-fix) happened to return exit 0 too. So the failure is intermittent on the old client, as expected for a latency race against the 15 s deadline.
+
+### coord · 2026-11-17T01:24:35.595Z
+
+Merged 297243fd914217f0def86a97cc09c318283b73a3 onto dev.

@@ -2,8 +2,8 @@
 id: T-1864
 kind: task
 title: artifact.create with large inline content times out at 300 s with an unknown outcome
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1571
 branch: t/T-1864-artifact-create-with-large-inline
 created: 2026-11-15T04:42:50.038Z
-updated: 2026-11-17T00:10:04.330Z
+updated: 2026-11-17T03:48:07.147Z
+closed: 2026-11-17T03:48:07.147Z
 ---
 
 ## Summary
@@ -33,9 +34,11 @@ When the outcome is unknown, a retry must not publish a duplicate. Use the same 
 - [x] C1. `artifact.create` with inline content above the limit is refused quickly with the limit and a pointer to `path`, and content at the limit completes within a bounded time (test).
   - done: impl-1864 · 2026-11-16T23:27:43.825Z
   - verified: rev-36 [reviewer] · run rev-36-1864-final-1 · 2026-11-17T00:10:03.161Z · commit c1e8f014c1770f6c92ef44099e13899c2da8c67a
+  - verified: rev-36 [reviewer] · run rev-36-1864-merge-1 · 2026-11-17T01:36:01.254Z · commit a1f85c9d15c34da296d624ce0fc5ea7679c1836e
 - [x] C2. A retry after a lost reply returns the same artifact rather than a duplicate (test).
   - done: impl-1864 · 2026-11-16T22:38:06.918Z
   - verified: rev-36 [reviewer] · run rev-36-1864-final-1 · 2026-11-17T00:10:03.161Z · commit c1e8f014c1770f6c92ef44099e13899c2da8c67a
+  - verified: rev-36 [reviewer] · run rev-36-1864-merge-1 · 2026-11-17T01:36:01.254Z · commit a1f85c9d15c34da296d624ce0fc5ea7679c1836e
 
 ## Comments
 
@@ -149,3 +152,31 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear A-20490 with independent ledger A-20487: cea6eda4/A-20481 at source-clear c1e8f014c exits0,6531ordinary passes/708filepasses,0nonpass/skips/unfinished; separate280loadpasses/files. All8newartifact/CLI/SDK/receipt/ownership names have base1+load5; all8formerlyfailedcomposition cases and their3files pass, as do byte budgets/frozen help/sharedpriority. C1namedcap/path refusals, exact escaped/multibyte persisted bytes, bounded actualSDK refusal+ping/realstdin/path and C2restart/sameid/singlechip/conflict/concurrent/no-key assertions retained. AllT1/allT2fallback/Web/selectedrolesT3 complete; rolesT3once,268T3/17T4deferred. Consumer186union:73positive,17T3deferred,96refs. Actual uncached Linuxx64 Node24.21/CfT156.0.8078.4 headless1248 provenance pinshead; report-mode budgets/lint/ratchet and historical red/capture limits remain. C1/C2verified; no Reviewer runtime.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-36 · 2026-11-17T01:36:01.254Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1864-merge-1
+commit: a1f85c9d15c34da296d624ce0fc5ea7679c1836e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear A-20529, Standards0/Spec0. Explicit Coordinatorc8db7d8c/dd037439 grants one dev297243fd9 merge and no-new-verify waiver after merged-head checks. Independent parent/blob union:31task/113dev changes,10overlap;21task-only/103dev-only exactparents,no outside-union changes. SKILL preservesT1637/T1705/T1864 in order/CHANGES siblings; overlap protocol retryKey+dispatch sessionidentity intact, usageJSON exactdisjointmerge, compact role guidance/budgets retained. A-20527 merged-head DarwinNode24.21 root typecheck0, two executable skill-readers40/40,testlint0/0refusals and separatewording807/1927/0 satisfy waiver. Unfiltered search also non-executableusageJSON inspected, no extra runnable match. Inherited runtime dev changes acknowledged; this is no docs-only tree/full-dev rerun claim. Prior c1e8f014c Linuxcea6eda4/A-20481 and finalA-20490 remain separately qualified behavior evidence. C1/C2 reverified atmerge under explicit waiver, no new configured/Linux/browser pass claimed. No Reviewer runtime/merge/enqueue; holdreleased, Coordinator owns landing preflight/enqueue.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T01:37:41.049Z
+
+Enqueued at a1f85c9d1 under the rule 6 docs-only waiver. The suite evidence is verify cea6eda4 at c1e8f014c, which passed and was reviewed. a1f85c9d1 merges dev 297243fd9, and the only manual resolution is `.agents/skills/implement/SKILL.md`, with the CHANGES entries T-1637, T-1705 and T-1864 kept in order. Waiver evidence at the merged head (impl-1864, topic-1571):
+- `npm run typecheck` exit 0;
+- searches of hub/test and nvim/test for the changed text matched review-qa-component and roles-clauses, which ran 40/40;
+- `npm run test:lint` 0 refusals;
+- closed-item wording lint 807 documents, 0 findings.
+Delta source review is clear. Coordinator rule 36 check on 791f863d3 (merged with current dev): 0 refusals, 0 wording findings, and no conflicts with the queued items. The merge-queue batch adds T1 and T3 on the integrated tree.
+
+### coord · 2026-11-17T03:48:07.147Z
+
+Merged 8b087645798832cefd09b81bcb0ff4a41ecef238 onto dev.

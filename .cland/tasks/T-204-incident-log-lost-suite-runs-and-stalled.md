@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-16T23:04:43.226Z
+updated: 2026-11-17T01:31:58.101Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -618,3 +618,7 @@ Hub restart #79 (2026-11-16 22:10:34Z, stand-in, launchd). Reason: T-1919 (2bdf1
 ### human · 2026-11-16T23:04:43.226Z
 
 Coord re-exec after a Claude Code auto-update (2026-11-16 23:03:13Z, 2.1.325 → 2.1.326, pid 7131 → 72123, same job 3837cb54). The hub missed the 1000 ms re-exec grace: harness-exited, 'coord died' notification, role-cleared; the new process said hello and took the role again at 23:03:18Z (coordinator-filled), but its harness row stayed 'exited' and the delivery after it was acked only. Recovery by the stand-in at 23:04:16Z: 'cland session resume coord' without --relaunch re-attached the row to pid 72123; four injected events followed within 11 s. No relaunch, one bridge.
+
+### human · 2026-11-17T01:31:58.101Z
+
+Hub restart #80 (2026-11-17 01:28:45Z, stand-in, launchd). Reason: T-1924 (f25977d1d, timed-out Claude deliveries become uncertain), T-1922 (c74b7141f, pgrep failure no longer read as no processes), T-1927 (297243fd9, verify admission deadline) on dev; coord go with two remote runs waived (batch fd43c35f past host T0, impl-1700). Gate: dev=origin/dev=297243fd9, root clean, no local run, load 4.1. Stop: launchctl remove cland-hub-r79 → hub 1948 gone in 1 s. Serve: launchctl submit cland-hub-r80 → listening 01:28:58Z, restoring sessions 01:29:48Z, serving 01:29:52Z. Gap stop→serve 67 s (50 s of it before 'restoring sessions'). New hub 96298, port 60359, web 56935, nice 0, ppid 1, env check 2, /opt/homebrew/bin on PATH, one launchd job. Coord 72123: bridge-connected 01:29:52Z → session-resumed → hello and coordinator-filled 01:30:17Z → injected 01:30:17Z; no relaunch. Both remote runs survived (watchdogs alive); merge queue answered at once with batch 08f9791f. T-1924 check: zero inject-unconfirmed events for coord after this start (195 at restart #79); coord's 79 'delivered' rows were still present 2.5 min after serving. doctor 36 ok 7 warn 0 fail.

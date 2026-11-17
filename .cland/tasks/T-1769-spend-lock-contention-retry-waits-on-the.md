@@ -2,8 +2,8 @@
 id: T-1769
 kind: task
 title: Spend lock contention retry waits on the hub FakeClock, so T2 projectHub fixtures deadlock
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1577
 branch: t/T-1769-spend-lock-contention-retry-waits-on-the
 created: 2026-11-09T07:45:15.143Z
-updated: 2026-11-17T00:15:44.902Z
+updated: 2026-11-17T02:08:24.189Z
+closed: 2026-11-17T02:08:24.189Z
 ---
 
 ## Summary
@@ -24,8 +25,10 @@ The spend ledger lock's contention retry (`acquireLockWithRetry`, a 25 ms wait) 
 
 - [x] C1. Lock contention retry in tests doesn't depend on the test advancing a FakeClock: the backoff uses a real timer, or the fixture lock carries its own clock (test).
   - done: impl-1769 · 2026-11-17T00:08:41.790Z
+  - verified: rev-35 [reviewer] · run rev-35-1769-final-1 · 2026-11-17T00:46:09.591Z · commit 0de17eb019c79d407ce63eb24c8fd1f02c6de9b9
 - [x] C2. A T2 `projectHub` case with startup-sweep contention completes without an explicit barrier on Linux and macOS (test).
   - done: impl-1769 · 2026-11-17T00:08:42.402Z
+  - verified: rev-35 [reviewer] · run rev-35-1769-final-1 · 2026-11-17T00:46:09.591Z · commit 0de17eb019c79d407ce63eb24c8fd1f02c6de9b9
 
 ## Comments
 
@@ -72,3 +75,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source clear A-20493. All three A-20485 findings resolved: admitted sweeps are tracked/joined by executor close; shutdown signal reaches both registry calls and lock timing on native/scripted paths; both new callbacks create fixtureWork before setup and adopt late resources with releases/restorations behind body/resource drain; exact spend-lock fs.link EEXIST replaces generic process reads. Durable reservation/sweep/unchanged-time assertions remain; new shutdown test checks joined/deferred sweep and unchanged ledger after holder release. Default native clock versus caller accounting clock and old positional API compatibility retained; separate shared fix unchanged. A-20488 retains new red/green, 7/7 and scripted admission-lock 11/11; later lint completion f9069783 reconciles pending status. All precommit/raw/hash/signal/scan/platform limits retained, no configured/Linux/browser proof inferred. C1/C2 implementation/test design clear but both test-dependent criteria remain unverified for final evidence. No findings; hold released. Obtain Coordinator window for one mode-free same-head verify. No Reviewer runtime or dev merge.
+
+### rev-35 · 2026-11-17T00:46:09.591Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1769-final-1
+commit: 0de17eb019c79d407ce63eb24c8fd1f02c6de9b9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear A-20514. Independent A-20510 parsing confirms6,524ordinary passes/707files,0fail/cancel/skip; separate265loadpasses. Startup contention ordinary24875 plus five load records and native shutdown ordinary24881 plus five load records all pass; scheduler retry24857 and all seven pool-spend-cap identities pass. A-20512 now supplies the C2-required separate clean exact-head macOS7/7/exit0/no fail/cancel/skip at Node24.21 arm64, with source unchanged before/after; older dirty runs remain separate. Source-reviewed durable lock conflict/reservation/sweep/join/unchanged-clock assertions retained. All224T1/428fallbackT2/55Web complete;269T3/17T4 unexecuted, with direct native consumers deferred. Exact Linux provenance/normalized tree checked, actual isolated HeadlessShell1248/CfT156.0.8078.4; report-only budgets/lint/ratchet/skip checks and raw/hash/signal/scan limits retained. C1/C2verified; no findings; hold released. No Reviewer runtime or further run requested.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T02:08:24.189Z
+
+Merged 4496ae8ef0fdf7c4b45f48103d1fd6517bd80c63 onto dev.

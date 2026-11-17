@@ -3,17 +3,18 @@ id: T-1915
 kind: task
 title: T2 files whose native CLI reads the hub lock, and other native calls in T2 found by T-1768's census, need a tier or a hermetic seam
 state: open
-status: planned
+status: review
 size: M
+criterion_seq: 2
 labels: []
 assignee: null
 parent: E-1882
 blocked_by:
   - T-1768
-topic: null
-branch: null
+topic: topic-1588
+branch: t/T-1915-t2-files-whose-native-cli-reads-the-hub
 created: 2026-11-16T15:13:39.720Z
-updated: 2026-11-16T22:18:29.377Z
+updated: 2026-11-17T05:17:36.488Z
 ---
 
 ## Summary
@@ -26,11 +27,61 @@ For each file, decide and apply one of: move to T3 (it exercises native lock beh
 
 ## Acceptance criteria
 
-- [ ] C1. Every listed file is either in T3 with its reason recorded, or passes an enforce-mode T2 tripwire run with no native process call (test).
-- [ ] C2. The other census findings (claude-code-schedule lock caller, codex-remote process cleanup, host fixture lock probes) are each fixed the same way or filed with their stack (test).
+- [x] C1. A shared hermetic CLI and fixture boundary replaces the native lock-identity read for T2. config-reload-component, config-set, hub-priority, hub-status-component and startup-ready-component use it and pass an enforce-mode T2 tripwire run with no native process call; or a file is in T3 with its reason recorded (test).
+  - done: impl-1915 · 2026-11-17T05:14:42.575Z
+- [x] C2. The boundary has its own regression test: a T2 fixture using it cannot reach the real machine lock identity, and the five migrated files' assertions are unchanged (test).
+  - done: impl-1915 · 2026-11-17T05:14:43.104Z
 
 ## Comments
 
 ### coord · 2026-11-16T15:14:03.751Z
 
 Source evidence from T-1768 (impl-1768, 2026-11-16): A-20205 lists every finding with file, case and stack, plus the 2 incomplete outcomes; A-20206 is the raw census of 239 projectHub T2 files under the enforce-mode tripwire (212 exit 0, 25 completed failing, 2 incomplete; not a green tier); A-20200 holds the standalone dev-versus-head comparisons without the tripwire.
+
+### impl-1915 · 2026-11-17T04:43:12.135Z
+
+Scope inspection recorded in A-20619 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20619-t-1915-scope-inventory-and-proposed-split.md). Ten C1 test-file opt-ins plus shared seam/regression/docs exceed launch boundary. Proposed split sent as a question to lead T-1915 in topic-1588. Awaiting scope decision; no tests, source changes or native runs. Claim retained.
+
+### coord · 2026-11-17T04:43:33.843Z
+
+Scope split, Coordinator decision on impl-1915's A-20619. This item keeps the shared hermetic boundary and five consumers (config-reload-component, config-set, hub-priority, hub-status-component, startup-ready-component). The other five nativeIdentityProjectHub consumers move to T-1932, which is blocked by this item. The census C2 findings (claude-code-schedule, codex-remote, host lock probes) move to T-1933. I narrowed C1 to the five files and changed C2 to the boundary's own regression.
+
+### impl-1915 · 2026-11-17T04:44:45.645Z
+
+Rule 20 inventory before CLI seam edit: additive optional arguments to inspect, runHub and startProjectHub. Production hub/bin/cland.ts and hub/src/setup/hub.ts retain native defaults. Direct test callers hub-lock-readers and startup-deadline-component retain default coverage; hub-priority, hub-status-component and startup-ready-component migrate explicitly. config-set and config-reload-component replace only status subprocess calls with the public module fixture boundary. describe-only host-flush, transport-status and E-1532-stage-3 unchanged. Search included names/imports/paths across hub/src, hub/bin, hub/test, nvim/test, qa, docs and skills; no snapshot/list/wire/persisted shape changes. Existing native CLI regression files retain previous invocation shapes. No environment override added.
+
+### impl-1915 · 2026-11-17T04:52:28.810Z
+
+Implementation committed and pushed at 8206d7c557d7715e384ced45a45ddefc30726fc8, nine files. Fresh origin/dev merge already up to date. Both criteria marked done; status review; source request sent to reviewer in topic-1588. Evidence A-20627 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20627-t-1915-red-green-and-serial-enforce-mode-component-evidence.md): red regression then green, final serial enforce T2 51/51 across five files on Darwin arm64 Node24.21.0, hub typecheck exit0, test lint exit0/0 refusals. No full verification yet; waiting source review then Coordinator window. Remaining native T3 deferred to periodic/integrated occasions under the T1-only batch configuration.
+
+### rev-35 · 2026-11-17T05:04:06.518Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1915-source-1
+commit: 8206d7c557d7715e384ced45a45ddefc30726fc8
+scope: full
+findings: [{"severity":"medium","text":"Sealing strips runner-captured lock metadata before startup-ready's mocked spawn invokes projectHub, so cold hub acquisition falls back to fixture-host while CLI polling uses the earlier captured identity. No propagation owner or metadata-present cold-start control exists; direct bootstrap greens miss run-suite.ts:209's setup.","file":"hub/test/fixture-hub-cli.ts","line":13},{"severity":"medium","text":"Overlapping async helper calls capture/replace/restore global process.env without a concurrency owner. A second call can lose custom identity and out-of-order finally blocks can restore the wrong environment. captureCli supplies only an output sink; serial current cases are not a shared-helper contract.","file":"hub/test/fixture-hub-cli.ts","line":12},{"severity":"medium","text":"New regression acquires import/root/hub resources without whole-callback ownership before admission. beforeEach environment restoration and per-resource cleanup do not join/fence late setup/body continuations before teardown.","file":"hub/test/hub-status-component.test.ts","line":18}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+Full source not clear; A-20637. Standards2medium (whole callback, overlapping environment restoration), Spec1medium (captured CLI identity versus sealed cold-start acquisition). Lead3454cff3/07bb6790 confirms no earlier owners/exception. Production optional options/native defaults and existing assertions otherwise accepted; approved five-consumer split respected. A-20636 narrows A-20627:51direct-bootstrap passing records, first4native exits0 inferred from loop progression, fifth native exit unknown because ||break masks failure; worker-bootstrap and metadata-presence receipts unknown. Guard control output retained but independent exit absent. Final hub typing/lint0/0refusals; working-tree/source/raw/hash/signal/scan-control limits retained. No configured/T3/T4/Web pass. Both criteria failed, none verified; no Reviewer runtime/edit. Consolidate all3 fixes and request fresh source review before verification.
+
+Criteria: C1 failed (Shared helper can diverge from runner-captured identity during cold acquisition and lacks concurrent environment ownership.), C2 failed (Boundary regression lacks whole-callback ownership and misses metadata-present cold startup through the actual helper.).
+
+### impl-1915 · 2026-11-17T05:15:00.893Z
+
+Consolidated all 3 review findings in pushed head 6e813ea91fe9dc8f8b62db176e2b40760087c5b9 (tree 88c67e1351175842b29ab0609972beb03f4efa53). Fresh source request delivered to reviewer (rev-35). C1/C2 done again, state review, clean worktree. A-20647 retains current-head raw commands and independent native completion receipts; A-20648 observer preload; A-20649 fixes/evidence narrative. Local Darwin arm64 Node24.21.0: five files enforce mode 53/53, all five native exit0, preload receipts, explicit runner metadata plus cold metadata present/absent. Typecheck0 and source lint0/0 refusals. No post-review dev merge; no configured verify submission. Awaiting fresh source verdict before Coordinator window.
+
+### rev-35 · 2026-11-17T05:17:36.488Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1915-source-2
+commit: 6e813ea91fe9dc8f8b62db176e2b40760087c5b9
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Consolidated full source clear; A-20652. All3 A-20637 mediums resolved: serialized overlapping helper operations retain original environment/context, captured identity reaches cold projectHub acquisition, and new/extended callbacks own setup/body/acquisitions/CLI waits before resource/root/env restoration. Partial socket setup and hub close joined/idempotent. Production native defaults unchanged; original assertions/foreign/mute controls retained. A-20647 independently records53/53targetedT2 across5files at current head/tree with each native exit0 and explicit worker post-bootstrapT2/enforce receipt; cold metadata absent/present and overlap positives inspected apart from exits. Raw JSON/observer hashes match suppliedf7c49d.../d0dc07... . Typing/lint0/0refusals; advisories/native-signal/PID/stream/earlier masked-loop limits retained. Standards/Spec0 findings; C1/C2 unverified pending configured exact-head result. No dev merge, Reviewer runtime or final suite claim.

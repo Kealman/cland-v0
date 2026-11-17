@@ -2,8 +2,8 @@
 id: T-1921
 kind: task
 title: A transient git failure in the landing lint drops a green batch member and forces the remaining members to rerun the full batch on a new tree
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1575
 branch: t/T-1921-a-transient-git-failure-in-the-landing
 created: 2026-11-16T16:50:10.827Z
-updated: 2026-11-17T00:40:53.897Z
+updated: 2026-11-17T02:09:10.146Z
+closed: 2026-11-17T02:09:10.146Z
 ---
 
 ## Summary
@@ -28,8 +29,10 @@ The landing lint tells an infrastructure failure (git or child-process errors re
 
 - [x] C1. A fake git that fails `cat-file --batch` once during the landing lint, then succeeds, lands every member of a green batch with no new batch run (test, red before the fix).
   - done: impl-1921 · 2026-11-17T00:34:38.250Z
+  - verified: rev-35 [reviewer] · run rev-35-1921-final-1 · 2026-11-17T01:10:21.192Z · commit e7f32c5c45687e7a087169cf23d6d5661b642094
 - [x] C2. A persistent read failure leaves the batch blocked with its green result and the cause named, drops no member, and a genuine lint finding still drops its member (test).
   - done: impl-1921 · 2026-11-17T00:34:39.355Z
+  - verified: rev-35 [reviewer] · run rev-35-1921-final-1 · 2026-11-17T01:10:21.192Z · commit e7f32c5c45687e7a087169cf23d6d5661b642094
 
 ## Comments
 
@@ -68,3 +71,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected full source clear A-20509. All three A-20499 findings resolved: settled current/base/optional read groups drain before retry/hold; Git stdin errors wait for native completion; caseDeadlines owns the full T2 callback/setup with early partial suiteUnit cleanup; introduction errors propagate and positive parent listings distinguish roots. Held-sibling mutation red and stdin-error/completion ordering retain exact receipts; final membership, same green run, no-drop, restart and genuine-finding rebuild assertions remain. Preparation scenarios moved from T1 batch file into T2 policy case, preserving tier boundaries. New helper consumers and unchanged wire/persisted/default-caller shapes reviewed. A-20507 final-head local policy1/1, batch81/81, hub typecheck/lint exit0 and ancestor native8/8/cost6/6 remain labelled with their source/provenance limits; report-only advisories retained. No configured/Linux/browser proof claimed. C1/C2 implementation/test design clear, both runtime criteria unverified. No findings; hold released for Coordinator window and one mode-free same-head verify. No Reviewer runtime or dev merge.
+
+### rev-35 · 2026-11-17T01:10:21.192Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1921-final-1
+commit: e7f32c5c45687e7a087169cf23d6d5661b642094
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear A-20521. Independent A-20519 records6,522ordinary passes/707files,0fail/cancel/skip; separate225loadpasses. Required policy case30500/file30502 passes; its source-reviewed transient/persistent/finding, preparation/reopen, held-sibling/stdin completion and history assertions establish C1/C2. Scenarios remain one generated case, not separate test counts/load claims. All81merge-batches cases pass, including old merge-git/reopen4248 and other recoverable-code cases; consumer admission/queue/recovery/qa-lint files pass. T0/all224T1/all428fallbackT2/55Web complete;269T3/17T4 unexecuted, native/qa-lint-build consumers deferred. Exact head/normalized tree, uncached Linuxx64 Node24.21/Nvim0.12.5 and actual isolated HeadlessShell1248/CfT156.0.8078.4 checked. Report-only budgets/lint/ratchet/skip distinctions and all older raw/hash/signal/ancestor/mutation limits retained. No real production fault injection, landing or performance claim. C1/C2verified; no findings; hold released. No Reviewer runtime or further run requested.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T02:09:10.146Z
+
+Merged e76c3841d362fe5500fc9dddc42683acfcd81786 onto dev.

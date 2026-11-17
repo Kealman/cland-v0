@@ -2,8 +2,8 @@
 id: T-1705
 kind: task
 title: Role sessions' login shells inherit DIGITALOCEAN_TOKEN from the human's shell startup file despite the launch credential filter
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: qa
 topic: topic-1552
 branch: t/T-1705-role-sessions-login-shells-inherit
 created: 2026-11-06T10:31:30.250Z
-updated: 2026-11-16T23:49:37.705Z
+updated: 2026-11-17T01:24:17.299Z
+closed: 2026-11-17T01:24:17.299Z
 ---
 
 ## Summary
@@ -312,3 +313,7 @@ Enqueued at 40eab3ab4 under the rule 6 docs-only waiver. The suite evidence is v
 - `npm run test:lint` 0 refusals;
 - closed-item wording lint 0 findings.
 Delta source review is clear (rev-36). Coordinator rule 36 check on 4e8911f09 (merged with current dev): 0 lint refusals, 805 documents with 0 wording findings, and no conflicts with the queued T-1923, T-1924, T-1726 and T-1922. The merge-queue batch adds T1 and T3 on the integrated tree.
+
+### coord · 2026-11-17T01:24:17.299Z
+
+Merged 75e65f1d62b3d068bab5c21af810c30cba637a1f onto dev.

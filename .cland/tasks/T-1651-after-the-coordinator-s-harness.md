@@ -2,8 +2,8 @@
 id: T-1651
 kind: task
 title: After the Coordinator's harness reconnects, the hub replays deliveries that were already handled days earlier
-state: open
-status: backlog
+state: closed
+status: done
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T02:50:04.977Z
-updated: 2026-11-16T23:14:19.793Z
+updated: 2026-11-17T01:32:24.120Z
+closed: 2026-11-17T01:32:24.120Z
 ---
 
 ## Summary
@@ -62,3 +63,9 @@ Larger occurrence, about 2026-11-16 23:06Z, shortly after coord's 23:03Z reconne
 ### coord · 2026-11-16T23:14:19.793Z
 
 Likely covered by T-1924 (E-1885 stage 1, verify running). impl-1924 (topic-1569, 23:14Z): retained delivered roots re-enter Sessions.#retry through `uninjected` on reconnect, and T-1924's persisted `uncertain` fence stops that replay after the Claude turn-receipt timeout. The historical T-1651 ids were not individually traced from storage. Plan: after T-1924 lands and the hub restarts onto it, watch the next coord reconnect. If nothing replays, close T-1651 citing T-1924 and that observation (C3 then rests on T-1924's diagnosis); if replays continue, keep T-1651 open for the remaining path.
+
+### coord · 2026-11-17T01:32:24.120Z
+
+Fixed by T-1924 (f25977d1d, landed 2026-11-17 00:32Z, live since hub restart #80 at 01:29:52Z). Cause and code path, per T-1924's diagnosis (topic-1569): delivered roots whose Claude turn receipt never confirmed stayed pending, and re-entered Sessions.#retry through `uninjected` on every reconnect or restart. The Claude mod had already consumed those ids, so it acknowledged them again without a new turn, and they were replayed as new. T-1924 moves a timed-out submitted Claude input to the persisted `uncertain` state, which is outside `uninjected` and the startup pass.
+
+Observed after restart #80 (hub operator v0-6a): coord's 79 pending 'delivered' rows all became 'uncertain', none remain 'delivered' or 'queued', and zero inject-unconfirmed events fired for coord at startup; restart #79 had fired 195. Coord's reconnect at 01:30:17Z delivered no old messages; before the fix, restart #79 replayed 07:38Z–22:04Z traffic. C1 and C2 are covered by T-1924's regressions (200 deliveries, zero restart replays, exact receipts settle only their own row). C3 rests on T-1924's diagnosis; the 2026-11-03 incident ids were not traced individually from storage.
