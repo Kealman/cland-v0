@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, symlink, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
-import { cland, eventually, nativeIdentityProjectHub as projectHub, tempProject } from './harness.ts';
+import { cland, eventually, projectHub, tempProject } from './harness.ts';
+import { fixtureHubCommand } from './fixture-hub-cli.ts';
 import { writeAtomic } from '../src/init/files.ts';
 import { testMessenger } from './fakes/messenger.ts';
 import type { RemoteSettings } from '../src/remote/configuration.ts';
@@ -282,7 +283,7 @@ test('config set parses numbers and lists, applies reloadable values now and rep
   const live = await cland(root, 'config', 'set', 'verification.remote_budget', '3');
   assert.equal(live.code, 0, live.stderr);
   assert.match(live.stdout, /verification.remote_budget = 3; applies now/);
-  assert.equal(JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout).verification.remoteBudget, 3);
+  assert.equal(JSON.parse((await fixtureHubCommand(root, 'status', '--json')).stdout).verification.remoteBudget, 3);
   const workers = await cland(root, 'config', 'set', 'verification.workers', '3');
   assert.equal(workers.code, 0, workers.stderr);
   assert.match(workers.stdout, /verification.workers = 3; applies at the next hub start/);
@@ -295,12 +296,12 @@ test('config set parses numbers and lists, applies reloadable values now and rep
   assert.equal(readback.verification.workers, 3);
   assert.equal(readback.verification.remoteBudget, 5);
   assert.deepEqual(readback.verification.droplet.regions, ['lon1']);
-  assert.equal(JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout).verification.remoteBudget, 3);
+  assert.equal(JSON.parse((await fixtureHubCommand(root, 'status', '--json')).stdout).verification.remoteBudget, 3);
 });
 
 test('config set saves web settings for the next hub start and keeps pending edits out of the loaded config', async t => {
   const { root, path } = await fixture(t);
-  const before = JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout);
+  const before = JSON.parse((await fixtureHubCommand(root, 'status', '--json')).stdout);
   const saved = await cland(root, 'config', 'set', 'web.origin', 'https://phone.example', '--json');
   assert.equal(saved.code, 0, saved.stderr);
   assert.deepEqual(JSON.parse(saved.stdout), { key: 'web.origin', value: 'https://phone.example', applies: 'restart' });
@@ -308,7 +309,7 @@ test('config set saves web settings for the next hub start and keeps pending edi
   const pending = await cland(root, 'config', 'set', 'verification.remote_budget', '5', '--json');
   assert.equal(pending.code, 0, pending.stderr);
   assert.match(JSON.parse(pending.stdout).applies, /saved; not applied:.*web changed: restart required/);
-  assert.equal(JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout).verification.remoteBudget, before.verification.remoteBudget);
+  assert.equal(JSON.parse((await fixtureHubCommand(root, 'status', '--json')).stdout).verification.remoteBudget, before.verification.remoteBudget);
 });
 
 test('config set refuses unknown keys, invalid parser values and silently ignored values without changing bytes', async t => {

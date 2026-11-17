@@ -909,9 +909,15 @@ without native identity probes. The runner captures the host identity before
 worker tripwires start. T3 fixtures that share a lock with a native CLI or daemon
 opt in with `lockIdentity: 'native'`, independently of their other probes.
 `nativeIdentityProjectHub` selects that option while retaining fake adapters and
-other probes. Ten native CLI lock-reader files explicitly use this wrapper under
-the compatibility exception recorded in T-1915; their tier classification is
-tracked there. Native opt-in reuses the runner's captured identity when present
+other probes. Five native CLI lock-reader files retain this compatibility wrapper;
+their classification is tracked in T-1932. Component start/status subjects use
+`hub/test/fixture-hub-cli.ts`: it captures fixture identity before sealing the
+environment, serializes overlapping calls against their original environment,
+and passes explicit lock options to the public CLI module. The sealed scope
+retains that captured fixture identity for mocked cold-start acquisitions. CLI
+binary contracts retain the native CLI helpers. The module's omitted options
+keep native identity reads; no environment variable changes production lock
+identity. Native opt-in reuses the runner's captured identity when present
 and reads the native identity only for standalone calls without that metadata.
 `projectHub` defaults to fake
 harnesses and process probes; explicitly supplied adapters,

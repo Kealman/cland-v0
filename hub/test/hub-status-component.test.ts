@@ -7,12 +7,85 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { createHubBase } from '../src/hub/server.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { inspect, runHub } from '../src/cli/hub.ts';
+import { fixtureHubCommand, runFixtureHub } from './fixture-hub-cli.ts';
 import { askHub } from '../src/cli/socket-client.ts';
 import { layout } from '../src/project.ts';
 import { FakeClock } from './fake-clock.ts';
 import { tempProject } from './harness.ts';
 import { assertStartupReplies } from './startup-replies-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { fixtureWork } from './fixture-work.ts';
+import { until } from './until.ts';
+
+test('fixture CLI inspection uses explicit lock identity for status and serving start', async t => {
+  const owner = fixtureWork(t);
+  const previous = process.env;
+  owner.restore(() => { process.env = previous; });
+  await owner.run(async work => {
+    const { projectHub } = await work.step(() => import('./harness.ts'));
+    const root = await work.root(() => tempProject(t));
+    process.env = { ...previous };
+    const hostIdentity = { hostname: 'isolated-cli-fixture', bootId: 'isolated-boot', pidNamespace: null };
+    process.env.CLAND_TEST_LOCK_IDENTITY = JSON.stringify(hostIdentity);
+    const hub = await work.acquire(() => projectHub(t, root), hub => hub.dispose());
+    const inspection = (l: ReturnType<typeof layout>) => inspect(l, { hostIdentity });
+    assert.equal((await inspection(layout(root))).kind, 'live');
+    let output = '';
+    const io = { out: (text: string) => { output += text; }, err: (text: string) => assert.fail(text) };
+    assert.equal(await runHub(['status', '--json'], root, io, { hostIdentity }), 0);
+    assert.equal(JSON.parse(output).pid, process.pid);
+    output = '';
+    assert.equal(await runHub(['start'], root, io, { hostIdentity }), 0);
+    assert.match(output, /hub already running/);
+    const status = await fixtureHubCommand(root, 'status', '--json');
+    assert.equal(status.code, 0, status.stderr);
+    assert.equal(JSON.parse(status.stdout).pid, process.pid);
+    const start = await fixtureHubCommand(root, 'start');
+    assert.equal(start.code, 0, start.stderr);
+    assert.match(start.stdout, /hub already running/);
+    assert.equal((await inspect(layout(root), { hostIdentity: { ...hostIdentity, hostname: 'other-fixture' } })).kind, 'foreign');
+    await writeFile(layout(root).discovery, JSON.stringify({ ...hub.discovery, socket: `${root}/unavailable.sock` }));
+    try { assert.equal((await inspection(layout(root))).kind, 'mute', 'unavailable socket keeps explicit identity at the ownership fallback'); }
+    finally { await writeFile(layout(root).discovery, JSON.stringify(hub.discovery)); }
+  });
+});
+
+test('overlapping fixture CLI calls retain captured context and restore the outer environment', async t => {
+  const owner = fixtureWork(t);
+  const previous = process.env;
+  owner.restore(() => { process.env = previous; });
+  let replyFirst: (() => void) | undefined, replySecond: (() => void) | undefined;
+  owner.release(() => { replyFirst?.(); replySecond?.(); });
+  await owner.run(async work => {
+    const root = await work.root(() => tempProject(t));
+    const env = fixtureEnvironment(root, previous, { CLAND_TEST_LOCK_IDENTITY: JSON.stringify({ hostname: 'overlap-host', bootId: 'overlap-boot', pidNamespace: null }) });
+    process.env = env;
+    const seen: string[] = [];
+    const f = await work.acquire(() => fixture(t, reply => {
+      seen.push(process.env.CLAND_TEST_LOCK_IDENTITY ?? 'missing');
+      if (seen.length === 1) replyFirst = reply;
+      else replySecond = reply;
+    }, root), f => f.dispose());
+    const first = fixtureHubCommand(root, 'status', '--json');
+    let second: ReturnType<typeof fixtureHubCommand> | undefined;
+    try {
+      await work.step(() => until(() => !!replyFirst, { what: 'first held CLI status receipt', timeoutMs: 5000 }));
+      second = fixtureHubCommand(root, 'status', '--json');
+      replyFirst!();
+      assert.equal((await work.step(() => first)).code, 0);
+      await work.step(() => until(() => !!replySecond, { what: 'second held CLI status receipt', timeoutMs: 5000 }));
+      replySecond!();
+      const result = await work.step(() => second!);
+      assert.equal(result.code, 0, result.stderr);
+      assert.equal(JSON.parse(result.stdout).pid, f.d.pid);
+      assert.ok(process.env === env, 'both settlements restore the original environment object');
+      assert.deepEqual(seen, [env.CLAND_TEST_LOCK_IDENTITY, env.CLAND_TEST_LOCK_IDENTITY]);
+    } finally {
+      replyFirst?.(); replySecond?.();
+      await Promise.allSettled([first, ...(second ? [second] : [])]);
+    }
+  });
+});
 
 test.beforeEach(async context => {
   assert.ok('after' in context, 'beforeEach runs in a test context');
@@ -28,32 +101,40 @@ test.beforeEach(async context => {
   t.after(() => { process.env = previous; });
 });
 
-async function fixture(t: test.TestContext, holdStatus?: () => void) {
-  const root = await tempProject(t), l = { ...layout(root), socket: fixtureSocketPath(root, 'status.sock') }, clock = new FakeClock();
+async function fixture(t: test.TestContext, holdStatus?: (reply: () => void) => void, ownedRoot?: string) {
+  const root = ownedRoot ?? await tempProject(t), l = { ...layout(root), socket: fixtureSocketPath(root, 'status.sock') }, clock = new FakeClock();
   const base = { pid: process.pid, port: 0, socket: l.socket, version: 'test', root, startedAt: clock.now().toISOString(), uptimeMs: 0 };
   let statusCalls = 0;
   const control = {
     status: () => { statusCalls++; clock.block(4000); return base; }, stop: () => assert.fail('must not stop the hub'),
   };
   const hub = createHubBase({ secret: 'test', clock, control });
-  t.after(() => hub.close());
+  let closing: Promise<void> | undefined;
+  const closeHub = () => closing ??= hub.close();
+  t.after(closeHub);
   if (holdStatus) {
     const open = hub.dispatcher.open.bind(hub.dispatcher);
     t.mock.method(hub.dispatcher, 'open', (...args: Parameters<typeof open>) => {
       const conversation = open(...args);
       return { ...conversation, receive: (line: string) => {
-        if (JSON.parse(line).type === 'hub.status') holdStatus();
+        if (JSON.parse(line).type === 'hub.status') holdStatus(() => conversation.receive(line));
         else conversation.receive(line);
       } };
     });
   }
-  await mkdir(l.dir, { recursive: true });
-  const edge = await createSocketEdge({ path: l.socket, dispatcher: hub.dispatcher });
-  t.after(() => edge.close());
   const d = { ...base, secret: 'test' };
-  await writeFile(l.discovery, JSON.stringify(d));
+  let edge: Awaited<ReturnType<typeof createSocketEdge>> | undefined;
+  try {
+    await mkdir(l.dir, { recursive: true });
+    edge = await createSocketEdge({ path: l.socket, dispatcher: hub.dispatcher });
+    t.after(() => edge!.close());
+    await writeFile(l.discovery, JSON.stringify(d));
+  } catch (error) {
+    try { await edge?.close(); } finally { await closeHub(); }
+    throw error;
+  }
   statusCalls = 0;
-  return { root, l, clock, d, base, control, statusCalls: () => statusCalls };
+  return { root, l, clock, d, base, control, statusCalls: () => statusCalls, dispose: async () => { await edge!.close(); await closeHub(); } };
 }
 
 test('inspect and start recognise a serving hub without collecting slow status', async t => {
@@ -117,7 +198,7 @@ test('full status retains a large fragmented response', async t => {
 
 test('default hub status bounds completed suite history and preserves explicit historical diagnostics', async t => {
   const { Store } = await import('../src/hub/store.ts');
-  const { nativeIdentityProjectHub: projectHub, connectUi } = await import('./harness.ts');
+  const { projectHub, connectUi } = await import('./harness.ts');
   const { join } = await import('node:path');
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
@@ -152,13 +233,13 @@ test('default hub status bounds completed suite history and preserves explicit h
   assert.equal((history.value as import('../src/protocol.ts').HubStatus).suites?.length, 31);
   assert.ok(Buffer.byteLength(JSON.stringify(history)) > 256 * 1024);
   let output = '';
-  assert.equal(await runHub(['status', '--json', '--history'], root, { out: text => { output += text; }, err: text => assert.fail(text) }), 0);
+  assert.equal(await runFixtureHub(['status', '--json', '--history'], root, { out: text => { output += text; }, err: text => assert.fail(text) }), 0);
   assert.equal(JSON.parse(output).suites.length, 31, 'CLI explicitly opts into historical diagnostics');
 });
 
 test('topic history pages complete messages by bytes and reads the next before-id page', async t => {
   const { Store } = await import('../src/hub/store.ts');
-  const { nativeIdentityProjectHub: projectHub, connectUi } = await import('./harness.ts');
+  const { projectHub, connectUi } = await import('./harness.ts');
   const { join } = await import('node:path');
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
@@ -190,7 +271,7 @@ test('topic history pages complete messages by bytes and reads the next before-i
 
 test('artifact pages are newest first and an exclusive cursor reaches the next page', async t => {
   const { Store } = await import('../src/hub/store.ts');
-  const { nativeIdentityProjectHub: projectHub, connectUi } = await import('./harness.ts');
+  const { projectHub, connectUi } = await import('./harness.ts');
   const { join } = await import('node:path');
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });

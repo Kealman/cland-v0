@@ -11,7 +11,8 @@ import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { RolesFile, ROLES_REFRESH_MS } from '../src/roles/config.ts';
 import { layout } from '../src/project.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { cland, eventually, flushProjectLogs, nativeIdentityProjectHub as projectHub, tempProject } from './harness.ts';
+import { cland, eventually, flushProjectLogs, projectHub, tempProject } from './harness.ts';
+import { fixtureHubCommand } from './fixture-hub-cli.ts';
 
 const config = (root: string, budget: number) => `[verification]\nlock_path=${JSON.stringify(join(root, "suite.lock"))}\nremote_budget=${budget}\n`;
 
@@ -165,7 +166,7 @@ test('role auto-refresh applies the pair only when valid, and running launches r
   const second = await launch('after');
   assert.equal(daemon.fakes['claude-code']!.spawns.find(r => r.name === first.name)!.model, 'before');
   assert.equal(daemon.fakes['claude-code']!.spawns.find(r => r.name === second.name)!.model, 'after');
-  const s = JSON.parse((await cland(root, 'hub', 'status', '--history', '--json')).stdout);
+  const s = JSON.parse((await fixtureHubCommand(root, 'status', '--history', '--json')).stdout);
   assert.equal(s.verification.remoteBudget, 4);
   assert.equal(s.harnesses.find((p: { name: string }) => p.name === 'before').model, 'before');
   assert.equal(s.harnesses.find((p: { name: string }) => p.name === 'after').model, 'after');
@@ -174,7 +175,7 @@ test('role auto-refresh applies the pair only when valid, and running launches r
   assert.match(denied.stderr, /forbidden/);
   await writeFile(path, config(root, 5)); await writeFile(rolePath, roleText('automatic'));
   await eventually('role auto-refresh publishes config too', async () => {
-    const s = JSON.parse((await cland(root, 'hub', 'status', '--history', '--json')).stdout);
+    const s = JSON.parse((await fixtureHubCommand(root, 'status', '--history', '--json')).stdout);
     return s.verification.remoteBudget === 5 ? true : undefined;
   });
 });
@@ -187,14 +188,14 @@ test('missing config retains the loaded policy and permits role refresh with a w
   await writeFile(path, config(root, 6)); await writeFile(rolePath, roles('before'));
   const daemon = await projectHub(t, root);
   const ui = await connectUi(t, daemon.discovery);
-  const initial = JSON.parse((await cland(root, 'hub', 'status', '--history', '--json')).stdout);
+  const initial = JSON.parse((await fixtureHubCommand(root, 'status', '--history', '--json')).stdout);
   await unlink(path);
   await writeFile(rolePath, roles('without-config'));
   await eventually('role edit published with config absent', async () => {
     const listed = (await ui.request({ type: 'role.list' })).value as { roles: Array<{ role: string; launch: { model: string } }> };
     return listed.roles.find(r => r.role === 'implementer')?.launch.model === 'without-config' ? true : undefined;
   });
-  const loaded = JSON.parse((await cland(root, 'hub', 'status', '--history', '--json')).stdout);
+  const loaded = JSON.parse((await fixtureHubCommand(root, 'status', '--history', '--json')).stdout);
   assert.equal(loaded.verification.remoteBudget, 6);
   assert.deepEqual(loaded.config, initial.config, 'retained config keeps its loaded time and provenance');
   const reloaded = await cland(root, 'hub', 'reload');
@@ -208,7 +209,7 @@ test('missing config retains the loaded policy and permits role refresh with a w
   assert.equal(denied.code, 1);
   const listed = (await ui.request({ type: 'role.list' })).value as { roles: Array<{ role: string; launch: { model: string } }> };
   assert.equal(listed.roles.find(r => r.role === 'implementer')?.launch.model, 'without-config');
-  assert.equal(JSON.parse((await cland(root, 'hub', 'status', '--history', '--json')).stdout).verification.remoteBudget, 6);
+  assert.equal(JSON.parse((await fixtureHubCommand(root, 'status', '--history', '--json')).stdout).verification.remoteBudget, 6);
 });
 
 // T-1230 C1: the project's usable-skill inventory is a cached snapshot. The scan is asynchronous, the clause

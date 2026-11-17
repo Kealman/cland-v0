@@ -1,9 +1,9 @@
 // T2: startup logging and public CLI reports through one in-process project hub.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fixtureLockIdentity, nativeIdentityProjectHub as projectHub, tempProject } from './harness.ts';
+import { projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
-import { runHub } from '../src/cli/hub.ts';
+import { runFixtureHub as runHub } from './fixture-hub-cli.ts';
 import { captureCli } from './cli-in-process.ts';
 import { doctor, report, toolchain, check } from './doctor-fixture.ts';
 
@@ -12,9 +12,6 @@ test('inherited low priority appears in the startup log and CLI diagnostics', as
   const tools = await toolchain(t);
   // runHub reads process.env; use the shared sealed toolchain environment,
   // just as the doctor calls below do, instead of the outer crew identity.
-  // Native CLI lock readers require the host identity. Capture it before sealing
-  // away runner metadata, then share it with the injected doctor lock reader.
-  tools.env.CLAND_TEST_LOCK_IDENTITY = JSON.stringify(fixtureLockIdentity(tools.env, true));
   const previous = process.env;
   process.env = tools.env;
   t.after(() => { process.env = previous; });

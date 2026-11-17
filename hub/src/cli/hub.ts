@@ -14,6 +14,7 @@ import { askHub, askHubFrame, probe } from './socket-client.ts';
 import { sessionOf } from './actor.ts';
 import { journalPath, readJournal } from '../hub/journal.ts';
 import type { readForeignHolder } from '../hub/lock.ts';
+import type { HubLockOptions } from '../hub/lock.ts';
 import { formatAudit, parseSince, readAudit, type AuditFilter } from '../hub/audit.ts';
 
 const CLI_ENTRY = fileURLToPath(new URL('../../bin/cland.ts', import.meta.url));
@@ -80,16 +81,17 @@ const ownsProject = (lockFile: string, pid: number, readers: typeof import('../h
  * What `hub.json` says and whether it is true: a live hub, a stale file (its pid is gone, or is a live
  * process that does not hold the project's lock — a reused pid), a hub that does not answer, or nothing.
  */
-export async function inspect(l: Layout): Promise<{ kind: 'none' } | { kind: 'foreign'; info: NonNullable<ReturnType<typeof readForeignHolder>> } | { kind: 'stale'; d: Discovery; why: string } | { kind: 'mute'; d: Discovery } | { kind: 'live'; d: Discovery }> {
+export async function inspect(l: Layout, lockOptions?: HubLockOptions): Promise<{ kind: 'none' } | { kind: 'foreign'; info: NonNullable<ReturnType<typeof readForeignHolder>> } | { kind: 'stale'; d: Discovery; why: string } | { kind: 'mute'; d: Discovery } | { kind: 'live'; d: Discovery }> {
   const d = readDiscovery(l.discovery);
   if (d?.remote) return await probe(d) ? {kind:'live', d} : {kind:'mute', d};
   const readers = existsSync(l.lock) ? await import('../hub/lock.ts') : null;
-  const foreign = readers?.readForeignHolder(l.lock);
+  const foreign = readers?.readForeignHolder(l.lock, lockOptions);
   if (foreign) return { kind: 'foreign', info: foreign };
   if (!d) return { kind: 'none' };
   if (!pidAlive(d.pid)) return { kind: 'stale', d, why: `pid ${d.pid} is gone` };
   if (await probe(d)) return { kind: 'live', d };
-  return readers && ownsProject(l.lock, d.pid, readers) ? { kind: 'mute', d } : { kind: 'stale', d, why: `pid ${d.pid} is not this project's hub` };
+  const owns = readers && (lockOptions ? readers.liveHolder(l.lock, lockOptions)?.pid === d.pid : ownsProject(l.lock, d.pid, readers));
+  return owns ? { kind: 'mute', d } : { kind: 'stale', d, why: `pid ${d.pid} is not this project's hub` };
 }
 
 async function waitForExit(pid: number, ms: number): Promise<boolean> {
@@ -101,14 +103,14 @@ async function waitForExit(pid: number, ms: number): Promise<boolean> {
   return !pidAlive(pid);
 }
 
-export async function startProjectHub(root: string, io: Io, starter: Starter, autostart: boolean, env: NodeJS.ProcessEnv = process.env): Promise<number> {
+export async function startProjectHub(root: string, io: Io, starter: Starter, autostart: boolean, env: NodeJS.ProcessEnv = process.env, lockOptions?: HubLockOptions): Promise<number> {
   const since = new Date();
   const l = layout(root);
   if (autostart && autostartDeferred(root)) {
     io.out(`${new AutostartDeferred().message}\n`);
     return 0;
   }
-  const found = await inspect(l);
+  const found = await inspect(l, lockOptions);
   if ((found.kind === 'live' || found.kind === 'mute') && found.d.remote) {
     io.err('cland: manage the remote hub on its owning machine\n');
     return 1;
@@ -153,7 +155,7 @@ export async function startProjectHub(root: string, io: Io, starter: Starter, au
       logSize = size;
     } catch { /* no progress logged */ }
     if (Date.now() >= deadline) break;
-    const foreign = readForeignHolder(l.lock);
+    const foreign = readForeignHolder(l.lock, lockOptions);
     if (foreign?.active) {
       // The losing child will refuse acquisition. Observe its exit before returning.
       if (exited !== null) {
@@ -163,7 +165,7 @@ export async function startProjectHub(root: string, io: Io, starter: Starter, au
       await sleep(50);
       continue;
     }
-    const holder = liveHolder(l.lock);
+    const holder = liveHolder(l.lock, lockOptions);
     if (exited !== null && holder === null) {
       if (autostart && autostartDeferred(root)) {
         io.out(`${new AutostartDeferred().message}\n`);
@@ -199,9 +201,9 @@ export async function startProjectHub(root: string, io: Io, starter: Starter, au
   return 1;
 }
 
-async function status(l: Layout, json: boolean, io: Io, history = false): Promise<number> {
+async function status(l: Layout, json: boolean, io: Io, history = false, lockOptions?: HubLockOptions): Promise<number> {
   const root = l.root;
-  const found = await inspect(l);
+  const found = await inspect(l, lockOptions);
   switch (found.kind) {
     case 'live': {
       try {
@@ -471,7 +473,7 @@ function journal(root: string, args: string[], io: Io): number {
 }
 
 /** `cland hub <sub> [flags]`; the process exit code. */
-export async function runHub(args: string[], cwd: string = process.cwd(), io: Io = stdio): Promise<number> {
+export async function runHub(args: string[], cwd: string = process.cwd(), io: Io = stdio, lockOptions?: HubLockOptions): Promise<number> {
   const [sub, ...rest] = args;
   const root = projectRoot(cwd);
   // Only these three values travel to the detached child; never forward environment metadata.
@@ -498,7 +500,7 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
   const l = { ...layout(target ?? root), discovery };
   switch (sub) {
     case 'start':
-      return startProjectHub(root, io, starter, rest.includes('--autostart'));
+      return startProjectHub(root, io, starter, rest.includes('--autostart'), process.env, lockOptions);
     case 'subscriptions': {
       const hub = readDiscovery(l.discovery);
       if (!hub) throw new Error('no hub running');
@@ -516,7 +518,7 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
       } catch (error) { io.err(`cland: ${error instanceof Error ? error.message : String(error)}\n`); return 1; }
     }
     case 'status':
-      return status(l, rest.includes('--json'), io, rest.includes('--history'));
+      return status(l, rest.includes('--json'), io, rest.includes('--history'), lockOptions);
     case 'stop':
       return stop(l, target !== null, io);
     case 'audit':

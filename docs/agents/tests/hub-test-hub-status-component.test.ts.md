@@ -6,6 +6,23 @@ a synthetic outer crew identity and discovery path, so standalone session shells
 and sealed suite workers exercise the same isolation boundary. `runHub` and
 `askHub` read the ambient environment; no outer session may reach the scratch hub.
 
+The fixture CLI identity regression gives the embedded hub a synthetic host/boot
+identity and checks both the explicit public-module options and
+`fixtureHubCommand` start/status replies. A different explicit host is foreign;
+an unavailable socket with the matching identity is mute. These retain the
+ownership fallback assertion. The fixture helper captures lock facts before
+sealing its environment and restores the caller environment after completion.
+An overlapping pair holds its first status reply, submits the second call, then
+settles them in order. Both reply handlers observe the captured identity and the
+final assertion checks restoration of the original environment object. The
+helper serializes admission and restoration; queued calls retain the original
+context. The identity and overlap regressions register `fixtureWork` before
+setup, adopt roots and resources, release holds on cancellation and join pending
+CLI results before environment restoration or root removal.
+It supports start/status only; a cold start test still supplies its fake spawn.
+Native CLI binary/lock contracts keep the normal helpers and omitted native
+defaults. No production lock identity comes from a test environment variable.
+
 The startup relay records exact UTF-8 JSON result frames, with envelope and
 newline, for status, rules, General history, artifacts, open item summaries,
 events, sessions and accounts. It retains the rendered completion assertion and

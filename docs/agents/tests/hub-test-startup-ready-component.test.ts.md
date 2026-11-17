@@ -1,5 +1,14 @@
 # hub/test/startup-ready-component.test.ts
 
+The cold-start CLI case runs with captured runner lock identity present and
+absent. Both variants use the shared fixture CLI boundary and assert the
+persisted lock identity after the embedded hub starts. Its mocked spawn acquires
+the hub inside the sealed CLI scope, so the fixture metadata must survive that
+scope. Whole-callback `fixtureWork` owns the root, hub acquisition and pending
+CLI result; teardown releases the held ready check and joins setup/body work
+before restoring the environment. A failed embedded acquisition emits a fake
+child exit and keeps its rejected promise joined. No native child starts.
+
 Lease-recovery startup coverage uses `startup-ready-component.test.ts` at T2:
 persist a releasing lease before `projectHub`, hold the scripted fake DigitalOcean
 provider list, inject executor lock process facts through `droplet.processes`,
