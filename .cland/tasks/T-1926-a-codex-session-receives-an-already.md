@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T22:29:11.865Z
-updated: 2026-11-16T22:29:11.865Z
+updated: 2026-11-16T23:39:21.429Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ A Codex Reviewer session (rev-38, launched 2026-11-16 22:25Z, no reconnect since
 
 - [ ] C1. A delivery the recipient has answered (reply_to or a recorded verdict naming it) is not delivered again to that session; a regression with a Codex fixture session reproduces the repeat before the fix (test).
 - [ ] C2. Progress notes already digested into a turn are not re-sent with a later redelivery (test).
+
+## Comments
+
+### coord · 2026-11-16T23:39:21.429Z
+
+More evidence (reviewer report 67d51ce9-aed9-449d-a851-2a38b863808c, relayed by impl-1677 in topic-1570, 23:39Z): the identical request 5b257321-d065-4e3f-8377-49fb8b3e3933, with the same five old progress notes, kept arriving at rev-38 after its final clear rev-38-1677-final-1 (A-20427) and after it had moved on to the newer T-1924 review. `verification.decline` on it returned exactly "request is not your current accepted pending reservation". So the hub no longer treats it as rev-38's pending review, yet keeps delivering it. The replay therefore comes from the delivery path, outside the review reservation; likely related to T-1924's diagnosis (delivered rows re-entering the retry through `uninjected`), though rev-38 is a Codex session, not Claude. No retry, workaround or duplicate verdict was made.

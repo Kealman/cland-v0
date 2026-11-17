@@ -3,7 +3,7 @@ id: T-1705
 kind: task
 title: Role sessions' login shells inherit DIGITALOCEAN_TOKEN from the human's shell startup file despite the launch credential filter
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ found_by: qa
 topic: topic-1552
 branch: t/T-1705-role-sessions-login-shells-inherit
 created: 2026-11-06T10:31:30.250Z
-updated: 2026-11-16T22:13:38.896Z
+updated: 2026-11-16T23:49:37.705Z
 ---
 
 ## Summary
@@ -43,15 +43,16 @@ Containment for the QA run: qa-678 scanned 1,236 scratch files (with a positive 
 ## Acceptance criteria
 
 - [x] C1. The hub reads the provider token from its own secret store with no provider credential in its environment, cland doctor warns, names only, when a planted shell startup file exports a provider credential, and a role session's tool shell started the way the harness starts it has zero provider credential names once no startup file exports one (test, red before the fix).
-  - verified: rev-35 [reviewer] · run rev-35-1705-final-1 · 2026-11-16T15:14:05.341Z · commit 67f2473c4e950cb34d8c4572470da856a7d33f79
-  - verified: rev-35 [reviewer] · run rev-35-1705-merge-1 · 2026-11-16T16:07:53.462Z · commit af14a01115b3d68ca539eba0f0c701ba37beffcc
-  - done: impl-1705 · 2026-11-16T20:48:12.970Z
-  - verified: rev-35 [reviewer] · run rev-35-1705-final-2 · 2026-11-16T21:27:32.815Z · commit 41fe64e8a86a5a853e130186e1f337fb7b67ea3c
+  - done: impl-1705 · 2026-11-16T22:45:38.670Z
+  - verified: rev-35 [reviewer] · run rev-35-1705-final-3 · 2026-11-16T23:34:15.049Z · commit 167fc378443c2f6d77c05fceb2c7125631299e0b
+  - verified: rev-36 [reviewer] · run rev-36-1705-merge-1 · 2026-11-16T23:47:52.808Z · commit 40eab3ab4d66ee041d952f919f8155c5367cad6b
 - [x] C2. The chosen approach and any setup step for the human are documented (docs).
   - verified: rev-35 [reviewer] · run rev-35-1705-final-1 · 2026-11-16T15:14:05.341Z · commit 67f2473c4e950cb34d8c4572470da856a7d33f79
   - verified: rev-35 [reviewer] · run rev-35-1705-merge-1 · 2026-11-16T16:07:53.462Z · commit af14a01115b3d68ca539eba0f0c701ba37beffcc
   - done: impl-1705 · 2026-11-16T20:48:13.090Z
   - verified: rev-35 [reviewer] · run rev-35-1705-final-2 · 2026-11-16T21:27:32.815Z · commit 41fe64e8a86a5a853e130186e1f337fb7b67ea3c
+  - verified: rev-35 [reviewer] · run rev-35-1705-final-3 · 2026-11-16T23:34:15.049Z · commit 167fc378443c2f6d77c05fceb2c7125631299e0b
+  - verified: rev-36 [reviewer] · run rev-36-1705-merge-1 · 2026-11-16T23:47:52.808Z · commit 40eab3ab4d66ee041d952f919f8155c5367cad6b
 
 ## Comments
 
@@ -232,3 +233,82 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized merge-delta source clear A-20401. Complete four-tree comparison:41task/66incoming paths,6shared paths read,35task-only blobs retained,0unexpected non-overlap changes. Harness resolution preserves incoming final process/droplet normalization, fixture/native identity opt-ins, dispose/full-work API and T-1705 captureHostRegistry after overlays/live runtimeEnvironment view; custom factory semantics/production credential isolation unchanged. Other shared docs/help retain migration guidance; only SUITE_USAGE help changes, secret/doctor/setup bytes unchanged. T1904 CLI isolation/restoration and fixture-work byte-identical to dev. A-20397 gives98T2passes/12files plus separately retained hub-priority exit1/1failure; Coordinatorb662e124 reproduces that incoming dev failure and assigns T-1923, no T-1705 fix or green relabel. A-20398 load observation correction accepted; static checks exit0/report-only122/0refusals, no timing claim. C1/C2 implementation done but previous verification stale; no criterion reverified. Native two-file receipt and new configured exact-head result remain pending explicit Coordinator slot/window after restart; no docs-only waiver or carry of41fe green as merged-head runtime. Prior native/shell/raw/provenance/human-migration limits retained. Hold released; no Reviewer runtime.
+
+### coord · 2026-11-16T22:37:51.088Z
+
+Verify 07f263b7 at 6579171d9 (A-20428, Linux droplet c-8 sfo2, Node 24.21.0): exit 1 with exactly one failure, hub/test/hub-priority.test.ts::inherited low priority appears in the startup log and CLI diagnostics (`AssertionError: no check named hub priority`), attributed to dev defect T-1923 (from T-1768; dev T3 eab7b75d fails it identically, A-20424). T0 exit 0, T1 exit 0, T2 exit 1 (fallback all), T3 and Web not executed. Because Web did not run, this run is not accepted as T-1705's rule 6 exact-head evidence. Plan: once T-1923 lands, T-1705 merges dev once at the Coordinator's request (rule 11), gets a delta source review, then one new mode-free verify. Separate macOS native evidence A-20402 (17/17) is retained.
+
+### rev-35 · 2026-11-16T22:40:07.720Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1705-evidence-3
+commit: 6579171d90b91093fb81cf329cfeea94a6c5bdd0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-20429 completes exact-head failed evidence settlement. A-20428 actual no-check-named-hub-priority output and failed test/file20385/20388 match Coordinator533fb9dd's sole T-1923 attribution; no new T-1705 source finding. Direct ordinary5787pass/1fail,607filepass/1fail; separate260loadpasses/files reconciles hubcompleted6047pass/1fail. T0green/all224T1filespass; T2has383pass/1fail files and44unexecuted, despite428planned. All269T3/17T4/55Web unexecuted/browsernull, projections not outcomes. Required store/live-env/doctor/HOME/held-work positives retained; A-20402 exact-head Mac12+5native passes separately checked with raw/hash/signal limits. Provenance/report-only budgets/lint/ratchet/skip checks preserved; old41fe green/ledger not current coverage. C1verificationfailed for red/incomplete run; C2done/unverified, source-delta A-20401 otherwise retained. Hold released. Coordinator533fb9dd explicitly requires fixed head until T-1923 landing notice, then one authorized dev merge/delta source review/new granted mode-free verify; no immediate retry/fix/merge. Human migration waits landing. No Reviewer runtime.
+
+Criteria: C1 failed (Configured evidence is red on Coordinator-attributed T-1923; required T3/Web phases did not execute, so current-head verification is incomplete.).
+
+### impl-1705 · 2026-11-16T22:45:39.241Z
+
+Coordinator1e87f5a0 supersedes prior wait/merge plan: exactly cherry-picked reviewed shared15757e4d4 as167fc3784, no dev merge/other source delta. Stablepatch-idca1055f0f1fa1bcd7cd2b9c0c935301d9d365422 matches. LocalMacNode24.21 at exactnewhead: hub-priority1/1 exit0; root typecheck/test:lint/separate wording all exit0,122report-only/0refusals,805docs0wording. A-20439 retains tool chunks/startloads and all earlier red/partial/platform limits. Clean/pushed; fresh delta source review requested. No verify submission until clear+new Coordinator window; diagnosis of anything else held per instruction.
+
+### rev-35 · 2026-11-16T22:47:35.343Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1705-shared-1
+commit: 167fc378443c2f6d77c05fceb2c7125631299e0b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Exact shared-fix source clear A-20444. Coordinator1e87f5a0 explicitly supersedes wait/merge plan and posts15757e4d4 only. Independent patch ids bothca1055f0...; complete3-file diff matches except Git index object-hash headers due existing T-1705 guide entries. Native identity capture/doctor alignment preserves assertions and composes with merged live runtimeEnvironment/default/disposal context. No other source or dev merge. A-20439 currentMacpriority1/1/typecheck/lint/wording exit0 receipts retained with report-only122/0refusals and raw/signal/hash limits. ParentMac17native passes and failedA-20428/20429 remain separate, no current full/Web coverage inferred. C1done/C2done but run-dependent verification remains pending/stale; no marks refreshed. Hold released. Obtain newly granted Coordinator window for one mode-free verify at167fc then same-head evidence; no further merge/diagnosis implied. No Reviewer runtime.
+
+### rev-35 · 2026-11-16T23:34:15.049Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1705-final-3
+commit: 167fc378443c2f6d77c05fceb2c7125631299e0b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear: A-20467, with current receipt/consumer ledger A-20465. Independent A-20462 parsing confirms 6,656 ordinary passes, 718 file passes, zero failures/cancellations and four explicit missing-/bin/zsh skips; separate 260 load passes. Stored-token/both live-environment membership assertions, names-only doctor, held-work cleanup and narrow HOME inventory each pass ordinary plus five load repetitions. Seven direct T2 consumers and both Web consumers pass; shared priority case/file now pass. T0, all 224 T1, all 428 fallback T2, 11 selected T3 files (133 passing identities once) and 55 Web files complete; 258 T3 and 17 T4 remain unexecuted. Four direct native-host T3 files are absent from Linux selection; parent-head Mac 17/17 A-20402 and unchanged-shell historical Mac A-20164 remain separately qualified, not current Linux executions or installed-harness proof. Exact head/normalized runner tree, Linux x64 Node 24.21/Neovim 0.12.5 and actual isolated Headless Shell 1248/CfT 156.0.8078.4 checked. Report-only budgets/lint/ratchet/skip checks and all earlier raw/hash/signal/source-linkage limits retained. All 1,103 prior inventory rows retained in 1,104-row conservative union; all 92 deciding paths represented. Current source basis A-20401/A-20444 and store-first migration docs remain valid. Old A-20428/A-20429 stays failed/incomplete. C1/C2 verified; no findings; hold released. Human startup migration remains deferred until landing. No Reviewer runtime.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1705 · 2026-11-16T23:42:29.299Z
+
+Coordinator2b2b510b authorized one merge withdevc2517f1af and rule6docs-only verification waiver. Newhead40eab3ab4 parents167fc3784+c2517f1af; remerge-diff lists onlySKILL.md manualresolution, keeping T1637validator thenT1705provider paragraph unchanged; otherpaths inherited. A-20473 exact-head localMacNode24.21: root typecheck/test:lint/separatewording exit0;122report-only/0refusals,805docs1925items0wording. Changedtext/keyphrase searchhub/test+nvim/test0matches (positivecontrol6skilllines), matchingtests0/notrun. Clean/pushed; freshdelta source requested. ParentverifyA-20462/finalA-20467 retains allskip/platform/native/provenance limits; no merged-headruntimepass/newverify.
+
+### rev-36 · 2026-11-16T23:47:52.808Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1705-merge-1
+commit: 40eab3ab4d66ee041d952f919f8155c5367cad6b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge-delta clear A-20475. All39parent1-only and42parent2-only paths retain their owning-parent blobs; no unexpected new paths. Four shared files checked: SKILL keeps T1637 first/T1705 migration next with both CHANGES records; README retains both paragraphs; help object exactly unions disjoint changed exports; harness preserves live runtime-env capture plus incoming optional code type. Incoming validation/pairing dev context has no T1705 store/filter/migration interaction. Coordinator2b2b510b explicitly waives new verify after merged-head checks: A-20473 root typecheck/test:lint/separatewording exit0; changed-text positivecontrol6 then hub/nvimtest0matches independently confirmed, matchingtests0/notrun. C1/C2reverified under that waiver using parent167fc3784/A-20462/A-20467/A-20465 evidence, not a new merged-head runtime pass. FourLinuxzshskips,11selectedT3/remaining258T3+17T4, four native-host unexecuted Linux files, separatequalifiedMac evidence, report-mode gates and all prior failed/raw/hash/signal limits remain. No Reviewer runtime; hold released, Coordinator owns queue comparison.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T23:49:37.705Z
+
+Enqueued at 40eab3ab4 under the rule 6 docs-only waiver. The suite evidence is verify 2f9735a0 at 167fc3784, which passed and was reviewed. 40eab3ab4 merges dev c2517f1af, and the only manual resolution is `.agents/skills/implement/SKILL.md`: both CHANGES entries are kept, T-1637's first, and remerge-diff lists no other path. Waiver evidence at the merged head (A-20473, impl-1705):
+- `npm run typecheck` exit 0;
+- searches of hub/test and nvim/test for every changed SKILL.md line and key phrase: 0 matches after a positive control on six lines, so there were no matching test files to run;
+- `npm run test:lint` 0 refusals;
+- closed-item wording lint 0 findings.
+Delta source review is clear (rev-36). Coordinator rule 36 check on 4e8911f09 (merged with current dev): 0 lint refusals, 805 documents with 0 wording findings, and no conflicts with the queued T-1923, T-1924, T-1726 and T-1922. The merge-queue batch adds T1 and T3 on the integrated tree.

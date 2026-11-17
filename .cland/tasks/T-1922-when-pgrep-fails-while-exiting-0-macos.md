@@ -2,8 +2,8 @@
 id: T-1922
 kind: task
 title: When pgrep fails while exiting 0 (macOS sysmond missing), the hub reads every process group as empty and declares live remote runs and watchdogs dead
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1568
 branch: t/T-1922-when-pgrep-fails-while-exiting-0-macos
 created: 2026-11-16T17:36:21.368Z
-updated: 2026-11-16T22:28:56.463Z
+updated: 2026-11-17T00:32:50.444Z
+closed: 2026-11-17T00:32:50.444Z
 ---
 
 ## Summary
@@ -27,9 +28,11 @@ Every pgrep caller treats any stderr output, or a known failure message, as a fa
 ## Acceptance criteria
 
 - [x] C1. With a fake pgrep that writes the sysmond error to stderr and exits 0, every pgrep path that can touch a run preserves its process and ownership fence and reports "process inspection unavailable"; a running remote run fixture keeps its lease, readable stream and native watchdog identity across these checks (test, red before the fix).
-  - done: impl-1922 · 2026-11-16T22:21:53.616Z
+  - done: impl-1922 · 2026-11-16T22:54:53.222Z
+  - verified: rev-36 [reviewer] · run rev-36-1922-final-1 · 2026-11-16T23:33:57.473Z · commit b980d46cf16602cdfb555f2dff7f21180e459fa5
 - [x] C2. The same fake makes suite-lock and git-maintenance owner checks report "process inspection unavailable" without releasing or reclaiming anything, and a genuinely empty pgrep result still behaves as today (test).
   - done: impl-1922 · 2026-11-16T22:21:53.784Z
+  - verified: rev-36 [reviewer] · run rev-36-1922-final-1 · 2026-11-16T23:33:57.473Z · commit b980d46cf16602cdfb555f2dff7f21180e459fa5
 
 ## Comments
 
@@ -57,3 +60,54 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at 47f7439ba582ce6c2ab79823319531144f32861b. Standards: initial root-ownership and consumer-inventory findings are resolved; parent creates/registers both roots synchronously before first await, close-joined cleanup owns disposal, and A-20416 retains 656 consumer paths with tiers/dispositions (all 319 directly matched cleanup imports included). Spec: shared validation rejects diagnostic/malformed/failed pgrep across all four branches while preserving fences and clean-empty policy; current C1 is the Coordinator's scoped preservation criterion, with incident causality assigned to T-1925. Full review A-20421 supersedes initial findings snapshot A-20417. A-20412/A-20415 preserve targeted evidence and its source/native/raw-stream limits; corrected-path 2/2/compiler/lint are reported separately. C1/C2 remain unverified pending same-head configured evidence; no Reviewer tests/probes executed.
+
+### impl-1922 · 2026-11-16T22:53:24.092Z
+
+First configured verification e6b321a5 at 47f7439ba: only completed failure hub-priority.test.ts::inherited low priority appears in the startup log and CLI diagnostics (`no check named hub priority`, A-20447:32886), attributed by Coordinator to shared T-1923. T0/T1 pass, T2 fails, changed T3/Web unexecuted. Per Coordinator 97b2f764, cherry-picked unmodified reviewed fix 15757e4d4 as b980d46cf16602cdfb555f2dff7f21180e459fa5; no dev merge or other delta. Matching stable patch-id ca1055f0f1fa1bcd7cd2b9c0c935301d9d365422. Local Darwin arm64 Node24.21.0 hub-priority 1/1 and full npm run typecheck pass. A-20448 records evidence; pushed and requested delta source review before replacement verify window.
+
+### rev-36 · 2026-11-16T22:54:45.558Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1922-evidence-1
+commit: 47f7439ba582ce6c2ab79823319531144f32861b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Historical same-head configured evidence not clear: e6b321a5/A-20447 exit1 at47f7439ba. Actual sole completed failure hub-priority.test.ts::inherited low priority appears in the startup log and CLI diagnostics, AssertionError no check named hub priority (32886); Coordinator97b2f764 attributes T-1923 and separately authorizes exact shared-fix cherry-pick. T0/T1pass, T2fail, changedT3/Webunexecuted. T1pgrep matrix has base1+load5, but four newT3cases have no configured receipt. Independent streamed facts/provenance/report-mode limits A-20449; findings[] means no new source defect, not a green run. C1evidencefailed/C2unverified. New b980d46cf delta request remains a separate review; do not carry this red as pass.
+
+Criteria: C1 failed (Required configured run e6b321a5 failed in T2 before the new C1 T3 cases executed; named T1 positives do not complete the required receipt.).
+
+### rev-36 · 2026-11-16T22:55:38.337Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1922-source-2
+commit: b980d46cf16602cdfb555f2dff7f21180e459fa5
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear A-20450. Sole three-file delta from47f7439ba is Coordinator97b2f764-authorized unmodified T-1923 shared fix15757e4d4, independently matching stable patch idca1055f0f1fa1bcd7cd2b9c0c935301d9d365422. Native lock identity is retained across the fixture environment swap; doctor gets a positive local-holder assertion and existing priority assertions remain; guide/index align. No T-1922 runtime/cleanup/probe change or dev merge; prior full source A-20421 remains basis. e6b321a5/A-20447 remains historical failed/incomplete under A-20449, not carried. Targeted local priority1/1/compiler are not new configured/Linux evidence. C1 implementation-done restored, C1/C2 remain unverified until same-head result. Coordinator owns window; no Reviewer tests/probes.
+
+### rev-36 · 2026-11-16T23:33:57.473Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1922-final-1
+commit: b980d46cf16602cdfb555f2dff7f21180e459fa5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear:2933ff09/A-20461 at source-clear b980d46cf exits0,6648/6648 ordinary test finishes and709positive files; no nonpass/unfinished/skips. Independent streamed ledger A-20464 and final review A-20466. C1both descendant/collector/suite preservation cases plus both registered-group refusals have named base passes (changedT3once, no load repetition claim). C2clean-empty async/sync assertions and pure T1matrix base1+load5 pass. AllT1/allT2fallback/Web and both changedT3files complete; sharedpriority passes. Consumer656union:157positive,133T3+4T4deferred,362refs; broader remainingT3/T4/QA unexecuted. Actual Linuxx64 Node24.21/CfT156.0.8078.4 headless1248 provenance pins this head/executiontree, uncached; budgets/lint/ratchet report-only. Historical e6b321a5red/A-20449 and local capture limits remain. C1/C2verified; no Reviewer runtime.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T00:32:50.444Z
+
+Merged c74b7141f343adea41472bef0935b1c2d8b4bc38 onto dev.

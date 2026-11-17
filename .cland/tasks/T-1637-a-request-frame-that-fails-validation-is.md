@@ -2,8 +2,8 @@
 id: T-1637
 kind: task
 title: A request frame that fails validation is reported as an unknown request type
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1563
 branch: t/T-1637-a-request-frame-that-fails-validation-is
 created: 2026-11-02T16:48:05.147Z
-updated: 2026-11-16T18:53:43.010Z
+updated: 2026-11-16T22:47:25.471Z
+closed: 2026-11-16T22:47:25.471Z
 ---
 
 ## Summary
@@ -123,3 +124,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge-delta clear A-20346. Independently compared retained AUTO_MERGE467db5ff to final: only3README conflict-marker lines removed, both references retained; no manual source/test/config resolution. Whole-tree nonoverlap comparison clean;15of18 task paths identical to accepted parent including all task production/tests; reviewed shared skill/README/command fixture, onlyQA_LINT_USAGE changes andREMOTE_USAGE preserved. Coordinator2b184469/7ea5da30 docs-only rule6 waiver applies after three checks; A-20345 records exact merged-head fullroot typecheck/test:lint/separatewording exit0,798docs/1921items/0findings,122report-only/0refusals and raw-stream limits. C1/C2 reverified under explicitwaiver+qualified parentrev37finalA20306/run86c389bcA20305, not a new merge-head runtime pass. Parent6466ordinary/225load hostT0/LinuxT1/T2/Web andT3/T4deferral/source/native/real-account limits retained. Hold released; Coordinator owns enqueue/landing; no Reviewer runtime.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T22:47:25.471Z
+
+Merged c2517f1af2eaa38284614517c0141f03e358b34b onto dev.

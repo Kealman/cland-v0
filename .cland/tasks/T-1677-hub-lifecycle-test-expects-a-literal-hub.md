@@ -2,8 +2,8 @@
 id: T-1677
 kind: task
 title: hub-lifecycle test expects a literal hub.sock path and fails when TMPDIR is longer
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1570
 branch: t/T-1677-hub-lifecycle-test-expects-a-literal-hub
 created: 2026-11-04T14:47:20.577Z
-updated: 2026-11-16T22:26:45.252Z
+updated: 2026-11-16T23:39:38.911Z
+closed: 2026-11-16T23:39:15.653Z
 ---
 
 ## Summary
@@ -29,9 +30,11 @@ The test reads the actual socket path the hub publishes (discovery file or statu
 
 - [x] C1. hub-lifecycle passes with a TMPDIR long enough to force the fallback socket path (test).
   - done: impl-1677 · 2026-11-16T22:17:16.539Z
+  - verified: rev-38 [reviewer] · run rev-38-1677-final-1 · 2026-11-16T22:35:45.691Z · commit 06a3569e8240e0e00d32af3008dafd5fcdea3336
 - [x] C2. A case asserts the hub publishes and uses the fallback path when the primary would exceed the limit (test).
   - verified: rev-38 [reviewer] · run rev-38-1677-source-2 · 2026-11-16T22:26:37.228Z · commit 06a3569e8240e0e00d32af3008dafd5fcdea3336
   - done: impl-1677 · 2026-11-16T22:26:45.252Z
+  - verified: rev-38 [reviewer] · run rev-38-1677-final-1 · 2026-11-16T22:35:45.691Z · commit 06a3569e8240e0e00d32af3008dafd5fcdea3336
 
 ## Comments
 
@@ -85,3 +88,33 @@ No Reviewer tests executed; read-only source review only, no browser. A-20413 re
 Artifact A-20418: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20418-t-1677-source-review-clear-at-06a3569e8.md
 
 Criteria: C2 verified.
+
+### rev-38 · 2026-11-16T22:35:45.691Z
+
+verdict: review
+result: clear
+by: rev-38 [reviewer]
+run: rev-38-1677-final-1
+commit: 06a3569e8240e0e00d32af3008dafd5fcdea3336
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review T-1677 at 06a3569e8240e0e00d32af3008dafd5fcdea3336 (origin tip unchanged), tree1153aad7f37347dcdb7563d9a62a586fe8358160. Source clearance rev-38-1677-source-2/A-20418 retained. Run eb7e20e0-06b9-45b7-b43b-1efcb20b3a6f finished passed in task.view; A-20426 ends exit0 and pins this exact head/tree, executor droplet, Linux x64 6.8.0-147-generic, Node24.21.0, Neovim0.12.5, cached:null (fresh execution).
+
+Standards: no findings. Spec: no findings. All eight hub/test/scenarios/hub-lifecycle.test.ts generated top-level identities have positive finish outcome pass plus the file finish pass (A-20426:11332–11370), checked independently of exit0. Required identities:
+- cland hub start creates the .cland skeleton and the discovery file
+- cland hub start publishes and serves a fallback socket when the project and TMPDIR paths exceed the limit
+- fallback socket fixture cancellation adopts a late client before removing its root
+Remaining five lifecycle identities also passed once. No load repetitions for the changed T3 task duration check. The fallback case explicitly forces the child's TMPDIR/project root over SOCKET_PATH_MAX and asserts published served fallback; combined with A-20413 claimant Darwin long-TMPDIR skeleton/fallback/cancellation selection3/3 (raw producer capture unavailable), this establishes C1. C2's source assertions now have fresh Linux execution; cancellation control has positive completion. Both criteria verified.
+
+Run scope: T0 passed; T1 executed (224 files/1719 reported tests); selected T2 phase exited0 with no selected test identities (not broad T2 coverage); changed T3 file executed8/8 once; Web smoke executed5 reported tests. Summary reports1779 pass/0 fail/cancel/skip/todo across run accounting. Remaining T3 and T4 were unexecuted here; queued merge-batch/integrated coverage remains separate. Browser receipt: Chrome Headless Shell build1248, Google Chrome for Testing156.0.8078.4, isolated droplet executor. Budget/lint/ratchet diagnostics report-only, including unavailable/incomplete ratchet baseline and duration regressions, not performance passes or zero values. No suite wall-time claim inferred from projected tier timings. No Reviewer runtime or browser launched.
+
+Evidence artifact A-20426: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20426-suite-eb7e20e0-06b9-45b7-b43b-1efcb20b3a6f-auto-at-06a3569.log
+Review artifact A-20427: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20427-t-1677-final-evidence-clear-at-06a3569e8.md
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-16T23:39:15.653Z
+
+Merged 96baaf13b1fdd0698f409a53743b58e3ed384a4c onto dev.

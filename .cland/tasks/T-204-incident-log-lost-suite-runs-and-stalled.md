@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-16T22:13:53.049Z
+updated: 2026-11-16T23:04:43.226Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -614,3 +614,7 @@ Hub start #78 after a Mac reboot (2026-11-16 17:45:38Z, stand-in, launchd). Reas
 ### human · 2026-11-16T22:13:53.049Z
 
 Hub restart #79 (2026-11-16 22:10:34Z, stand-in, launchd). Reason: T-1919 (2bdf1ff0f, deliveryIds OR-query behind the day's 100% CPU stalls), T-1916 (0e093db62, ghost remote run) and T-1907 (4c4fe3f98) on dev; coord go with one remote batch run waived (a368be07, host T0 done, tree on its droplet). Gate: dev=origin/dev=e824406ae, root clean, no local run, load 2.1. Stop: launchctl remove cland-hub-r78 → hub 2124 gone in 3 s. Serve: launchctl submit cland-hub-r79 → listening 22:10:46Z, serving 22:12:07Z (startup replay 81 s). Gap stop→serve 94 s, over the 60 s target; coord's spoke still came back: hello and coordinator-filled 22:12:35Z, injected 22:12:35Z, no relaunch. New hub 1948, port 57941, web 56935, nice 0, ppid 1, env check 2, /opt/homebrew/bin on PATH, one launchd job. merge queue answered at once and kept batch 58622224; remote run a368be07 survived (watchdog alive). Ghost run b33e7940 (listed since 2026-11-12, T-1843/T-1916) is gone from verify queue after this start. doctor 35 ok 8 warn 0 fail.
+
+### human · 2026-11-16T23:04:43.226Z
+
+Coord re-exec after a Claude Code auto-update (2026-11-16 23:03:13Z, 2.1.325 → 2.1.326, pid 7131 → 72123, same job 3837cb54). The hub missed the 1000 ms re-exec grace: harness-exited, 'coord died' notification, role-cleared; the new process said hello and took the role again at 23:03:18Z (coordinator-filled), but its harness row stayed 'exited' and the delivery after it was acked only. Recovery by the stand-in at 23:04:16Z: 'cland session resume coord' without --relaunch re-attached the row to pid 72123; four injected events followed within 11 s. No relaunch, one bridge.
