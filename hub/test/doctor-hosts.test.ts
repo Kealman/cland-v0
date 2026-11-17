@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { secretSequence } from './secrets-fixture.ts';
 import { doctor, initialised, toolchain } from './doctor-fixture.ts';
 import { projectHub } from './harness.ts';
+import { until } from './until.ts';
 import { FakeClock } from './fake-clock.ts';
 import { fakeLockProcesses } from './fakes/lock-processes.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
@@ -69,27 +70,43 @@ test('doctor warns for every missing role pool without writes or provider reques
   assert.deepEqual(api.requests, []);
 });
 for (const present of [false, true]) test(`C1/C6 doctor reads hub token presence=${present} without provider calls`, async t => {
-  const tools = await toolchain(t), root = await initialised(t, tools.env);
-  await writeFile(join(root, '.cland/config.toml'), '[hosts.agents]\nprovider="digitalocean"\nmin_hosts=0\n');
-  const token = 'cland-test-provider-diagnostics', clock = new FakeClock(Date.now()), processes = fakeLockProcesses().processes;
-  const api = await fakeDigitalOcean(token, { machine: 'scripted', clock, testContext: t });
-  onCleanup(t, () => api.close());
-  const hub = await projectHub(t, root, {}, { clock, processes, droplet: { processes, api: api.provider }, ...(present ? { syntheticProvider: { token, api: api.provider } } : {}) });
-  const before = structuredClone(api.requests);
-  for (const args of [[], ['--json']]) {
-    const result = await doctor(root, tools.env, ...args);
-    assert.equal(result.stdout.includes(token), false);
-    if (args.length) {
-      const row = named(rows(result.stdout), 'host digitalocean token');
-      assert.equal(row.verdict, present ? 'ok' : 'warn');
-      if (present) assert.match(row.detail, /aea02ac771f2/);
-      else assert.match(row.fix!, /cland secret set digitalocean\.token.*cland hub stop && cland hub start/);
-    } else assert.match(result.stdout, /host digitalocean token/);
-  }
-  assert.deepEqual(api.requests, before);
-  assert.equal(api.requests.length, 0);
-  const inventory = await askHubFrame(hub.discovery, { type: 'host.status' }, 3000, tools.env) as { pools: { hosts: unknown[] }[] };
-  assert.deepEqual(inventory.pools.flatMap(p => p.hosts), []);
+  const owner = secretSequence(t);
+  await owner.run(async step => {
+    const tools = await step(() => toolchain(t));
+    owner.root(dirname(tools.env.HOME!));
+    const root = await step(() => initialised(t, tools.env));
+    owner.root(root);
+    await step(() => writeFile(join(root, '.cland/config.toml'), '[hosts.agents]\nprovider="digitalocean"\nmin_hosts=0\n'));
+    const token = 'cland-test-provider-diagnostics', clock = new FakeClock(Date.now()), processes = fakeLockProcesses().processes;
+    const api = await step(() => fakeDigitalOcean(token, { machine: 'scripted', clock, testContext: t }));
+    let hub: Awaited<ReturnType<typeof projectHub>> | undefined;
+    // Join the body first, then stop the hub before its provider, including late acquisitions.
+    owner.resource(async () => { await hub?.dispose(); await api.close(); });
+    let sweep: Record<string, unknown> | undefined;
+    hub = await step(() => projectHub(t, root, {}, { clock, processes, log: event => { if (event.event === 'executor-sweep') sweep = event; }, droplet: { processes, api: api.provider }, ...(present ? { syntheticProvider: { token, api: api.provider } } : {}) }));
+    // Startup recovery owns provider inventory reads. Observe its completion before
+    // measuring doctor; the unadvanced clock keeps periodic sweeps outside this window.
+    await step(() => until(() => sweep !== undefined, { timeoutMs: 5000, what: 'startup executor sweep completed' }));
+    assert.equal(sweep!.failures, 0);
+    assert.deepEqual(api.requests.map(({ method, path }) => ({ method, path })), present ? [
+      { method: 'GET', path: '/v2/droplets?tag_name=cland&per_page=200&page=1' },
+      { method: 'GET', path: '/v2/account/keys?per_page=200&page=1' },
+    ] : []);
+    const before = structuredClone(api.requests);
+    for (const args of [[], ['--json']]) {
+      const result = await step(() => doctor(root, tools.env, ...args));
+      assert.equal(result.stdout.includes(token), false);
+      if (args.length) {
+        const row = named(rows(result.stdout), 'host digitalocean token');
+        assert.equal(row.verdict, present ? 'ok' : 'warn');
+        if (present) assert.match(row.detail, /aea02ac771f2/);
+        else assert.match(row.fix!, /cland secret set digitalocean\.token.*cland hub stop && cland hub start/);
+      } else assert.match(result.stdout, /host digitalocean token/);
+    }
+    assert.deepEqual(api.requests, before);
+    const inventory = await step(() => askHubFrame(hub!.discovery, { type: 'host.status' }, 3000, tools.env)) as { pools: { hosts: unknown[] }[] };
+    assert.deepEqual(inventory.pools.flatMap(p => p.hosts), []);
+  });
 });
 
 test('doctor accepts the previous host status shape and labels missing outage and spend unknown', async t => {

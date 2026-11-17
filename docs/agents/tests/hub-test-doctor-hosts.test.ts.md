@@ -23,7 +23,19 @@ Cases:
 
 - `C1/C6 doctor reads hub token presence=false without provider calls` and the
   `presence=true` case run text and JSON doctor. They assert absent-token recovery,
-  the literal fingerprint, no raw sentinel, and an empty fake API request log.
+  the literal fingerprint, no raw sentinel, and no additional fake API requests.
+  Each token case registers secretSequence before acquisition, captures both
+  roots immediately, and fences each asynchronous step. Cleanup joins the whole
+  body, adopts late hub acquisition, then disposes the hub before closing the
+  provider and removing either root.
+  Arm the executor-sweep log observer before projectHub starts, then await its
+  completed receipt with zero failures before taking the request baseline.
+  With a synthetic token, startup recovery deliberately reads tagged droplets
+  and account keys; without it, startup makes no provider calls. Assert that
+  exact baseline. Keep the FakeClock unadvanced through both doctor calls so
+  scheduled sweeps cannot enter the measured window. T-1930 reproduced the
+  original two-GET failure by awaiting that receipt after taking the baseline;
+  product behaviour is correct and the repair synchronises the test fixture.
 - `C2 doctor names a changed lock and the image prepare command` first proves
   a current image, then changes the scratch lock and asserts `stale: lock`.
 - `C7 doctor reports no pool and hub-backed unknowns with their fix` covers
