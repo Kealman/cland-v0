@@ -1,3 +1,4 @@
+import { validateInlineArtifact } from './artifact-input.ts';
 import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv';
 import type { JsonSchemaType } from '@modelcontextprotocol/sdk/validation/types';
 import { TOOLS } from './spoke/tools.ts';
@@ -76,6 +77,7 @@ export function validateToolArguments(tool: string, args: Record<string, unknown
       if (args.verdict === 'qa' && args.scope !== undefined) throw new InvalidArgument('a QA verdict carries no scope');
     } else if (!(args.text as string | undefined)?.trim()) throw new InvalidArgument('a comment needs text');
   }
+  if (tool === 'artifact.create') validateInlineArtifact(args.content);
   if (tool === 'artifact.create' && (args.path === undefined) === (args.content === undefined) && !(args.folder === true && args.path === undefined)) throw new InvalidArgument('give exactly one of path or content, or folder: true with neither');
   if (tool === 'session.launch' && args.item !== undefined && args.cwd !== undefined) throw new InvalidArgument('item and cwd cannot be supplied together');
   if (tool === 'send') {

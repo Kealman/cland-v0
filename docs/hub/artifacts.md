@@ -456,3 +456,27 @@ keeps the previous stand-in answer attribution and artifact shape. A shell with
 `CLAND_SESSION_ID` or `CLAND_SESSION_NAME` set keeps its session identity despite
 `--as`; authenticated web and gateway identities retain their transport rules.
 Use `docs/agents/tests/hub-test-cli-as-user.test.ts.md` for this CLI/frame matrix.
+
+### Inline admission and retry receipts
+
+Inline `content` (including `--content-file`) has a 65,536-byte UTF-8 limit.
+Use `path` / `--path` for larger material; file and folder copies keep their
+existing behaviour. Admission checks run in both the spoke and hub before
+preparation. MCP stdio still caps the entire JSON frame at 1 MiB; an oversized
+frame is discarded while a bounded lexical scan recovers its top-level id,
+including SDK id-after-params order. With no recoverable id (malformed or
+incomplete envelope, or an id token above 8192 characters), the parse error
+has a null id. A valid unfinished envelope without an id waits for its newline;
+no tool runs on an oversized frame. CLI file/stdin inline sources read at most
+the limit plus one byte and validate before transport. Keep metadata small.
+
+For calls to a hub supporting retry receipts, supply `retryKey` (1–128 characters),
+or CLI `--retry-key`. Reuse the key and identical arguments after a lost reply.
+The receipt commits with the artifact index and chip and survives restart;
+concurrent retries return the same artifact. Keys belong to the admitted session
+identity (human calls use the active user id, or the legacy human identity).
+Different arguments under the same key refuse. Path retries replay the original
+copy; they do not recopy changed source bytes. New keys request new artifacts.
+Requests without a key retain the previous wire shape and create independently.
+Older running hubs do not promise retry receipts: upgrade/restart before relying
+on this facility. Retention or archive does not make a used key publish again.

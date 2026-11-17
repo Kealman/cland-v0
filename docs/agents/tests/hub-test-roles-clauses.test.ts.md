@@ -30,3 +30,10 @@ The implementer wording contract names all T1/selected T2 with fallback all T2, 
 
 The verifier request-wording contract also checks the shipped Implementer skill: the exact first-line form `review request T-<n>` / `qa request T-<n>` and the rule that detail after the item is detail, so the continued line still names one verifier. Keep that sentence and its sibling `CHANGES` entry in step with the shared matcher; the assertion reads the installed skill text, not the matcher itself.
 The implementer wording contract names all T1/selected T2 with fallback all T2, changed T3/T4 and mapped T4 guards once, remaining T3 deferred and the separate Web phase. Keep shipped defaults, project clauses and shared procedures aligned when cadence changes. Retain both source checks and the byte/growth-reserve assertions; update semantic expectations with the shipped policy rather than weakening the checks.
+
+Artifact admission/retry guidance consolidates the existing base artifact
+instruction without exceeding its 512-byte reserve or 15% growth headroom.
+It must not alter the separate Project rules rendering used by launch briefs.
+Run roles-clauses together with adapter-composition, rule-sessions-component and
+session-brief-component when editing this guidance; keep their lifecycle,
+replay, ordering, scope and refusal assertions intact.

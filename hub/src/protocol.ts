@@ -102,7 +102,7 @@ export type Artifact = {
 };
 export type ArtifactUpload = { type: 'artifact.upload'; id: string; topic: string; caption?: string; artifacts?: string[]; files: { name: string; mime: string; data?: string }[]; to?: string[]; replyTo?: string; kind?: HumanMessageKind };
 
-export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string; folder?: boolean; entry?: string; status?: 'draft' | 'shared' };
+export type ArtifactCreate = { type: 'artifact.create'; id: string; retryKey?: string; kind: string; title: string; topic: string; path?: string; content?: string; folder?: boolean; entry?: string; status?: 'draft' | 'shared' };
 export type PromptSend = { type: 'prompt.send'; id: string; artifact: string; attach?: boolean };
 export type ArtifactPromote = { type: 'artifact.promote'; id: string; artifact: string; path: string };
 export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string; artifact?: string; before?: string };

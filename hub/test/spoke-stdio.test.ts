@@ -34,7 +34,7 @@ test('spoke refuses oversized stdio before schema validation and serves the next
   // An invalid tools/call envelope would yield the SDK's schema error if parsed.
   input.write(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'who', arguments: 42, pad: 'x'.repeat(MAX_FRAME_BYTES) } }) + '\n');
   await until(() => replies.length === 1, { what: 'oversized MCP refusal' });
-  assert.deepEqual(replies[0], { jsonrpc: '2.0', id: null, error: { code: -32700, message: `MCP stdio message exceeds the ${MAX_FRAME_BYTES} byte (1 MiB) cap` } });
+  assert.deepEqual(replies[0], { jsonrpc: '2.0', id: 1, error: { code: -32700, message: `MCP stdio message exceeds the ${MAX_FRAME_BYTES} byte (1 MiB) cap; inline artifact limit is 65536 UTF-8 bytes; use path` } });
   assert.deepEqual(exits, []);
   input.write('{"jsonrpc":"2.0","id":2,"method":"ping"}\n');
   await until(() => replies.some(reply => reply.id === 2), { what: 'ping response after oversized line' });
@@ -49,7 +49,7 @@ test('spoke refuses oversized stdio before schema validation and serves the next
   assert.equal(replies.length, 2, 'exactly the byte cap is allowed to remain unfinished');
   input.write('x');
   await until(() => replies.length === 3, { what: 'unfinished multibyte line size refusal' });
-  assert.deepEqual(replies[2], replies[0]);
+  assert.deepEqual(replies[2], { ...replies[0], id: null });
   input.write('discard this tail\n{"jsonrpc":"2.0","id":3,"method":"ping"}\n');
   await until(() => replies.some(reply => reply.id === 3), { what: 'ping after discarded oversized remainder' });
   assert.deepEqual(replies.find(reply => reply.id === 3), { jsonrpc: '2.0', id: 3, result: {} });
@@ -72,4 +72,60 @@ test('spoke refuses oversized stdio before schema validation and serves the next
   input.end();
   await until(() => exits.length === 1, { what: 'session stdin EOF exit' });
   assert.deepEqual(exits, [0], 'the session still exits once on stdin EOF');
+});
+
+test('actual SDK id-after-params oversized call receives a correlated refusal and can ping afterwards', async t => {
+  const { fixtureWork } = await import('./fixture-work.ts');
+  const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
+  const { deserializeMessage, serializeMessage } = await import('@modelcontextprotocol/sdk/shared/stdio.js');
+  const work = fixtureWork(t);
+  await work.run(async owned => {
+    const root = await owned.root(() => tempProject(t));
+    const { input, output } = await owned.acquire(async () => ({ input: new PassThrough(), output: new PassThrough() }), async streams => { streams.input.destroy(); streams.output.destroy(); });
+    const runtime = await owned.acquire(() => runSpoke(fixtureEnvironment(root, process.env), {
+      cwd: root, stdio: { input, output }, exit: () => {}, log: () => {},
+    }), async r => { await r.server.close(); input.destroy(); output.destroy(); });
+    void runtime;
+    const client = await owned.acquire(async () => new Client({ name: 'stdio-regression', version: '1' }), c => c.close());
+    const transport: import('@modelcontextprotocol/sdk/shared/transport.js').Transport = {
+      async start() {},
+      async close() {},
+      async send(message) {
+        const line = serializeMessage(message);
+        // The SDK creates this object; assert its actual order rather than constructing it.
+        if ('method' in message && message.method === 'tools/call') assert.ok(line.indexOf('"params"') < line.lastIndexOf('"id"'));
+        const bytes = Buffer.from(line);
+        for (let offset = 0; offset < bytes.length; offset += 8191) input.write(bytes.subarray(offset, offset + 8191));
+      },
+    };
+    let buffered = '';
+    output.on('data', chunk => {
+      buffered += String(chunk);
+      let newline: number;
+      while ((newline = buffered.indexOf('\n')) >= 0) {
+        transport.onmessage?.(deserializeMessage(buffered.slice(0, newline)));
+        buffered = buffered.slice(newline + 1);
+      }
+    });
+    await owned.step(() => client.connect(transport));
+    await owned.step(() => assert.rejects(client.callTool({ name: 'artifact.create', arguments: {
+      kind: 'note', title: 'SDK oversized', topic: 'general', content: 'x'.repeat(MAX_FRAME_BYTES + 1),
+    } }, undefined, { timeout: 1000 }), /65536.*path/));
+    assert.deepEqual(await owned.step(() => client.ping()), {});
+  });
+});
+
+test('bounded envelope scan ignores nested and string ids while preserving split UTF-8 top-level ids', async () => {
+  const { EnvelopeId } = await import('../src/spoke/envelope-id.ts');
+  const scanner = new EnvelopeId();
+  const body = JSON.stringify({ params: { id: 'nested', content: '"id":"fake" } \\'.repeat(100000) }, id: 'réponse' });
+  const bytes = Buffer.from(body);
+  for (let offset = 0; offset < bytes.length; offset += 7) scanner.feed(bytes.subarray(offset, offset + 7));
+  assert.equal(scanner.id, 'réponse');
+  const noId = new EnvelopeId();
+  noId.feed(Buffer.from('{"params":{"id":91,"text":"id"}}'));
+  assert.equal(noId.id, null);
+  const incomplete = new EnvelopeId();
+  incomplete.feed(Buffer.from('{"params":{"id":91,"text":"unterminated'));
+  assert.equal(incomplete.id, null);
 });

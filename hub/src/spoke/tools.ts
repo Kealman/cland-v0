@@ -29,10 +29,10 @@ const BASE_TOOLS = [
   { name: 'merge', description: 'Queue or land an open task on its base as one squash commit after clear, current hub verdicts. Coordinator or a supervising Lead within its scheduled subtree; never delegate a merge to a sub-agent.', inputSchema: { type: 'object', properties: { item: { type: 'string' }, cancel: { type: 'boolean' }, override: { type: 'string', description: 'Human shell only: skip verdicts and criteria with an audited reason; sessions cannot override.' } }, required: ['item'] } },
   {
     name: 'artifact.create',
-    description: 'Show work through a persistent artifact in a topic. Give a file or directory path (copied), content, or folder: true with optional entry and content. Returns the artifact id and absolute path; posts its chip into the topic.',
+    description: 'Show work through a persistent artifact in a topic. Give a file or directory path (copied), content, or folder: true with optional entry and content. Inline content is limited to 65536 UTF-8 bytes; use path above that limit. Reuse retryKey (1–128 characters) with identical arguments after a lost reply to return the same artifact. Returns the artifact id and absolute path; posts its chip into the topic.',
     inputSchema: { type: 'object', properties: {
       kind: { type: 'string', enum: ['prompt', 'note', 'page', 'diagram', 'file'] }, title: { type: 'string' },
-      path: { type: 'string' }, content: { type: 'string' }, folder: { type: 'boolean' }, entry: { type: 'string' }, topic: { type: 'string' }, status: { type: 'string', enum: ['draft', 'shared'] },
+      retryKey: { type: 'string', minLength: 1, maxLength: 128 }, path: { type: 'string' }, content: { type: 'string' }, folder: { type: 'boolean' }, entry: { type: 'string' }, topic: { type: 'string' }, status: { type: 'string', enum: ['draft', 'shared'] },
     }, required: ['kind', 'title', 'topic'] },
   },
   { name: 'artifact.keep', description: 'Keep an artifact from retention, or release it with kept: false. Agents cannot change human or Aide artifacts.', inputSchema: { type: 'object', properties: { artifact: { type: 'string' }, kept: { type: 'boolean' } }, required: ['artifact'] } },

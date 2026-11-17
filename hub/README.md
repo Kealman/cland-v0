@@ -267,3 +267,8 @@ Sign-in code cards project an optional login-name identity from persisted hub
 metadata into live/history cards and inbox rows. This restores the inline Hosts
 card across a fold or reload before its start receipt; no native secret or connect
 ordering changes. Older replies retain the captured-id browser fallback.
+
+Artifact inline content is limited to 65,536 UTF-8 bytes; use `path` for larger
+material. `artifact.create retryKey` / `cland artifact new --retry-key` provides
+an actor-scoped durable receipt on supporting hubs; reuse identical arguments
+after a lost reply. See [artifact admission and retry receipts](../docs/hub/artifacts.md#inline-admission-and-retry-receipts).

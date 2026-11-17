@@ -23,9 +23,9 @@ function fixture(t: TestContext) {
   syncBuiltinESMExports();
   t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
   const published: string[] = [];
-  const create = (title: string, content: string, publish = (id: string) => { published.push(id); }) =>
-    createArtifact(store, '/fixture', { type: 'artifact.create', id: title, kind: 'note', title, content, topic: 'general' },
-      { name: 'human', cwd: '/fixture', kind: 'human', role: () => null },
+  const create = (title: string, content: string, publish = (id: string) => { published.push(id); }, retryKey?: string, identity = 'human') =>
+    createArtifact(store, '/fixture', { type: 'artifact.create', id: title, kind: 'note', title, content, topic: 'general', ...(retryKey ? { retryKey } : {}) },
+      { name: 'human', identity, cwd: '/fixture', kind: 'human', role: () => null },
       artifact => publish(artifact.id), work => work(), () => {}, async () => { throw new Error('no source read expected'); });
   return { store, files, published, create };
 }
@@ -58,4 +58,27 @@ test('a refused publication cleans its bytes before the next queued create reuse
   assert.deepEqual([...f.files.keys()], artifacts.map(artifact => artifact.path));
   assert.equal(f.files.get(artifacts[0]!.path)?.toString(), 'accepted bytes');
   assert.deepEqual(f.published, ['A-1']);
+});
+
+test('inline content above 65536 UTF-8 bytes refuses before preparation; exact limit persists', async t => {
+  const f = fixture(t);
+  await assert.rejects(f.create('Too large', 'é'.repeat(32769)), /65536.*path/);
+  assert.equal(f.files.size, 0);
+  const artifact = await f.create('At limit', 'é'.repeat(32768));
+  assert.equal(f.files.get(artifact.path)?.length, 65536);
+});
+
+
+test('retry receipts serialize concurrent calls, isolate identities and roll back with refused publication', async t => {
+  const f = fixture(t);
+  const create = () => f.create('Receipt', 'bytes', undefined, 'same-key');
+  const [a, b] = await Promise.all([create(), create()]);
+  assert.equal(a.id, b.id);
+  assert.deepEqual(f.published, ['A-1']);
+  const other = await f.create('Receipt', 'bytes', undefined, 'same-key', 'other');
+  assert.equal(other.id, 'A-2');
+  await assert.rejects(f.create('Rollback', 'bytes', () => { throw new Error('refused'); }, 'rollback'), /refused/);
+  const accepted = await f.create('Rollback', 'bytes', undefined, 'rollback');
+  assert.equal(accepted.id, 'A-3');
+  assert.equal(f.files.size, 3);
 });

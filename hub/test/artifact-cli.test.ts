@@ -1,10 +1,13 @@
+import { execFile } from 'node:child_process';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { clandCliLaunch } from './tier-cli.ts';
 // T2: artifact CLI subprocess subjects against an in-process hub and permission-probe spoke.
 import { sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { CLI_ENTRY, cland, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import type { Artifact } from '../src/protocol.ts';
 
@@ -121,4 +124,37 @@ test('an in-process agent can resolve human notes but cannot open them for editi
     assert.equal(result.code, 1, result.stderr);
     assert.match(result.stderr, /agents cannot change/);
   }
+});
+
+test('CLI validates both inline sources before transport and accepts large files through path', async t => {
+  const { fixtureWork } = await import('./fixture-work.ts');
+  const work = fixtureWork(t);
+  await work.run(async owned => {
+    const root = await owned.root(() => tempProject(t));
+    await owned.acquire(() => projectHub(t, root), h => h.dispose());
+    const source = join(root, 'large.txt');
+    await owned.step(() => writeFile(source, 'x'.repeat(2 * 1024 * 1024)));
+    const base = ['artifact', 'new', '--kind', 'note', '--title', 'Inline source', '--topic', 'general', '--json'];
+    for (const args of [['--content', 'x'.repeat(65537)], ['--content-file', source]]) {
+      const result = await owned.step(() => cland(root, ...base, ...args));
+      assert.equal(result.code, 1);
+      assert.match(result.stderr, /65536.*path/);
+    }
+    const stdin = await owned.step(() => new Promise<{ code: number; stderr: string }>((resolve, reject) => {
+      const child = clandCliLaunch(() => execFile(process.execPath, [CLI_ENTRY, ...base, '--content-file', '-'], {
+        cwd: root, env: fixtureEnvironment(root, process.env), encoding: 'utf8', timeout: 2000,
+      }, (error, _stdout, stderr) => {
+        if (error && typeof error.code !== 'number') reject(error);
+        else resolve({ code: error ? Number(error.code) : 0, stderr });
+      }));
+      child.stdin!.end('x'.repeat(65537));
+    }));
+    assert.equal(stdin.code, 1);
+    assert.match(stdin.stderr, /65536.*path/);
+    const accepted = await owned.step(() => cland(root, ...base, '--path', source));
+    assert.equal(accepted.code, 0, accepted.stderr);
+    const a = (JSON.parse(accepted.stdout) as { artifact: Artifact }).artifact;
+    assert.equal(a.id, 'A-1', 'refused inline calls create no artifact');
+    assert.equal((await owned.step(() => readFile(a.path))).length, 2 * 1024 * 1024);
+  });
 });

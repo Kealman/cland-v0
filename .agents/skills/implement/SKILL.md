@@ -16,6 +16,10 @@ error-only older-hub replies when changing request diagnostics. See
 For provider credential work, read docs/hub/provider-credential-migration.md for
 the human's startup-export migration, store command and shell evidence limits.
 
+Artifact inline content is limited to 65536 UTF-8 bytes. Publish larger material
+with `path`. After a lost reply, reuse the same `retryKey` and identical arguments
+(`cland artifact new --retry-key <key>`); a new key requests a new artifact.
+
 Doctor's release-tool check (`[release] web_bundle = true`) asks the running hub
 for an opt-in gh executable lookup, never auth/network. Old/offline hub results
 stay unknown. Missing release tools name the hub PATH and require restart with

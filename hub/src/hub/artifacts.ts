@@ -1,6 +1,8 @@
 import { realClock, type Clock } from './clock.ts';
 // Persistent artifact files and their hub index. Publication runs in the index transaction;
 // a refused publication leaves neither an index entry nor a file.
+import { createHash } from 'node:crypto';
+import { validateInlineArtifact } from '../artifact-input.ts';
 import { mkdir, open, rm } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import type { Artifact, ArtifactCreate, ArtifactKind } from '../protocol.ts';
@@ -29,7 +31,22 @@ export function artifactCreation<T>(store: Store, work: () => Promise<T>): Promi
   return operation;
 }
 
-async function prepareArtifact(store: Store, root: string | undefined, request: ArtifactCreate, actor: { name: string; cwd: string; kind: 'human' | 'agent'; userId?: string; role: () => string | null }, publish: (a: Artifact) => void, resumed: <T>(work: () => T) => T, authorize: () => void, readSource: (path: string) => Promise<Buffer>, clock: Clock = realClock, sourceHost?: Host): Promise<Artifact> {
+async function prepareArtifact(store: Store, root: string | undefined, request: ArtifactCreate, actor: { name: string; identity?: string; cwd: string; kind: 'human' | 'agent'; userId?: string; role: () => string | null }, publish: (a: Artifact) => void, resumed: <T>(work: () => T) => T, authorize: () => void, readSource: (path: string) => Promise<Buffer>, clock: Clock = realClock, sourceHost?: Host): Promise<Artifact> {
+  validateInlineArtifact(request.content);
+  authorize();
+  if (request.retryKey !== undefined && (typeof request.retryKey !== 'string' || !request.retryKey.length || request.retryKey.length > 128)) throw new ArtifactError('artifact-source', 'retryKey must contain 1 to 128 characters');
+  const replayKey = request.retryKey === undefined ? undefined : `artifact-retry:${createHash('sha256').update(JSON.stringify([actor.kind, actor.identity ?? actor.userId ?? actor.name, request.retryKey])).digest('hex')}`;
+  const fingerprint = createHash('sha256').update(JSON.stringify([request.kind, request.title, request.topic, request.path, request.content, request.folder, request.entry, request.status])).digest('hex');
+  if (replayKey) {
+    const saved = store.meta(replayKey);
+    if (saved) {
+      const receipt = JSON.parse(saved) as { fingerprint: string; id: string };
+      if (receipt.fingerprint !== fingerprint) throw new ArtifactError('artifact-source', 'retryKey already used for different artifact arguments');
+      const artifact = store.artifact(receipt.id);
+      if (!artifact) throw new ArtifactError('artifact-unavailable', 'retried artifact is no longer available');
+      return artifact;
+    }
+  }
   const host = sourceHost ?? { ...localHost(), readFile: readSource };
   if (!root) throw new ArtifactError('artifact-unavailable', 'this hub serves no project for artifacts');
   if (!(typeof request.kind === 'string' && Object.hasOwn(extensions, request.kind))) throw new ArtifactError('artifact-kind', 'kind must be prompt, note, page, diagram or file');
@@ -116,7 +133,10 @@ async function prepareArtifact(store: Store, root: string | undefined, request: 
       const artifact = store.registerArtifact((id) => {
         if (id !== prepared.id) throw new Error('artifact reservation moved');
         return { id, title, kind, path: prepared.path, creator: actor.name, creatorKind: actor.kind, ...(actor.kind === 'human' && actor.userId ? { creatorUserId: actor.userId } : {}), creatorRole: actor.role(), ...(folder ? { folder: true, entry: entry! } : {}), time: clock.now().toISOString(), topic: request.topic, status: request.status ?? 'shared' };
-      }, publish);
+      }, a => {
+        if (replayKey) store.setMeta(replayKey, JSON.stringify({ fingerprint, id: a.id }));
+        publish(a);
+      });
       return artifact;
     });
   } catch (err) {

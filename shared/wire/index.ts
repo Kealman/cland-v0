@@ -100,7 +100,7 @@ export type Artifact = {
 };
 
 // hub/src/protocol.ts
-export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string; folder?: boolean; entry?: string; status?: 'draft' | 'shared' };
+export type ArtifactCreate = { type: 'artifact.create'; id: string; retryKey?: string; kind: string; title: string; topic: string; path?: string; content?: string; folder?: boolean; entry?: string; status?: 'draft' | 'shared' };
 
 // hub/src/protocol.ts
 export type PromptSend = { type: 'prompt.send'; id: string; artifact: string; attach?: boolean };

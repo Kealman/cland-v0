@@ -1286,7 +1286,7 @@ export class Dispatcher {
     const name = caller?.name ?? (suite ? suiteAuthor(suite) : user?.name ?? 'human');
     const cwd = caller ? core.presence().find((p) => p.sessionId === caller.sessionId)?.cwd ?? root : root;
     const host = caller && !suite ? this.#sessions?.hostForSession(caller.sessionId) ?? localHost() : localHost();
-    const artifact = await createArtifact(core.store, root, frame, { name, ...(!caller && !suite && user ? { userId: user.id } : {}), cwd: cwd ?? '.', kind: caller || name === 'hub' ? 'agent' : 'human', role: () => callerNow()?.role ?? null }, (a) => {
+    const artifact = await createArtifact(core.store, root, frame, { name, ...(caller ? { identity: caller.sessionId } : {}), ...(!caller && !suite && user ? { userId: user.id } : {}), cwd: cwd ?? '.', kind: caller || name === 'hub' ? 'agent' : 'human', role: () => callerNow()?.role ?? null }, (a) => {
       if (a.status === 'draft') return;
       const text = `▣ ${a.id} ${a.kind} · ${a.title}`;
       const current = callerNow();

@@ -18,3 +18,6 @@ real-filesystem, topic-authority and send-limit coverage.
 
 Run `node --test hub/test/artifact-create-unit.test.ts`. The scripted filesystem
 methods restore their built-in ESM bindings after each case.
+
+The inline boundary uses multibyte text and scripted files to assert refusal
+before preparation above 65,536 UTF-8 bytes and exact persisted bytes at the limit.

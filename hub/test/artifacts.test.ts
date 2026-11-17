@@ -1,3 +1,4 @@
+import { fixtureWork } from './fixture-work.ts';
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
@@ -5,7 +6,7 @@ import { mkdir,readdir,readFile,rm,symlink,writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import type { Artifact,TopicMessage } from '../src/protocol.ts';
-import { cland,eventually,inProcessSpoke,projectHub,tempProject } from './harness.ts';
+import { cland,eventually,inProcessSpoke,projectHub,tempProject,until } from './harness.ts';
 
 test('a spoke creates a persistent diagram and publishes its structured chip in the topic', async (t) => {
   const root = await tempProject(t);
@@ -360,4 +361,80 @@ test('promotion is granted to the Coordinator from its shell and refused to the 
       await assert.rejects(readFile(join(root, `${role}.md`)), { code: 'ENOENT' });
     }
   }
+});
+
+
+test('inline limit completes and lost-reply retries survive hub restart without duplicate chips', async t => {
+  const work = fixtureWork(t);
+  await work.run(async owned => {
+    const root = await owned.root(() => tempProject(t));
+    let hub = await owned.acquire(() => projectHub(t, root), h => h.dispose());
+    let ui = await owned.acquire(() => connectUi(t, hub.discovery), async u => { u.close(); });
+    const request = { type: 'artifact.create', kind: 'note', title: 'Retry receipt', content: 'é'.repeat(32768), topic: 'general', retryKey: 'lost-reply' };
+    const refused = await owned.step(() => ui.request({ ...request, content: request.content + 'x' }));
+    assert.equal(refused.ok, false);
+    assert.match(JSON.stringify(refused), /65536.*path/);
+    // Discard the first result as a caller with a lost reply would. The next request
+    // proves durable registration and exact bytes, rather than just launch/ack.
+    await owned.step(() => ui.request(request));
+    await owned.step(() => ui.close());
+    await owned.step(() => hub.stop());
+    hub = await owned.acquire(() => projectHub(t, root), h => h.dispose());
+    ui = await owned.acquire(() => connectUi(t, hub.discovery), async u => { u.close(); });
+    const retry = await owned.step(() => ui.request(request));
+    assert.equal(retry.ok, true, JSON.stringify(retry));
+    const a = (retry.value as { artifact: Artifact }).artifact;
+    assert.equal(a.id, 'A-1');
+    assert.equal(await owned.step(() => readFile(a.path, 'utf8')), request.content);
+    assert.deepEqual((await owned.step(() => ui.request({ type: 'artifact.list', topic: 'general' }))).value, { artifacts: [a] });
+    const history = (await owned.step(() => ui.request({ type: 'topic.history', topic: 'general' }))).value as { messages: TopicMessage[] };
+    assert.equal(history.messages.filter(m => m.artifact?.id === a.id).length, 1);
+    const conflict = await owned.step(() => ui.request({ ...request, title: 'Different arguments' }));
+    assert.equal(conflict.ok, false);
+    assert.match(JSON.stringify(conflict), /retryKey already used/);
+  });
+});
+
+test('MCP inline admission returns a bounded refusal and persists the fully escaped byte limit', async t => {
+  const work = fixtureWork(t);
+  await work.run(async owned => {
+    const root = await owned.root(() => tempProject(t));
+    await owned.acquire(() => projectHub(t, root), h => h.dispose());
+    const coord = await owned.acquire(() => inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' }), c => c.close());
+    await owned.step(() => coord.waitForPresence(['coord']));
+    const request = { kind: 'note', title: 'Inline MCP', topic: 'general', content: '\u0000'.repeat(65536) };
+    const refused = await owned.step(() => coord.call<{ ok: boolean; error: string }>('artifact.create', { ...request, content: request.content + 'x' }));
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /65536.*path/);
+    const accepted = await owned.step(() => coord.call<{ ok: boolean; artifact: Artifact }>('artifact.create', request));
+    assert.equal(accepted.ok, true);
+    assert.equal(await owned.step(() => readFile(accepted.artifact.path, 'utf8')), request.content);
+    assert.equal(accepted.artifact.id, 'A-1');
+  });
+});
+
+test('artifact fixture cancellation adopts a late acquisition and fences later writes before removal', async t => {
+  const work = fixtureWork(t);
+  const held = Promise.withResolvers<void>();
+  let entered = false;
+  work.release(() => held.resolve());
+  let root = '';
+  let closed = false;
+  let laterWrite = false;
+  const running = work.run(async owned => {
+    root = await owned.root(() => tempProject(t));
+    await owned.acquire(async () => {
+      entered = true;
+      await held.promise;
+      return { close: async () => { closed = true; } };
+    }, resource => resource.close());
+    await owned.step(() => { laterWrite = true; });
+  });
+  const rejected = assert.rejects(running, /closed|abort/i);
+  await until(() => entered, { what: 'owned late acquisition is held' });
+  await work.dispose();
+  await rejected;
+  assert.equal(closed, true);
+  assert.equal(laterWrite, false);
+  await assert.rejects(readdir(root), { code: 'ENOENT' });
 });

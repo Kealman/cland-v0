@@ -1,7 +1,9 @@
+import { EnvelopeId } from './envelope-id.ts';
 import type { Readable, Writable } from 'node:stream';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { deserializeMessage, serializeMessage } from '@modelcontextprotocol/sdk/shared/stdio.js';
+import { INLINE_ARTIFACT_BYTES } from '../artifact-input.ts';
 import { MAX_FRAME_BYTES } from '../protocol.ts';
 
 /** Byte framing precedes the SDK's JSON/schema decoding. Refuse once, then
@@ -15,6 +17,8 @@ export class SpokeStdioTransport implements Transport {
   #parts: Buffer[] = [];
   #bytes = 0;
   #discarding = false;
+  #envelope = new EnvelopeId();
+  #refused = false;
 
   readonly input: Readable;
   #output: Writable;
@@ -30,16 +34,13 @@ export class SpokeStdioTransport implements Transport {
     while (offset < bytes.length && !this.#closed) {
       const newline = bytes.indexOf(10, offset);
       const end = newline < 0 ? bytes.length : newline;
+      this.#envelope.feed(bytes.subarray(offset, end));
       if (!this.#discarding) {
         const length = end - offset;
         if (this.#bytes + length > MAX_FRAME_BYTES) {
           this.#parts = [];
           this.#bytes = 0;
           this.#discarding = true;
-          // The id is unknown: do not parse untrusted oversized JSON to recover it.
-          void this.#write(JSON.stringify({ jsonrpc: '2.0', id: null, error: {
-            code: -32700, message: `MCP stdio message exceeds the ${MAX_FRAME_BYTES} byte (1 MiB) cap`,
-          } }) + '\n').catch(this.#error);
         } else {
           if (length) this.#parts.push(Buffer.from(bytes.subarray(offset, end)));
           this.#bytes += length;
@@ -52,8 +53,16 @@ export class SpokeStdioTransport implements Transport {
           }
         }
       }
+      if (this.#discarding && !this.#refused && (newline >= 0 || this.#envelope.invalid || this.#envelope.id !== null)) {
+        this.#refused = true;
+        void this.#write(JSON.stringify({ jsonrpc: '2.0', id: this.#envelope.id, error: {
+          code: -32700, message: `MCP stdio message exceeds the ${MAX_FRAME_BYTES} byte (1 MiB) cap; inline artifact limit is ${INLINE_ARTIFACT_BYTES} UTF-8 bytes; use path`,
+        } }) + '\n').catch(this.#error);
+      }
       if (newline < 0) break;
       this.#discarding = false;
+      this.#refused = false;
+      this.#envelope = new EnvelopeId();
       offset = newline + 1;
     }
   };

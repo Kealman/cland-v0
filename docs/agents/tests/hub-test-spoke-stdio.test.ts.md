@@ -14,3 +14,10 @@ collection before writing input; wait on exact reply/exit receipts with bounds.
 
 The byte cap includes an optional CR and excludes LF. Tests use injected streams
 so they never read, close or change encoding on the test process's stdin/stdout.
+
+Oversized stdio frames use a bounded lexical scan through the discarded body.
+The actual SDK Client serializer regression asserts id-after-params, splits
+bytes across chunks, receives the correlated refusal and pings afterwards.
+Nested/string ids, split UTF-8 ids and malformed/incomplete prefixes have explicit
+controls. The scan retains no body, only depth/lexical state and an at-most-8192
+character top-level token; oversized bodies never reach schema/tool handling.
