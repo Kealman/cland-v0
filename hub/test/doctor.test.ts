@@ -12,6 +12,64 @@ import { assetCommand, checkWebRelease } from '../src/release-web.ts';
 import { checkReleaseTools } from '../src/doctor/release.ts';
 import { legacyRemoteHubFixture } from './fakes/legacy-remote-hub.ts';
 import { which, whichAsync } from '../src/doctor/report.ts';
+import { checkProject } from '../src/doctor/project.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import type { FixtureStep } from '../../test-support/fixture-work.ts';
+import { runTask } from '../src/cli/task.ts';
+
+async function remoteDoctorCase(t: import('node:test').TestContext, work: (root: string, step: FixtureStep, fixtures: import('node:test').TestContext) => Promise<void>) {
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return owner.run(async step => {
+    const root = await step(() => tempProject(owner.fixtures));
+    owner.adoptRoot(root);
+    await work(root, step, owner.fixtures);
+  });
+}
+
+test('task CLI preserves a remote admission refusal instead of calling it an unanswered socket', async t => {
+  await remoteDoctorCase(t, async (root, step, fixtures) => {
+    const fake = legacyRemoteHubFixture(fixtures, root, { refusal: { code: 'forbidden', error: 'synthetic admission refusal' } });
+    await step(() => fake.start());
+    const file = join(root, '.cland/hub.json');
+    const local = JSON.parse(await step(() => readFile(file, 'utf8')));
+    await step(() => writeFile(file, JSON.stringify({ remote: true, socket: local.socket, spoke: `ws+unix:${local.socket}:/`, secret: 'fixture', version: 'test' })));
+    const env = fixtureEnvironment(root, process.env, { CLAND_HUB_FILE: file });
+    let stderr = '';
+    assert.equal(await step(() => runTask(['view', 'T-1'], root, { out: () => {}, err: text => { stderr += text; } }, env)), 1);
+    assert.equal(stderr, 'cland: synthetic admission refusal\n');
+    assert.doesNotMatch(stderr, /does not answer/);
+  });
+});
+
+test('remote doctor distinguishes admission replies from an unanswered socket without exposing credentials', async t => {
+  await remoteDoctorCase(t, async (root, step, fixtures) => {
+    const file = join(root, 'remote.json');
+    const env = fixtureEnvironment(root, process.env, { CLAND_HUB_FILE: file });
+    for (const scenario of [
+      { code: 'forbidden', error: 'host frame requires its own role-holding session credential' },
+      { code: 'unauthorized', error: 'host secret revoked' },
+      { error: 'legacy hub refusal: synthetic-private-credential' },
+    ]) {
+      const fake = legacyRemoteHubFixture(fixtures, root, { refusal: scenario, helloRefusal: scenario.code === 'unauthorized' });
+      await step(() => fake.start());
+      const local = JSON.parse(await step(() => readFile(join(root, '.cland/hub.json'), 'utf8')));
+      await step(() => writeFile(file, JSON.stringify({ remote: true, socket: local.socket, spoke: `ws+unix:${local.socket}:/`, secret: 'synthetic-private-credential', version: 'test' })));
+      const rows = await step(() => checkProject(join(root, 'host-checkout'), {}, env));
+      assert.equal(rows[0]!.verdict, 'fail');
+      assert.match(rows[0]!.detail, /remote hub answered.*refused/);
+      assert.doesNotMatch(rows[0]!.detail, /does not answer|synthetic-private-credential/);
+      if (scenario.code) assert.ok(rows[0]!.detail.includes(scenario.code));
+      assert.match(rows[0]!.fix ?? '', /credential|host/);
+      assert.deepEqual(rows[1], { name: 'hub.json', verdict: 'ok', detail: 'valid remote discovery' });
+      await step(() => fake.dispose());
+      const down = await step(() => checkProject(join(root, 'host-checkout'), {}, env));
+      assert.match(down[0]!.detail, /remote hub does not answer/);
+      assert.equal(down[0]!.fix, 'restore the host tunnel');
+    }
+  });
+});
 
 test('release tool lookup follows empty and relative hub PATH entries from the release root', async t => {
   const tools = await toolchain(t), root = await initialised(t, tools.env);

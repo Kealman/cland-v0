@@ -17,6 +17,12 @@ export class HubTimeout extends Error {
   }
 }
 
+/** A reply was received: keep its class separate from transport failures, preserving the old message. */
+export class HubRefusal extends Error {
+  readonly refusalCode: string | undefined;
+  constructor(message: string, refusalCode?: string) { super(message); this.refusalCode = refusalCode; }
+}
+
 /** The frames that are a session's own plumbing (`cland hook`), not a call somebody makes: they carry no actor. */
 const PLUMBING: ReadonlySet<string> = new Set(['session.signal', 'session.bridge']);
 
@@ -77,10 +83,10 @@ function exchange(d: Pick<Discovery, 'socket' | 'secret' | 'root'>, frame: ({ ty
           if (request === null) { done(null); continue; }
           socket.write(`${JSON.stringify({ ...request, id })}\n`, error => { if (!error) requestSent = true; });
         }
-        else if (frame.type === 'error') done(new Error(`the hub refused: ${String(frame.message)}`));
+        else if (frame.type === 'error') done(new HubRefusal(`the hub refused: ${String(frame.message)}`, typeof frame.code === 'string' ? frame.code : undefined));
         else if (frame.type === 'result' && frame.id === id) {
           if (frame.ok === true) done(null, frame.value);
-          else done(new Error(String(frame.error)));
+          else done(new HubRefusal(String(frame.error), typeof frame.code === 'string' ? frame.code : undefined));
         }
       }
       if (!settled && start < chunk.length) parts.push(chunk.slice(start));

@@ -1,6 +1,6 @@
 // Typed CLI convenience API over the shared read-only transport.
 import { askHubFrame, probeHub } from '../../../shared/socket-client.ts';
-export { askHubFrame, HubTimeout } from '../../../shared/socket-client.ts';
+export { askHubFrame, HubTimeout, HubRefusal } from '../../../shared/socket-client.ts';
 import type { Discovery } from '../project.ts';
 import type { ClientRequest } from '../protocol.ts';
 

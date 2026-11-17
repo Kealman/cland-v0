@@ -1,5 +1,12 @@
 ## cland doctor
 
+With remote `CLAND_HUB_FILE` discovery, doctor distinguishes an unanswered socket
+(restore the host tunnel) from a hub reply refusing the request. A refusal names
+`forbidden` or `unauthorized` when supplied by the hub and directs the caller to
+reconnect with its own role-holding session credential, or ask the hub owner to
+register a revoked host again. Older error-only replies say `request`. Refusal
+details omit server error text and credentials. JSON check fields stay unchanged.
+
 With `[release] web_bundle = true`, `release gh` asks the running hub for a
 metadata-only executable lookup on the hub's own PATH. A missing `gh` warns:
 install it on that PATH and restart the hub. This check runs no `gh`, auth or

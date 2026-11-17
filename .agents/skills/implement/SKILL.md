@@ -29,6 +29,12 @@ Doctor's sign-in mode check reads config mode and hub `user.list` counts only;
 see `docs/hub/cland-doctor.md` and the doctor-users per-test guide. Refused
 counts stay unknown with reload guidance; offline counts name hub start.
 
+Remote doctor discovery distinguishes received refusals from transport failure.
+Keep `HubRefusal` Error messages compatible for existing callers; doctor prints
+only its safe refusal class and credential/host repair, never raw refusal text.
+Refusal metadata uses `refusalCode`, separate from OS transport error `code`.
+Keep error-only older-hub coverage and JSON Check fields stable.
+
 Setup's optional agent-host offer uses the hub's metadata-only `host.providers`
 filter before a pool exists; it never reads the caller's provider token. Keep
 `--yes` at No and require the separate paid-pool confirmation. Untouched

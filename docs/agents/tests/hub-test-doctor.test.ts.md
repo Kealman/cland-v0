@@ -1,5 +1,15 @@
 # hub/test/doctor.test.ts
 
+Remote discovery uses an owned fake Unix transport: forbidden result,
+unauthorized handshake and a previous error-only result. Refusals retain the JSON
+check shape, name the refusal and give credential/host guidance without printing
+credentials. Disposing the fake before probing proves the no-listener path still
+names tunnel repair. No real host or provider is contacted.
+Both new cases use caseDeadlines with shared normal/signal ownership before
+acquisition, adopt the root and fence/join every setup/body step before cleanup.
+The task CLI regression proves forbidden replies preserve refusal text rather
+than entering the OS transport error.code branch; refusal metadata is separate.
+
 Release-tool regressions use a fake command rejection (ENOENT), executable
 placeholders that cannot run, and scratch in-process hubs with a different PATH
 from the caller. They cover missing/present gh, disabled web_bundle, offline

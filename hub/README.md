@@ -93,7 +93,7 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [cland init and cland update](../docs/hub/cland-init-and-cland-update.md)
 - Release setup: `cland release --item T-n --preflight` reports hub tools/auth, clean root, committed versions and managed header immediately after the release epic brief, before covers. Report mode exits 0 with all findings; no GitHub writes. See [release flow](../docs/hub/cland-init-and-cland-update.md#release-and-sync).
 - [Prebuilt Web release assets](../docs/hub/prebuilt-web-release-assets.md)
-- [cland doctor](../docs/hub/cland-doctor.md): toolchain, remote readiness, read-only hosts diagnostics and sign-in mode with hub-backed users counts. With `[release] web_bundle = true`, also checks gh resolution on the running hub's PATH without auth or network calls; missing tools need a hub restart with the tool on PATH.
+- [cland doctor](../docs/hub/cland-doctor.md): remote admission refusals with credential repair versus unanswered sockets with tunnel repair, toolchain, remote readiness, read-only hosts diagnostics and sign-in mode with hub-backed users counts. With `[release] web_bundle = true`, also checks gh resolution on the running hub's PATH without auth or network calls; missing tools need a hub restart with the tool on PATH.
 - [The project's hub](../docs/hub/the-projects-hub.md)
 - [Adapters and sessions](../docs/hub/adapters-and-sessions.md): managed Claude Bash guard refuses computed and unquoted-glob rm/rmdir targets; OpenCode server launch bounds port selections at eight, including repeated ports, within its launch deadline.
 - [The tracker](../docs/hub/the-tracker.md)

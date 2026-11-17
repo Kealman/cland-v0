@@ -23,7 +23,7 @@ const LEGACY_STATUS = { remotes: [{
 }] };
 
 /** Own native receipts before listen, including failed or abandoned setup. */
-export function legacyRemoteHubFixture(t: TestContext, root: string, options: Options = {}) {
+export function legacyRemoteHubFixture(t: TestContext, root: string, options: Options & { refusal?: { code?: string; error: string }; helloRefusal?: boolean } = {}) {
   const socket = fixtureSocketPath(root, 'legacy.sock');
   const peers = new Map<Socket, Promise<void>>();
   const requests: string[] = [];
@@ -50,9 +50,15 @@ export function legacyRemoteHubFixture(t: TestContext, root: string, options: Op
         try { frame = JSON.parse(pending.slice(0, end)); }
         catch { peer.destroy(); return; }
         pending = pending.slice(end + 1);
-        if (frame.type === 'hello') peer.write(JSON.stringify({ type: 'welcome', name: 'cli', presence: [] }) + '\n');
+        if (frame.type === 'hello') peer.write(JSON.stringify(options.helloRefusal && options.refusal
+          ? { type: 'error', code: options.refusal.code, message: options.refusal.error }
+          : { type: 'welcome', name: 'cli', presence: [] }) + '\n');
         else {
           requests.push(frame.type);
+          if (options.refusal) {
+            peer.write(JSON.stringify({ type: 'result', id: frame.id, ok: false, ...options.refusal }) + '\n');
+            continue;
+          }
           if (frame.type === 'user.list' && options.holdUsers) { options.holdUsers(); continue; }
           peer.write(JSON.stringify(frame.type === 'hub.status' && options.hubStatus
             ? { type: 'result', id: frame.id, ok: true, value: options.hubStatus() }

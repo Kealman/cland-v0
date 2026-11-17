@@ -8,7 +8,7 @@ import { inspectConflictCaptures } from '../tracker/conflict-captures.ts';
 import { existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
 import { HOOK_EVENTS, MOD_DIR } from '../adapters/claude-code.ts';
-import { askHubFrame } from '../cli/socket-client.ts';
+import { askHubFrame, HubRefusal } from '../cli/socket-client.ts';
 import { liveHolderAsync, parseStarted, readForeignHolder, describeForeignHolder, type HubLockOptions } from '../hub/lock.ts';
 import { parseConfig } from '../init/config.ts';
 import { isManagedFile, readText } from '../init/files.ts';
@@ -62,6 +62,10 @@ async function checkHub(l: Layout, readers: ProjectReaders, env: NodeJS.ProcessE
       await askHubFrame(d, {type:'hub.status'}, probeTimeout(env,3000), env);
       return [ok('hub', `remote hub answers on ${d.socket}`), ok('hub.json', 'valid remote discovery; no local process ownership')];
     } catch (error) {
+      if (error instanceof HubRefusal) {
+        const refusal = error.refusalCode === 'forbidden' || error.refusalCode === 'unauthorized' ? error.refusalCode : 'request';
+        return [fail('hub', `remote hub answered on ${d.socket} but refused admission (${refusal})`, 'reconnect with this session’s own role-holding credential; if the host credential was revoked, ask the hub owner to register the host again'), ok('hub.json', 'valid remote discovery')];
+      }
       return [fail('hub', `remote hub does not answer on ${d.socket} (${errorText(error)})`, 'restore the host tunnel'), ok('hub.json','valid remote discovery')];
     }
   }
