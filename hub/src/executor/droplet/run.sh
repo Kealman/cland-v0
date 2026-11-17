@@ -14,6 +14,8 @@ finish() {
   code=$?
   trap - EXIT TERM INT
   timeout --kill-after=1s 3s node "$run/health.ts" finish "$run" >>"$run/suite.log" 2>&1 || echo 'suite machine health unavailable: final sample failed' >>"$run/suite.log"
+  # One streaming terminal scan, never on a status/liveness request.
+  grep '^suite infrastructure: ' "$run/suite.log" | tail -n 1 | cut -c 1-4096 >"$run/cause"
   echo "$code" >"$run/exit"
   echo "Finished: exit $code" >>"$run/suite.log"
   date -u +%Y-%m-%dT%H:%M:%SZ >"$run/done.tmp" && mv "$run/done.tmp" "$run/done"

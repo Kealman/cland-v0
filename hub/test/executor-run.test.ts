@@ -1,5 +1,7 @@
 // T3: real worker delivery and host-receipt reuse, SSH interruption, provider loss, cancellation,
 // watchdog reaping and hub-crash reconciliation require real process boundaries.
+import { caseDeadlines } from './case-deadlines.ts';
+import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { pollerDeadline } from './fakes/finish-poller.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { DatabaseSync } from 'node:sqlite';
@@ -288,4 +290,22 @@ for (const dirty of [false, true]) test(`delivery prepare ${dirty ? 'rejects uni
   }
   assert.doesNotMatch(log, /\$ echo CHECK-RAN|\$ echo TEST-RAN/);
   assert.equal((await readFile(join(f.api.stateRoot, 'machine-calls.jsonl'), 'utf8')).includes('setsid nohup bash'), false);
+});
+
+test('remote ticket loss retains its infrastructure cause through collection', async t => {
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  await owner.run(async step => {
+    const cause = 'suite infrastructure: suite ticket fixture lost; remover 42; native identity changed';
+    const f = await step(() => fixture(owner.fixtures, { hub: projectHub, stack: 'other', check: '', test: `node -e ${JSON.stringify(`console.error(${JSON.stringify(cause)});process.exit(75)`)}` }));
+    owner.adoptRoot(f.root);
+    const job = await step(() => f.spoke.call<{ ok: boolean; id: string; error?: string }>('verify', { mode: 'auto', cwd: f.root, report: f.topic, to: ['impl'], fresh: true }));
+    assert.equal(job.ok, true, job.error);
+    const report = await step(() => f.result(job.id));
+    assert.match(report.text, /suite infrastructure: suite ticket fixture lost; remover 42/);
+    const receipt = JSON.parse(await step(() => readFile(join(f.root, '.cland/run/suites', job.id, 'result.json'), 'utf8')));
+    assert.equal(receipt.code, 75);
+    assert.equal(receipt.notRun, 'infrastructure');
+    assert.equal(receipt.cause, cause);
+    assert.deepEqual(f.api.droplets, []);
+  });
 });

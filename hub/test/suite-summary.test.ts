@@ -30,3 +30,12 @@ test('command-like stdout stays in the failed command output tail', () => {
   assert.equal(suiteSummary(commandLog('sh test.sh', output, 1)),
     `test exited 1: sh test.sh\nFailures:\n${output.join('\n')}`);
 });
+
+test('ticket infrastructure outcomes retain their cause without classifying ordinary test exits', async () => {
+  const { suiteCommandOutcome } = await import('../src/suite-infrastructure.ts');
+  const cause = 'suite infrastructure: suite ticket lost; remover 42; native identity changed';
+  assert.deepEqual(suiteCommandOutcome(75, cause), { code: 75, cause, notRun: 'infrastructure' });
+  assert.deepEqual(suiteCommandOutcome(1, cause), { code: 1, cause });
+  assert.deepEqual(suiteCommandOutcome(75, 'ordinary command exit'), { code: 75, cause: 'ordinary command exit' });
+  assert.match(suiteSummary(cause + '\n'), /suite infrastructure: suite ticket lost; remover 42/);
+});

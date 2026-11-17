@@ -1,3 +1,4 @@
+import { processIdentityAsync, processIdentitiesAsync } from './process-identity.ts';
 import { pgrepMembers } from './pgrep-result.ts';
 // Shared compatibility lease for hand runners and hub-admitted verification workers.
 import { type Stats, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -10,6 +11,8 @@ import { fileURLToPath } from 'node:url';
 import type { ProcessIdentity } from '../test/process-cleanup.ts';
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export type Holder = { pid: number; started: string | null; startedUtc?: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity; records?: string; integrated?: string };
+export class SuiteTicketLost extends Error {}
+type Ticket = Holder & { queued: string; birth?: string | null };
 export type Lease = { publish: () => Promise<void>; release: () => Promise<void> };
 /** Read-only view of the compatibility slot; never reap or take a lease to display it. */
 export async function compatibilityHolder(dirs: string[], env: NodeJS.ProcessEnv = process.env, processes?: LockProcessTable): Promise<{ holder: Holder | null; since: string | null } | null> {
@@ -35,7 +38,7 @@ async function holderAt(path: string): Promise<Holder | null> {
   try {
     const value = JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown> | null;
     if (typeof value === 'object' && value !== null && Object.hasOwn(value, 'pid') && Object.hasOwn(value, 'token') && Number.isInteger(value.pid) && Number(value.pid) > 0 && typeof value.token === 'string') {
-      const parsed = value as Partial<Holder>;
+      const parsed = value as Partial<Ticket>;
       return { ...parsed, pid: Number(value.pid), started: typeof parsed.started === 'string' ? parsed.started : null, ...('startedUtc' in parsed ? { startedUtc: typeof parsed.startedUtc === 'string' ? parsed.startedUtc : null } : {}), since: parsed.since ?? parsed.started ?? 'unknown', token: value.token };
     }
   } catch { /* no complete ownership record */ }
@@ -114,16 +117,47 @@ export async function sweep(holder: Holder): Promise<void> {
   }
 }
 
-async function liveTickets(queueDir: string, deadline?: number): Promise<Array<Holder & { queued: string }>> {
-  const tickets: Array<Holder & { queued: string }> = [];
+const ticketProcesses = {
+  alive: pidAlive,
+  births: (pids: number[], timeoutMs: number) => processIdentitiesAsync(pids, process.env, timeoutMs),
+  now: Date.now,
+};
+/** One joined native census consumes the inspection's remaining budget. */
+export async function liveTickets(queueDir: string, deadline?: number, native = ticketProcesses): Promise<Ticket[]> {
+  const budget = () => {
+    const ms = deadline === undefined ? 3000 : deadline - native.now();
+    if (ms <= 0) throw new Error('compatibility inspection deadline reached; ownership preserved');
+    return Math.min(3000, ms);
+  };
+  const waiting: Array<{ path: string; ticket: Ticket; alive: boolean }> = [];
   for (const name of await readdir(queueDir)) {
+    budget();
     if (!name.endsWith('.json')) continue;
     const path = join(queueDir, name);
-    const waiting = await holderAt(path);
-    if (!waiting && !await stat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; })) continue;
-    if (!waiting || typeof waiting.queued !== 'string' || !/^\d+$/.test(waiting.queued)) throw new Error(`invalid suite ticket ${path}`);
-    if (!await liveHolder(waiting, deadline)) await rm(path, { force: true });
-    else tickets.push({ ...waiting, queued: waiting.queued });
+    const ticket = await holderAt(path) as Ticket | null;
+    if (!ticket && !await stat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; })) continue;
+    if (!ticket || typeof ticket.queued !== 'string' || !/^\d+$/.test(ticket.queued)) throw new Error(`invalid suite ticket ${path}`);
+    waiting.push({ path, ticket, alive: native.alive(ticket.pid) });
+  }
+  const pids = [...new Set(waiting.filter(row => row.alive && row.ticket.birth).map(row => row.ticket.pid))];
+  // Never race away from the census: its native owner closes before this join
+  // returns. A late/unknown result cannot authorize any ticket removal.
+  const births = pids.length ? await native.births(pids, budget()) : new Map<number, string>();
+  budget();
+  const tickets: Ticket[] = [];
+  for (const { path, ticket, alive } of waiting) {
+    budget();
+    const birth = births.get(ticket.pid);
+    const live = !alive ? false : Object.hasOwn(ticket, 'birth')
+      ? !ticket.birth || birth === undefined || birth === ticket.birth
+      : await liveHolder(ticket, deadline);
+    budget();
+    if (!live) {
+      const removal = { remover: process.pid, reason: !alive ? 'ticket PID is not alive' : 'ticket process identity changed', token: ticket.token };
+      if (alive && Object.hasOwn(ticket, 'birth')) await writeFile(`${path}.removed`, JSON.stringify(removal), { mode: 0o600 });
+      process.stderr.write(`suite ticket removed ${JSON.stringify(removal)}\n`);
+      await rm(path, { force: true });
+    } else tickets.push(ticket);
   }
   return tickets.sort((a, b) => BigInt(a.queued) < BigInt(b.queued) ? -1 : BigInt(a.queued) > BigInt(b.queued) ? 1 : a.token.localeCompare(b.token));
 }
@@ -177,7 +211,7 @@ export async function acquire(dirs: string[], interrupted: () => boolean, holder
   // The persistent queue survives release/recovery of the ownership directories.
   const queueDir = `${primary}.queue`;
   const ticketPath = join(queueDir, `${holder.token}.json`);
-  const ticket = { ...holder, queued: process.hrtime.bigint().toString() };
+  const ticket = { ...holder, queued: process.hrtime.bigint().toString(), birth: await processIdentityAsync(holder.pid) };
   mkdirSync(queueDir, { recursive: true, mode: 0o700 });
   const staging = `${ticketPath}.${holder.token}`;
   try {
@@ -200,7 +234,10 @@ export async function acquire(dirs: string[], interrupted: () => boolean, holder
         const tickets = await liveTickets(queueDir);
         position = tickets.findIndex(waiting => waiting.token === holder.token) + 1;
         total = tickets.length;
-        if (!position) throw new Error('suite ticket disappeared while waiting');
+        if (!position) {
+          const removal = await readFile(`${ticketPath}.removed`, 'utf8').catch(() => 'remover unknown; no sweep receipt (external deletion or older runner)');
+          throw new SuiteTicketLost(`suite ticket ${holder.token} disappeared while waiting; ${removal}`);
+        }
         const inspected = await inspectLocks(dirs);
         previous = inspected.previous; info = inspected.info;
         blockedDir = inspected.blockedDir ?? primary;
@@ -271,7 +308,7 @@ export async function acquire(dirs: string[], interrupted: () => boolean, holder
       await pause(250);
     }
     throw new Error('suite interrupted while waiting for the lock');
-  } finally { await rm(ticketPath, { force: true }); }
+  } finally { await rm(ticketPath, { force: true }); await rm(`${ticketPath}.removed`, { force: true }); }
 }
 
 

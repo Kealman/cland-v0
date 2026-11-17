@@ -1,3 +1,4 @@
+import { SUITE_INFRASTRUCTURE_EXIT } from '../src/suite-infrastructure.ts';
 import { rawCoverageOwner, removeRawCoverage } from '../src/suite-raw-coverage.ts';
 import { eligibleLoadRerun } from '../src/suite-load-rerun.ts';
 import { lockHostIdentity } from '../src/hub/lock-identity.ts';
@@ -21,7 +22,7 @@ import { join, resolve, matchesGlob } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import { processStarted } from '../src/hub/lock.ts';
-import { acquire, acquireBroker, borrowLease, inheritedLease, sweep, type Holder, type Lease } from '../src/suite-lock.ts';
+import { SuiteTicketLost, acquire, acquireBroker, borrowLease, inheritedLease, sweep, type Holder, type Lease } from '../src/suite-lock.ts';
 import { packageShards, readTierAssignments, type SuiteShard } from '../src/suite-shards.ts';
 import { planTierReport, tierReport, type TierPlan } from '../src/suite-tier-report.ts';
 import { suiteLimits } from '../src/suite-limits.ts';
@@ -452,6 +453,7 @@ process.chdir(cwd);`);
     return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : 0;
   } catch (error) {
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
+    if (error instanceof SuiteTicketLost) { process.stderr.write(`suite infrastructure: ${error.message}\n`); return SUITE_INFRASTRUCTURE_EXIT; }
     throw error;
   } finally {
     activeGuard?.stop();

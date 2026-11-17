@@ -124,3 +124,17 @@ The raw-removal refusal fixture injects an EACCES at native rm, after writers
 finish. It retains raw bytes for retry and requires the suite lease to be absent
 with ENOENT after runner close. Borrowed interruption with detached raw writers
 is covered by the existing cancellation lifecycle cases in suite-cancel.test.ts.
+
+The waiting-ticket regressions use disposable lock directories. The live-waiter
+case gives a live native PID a historical wall-clock start stamp and ages the
+held lock and ticket by two hours. It checks the durable ticket, releases the
+phase lock and asserts the installed owner. Missing-ticket controls exercise an
+external deletion and a native-identity sweep through a child runner, requiring
+exit 75, a named or explicitly unknown remover, and no bare acquisition stack.
+Run these with `--test-name-pattern='a live suite ticket survives|a missing suite ticket reports'`.
+Legacy raw-ticket and reused-PID cases remain in the FIFO regressions.
+
+Waiting-ticket cases enroll caseDeadlines' whole-sequence normal/signal owner before
+fixture acquisition. Cleanup fences new steps, interrupts pending acquisition or
+children, joins the full callback and late resources, then removes adopted roots.
+The acquire/child joins are resource cleanup steps before directory removal.

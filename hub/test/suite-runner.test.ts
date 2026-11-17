@@ -1,8 +1,10 @@
 // T3 runner lifecycle: lock ownership, interruption cleanup and stale-process recovery through real CLI children.
+import { caseDeadlines } from './case-deadlines.ts';
+import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, readdir, realpath, rm, utimes, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
@@ -1319,4 +1321,77 @@ test('raw coverage removal refusal still releases drained execution leases', asy
   assert.match(suite.output(), /suite raw coverage cleanup retained: Error: planted raw removal failure/);
   assert.ok((await readdir(`${output}.raw`)).length > 0, 'refused raw bytes remain for the next sweep');
   await assert.rejects(import('node:fs/promises').then(fs => fs.stat(lockPath(dir))), { code: 'ENOENT' });
+});
+
+test('a live suite ticket survives an old wall-clock identity and acquires after release', async t => {
+  let interrupted = false;
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => { interrupted = true; } });
+  await owner.run(async step => {
+    const dir = await step(() => fixture(owner.fixtures)); owner.adoptRoot(dir);
+    const lock = join(dir, 'clock.lock');
+    await step(() => mkdir(lock));
+    const { acquire } = await step(() => import('../src/suite-lock.ts'));
+    const pending = acquire([lock], () => interrupted, { pid: process.pid, started: 'Mon Oct 5 12:00:00 1900', startedUtc: 'Mon Oct 5 12:00:00 1900', since: '1900-10-05T12:00:00Z', token: 'clock-waiter' });
+    const settled = pending.then(leases => ({ leases }), error => ({ error }));
+    onCleanup(owner.fixtures, async () => { interrupted = true; const result = await settled; if ('leases' in result) for (const lease of result.leases) await lease.release(); });
+    const ticket = join(`${lock}.queue`, 'clock-waiter.json');
+    await step(() => until(() => readFile(ticket, 'utf8').then(() => true, () => false)));
+    const old = new Date(Date.now() - 2 * 60 * 60_000);
+    await step(() => utimes(lock, old, old));
+    await step(() => utimes(ticket, old, old));
+    assert.equal(JSON.parse(await step(() => readFile(ticket, 'utf8'))).token, 'clock-waiter');
+    await step(() => rm(lock, { recursive: true }));
+    const result = await step(() => settled);
+    assert.ok('leases' in result, 'error' in result ? String(result.error) : '');
+    assert.equal(JSON.parse(await step(() => readFile(`${lock}.owner`, 'utf8'))).token, 'clock-waiter');
+  });
+});
+
+for (const removal of ['external deletion', 'identity sweep']) test(`a missing suite ticket reports infrastructure with ${removal}`, async t => {
+  let child: ReturnType<typeof run> | undefined;
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => { child?.child.kill('SIGTERM'); } });
+  await owner.run(async step => {
+    const dir = await step(() => fixture(owner.fixtures)); owner.adoptRoot(dir);
+    const lock = lockPath(dir);
+    await step(() => mkdir(lock));
+    const file = join(dir, 'never.test.mjs');
+    await step(() => writeFile(file, "throw new Error('must not execute');"));
+    child = run(owner.fixtures, dir, file);
+    const active = child;
+    onCleanup(owner.fixtures, async () => { active.child.kill('SIGTERM'); await active.done; });
+    const queue = `${lock}.queue`;
+    let ticket = '';
+    await step(() => until(async () => {
+      ticket = (await readdir(queue).catch(() => [])).find(name => name.endsWith('.json')) ?? '';
+      return ticket !== '' && active.output().includes('waiting for the suite lock');
+    }));
+    if (removal === 'identity sweep') {
+      const path = join(queue, ticket);
+      const row = JSON.parse(await step(() => readFile(path, 'utf8')));
+      row.birth = 'different-native-generation';
+      const altered = `${path}.fixture`;
+      await step(() => writeFile(altered, JSON.stringify(row)));
+      await step(() => rename(altered, path));
+    } else await step(() => rm(join(queue, ticket)));
+    assert.equal(await step(() => active.done), 75, active.output());
+    assert.match(active.output(), /suite infrastructure: suite ticket .* disappeared while waiting/);
+    assert.match(active.output(), removal === 'identity sweep' ? /"remover":\d+,"reason":"ticket process identity changed"/ : /remover unknown; no sweep receipt/);
+    assert.doesNotMatch(active.output(), /at acquire|must not execute/);
+  });
+});
+
+test('a previous-shape live ticket remains visible to the compatibility observer', async t => {
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  await owner.run(async step => {
+    const dir = await step(() => fixture(owner.fixtures)); owner.adoptRoot(dir);
+    const lock = join(dir, 'legacy.lock');
+    const queue = `${lock}.queue`;
+    await step(() => mkdir(queue));
+    const ticket = { pid: process.pid, started: null, since: new Date().toISOString(), token: 'legacy-live', queued: '0' };
+    const path = join(queue, 'legacy-live.json');
+    await step(() => writeFile(path, JSON.stringify(ticket)));
+    const { compatibilityOccupied } = await step(() => import('../src/suite-lock.ts'));
+    assert.equal(await step(() => compatibilityOccupied([lock])), true);
+    assert.deepEqual(JSON.parse(await step(() => readFile(path, 'utf8'))), ticket);
+  });
 });

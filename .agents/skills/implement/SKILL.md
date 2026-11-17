@@ -60,6 +60,10 @@ invite only through terminal narration, never SetupLine or a prompt transcript.
 Wait for the persisted passkey receipt and join the abortable terminal reader;
 Enter leaves `cland user invite <name>`. See docs/hub/cland-setup.md.
 
+Waiting suite tickets have no age expiry; native birth protects new tickets across
+clock corrections. Exit 75 plus `suite infrastructure:` is incomplete infrastructure
+evidence, not a failed test; see `docs/hub/running.md#waiting-suite-tickets`.
+
 ## Merge-delta advisory comments
 
 Nightly soak admission budgets serial base file costs, including Web, before

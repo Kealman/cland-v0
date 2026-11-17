@@ -1,3 +1,4 @@
+import { suiteInfrastructureLine } from './suite-infrastructure.ts';
 import { stdioWriters } from './stdio-writers.ts';
 import { processIdentityAsync } from './process-identity.ts';
 // Observe the command's bytes, rather than reporter totals, so silent test teardown is bounded too.
@@ -26,6 +27,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   const birth = child.pid ? native.processIdentityAsync(child.pid, env) : Promise.resolve(null);
   const identity = child.pid ? native.processStartedAsync(child.pid) : Promise.resolve(null);
   let cause = '';
+  let infrastructure = '';
   let interrupted = false;
   let ending: Promise<void> | undefined;
   const stopped = Promise.withResolvers<void>();
@@ -134,6 +136,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     while ((newline = pending.indexOf('\n')) >= 0) {
       const line = pending.slice(0, newline);
       pending = pending.slice(newline + 1);
+      if (suiteInfrastructureLine(line)) infrastructure = line.slice(0, 4096);
       const owner = parseStartupOwner(line);
       if (owner && !ending && !interrupted && !closed) {
         if (owner.event === 'start') innerOwners.add(owner.id);
@@ -172,7 +175,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
       return { code: 1, signal: null };
     })]);
     await ending;
-    return { code: cause ? 1 : outcome.code ?? 1, cause: cause || (outcome.signal ? `command terminated by ${outcome.signal}` : '') };
+    return { code: cause ? 1 : outcome.code ?? 1, cause: cause || infrastructure || (outcome.signal ? `command terminated by ${outcome.signal}` : '') };
   } finally {
     closed = true;
     clearTimeout(timer);

@@ -5,12 +5,13 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
 import { drive } from './remote-clock.ts';
-import { onCleanup } from './process-cleanup.ts';
+import { beforeDirectories, guardDirectoryRemoval, onCleanup } from './process-cleanup.ts';
 import { eventually, projectHub, connectUi, inProcessSpoke, until } from './harness.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { DropletExecutor, ProviderCapacityUnavailable } from '../src/executor/droplet/droplet.ts';
+import { Suites } from '../src/hub/suites.ts';
 import { Store } from '../src/hub/store.ts';
 import { serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
 import { acquireLockAsync } from '../src/hub/lock.ts';
@@ -478,4 +479,53 @@ test('another project stage close skips sharding and runs once without a check',
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
   assert.equal((await f.messages(job.id)).length, 1);
   assert.deepEqual(f.api.droplets, []);
+});
+
+
+for (const other of ['passed', 'failed']) for (const restoreChild of [false, true]) test(`ticket infrastructure beside ${other} shard retains aggregate disposition (restored child: ${restoreChild})`, async t => {
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  await owner.run(async step => {
+    const f = await step(() => integrated(owner.fixtures, '', 2, undefined, { machine: 'scripted' }));
+    owner.adoptRoot(f.root);
+    f.machine.script({ outcome: 'slow' }, { outcome: 'slow' });
+    assert.equal((await step(() => f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' }))).ok, true);
+    const cause = 'suite infrastructure: suite ticket fixture lost; remover 42; native identity changed';
+    const status = f.machine.dependencies.run.status.bind(f.machine.dependencies.run);
+    t.mock.method(f.machine.dependencies.run, 'status', async (lease: Parameters<typeof status>[0]) => {
+      const result = await status(lease);
+      return result.state === 'done' && lease.run.endsWith('shard-2') ? { ...result, code: 75, cause } : result;
+    });
+    const job = await step(() => drive(f, f.launch('all', '--fresh', '--occasion', 'stage')));
+    await step(() => startedShards(f, job.id));
+    f.machine.finish(`${job.id}-shard-1`, other === 'passed' ? 0 : 1, other === 'passed' ? '# tests 1\n# pass 1\n' : '# tests 1\n# fail 1\nnot ok 1 - actual test failure\n');
+    f.machine.finish(`${job.id}-shard-2`, 1, cause + '\n');
+    if (restoreChild) {
+      const dir = join(f.root, '.cland/run/suites', `${job.id}-shard-2`);
+      await step(() => writeFile(join(dir, 'suite.log'), cause + '\n'));
+      await step(() => writeFile(join(dir, 'result.json'), JSON.stringify({ code: 75, cause, finished: f.clock.now().toISOString() })));
+    }
+    await step(() => f.clock.advance(1000));
+    const report = await step(() => drive(f, f.result(job.id)));
+    assert.match(report.text, /suite infrastructure: suite ticket fixture lost/);
+    if (other === 'passed') {
+      assert.match(report.text, /all unavailable: infrastructure/);
+      assert.match(report.text, /Execution incomplete/);
+      assert.match(report.text, /tests 1; pass 1/);
+      assert.doesNotMatch(report.text, /No tests executed/);
+    } else {
+      assert.match(report.text, /all exit 1/);
+      assert.match(report.text, /actual test failure/);
+    }
+    await step(() => f.verificationSettled());
+    await step(async () => { await f.stop(); });
+    const store = new Store(join(f.root, '.cland/hub.db'));
+    let restored: Suites | undefined;
+    try {
+      const saved = JSON.parse(store.suiteJob(job.id)!).job;
+      assert.equal(saved.outcome.notRun, other === 'passed' ? 'infrastructure' : undefined);
+      assert.match(saved.outcome.cause, /shard-2: suite infrastructure/);
+      restored = new Suites(store, f.root, async () => {}, { clock: f.clock, env: f.env, dropletServices: f.dependencies });
+      assert.equal(restored.latest('T-0', 'dev')?.result, other === 'passed' ? 'unavailable' : 'failed');
+    } finally { await restored?.close(); store.close(); }
+  });
 });

@@ -2446,3 +2446,8 @@ This follows landing, separately from the earlier batch suite result.
 See [the merge queue fixture guide](tests/hub-test-merge-queue.test.ts.md).
 
 Host outage lifecycle cases: [host-unreachable](tests/hub-test-host-unreachable.test.ts.md).
+
+Waiting suite tickets retain their FIFO place without an age expiry. A lost
+ticket is an incomplete infrastructure outcome (exit 75 plus a
+`suite infrastructure:` diagnostic), with the sweeper receipt or an explicit
+unknown-remover statement. See [waiting suite tickets](../hub/running.md#waiting-suite-tickets).

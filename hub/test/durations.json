@@ -12420,6 +12420,13 @@
     "hub/test/scenarios/integrated-v04.test.ts::v0.4 integrated: remote login, live renewal, two users, busy restart and host sub-cap": 25.482223
   },
   "allow": {
+    "hub/test/executor-run.test.ts::remote ticket loss retains its infrastructure cause through collection": {
+      "seconds": 10.353,
+      "owner": "C-216",
+      "added": "2026-11-17",
+      "expires": "2026-11-24",
+      "reason": "T-1576: native uploaded finish/status and durable collection require a real fake-machine lifecycle; cap is 1.5x the worst passing reduced-fixture Darwin sample (6.901849875 s) at 85313c599, with all result/cause/release assertions retained."
+    },
     "hub/test/login-resignin-native.test.ts::native sign-in of unbound Claude, Codex and OpenCode disks reuses and detaches each volume": {
       "seconds": 16.129,
       "owner": "C-216",

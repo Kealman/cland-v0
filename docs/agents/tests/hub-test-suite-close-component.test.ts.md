@@ -58,3 +58,8 @@ remote tests/imports change scheduling opportunities; they do not share the
 fixture's private ledger. Do not attribute the timeout to a particular remote
 landing without a receipt identifying it. Reproduce the contended boundary
 rather than depending on a full-suite startup/sweep interleaving.
+
+Ticket-loss aggregate controls pair infrastructure loss with a passed shard and
+with a real failed test, both live and from a durable child result. They assert
+the parent report, persisted disposition and reconstructed VerifyResult after
+reopening storage. Setup and body enroll whole-case cleanup before acquisition.

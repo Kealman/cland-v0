@@ -8,7 +8,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { PassThrough } from 'node:stream';
 import { suiteCommand } from '../src/suite-command.ts';
 import { startupOwnerLine } from '../src/suite-startup-owner.ts';
-for (const mode of ['hung', 'unrelated', 'other-reporter', 'duplicate', 'test', 'suite', 'empty', 'scaled', 'capped', 'legacy', 'closed', 'owner-finish', 'owner-exit', 'owner-active', 'invalid-owner', 'owner-reclaim-open-pipe'] as const)
+for (const mode of ['infrastructure', 'hung', 'unrelated', 'other-reporter', 'duplicate', 'test', 'suite', 'empty', 'scaled', 'capped', 'legacy', 'closed', 'owner-finish', 'owner-exit', 'owner-active', 'invalid-owner', 'owner-reclaim-open-pipe'] as const)
 test(`file startup watchdog handles ${mode} receipts`, async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const child = Object.assign(new EventEmitter(), { pid: 40001, stdout: new PassThrough(), stderr: new PassThrough() });
@@ -66,6 +66,14 @@ test(`file startup watchdog handles ${mode} receipts`, async t => {
   // Observe the launch receipt before injecting a file that never registers a test.
   await launched.promise;
   await Promise.resolve();
+  if (mode === 'infrastructure') {
+    const cause = 'suite infrastructure: suite ticket lost; remover unknown';
+    child.stderr.write(cause + '\n');
+    child.emit('exit', 75, null);
+    child.emit('close', 75, null);
+    assert.deepEqual(await result, { code: 75, cause });
+    return;
+  }
   const start = { event: 'start', id: 'reporter:1', file: 'hung-import.test.ts', name: 'hung-import.test.ts', at: 0, nesting: 0, ...(mode === 'legacy' ? {} : { type: 'file' }) };
   const emit = (row: object) => child.stdout.write(`suite progress ${JSON.stringify(row)}\n`);
   const owner = (event: 'start' | 'finish') => child.stdout.write(startupOwnerLine({ id: 'inner-phase:1', event }) + '\n');
@@ -230,4 +238,34 @@ test('non-npm command signal diagnostic uses stack-neutral wording', async t => 
     CLAND_SUITE_LIMITS: JSON.stringify({ stallTimeoutMs: 1000 }),
   });
   assert.deepEqual(outcome, { code: 1, cause: 'command terminated by SIGTERM' });
+});
+
+import { fixtureWork as ownFixtureWork } from './fixture-work.ts';
+import { mkdtemp, writeFile, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { liveTickets } from '../src/suite-lock.ts';
+
+for (const late of [false, true]) test(`native ticket census shares the total deadline (late evidence: ${late})`, async t => {
+  await ownFixtureWork(t).run(async work => {
+    const root = await work.root(() => mkdtemp(join(tmpdir(), 'cland-ticket-budget-')));
+    const rows = [1, 2].map(pid => ({ pid, started: null, token: `waiter-${pid}`, queued: String(pid), birth: `native-${pid}` }));
+    for (const row of rows) await work.step(() => writeFile(join(root, `${row.token}.json`), JSON.stringify(row)));
+    let now = 4800;
+    const calls: number[][] = [];
+    const native = {
+      alive: () => true, now: () => now,
+      births: async (pids: number[], timeout: number) => {
+        calls.push(pids);
+        assert.equal(timeout, 200, 'one census consumes the remaining inspection budget');
+        now = late ? 5001 : 4999;
+        // Missing evidence is unknown, never a changed native generation.
+        return new Map<number, string>();
+      },
+    };
+    if (late) await assert.rejects(work.step(() => liveTickets(root, 5000, native)), /inspection deadline reached; ownership preserved/);
+    else assert.deepEqual((await work.step(() => liveTickets(root, 5000, native))).map(row => row.token), rows.map(row => row.token));
+    assert.deepEqual(calls, [[1, 2]], 'one joined native probe group for every waiting PID');
+    for (const row of rows) assert.deepEqual(JSON.parse(await work.step(() => readFile(join(root, `${row.token}.json`), 'utf8'))), row);
+  });
 });

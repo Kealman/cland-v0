@@ -1,3 +1,4 @@
+import { SUITE_INFRASTRUCTURE_EXIT, suiteCommandOutcome } from '../suite-infrastructure.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { verificationSteps, verificationStepCommand } from '../verification-plan.ts';
 // Detached from both the CLI and the hub. Completion is a durable receipt, not a socket callback.
@@ -12,7 +13,7 @@ import { platform as osPlatform, arch, release } from 'node:os';
 import type { Platform, RunRef } from '../executor/executor.ts';
 import { candidateTree } from '../verification-tree.ts';
 import { processStartedAsync } from './lock.ts';
-import { acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
+import { SuiteTicketLost, acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
 import { selectionTransport } from '../suite-selection.ts';
 import { clandRunner, recordedCommands } from '../verification-commands.ts';
 import { suiteCommand } from '../suite-command.ts';
@@ -103,7 +104,10 @@ export async function suiteWorker(input: string): Promise<void> {
       if (code !== 0) break;
     }
     if (admitted && !signal && code === 0) await checkHead();
-  } catch (error) { code = 1; cause = error instanceof Error ? error.message : String(error); }
+  } catch (error) {
+    code = error instanceof SuiteTicketLost ? SUITE_INFRASTRUCTURE_EXIT : 1;
+    cause = error instanceof SuiteTicketLost ? `suite infrastructure: ${error.message}` : error instanceof Error ? error.message : String(error);
+  }
   finally {
     try {
       // The hub captures descendants before interrupting us. Preserve ownership
@@ -116,7 +120,7 @@ export async function suiteWorker(input: string): Promise<void> {
   }
   if (signal) { code = signal === 'SIGINT' ? 130 : 143; cause = `worker interrupted by ${signal}`; }
   process.stdout.write(`\nFinished: exit ${code}${cause ? `; ${cause}` : ''}\n`);
-  await writeFile(`${job.result}.tmp`, JSON.stringify({ code, cause, finished: new Date().toISOString(), ...(platform ? { platform } : {}) }), { mode: 0o600 });
+  await writeFile(`${job.result}.tmp`, JSON.stringify({ ...suiteCommandOutcome(code, cause), finished: new Date().toISOString(), ...(platform ? { platform } : {}) }), { mode: 0o600 });
   await rename(`${job.result}.tmp`, job.result);
 }
 

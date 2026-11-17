@@ -2758,3 +2758,32 @@ and pairing revocation through `store.users.onReset`; native drainage precedes
 that transaction. Keep the retained first user and single-mode compatibility.
 Recovery from a stopped hub with a hand-edited single config restores users mode
 in config, starts the hub, then uses `cland auth reset`; never edit SQLite offline.
+
+### Waiting suite tickets
+
+Compatibility and machine wait queues use FIFO tickets. New tickets record the
+native process birth as well as the legacy PID/start-time fields. Ticket age is
+not an expiry. One joined batch of native PID probes consumes the remaining guarded inspection
+deadline; late evidence preserves tickets and reports inspection incomplete.
+A matching native birth retains a live waiter across wall-clock
+corrections; an unavailable native probe retains unknown ownership. Tickets from
+older runners keep the legacy start-time check. Older observers still use that
+legacy check, so this protection requires the updated runner/observer.
+
+A sweeper records its PID and removal reason before removing a ticket whose PID
+is live but whose native birth differs. Dead-PID removals are logged without
+retaining a receipt for a process that cannot consume it. A waiter whose ticket
+vanishes exits 75 with `suite infrastructure:` and the removal receipt. External
+deletion or an older sweeper has no receipt and is explicitly labelled unknown.
+Updated local workers and droplet collectors classify this reserved exit plus
+its diagnostic as infrastructure unavailable; completed test receipts remain in
+the log. A passed shard beside infrastructure loss keeps the parent's incomplete
+infrastructure disposition, including restored child receipts; a genuine test
+failure keeps a failed aggregate. Reports retain completed counts without claiming
+that no tests executed. Other exit-75 commands keep their ordinary outcome. Droplets retain one
+bounded cause file at completion, before the done marker; status reads that file
+without rescanning the log. Existing remote runs without it remain compatible.
+
+Suite/shard duration lines currently use wall-clock differences. They can include
+clock corrections and must not be equated to native test duration or provider
+lifetime. T-1576's evidence reconciles the historical clock correction separately.

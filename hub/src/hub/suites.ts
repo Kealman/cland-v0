@@ -1,3 +1,4 @@
+import { suiteCommandOutcome } from '../suite-infrastructure.ts';
 import { hostVerifyWorktree, removeHostVerifyWorktree, validateHostVerifyWorktree, hostVerifyDirectory, type HostVerifySnapshot } from '../territory.ts';
 import { RawCoverageSweep, removeRawCoverage } from '../suite-raw-coverage.ts';
 import { recentCoverGreens } from '../suite-load-rerun.ts';
@@ -175,6 +176,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
   const executedTiers = tierLines.filter(line => /^tier (?:T[0-4]|Web): exit /.test(line));
   const webPhase = unavailableWebPhase(text);
   const priority = [
+    ...lines.filter(line => line.startsWith('suite infrastructure: ')),
     ...(lines.some(line => line.startsWith('suite stall ')) ? [`stall process detail: log${options.logArtifact ? ' ' + options.logArtifact : ''}`] : []),
     ...lines.filter(line => line.startsWith('shard not run ')),
     ...(webPhase ? [webUnavailableLine(webPhase)] : []),
@@ -1109,9 +1111,13 @@ export class Suites {
       ...(shard.machine.name ? { name: shard.machine.name } : {}), ...(shard.machine.size ? { size: shard.machine.size } : {}), ...(shard.machine.region ? { region: shard.machine.region } : {}),
     } : null, health: shard.health ?? null }));
     delete job.health;
-    const notRun = shards.every(shard => shard.outcome?.notRun)
-      ? shards.some(shard => shard.outcome?.notRun === 'infrastructure') ? 'infrastructure' : 'provider-capacity'
-      : undefined;
+    const incomplete = failures.filter(shard => shard.outcome?.notRun);
+    // Passed siblings cannot turn incomplete infrastructure into failed tests.
+    // A genuine test failure still owns the aggregate's failed disposition.
+    const notRun = failures.length > 0 && incomplete.length === failures.length
+      && incomplete.some(shard => shard.outcome?.notRun === 'infrastructure')
+      ? 'infrastructure'
+      : shards.every(shard => shard.outcome?.notRun) ? 'provider-capacity' : undefined;
     job.outcome ??= { code: failures.length ? 1 : 0, cause: failures.map(shard => `${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('; '), ...(notRun ? { notRun } : {}) };
     const platform = shards.find(shard => shard.platform)?.platform;
     if (platform) job.platform = platform;
@@ -1421,7 +1427,7 @@ export class Suites {
       await writeFile(`${job.result}.restore.tmp`, JSON.stringify({ ...result, ...job.outcome }), { mode: 0o600 });
       await rename(`${job.result}.restore.tmp`, job.result);
     }
-    if (!job.outcome?.notRun && (!job.outcome || !job.cancelled && !job.requesterDied && !job.timedOut)) job.outcome = { code: result.code, cause: result.cause ?? '', ...(result.notRun ? { notRun: result.notRun } : {}) };
+    if (!job.outcome?.notRun && (!job.outcome || !job.cancelled && !job.requesterDied && !job.timedOut)) job.outcome = { ...suiteCommandOutcome(result.code, result.cause ?? ''), ...(result.notRun ? { notRun: result.notRun } : {}) };
     job.finished = result.finished;
     if (result.platform) job.platform = result.platform;
     if (result.health) job.health = result.health;
@@ -1510,7 +1516,7 @@ export class Suites {
       if (!restored && remote && job.lease && job.remoteLogStart !== undefined) {
         try { await this.#collectLog(job); }
         catch (error) { logError = error; }
-        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ ...(job.outcome?.notRun ? job.outcome : { code: receipt.code ?? 1, cause: receipt.cause ?? '' }), finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
+        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ ...(job.outcome?.notRun ? job.outcome : suiteCommandOutcome(receipt.code ?? 1, receipt.cause ?? '')), finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
       }
       if (receipt?.platform) job.platform = receipt.platform;
       if (receipt?.finished) job.finished = receipt.finished;
@@ -1522,7 +1528,7 @@ export class Suites {
         await appendFile(job.log, `remote machine ${(job.lease as DropletLease).name}: ${receipt.cause ?? 'lost'}; collection unavailable\n`, { mode: 0o600 });
       }
       if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.outcome?.notRun && !job.cancelled && !job.requesterDied && !job.timedOut) {
-        job.outcome = { code: receipt.code ?? 1, cause: receipt.code === 124 ? `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` : receipt.cause ?? '' };
+        job.outcome = suiteCommandOutcome(receipt.code ?? 1, receipt.code === 124 ? `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` : receipt.cause ?? '');
       }
       // Status replies prove transport liveness, not test progress. Only new
       // stdout/stderr bytes reset the silence bound, including across restart.

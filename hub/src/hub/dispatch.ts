@@ -1,3 +1,4 @@
+import { suiteInfrastructureLine } from '../suite-infrastructure.ts';
 import { selectHostPool } from '../host/pools.ts';
 import { which } from '../doctor/report.ts';
 import {removeLogin} from '../host/login-remove.ts';
@@ -1185,8 +1186,10 @@ export class Dispatcher {
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}\n${originalExecution}` : '';
     const missing = job.occasion === 'stage' ? this.#suites!.stageMissing(job.tree, job) : [];
     const stageCover = job.occasion === 'stage' ? `\nstage cover ${missing.length ? `missing ${missing.join(', ')}` : 'complete (Linux droplet, macOS)'} · tree ${job.tree ?? 'unknown'}` : '';
+    const incompleteInfrastructure = log.split('\n').some(suiteInfrastructureLine);
+    const unavailableExecution = incompleteInfrastructure ? `Execution incomplete.\n${summary}` : 'No tests executed.';
     const resultText = (artifact: { id: string; path: string }): string => {
-      if (outcome.notRun) return core.boundedText(`suite result ${job.id}\n${job.mode} unavailable: ${outcome.notRun === 'provider-capacity' ? 'provider capacity' : outcome.notRun}\n${outcome.cause}\nNo tests executed.\nBranch ${job.branch} · head ${job.head}\n${execution}\nLog ${artifact.id}: ${artifact.path}`);
+      if (outcome.notRun) return core.boundedText(`suite result ${job.id}\n${job.mode} unavailable: ${outcome.notRun === 'provider-capacity' ? 'provider capacity' : outcome.notRun}\n${outcome.cause}\n${unavailableExecution}\nBranch ${job.branch} · head ${job.head}\n${execution}\nLog ${artifact.id}: ${artifact.path}`);
       const summary = suiteSummary(log, quarantine.lines, { logArtifact: artifact.id });
       const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}${progress}\n${summary}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${execution}${provenance}${stageCover}\nLog ${artifact.id}: ${artifact.path}`;
       let text = report(2048);
@@ -1216,7 +1219,7 @@ export class Dispatcher {
       periodic.durationWarnings = root ? await readDurationAllowanceWarnings(root, () => core.clock.now().getTime()) : [];
       const merges = periodic.merges?.slice(0, 10).map(merge => `${merge.head} ${merge.subject}`).join(', ') ?? 'unavailable';
       text = core.boundedText(`Periodic dev T3 ${periodic.result} · head ${periodic.head}\nPrevious green ${periodic.previousGreenHead ?? 'none'}\n${execution}\nLog ${artifact.id}: ${artifact.path}\n${periodic.durationWarnings.length ? periodic.durationWarnings.join('\n') + '\n' : ''}Failing files ${periodic.failingFiles.slice(0, 20).join(', ') || 'none identified'}\nMerges ${periodic.merges?.length ?? 'unknown'}: ${merges}\nComplete range and failing files in message detail\n${text}`);
-      if (periodic.notRun) text = core.boundedText(`Periodic dev T3 not run${periodic.notRun === 'provider-capacity' ? ': provider capacity' : ` · ${periodic.notRun}`} · head ${periodic.head}\n${periodic.cause}\nNo tests executed; retry at the next eligible tip after the interval.\nPrevious green ${periodic.previousGreenHead ?? 'none'}\n${execution}\nLog ${artifact.id}: ${artifact.path}`);
+      if (periodic.notRun) text = core.boundedText(`Periodic dev T3 ${incompleteInfrastructure ? 'incomplete' : 'not run'}${periodic.notRun === 'provider-capacity' ? ': provider capacity' : ` · ${periodic.notRun}`} · head ${periodic.head}\n${periodic.cause}\n${incompleteInfrastructure ? "Execution incomplete; completed receipts are retained in the log" : "No tests executed"}; retry at the next eligible tip after the interval.\nPrevious green ${periodic.previousGreenHead ?? 'none'}\n${execution}\nLog ${artifact.id}: ${artifact.path}`);
     }
     const result = core.store.transaction(() => {
       if (job.batch) {
