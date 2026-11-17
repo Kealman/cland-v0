@@ -99,3 +99,7 @@ BatchRefusal/drop boundary must name the pinned preceding member/head and
 parser.txt. The true-dev variant retains rebase-on-dev and actual paths. Both
 variants drop only the conflicting request and retain the other pinned entries;
 no native worker or repository mutation is used.
+
+The existing recoverable-code regressions retain the old `merge-git` restart shape. `test-lint-policy.test.ts` (T2) owns the added landing-preparation, fake `cat-file --batch`, and history-read recovery scenarios through the production lint helper and controller. Its infrastructure preparation scenario reopens the durable controller, then checks all members land with the original single green run and no drops; its finding scenario keeps member drops.
+
+The T2 policy/preparation scenarios enroll `caseDeadlines` before acquisition and run their entire callback through its sequence owner. Setup hooks (including partial `suiteUnit` acquisition), reopen, ticks and caller continuations drain before storage or roots close. The policy case also checks held sibling completion precedes the next attempt, transient/persistent history command failures, and positive root/no-introduction receipts. Its I/O-turn scheduling has no elapsed-time assertion.

@@ -2,7 +2,7 @@ import { fileOperations } from './host/agent/files.ts';
 import { TerritoryBusy, territoryLockContext } from './territory-lock-context.ts';
 import type { Host } from './host/host.ts';
 import { removeWorktreeWithFixtures } from './fixture-processes.ts';
-import { testLintPolicy, TestLintError } from './test-lint-policy.ts';
+import { requireMergeTestLint } from './merge-test-lint.ts';
 import { parseItemReference } from './tracker/prefixes.ts';
 // The territory's Git commands live here. Init needs no hub; later hub operations use the same lock and runner.
 import { execFile, spawnSync } from 'node:child_process';
@@ -790,10 +790,8 @@ export async function mergeTreeFacts(root: string, tree: string, head: string, b
   await requireMergeWorktree(root, resumed, env);
   try { await lintHubShardTree(root, tree, env, { head, base }); }
   catch (err) { resumed(() => { throw new MergeError('merge-tiers', err instanceof Error ? err.message : String(err), err instanceof ShardManifestError ? err.files : undefined); }); }
-  try {
-    const findings = await testLintPolicy(root, { tree, head, base, env });
-    if (findings.length) throw new TestLintError(findings);
-  } catch (err) { resumed(() => { throw new MergeError('merge-test-lint', err instanceof Error ? err.message : String(err), err instanceof TestLintError ? err.files : undefined); }); }
+  try { await requireMergeTestLint(root, { tree, head, base, env }); }
+  catch (error) { resumed(() => { throw error; }); }
   const context = await durationBudgetContext(root, { head: tree, base, env }).catch(error => resumed(() => {
     if (error instanceof DurationInspectionError) throw new MergeError('merge-budget', error.message);
     throw error;

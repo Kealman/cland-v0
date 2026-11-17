@@ -17,8 +17,10 @@ export async function treeSources(cwd: string, tree: string, files: string[], en
   const sources = new Map<string, string>();
   if (entries.length) {
     const output = await new Promise<Buffer>((resolve, reject) => {
-      const child = execFile('git', ['cat-file', '--batch'], { cwd, env, encoding: 'buffer', timeout: 30_000, maxBuffer: 64 * 1024 * 1024 }, (error, stdout) => error ? reject(error) : resolve(stdout));
-      child.stdin!.on('error', reject);
+      let inputError: Error | undefined;
+      const child = execFile('git', ['cat-file', '--batch'], { cwd, env, encoding: 'buffer', timeout: 30_000, maxBuffer: 64 * 1024 * 1024 }, (error, stdout) => error || inputError ? reject(error ?? inputError) : resolve(stdout));
+      // The callback observes native completion; an input error alone does not.
+      child.stdin!.on('error', error => { inputError = error; });
       child.stdin!.end(entries.map(entry => entry.oid).join('\n') + '\n');
     });
     let offset = 0;

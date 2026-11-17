@@ -107,7 +107,8 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Merge queue landing reports (T-1503)](../docs/hub/merge-queue-landing-reports-t-1503.md)
 
 Every successful batch diagnosis requires its pinned full plan on the selected
-tree before landing; [running](../docs/hub/running.md) describes skipped-file and
+tree before landing. Test-lint read failures retry three times, then hold membership
+and green evidence for a later retry; genuine findings retain member-drop behaviour. [Running](../docs/hub/running.md) describes skipped-file and
 covering-run notices.
 - [Standing duration allowance owners](../docs/hub/standing-duration-allowance-owners.md)
 

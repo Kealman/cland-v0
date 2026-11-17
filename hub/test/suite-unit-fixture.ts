@@ -23,11 +23,22 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 
 export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions & { machineReceiptsOnly?: boolean } = {}, source = '', accounting = false) {
+  // Register partial acquisition cleanup before the first await; whole-case callers
+  // collect this hook and join setup/body continuations before invoking it.
+  const partial: Array<() => void | Promise<void>> = [];
+  let completeClose: (() => Promise<void>) | undefined;
+  t.after(async () => {
+    if (completeClose) return completeClose();
+    // A failed resource join retains every earlier owner, including the root.
+    for (const close of partial.toReversed()) await close();
+  });
   const root = await mkdtemp(join(tmpdir(), 'suite-unit-'));
+  partial.push(() => rm(root, { recursive: true, force: true }));
   await verificationFixture(root);
   const clock = new FakeClock();
   const token = 'cland-test-suite-unit-token';
   const api = await fakeDigitalOcean(token, { machine: 'scripted', clock });
+  partial.push(() => api.close());
   api.faults.activeAfter = 0;
   const key = { node: process.version, nvim: { tag: 'v0.12.5', digest: 'a'.repeat(64) }, lock: 'b'.repeat(64), base: 'c'.repeat(40) };
   const machine = scriptedMachine(root, clock, key, { outcome: 'slow' });
@@ -89,6 +100,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   }
   const database = join(root, 'hub.db');
   let store = new Store(database);
+  partial.push(() => store.close());
   const watchStore = () => {
     const save = store.setMeta.bind(store);
     t.mock.method(store, 'setMeta', (key: string, value: string) => { save(key, value); publish(); });
@@ -118,6 +130,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   dropletServices: { ...machine.dependencies, api: api.provider, hostGate: async run => ({ tree: run.tree ?? null, command: 'npm run typecheck', code: 0 }) },
   log: entry => { logs.push(entry); publish(); }, onFallback: job => { notices.push(job.id); publish(); }, onShardingSkipped: (_job, cause) => { shardingNotices.push(cause); publish(); }, onJob: publish, onQueue: publish, ...options, env });
   let suites = make();
+  partial.push(() => suites.close());
   const releases = new Set<() => void>();
   const submissions = new Set<Promise<unknown>>();
   let closing: Promise<void> | undefined;
@@ -134,7 +147,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     await api.close();
     await rm(root, { recursive: true, force: true });
   })();
-  t.after(close);
+  completeClose = close;
   async function when<T>(read: () => T | undefined): Promise<T> {
     for (;;) { const notification = changed.promise; const value = read(); if (value !== undefined) return value; await notification; }
   }

@@ -9,3 +9,8 @@ export class MergeError extends Error {
   readonly recovery: { commit: string; base: string } | undefined;
   constructor(code: MergeCode, message: string, files?: string[], recovery?: { commit: string; base: string }) { super(`${code}: ${message}`); this.code = code; this.files = files; this.recovery = recovery; }
 }
+
+/** Internal infrastructure identity; wire consumers retain the existing Git code. */
+export class MergeLintReadError extends MergeError {
+  constructor(message: string) { super('merge-git', message); }
+}

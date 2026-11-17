@@ -18,6 +18,8 @@ type Source = (file: string) => Promise<string>;
 type Snapshot = { manifest?: TierManifest; baseline?: LintBaseline; source?: Source };
 export type LintRefusal = { file: string; line: number; rule: string; message: string };
 
+export class TestLintReadError extends Error {}
+
 export class TestLintError extends Error {
   readonly files: string[];
   readonly findings: LintRefusal[];
@@ -97,16 +99,26 @@ export async function checkTestLint(input: Snapshot & { manifest: TierManifest; 
 async function optional(source: Source, path: string): Promise<string | undefined> {
   try { return await source(path); }
   catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT' || (error as { code?: unknown }).code === 128) return;
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
     throw error;
   }
 }
+/** Keep every admitted read owned until the whole group has settled. */
+async function settledReads<T extends readonly unknown[]>(reads: { [K in keyof T]: Promise<T[K]> }): Promise<T> {
+  const results = await Promise.allSettled(reads);
+  const failed = results.find(result => result.status === 'rejected');
+  if (failed?.status === 'rejected') throw failed.reason;
+  return results.map(result => (result as PromiseFulfilledResult<unknown>).value) as unknown as T;
+}
 async function snapshot(source: Source): Promise<Snapshot> {
-  const [tiers, baseline] = await Promise.all([optional(source, TIERS), optional(source, LINT_BASELINE)]);
+  const [tiers, baseline] = await settledReads([optional(source, TIERS), optional(source, LINT_BASELINE)]);
   return { source, ...(tiers ? { manifest: JSON.parse(tiers) } : {}), ...(baseline ? { baseline: JSON.parse(baseline) } : {}) };
 }
 async function treeSnapshot(cwd: string, tree: string, env?: NodeJS.ProcessEnv): Promise<Snapshot> {
-  const value = await snapshot(async file => (await promisify(execFile)('git', ['show', `${tree}:${file}`], { cwd, env, maxBuffer: 16 * 1024 * 1024, timeout: 30_000 })).stdout);
+  // A missing path is established by the tree listing, never by Git's generic
+  // exit 128 (which can also mean an unavailable repository or object read).
+  const policy = await treeSources(cwd, tree, [TIERS, LINT_BASELINE], env);
+  const value = await snapshot(policy);
   let sources: Promise<Source> | undefined;
   return { ...value, source: async file => {
     sources ??= treeSources(cwd, tree, Object.keys(value.manifest?.tests ?? {}), env);
@@ -169,7 +181,7 @@ export class TestLintWarmer {
   }
 }
 /** Both gates judge the same immutable sources; dirty admission also judges disk. */
-export async function testLintPolicy(cwd: string, options: { tree?: string; head?: string; base?: string; env?: NodeJS.ProcessEnv } = {}): Promise<LintRefusal[]> {
+export async function testLintPolicy(cwd: string, options: { tree?: string; head?: string; base?: string; env?: NodeJS.ProcessEnv; readFailures?: 'throw' } = {}): Promise<LintRefusal[]> {
   const git = async (args: string[]) => (await promisify(execFile)('git', args, { cwd, env: options.env, maxBuffer: 16 * 1024 * 1024, timeout: 30_000 })).stdout.trimEnd();
   let baseRef: string | undefined;
   // The hub advances the shared local dev branch; origin/dev can be stale or
@@ -180,7 +192,7 @@ export async function testLintPolicy(cwd: string, options: { tree?: string; head
   }
   if (!baseRef) try { baseRef = await git(['rev-parse', options.head ?? 'HEAD']); } catch { /* standalone fixture */ }
   try {
-    const [current, base] = await Promise.all([
+    const [current, base] = await settledReads([
       options.tree ? treeSnapshot(cwd, options.tree, options.env) : snapshot(file => readFile(join(cwd, file), 'utf8')),
       (options.base ?? baseRef) ? treeSnapshot(cwd, options.base ?? baseRef!, options.env) : Promise.resolve({} as Snapshot),
     ]);
@@ -189,11 +201,14 @@ export async function testLintPolicy(cwd: string, options: { tree?: string; head
       // During the first baseline's publication, dev can move underneath its
       // branch without owning the freeze yet. Keep that validated first freeze;
       // do not silently derive a new allowance from the advanced merge base.
-      const introduced = (await git(['log', '--reverse', '--format=%H', '--diff-filter=A', options.head ?? 'HEAD', '--', LINT_BASELINE]).catch(() => '')).split('\n').find(Boolean);
+      const introduced = (await git(['log', '--reverse', '--format=%H', '--diff-filter=A', options.head ?? 'HEAD', '--', LINT_BASELINE])).split('\n').find(Boolean);
       if (introduced) {
         const frozen = await treeSnapshot(cwd, introduced, options.env);
         if (!frozen.manifest || !frozen.baseline) return [{ file: LINT_BASELINE, line: 1, rule: 'lint-baseline', message: 'original freeze requires a tier manifest and baseline' }];
-        const parent = await git(['rev-parse', `${introduced}^`]).catch(() => introduced);
+        // A successful parent listing positively distinguishes a root commit.
+        const parents = (await git(['rev-list', '--parents', '-n', '1', introduced])).split(/\s+/);
+        if (parents[0] !== introduced) throw new Error(`invalid Git parent response: ${introduced}`);
+        const parent = parents[1] ?? introduced;
         const before = await treeSnapshot(cwd, parent, options.env);
         // Validate the seed against its own original debt before trusting it.
         // A root commit seeds from its sources; an inflated seed still refuses.
@@ -205,6 +220,7 @@ export async function testLintPolicy(cwd: string, options: { tree?: string; head
     }
     return await checkTestLint({ ...current, manifest: current.manifest, source: current.source!, base });
   } catch (error) {
+    if (options.readFailures === 'throw' && !(error instanceof SyntaxError)) throw new TestLintReadError(`cannot read test lint policy: ${String(error)}`, { cause: error });
     return [{ file: LINT_BASELINE, line: 1, rule: 'lint-baseline', message: `cannot read test lint policy: ${String(error)}` }];
   }
 }

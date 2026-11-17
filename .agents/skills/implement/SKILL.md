@@ -118,6 +118,8 @@ Targeted admission prints one warning per admission on unsupported Node,
 including standalone runs; treat that evidence as unsupported and rerun on the
 supported version. This warning does not replace cover-quiet admission.
 
+Landing test-lint read failures retry three times, then retain batch membership and green evidence under `merge-git` for automatic retry, including after restart. Genuine lint findings still drop their member. See `docs/hub/running.md`.
+
 Run typechecking and targeted single test files while implementing. Merge batches run T0 before configured tiers and add Web after T1 for web/ diffs; use the receipt/bisection seams in `docs/agents/tests.md#queued-merge-batches` for changes there. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
 
 For README/docs edits, follow [documentation placement](../../../docs/agents/documentation.md).

@@ -562,6 +562,8 @@ documentation/tracker allowlist, the same policy that selects immediate merges.
 Other changed paths rebuild and rerun, with a notice naming the forcing commit.
 The reused receipt retains its original head and tree. Conflicts or
 landing gate refusals drop their member with a reason and rebuild the rest.
+Test-lint read failures retry the same inputs three times, then retain membership and green evidence as a recoverable `merge-git` block for a later tick. Genuine lint findings still drop their member.
+
 Recoverable landing errors (`merge-dirty`, `merge-checkout`, `merge-git`,
 `merge-unpublished`, `merge-recovery`) retain members, completed landings and
 green evidence across restart. The notice names the cause and automatic retry;

@@ -10,7 +10,7 @@ import { failingTests } from './shared-defects.ts';
 import type { TopicNotice } from './core.ts';
 import { recordBatchFlakes } from './batch-flakes.ts';
 import { verificationStepLabel, verificationStepResults, type VerificationStep } from '../verification-plan.ts';
-import { MergeError } from '../merge.ts';
+import { MergeError, MergeLintReadError } from '../merge.ts';
 import type { LogFn } from '../log.ts';
 
 /** Human-facing projection; persisted selection and log retain the full assessment. */
@@ -111,7 +111,7 @@ export class MergeBatches {
       const batch = this.snapshot();
       if (batch) {
         batch.failed = error instanceof Error ? error.message : String(error);
-        batch.retryLanding = error instanceof RetryLanding || error instanceof TerritoryBusy;
+        batch.retryLanding = error instanceof RetryLanding || error instanceof TerritoryBusy || error instanceof MergeLintReadError;
         this.#save(batch);
         try { this.boundary.report(batch, `batch ${batch.id} blocked: ${batch.failed}\n${batch.retryLanding ? 'The queue retries automatically on a later tick once the cause is resolved.' : 'Waiting for human or Coordinator action before retrying.'}`); }
         catch (error) {

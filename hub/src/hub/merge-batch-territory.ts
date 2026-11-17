@@ -5,7 +5,7 @@ import { removeWorktreeWithFixtures } from '../fixture-processes.ts';
 import { join } from 'node:path';
 import { mkdir, stat } from 'node:fs/promises';
 import type { MergeQueueEntry } from '../protocol.ts';
-import { MergeError } from '../merge.ts';
+import { MergeError, MergeLintReadError } from '../merge.ts';
 import { requireMergeWorktree, mergeTreeFacts, gateMergeTree, territoryGitAsync, TerritoryGitError, mergeConflictFiles, type MergeTreeFacts } from '../territory.ts';
 import { committedTreeOrThrow } from '../verification-tree.ts';
 import { BatchRefusal, type BatchCandidate } from './merge-batches.ts';
@@ -86,7 +86,7 @@ async function buildPinnedMergeBatch(root: string, id: string, members: MergeQue
       budgetLines.push(...gateMergeTree(await repository.facts(tree, tip, head)));
       head = await git(['commit-tree', tree, '-p', head], `Batch candidate ${entry.item}\n`);
     } catch (error) {
-      if (error instanceof MergeError) throw new BatchRefusal(entry, error.message);
+      if (error instanceof MergeError && !(error instanceof MergeLintReadError)) throw new BatchRefusal(entry, error.message);
       throw error;
     }
   }
