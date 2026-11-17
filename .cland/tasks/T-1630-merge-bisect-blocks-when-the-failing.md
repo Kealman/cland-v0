@@ -2,8 +2,8 @@
 id: T-1630
 kind: task
 title: Merge bisect blocks when the failing test file belongs to the omitted member
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1586
 branch: t/T-1630-merge-bisect-blocks-when-the-failing
 created: 2026-11-02T07:20:05.309Z
-updated: 2026-11-17T05:39:38.024Z
+updated: 2026-11-17T06:43:41.390Z
+closed: 2026-11-17T06:43:41.390Z
 ---
 
 ## Summary
@@ -104,3 +105,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; A-20660.108d24cb/A-20656 exit0 matches clean reviewedfb00b1881 and normalized0a88e91d... . C1file-owner/survivor policy pass4043/proof4277; C2present-file held notice4052/proof4224; C3running/held request cases4058/4065 with5/5proof4426/4489 and public case23536 pass. Frozen-help compatibility1135 pass; nominal/source assertions retained, no matched required-case tier diagnostic. Parsed6558ordinary/707file plus270load positives, nofail/cancel/skip; T0/all224T1/all428T2/55Web green,269T3/17T4 unexecuted. Provenance38008 uncachedLinuxx64/Node24.21/Nvim0.12.5, actual browser35438 HeadlessShell1248/CfT156. Delivered1375s/$0.0955 provider interval separate from test wall; report-only lint/budget/ratchet/skip advisories and historical provenance limits retained. Standards/Spec0 findings; C1-C3 verified. No Reviewer runtime, real production batch landing or integrated/QA claim.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-17T06:43:41.390Z
+
+Merged 0305d08b04a7159f70e98a5959130eb87721ba38 onto dev.

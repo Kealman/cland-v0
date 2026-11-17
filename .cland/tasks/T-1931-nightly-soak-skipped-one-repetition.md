@@ -2,8 +2,8 @@
 id: T-1931
 kind: task
 title: "Nightly soak skipped: one repetition projects 5508 s against the 3540 s usable deadline, so the soak never runs"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -14,7 +14,8 @@ regression_of: T-1878
 topic: topic-1584
 branch: t/T-1931-nightly-soak-skipped-one-repetition
 created: 2026-11-17T03:01:41.324Z
-updated: 2026-11-17T06:18:48.185Z
+updated: 2026-11-17T09:12:54.466Z
+closed: 2026-11-17T09:12:54.466Z
 ---
 
 ## Summary
@@ -33,10 +34,17 @@ The nightly soak on 2026-11-17 was skipped. The hub reported "soak deadline plan
   - done: impl-1931 · 2026-11-17T05:27:34.655Z
   - verified: rev-36 [reviewer] · run rev-36-1931-source-3 · 2026-11-17T05:39:31.787Z · commit 77ba11346377e1d0816a552955cae6fd5d5978b8
   - verified: rev-36 [reviewer] · run rev-36-1931-source-4 · 2026-11-17T06:18:48.185Z · commit bc57ea25cc5820d44c8909e7f56b1fe4699aa99f
+  - verified: rev-36 [reviewer] · run rev-36-1931-final-1 · 2026-11-17T06:55:10.734Z · commit bc57ea25cc5820d44c8909e7f56b1fe4699aa99f
+  - verified: rev-36 [reviewer] · run rev-36-1931-delta-1 · 2026-11-17T07:22:32.317Z · commit 84ce9a604d632daf74120d448095c2e3337619c3
+  - verified: rev-36 [reviewer] · run rev-36-1931-final-2 · 2026-11-17T08:18:28.876Z · commit 84ce9a604d632daf74120d448095c2e3337619c3
 - [x] C2. The soak keeps running within its deadline: trim the base selection by tier or file in a recorded, rotating order, or split it across nights. A refused plan reports what it dropped and why, and a soak is never skipped silently (test over a fake duration manifest).
   - done: impl-1931 · 2026-11-17T06:07:56.731Z
+  - verified: rev-36 [reviewer] · run rev-36-1931-final-1 · 2026-11-17T06:55:10.734Z · commit bc57ea25cc5820d44c8909e7f56b1fe4699aa99f
+  - verified: rev-36 [reviewer] · run rev-36-1931-final-2 · 2026-11-17T08:18:28.877Z · commit 84ce9a604d632daf74120d448095c2e3337619c3
 - [x] C3. A skipped or trimmed soak is visible in the heartbeat or digest as unexecuted coverage, never as a pass (rule 17).
   - done: impl-1931 · 2026-11-17T05:27:35.256Z
+  - verified: rev-36 [reviewer] · run rev-36-1931-final-1 · 2026-11-17T06:55:10.735Z · commit bc57ea25cc5820d44c8909e7f56b1fe4699aa99f
+  - verified: rev-36 [reviewer] · run rev-36-1931-final-2 · 2026-11-17T08:18:28.877Z · commit 84ce9a604d632daf74120d448095c2e3337619c3
 
 ## Comments
 
@@ -138,3 +146,68 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards0/Spec0. A-20696 full correction source clearance atbc57ea25c/tree69678928, direct child77ba11346/no dev merge. Exactly one assertion literal migrates cap skip notice to intended unexecuted text; exact deepEqual/single-notice restart/no-create/spend checks unchanged. No production/help changes; previous bounded scan/remote-clock/rotation ownership fixes intact. Literal skipped: search has no old nightly hit;15remaining paths have distinct unaffected formats. Full90consumer ledger retains80prior. A-20684 wholeT2file39/help9/compat1 serial candidate0 receipts with dirty/staging/raw/native gaps, not current configured verification. A-20677 remains failed partial, no historical green carry. Coordinator db6ab96e: task uploads hosting hub's own run.sh; real candidate marker deferred to Coordinator first post-land/restart nightly soak, current evidence fake-only/prior-or-floor. C1reverified unchanged accounting993files/5508.409715875s vs3540s with historical membership limits; C2/C3unverified until completed same-head configured evidence or explicit waiver. Request new Coordinator window; retain15required bases,8new5loads and positive cap-notice case. No Reviewer runtime/probe/test/compiler/lint/generator/edit/retry/merge.
 
 Criteria: C1 verified.
+
+### impl-1931 · 2026-11-17T06:53:08.105Z
+
+Completed uncached configured run ea88f987 at reviewed bc57ea25c, verification tree8a828874: T0/T1/T2/Web exit0, aggregate6561pass/0fail/0skip/0cancel. Read-only audit A-20720 confirms all224T1/428T2/55Web required files have positive base completion, all16named controls pass, eight new identities have5pass load finishes plus exact5/5proof lines. T3/T4unexecuted/deferred. Linux x64 c-8ams3 Node24.21.0/nvim0.12.5; HeadlessShell1248 ChromeTesting156.0.8078.4; lifetime1635s cost$0.1135 (not suite wall). Test/duration diagnostics report-only. Prior A-20677 remainsfailed. Hosting-runner marker expected absent; Coordinator owns first native marker on post-land/restart nightly soak; current task marker proof fakes/floor. Await same-head Reviewer final settlement; no head changes.
+
+### rev-36 · 2026-11-17T06:55:10.735Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1931-final-1
+commit: bc57ea25cc5820d44c8909e7f56b1fe4699aa99f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards0/Spec0. A-20723 independently checks exact source-clearbc57ea25c/tree69678928, completed ea88f987/A-20717 passed. All16required base identities positive incl corrected cap notice28969; all8new each5typed load passes+exact5/5proof; all51target-file cases and4file envelopes pass, entire soak-component39.6561ordinarytest/707filepasses,290loadtest/filepasses,0nonpass/duplicate/unmatched/skips. T0/T1/allT2/Web exit0; manifest224/428/55files complete.269T3/17T4unexecuted, no native/QA/performance carry. Actual LinuxdropletNode24.21/nvim0.12.5, isolated HeadlessShell1248/CfT156.0.8078.4; provenance38233execsnapshot8a828874 distinct Git tree69678928, cached:null.122lint/budget/ratchet/skip diagnostics report-only. All90consumer rows updated:30filepass/8deferred/52refs. Source accounting993files5508.409715875s vs3540s retains historical reconstruction limits. A-20677 remainsFAILED prior history. Critical Coordinator db6ab96e disposition retained: task uploads hosting-source run.sh, so native marker absent expected; current marker evidence fake-only/floor, Coordinator owns first real marker at first post-land/restart nightly soak. No actual native calibration/soak wall claimed. C1-C3verified; no Reviewer runtime/probe/test/compiler/lint/generator/edit/retry/merge.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-17T06:57:02.151Z
+
+Rule 36 preflight (coord, 06:57Z): head bc57ea25c conflicts with origin/dev in suites.ts, suite-log.ts and suite-load-gate-plan.test.ts (T-1582 and T-1576 landed there). Not enqueued. Requested a dev merge (rule 11), a delta review and a new verify. Landing order on these hot files: T-1850 (queued), T-1931, T-1935, T-1848.
+
+### impl-1931 · 2026-11-17T07:06:58.954Z
+
+Coordinator rule11 request d053808f: merged origin/dev1e4bceff once into bc57ea25c, producing84ce9a604/tree1533c016. Three conflict resolutions preserve task soak calibration/rotation with dev per-tier batchBaselineRuns/#batchIdentities, strict marker semantic retention with T-1576 infrastructure prefix, and both planner/positive-completion test groups. Full root typecheck/full test:lint passed; 0refusals and122report-only advisories. Native slot released after requested serial planner6/soak29/component39/summary6/merge-batches87/help9/compat1 allpass at84ce9a604. A-20730 preserves exact checks/epochs and prior-head green limits. Inherited contract consumers confirmed: hub/src/hub/suite-worker.ts, suites.ts, merge-batches.ts, suite-infrastructure.ts, suite-load-gate-plan.ts and corresponding summary/batch/planner tests; no new task wire policy. Delta source review pending, new configured evidence required. Coordinator retains post-land/restart first native marker check.
+
+### rev-36 · 2026-11-17T07:22:32.317Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1931-delta-1
+commit: 84ce9a604d632daf74120d448095c2e3337619c3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards0/Spec0 for authorized merge delta. A-20740 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20740-t-1931-authorized-merge-delta-and-inherited-allocation-disposition.md records clean84ce9a604/tree1533c016 vs prior bc57ea25c, parents exactly bc57/1e4bceff per Coordinator d053808f once-only merge. Three conflicts preserve soak calibration/cursors/replanning and bounded marker scanner alongside per-tier batchBaselineRuns/#batchIdentities/provenance, dev infrastructure semantic retention, completion-summary plus all5task planner controls. SUITE_USAGE/MERGE_USAGE fixtures independently equal exports; assertions intact. All103 changed paths classified90dev-byte/13combined; all90task consumer dispositions retained. Inherited parser log.split issue is real, not bounded or exempt: Coordinator b327a4f1 explicitly assigns it out of this delta to filed T-1936 regression_of T-1582, independently read back. No silent fix. C1 historical static explanation reverified; C2/C3 await completed configured evidence at84ce, old A-20717 green remains bc57 only. A-20730 local committed-head planner6/soak29/component39/summary6/merge-batches87/help9/compat1 and resolved-byte root typecheck/lint0refusals retained with transcript/raw/native/tree epoch limits. No current-head configured/load/T3/T4/Web/browser/QA/provider or native soak wall claim. Hosting own run.sh boundary unchanged; Coordinator owns first real marker post-landing/restart. No Reviewer execution/edit/merge/retry.
+
+Criteria: C1 verified.
+
+### impl-1931 · 2026-11-17T08:11:14.382Z
+
+Current-head configured run e19ab9f4 at84ce9a604/verification treead730526 passed6736/6736, T0/T1/T2/selectedT3/Web exit0. A-20766 streams A-20763 independently: all224T1/428T2/55Web files positive; selected native executor-run/claude-code-remote/suite-runner files positive with120passing timing identities once/no repetitions; remaining266T3 and17T4unexecuted. All20task+merge controls base/timing pass; eight task-new controls have5pass frames+exact5/5proof;50global proof identities/250load passes. Known T-1935 infrastructure fixture line immediately followed by still-writing text confirmed/reported, no retry per Coordinator. Linux c-8ams3 Node24.21.0/nvim0.12.5 HeadlessShell1248 ChromeTesting156.0.8078.4; executor lifetime1582s cost$0.1099, not suite wall. Advisories report-only; marker post-land/restart Coordinator check and inherited T-1936 disposition retained. Await Reviewer same-head final settlement, clean unchanged head.
+
+### rev-36 · 2026-11-17T08:18:28.877Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1931-final-2
+commit: 84ce9a604d632daf74120d448095c2e3337619c3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards0/Spec0 within approved scope. A-20773 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20773-t-1931-final-merged-head-evidence-and-coverage-limits.md independently checks completed e19ab9f4/A-20763 at delta-clear84ce9a604/tree1533c016. C1-C3verified:20required named base positives,8task identities each5distinct typed load passes+exact5/5proof,all140cases across5target files,all224T1/428T2/55Web file envelopes.6736ordinarytest/710filepasses,250loadtest/filepasses,zero nonpass/duplicate/unmatched. Selected3native files positive:120top-level timingpass/127typedtestpass incl7nested,once/no native load. Remaining266T3/17T4unexecuted. T0/T1/T2/selectedT3/Webexit0. Actual HeadlessShell1248/CfT156.0.8078.4, LinuxdropletNode24.21/nvim0.12.5, provenance38792 effective treead730526 distinct Git1533c016,cached:null,no skips. All90consumer dispositions:31filepass/7deferred/52refs. Known T-1935 literal pair28651-52 is fixture output, no retry. Explicit inherited T-1936 out-of-scope allocation disposition b327a4f1 retained; not fixed/bounded/exempt. Outer marker0 expected under Coordinator db6ab96e hosting-source boundary; first real nightly marker remains Coordinator post-landing/restart responsibility, no new production interval claim. Budget/lint report-only; old A-20677 FAILED and prior receipts/limits retained. No Reviewer test/compiler/lint/generator/probe/browser/provider/edit/merge/retry.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-17T09:12:54.466Z
+
+Merged 66bca5453d8c0fbd66b5f3fd725256221a4a08f1 onto dev.

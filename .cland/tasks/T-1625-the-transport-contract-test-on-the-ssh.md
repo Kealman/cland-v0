@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-1361
 branch: t/T-1625-the-transport-contract-test-on-the-ssh
 created: 2026-11-02T03:34:18.725Z
-updated: 2026-11-03T08:11:52.481Z
+updated: 2026-11-17T07:54:38.608Z
 closed: 2026-11-03T08:11:52.481Z
 ---
 
@@ -137,3 +137,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### coord · 2026-11-03T08:11:52.481Z
 
 Merged 30dfeeede28800b45195ee93b3d123a4d90fc410 onto dev.
+
+### coord · 2026-11-17T07:54:38.608Z
+
+Wording clarification, 2026-11-17 (T-1661). C2 reads "each of the four is a Unix socket in the host's agent-owned run directory at mode 0700". The verified behaviour, and what the contract asserts, is that the run directory has mode 0700 and each of the four endpoints inside it is a Unix socket node. No socket-file permission is asserted; the socket nodes are 0600, as impl-1625 noted on 2026-11-03, and the directory mode is the protection. The criterion text is left as verified, and this note is the authoritative reading.

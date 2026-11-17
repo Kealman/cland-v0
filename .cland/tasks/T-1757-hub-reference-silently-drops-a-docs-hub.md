@@ -2,8 +2,8 @@
 id: T-1757
 kind: task
 title: Hub reference silently drops a docs/hub index entry whose line carries a description
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1592
 branch: t/T-1757-hub-reference-silently-drops-a-docs-hub
 created: 2026-11-07T16:15:56.538Z
-updated: 2026-11-17T06:31:48.013Z
+updated: 2026-11-17T08:23:17.057Z
+closed: 2026-11-17T08:23:17.057Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ Found by impl-1739 during T-1739. A descriptive suffix on the Roles index line r
 
 - [x] C1. Every docs/hub link form that hub/README.md's index uses resolves, whatever description trails it on the line. Any other link-shaped docs/hub candidate is refused with its file and line, never dropped silently, by a test that every mode-free verify selects.
   - done: impl-1757 · 2026-11-17T06:22:04.690Z
+  - verified: rev-35 [reviewer] · run rev-35-1757-final-1 · 2026-11-17T07:10:59.754Z · commit 8ac1d90903bd202e5cf789ef76f5549c4bfacc0b
 - [x] C2. A test adds a described index line and shows the chosen behaviour, red first against the current reader.
   - done: impl-1757 · 2026-11-17T06:22:08.911Z
+  - verified: rev-35 [reviewer] · run rev-35-1757-final-1 · 2026-11-17T07:10:59.754Z · commit 8ac1d90903bd202e5cf789ef76f5549c4bfacc0b
 
 ## Comments
 
@@ -92,3 +95,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Full source clear under explicit Coordinator4d7bb079 and updated C1, tree3e303ad4b971034cb5c13a2f313904aa9d93eb1c; A-20705. Current supported index forms resolve; unsupported angle/leading-whitespace destinations fail with exact file/line/source assertions in mode-free-selected T1. Full CommonMark/T0 refusal out of scope by decision, not silently assumed. Prior escaped-title medium and stale-guide low are corrected. Consumer/default no-arg API unchanged; site wrapper included in retained census. No findings. C1/C2 source-correct but unverified until same-head configured evidence; no verified marks. A-20704 new9/9 refusal controls are green-first; earlier red-first behavior/provenance is retained in A-20701/A-20673, not promoted to exact-head configured proof. No Reviewer runtime/probe/edit. Superseded c55 request received no verdict; decline was refused as not current pending reservation and not retried; tracker hold moved normally to this fresh request.
+
+### rev-35 · 2026-11-17T07:10:59.754Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1757-final-1
+commit: 8ac1d90903bd202e5cf789ef76f5549c4bfacc0b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; A-20736 reconciles A-20728/run89e02f35 with source A-20705 and revised C1/Coordinator4d7bb079. Six reader controls ordinary pass; five new identities each have5/5 positive load proof. Full9-case file and all direct/transitive consumer files pass (site via wrapper, not standalone prebuild). C2 historical described-line red retained with limits; unsupported forms green-first. Exact head/source tree unchanged, normalized treeff98bb464615d0231bcc05ab0d7a91149688b0fc, uncached Linux x64/Node24.21.0, isolated HeadlessShell1248/ChromeTesting156.0.8078.4. T0/T1/all-T2/Web exit0;6584 ordinary/707files, separate275load;224T1/428T2/55Web complete,269T3/17T4 unexecuted. Known T-1935 fixture prefix28767/28768 preserved, terminal Finished0/hub passed. Lint122/59/budgets/ratchet/skip checks remain report-only; no skips/missing reasons or scoped tier warning. C1/C2 verified, no findings/new Reviewer runtime/edit.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T08:23:17.056Z
+
+Merged b2b220678ca500e4f6329c96416fd7487e447933 onto dev.

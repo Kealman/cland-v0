@@ -2,8 +2,8 @@
 id: T-1582
 kind: task
 title: Merge batch load gate takes a T1-only batch as its T3 baseline and repeats every T3 test five times
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1585
 branch: t/T-1582-merge-batch-load-gate-takes-a-t1-only
 created: 2026-11-01T10:39:22.454Z
-updated: 2026-11-17T05:50:51.690Z
+updated: 2026-11-17T06:44:26.283Z
+closed: 2026-11-17T06:44:26.283Z
 ---
 
 ## Summary
@@ -94,3 +95,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; A-20666.6e67d41c/A-20663 exit0 matches clean436b18b84 and normalized145f5a57... . Stage/T3-batch baseline cases4466/4471 pass with5/5proof4246/4255, retaining migration/per-tier authority/report assertions; old-shape control4461 pass. Completion parser9199 passes/5/5proof9568 with unknown/skip/deduplication controls.83/83batchT1+2/2plan/parser; no matched changed-file tier diagnostic.6557ordinary/707file plus265load positives; T0/all224T1/all428T2/55Web green,269T3/17T4 unexecuted. Provenance37962 uncachedLinuxx64/Node24.21/Nvim0.12.5, actual browser35395 HeadlessShell1248/CfT156;1391s/$0.0966 provider interval distinct from test wall. Report-only advisories and historical precommit/raw/hash/native/scan limits retained. Standards/Spec0 findings; C1-C3 verified. T1policy proof is not nativeT3 or realbatch/QA proof; no Reviewer runtime/edit.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-17T06:44:26.283Z
+
+Merged 1e4bceff6b8925eaf4b5bc1662af5a837bb80675 onto dev.

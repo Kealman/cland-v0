@@ -2,8 +2,8 @@
 id: T-1701
 kind: task
 title: Capture redaction can consume JSON syntax around a redacted URL, leaving unparseable log lines
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1579
 branch: t/T-1701-capture-redaction-can-consume-json
 created: 2026-11-05T22:43:31.916Z
-updated: 2026-11-17T05:15:36.505Z
+updated: 2026-11-17T06:43:08.961Z
+closed: 2026-11-17T06:43:08.961Z
 ---
 
 ## Summary
@@ -168,3 +169,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards0 findings; Spec0 findings. Final same-head run1b87c632/A-20638 at3ab618118 source-clear rev-36-1701-source-5/A-20617 completes T0/T1/allT2/Web exit0. A-20651 independently retains 6550ordinary testpasses/707filepasses,260load-scope testpasses/filepasses,0nonpass/skip/duplicates/unmatched starts. All14current redactor source identities ordinarypass; all10new exact identities each5typed load passes+5/5receipt. All116previously failed test identities and16failed file identities now explicit ordinarypass; priorunfinished discord-messagesfile pass/30cases. Closure47/47pinned hashes match; closure5,bundle3,secrets-validation3,signin1,diagnostics6,gateway-secrets14 pass. All90consumer dispositions retained:33current filepasses,11deferredT3native/scenario,46references. Provenance exacthead/execution tree5d855dee distinct Git tree7775fdc;Linuxx64 droplet Node24.21/Neovim0.12.5;actual isolated HeadlessShell1248/CfT156.0.8078.4. All269T3/17T4 unexecuted, no native/QA/fullperformance claim.122lint/budget/ratchet/skip gates report-only. Historical closure failure/116fail timeout remain failed, not relabelled; existing04:33:11claimant lint completion reconciled. C1/C2 verified. No Reviewer runtime/probe/edit/rerun/merge.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T06:43:08.961Z
+
+Merged 3053455033209cf5cab917150edc4c2928e08904 onto dev.

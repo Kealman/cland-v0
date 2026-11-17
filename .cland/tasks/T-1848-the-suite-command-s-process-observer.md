@@ -3,7 +3,7 @@ id: T-1848
 kind: task
 title: The suite command's process observer drops inspection failures without a receipt
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1587
 branch: t/T-1848-the-suite-command-s-process-observer
 created: 2026-11-14T02:03:07.406Z
-updated: 2026-11-17T06:35:50.458Z
+updated: 2026-11-17T08:19:44.083Z
 ---
 
 ## Summary
@@ -29,10 +29,14 @@ A failed process inspection in the suite command's observer leaves one bounded, 
 - [x] C1. A fake inspector that fails N times then succeeds produces one deduplicated failure receipt with the count, and observation resumes on success without new ownership from failed rounds (test).
   - verified: rev-35 [reviewer] · run rev-35-1848-final-1 · 2026-11-17T05:36:42.930Z · commit 0fa58ed98f7565c7b9d512835c73f0588959e6b2
   - verified: rev-35 [reviewer] · run rev-35-1848-final-2 · 2026-11-17T06:19:29.570Z · commit 12d730d45aa8c33103459a6f1af8e8ea53a95cd0
-  - done: impl-1848 · 2026-11-17T06:35:25.551Z
+  - verified: rev-35 [reviewer] · run rev-35-1848-final-3 · 2026-11-17T07:18:35.868Z · commit 23e9f14f51a711810339d7fb04a2a001fde503e6
+  - done: impl-1848 · 2026-11-17T07:46:52.780Z
+  - verified: rev-35 [reviewer] · run rev-35-1848-final-4 · 2026-11-17T08:19:41.445Z · commit f48ac45eb7d82492e4d1d73fad93ca560e46bbcf
 - [x] C2. A run whose inspection never succeeds reports, in its result, that descendants went unobserved past the named bound (test).
   - verified: rev-35 [reviewer] · run rev-35-1848-final-2 · 2026-11-17T06:19:29.570Z · commit 12d730d45aa8c33103459a6f1af8e8ea53a95cd0
-  - done: impl-1848 · 2026-11-17T06:35:26.127Z
+  - verified: rev-35 [reviewer] · run rev-35-1848-final-3 · 2026-11-17T07:18:35.868Z · commit 23e9f14f51a711810339d7fb04a2a001fde503e6
+  - done: impl-1848 · 2026-11-17T07:46:53.219Z
+  - verified: rev-35 [reviewer] · run rev-35-1848-final-4 · 2026-11-17T08:19:41.445Z · commit f48ac45eb7d82492e4d1d73fad93ca560e46bbcf
 
 ## Comments
 
@@ -118,3 +122,59 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-11-17T06:21:52.222Z
 
 Rule 36 preflight (coord, 06:20Z): head 12d730d45 merged with origin/dev conflicts in suite-worker.ts, suite-command.ts, suite-log.ts and suite-command.test.ts. Not enqueued. Requested a dev merge (rule 11), a fresh review and a new verify. T-1850 shares suite-worker code, so the two are serialized.
+
+### rev-35 · 2026-11-17T06:40:21.834Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1848-source-4
+commit: 23e9f14f51a711810339d7fb04a2a001fde503e6
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized dev-merge delta source clear, source tree65a6f2b773217ed417b9b2f61233a449222f90bd; A-20709. Parents12d730d45 +04d1f6a0f confirmed; Coordinator item comment authorizes rule11 exception. Four conflict resolutions preserve both infrastructure/notRun and finalized inspection result callback/metadata, both semantic log prefixes and both test branches; whole-callback/custom-fake positive controls retained. No findings. A-20706 note hash independently matches984fe3c8..., targeted local141 T1/T2+187 T3 passes under recorded slot/full typecheck/lint0 remain scoped evidence, not full configured/new-head/Web/T4/load proof. C1/C2 prior marks stale; both unverified at merged head, no new verified marks in this source pass. Old green A-20692/A-20697 belongs only to12d730d45. No Reviewer runtime/probe/edit. Follow Coordinator's new verification window.
+
+### rev-35 · 2026-11-17T07:18:35.868Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1848-final-3
+commit: 23e9f14f51a711810339d7fb04a2a001fde503e6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final evidence clear; A-20739 reconciles A-20734/runae86474d with delta source A-20709. Four required inspection identities ordinary pass+5/5load; positive durable-result callback/custom controls retained and passed, no own runtime warning. Structured tripwire set equals prior64 unrelated report-only rows, no additions. Infrastructure and both ticket-census controls pass;3mapped T3 guard files pass120selected identities once/no repetitions. T0/T1/all-T2/selected-T3/Web exit0;6713ordinary passes/710files, separate270load;224T1/428T2/55Web/3T3 complete,266T3/17T4 unexecuted. Exact head/source tree unchanged, normalized b8f1f3a03e38edf94b5b17c1be37b2c9d1fd8153, uncached Linux x64/Node24.21.0, actual HeadlessShell1248/ChromeTesting156.0.8078.4. Known T-1935 fixture prefix28727/28728 retained separately; terminal exit0/hub passed. Lint123/60, budgets/ratchet/skip checks remain report-only, skips[]/missing0. C1/C2 verified at23e9f14f5; no findings/Reviewer runtime/edit. All older head/evidence limits retained.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-35 · 2026-11-17T07:49:40.779Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1848-source-5
+commit: f48ac45eb7d82492e4d1d73fad93ca560e46bbcf
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear after Coordinator-authorized second merge, treefd0b2892babb40624a8aec0ddc1434a9dda70fbe; A-20751. Reviewed sole conflict suite-worker and incoming unchanged admission/completion owner. Native seam reaches admitted work; runWorkerWithAdmission remains sole admission/terminal owner with complete Clock and atomic writer. Finalized inspection callbacks survive rejected command/cleanup into admitted outcome, owner spread and actual durable result. Gate expiry/SIGTERM, infrastructure classification, callback/custom isolation controls and joined test ownership retained. Task command/log/test/guide unchanged from previously cleared parent; owner/cause tests unchanged from current dev. No findings. A-20750 local6+28+19=53targeted passes, full typecheck/lint0/refusals0, explicit native slot/startload6.92/180000ms/no retry recorded; note SHA256 independently matched4a4a0e76495397441e412557d9ccdc8243125a0b97288e457d9191a12cc6e70f, not raw stream hash. Report-only lint123/60/historical raw/signal limits retained. C1/C2 remain unverified at new head pending configured evidence; no verified marks. Old A-20734/A-20739 are pre-merge proof only. No Reviewer runtime/probe/edit/merge/submission. Follow Coordinator window.
+
+### rev-35 · 2026-11-17T08:19:41.445Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1848-final-4
+commit: f48ac45eb7d82492e4d1d73fad93ca560e46bbcf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Same-head final clear; A-20775 reconciles A-20771/run7c75647a with source A-20751. All four inspection identities ordinary PASS+5/5load; actual worker metadata persistence after cleanup rejection and positive callback/custom isolation controls retained. Six admission/cause controls pass through merged owner. T0/T1/all-T2/three mapped T3/Web exit0,6738ordinary passes/711files plus230separate load passes,0fail/cancel/skip. Source clean/unchanged; normalized treeedf4d636309e5096d140560217c3a94cd9e65e56, uncached Linuxx64/Node24.21.0, isolated HeadlessShell1248/ChromeTesting156.0.8078.4. Three native files120top-level/127typed incl7nested, one base/no reps;266T3/17T4 unexecuted.64existing runtime warning identities unchanged; only two unrelated stack lines603→604, no own-case warning, positive guard assertions are primary evidence. Known exact T-1935 fixture pair retained separately from terminal Finished exit0/hub passed, no retry. Lint123/60/budget/ratchet/skip report-only; native179.668s selected phases excludes machine wait, billing lifetime not suite wall. C1/C2 verified, findings[]. Historical evidence limits retained; no Reviewer runtime/probe/edit/new run/merge.
+
+Criteria: C1 verified, C2 verified.

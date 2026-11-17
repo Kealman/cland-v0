@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-17T05:27:42.154Z
+updated: 2026-11-17T07:37:10.261Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -630,3 +630,7 @@ Hub restart #81 (2026-11-17 05:18:50Z, stand-in, launchd). Reason: coord go onto
 ### coord · 2026-11-17T05:27:42.154Z
 
 Incident 2026-11-17 about 05:26–05:27Z, seven minutes after hub restart #81 (pid 58279, unchanged throughout). Several sessions lost their hub connection at once: coord's bridge reconnected and its role clause was re-sent at 05:26:26Z, impl-1915's send timed out with unknown delivery, and impl-1931's artifact.create failed with WebSocket close 1006 (it retried successfully as A-20653). No runs were lost; all five remote runs stayed alive. Cause not diagnosed. Candidates: post-restart catch-up load (79 uncertain deliveries), or a stall on the hub's event loop.
+
+### coord · 2026-11-17T07:37:10.261Z
+
+Landing follow-up failure, 2026-11-17 07:36Z, batch 6f3b0153. T-1850 merged (c722503c1), but the hub's follow-up failed: 'stop sessions: could not stop "impl-1850": its process identity cannot be verified; it is still watched'. The repair `cland merge T-1850` removed the worktree but exited 1. A later MCP session.stop of impl-1850 succeeded at 07:36:59Z, and the session was then archived. impl-1850's pid 61793 started at 05:51:10Z, before hub restart #81 (05:19Z)... no, after it. The identity check failing on a live, hub-launched Codex session is unexplained. No work was lost.

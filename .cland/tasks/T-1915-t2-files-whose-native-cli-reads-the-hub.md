@@ -2,8 +2,8 @@
 id: T-1915
 kind: task
 title: T2 files whose native CLI reads the hub lock, and other native calls in T2 found by T-1768's census, need a tier or a hermetic seam
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels: []
@@ -14,7 +14,8 @@ blocked_by:
 topic: topic-1588
 branch: t/T-1915-t2-files-whose-native-cli-reads-the-hub
 created: 2026-11-16T15:13:39.720Z
-updated: 2026-11-17T05:49:48.222Z
+updated: 2026-11-17T06:44:08.068Z
+closed: 2026-11-17T06:44:08.068Z
 ---
 
 ## Summary
@@ -106,3 +107,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; A-20665. fd531d09/A-20662 matches reviewed6e813ea91, normalizedfbbcfb4c... . C1 current-head Darwin independent enforce53/53+worker acknowledgements/native exits in A-20647/48/49 combines with Linux configured five-file53/53. C2identity20391/overlap20396/cold absent27814/present27829 pass; new identity/overlap/present5/5proof20774/20749/28072. No matched five-file tier diagnostic; no blanket no-CLI-subprocess claim.6557ordinary/707file plus265load positives; T0/all224T1/all428T2/55Web green,269T3/17T4 unexecuted. Provenance37940 uncachedLinuxx64/Node24.21/Nvim0.12.5, actual browser35384 HeadlessShell1248/CfT156. Report-only advisories, scope split and historical/native-stream/PID/signal/scan limits retained. Standards/Spec0 findings; C1/C2 verified. No Reviewer runtime/edit or integrated/QA claim.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T06:44:08.068Z
+
+Merged cb678e484393a0540c129254f413fcd4bf93409b onto dev.

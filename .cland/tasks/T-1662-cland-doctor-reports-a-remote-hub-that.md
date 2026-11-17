@@ -2,8 +2,8 @@
 id: T-1662
 kind: task
 title: cland doctor reports a remote hub that refuses admission as 'does not answer'
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels: []
@@ -14,7 +14,8 @@ regression_of: T-1600
 topic: topic-1590
 branch: t/T-1662-cland-doctor-reports-a-remote-hub-that
 created: 2026-11-03T17:52:10.072Z
-updated: 2026-11-17T06:26:12.372Z
+updated: 2026-11-17T08:23:50.543Z
+closed: 2026-11-17T08:23:50.543Z
 ---
 
 ## Summary
@@ -29,6 +30,7 @@ Doctor tells "no answer" (connect refused, timeout) apart from "answered and ref
 
 - [x] C1. Against a fake host whose hub answers but refuses admission, `cland doctor` reports the refusal class and not "does not answer"; against a socket with no listener, it still reports "does not answer" (test).
   - done: impl-1662 · 2026-11-17T06:17:50.805Z
+  - verified: rev-36 [reviewer] · run rev-36-1662-final-1 · 2026-11-17T07:12:53.892Z · commit 151a3ead24f210514742af67634107a042b81b5d
 
 ## Comments
 
@@ -71,3 +73,26 @@ findings: [{"severity":"low","text":"remoteDoctorCase owns and drains root acqui
 finding_counts: {"high":0,"medium":0,"low":1}
 
 Standards1low/Spec0. A-20703 full source clearance at151a3ead2/tree4135b2d9 directchild5502f2069/no dev merge. Both mediums resolved: HubRefusal.refusalCode leaves OS Error.code absent, preserving unchanged task.ts/doctor-users transport classification; new exact task CLI consumer red then green retained. Both new cases enroll caseDeadlines normal/signal ownership before acquisition, adopt captured root and fence/join caller steps before fixture/root cleanup. Remaining low doctor.test.ts:25 root tempProject setup lacks separately named deadline (owner.wait); lifetime join fixed, fake listener separately bounded, claimant6a9bb926 confirms. C1unverified pending completed same-head configured evidence/window or explicit waiver. A-20694 candidate taskred/pair2/whole27/help10/typecheck0 and request lint0refusals122report-only retained with dirty/indentation/raw/native-signal limits. All169consumer rows retained with corrected usageT1/helpT2, faulty old unaffected dispositions superseded; oldwire/Check/help bytes/messages/HubTimeout/requestSent stable. Required exact task-consumer and remote-doctor ordinary/load positives plus existing consumers beyond exit. No Reviewer runtime/test/compiler/lint/generator/probe/edit/retry/merge. A low fix changing head still needs new source review.
+
+### impl-1662 · 2026-11-17T07:01:53.459Z
+
+Configured run38903997-4a16-4758-9824-938bd3281288 at reviewed151a3ead24f210514742af67634107a042b81b5d: T0/T1/T2/Web exit0, aggregate6581 passed/0 failed. A-20726 ordinary receipts for both new doctor.test cases and required5/5 load passes each verified (lines16291,16298,16516,16531). Droplet linux x64 Node24.21.0, Chrome Headless Shell156.0.8078.4. T3/T4 not run in task receipt. Exact known fixture false-cause pair at28640–28641 matches Coordinator T-1935 notice; no retry. Reviewer has the evidence for final settlement.
+
+### rev-36 · 2026-11-17T07:12:53.892Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1662-final-1
+commit: 151a3ead24f210514742af67634107a042b81b5d
+scope: evidence
+findings: [{"severity":"low","text":"remoteDoctorCase owns and drains root acquisition, but step(() => tempProject(owner.fixtures)) has no separately named setup deadline. tempProject/ensureAccountFixture do not supply one; the fake listener bound covers only later setup. Use owner.wait for the root setup step so a stuck acquisition gets a local diagnostic (rule9); lifetime ownership is already fixed. Claimant6a9bb926 confirms.","file":"hub/test/doctor.test.ts","line":25}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Final same-head evidence clearance, using full source review rev-36-1662-source-2 / A-20703. A-20737 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20737-t-1662-final-refusal-and-consumer-evidence-settlement.md) records the independent A-20726 audit for configured run 38903997-4a16-4758-9824-938bd3281288: 6581 ordinary test passes, all 707 expected T1/T2/Web files pass; both required refusal cases have ordinary positive finishes plus five distinct load pass finishes and exact 5/5 proofs. C1 verified. Head 151a3ead24f210514742af67634107a042b81b5d is clean and unchanged; effective suite snapshot tree 2c28fc7004ceafa6d33e971616dc17f0497642b5 is separately recorded. Linux x64 droplet Node24.21.0; actual Headless Shell1248 / Chrome for Testing156.0.8078.4 receipt. Standards: retain the source-2 low named root-setup-deadline finding at doctor.test.ts:25; ownership and refusalCode namespace medium findings are corrected. Spec: clear. Exact fixture cause/adjacent unrelated-output marker at A-20726:28640–28641 matches the recorded T-1935 defect; durable result and phases are positively passed, no retry. All 169 consumer dispositions retained; 63 positive file envelopes, 10 deferred T3 cases, 96 references/helpers. T3/T4 not executed here; queue-enabled merge/occasion policy remains. Budget/lint notices report-only; no native/provider/QA or performance claim. Prior failed source verdict and missing original raw/native/dirty-tree provenance remain historical. Reviewer performed read-only review only.
+
+Criteria: C1 verified.
+
+### coord · 2026-11-17T08:23:50.543Z
+
+Merged ca6c628082b35d94938f87b98f79db00c20037c2 onto dev.

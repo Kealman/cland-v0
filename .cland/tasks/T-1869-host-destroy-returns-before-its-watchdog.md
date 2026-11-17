@@ -2,8 +2,8 @@
 id: T-1869
 kind: task
 title: Host destroy returns before its watchdog's exit is joined (watchdog alive ~10 s after destroyed)
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1591
 branch: t/T-1869-host-destroy-returns-before-its-watchdog
 created: 2026-11-15T11:15:22.624Z
-updated: 2026-11-17T06:23:27.060Z
+updated: 2026-11-17T09:12:29.955Z
+closed: 2026-11-17T09:12:29.955Z
 ---
 
 ## Summary
@@ -27,7 +28,8 @@ Confirm whether `retireHostWatchdog` and `stopHostWatchdog` join the watchdog's 
 ## Acceptance criteria
 
 - [x] C1. After `host stop`/`destroy` returns `destroyed`, no watchdog for that host is alive, or the command reports a typed "watchdog stop incomplete" outcome (test with a native watchdog).
-  - done: impl-1869 · 2026-11-17T06:21:24.823Z
+  - done: impl-1869 · 2026-11-17T07:01:53.047Z
+  - verified: rev-35 [reviewer] · run rev-35-1869-final-3 · 2026-11-17T07:43:47.396Z · commit 3b4109a2b6e10c4da5cec3b076b91863da791324
 
 ## Comments
 
@@ -102,3 +104,62 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Fresh source clear at tree70e41d03d8158b70ca6407306039fb7dd6ec97c2; A-20702. Single-line correction since prior full source: native spawn now seals its final environment with shared fixtureEnvironment(f.root,env,{}) and no post-overlay/exemption. IPC child needs no removed fixture metadata; production/ownership/native assertions/help equality unchanged. No findings. A-20700 retains direct child-env lint red/green plus full npm run test:lint exit0/zero refusals, with report-only advisories qualified. Earlier direct lint-tests was a subset, not full script. C1 remains unverified until new unchanged-head configured native evidence. Old run49b649b0 stays failed/no runtime; earlier selected runtime evidence not promoted to this head. No Reviewer test/probe/edit. Follow Coordinator's new verify-window policy.
+
+### impl-1869 · 2026-11-17T06:51:48.926Z
+
+Configured run 44e31f70 at unchanged source-clear 2f72ea264 finished exit0: T0/T1/T2/changed T3/Web exit0, 6584 pass/0 fail/0 skip. Durable A-20719 confirms required delayed native watchdog pass 0.26561468s; full changed native file 4/4, typed unknown retry base plus 5 load-gate passes. Linux x64 droplet Node24.21.0; Web Google Chrome for Testing156.0.8078.4 via isolated headless shell. Remaining T3 deferred to merge/occasion; no T4 executed. Budget findings report-only. Known T-1935 fixture lines suite-ticket-lost and still-writing-unrelated-output adjacent, matching Coordinator disposition; no retry. Droplet lifetime1460s/cost$0.1014. Reviewer same-head evidence settlement pending; no slot held.
+
+### rev-35 · 2026-11-17T06:55:58.625Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1869-final-2
+commit: 2f72ea2643d978d583b00ae90e71d95c05348297
+scope: evidence
+findings: [{"severity":"medium","text":"A-20719:33266 records native child_process.spawn in the new synthetic-PID T2 case through lock.ts:80/98. Only watchdogOptions.processes is faked; leases.create and destroy's separate ledger-lock processes remain native. Inject the same complete fake lock observer across both supported options and retain a positive launch guard; lead confirms no owner/exception, Coordinator agrees.","file":"hub/test/host-destroy.test.ts","line":48}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Not-clear final evidence at exact2f72ea264; A-20724. A-20719/run44e31f70 is GREEN:6584 ordinary passes/708files, separate255load passes; T0/T1/all-T2/selected T3/Web exit0. Native required case and complete4-case changed T3 file passed once; typed-incomplete case base+5load functional assertions passed. Distinct own-case report-only tier warning reveals real supported-injection gap; no production/credential/signal harm inferred. Coordinator bf14b7f8 agrees medium/not-clear. C1 failed/unverified for final acceptance; no verified marks. Normalized tree09831c9e80fbdaf11945b845b071394bfb295f70, uncached Linux x64/Node24.21.0, isolated HeadlessShell1248/ChromeTesting156.0.8078.4;268T3/17T4 files unexecuted. Known T-1935 stray infrastructure text retained separately; budgets/lint122/59 remain report-only. Prior source passes missed this path; no Reviewer test/probe/edit. Fresh source review after correction, then new configured verify.
+
+Criteria: C1 failed (Green run provides native functional passes, but the new typed-incomplete T2 regression still delegates ledger-lock identity probes to native processes; required fixture isolation is unmet.).
+
+### impl-1869 · 2026-11-17T07:02:53.534Z
+
+A-20724 isolation correction pushed for fresh review at 3b4109a2b6e10c4da5cec3b076b91863da791324, tree44e0a5fb12c9160fd869b57aae7c1f58c92d0ef4. Same fakeLockProcesses observer supplied to lease create and destroy ledger locks; watchdog observer independent. Positive native-launch guard before acquisition through teardown was red2vs0 before injections, final full T2 file12/12 green with zero delegation and fake birth reads. Hub typecheck and FULL npm run test:lint exit0/zero refusals. A-20727 records evidence/limits. C1 done again; no new configured run, source review/new window pending; tree clean/no slots held.
+
+### rev-35 · 2026-11-17T07:14:39.528Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1869-source-4
+commit: 3b4109a2b6e10c4da5cec3b076b91863da791324
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Fresh source clear, tree44e0a5fb12c9160fd869b57aae7c1f58c92d0ef4; A-20738. A-20724 medium corrected: same pure fakeLockProcesses reaches lease creation and destroy ledger locks; independent watchdog observer retained. Seven launch API/low-level spawn traps installed before root acquisition, positive intercepted counter1 control, later teardown zero-attempt assertion and injected lock-read assertion retained. Whole-case ownership and functional retry/native source unchanged. No findings. A-20727 guard red2vs0 then final T2 file12/12/typecheck0/full lint0 with123/60report advisories are candidate selected receipts, not new-head configured evidence. C1 remains unverified; no verified marks. Old A-20719 stays green functional old-head evidence with its isolation finding, not a new-head rerun. No Reviewer runtime/probe/edit. Follow Coordinator's new verification window.
+
+### impl-1869 · 2026-11-17T07:39:59.860Z
+
+Configured e0d2f8e9 at reviewed unchanged3b4109a2b passed T0/T1/T2/changed T3/Web:6584pass/0fail/0skip. A-20748 records corrected typed-unknown T2 base plus5load passes; exact native-launch mismatch query has no target-file matches, while same query matches old A-20719 warning as positive scan control. Full changed native file4/4 incl required delayed watchdog; native case0.232775554s. Linuxx64 droplet Node24.21.0, isolated HeadlessShell1248/ChromeTesting156.0.8078.4. Remaining T3/T4 unexecuted; timing/lint advisory. Known T-1935 fixture line pair confirmed; no retry. Droplet lifetime1283s/cost$0.0891. Reviewer final evidence/C1 settlement pending; no slot held.
+
+### rev-35 · 2026-11-17T07:43:47.396Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1869-final-3
+commit: 3b4109a2b6e10c4da5cec3b076b91863da791324
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Same-head final evidence clear; A-20749 reconciles A-20748/e0d2f8e9 against A-20738 source. Required delayed native watchdog ordinary PASS and complete changed native file4/4; typed unknown-stop/retry ordinary PASS plus5/5load, including positive intercepted launch control and post-teardown zero native attempts/injected lock birth assertions. Exact runtime-warning comparison removes only old own-case ledger spawn warning, no additions; absence is supported by those positive guards. CLI exact-byte/help and16watchdog identity controls passed. T0/T1/all-T2/changed-T3/Web exit0,6584ordinary passes/708files plus215separate load passes, no fail/cancel/skip. Current clean head; normalized treef8962b562baa581c196a7a58c167990512af5732, uncached Linux x64/Node24.21.0, actual isolated HeadlessShell1248/ChromeTesting156.0.8078.4.268T3/17T4 files unexecuted; native file one base/no repetitions. T-1935 exact fixture line pair retained as known reporting contamination, terminal Finished exit0/hub passed; no retry. Lint123/60, budget/ratchet/skip advisories report-only. Prior T0 failure and old green/isolation finding remain historical, not promoted. Standards0/Spec0; C1 verified. No Reviewer runtime/probe/edit/new run/merge.
+
+Criteria: C1 verified.
+
+### coord · 2026-11-17T09:12:29.955Z
+
+Merged c61d75fd52bad659edf90e88a445c30fdf3c15f5 onto dev.

@@ -2,8 +2,8 @@
 id: T-1850
 kind: task
 title: A suite worker reports a gate-deadline expiry as 'hub stopped before worker admission completed'
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1589
 branch: t/T-1850-a-suite-worker-reports-a-gate-deadline
 created: 2026-11-14T03:47:22.789Z
-updated: 2026-11-17T06:08:32.195Z
+updated: 2026-11-17T07:36:42.202Z
+closed: 2026-11-17T07:35:57.559Z
 ---
 
 ## Summary
@@ -28,8 +29,10 @@ The worker's result names which of the two happened: a signal received (named), 
 
 - [x] C1. A worker whose gate is never written, while no signal arrives, reports a gate-deadline cause naming the bound, distinct from a signal stop (test).
   - done: impl-1850 · 2026-11-17T06:05:33.738Z
+  - verified: rev-35 [reviewer] · run rev-35-1850-final-1 · 2026-11-17T06:44:30.081Z · commit 2101be35796b8907da0aee7ef5256b21f5e88276
 - [x] C2. A worker that receives SIGTERM before admission reports the signal cause, and every consumer of the old cause text is listed on this item and still passes (test).
   - done: impl-1850 · 2026-11-17T06:05:34.274Z
+  - verified: rev-35 [reviewer] · run rev-35-1850-final-1 · 2026-11-17T06:44:30.081Z · commit 2101be35796b8907da0aee7ef5256b21f5e88276
 
 ## Comments
 
@@ -68,3 +71,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Fresh full source review of reworked completion owner, source tree f7e0091552a17b9773204de97d022993ac7a34a9; A-20685. Both A-20678 findings are corrected: actual executable delegates admission/completion, denied admission skips native setup, exact log/persist tests use throwing setup control, and shared Clock governs timestamps/scheduling. No new findings; prior-shaped outcome/export compatibility retained, optional platform safely absent before setup. C1/C2 are source-correct but remain unverified pending same-head configured run; no verified marks in this source pass. A-20683 local working-source 11/11 T1 plus targeted T1/T2 help10/10/typecheck/lint are qualified, not configured exact-head evidence. Preserved pre-existing log-before-persist order was separately reported to lead as S Tech debt. No Reviewer runtime/probe/edit. Follow Coordinator verification window policy.
+
+### rev-35 · 2026-11-17T06:44:30.081Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1850-final-1
+commit: 2101be35796b8907da0aee7ef5256b21f5e88276
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Same-head final clear; A-20715 reconciles A-20707/run067aad91 with A-20685 source basis. Exact head/source tree unchanged, normalized tree c8e70fd736e0947b04d5421a1117f2c458cec869, uncached Linux x64 droplet/Node24.21.0, actual isolated Headless Shell1248/Chrome for Testing156.0.8078.4. C1 expiry/C2 SIGTERM plus admission-success/prior-shape controls each have ordinary pass and5/5 load proofs; consumer/summary/help files positive. T0/T1/all-T2/Web exit0;6583 ordinary passes/707 files, separate270 load passes;224T1/428T2/55Web complete;269T3/17T4 unexecuted. Actual ticket-loss text quoted/attributed to fake fixture28717–28719; terminal Finished exit0 and hub passed. Coordinator8703af82 accepts same-head evidence/no retry; contamination filed T-1935. Report-only lint122/59, budgets/ratchet/skip checks retained. C1/C2 verified; no findings/new Reviewer run/edit.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T07:35:57.559Z
+
+Merged c722503c17dcf94a45519f5582f7ed81c5ec3ffb onto dev.
