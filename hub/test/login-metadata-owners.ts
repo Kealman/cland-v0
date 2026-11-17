@@ -9,7 +9,7 @@ export function loginMetadataOwners(t:TestContext,root:string) {
  const close=()=>work??=(async()=>{
   const errors:unknown[]=[];
   if(!hubClosed&&hub)try{await hub.stop();hubClosed=true;}catch(error){errors.push(error);}
-  if(!storeClosed&&store)try{await store.close();storeClosed=true;}catch(error){errors.push(error);}
+  if(hubClosed&&!storeClosed&&store)try{await store.close();storeClosed=true;}catch(error){errors.push(error);}
   if(errors.length)throw new AggregateError(errors,'login metadata fixture drainage failed');
   assertReleased();
  })().finally(()=>{work=undefined;});

@@ -7,7 +7,13 @@ import { projectHub,tempProject,connectUi,cland,frameClient,inProcessSpoke } fro
 import { FakeClock } from './fake-clock.ts';
 import { fakeLockProcesses } from './fakes/lock-processes.ts';
 import {mkdir} from 'node:fs/promises';
+import {join} from 'node:path';
 import {loginMetadataOwners} from './login-metadata-owners.ts';
+import {existsSync} from 'node:fs';
+import {ownDirectory} from './process-cleanup.ts';
+import {testWaitMs} from './until.ts';
+import {fixtureWork} from './fixture-work.ts';
+import {within} from '../src/executor/droplet/deadline.ts';
 
 test('recovered one-sign-in hint appears in the card, Agents notice and login list',async t=>{
  const root=await tempProject(t),clock=new FakeClock(Date.now()),owners=loginMetadataOwners(t,root);await mkdir(layout(root).dir,{recursive:true});const store=owners.store(new Store(layout(root).db));
@@ -24,17 +30,52 @@ test('recovered one-sign-in hint appears in the card, Agents notice and login li
 });
 
 for(const fault of ['before-hub','hub-drain'] as const)test(`login fixture retains borrowed-store ownership after ${fault} failure`,async t=>{
- const root=await tempProject(t),owners=loginMetadataOwners(t,root),events:string[]=[];let fail=true;
- owners.store({close:()=>{events.push('store closed');}});
- if(fault==='before-hub'){
-  await assert.rejects(owners.start(async()=>{throw Error('planted setup refusal');}),/setup refusal/);
-  await assert.rejects(owners.close(),/root retained/);assert.deepEqual(events,['store closed']);assert.throws(owners.assertReleased,/root retained/);
-  // Supply the known fixture owner and its positive close receipt before disposal.
-  await owners.start(async()=>({stop:async()=>{events.push('hub closed');}}));await owners.close();owners.assertReleased();return;
- }
- await owners.start(async()=>({stop:async()=>{events.push('hub stop');if(fail)throw Error('planted hub drain refusal');events.push('hub closed');}}));
- await assert.rejects(owners.close(),/drainage failed/);assert.deepEqual(events,['hub stop','store closed']);assert.throws(owners.assertReleased,/root retained/);
- fail=false;await owners.close();assert.deepEqual(events,['hub stop','store closed','hub stop','hub closed']);owners.assertReleased();
+ const body=fixtureWork(t),events:string[]=[];let fail=true,needsRecovery=false,owners:ReturnType<typeof loginMetadataOwners>|undefined;
+ // Register recovery before acquisition, including a failed or late fake start.
+ body.release(async()=>{fail=false;if(needsRecovery&&owners){await owners.start(async()=>({stop:async()=>{events.push('hub closed');}}));needsRecovery=false;}});
+ await body.run(async work=>{
+  const parent=await work.root(()=>tempProject(t));
+  // The outer root owns the callback. This inner root exercises the helper's
+  // removal guard independently, without asking the body to join itself.
+  const {root,remove}=await work.step(async()=>{const root=join(parent,'metadata');await mkdir(root);return {root,remove:ownDirectory(t,root)};});
+  owners=await work.acquire(async()=>loginMetadataOwners(t,root),owner=>owner.close());
+  const owned=owners;
+  owned.store({close:()=>{events.push('store closed');}});
+  if(fault==='before-hub'){
+   needsRecovery=true;
+   await work.step(()=>assert.rejects(owned.start(async()=>{throw Error('planted setup refusal');}),/setup refusal/));
+   await work.step(()=>assert.rejects(owned.close(),/root retained/));
+  }else{
+   const failure=Error('planted hub drain refusal');
+   await work.step(()=>owned.start(async()=>({stop:async()=>{events.push('hub stop');if(fail)throw failure;events.push('hub closed');}})));
+   await work.step(()=>assert.rejects(owned.close(),error=>error instanceof AggregateError&&error.errors.includes(failure)));
+  }
+  await work.step(()=>assert.rejects(remove(),/root retained/));
+  assert.deepEqual(events,fault==='before-hub'?[]:['hub stop']);assert.ok(existsSync(root));assert.throws(owned.assertReleased,/root retained/);
+  fail=false;
+  if(needsRecovery){await work.step(()=>owned.start(async()=>({stop:async()=>{events.push('hub closed');}})));needsRecovery=false;}
+  await work.step(()=>owned.close());owned.assertReleased();
+  assert.deepEqual(events,fault==='before-hub'?['hub closed','store closed']:['hub stop','hub stop','hub closed','store closed']);
+  await work.step(remove);assert.equal(existsSync(root),false);
+ });
+});
+
+test('login fixture closes the Store only after the hub joins and removes its root',{timeout:testWaitMs(2000)},async t=>{
+ const body=fixtureWork(t),events:string[]=[],joined=Promise.withResolvers<void>(),stopping=Promise.withResolvers<void>();
+ body.release(()=>joined.resolve());
+ let root:string|undefined;
+ await body.run(async work=>{
+  root=await work.root(()=>tempProject(t));
+  const owners=await work.acquire(async()=>loginMetadataOwners(t,root!),owner=>owner.close());
+  owners.store({close:()=>{events.push('store closed');}});
+  await work.step(()=>owners.start(async()=>({stop:async()=>{events.push('hub stop');stopping.resolve();await joined.promise;events.push('hub closed');}})));
+  const closing=owners.close();void closing.catch(()=>{});
+  await work.step(()=>within(stopping.promise,testWaitMs(2000)));
+  assert.deepEqual(events,['hub stop']);assert.ok(existsSync(root));
+  joined.resolve();await work.step(()=>closing);
+  assert.deepEqual(events,['hub stop','hub closed','store closed']);owners.assertReleased();
+ });
+ assert.ok(root);assert.equal(existsSync(root),false);
 });
 
 test('login list text and JSON expose rows and hosts, retained across hub restart',async t=>{
