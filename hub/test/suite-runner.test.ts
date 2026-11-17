@@ -1356,7 +1356,9 @@ for (const removal of ['external deletion', 'identity sweep']) test(`a missing s
     await step(() => mkdir(lock));
     const file = join(dir, 'never.test.mjs');
     await step(() => writeFile(file, "throw new Error('must not execute');"));
-    child = run(owner.fixtures, dir, file);
+    // External deletion uses the new channel; identity sweep keeps the old host shape.
+    const receipt = removal === 'external deletion' ? join(dir, 'runner-cause') : undefined;
+    child = run(owner.fixtures, dir, file, undefined, false, { CLAND_SUITE_CAUSE_FILE: receipt });
     const active = child;
     onCleanup(owner.fixtures, async () => { active.child.kill('SIGTERM'); await active.done; });
     const queue = `${lock}.queue`;
@@ -1375,6 +1377,7 @@ for (const removal of ['external deletion', 'identity sweep']) test(`a missing s
     } else await step(() => rm(join(queue, ticket)));
     assert.equal(await step(() => active.done), 75, active.output());
     assert.match(active.output(), /suite infrastructure: suite ticket .* disappeared while waiting/);
+    if (receipt) assert.match(await step(() => readFile(receipt, 'utf8')), /^suite infrastructure: suite ticket .* disappeared while waiting/);
     assert.match(active.output(), removal === 'identity sweep' ? /"remover":\d+,"reason":"ticket process identity changed"/ : /remover unknown; no sweep receipt/);
     assert.doesNotMatch(active.output(), /at acquire|must not execute/);
   });

@@ -67,8 +67,9 @@ Wait for the persisted passkey receipt and join the abortable terminal reader;
 Enter leaves `cland user invite <name>`. See docs/hub/cland-setup.md.
 
 Waiting suite tickets have no age expiry; native birth protects new tickets across
-clock corrections. Exit 75 plus `suite infrastructure:` is incomplete infrastructure
-evidence, not a failed test; see `docs/hub/running.md#waiting-suite-tickets`.
+clock corrections. Exit 75 plus a runner-recorded `suite infrastructure:` cause is
+incomplete infrastructure evidence; a matching test-output line supplies no cause.
+See `docs/hub/running.md#waiting-suite-tickets` for older-runner compatibility.
 
 ## Merge-delta advisory comments
 

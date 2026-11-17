@@ -296,7 +296,7 @@ test('remote ticket loss retains its infrastructure cause through collection', a
   const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
   await owner.run(async step => {
     const cause = 'suite infrastructure: suite ticket fixture lost; remover 42; native identity changed';
-    const f = await step(() => fixture(owner.fixtures, { hub: projectHub, stack: 'other', check: '', test: `node -e ${JSON.stringify(`console.error(${JSON.stringify(cause)});process.exit(75)`)}` }));
+    const f = await step(() => fixture(owner.fixtures, { hub: projectHub, stack: 'other', check: '', test: `node -e ${JSON.stringify(`require('fs').writeFileSync(process.env.CLAND_SUITE_CAUSE_FILE,${JSON.stringify(cause)});console.error(${JSON.stringify(cause)});process.exit(75)`)}` }));
     owner.adoptRoot(f.root);
     const job = await step(() => f.spoke.call<{ ok: boolean; id: string; error?: string }>('verify', { mode: 'auto', cwd: f.root, report: f.topic, to: ['impl'], fresh: true }));
     assert.equal(job.ok, true, job.error);
@@ -306,6 +306,25 @@ test('remote ticket loss retains its infrastructure cause through collection', a
     assert.equal(receipt.code, 75);
     assert.equal(receipt.notRun, 'infrastructure');
     assert.equal(receipt.cause, cause);
+    assert.deepEqual(f.api.droplets, []);
+  });
+});
+
+for (const code of [0, 75]) test(`an older remote runner exiting ${code} cannot turn test output into an infrastructure receipt`, async t => {
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  await owner.run(async step => {
+    const cause = 'suite infrastructure: suite ticket lost; remover unknown';
+    const f = await step(() => fixture(owner.fixtures, { hub: projectHub, stack: 'other', check: '', test: `node -e ${JSON.stringify(`console.error(${JSON.stringify(cause)});process.exit(${code})`)}` }));
+    owner.adoptRoot(f.root);
+    const job = await step(() => f.launch('--fresh'));
+    const report = await step(() => f.result(job.id));
+    const receipt = JSON.parse(await step(() => readFile(join(f.root, '.cland/run/suites', job.id, 'result.json'), 'utf8')));
+    assert.equal(receipt.code, code);
+    assert.equal(receipt.cause, '');
+    assert.equal(receipt.notRun, undefined);
+    assert.match(report.text, new RegExp(`\\nauto exit ${code}\\n`));
+    assert.doesNotMatch(report.text, /Execution incomplete\.|unavailable: infrastructure/);
+    assert.match(await step(() => readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8')), /suite infrastructure: suite ticket lost/);
     assert.deepEqual(f.api.droplets, []);
   });
 });

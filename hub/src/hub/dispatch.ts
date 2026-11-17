@@ -1,4 +1,4 @@
-import { suiteInfrastructureLine } from '../suite-infrastructure.ts';
+import { suiteInfrastructureCauses } from '../suite-infrastructure.ts';
 import { selectHostPool } from '../host/pools.ts';
 import { which } from '../doctor/report.ts';
 import {removeLogin} from '../host/login-remove.ts';
@@ -1175,7 +1175,7 @@ export class Dispatcher {
     }
     const caller = callerNow(); // all checks after the final file read, then synchronous publication
     const quarantine = recordQuarantineResults(JSON.parse(core.store.meta('quarantine-results') ?? '{}') as QuarantineHistory, job.id, quarantineResults(log), !!job.cached);
-    const summary = suiteSummary(log, quarantine.lines, { logArtifact: artifact.id });
+    const summary = suiteSummary(log, quarantine.lines, { logArtifact: artifact.id, outcome: job.outcome!, shards: job.shards ?? [] });
     const outcome = job.outcome!;
     const interrupted = interruptionLines(log, { timeout: outcome.code === 124 });
     const selectionFallback = job.selection?.fallback ?? (job.selection?.reason.startsWith('fetch/diff unavailable:') ? `selection fallback: full; ${job.selection.reason}` : undefined);
@@ -1186,18 +1186,18 @@ export class Dispatcher {
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}\n${originalExecution}` : '';
     const missing = job.occasion === 'stage' ? this.#suites!.stageMissing(job.tree, job) : [];
     const stageCover = job.occasion === 'stage' ? `\nstage cover ${missing.length ? `missing ${missing.join(', ')}` : 'complete (Linux droplet, macOS)'} · tree ${job.tree ?? 'unknown'}` : '';
-    const incompleteInfrastructure = log.split('\n').some(suiteInfrastructureLine);
+    const incompleteInfrastructure = suiteInfrastructureCauses(job).length > 0;
     const unavailableExecution = incompleteInfrastructure ? `Execution incomplete.\n${summary}` : 'No tests executed.';
     const resultText = (artifact: { id: string; path: string }): string => {
       if (outcome.notRun) return core.boundedText(`suite result ${job.id}\n${job.mode} unavailable: ${outcome.notRun === 'provider-capacity' ? 'provider capacity' : outcome.notRun}\n${outcome.cause}\n${unavailableExecution}\nBranch ${job.branch} · head ${job.head}\n${execution}\nLog ${artifact.id}: ${artifact.path}`);
-      const summary = suiteSummary(log, quarantine.lines, { logArtifact: artifact.id });
+      const summary = suiteSummary(log, quarantine.lines, { logArtifact: artifact.id, outcome, shards: job.shards ?? [] });
       const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}${progress}\n${summary}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${execution}${provenance}${stageCover}\nLog ${artifact.id}: ${artifact.path}`;
       let text = report(2048);
       // File counts and the artifact retain the complete decision when a broad diff
       // or a smaller configured cap cannot fit every path in the topic message.
       for (let bytes = 1024; !core.textFits(text) && bytes >= 0; bytes = bytes ? Math.floor(bytes / 2) : -1) text = report(bytes);
       if (!core.textFits(text)) {
-        const priority = suiteSummary(log, [], { logArtifact: artifact.id, priorityOnly: true });
+        const priority = suiteSummary(log, [], { logArtifact: artifact.id, priorityOnly: true, outcome, shards: job.shards ?? [] });
         const header = `suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cached ? '; cached' : job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}${progress}\nLog ${artifact.id}`;
         const required = `${header}\n${priority}${job.cached ? `\nhead ${job.head}${provenance}\n${execution}` : ''}`;
         // Reserve interruption identities, cache provenance and executor facts with the decision summary;

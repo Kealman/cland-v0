@@ -1,4 +1,4 @@
-import { SUITE_INFRASTRUCTURE_EXIT } from '../src/suite-infrastructure.ts';
+import { SUITE_INFRASTRUCTURE_EXIT, writeSuiteCause } from '../src/suite-infrastructure.ts';
 import { rawCoverageOwner, removeRawCoverage } from '../src/suite-raw-coverage.ts';
 import { eligibleLoadRerun } from '../src/suite-load-rerun.ts';
 import { lockHostIdentity } from '../src/hub/lock-identity.ts';
@@ -195,6 +195,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       // Selection belongs to this runner, not its tests or any nested package run.
       delete env.CLAND_SUITE_SELECTION;
       delete env.CLAND_SUITE_SELECTION_FILE;
+      delete env.CLAND_SUITE_CAUSE_FILE;
       // Never propagate a parent's capture into nested fixture package runs.
       delete env.CLAND_COVERAGE_OUTPUT;
       delete env.NODE_TEST_CONTEXT;
@@ -453,7 +454,12 @@ process.chdir(cwd);`);
     return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : 0;
   } catch (error) {
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
-    if (error instanceof SuiteTicketLost) { process.stderr.write(`suite infrastructure: ${error.message}\n`); return SUITE_INFRASTRUCTURE_EXIT; }
+    if (error instanceof SuiteTicketLost) {
+      const cause = `suite infrastructure: ${error.message}`;
+      await writeSuiteCause(cause);
+      process.stderr.write(cause + '\n');
+      return SUITE_INFRASTRUCTURE_EXIT;
+    }
     throw error;
   } finally {
     activeGuard?.stop();

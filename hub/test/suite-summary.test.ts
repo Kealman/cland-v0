@@ -51,5 +51,26 @@ test('ticket infrastructure outcomes retain their cause without classifying ordi
   assert.deepEqual(suiteCommandOutcome(75, cause), { code: 75, cause, notRun: 'infrastructure' });
   assert.deepEqual(suiteCommandOutcome(1, cause), { code: 1, cause });
   assert.deepEqual(suiteCommandOutcome(75, 'ordinary command exit'), { code: 75, cause: 'ordinary command exit' });
-  assert.match(suiteSummary(cause + '\n'), /suite infrastructure: suite ticket lost; remover 42/);
+  assert.match(suiteSummary('ℹ tests 1\nℹ pass 1\n', [], { outcome: { code: 75, cause } }), /suite infrastructure: suite ticket lost; remover 42/);
+});
+
+test('green test output cannot supply an infrastructure cause', () => {
+  const log = 'ℹ tests 1\nℹ pass 1\nsuite infrastructure: suite ticket lost; remover unknown\n';
+  assert.equal(suiteSummary(log), 'tests 1; pass 1');
+  assert.equal(suiteSummary(log, [], { outcome: { code: 0, cause: '' }, priorityOnly: true }), 'tests 1; pass 1');
+});
+
+test('a shard-prefixed aggregate summary retains structured child infrastructure causes', () => {
+  const cause = 'suite infrastructure: suite ticket fixture lost; remover 42';
+  const log = 'ℹ tests 2\nℹ pass 2\nsuite infrastructure: unrelated fixture output\n';
+  const source = {
+    outcome: { code: 1, cause: `shard-2: ${cause}` },
+    shards: [
+      { shardName: 'shard-1', outcome: { code: 0, cause: '' } },
+      { shardName: 'shard-2', outcome: { code: 75, cause } },
+    ],
+  };
+  assert.equal(suiteSummary(log, [], source), `tests 2; pass 2\nshard-2: ${cause}`);
+  source.outcome.cause = 'aggregate description unavailable';
+  assert.equal(suiteSummary(log, [], source), `tests 2; pass 2\nshard-2: ${cause}`);
 });

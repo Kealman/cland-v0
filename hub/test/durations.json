@@ -12419,6 +12419,20 @@
     "hub/test/scenarios/integrated-v04.test.ts::v0.4 integrated: remote login, live renewal, two users, busy restart and host sub-cap": 25.482223
   },
   "allow": {
+    "hub/test/executor-run.test.ts::an older remote runner exiting 0 cannot turn test output into an infrastructure receipt": {
+      "seconds": 12.6,
+      "owner": "C-216",
+      "added": "2026-11-17",
+      "expires": "2026-11-24",
+      "reason": "T-1935: fake transport delivery and durable collection cost; 1.5x worst passing Darwin sample 8.3948775 s rounded up, preserving exit/cause/report/release assertions."
+    },
+    "hub/test/executor-run.test.ts::an older remote runner exiting 75 cannot turn test output into an infrastructure receipt": {
+      "seconds": 12.7,
+      "owner": "C-216",
+      "added": "2026-11-17",
+      "expires": "2026-11-24",
+      "reason": "T-1935: fake transport delivery and durable collection cost; 1.5x worst passing Darwin sample 8.410832959 s rounded up, preserving exit/cause/report/release assertions."
+    },
     "hub/test/transport-kind-types.test.ts::a new transport kind compiles against the unchanged carrier contract": {
       "seconds": 17.8,
       "owner": "C-216",

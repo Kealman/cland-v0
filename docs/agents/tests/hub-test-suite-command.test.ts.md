@@ -61,3 +61,31 @@ deadlines remain exact.
 Ownership cases cover a new runner's normal start/finish, native exit without
 finish, malformed ownership markers, and a hung inner owner falling back to the
 no-output guard. The unmarked held child remains the old-candidate control.
+
+Infrastructure cases mock the dedicated file receipt independently of stderr.
+The same planted stderr line with exits 0 and 75 cannot supply a cause without
+that receipt. A positive receipt retains the previous `{ code, cause }` shape.
+The matrix observes the command's settled outcome immediately and bounds its
+launch setup separately at five seconds using a native timer captured before
+behaviour timers are mocked; setup failure cannot strand an unobserved rejection.
+
+The shared fake-native guard positively denies every child-process launch entry,
+the ChildProcess prototype, and both exec/execFile custom promisifiers before
+installing expected fake spawn. Its final census includes cleanup. Receipt
+faults retain exit75 through read failure, receipt close failure and oversized
+input; the fake reader counts at most4096payload bytes plus one oversize sentinel.
+
+Inspection publication controls inject throwing summary and callback sinks,
+including rejected callback promises, beside selected exits75and0. Both sinks
+are attempted independently; primary code/cause and inspection remain available,
+secondary diagnostics contain error classes only, and actual signal-listener
+sets return to their captured baseline before fixture teardown. Rejection-path
+worker controls retain the original failed inspection and exactly one durable
+receipt even when both publication sinks fail.
+
+Register the caller's teardown before acquiring the guard. Its mandatory
+registerRestore callback captures restoration before the first mutation; the
+guard's installation try/catch also covers partial installation. Fault controls
+exercise a partial install and a caller setup failure, then observe all module
+functions and the prototype restored. Matrix teardown joins the fake command,
+destroys streams and restores mocks before releasing the guard.

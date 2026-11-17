@@ -1,4 +1,4 @@
-import { suiteInfrastructureLine } from './suite-infrastructure.ts';
+import { readSuiteCause, writeSuiteCause } from './suite-infrastructure.ts';
 import { stdioWriters } from './stdio-writers.ts';
 import { processIdentityAsync } from './process-identity.ts';
 // Observe the command's bytes, rather than reporter totals, so silent test teardown is bounded too.
@@ -23,6 +23,17 @@ export interface SuiteInspectionReceipt {
   unobservedBoundMs: number;
   unobservedPastBound: boolean;
 }
+export class SuiteCommandPublicationError extends Error {
+  readonly inspection: SuiteInspectionReceipt;
+  readonly diagnostics: readonly string[];
+  constructor(primary: unknown, inspection: SuiteInspectionReceipt, diagnostics: readonly string[]) {
+    super([primary instanceof Error ? primary.message : String(primary), ...diagnostics].join('; '), { cause: primary });
+    this.name = 'SuiteCommandPublicationError';
+    this.inspection = inspection;
+    this.diagnostics = diagnostics;
+  }
+}
+const inspectionErrorClass = (error: unknown): string => error instanceof TypeError ? 'TypeError' : error instanceof Error ? 'Error' : 'NonError';
 const unobservedBoundMs = 5000;
 export async function suiteCommand(line: string, cwd: string, env: NodeJS.ProcessEnv = process.env, native = nativeProcesses, reportInspection?: (receipt: SuiteInspectionReceipt) => void): Promise<{ code: number; cause: string; inspection?: SuiteInspectionReceipt }> {
   const { stallTimeoutMs, workers } = await suiteLimits(cwd, 'local', env);
@@ -33,11 +44,11 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     ...(env.CLAND_SUITE_EXECUTOR ? { executor: env.CLAND_SUITE_EXECUTOR } : {}),
     ...(env.CLAND_TEST_LOAD_FACTOR ? { override: env.CLAND_TEST_LOAD_FACTOR } : {}),
   }));
+  await writeSuiteCause('', env);
   const child = spawn('/bin/sh', ['-c', line], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
   const birth = child.pid ? native.processIdentityAsync(child.pid, env) : Promise.resolve(null);
   const identity = child.pid ? native.processStartedAsync(child.pid) : Promise.resolve(null);
   let cause = '';
-  let infrastructure = '';
   let interrupted = false;
   let ending: Promise<void> | undefined;
   const stopped = Promise.withResolvers<void>();
@@ -82,7 +93,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
       if (inspection) inspection.consecutiveFailures = 0;
     }).catch(error => {
       // No messages, argv or arbitrary class names: native errors can contain secrets.
-      const lastErrorClass = error instanceof TypeError ? 'TypeError' : error instanceof Error ? 'Error' : 'NonError';
+      const lastErrorClass = inspectionErrorClass(error);
       inspection ??= { firstFailureAt: attemptedAt, failures: 0, consecutiveFailures: 0, maxConsecutiveFailures: 0, lastErrorClass, unobservedBoundMs, unobservedPastBound: false };
       unobservedSince ??= attemptedAt;
       inspection.failures++;
@@ -167,7 +178,6 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     while ((newline = pending.indexOf('\n')) >= 0) {
       const line = pending.slice(0, newline);
       pending = pending.slice(newline + 1);
-      if (suiteInfrastructureLine(line)) infrastructure = line.slice(0, 4096);
       const owner = parseStartupOwner(line);
       if (owner && !ending && !interrupted && !closed) {
         if (owner.event === 'start') innerOwners.add(owner.id);
@@ -199,6 +209,9 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   });
   arm();
   observe();
+  let selected: { code: number; cause: string; inspection?: SuiteInspectionReceipt } | undefined;
+  let failed = false;
+  let primaryFailure: unknown;
   try {
     const outcome = await Promise.race([ended, stopped.promise.then(async () => {
       await ending;
@@ -212,19 +225,39 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     startup.stop();
     await observing;
     noteUnobserved();
-    return { code: cause ? 1 : outcome.code ?? 1, cause: cause || infrastructure || (outcome.signal ? `command terminated by ${outcome.signal}` : ''), ...(inspection ? { inspection } : {}) };
-  } finally {
-    closed = true;
-    clearTimeout(timer);
-    clearTimeout(observeTimer);
-    startup.stop();
-    await observing;
-    noteUnobserved();
-    if (inspection) {
-      process.stderr.write(`suite inspection ${JSON.stringify(inspection)}\n`);
-      // The worker owns the durable result even when cleanup rejects this call.
-      reportInspection?.(inspection);
+    selected = { code: cause ? 1 : outcome.code ?? 1, cause: cause || (outcome.signal ? `command terminated by ${outcome.signal}` : '') };
+    if (!selected.cause) {
+      try { selected.cause = await readSuiteCause(env); }
+      catch (error) { selected.cause = `secondary diagnostic: suite cause receipt unavailable: ${String(error).slice(0, 1024)}`; }
     }
-    for (const { signal, handler } of handlers) process.off(signal, handler);
+    if (inspection) selected.inspection = inspection;
+    return selected;
+  } catch (error) {
+    failed = true;
+    primaryFailure = error;
+    throw error;
+  } finally {
+    try {
+      closed = true;
+      clearTimeout(timer);
+      clearTimeout(observeTimer);
+      startup.stop();
+      await observing;
+      noteUnobserved();
+      const diagnostics: string[] = [];
+      if (inspection) {
+        try { process.stderr.write(`suite inspection ${JSON.stringify(inspection)}\n`); }
+        catch (error) { diagnostics.push(`secondary diagnostic: inspection summary publication failed (${inspectionErrorClass(error)})`); }
+        // Independent and joined: a broken summary must not skip durable delivery.
+        try { await reportInspection?.(inspection); }
+        catch (error) { diagnostics.push(`secondary diagnostic: inspection callback publication failed (${inspectionErrorClass(error)})`); }
+      }
+      if (diagnostics.length) {
+        if (selected) selected.cause = [selected.cause, ...diagnostics].filter(Boolean).join('; ');
+        else if (failed && inspection) throw new SuiteCommandPublicationError(primaryFailure, inspection, diagnostics);
+      }
+    } finally {
+      for (const { signal, handler } of handlers) process.off(signal, handler);
+    }
   }
 }

@@ -10,6 +10,8 @@ if test -f "$run/done" || test -f "$run/pgid"; then exit 0; fi
 : >"$run/started"
 echo $$ >"$run/pgid"
 cat "$run/delivery.log" >"$run/suite.log"
+export CLAND_SUITE_CAUSE_FILE="$run/cause"
+: >"$CLAND_SUITE_CAUSE_FILE"
 # Advisory timing receipt: both boundaries use this machine's UTC clock.
 # Missing evidence leaves calibration unchanged; it must never block a run.
 printf '\n' >>"$run/suite.log" || true
@@ -18,8 +20,7 @@ finish() {
   code=$?
   trap - EXIT TERM INT
   timeout --kill-after=1s 3s node "$run/health.ts" finish "$run" >>"$run/suite.log" 2>&1 || echo 'suite machine health unavailable: final sample failed' >>"$run/suite.log"
-  # One streaming terminal scan, never on a status/liveness request.
-  grep '^suite infrastructure: ' "$run/suite.log" | tail -n 1 | cut -c 1-4096 >"$run/cause"
+  # The package owner writes cause directly. Older runners leave it empty.
   echo "$code" >"$run/exit"
   echo "Finished: exit $code" >>"$run/suite.log"
   date -u +%Y-%m-%dT%H:%M:%SZ >"$run/done.tmp" && mv "$run/done.tmp" "$run/done"

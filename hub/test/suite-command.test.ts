@@ -7,7 +7,10 @@ import cp from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { syncBuiltinESMExports } from 'node:module';
 import { PassThrough } from 'node:stream';
-import { suiteCommand } from '../src/suite-command.ts';
+import fs from 'node:fs/promises';
+import nativeFs from 'node:fs';
+import { fakeNativeGuard } from './fake-native-guard.ts';
+import { suiteCommand, type SuiteInspectionReceipt } from '../src/suite-command.ts';
 import { startupOwnerLine } from '../src/suite-startup-owner.ts';
 import { suiteWorker } from '../src/hub/suite-worker.ts';
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
@@ -15,32 +18,101 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-function ownedMocks(t: TestContext, body: (signal: AbortSignal, cleanup: (release: () => Promise<void>, dispose: () => void | Promise<void>) => void) => Promise<void>) {
+// Keep the setup deadline live while behaviour time uses mock timers.
+const setupTimeout = globalThis.setTimeout;
+const clearSetupTimeout = globalThis.clearTimeout;
+
+for (const failure of ['partial installation', 'caller setup']) test(`native guard restores its registered owner after ${failure} failure`, async t => {
+  const methods = ['spawn', 'spawnSync', 'exec', 'execSync', 'execFile', 'execFileSync', 'fork'] as const;
+  const originals = new Map(methods.map(method => [method, cp[method]]));
+  const prototypeSpawn = Reflect.get(cp.ChildProcess.prototype, 'spawn');
+  let ownedRestore: (() => void) | undefined;
+  let acquired: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
+  const cleanup = () => { ownedRestore?.(); acquired?.restore(); };
+  t.after(cleanup);
+  const register = (restore: () => void) => {
+    for (const method of methods) assert.equal(cp[method], originals.get(method), 'owner registered before mutation');
+    ownedRestore = restore;
+  };
+  await assert.rejects(async () => {
+    acquired = await fakeNativeGuard(register, failure === 'partial installation' ? {
+      afterInstall: () => { assert.equal(typeof ownedRestore, 'function'); throw new Error('partial installation failed'); },
+    } : {});
+    throw new Error('caller setup failed before later hooks');
+  }, failure === 'partial installation' ? /partial installation failed/ : /caller setup failed/);
+  assert.equal(typeof ownedRestore, 'function', 'pre-enrolled cleanup captured the restorer');
+  // Exercise the same registered teardown after the fault, then observe restoration.
+  cleanup();
+  for (const method of methods) assert.equal(cp[method], originals.get(method));
+  assert.equal(Reflect.get(cp.ChildProcess.prototype, 'spawn'), prototypeSpawn);
+});
+
+function ownedMocks(t: TestContext, body: (signal: AbortSignal, cleanup: (release: () => Promise<void>, dispose: () => void | Promise<void>) => void, registerRestore: (restore: () => void) => void) => Promise<void>) {
   const work = fixtureWork();
+  const restorations: Array<() => void> = [];
   let release = async () => {}, dispose: () => void | Promise<void> = () => {};
   t.after(async () => {
     const joined = work.close(); // Fence the whole callback before releasing held work.
     await release();
     await joined;
-    t.mock.restoreAll();
-    await dispose();
-    syncBuiltinESMExports();
+    try { t.mock.restoreAll(); await dispose(); }
+    finally { for (const restore of restorations) restore(); syncBuiltinESMExports(); }
   });
-  return work.run(async (_step, signal) => body(signal, (unblock, destroy) => { release = unblock; dispose = destroy; }));
+  return work.run(async (_step, signal) => body(signal, (unblock, destroy) => { release = unblock; dispose = destroy; }, restore => { restorations.push(restore); }));
 }
-for (const mode of ['infrastructure', 'hung', 'unrelated', 'other-reporter', 'duplicate', 'test', 'suite', 'empty', 'scaled', 'capped', 'legacy', 'closed', 'owner-finish', 'owner-exit', 'owner-active', 'invalid-owner', 'owner-reclaim-open-pipe', 'inspection-recovery'] as const)
-test(`file startup watchdog handles ${mode} receipts`, t => ownedMocks(t, async (signal, cleanup) => {
-  t.mock.timers.enable({ apis: ['setTimeout'] });
+for (const mode of ['infrastructure', 'infrastructure-output', 'infrastructure-green', 'infrastructure-read-error', 'infrastructure-close-error', 'infrastructure-oversize', 'infrastructure-inspection', 'infrastructure-inspection-write-error', 'infrastructure-inspection-callback-error', 'infrastructure-inspection-both-error', 'infrastructure-green-inspection-write-error', 'infrastructure-green-inspection-callback-error', 'infrastructure-green-inspection-both-error', 'infrastructure-inspection-async-error', 'infrastructure-green-inspection-async-error', 'hung', 'unrelated', 'other-reporter', 'duplicate', 'test', 'suite', 'empty', 'scaled', 'capped', 'legacy', 'closed', 'owner-finish', 'owner-exit', 'owner-active', 'invalid-owner', 'owner-reclaim-open-pipe', 'inspection-recovery'] as const)
+test(`file startup watchdog handles ${mode} receipts`, t => ownedMocks(t, async (signal, cleanup, registerRestore) => {
   const child = Object.assign(new EventEmitter(), { pid: 40001, stdout: new PassThrough(), stderr: new PassThrough() });
   const launched = Promise.withResolvers<void>();
+  const listeners = new Map((['SIGINT', 'SIGTERM'] as const).map(name => [name, process.listeners(name)]));
+  let published: SuiteInspectionReceipt | undefined;
+  let summaryAttempts = 0, callbackAttempts = 0;
+  const failSummary = mode.includes('inspection-write-error') || mode.includes('inspection-both-error');
+  const failCallback = mode.includes('inspection-callback-error') || mode.includes('inspection-both-error');
+  let result: ReturnType<typeof suiteCommand> | undefined;
+  let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
+  cleanup(async () => {
+    if (result) {
+      await Promise.race([launched.promise, result.then(() => {}, () => {})]);
+      child.emit('close', 0, null); launched.resolve();
+      await result.then(() => {}, () => {});
+    }
+  }, () => {
+    child.stdout.destroy(); child.stderr.destroy();
+    for (const [name, before] of listeners) for (const listener of process.listeners(name)) if (!before.includes(listener)) process.off(name, listener);
+    guard?.verify();
+  });
+  guard = await fakeNativeGuard(registerRestore);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let receipt = '';
+  t.mock.method(fs, 'writeFile', async () => { receipt = ''; });
+  t.mock.method(fs, 'readFile', async () => {
+    if (mode === 'infrastructure-read-error') throw new Error('receipt denied');
+    return receipt;
+  });
+  let retained = 0;
+  t.mock.method(nativeFs, 'openSync', () => 42);
+  t.mock.method(nativeFs, 'readSync', (_fd: number, buffer: Buffer, offset: number, length: number, position: number) => {
+    if (mode === 'infrastructure-read-error') throw new Error('receipt denied');
+    const bytes = Buffer.from(receipt).subarray(position, position + length);
+    bytes.copy(buffer, offset); retained += bytes.length;
+    assert.ok(retained <= 4097, '4096 payload bytes plus one oversize sentinel');
+    return bytes.length;
+  });
+  t.mock.method(nativeFs, 'closeSync', () => {
+    if (mode === 'infrastructure-close-error') throw new Error('receipt close denied');
+  });
   let stopped = false;
   let nativeExited = false;
-  let result: ReturnType<typeof suiteCommand> | undefined;
   let log = '';
   const stdout = process.stdout.write.bind(process.stdout);
   const stderr = process.stderr.write.bind(process.stderr);
   t.mock.method(process.stdout, 'write', (chunk: string) => chunk.startsWith('suite ') ? true : stdout(chunk));
   t.mock.method(process.stderr, 'write', (chunk: string) => {
+    if (chunk.startsWith('suite inspection ')) {
+      summaryAttempts++;
+      if (failSummary) throw new Error('sensitive sink payload');
+    }
     if (!chunk.startsWith('stalled:') && !chunk.startsWith('suite stall')) return stderr(chunk);
     log += chunk; return true;
   });
@@ -50,18 +122,7 @@ test(`file startup watchdog handles ${mode} receipts`, t => ownedMocks(t, async 
     return child;
   });
   // The fake process never has host process authority, including on regression.
-  t.mock.method(cp, 'execFile', () => { throw new Error('native probe forbidden'); });
   syncBuiltinESMExports();
-  cleanup(async () => {
-      if (result) {
-        await Promise.race([launched.promise, result.then(() => {}, () => {})]);
-        child.emit('close', 0, null);
-        launched.resolve();
-        await result.then(() => {}, () => {});
-      }
-    }, () => {
-      child.stdout.destroy(); child.stderr.destroy();
-    });
   const row = { pid: 40001, parent: 1, group: 40001, started: 'birth', identity: 'root', state: 'S', command: '/bin/fake-command' };
   const writer = { ...row, pid: 40002, parent: 40001, identity: 'writer', command: '/bin/fake-inherited-writer' };
   const ended: number[] = [];
@@ -71,9 +132,11 @@ test(`file startup watchdog handles ${mode} receipts`, t => ownedMocks(t, async 
     CLAND_SUITE_LIMITS_CWD: '/scratch/t1841',
     CLAND_SUITE_LIMITS: JSON.stringify({ stallTimeoutMs: mode === 'capped' ? 10000 : 600000 }),
     CLAND_TEST_LOAD_FACTOR: mode === 'scaled' ? '2' : '1',
+    CLAND_SUITE_CAUSE_FILE: '/scratch/runner-cause',
   }, {
     processIdentityAsync: async () => 'root', processStartedAsync: async () => 'birth',
     systemProcesses: async () => {
+      if (mode.startsWith('infrastructure') && mode.includes('inspection')) throw new Error('fake inspection unavailable');
       if (mode === 'inspection-recovery') {
         inspections++;
         if (inspections <= 3 || inspections === 5) throw new Error('fake inspection unavailable');
@@ -88,11 +151,25 @@ test(`file startup watchdog handles ${mode} receipts`, t => ownedMocks(t, async 
       if (mode !== 'owner-reclaim-open-pipe' || proof.pid === writer.pid) child.emit('close', null, 'SIGTERM');
       return true;
     },
+  }, receipt => {
+    callbackAttempts++;
+    published = receipt;
+    if (failCallback) throw new TypeError('sensitive callback payload');
+    if (mode.includes('inspection-async-error')) return Promise.reject(new Error('sensitive async payload'));
   });
+  // Observe command rejection immediately, before waiting for its launch receipt.
+  const settled = result.then(value => ({ value }), error => ({ error }));
   // Observe the launch receipt before injecting a file that never registers a test.
-  await launched.promise;
-  signal.throwIfAborted();
+  const setupExpired = Promise.withResolvers<never>();
+  const setupTimer = setupTimeout(() => setupExpired.reject(new Error('fake command launch setup: deadline exceeded after 5000 ms')), 5000);
+  try {
+    await Promise.race([launched.promise, settled.then(outcome => {
+      if ('error' in outcome) throw outcome.error;
+      throw new Error(`fake command launch setup: command finished before launch; exit ${outcome.value.code}; cause ${outcome.value.cause}`);
+    }), setupExpired.promise]);
+  } finally { clearSetupTimeout(setupTimer); }
   await Promise.resolve();
+  signal.throwIfAborted();
   if (mode === 'inspection-recovery') {
     const drain = async () => { for (let i = 0; i < 30; i++) { signal.throwIfAborted(); await Promise.resolve(); } };
     await drain();
@@ -100,12 +177,35 @@ test(`file startup watchdog handles ${mode} receipts`, t => ownedMocks(t, async 
     assert.equal(inspections, 5, 'three failures, recovery, then another failed round');
     assert.deepEqual(ended, []);
   }
-  if (mode === 'infrastructure') {
+  if (mode.startsWith('infrastructure')) {
     const cause = 'suite infrastructure: suite ticket lost; remover unknown';
     child.stderr.write(cause + '\n');
-    child.emit('exit', 75, null);
-    child.emit('close', 75, null);
-    assert.deepEqual(await result, { code: 75, cause });
+    receipt = !mode.includes('green') && (mode === 'infrastructure' || mode === 'infrastructure-close-error' || mode === 'infrastructure-oversize' || mode.includes('inspection')) ? cause : '';
+    if (mode === 'infrastructure-oversize') receipt += 'x'.repeat(100000);
+    const code = mode.includes('green') ? 0 : 75;
+    child.emit('exit', code, null);
+    child.emit('close', code, null);
+    const outcome = await result;
+    assert.equal(outcome.code, code);
+    if (mode.includes('inspection')) {
+      if (code === 75) assert.ok(outcome.cause.startsWith(cause));
+      assert.equal(summaryAttempts, 1);
+      assert.equal(callbackAttempts, 1, 'durable publication attempted independently of summary');
+      assert.deepEqual(outcome.inspection, published);
+      for (const [name, before] of listeners) assert.deepEqual(process.listeners(name), before);
+      if (failSummary) assert.match(outcome.cause, /secondary diagnostic: inspection summary publication failed \(Error\)/);
+      if (failCallback) assert.match(outcome.cause, /secondary diagnostic: inspection callback publication failed \(TypeError\)/);
+      if (mode.includes('inspection-async-error')) assert.match(outcome.cause, /secondary diagnostic: inspection callback publication failed \(Error\)/);
+      assert.doesNotMatch(outcome.cause, /sensitive/);
+      assert.equal(outcome.inspection?.failures, 1);
+      assert.equal(outcome.inspection?.lastErrorClass, 'Error');
+    } else if (mode === 'infrastructure-read-error') assert.match(outcome.cause, /secondary diagnostic:.*receipt denied/);
+    else if (mode === 'infrastructure-oversize') {
+      assert.match(outcome.cause, /secondary diagnostic:.*exceeds 4096 bytes/);
+      assert.doesNotMatch(outcome.cause, /^suite infrastructure:/);
+    } else if (mode === 'infrastructure-close-error') {
+      assert.match(outcome.cause, /^suite infrastructure:.*secondary diagnostic:.*receipt close denied/);
+    } else assert.deepEqual(outcome, { code, cause: receipt });
     return;
   }
   const start = { event: 'start', id: 'reporter:1', file: 'hung-import.test.ts', name: 'hung-import.test.ts', at: 0, nesting: 0, ...(mode === 'legacy' ? {} : { type: 'file' }) };
@@ -166,7 +266,7 @@ test(`file startup watchdog handles ${mode} receipts`, t => ownedMocks(t, async 
 
 import { suiteEvidence } from '../src/suite-log.ts';
 
-test('failed stall inspection reaches the durable worker result', t => ownedMocks(t, async (signal, cleanup) => {
+for (const sinkFault of ['none', 'summary', 'both'] as const) test(`failed stall inspection reaches the durable worker result${sinkFault === 'none' ? '' : ` with ${sinkFault} publication failure`}`, t => ownedMocks(t, async (signal, cleanup) => {
   let root: string | undefined;
   const child = Object.assign(new EventEmitter(), { pid: 40001, stdout: new PassThrough(), stderr: new PassThrough() });
   const launched = Promise.withResolvers<void>();
@@ -224,7 +324,10 @@ test('failed stall inspection reaches the durable worker result', t => ownedMock
   const on = process.on.bind(process);
   t.mock.method(process, 'on', (event: string, listener: (...args: unknown[]) => void) => event === 'SIGINT' || event === 'SIGTERM' ? process : on(event, listener));
   t.mock.method(process.stdout, 'write', () => true);
-  t.mock.method(process.stderr, 'write', () => true);
+  t.mock.method(process.stderr, 'write', (chunk: string) => {
+    if (sinkFault !== 'none' && chunk.startsWith('suite inspection ')) throw new Error('sensitive summary payload');
+    return true;
+  });
   syncBuiltinESMExports();
   worker = suiteWorker(input, {
     processStartedAsync: async () => 'fake birth',
@@ -233,7 +336,10 @@ test('failed stall inspection reaches the durable worker result', t => ownedMock
       systemProcesses: async () => { attempts++; throw new TypeError('fake inspection failed'); },
       stdioWriters: async () => [],
       endProcess: async () => { assert.fail('failed inspection cannot signal a process'); },
-    }, report),
+    }, receipt => {
+      if (sinkFault === 'both') throw new TypeError('sensitive callback payload');
+      report?.(receipt);
+    }),
   });
   await Promise.race([launched.promise, worker.then(() => { throw new Error('worker completed before fake command launch'); })]);
   const drain = async () => { for (let i = 0; i < 40; i++) { signal.throwIfAborted(); await Promise.resolve(); } };
@@ -242,7 +348,12 @@ test('failed stall inspection reaches the durable worker result', t => ownedMock
   await worker;
   const receipt = JSON.parse(await readFile(result, 'utf8'));
   assert.equal(receipt.code, 1);
-  assert.equal(receipt.cause, 'fake inspection failed');
+  if (sinkFault === 'none') assert.equal(receipt.cause, 'fake inspection failed');
+  else {
+    assert.match(receipt.cause, /^fake inspection failed; secondary diagnostic: inspection summary publication failed \(Error\)/);
+    if (sinkFault === 'both') assert.match(receipt.cause, /inspection callback publication failed \(TypeError\)/);
+    assert.doesNotMatch(receipt.cause, /sensitive/);
+  }
   assert.ok(attempts >= 8, 'periodic retries and terminal cleanup both failed');
   assert.equal(receipt.inspections.length, 1);
   assert.equal(receipt.inspections[0].receipt.unobservedPastBound, true);

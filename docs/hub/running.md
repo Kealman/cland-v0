@@ -2843,16 +2843,42 @@ legacy check, so this protection requires the updated runner/observer.
 A sweeper records its PID and removal reason before removing a ticket whose PID
 is live but whose native birth differs. Dead-PID removals are logged without
 retaining a receipt for a process that cannot consume it. A waiter whose ticket
-vanishes exits 75 with `suite infrastructure:` and the removal receipt. External
+vanishes exits 75 with `suite infrastructure:` and the removal receipt. The
+package owner also writes the optional `CLAND_SUITE_CAUSE_FILE` channel supplied
+by its worker or droplet launcher; test children do not inherit that channel.
+Workers and summaries take infrastructure causes from this receipt and the
+recorded outcome, never from matching test-output lines in suite.log. Sharded
+summaries and incomplete-execution reports inspect the recorded child outcomes
+before adding shard labels; they do not parse the aggregate display cause. An older
+delivered runner without the channel keeps its exit status with no recorded
+cause; a newer runner without the environment variable retains its diagnostic
+and exit. The droplet launcher comes from the hosting hub, so its receipt
+handling changes take effect after that hub restarts on the updated source. External
 deletion or an older sweeper has no receipt and is explicitly labelled unknown.
 Updated local workers and droplet collectors classify this reserved exit plus
-its diagnostic as infrastructure unavailable; completed test receipts remain in
+its recorded cause as infrastructure unavailable; completed test receipts remain in
 the log. A passed shard beside infrastructure loss keeps the parent's incomplete
 infrastructure disposition, including restored child receipts; a genuine test
 failure keeps a failed aggregate. Reports retain completed counts without claiming
 that no tests executed. Other exit-75 commands keep their ordinary outcome. Droplets retain one
 bounded cause file at completion, before the done marker; status reads that file
 without rescanning the log. Existing remote runs without it remain compatible.
+
+Both local and uploaded status readers use the same bounded reader: at most
+4096payload bytes plus one oversize sentinel, then close the descriptor. An
+oversized or unreadable receipt reports unknown cause metadata with a secondary
+diagnostic and retains the selected exit; receipt-close failure retains a cause
+already read. Worker compatibility cleanup also retains a selected command's
+exit and infrastructure classification. Failures before outcome selection still
+produce their own failure. The uploaded status reader comes from the hosting
+hub source and takes effect after restart, like the outer runner script.
+
+Inspection summary and callback publication are independent ancillary effects:
+both are attempted and the callback is joined. Publication failure retains the
+selected command exit/cause and adds a secondary error-class diagnostic. A
+rejected command with failed publication carries its original failure and typed
+inspection receipt to the worker for durable recovery; signal handlers are
+removed on every finalization path.
 
 Suite/shard duration lines currently use wall-clock differences. They can include
 clock corrections and must not be equated to native test duration or provider

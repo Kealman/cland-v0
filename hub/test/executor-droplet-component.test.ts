@@ -14,6 +14,53 @@ import type { LogEntry } from '../src/log.ts';
 import { DigitalOceanApi, DigitalOceanError } from '../src/executor/droplet/api.ts';
 import { readLease, leaseDir, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { fakeNativeGuard } from './fake-native-guard.ts';
+import { runInNewContext } from 'node:vm';
+
+test('uploaded status bounds cause ingestion and keeps the recorded exit through receipt failures', async t => {
+  let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
+  let restoreGuard: (() => void) | undefined;
+  t.after(() => { try { guard?.verify(); } finally { t.mock.restoreAll(); restoreGuard?.(); } });
+  guard = await fakeNativeGuard(restore => { restoreGuard = restore; });
+  const { runStatusProgram } = await import('../src/executor/droplet/run.ts');
+  for (const mode of ['valid', 'oversize', 'read failure', 'close failure', 'missing', 'green read failure']) {
+    const cause = 'suite infrastructure: ticket lost';
+    const content = Buffer.from(cause + (mode === 'oversize' ? 'x'.repeat(100000) : ''));
+    let retained = 0;
+    let closed = 0;
+    const rows: Array<{ code: number; cause: string; state: string }> = [];
+    const fakeFs = {
+      existsSync: (path: string) => !path.endsWith('/platform'),
+      readFileSync: (path: string) => {
+        if (path.endsWith('/done')) return '2026-11-17T00:00:00Z';
+        if (path.endsWith('/exit')) return mode === 'green read failure' ? '0' : '75';
+        assert.fail('whole cause read forbidden');
+      },
+      openSync: () => { if (mode === 'missing') throw Object.assign(new Error('absent'), { code: 'ENOENT' }); return 9; },
+      readSync: (_fd: number, bytes: Buffer, offset: number, length: number, position: number) => {
+        if (mode.endsWith('read failure')) throw new Error('read denied');
+        const chunk = content.subarray(position, position + Math.min(length, 37));
+        chunk.copy(bytes, offset); retained += chunk.length;
+        assert.ok(retained <= 4097, 'payload plus one oversize sentinel');
+        return chunk.length;
+      },
+      closeSync: () => { closed++; if (mode === 'close failure') throw new Error('close denied'); },
+    };
+    runInNewContext(runStatusProgram(), {
+      Buffer, require: (name: string) => { assert.equal(name, 'fs'); return fakeFs; },
+      process: { argv: ['node', '/receipt'], kill: () => assert.fail('unexpected native signal') },
+      console: { log: (text: string) => rows.push(JSON.parse(text)) },
+    });
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]!.state, 'done');
+    assert.equal(rows[0]!.code, mode === 'green read failure' ? 0 : 75);
+    assert.equal(closed, mode === 'missing' ? 0 : 1);
+    if (mode === 'valid') assert.equal(rows[0]!.cause, cause);
+    else if (mode === 'missing') assert.equal(rows[0]!.cause, '');
+    else if (mode === 'close failure') assert.match(rows[0]!.cause, /^suite infrastructure:.*secondary diagnostic:.*close denied/);
+    else assert.match(rows[0]!.cause, /secondary diagnostic:.*(?:exceeds 4096 bytes|read denied)/);
+  }
+});
 
 
 test('executor CLI controls respect each caller role', async t => {

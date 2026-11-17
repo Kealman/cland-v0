@@ -1,6 +1,7 @@
 // T1: worker receipt cause reporting is pure; no command or process sweep is needed.
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { compatibilityCleanupOutcome } from '../src/hub/suite-worker.ts';
 import { compatibilityCleanupCause, runWorkerWithAdmission, type WorkerCompletion } from '../src/suite-worker-admission.ts';
 import { suiteCommandOutcome } from '../src/suite-infrastructure.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -67,6 +68,18 @@ test('worker receipt preserves inherited-pipe cleanup cause before a failed comp
   const primary = 'stalled: no output; cleanup incomplete: unverified inherited-pipe writer (npm pid 123; stdout open; stderr closed)';
   assert.equal(compatibilityCleanupCause(primary, new Error('ps sweep failed')),
     'stalled: no output; cleanup incomplete: unverified inherited-pipe writer (npm pid 123; stdout open; stderr closed); compatibility cleanup failed: Error: ps sweep failed');
+});
+
+test('worker cleanup keeps selected ticket loss and its infrastructure metadata', () => {
+  assert.deepEqual(compatibilityCleanupOutcome({ code: 75, cause: 'suite infrastructure: ticket lost' }, new Error('sweep denied')), {
+    code: 75, cause: 'suite infrastructure: ticket lost; compatibility cleanup failed: Error: sweep denied', notRun: 'infrastructure',
+  });
+  assert.deepEqual(compatibilityCleanupOutcome({ code: 0, cause: '' }, 'release denied'), {
+    code: 0, cause: 'compatibility cleanup failed: release denied',
+  });
+  assert.deepEqual(compatibilityCleanupOutcome(null, 'release denied'), {
+    code: 1, cause: 'compatibility cleanup failed: release denied',
+  });
 });
 
 test('worker receipt reports a compatibility cleanup failure without a primary cause', () => {

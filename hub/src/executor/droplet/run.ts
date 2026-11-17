@@ -1,4 +1,5 @@
 import type { LogFn } from '../../log.ts';
+import { readSuiteCauseBounded, SUITE_CAUSE_BYTES, SUITE_INFRASTRUCTURE_PREFIX } from '../../suite-infrastructure.ts';
 import { verificationSteps, verificationStepCommand } from '../../verification-plan.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
 import type { DropletDependencies, MachineTransport } from './dependencies.ts';
@@ -21,6 +22,10 @@ import { candidatePathspec, candidateTree, excludedPaths } from '../../verificat
 import { selectionTransport } from '../../suite-selection.ts';
 
 const exec = promisify(execFile);
+/** Hosting-source program; delivered older trees need not contain the reader. */
+export function runStatusProgram(): string {
+  return `const fs=require('fs'),p=process.argv[1];const readCause=(${readSuiteCauseBounded.toString()});const platform=fs.existsSync(p+'/platform')?JSON.parse(fs.readFileSync(p+'/platform','utf8')):undefined;let status={state:'pending',platform};if(fs.existsSync(p+'/done')){const finished=fs.readFileSync(p+'/done','utf8').trim();status=finished?{state:'done',code:Number(fs.readFileSync(p+'/exit','utf8')),cause:readCause(fs,p+'/cause',${SUITE_CAUSE_BYTES},${JSON.stringify(SUITE_INFRASTRUCTURE_PREFIX)}),finished,platform}:{state:'running',platform};}else if(fs.existsSync(p+'/pgid')){let alive=true;try{process.kill(-Number(fs.readFileSync(p+'/pgid','utf8')),0)}catch{alive=false}status=alive?{state:'running',platform}:{state:'done',code:1,cause:'remote runner disappeared without a done marker',finished:new Date().toISOString(),platform};}console.log(JSON.stringify(status));`;
+}
 const remoteDir = (lease: DropletLease): string => {
   if (!/^[a-zA-Z0-9-]+$/.test(lease.run)) throw new Error('invalid remote run id');
   return `"$HOME/runs/${lease.run}"`;
@@ -233,7 +238,7 @@ git write-tree
       await (this.#dependencies.api ?? new DigitalOceanApi(this.#env, this.#clock)).droplet(lease.resource);
     } catch (error) { if (error instanceof DigitalOceanError && error.status === 404) return { state: 'lost', code: 1, cause: 'remote machine lost' }; }
     try {
-      const program = `const fs=require('fs'),p=process.argv[1];const platform=fs.existsSync(p+'/platform')?JSON.parse(fs.readFileSync(p+'/platform','utf8')):undefined;let status={state:'pending',platform};if(fs.existsSync(p+'/done')){const finished=fs.readFileSync(p+'/done','utf8').trim();status=finished?{state:'done',code:Number(fs.readFileSync(p+'/exit','utf8')),cause:fs.existsSync(p+'/cause')?fs.readFileSync(p+'/cause','utf8').trim():'',finished,platform}:{state:'running',platform};}else if(fs.existsSync(p+'/pgid')){let alive=true;try{process.kill(-Number(fs.readFileSync(p+'/pgid','utf8')),0)}catch{alive=false}status=alive?{state:'running',platform}:{state:'done',code:1,cause:'remote runner disappeared without a done marker',finished:new Date().toISOString(),platform};}console.log(JSON.stringify(status));`;
+      const program = runStatusProgram();
       const status = JSON.parse(await this.#machine.exec(lease, `node -e ${quote(program)} ${remoteDir(lease)}`, { timeoutMs: 10000 })) as RunStatus;
       if (lease.execution?.unreachableSince) { delete lease.execution.unreachableSince; await writeLease(this.#root, lease); }
       return status;

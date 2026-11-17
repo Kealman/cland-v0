@@ -1,4 +1,4 @@
-import { suiteCommandOutcome } from '../suite-infrastructure.ts';
+import { suiteCommandOutcome, suiteInfrastructureCauses, type SuiteInfrastructureSource } from '../suite-infrastructure.ts';
 import { hostVerifyWorktree, removeHostVerifyWorktree, validateHostVerifyWorktree, hostVerifyDirectory, type HostVerifySnapshot } from '../territory.ts';
 import { RawCoverageSweep, removeRawCoverage } from '../suite-raw-coverage.ts';
 import { recentCoverGreens } from '../suite-load-rerun.ts';
@@ -141,7 +141,7 @@ function commandExcerpt(lines: string[]): { summary: string; output?: string[] }
   return undefined;
 }
 
-export function suiteSummary(log: string, quarantineStatus?: string[], options: { logArtifact?: string; priorityOnly?: boolean } = {}): string {
+export function suiteSummary(log: string, quarantineStatus?: string[], options: { logArtifact?: string; priorityOnly?: boolean } & SuiteInfrastructureSource = {}): string {
   const text = suiteEvidence(log);
   const lines = text.split('\n');
   const counts = new Map<string, number>();
@@ -177,7 +177,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
   const executedTiers = tierLines.filter(line => /^tier (?:T[0-4]|Web): exit /.test(line));
   const webPhase = unavailableWebPhase(text);
   const priority = [
-    ...lines.filter(line => line.startsWith('suite infrastructure: ')),
+    ...suiteInfrastructureCauses(options),
     ...(lines.some(line => line.startsWith('suite stall ')) ? [`stall process detail: log${options.logArtifact ? ' ' + options.logArtifact : ''}`] : []),
     ...lines.filter(line => line.startsWith('shard not run ')),
     ...(webPhase ? [webUnavailableLine(webPhase)] : []),

@@ -1,4 +1,4 @@
-import { SUITE_INFRASTRUCTURE_EXIT } from '../suite-infrastructure.ts';
+import { SUITE_INFRASTRUCTURE_EXIT, suiteCommandOutcome } from '../suite-infrastructure.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { verificationSteps, verificationStepCommand } from '../verification-plan.ts';
 // Detached from both the CLI and the hub. Completion is a durable receipt, not a socket callback.
@@ -16,9 +16,13 @@ import { processStartedAsync } from './lock.ts';
 import { SuiteTicketLost, acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
 import { selectionTransport } from '../suite-selection.ts';
 import { clandRunner, recordedCommands } from '../verification-commands.ts';
-import { suiteCommand, type SuiteInspectionReceipt } from '../suite-command.ts';
+import { suiteCommand, SuiteCommandPublicationError, type SuiteInspectionReceipt } from '../suite-command.ts';
 import { compatibilityCleanupCause, runWorkerWithAdmission } from '../suite-worker-admission.ts';
 export { compatibilityCleanupCause } from '../suite-worker-admission.ts';
+
+export function compatibilityCleanupOutcome(selected: { code: number; cause: string } | null, error: unknown) {
+  return suiteCommandOutcome(selected?.code ?? 1, compatibilityCleanupCause(selected?.cause ?? '', error));
+}
 
 const workerNative = { processStartedAsync, suiteCommand };
 export async function suiteWorker(input: string, native = workerNative): Promise<void> {
@@ -47,6 +51,8 @@ async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | nul
   let code = 0;
   const inspections: Array<{ commandId: string; receipt: SuiteInspectionReceipt }> = [];
   let cause = '';
+  let selected: { code: number; cause: string } | null = null;
+  let currentCommandId: string | null = null;
   let platform: Platform | undefined;
   const leases: Lease[] = [];
   const token = randomUUID();
@@ -79,6 +85,7 @@ async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | nul
       if (name === 'check') process.stdout.write('typecheck: local\n');
       process.stdout.write(`\n$ ${line}\n`);
       const commandId = randomUUID();
+      currentCommandId = commandId;
       process.stdout.write(`suite command start ${JSON.stringify({ id: commandId, name, line })}\n`);
       const env: NodeJS.ProcessEnv = { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' };
       env.CLAND_SUITE_EXECUTOR = 'local';
@@ -102,17 +109,28 @@ async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | nul
       else delete env.CLAND_COVERAGE_OUTPUT;
       if (commands.plan && name !== 'check') env.CLAND_COVERAGE_APPEND = '1';
       else delete env.CLAND_COVERAGE_APPEND;
+      env.CLAND_SUITE_CAUSE_FILE = join(dirname(job.result), 'command-cause');
       const outcome = await native.suiteCommand(verificationStepCommand(step), job.cwd, withoutExecutorCredentials(env), undefined,
         receipt => inspections.push({ commandId, receipt }));
-      process.stdout.write(`\nsuite command end ${commandId} ${outcome.code}\n`);
       code = outcome.code;
       cause = outcome.cause;
+      if (code !== 0) selected = { code, cause };
+      process.stdout.write(`\nsuite command end ${commandId} ${outcome.code}\n`);
       if (code !== 0) break;
     }
     if (!signal() && code === 0) await checkHead();
+    // A successful command becomes the worker result after candidate validation.
+    selected ??= { code, cause };
   } catch (error) {
-    code = error instanceof SuiteTicketLost ? SUITE_INFRASTRUCTURE_EXIT : 1;
-    cause = error instanceof SuiteTicketLost ? `suite infrastructure: ${error.message}` : error instanceof Error ? error.message : String(error);
+    if (error instanceof SuiteCommandPublicationError && currentCommandId && !inspections.some(row => row.commandId === currentCommandId)) {
+      inspections.push({ commandId: currentCommandId, receipt: error.inspection });
+    }
+    if (selected) { code = selected.code; cause = `${selected.cause}; secondary diagnostic: worker completion failed: ${String(error)}`; }
+    else {
+      code = error instanceof SuiteTicketLost ? SUITE_INFRASTRUCTURE_EXIT : 1;
+      cause = error instanceof SuiteTicketLost ? `suite infrastructure: ${error.message}` : error instanceof Error ? error.message : String(error);
+      selected = { code, cause };
+    }
   }
   finally {
     try {
@@ -122,7 +140,7 @@ async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | nul
         if (leases.length) await sweepLease(dirs, token);
         for (const lease of leases.reverse()) await lease.release();
       }
-    } catch (error) { code = 1; cause = compatibilityCleanupCause(cause, error); }
+    } catch (error) { ({ code, cause } = compatibilityCleanupOutcome(selected ? { code, cause } : null, error)); }
   }
   return { code, cause, ...(platform ? { platform } : {}), ...(inspections.length ? { inspections } : {}) };
 }

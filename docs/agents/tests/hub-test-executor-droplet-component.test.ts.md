@@ -21,3 +21,14 @@ DropletRun observer. Capture its structured LogFn sink before the first poll.
 Each hold emits one enter event and one leave event, with run id, cause and the
 bounded transport error retained on leave; repeated held/recovered polls emit
 no duplicate. Provider-loss exit also retains the original diagnostic.
+
+The uploaded status-program regression runs the production generated JavaScript
+in a VM with fake filesystem/process boundaries and a positively controlled
+native-launch guard. It rejects whole-file cause reads, counts at most4096bytes
+plus one oversize sentinel across short reads, and observes descriptor close.
+Valid, oversized, missing, failed-read and failed-close receipts preserve the
+recorded exit, including a green exit with unavailable cause metadata. The
+bounded reader implementation is shared with local commands and embedded by the
+hosting source, so production activation still requires a hub restart.
+The VM case registers teardown before guard acquisition and captures its restorer
+through the same pre-mutation owner callback as the fake command matrix.

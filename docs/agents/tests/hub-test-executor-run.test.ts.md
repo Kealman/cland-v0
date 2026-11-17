@@ -12,6 +12,8 @@ native cwd census before removing its canonical root, including failure and
 cancellation teardown. See the executor-safety guide for the positive census
 and short-bound native exit regressions.
 
+The ticket-loss collection regression writes the package owner's optional
+`CLAND_SUITE_CAUSE_FILE` receipt, emits its diagnostic and exits 75 from a disposable fake machine. It asserts
 The delivered runner appends its advisory UTC start receipt before command
 output, on a separate log line, ignoring write errors. Calibration pairs it only
 with that machine's native `/done` stamp. Existing delivery/typecheck/failure,
@@ -23,7 +25,14 @@ infrastructure diagnostic and exit 75 from a disposable fake machine. It asserts
 the collected durable result's code, cause and infrastructure classification,
 and the named cause in the report. It exercises real uploaded finish/status
 scripts, with no provider resources or browser. The unchanged suite fixtures
-also cover remote runs that provide no infrastructure cause.
+also cover remote runs that provide no infrastructure cause. Previous-shape
+runners print planted diagnostics at exits 0 and 75 without a receipt: both keep
+an empty cause and their original exit. Command text and failure excerpts may
+still quote the diagnostic; neither is an infrastructure outcome.
+
+These fakes execute the branch's uploaded run.sh. A task verification alone
+cannot prove that script change: production uploads it from the hosting hub,
+so activation requires that hub to run the updated source after restart.
 
 The ticket-loss callback enrolls the shared whole-sequence owner before invoking
 the remote fixture. Its captured fixture hooks run only after the complete
@@ -34,6 +43,10 @@ command: its subject is the uploaded finish/status scripts and hub collection,
 not npm, typecheck or CLI startup. Admission uses the existing in-process spoke
 to keep the native boundary at remote execution and collection. The native fake machine, exit/cause/result
 assertions and provider-release assertion remain intact.
+
+Both older-runner negative cases enroll the same pre-acquisition whole-case
+owner, adopt the fixture root and join every launch, report and file-read step
+before normal or signal cleanup can dispose the fixture.
 
 The ticket collection identity has a dated C-216 allowance in durations.json:
 10.353 seconds, sized at 1.5x the worst reduced-fixture passing Darwin sample
