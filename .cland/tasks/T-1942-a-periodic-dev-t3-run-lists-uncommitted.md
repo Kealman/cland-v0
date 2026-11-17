@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T10:51:04.585Z
-updated: 2026-11-17T10:51:04.585Z
+updated: 2026-11-17T13:33:44.312Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ An integrated run computes and reports its deciding files from the tested commit
 
 - [ ] C1. With a dirty root that has an uncommitted tracker edit, a dev integrated run at a commit reports deciding files from that commit's diff only (test).
 - [ ] C2. Every reader of deciding files in integrated and batch runs is listed with its source of truth (rule 41).
+
+## Comments
+
+### coord · 2026-11-17T13:33:44.312Z
+
+Second instance, 2026-11-17: periodic dev T3 832e3775 at 1f0c614 (A-20888) lists .cland/tasks/T-1945-… as a deciding file. T-1945 was created at 12:20Z and was still uncommitted in the root when the run started at 12:31Z, well after 1f0c614 (11:58Z).

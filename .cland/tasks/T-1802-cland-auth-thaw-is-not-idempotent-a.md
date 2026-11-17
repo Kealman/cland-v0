@@ -2,8 +2,8 @@
 id: T-1802
 kind: task
 title: "cland-auth thaw is not idempotent: a replay after a lost thaw receipt is refused when the disk is already unfrozen"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -16,7 +16,8 @@ found_by: review
 topic: topic-1603
 branch: t/T-1802-cland-auth-thaw-is-not-idempotent-a
 created: 2026-11-10T08:10:09.103Z
-updated: 2026-11-17T13:31:34.800Z
+updated: 2026-11-17T15:09:25.100Z
+closed: 2026-11-17T15:09:25.100Z
 ---
 
 ## Summary
@@ -31,10 +32,14 @@ Found in T-1781's source work, 2026-11-10 (impl-1781). No agent or helper edit w
 
 - [x] C1. A `cland-auth thaw` on an unfrozen mount of a validated `/cland/auth/<x>` path exits 0 with a distinct "already thawed" result, and a thaw on a frozen mount still unfreezes it (test).
   - done: impl-1802 · 2026-11-17T13:31:25.001Z
+  - verified: rev-35 [reviewer] · run rev-35-1802-final-1 · 2026-11-17T14:01:40.634Z · commit 0bb3165da4cd2d385ca69076ac6b92353144d406
 - [x] C2. Malformed paths and volume names are still refused before any `fsfreeze` call (test).
   - done: impl-1802 · 2026-11-17T13:17:42.226Z
+  - verified: rev-35 [reviewer] · run rev-35-1802-source-2 · 2026-11-17T13:33:31.807Z · commit 0bb3165da4cd2d385ca69076ac6b92353144d406
+  - verified: rev-35 [reviewer] · run rev-35-1802-final-1 · 2026-11-17T14:01:40.634Z · commit 0bb3165da4cd2d385ca69076ac6b92353144d406
 - [x] C3. T-1781's replay after a lost thaw receipt clears the freeze and the fence on "already thawed" (test).
   - done: impl-1802 · 2026-11-17T13:31:25.167Z
+  - verified: rev-35 [reviewer] · run rev-35-1802-final-1 · 2026-11-17T14:01:40.634Z · commit 0bb3165da4cd2d385ca69076ac6b92353144d406
 
 ## Comments
 
@@ -60,3 +65,37 @@ finding_counts: {"high":0,"medium":2,"low":0}
 A-20886 full source review at tree 51dfc91167a30a03634c0acc61d0c5ff3b925d6b; fixed base 387cc0cf4d507d25677195cb50fefead97637a68. Standards one medium, Spec one medium; no highs/lows. Lead 448448ae confirms both gaps. Kernel-holder EINVAL is not an additional finding under Coordinator 55555f1a's explicit sole-freeze-owner scope; revision must document kernel-holder exclusion and precisely name userspace thaw completion in code/evidence. Existing argument/volume/path checks, null/void wire/Host result and separate detach receipt remain; no usage-export migration or closure regeneration needed. Consumer/QA/raw-reader/asset/tier audit and A-20884/A-20885 limits recorded in artifact. Reported local macOS Node24.21 helper 13/13, asset readers 11/11, snapshot T2 29/29, typecheck/lint exit0 are selected supporting receipts; lint has 130 report-only findings/63 files. Precommit helper/lint lack invocation-tree pins; raw logs/hashes and outer signal fields unknown; original reds retained. No configured verification or real ext4/kernel/browser/provider proof. C2 not failed, left pending. Consolidate two fixes plus scope wording, then fresh source request before verify. No Reviewer runtime/probes/edits or dev merge requirement.
 
 Criteria: C1 failed (The new post-EINVAL identity fence lacks a regression at that boundary; existing identity tests stop before fsfreeze.), C3 failed (The new async helper/scheduler replay has no encompassing setup/cancellation owner and original-callback join before resource/root disposal.).
+
+### rev-35 · 2026-11-17T13:33:31.807Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1802-source-2
+commit: 0bb3165da4cd2d385ca69076ac6b92353144d406
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-20890 corrected full source clear at tree 8269cedfe3dff38499c2f7b45627ee74e75fc119, fixed base 387cc0cf4d507d25677195cb50fefead97637a68. Standards zero findings; Spec zero findings. M1 resolved: shared fixtureWork enrolled before acquisition, root/resources adopted, fenced steps and test deadline; scheduler and original body positively join before database finalizer/root disposal, failed bounded joins retain both. M2 resolved: fake fsfreeze persists mount ID replacement before exact EINVAL; ext4 remains positive, final check rejects exit3/no success; sensitivity red with only final check disabled retained. Coordinator 55555f1a's sole-freeze-owner/kernel-holder exclusion is documented and code/result/evidence now name userspace thaw. Existing validation/null/void protocol, separate detach receipt and runtime helper asset behavior remain; no usage/closure migration. A-20887 artifact/source SHA256 values independently match pinned bytes. Final-head local macOS Node24.21 helper 14/14, selected T1 asset readers 11/11, full typecheck/lint native exit0; 130 report-only findings/63 files retained. Prior overlapping lint, failed attempts and old-head T2 29/29 remain separate, outer signals/raw child records unknown. No configured verification, full T1/T2/T3/T4/Web/browser or real kernel/ext4/provider proof claimed. C2 verified; C1/C3 pending exact-head configured evidence. Request Coordinator window at unchanged head; no dev merge requested. No Reviewer runtime/probe/edit.
+
+Criteria: C2 verified.
+
+### rev-35 · 2026-11-17T14:01:40.634Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1802-final-1
+commit: 0bb3165da4cd2d385ca69076ac6b92353144d406
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-20894 final same-head evidence clear; source A-20890 unchanged, clean 0bb3165da, Git tree 8269cedfe3dff38499c2f7b45627ee74e75fc119. Configured run 7b9df0ef/A-20893 passed; normalized delivered tree 2835d8a6c99fb02e5860463fe94b514f7b239e23. Independent structured audit: 6,673 ordinary passes/710 passing file envelopes, no fail/cancel/skip/todo; all 224 T1, 430 T2, 55 Web and changed T3 helper selected files complete positively. Separate 210 load executions pass. Helper 14/14 with required malformed-input35549, dispatch35559, userspace replay35564, unsupported FSTYPE35569, post-EINVAL replacement35574 and lost-receipt scheduler replay35579; file35617. Snapshot consumer29/29; closure/prelude/runtime-bundle11/11 with positive file envelopes. Changed T3 runs once/no repetitions; 1.344 seconds is selected phases excluding machine wait, not suite wall. Remaining268 T3/all17 T4 unexecuted. Uncached Linux x64 Node24.21/Neovim0.12.5; actual isolated Headless Shell1248/CfT156 browser. Warning106 identities exactly unchanged versus A-20877, none in checked task/consumer files. Known T-1935 fixture pair28653–28654; structured outcomes/hub pass/Finished0 independent. Lint130/63, budgets and T3 ratchet growth3111.726 vs3111.517/incomplete timings remain report-only, not an enforced-budget pass. C1–C3 verified under Coordinator55555f1a sole-freeze-owner scope; native shell with fake external effects proves userspace obligation, not real ext4/kernel behavior or other freeze owners. Prior failures/provenance limits retained. No Reviewer runtime/probes/edits or further run requested.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-17T15:09:25.100Z
+
+Merged 0d5f09307e66669b1aed2b6b0a52603f02ad4998 onto dev.

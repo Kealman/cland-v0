@@ -2,8 +2,8 @@
 id: T-1528
 kind: task
 title: Evaluate report-only T3 importer selection for merge batches (T-1490 class)
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1601
 branch: t/T-1528-evaluate-report-only-t3-importer
 created: 2026-10-31T17:17:41.198Z
-updated: 2026-11-17T12:46:49.118Z
+updated: 2026-11-17T13:37:18.316Z
+closed: 2026-11-17T13:37:18.316Z
 ---
 
 ## Summary
@@ -69,3 +70,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-20879 final same-head clear; source A-20867 unchanged. Config e41ac1fb/A-20876 passed at 4c6b61954, delivered normalized tree75971b16c8dfe44fcf64abdaa78c7578631f8c1e. Independently 6672 ordinary pass/1 documented macOS caffeinate skip/0fail/cancel; all224T1/431T2/55Web/2mappedT3 file envelopes pass; separate220load passes. Both new report identities ordinary+5/5 proofs29018/29092. 19 native passing identities+1platform skip, one base/no repetitions; 20.329s selected phases excluding wait, not suite wall;267T3/17T4 unexecuted and proposed advisory lists not run. All44added warning identities versus A20850 resolve to shared fake-only-fixture.ts:31 retained-custom positive controls; pinned lower prototype guard,12count/reset/finalzero and passing assertions prove refusal boundary, no child/PID claim. Coordinator730f8c04 separate diagnostic debt. T1935 exact fixture pair28622/623; structured outcomes/Finished0 independent. Linuxx64Node24.21Nvim.12.5, actual isolated Headless1248/CfT156 browser; lint128/62+budgets report-only. C1 exact T1484×T1453 replay lists suite-admission-native conservatively, not causal/counterfactual execution proof. C2 amended scope retained:13reconstructed+12synthetic rows/historical negatives unknown/qualified projection+rate+platform. Precommit replay/local882 supporting provenance limits and prior failed/partial rounds remain, no exact-head offline replay/fullT1 claim. No Reviewer runtime/probe/edit; no enforce/run authorization.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T13:37:18.316Z
+
+Merged fd186828762a948451a1fc264770ba083ef3a788 onto dev.

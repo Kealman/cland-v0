@@ -2,8 +2,8 @@
 id: T-1804
 kind: task
 title: "Explorer protocol recordings key on unrelated archive-loading state: the same task.plan/task.view frame records a new entry once closed archive rows arrive"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1602
 branch: t/T-1804-explorer-protocol-recordings-key-on
 created: 2026-11-10T10:27:55.575Z
-updated: 2026-11-17T12:49:26.652Z
+updated: 2026-11-17T14:24:03.231Z
+closed: 2026-11-17T14:24:03.231Z
 ---
 
 ## Summary
@@ -72,3 +73,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-20880 final same-head evidence clear; source A-20871 unchanged. Configured run 66a4d186/A-20877 passed at b3b886ef; normalized delivered tree f4a4ba79e6fb1a5bbee428e20d7e6bc661ba1a7d. Independent audit: 6,673 ordinary passes, one documented macOS caffeinate skip, no failures/cancellations; all 224 T1, 430 T2, 55 Web and two mapped T3 file envelopes pass. Separate 225 load executions pass. Boundary 11/11 and refresh-unit 6/6; all three new recorder identities have ordinary passes and five passing loads with exact proofs 4886/5023/5079. Both plan/view archive states replay from the same canonical entry with relevant-fact negative controls retained. Explicit Neovim phase has 44 passing files and 385/385 tests, including explorer 27/27; this is recorded-hub replay, not a new refresh. Mapped T3: 19 passing identities plus the documented platform skip, one base/no repetitions; 17.338 seconds is selected phases excluding wait, not suite wall. Remaining 267 T3 and 17 T4 files unexecuted. Linux x64 Node24.21.0/Neovim0.12.5; actual isolated Headless Shell1248/CfT156 browser. No added warning identities versus A-20876, none in task/Neovim consumers; inherited refusal controls separately classified by Coordinator. T-1935 exact fixture pair 28739–28740; typed outcomes/Finished0 independent; lint128/62 and budgets report-only. C3 retains Coordinator-amended scope and qualified A-20865/20866 earlier 494/494 refresh receipts, A-20869 run-two/migration explorer hash equality; no immutable refresh invocation-tree or exact-head refresh claim. Prior independent migration output/frame-pair preservation stands. Whole-catalog variance remains T-1944. No Reviewer runtime, probes or edits.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-17T14:24:03.231Z
+
+Merged 78dcc49b3cf6811f0e7558ef0724af2f83d7d7d1 onto dev.
