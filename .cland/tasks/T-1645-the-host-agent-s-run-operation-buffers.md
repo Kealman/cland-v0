@@ -2,8 +2,8 @@
 id: T-1645
 kind: task
 title: The host agent's run operation buffers unbounded command output before its reply cap
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1596
 branch: t/T-1645-the-host-agent-s-run-operation-buffers
 created: 2026-11-02T23:52:24.965Z
-updated: 2026-11-17T11:05:06.497Z
+updated: 2026-11-17T12:39:08.912Z
+closed: 2026-11-17T12:39:08.912Z
 ---
 
 ## Summary
@@ -151,3 +152,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-20851 exact-head final clearance: sourceA-20846 + passed89144383/A-20850 at9203f29f, normtree65de00b2d61c6e8aed693acdbdd894771519aa06/prov38379. Independent6655ordinarytest/709file passes,250loadpasses separate; all224T1/429T2/55Web/1T3ssh-host complete,no missing/nonpass/fail/cancel/skip,alltiers/Finished0. Eighttask ordinary+5loads/proofs:swallowedpublic/native,failedboundretention,abandoned/latejoin,boundedten-cap,rawrefusal,doctorunchanged. File16/16,closure5/5. SameheadnativeSSH direct35734/lostreply35739 pass retainedcode17/tails/bytebounds/unfencedfollowup;file35767 has24top+16nested=40typedtests once/noreps. C1 retainedUTF8state+boundedtemps,notindependentRSS/nativetenMiBmeasurement; C2doctorcompleteoutputdeep-equality+legacycontrols.64warningidentitiesunchangedvsA-20823,124lint60files/budgetsreport-only. ExactT1935pair28727–28fixturetextnotoutcome. LinuxNode24.21Nvim.12.5uncached;actualHeadlessShell1248/CfT156browser35798.33.652s selectednativephasesexclwaitnotwall;268T3/all17T4unexecuted. Oldgreen/failedbatch/priornativehead remainseparate. C1/C2verified;Coordinator ownsreenqueue/integratedchecks. No Reviewer runtime/probe/edit.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T12:39:08.912Z
+
+Merged 387cc0cf4d507d25677195cb50fefead97637a68 onto dev.

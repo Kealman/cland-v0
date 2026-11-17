@@ -3,7 +3,7 @@ id: T-1935
 kind: task
 title: A suite summary reports "suite ticket lost" for a green run because it takes any log line starting "suite infrastructure:", including test fixture output
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ regression_of: T-1576
 topic: topic-1594
 branch: t/T-1935-a-suite-summary-reports-suite-ticket
 created: 2026-11-17T06:37:12.828Z
-updated: 2026-11-17T12:05:14.631Z
+updated: 2026-11-17T13:07:22.475Z
 ---
 
 ## Summary
@@ -31,12 +31,16 @@ The summary takes infrastructure causes only from the runner's own channel (the 
 
 - [x] C1. A run whose test output contains a `suite infrastructure:` line, but whose runner records no infrastructure cause, has a summary with no infrastructure cause (test).
   - done: impl-1935 · 2026-11-17T09:33:12.935Z
+  - verified: rev-36 [reviewer] · run rev-36-1935-final-1 · 2026-11-17T13:07:22.241Z · commit da93d844d2246c7dbf7e8bd268a164a1f57883d2
 - [x] C2. A real runner-recorded ticket loss still appears in the summary with its cause (test).
-  - done: impl-1935 · 2026-11-17T08:59:09.899Z
+  - done: impl-1935 · 2026-11-17T12:22:59.272Z
+  - verified: rev-36 [reviewer] · run rev-36-1935-final-1 · 2026-11-17T13:07:22.241Z · commit da93d844d2246c7dbf7e8bd268a164a1f57883d2
 - [x] C3. The readers of the summary's infrastructure lines (heartbeat, digest, merge queue diagnosis, T-204 tooling) are listed with their dispositions (rule 20).
   - done: impl-1935 · 2026-11-17T06:49:14.058Z
   - verified: rev-36 [reviewer] · run rev-36-1935-source-2 · 2026-11-17T07:32:34.249Z · commit 84957a1bb9d8f57d3cedb45b9099db73f6b29ff8
   - verified: rev-36 [reviewer] · run rev-36-1935-source-5 · 2026-11-17T09:37:45.382Z · commit f8a87410fbbbbae5c7475cf885345bad8722c720
+  - verified: rev-36 [reviewer] · run rev-36-1935-source-7 · 2026-11-17T12:32:53.726Z · commit da93d844d2246c7dbf7e8bd268a164a1f57883d2
+  - verified: rev-36 [reviewer] · run rev-36-1935-final-1 · 2026-11-17T13:07:22.241Z · commit da93d844d2246c7dbf7e8bd268a164a1f57883d2
 
 ## Comments
 
@@ -149,3 +153,52 @@ finding_counts: {"high":0,"medium":0,"low":2}
 A-20820 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20820-t-1935-owned-native-guard-and-authorized-merge-review.md pins merged head f8a87410/tree1fdc784f and parents18c52b4a/9143ae841. Standards: clear with2low,0medium/high; Spec: clear,0findings. Source4 guard medium fixed: pre-mutation mandatory restorer registration, partial-install restoration, pre-enrolled caller teardown and joined fake cleanup; two observed-restoration fault controls retained. Authorized merge c3eb1460 followed source4 verdict/hold release; run.sh keeps both timing marker/direct cause channel, worker keeps upstream admission owner plus selected-outcome preservation, both test sets remain. Exactly8own production paths; bounded reader/raw status/structured shard helpers and assertions/allowances unchanged where expected. C3 current census108paths verified; C1/C2 remain unverified pending completed configured evidence at this head. A-20819 scopes precommit merged56/56+close18/18 separately from exact-head selected native-fake3/3 and root type/lint0 (0refusals123report60files); original excerpts/raw-native-tree limits retained. No configured/full-tier/Web/QA/deployment claim; old ed1b37be/A-20758 remainsFAILED PARTIAL. Retained accepted native setup-deadline low plus new documentation-only union-merge duplicate/incomplete paragraph low. Independent pgidEPERM/T1936 allocation remain separately filed; hosting source/restart activation remains separate. Reviewer performed only read-only inspection.
 
 Criteria: C3 verified.
+
+### rev-36 · 2026-11-17T12:10:58.138Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1935-source-6
+commit: 0d7738a0d3b94526f21b060dfc95bab36476236c
+scope: delta
+findings: [{"severity":"medium","text":"The merged final inspection publication can overwrite an already selected native outcome. After returning selected code/cause at214–219, finally writes stderr and invokes reportInspection unguarded; either synchronous throw rejects the call instead, and a write throw also skips the callback/listener removal. Worker has not yet selected the command result until its promise resolves, so catch publishes code1/error instead of the selected75/0 and owner cause. Preserve the primary outcome, treat publication failures as secondary diagnostics, attempt the durable callback independently and always release handlers. Claimant23414475 confirms no omitted preservation owner/disposition. Rule39; combined normal-case test does not cover this fault path.","file":"hub/src/suite-command.ts","line":227},{"severity":"low","text":"Both new older-runner callbacks now join/fence their whole lifetime, but fixture acquisition uses step() without a separately named owner.wait setup deadline. remote-fixture awaits initial tempProject/guard/provider/Git/file setup before later readiness bounds; step/run do not bound that work. Add a named setup wait around fixture acquisition while retaining the fixed owner. Claimant e9e0cf3a confirms; this is a diagnostic gap, not an outstanding lifetime-join defect.","file":"hub/test/executor-run.test.ts","line":317},{"severity":"low","text":"The union merge interrupts the ticket-loss paragraph after 'It asserts', inserts the timing-marker paragraph, then repeats the ticket-loss introduction at lines 23–24. Reconcile these into two complete paragraphs while retaining the dedicated cause-file explanation. Rule16 and the shared test-guide union-merge guidance require rereading combined advice; this is documentation only.","file":"docs/agents/tests/hub-test-executor-run.test.ts.md","line":16}]
+finding_counts: {"high":0,"medium":1,"low":2}
+
+A-20868 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20868-t-1935-merged-inspection-publication-can-replace-selected-owner-outcome.md pins0d7738a0/tree7cdf9b61, authorized merge parentsf8a87410/1cd9883c0. Standards1medium+2retainedlow; SpecC2blocked. Normal combined code75/cause/typedinspection test passes, but finally227–232 has unguarded stderr write/reportInspection; either throw rejects the selected return, write throw skips durable callback/listener removal, and worker cannot select until promise resolves so publishes code1/error. Claimant23414475 confirms no omitted preservation/disposition. Other resolutions retain ownedMocks pre-enrolled guard restoration, incoming observer/native injection+durable arrays, bounded owner cause channel, structured shard sources and exactly8own production paths. Allowances12.6/12.7 equal first parent and incoming17.8 equaldev, tiers/frozen bytes unchanged. run.sh/executor-run unchanged from first parent so Coordinator conditional native slot not triggered. A20863 reports resolved precommit36+43=79focused passes, exact-head root type/lint0,0refusals128report62files; raw/native/tree limits and no current configured/native/Web proof retained. Prior faileded1b37be historical; source5two lows remain.109conservative consumer paths retained incl one unrelated coverage-inspections hit disposition. No Reviewer runtime/edit/probe; fresh source review required after correction.
+
+Criteria: C2 failed (Combined final inspection logging/callback throw can replace selected native code75/owner cause with rejected suiteCommand and worker code1; no preserving owner/disposition exists.).
+
+### impl-1935 · 2026-11-17T12:24:14.028Z
+
+Source6 inspection-publication correction: fake-only regressions red10/10 failures on old path, green10/10 after preserving selected result through independent summary/callback publication; awaited rejected callback promises, sanitized secondary diagnostics and actual handler-listener baseline assertions. Full focused5files89/89 corrected-source precommit pass (command46,close18,worker7,summary8,executor10). SuiteCommandPublicationError retains original failed command as Error.cause plus typed inspection if a pre-selection failure coincides with publication failure; worker recovers that producer-owned receipt once by captured commandId, avoiding duplicates if callback already recorded it. Consumer search: production suiteCommand callers are worker (migrated typed error recovery) and release-web.ts (generic result/Error consumer, unchanged code/cause and Error-compatible rejection; no publisher callback); all direct test callers migrated/retained old success/rejection controls. No result/wire fields removed, no native-authority parsing. Existing109-reader census retained plus publication error/diagnostic edges. Separate inherited terminal log-before-persist defect filed by Coordinator183557e8 outside eight-file scope. No run.sh/executor-case changes, native run or configured retry. Commit da93d844d pushed clean; exact-head full typecheck passed, full lint running before fresh source review.
+
+### rev-36 · 2026-11-17T12:32:53.726Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1935-source-7
+commit: da93d844d2246c7dbf7e8bd268a164a1f57883d2
+scope: delta
+findings: [{"severity":"low","text":"Both new older-runner callbacks now join/fence their whole lifetime, but fixture acquisition uses step() without a separately named owner.wait setup deadline. remote-fixture awaits initial tempProject/guard/provider/Git/file setup before later readiness bounds; step/run do not bound that work. Add a named setup wait around fixture acquisition while retaining the fixed owner. Claimant e9e0cf3a confirms; this is a diagnostic gap, not an outstanding lifetime-join defect.","file":"hub/test/executor-run.test.ts","line":317},{"severity":"low","text":"The union merge interrupts the ticket-loss paragraph after 'It asserts', inserts the timing-marker paragraph, then repeats the ticket-loss introduction at lines 23–24. Reconcile these into two complete paragraphs while retaining the dedicated cause-file explanation. Rule16 and the shared test-guide union-merge guidance require rereading combined advice; this is documentation only.","file":"docs/agents/tests/hub-test-executor-run.test.ts.md","line":16}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+A-20873 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20873-t-1935-source-correction-preserves-selected-outcomes-through-inspection-sink-fai.md pinsda93d844/tree01ad0d3c, one linear correction after0d7738a0/no dev merge. Standards clear2retainedlow/0medium-high; Spec0. Source6medium resolved: selected object/code/owner cause survives independently caught summary+joined callback throw/rejection, finite error-class secondary diagnostics, unconditional handler removal. Typed SuiteCommandPublicationError retains original Error.cause/inspection on pre-selection rejection; worker recovers once per admitted command id, dedupes successful callback. Generic release-web Error consumer inspected compatible. Two changed production files stay within8; native scripts/cases/readers/allowances/tiers/frozen bytes unchanged. Coordinator183557e8 explicitly files inherited admission log-before-persist separately/outside ceiling. C3current109-path census verified; C1/C2 await completed same-head configured evidence. A20872 retains actual10red/10green+intermediate strip-only syntax failure and final source precommit89/89 across5files, exact-head full type/lint0,0refusals128report62files; raw/native/tree/epoch limits explicit. No currentconfigured/nativeT3/T4/Web/QA/deployment proof; earlier faileded1b37be stays failedpartial. Prior two lows remain unchanged; no Reviewer runtime/edit/probe.
+
+Criteria: C3 verified.
+
+### rev-36 · 2026-11-17T13:07:22.241Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1935-final-1
+commit: da93d844d2246c7dbf7e8bd268a164a1f57883d2
+scope: evidence
+findings: [{"severity":"low","text":"Both new older-runner callbacks now join/fence their whole lifetime, but fixture acquisition uses step() without a separately named owner.wait setup deadline. remote-fixture awaits initial tempProject/guard/provider/Git/file setup before later readiness bounds; step/run do not bound that work. Add a named setup wait around fixture acquisition while retaining the fixed owner. Claimant e9e0cf3a confirms; this is a diagnostic gap, not an outstanding lifetime-join defect.","file":"hub/test/executor-run.test.ts","line":317},{"severity":"low","text":"The union merge interrupts the ticket-loss paragraph after 'It asserts', inserts the timing-marker paragraph, then repeats the ticket-loss introduction at lines 23–24. Reconcile these into two complete paragraphs while retaining the dedicated cause-file explanation. Rule16 and the shared test-guide union-merge guidance require rereading combined advice; this is documentation only.","file":"docs/agents/tests/hub-test-executor-run.test.ts.md","line":16}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+A-20883 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-20883-t-1935-final-same-head-cause-publication-and-native-fake-receipt-audit.md settles source7+completed8bca09e2/A-20881 atda93d844. Standards clear2retainedlow/0medium-high; Spec0; C1–C3verified. Git source tree01ad0d3c distinct from uncached execution snapshot e6b5ab99. Independent audit:6780ordinary testpass/1explicit macOS prerequisite skip,714base filepasses,320separate loadpasses/64identities, no duplicate/unmatched finishes. All224T1/430T2/55Web and5selectedT3files complete;104cause-related top-level timing positives include10new sink controls, both aggregate modes and3required native-fake cases. Required22load identities each5typed passes+proof; no native repetitions. SelectedT3has100top-level timingpass/1skip (executor-run15timings vs22typed/7nested), remaining264T3/all17T4unexecuted. Actual HeadlessShell1248/CfT156.0.8078.4 receipt37045 and LinuxNode24.21provenance39627. C1/C2branch behavior proved by candidate summary/native-fake/VM controls; configured outer run uses hosting run.sh/status, so old hosting planted15lines are not owner loss or deployed candidate proof. Coordinator81a5ad8c expressly retains source-update/restart activation limit; separately filed admission log-before-persist/pgid/allocation limits unchanged.109consumer dispositions:39currentfile positives,59references,11deferred; prior failures/epochs retained. No Reviewer runtime/edit/probe/retry/merge/deployment.
+
+Criteria: C1 verified, C2 verified, C3 verified.
