@@ -1,7 +1,7 @@
 // T2: startup logging and public CLI reports through one in-process project hub.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nativeIdentityProjectHub as projectHub, tempProject } from './harness.ts';
+import { fixtureLockIdentity, nativeIdentityProjectHub as projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { runHub } from '../src/cli/hub.ts';
 import { captureCli } from './cli-in-process.ts';
@@ -12,6 +12,9 @@ test('inherited low priority appears in the startup log and CLI diagnostics', as
   const tools = await toolchain(t);
   // runHub reads process.env; use the shared sealed toolchain environment,
   // just as the doctor calls below do, instead of the outer crew identity.
+  // Native CLI lock readers require the host identity. Capture it before sealing
+  // away runner metadata, then share it with the injected doctor lock reader.
+  tools.env.CLAND_TEST_LOCK_IDENTITY = JSON.stringify(fixtureLockIdentity(tools.env, true));
   const previous = process.env;
   process.env = tools.env;
   t.after(() => { process.env = previous; });
@@ -38,7 +41,9 @@ test('inherited low priority appears in the startup log and CLI diagnostics', as
   assert.equal(text.code, 0, text.stderr);
   assert.ok(text.stdout.includes(`warning: ${priority.warning.detail}; fix: ${priority.warning.fix}`));
 
-  const diagnosis = check((await report(root, tools.env)).report, 'hub priority');
+  const diagnostics = (await report(root, tools.env)).report;
+  assert.equal(check(diagnostics, 'hub').verdict, 'ok', 'doctor recognizes the local fixture holder');
+  const diagnosis = check(diagnostics, 'hub priority');
   assert.deepEqual(diagnosis, { name: 'hub priority', verdict: 'warn', ...priority.warning });
   const plain = await doctor(root, tools.env);
   assert.match(plain.stdout, /warn\s+hub priority\s+.*nice 5.*BG_NICE.*fix:.*restart at nice 0/);
