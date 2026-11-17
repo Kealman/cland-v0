@@ -5,7 +5,6 @@ import { promisify } from 'node:util';
 import { mock, type TestContext } from 'node:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 
 /** Guard native delegation, including already-promisified async launchers. */
 function launchGuard() {
@@ -54,7 +53,13 @@ export async function fakeOnlyFixture<T>(t: TestContext, body: (root: string) =>
   t.after(close);
   work = Promise.resolve().then(async () => {
     await guard.control();
-    root = await mkdtemp(join(tmpdir(), 'cland-fake-only-'));
+    // Suite TMPDIRs on macOS can consume the Unix socket's entire path budget.
+    // Keep this owned root short even when the runner supplies a deep TMPDIR.
+    root = await mkdtemp(join(process.platform === 'darwin' ? '/private/tmp' : '/tmp', 'cf-'));
+    // Recording Hosts declare these socket shapes without binding native sockets.
+    for (const socket of [join(root, 'run', 'cx-0123456789ab.sock'), join(root, 'fake-forward.sock'), join(root, 'missing.sock')]) {
+      assert.ok(Buffer.byteLength(socket) <= 103, `fake-only socket exceeds 103 bytes: ${socket}`);
+    }
     return body(root);
   });
   let value: T;
