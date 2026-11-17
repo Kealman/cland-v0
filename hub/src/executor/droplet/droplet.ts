@@ -48,6 +48,7 @@ export class DropletExecutor implements Executor {
   #inspectionWork = new Map<string, Promise<PrepareKey | null>>();
   readonly #baseReads = new Set<Promise<string>>();
   readonly #reaps = new Set<Promise<Reaped>>();
+  readonly #sweeps = new Set<Promise<void>>();
   readonly #releases = new Map<string, Promise<Released>>();
   readonly #leaseChanges = new Map<string, Promise<unknown>>();
   readonly #env: NodeJS.ProcessEnv;
@@ -431,6 +432,7 @@ export class DropletExecutor implements Executor {
     await Promise.allSettled(this.#inspectionWork.values());
     await Promise.allSettled(this.#baseReads);
     await Promise.allSettled(this.#reaps);
+    await Promise.allSettled(this.#sweeps);
   }
 
   async release(lease: DropletLease, deadline?: number): Promise<Released> {
@@ -526,7 +528,7 @@ export class DropletExecutor implements Executor {
   /** Restart repair and releasing-only retries. General orphan sweeping belongs to the safety stage. */
   async reconcile(restart = true): Promise<void> {
     await this.#retryShardReleases();
-    if (this.#env.DIGITALOCEAN_TOKEN) await rememberProject(this.root, this.#env, this.dependencies.processes, this.clock, this.dependencies.wait);
+    if (this.#env.DIGITALOCEAN_TOKEN) await rememberProject(this.root, this.#env, this.dependencies.processes, this.clock, this.dependencies.wait, this.#abort.signal);
     type OwnedJob = { id: string; reported: boolean; state?: string; outcome: unknown; shards?: OwnedJob[] };
     const jobs = JSON.parse(this.store?.meta('suite-jobs') ?? '[]') as OwnedJob[];
     const owned = new Set(jobs.filter(job => !job.reported && !job.outcome && job.state !== 'queued').flatMap(job => [job.id, ...(job.shards ?? []).filter(shard => !shard.reported && !shard.outcome).map(shard => shard.id)]));
@@ -582,12 +584,18 @@ export class DropletExecutor implements Executor {
     if (!this.#closing) await recoverPoolSnapshots(this.root, this.logger, this.#env, boundedProvider(this.dependencies.api!, this.clock, 15000, deadline));
     this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));
   }
-  async sweep(restart = false): Promise<void> {
-    if (this.#closing) return;
+  sweep(restart = false): Promise<void> {
+    if (this.#closing) return Promise.resolve();
+    const work = this.#sweep(restart);
+    this.#sweeps.add(work);
+    return work.finally(() => { this.#sweeps.delete(work); });
+  }
+
+  async #sweep(restart: boolean): Promise<void> {
     this.#sweepState = 'reconciling';
     let reapedDroplets = 0, reapedKeys = 0, failures = 0;
     try { await this.reconcile(restart); } catch { failures++; this.logger({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' }); }
-    try { await sweepProjects(this.#env, this.clock, this.logger, this.dependencies.processes, ms => this.#wait(ms)); } catch { failures++; this.logger({ event: 'executor-reconcile-failed', reason: 'project registry sweep deferred' }); }
+    try { await sweepProjects(this.#env, this.clock, this.logger, this.dependencies.processes, this.dependencies.wait, this.#abort.signal); } catch { failures++; this.logger({ event: 'executor-reconcile-failed', reason: 'project registry sweep deferred' }); }
     this.#sweepState = 'sweeping';
     if (!this.#closing && this.#env.DIGITALOCEAN_TOKEN) try {
       const result = await this.reap(); reapedDroplets = result.deleted.length; reapedKeys = result.deletedKeys.length;

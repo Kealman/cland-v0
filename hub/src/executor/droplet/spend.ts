@@ -66,8 +66,11 @@ function totals(ledger: Ledger, clock: Clock) {
 async function locked<T>(work: (ledger: Ledger) => T | Promise<T>, env: NodeJS.ProcessEnv, timing?: LockRetryTiming, maxWaitMs = 60000): Promise<T> {
   const path = spendPath(env);
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  const clock = timing?.clock ?? realClock;
-  const lock = await acquireLockWithRetry(`${path}.lock`, clock.now().getTime() + maxWaitMs, timing);
+  // Filesystem contention progresses independently of the hub scheduling clock.
+  // An explicit wait keeps scripted lock tests deterministic; ledger timestamps
+  // and spend windows still use the caller's clock in the transaction itself.
+  const clock = timing?.wait ? timing.clock ?? realClock : realClock;
+  const lock = await acquireLockWithRetry(`${path}.lock`, clock.now().getTime() + maxWaitMs, { ...timing, clock });
   let legacyLock;
   try {
     let ledger = await read(path);
@@ -196,19 +199,20 @@ async function projectDirectory(project: string, env: NodeJS.ProcessEnv): Promis
 }
 
 /** Register hubs, including pre-ledger leases, before their first automatic sweep. */
-export async function rememberProject(project: string, env: NodeJS.ProcessEnv = process.env, processes?: LockProcessTable, clock: Clock = realClock, wait?: (ms: number) => Promise<void>): Promise<void> {
+export async function rememberProject(project: string, env: NodeJS.ProcessEnv = process.env, processes?: LockProcessTable, clock: Clock = realClock, wait?: (ms: number) => Promise<void>, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   try { project = await projectDirectory(project, env); } catch { throw new InvalidProject(); }
   await locked(ledger => {
     ledger.projects ??= [];
     if (!ledger.projects.includes(project)) ledger.projects.push(project);
     if (ledger.missingProjects) ledger.missingProjects = ledger.missingProjects.filter(record => record.project !== project);
-  }, env, { clock, wait, ...(processes ? { processes } : {}) }, 1000);
+  }, env, { clock, wait, signal, ...(processes ? { processes } : {}) }, 1000);
 }
 
 /** A missing mount or temporarily renamed project gets a full day to return.
  * Keep tombstones for accounting-only roots so retained spend cannot revive a scan. */
-export async function sweepProjects(env: NodeJS.ProcessEnv, clock: Clock, log: (event: Record<string, unknown>) => void, processes?: LockProcessTable, wait?: (ms: number) => Promise<void>): Promise<void> {
-  const timing = { clock, wait, ...(processes ? { processes } : {}) };
+export async function sweepProjects(env: NodeJS.ProcessEnv, clock: Clock, log: (event: Record<string, unknown>) => void, processes?: LockProcessTable, wait?: (ms: number) => Promise<void>, signal?: AbortSignal): Promise<void> {
+  const timing = { clock, wait, signal, ...(processes ? { processes } : {}) };
   const observed = await load(env, timing, 1000);
   if (!observed.projects?.length && !observed.entries.length && !observed.missingProjects?.length) return;
   const pruned = await locked(async ledger => {

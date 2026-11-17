@@ -33,11 +33,30 @@ spend.locked` uses executor dependency facts separately from the hub's own
 `options.processes`. The runner supplies `CLAND_TEST_LOCK_IDENTITY` before the
 tripwire; a standalone enforce probe must supply that fixture identity too.
 
-The waiting-through-retry case seeds spend before starting projectHub. Prearm
-its `executor-sweep` log observer, await a successful completion (`failures: 0`),
-then assert the spend lock file is absent before triggering launch. The sweep
-emits that receipt after releasing its registry spend lock. Without this setup
-barrier, a competing reservation may enter contention backoff on the injected
-FakeClock before the test advances it: first refusal never arrives and shutdown
-joins an unresolved creator. Keep setup completion separate from the exact
-60-second retry behavior bound; do not replace the waiting/retry assertions.
+The waiting-through-retry case seeds spend before starting projectHub and launches
+without waiting for startup sweep completion. Default spend-lock backoff and its
+acquisition deadline use native time, independently of the hub FakeClock. An
+explicit injected `wait` retains its paired injected clock for scripted lock tests;
+ledger dates, reservations and UTC spend windows still use the caller's clock.
+
+`startup sweep and host reservation settle spend contention without advancing hub time`
+holds startup sweep publication while it owns the ledger lock, observes the
+reservation receiving `EEXIST` from the real spend-lock link, then releases publication. It waits for the
+exact reservation in the durable ledger and the successful sweep completion,
+asserts $1 reserved and unchanged hub time. Both contention cases compose `fixtureWork(t)` before the first asynchronous
+acquisition. Roots, hubs (via `dispose`) and held locks are adopted; hold release
+and mock restoration are registered before body admission. Cancellation fences
+and joins the whole body and late resources before globals restore or roots
+are removed. The reservation is aborted and joined in the body finally. This is a T2
+filesystem-contention regression, with fake process facts and no provider or
+native harness processes; it does not measure startup latency.
+
+
+`default registry sweep shutdown joins native contention without advancing hub time`
+holds the ledger lock and observes the sweep's real link `EEXIST`. It closes the
+executor while retaining the other holder, asserts the admitted sweep completed
+with a deferred registry receipt, releases the holder and checks unchanged ledger
+bytes and hub time. No explicit executor `wait` is supplied. Executor close aborts
+registry acquisition/retry and joins admitted sweeps; `rememberProject` and
+`sweepProjects` accept an optional trailing signal, forwarded by the executor.
+Existing positional callers without a signal retain their previous API.

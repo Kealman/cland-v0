@@ -94,15 +94,12 @@ test('cap-refused scheduler launch remains in the durable waiting list through r
  const created=clock.now().toISOString();
  const input={project:root,lease:'existing',pool:'agents',size:'fake',priceHourly:1,billingMinimumMs:0,created,deadline:new Date(clock.now().getTime()+3600000).toISOString()};
  await reserveHostSpend(input,{shared:10,hosts:1},env,{clock,processes:lockProcesses});
- let refusals=0,providerCalls=0,startupSweepCompleted=false;
- const hub=await projectHub(t,root,env,{clock,droplet:{processes:lockProcesses},processes:lockProcesses,log:entry=>{if(entry.event==='executor-sweep'&&entry.failures===0)startupSweepCompleted=true;},createHost:async options=>{
+ let refusals=0,providerCalls=0;
+ const hub=await projectHub(t,root,env,{clock,droplet:{processes:lockProcesses},processes:lockProcesses,createHost:async options=>{
   try{await reserveHostSpend({...input,lease:'candidate'},{shared:10,hosts:1},env,{clock,processes:lockProcesses});}
   catch(error){refusals++;throw error;}
   providerCalls++;throw Error('unexpected provider acquisition');
  }});
- // Startup recovery can hold the spend lock; its backoff uses this same fake clock.
- await eventually('startup executor sweep completed',()=>startupSweepCompleted?true:undefined);
- await assert.rejects(readFile(spendPath(env)+'.lock','utf8'),{code:'ENOENT'});
  const metadata=new Store(join(root,'.cland/hub.db'));onCleanup(t,()=>metadata.close());capacityLogin(metadata.hosts.logins);
  const ui=await sessionUi(t,hub.discovery,'cli');
  const reply=await ui.request({type:'session.launch',name:'waiting',role:'implementer',harness:'codex'});
@@ -151,4 +148,82 @@ test('mutation notices reuse loaded ledger with no observer reads and unsubscrib
  stop(); // Retired owner cleanup must not remove the replacement registry.
  await reserveHostSpend({...input,lease:'replacement'},caps,env,timing);
  assert.equal(reads,6);assert.equal(snapshots.length,5);assert.equal(replacement.length,1);
+});
+
+
+import { fixtureWork } from './fixture-work.ts';
+import { acquireLockAsync } from '../src/hub/lock.ts';
+import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { rememberProject } from '../src/executor/droplet/spend.ts';
+
+test('startup sweep and host reservation settle spend contention without advancing hub time', async t => {
+ const owner=fixtureWork(t), release=Promise.withResolvers<void>();
+ const abort=new AbortController();
+ owner.release(()=>{release.resolve();abort.abort();});
+ owner.restore(()=>{t.mock.restoreAll();syncBuiltinESMExports();});
+ await owner.run(async work=>{
+  const root=await work.root(()=>tempProject(t)), env=fixtureEnvironment(root,process.env), clock=new FakeClock();
+  await work.step(()=>mkdir(join(root,'.cland'),{recursive:true}));
+  await work.step(()=>rememberProject(root,env,lockProcesses,clock));
+  const path=spendPath(env), originalRename=fsPromises.rename, originalLink=fsPromises.link;
+  let held=false, contended=false, swept=false;
+  t.mock.method(fsPromises,'rename',async(...args:Parameters<typeof fsPromises.rename>)=>{
+   if(args[1]===path&&!held){held=true;await release.promise;}
+   return originalRename(...args);
+  });
+  t.mock.method(fsPromises,'link',async(...args:Parameters<typeof fsPromises.link>)=>{
+   try{return await originalLink(...args);}
+   catch(error){if(args[1]===path+'.lock'&&(error as NodeJS.ErrnoException).code==='EEXIST')contended=true;throw error;}
+  });
+  syncBuiltinESMExports();
+  await work.acquire(()=>projectHub(t,root,env,{clock,processes:lockProcesses,droplet:{processes:lockProcesses},log:entry=>{if(entry.event==='executor-sweep'&&entry.failures===0)swept=true;}}),hub=>hub.dispose());
+  await work.step(()=>eventually('startup sweep reached ledger publication',()=>held?true:undefined,1000));
+  const created=clock.now().toISOString();
+  const reservation=reserveHostSpend({project:root,lease:'contended',pool:'agents',size:'fake',priceHourly:1,billingMinimumMs:0,created,deadline:new Date(clock.now().getTime()+3600000).toISOString()},
+   {shared:10,hosts:5},env,{clock,processes:lockProcesses,signal:AbortSignal.any([abort.signal,work.signal])});
+  void reservation.catch(()=>{});
+  try {
+   await work.step(()=>eventually('reservation link observed EEXIST on the held spend lock',()=>contended?true:undefined,1000));
+   release.resolve();
+   await work.step(()=>eventually('reservation durably published after startup contention',async()=>JSON.parse(await readFile(path,'utf8')).entries.some((entry:{lease:string})=>entry.lease==='contended')?true:undefined,1000));
+   await work.step(()=>reservation);
+   await work.step(()=>eventually('startup sweep completion receipt',()=>swept?true:undefined,1000));
+   assert.equal((await work.step(()=>inspectSpend(10,env,clock,lockProcesses))).reserved,1);
+   assert.equal(clock.now().toISOString(),created);
+  } finally {release.resolve();abort.abort();await Promise.allSettled([reservation]);}
+ });
+});
+
+test('default registry sweep shutdown joins native contention without advancing hub time', async t=>{
+ const owner=fixtureWork(t);
+ owner.restore(()=>{t.mock.restoreAll();syncBuiltinESMExports();});
+ await owner.run(async work=>{
+  const root=await work.root(()=>tempProject(t)),env=fixtureEnvironment(root,process.env),clock=new FakeClock();
+  await work.step(()=>mkdir(join(root,'.cland'),{recursive:true}));
+  await work.step(()=>rememberProject(root,env,lockProcesses,clock));
+  const path=spendPath(env),before=await work.step(()=>readFile(path,'utf8')),started=clock.now().toISOString();
+  const lock=await work.acquire(()=>acquireLockAsync(path+'.lock',undefined,undefined,'UTC',lockProcesses),lock=>lock.release());
+  const originalLink=fsPromises.link;
+  let contended=false,finished=false;
+  t.mock.method(fsPromises,'link',async(...args:Parameters<typeof fsPromises.link>)=>{
+   try{return await originalLink(...args);}
+   catch(error){if(args[1]===path+'.lock'&&(error as NodeJS.ErrnoException).code==='EEXIST')contended=true;throw error;}
+  });
+  syncBuiltinESMExports();
+  const events:Record<string,unknown>[]=[];
+  const executor=await work.acquire(async()=>new DropletExecutor(root,undefined,event=>events.push(event),env,undefined,{clock,processes:lockProcesses}),executor=>executor.close());
+  const sweeping=executor.sweep().then(()=>{finished=true;});
+  try {
+   await work.step(()=>eventually('default sweep link observed EEXIST',()=>contended?true:undefined,1000));
+   await work.step(()=>executor.close());
+   assert.equal(finished,true,'executor close joins the admitted sweep');
+   assert.ok(events.some(event=>event.event==='executor-sweep'));
+   assert.ok(events.some(event=>event.event==='executor-reconcile-failed'&&event.reason==='project registry sweep deferred'));
+   assert.equal(await work.step(()=>readFile(path,'utf8')),before);
+   await work.step(()=>lock.release());
+   await work.step(()=>sweeping);
+   assert.equal(await work.step(()=>readFile(path,'utf8')),before,'no publication after shutdown and holder release');
+   assert.equal(clock.now().toISOString(),started);
+  } finally {await lock.release();await sweeping;await executor.close();}
+ });
 });
