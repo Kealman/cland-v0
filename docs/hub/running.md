@@ -1439,9 +1439,15 @@ The hub takes `[merge] batch` entries (default 3) when full or after `batch_wait
 (default `"10m"`). It runs the resolved `check` (T0) on the immutable merged
 candidate before its runtime tiers, on one slot using
 `[merge] batch_tiers`, a nonempty set of T1–T4 tiers. Its default is
-`["T1", "T3"]`; this repository sets `["T1"]` (D67). When T3 is selected,
-identities absent from the last green batch or stage receipt get five
-repetitions. A green T1-only batch supplies no T3 receipt.
+`["T1", "T3"]`; generated or inherited configuration can override it. When T3 is selected,
+identities absent from the latest green batch or stage receipt that ran T3 get five
+repetitions. Baselines are pinned per planned tier; a green T1-only batch supplies
+no T3 receipt and cannot supersede it. Failed, cancelled, cached, unreported and
+diagnostic runs are excluded. Missing tier evidence treats all its identities as new.
+The batch summary names baseline runs per tier and distinct identities with
+positive five-repetition success/quarantine receipts. Skips are excluded;
+started or legacy failed identities without positive completion make the total
+unknown, alongside confirmed-complete and completion-unknown counts.
 Green candidates land in FIFO order. Recoverable landing errors (`merge-dirty`,
 `merge-checkout`, `merge-git`, `merge-unpublished`, `merge-recovery`) retain the
 batch, completed members and green receipt across restart. The blocked notice

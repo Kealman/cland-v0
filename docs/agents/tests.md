@@ -277,7 +277,7 @@ Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the c
 | Run kind | Plan after T0 |
 | --- | --- |
 | Queue-enabled task, no mode | All T1, selected T2; fallback is all T2 in both packages; added/changed T3/T4 files and mapped T4 guards once |
-| Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; this repository T1), plus Web after T1 for web/ diffs; five repetitions of T3 identities absent from the last green batch or stage receipt |
+| Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3), plus Web after T1 for web/ diffs; five repetitions of T3 identities absent from the latest green batch or stage receipt that ran T3 |
 | Ordinary integrated `dev` or explicit `all` | T1–T3 |
 | Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
 | Periodic dev (`dev-t3`) | T2 and T3, one droplet; no load repetitions |
@@ -299,9 +299,9 @@ uses the same mode-free selection. Unchanged T3 smoke files are filtered out of 
 ### Periodic dev T2/T3 and release gate
 
 `[merge] batch_tiers` selects a nonempty set of T1–T4 tiers for each batch.
-Its default is `["T1", "T3"]`; this repository sets `["T1"]` (D67).
+Its default is `["T1", "T3"]`; generated or inherited configuration can override it.
 Task verification adds changed T3/T4 files and mapped T4 guards once to T0–T2 (selection mapping and duration check below). A green batch with T1 only supplies no T3 receipt.
-With this repository's T1-only batches, automated T2 coverage after merge runs
+When batches omit T2, automated T2 coverage after merge runs
 only in the periodic dev run, the nightly soak and close occasions (stage, epic
 and release). Ordinary integrated `dev` or explicit `all` remains available for
 manual checks. This catches interactions between separately verified task heads
@@ -535,7 +535,17 @@ checks immutable merged-tree lint and duration budgets, and verifies a detached
 candidate with the hub-owned `batch` occasion. That run selects
 T0 first through the candidate's resolved `[verification] check` command, then
 `[merge] batch_tiers` (default T1 and T3), with five load repetitions only for T3
-identities absent from the last green batch or stage receipt. It uses the configured executor and Coordinator
+identities absent from the latest green batch or stage receipt that actually ran T3.
+The baseline is selected separately for each planned tier; a newer T1-only batch
+cannot replace the T3 baseline. Failed, cancelled, cached, unreported and diagnostic
+runs supply no baseline. With no qualifying receipt, that tier's identities are new.
+The Agents batch summary names each tier's baseline run (`none` when absent) and
+counts distinct identities with positive five-repetition success or quarantine
+receipts. Skipped identities are excluded. Started identities without positive
+completion, including ambiguous legacy failure lines, make the total `unknown`;
+the confirmed-complete and completion-unknown counts remain visible.
+Older receipts without per-tier provenance
+show a legacy baseline. It uses the configured executor and Coordinator
 priority, occupying one suite slot.
 
 Before admission, batch checkouts and periodic diagnostic clones share the

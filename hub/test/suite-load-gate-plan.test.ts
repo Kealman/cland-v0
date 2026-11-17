@@ -1,9 +1,26 @@
 // T1: soak admission uses planted duration manifests, without native work.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { soakDeadlinePlan } from '../src/suite-load-gate-plan.ts';
+import { soakDeadlinePlan, loadGateCompletionSummary } from '../src/suite-load-gate-plan.ts';
 import type { TierPlan } from '../src/suite-tier-report.ts';
 import type { DurationManifest } from '../src/suite-durations.ts';
+
+test('load repetition summary requires positive completion and preserves ambiguous legacy failures', () => {
+  const file = 'hub/test/example.test.ts';
+  const line = (name: string, result: string) => `load gate: ${file}::${name} ${result}\n`;
+  assert.deepEqual(loadGateCompletionSummary(line('pass', '5/5 passed').repeat(2)), { complete: 1, unknown: 0 });
+  assert.deepEqual(loadGateCompletionSummary('quarantine ' + line('quarantined', '3/5 passed; 2/5 quarantined failures')), { complete: 1, unknown: 0 });
+  assert.deepEqual(loadGateCompletionSummary(line('skipped', 'skipped, not load-gated; 5/5 skipped; reasons: ["missing binary"]')), { complete: 0, unknown: 0 });
+  // Both a fully failed legacy run and an interrupted run can emit this shape.
+  for (const name of ['complete failure without attempt receipt', 'interrupted']) {
+    assert.deepEqual(loadGateCompletionSummary('✖ ' + line(name, '3/5 passed')), { complete: 0, unknown: 1 });
+  }
+  assert.deepEqual(loadGateCompletionSummary('quarantine ' + line('partial', '2/5 passed; 2/5 quarantined failures')), { complete: 0, unknown: 1 });
+  assert.deepEqual(loadGateCompletionSummary(`load gate start: ${file}::pending; five repetitions alongside phase\n`), { complete: 0, unknown: 1 });
+  assert.deepEqual(loadGateCompletionSummary(`load gate start: ${file}::pass; five repetitions alongside phase\n` + line('pass', '5/5 passed')), { complete: 1, unknown: 0 });
+  assert.deepEqual(loadGateCompletionSummary(line('pass', '5/5 passed') + '✖ ' + line('interrupted', '3/5 passed')), { complete: 1, unknown: 1 });
+  assert.deepEqual(loadGateCompletionSummary(`load gate start: ${file}::skipped; five repetitions alongside phase\n` + line('skipped', 'skipped, not load-gated; 5/5 skipped; reasons: ["missing binary"]')), { complete: 0, unknown: 0 });
+});
 
 test('soak reserves all tier file costs before spending on repetitions', () => {
   // A-19799 baseline totals and worker projections, including Web. Its actual

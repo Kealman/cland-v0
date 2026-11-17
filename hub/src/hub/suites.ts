@@ -94,6 +94,7 @@ export type SuiteJob = {
   tierPlan?: TierPlan; tierReported?: boolean; durationBase?: string; budgetReported?: boolean;
   loadProofs?: string[];
   timingIdentities?: string[];
+  batchBaselineRuns?: Partial<Record<TierPlan[number]['tier'], string | null>>;
   selection?: SuiteSelection;
   integrated?: boolean;
   queued?: string; priority?: number; item?: string | null;
@@ -635,7 +636,7 @@ export class Suites {
       commands = { ...commands, plan };
     }
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
-    if (!pinned && runner && input.occasion && input.occasion !== 'dev-t3' && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
+    if (!pinned && runner && input.occasion && input.occasion !== 'dev-t3' && input.occasion !== 'batch' && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' ? 'soak' : 'stage');
     if (runner && !input.occasion && !input.integrated && selection.loadGate) selection.loadGateKnownTests = await this.#landedTaskIdentities();
     if (runner && input.integrated && !input.devT3Probe && !input.batch?.diagnostic && !files) {
       const covers: SuiteJob[] = [];
@@ -653,8 +654,16 @@ export class Suites {
     } else delete selection.loadGateRerun;
     const tierPlan = !runner || input.devT3Probe ? [] : input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
     selection = skipT4LoadRepetitions(selection, tierPlan);
+    let batchBaselineRuns = pinned?.batchBaselineRuns;
     if (runner && input.occasion === 'soak' && (!commands.tiers || tierPlan.length)) selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
-    if (runner && input.occasion === 'batch' && !files) selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
+    if (runner && input.occasion === 'batch' && !files) {
+      if (!pinned) {
+        const baseline = await this.#batchIdentities(tierPlan);
+        selection.loadGateBaseline = baseline.selection;
+        batchBaselineRuns = baseline.runs;
+      }
+      selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
+    }
 
     if (input.dryRun) {
       const context = !runner ? null : this.#options.durationContext !== undefined ? this.#options.durationContext : await durationBudgetContext(input.cwd, { ...(budgetBase ? { base: budgetBase } : {}), env: this.#env });
@@ -686,6 +695,7 @@ export class Suites {
     const previousGreen = input.occasion === 'dev-t3' ? this.#jobs.findLast(job => job.occasion === 'dev-t3' && job.reported && job.outcome?.code === 0 && !job.cached && !job.cancelled && !job.requesterDied) : undefined;
     const {source: hostSource, ...jobInput}=input;
     const job: SuiteJob = { ...(hostSource?{hostSource}:{}), ...jobInput, ...(input.occasion === 'dev-t3' ? { devT3: { previousGreenHead: previousGreen?.head ?? null, previousGreenRun: previousGreen?.id ?? null } } : {}), commands, ...((input.occasion === 'soak' || input.occasion === 'dev-t3') && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    if (batchBaselineRuns) job.batchBaselineRuns = batchBaselineRuns;
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nCommands: check ${commands.check || 'not set'} · test ${commands.test}\n${commands.plan ? 'Tier commands: ' + commands.plan.map(step => `${step.name} ${step.command}`).join(' · ') + '\n' : ''}Prepare: ${commands.prepare || 'not set'}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
@@ -860,13 +870,31 @@ export class Suites {
     }
     return [...known].sort();
   }
+  async #batchIdentities(plan: TierPlan): Promise<{ selection: NonNullable<SuiteSelection['loadGateBaseline']>; runs: NonNullable<SuiteJob['batchBaselineRuns']> }> {
+    const runs: Partial<Record<TierPlan[number]['tier'], string | null>> = {};
+    const tests = new Set<string>();
+    for (const row of plan) {
+      const summary = this.#jobs.findLast(job =>
+        (job.occasion === 'stage' && job.integrated && job.branch === 'dev' || job.occasion === 'batch' && job.batch && !job.batch.diagnostic)
+        && job.selection?.mode === 'full' && !job.cached && !job.cancelled && !job.requesterDied
+        && job.reported && job.outcome?.code === 0 && !job.outcome.notRun
+        && this.#full(job).tierPlan?.some(prior => prior.tier === row.tier && prior.files.length));
+      runs[row.tier] = summary?.id ?? null;
+      if (!summary) continue;
+      const receipt = await this.#receiptIdentities(summary);
+      const files = new Set(this.#full(summary).tierPlan!.filter(prior => prior.tier === row.tier).flatMap(prior => prior.files).filter(file => row.files.includes(file)));
+      for (const identity of receipt.tests) if (files.has(identity.split('::')[0]!)) tests.add(identity);
+    }
+    return { selection: { run: null, tests: [...tests].sort() }, runs };
+  }
   async #stageIdentities(occasion: VerifyOccasion = 'stage'): Promise<NonNullable<SuiteSelection['loadGateBaseline']>> {
-    const summary = this.#jobs.findLast(job => (occasion === 'batch'
-      ? job.occasion === 'stage' && job.integrated && job.branch === 'dev' || job.occasion === 'batch' && job.batch
-      : job.occasion === occasion && job.integrated && job.branch === 'dev')
+    const summary = this.#jobs.findLast(job => job.occasion === occasion && job.integrated && job.branch === 'dev'
       && job.selection?.mode === 'full' && !job.cached && !job.cancelled && !job.requesterDied
       && job.reported && job.outcome?.code === 0);
     if (!summary) return { run: null, tests: [] };
+    return this.#receiptIdentities(summary);
+  }
+  async #receiptIdentities(summary: SuiteJob): Promise<NonNullable<SuiteSelection['loadGateBaseline']>> {
     const stage = this.#full(summary);
     if (!stage.timingIdentities) {
       let pending = this.#stageReads.get(stage.id);

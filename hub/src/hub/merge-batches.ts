@@ -5,6 +5,7 @@ import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ShardManifestError } from '../suite-shards.ts';
 import { suiteProgress } from '../suite-progress.ts';
+import { loadGateCompletionSummary } from '../suite-load-gate-plan.ts';
 import type { MergeQueueEntry } from '../protocol.ts';
 import type { Store } from './store.ts';
 import type { Clock, ClockTimer } from './clock.ts';
@@ -208,7 +209,11 @@ export class MergeBatches {
       const tiers = job.selection?.tiers?.join(', ') || 'unavailable';
       const steps = verificationStepResults(evidence.log).map(step => `${verificationStepLabel(step.name)}: exit ${step.code}; duration ${step.seconds} s`);
       const log = this.store.resolveArtifact(evidence.job.artifact ?? '');
-      this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs == null ? 'unavailable' : job.runMs + ' ms'}; exit ${job.outcome.code}; batch interaction ${JSON.stringify(batchInteractionSummary(evidence.job.selection?.batchInteraction))}; log ${log?.id ?? 'unavailable'}: ${log?.path ?? 'unavailable'}\n${steps.join('\n')}\n${batch.candidate.budgetLines.join('\n')}`);
+      const baseline = evidence.job.selection?.loadGateBaseline;
+      const runs = evidence.job.batchBaselineRuns;
+      const baselines = runs ? Object.entries(runs).map(([tier, run]) => `${tier}=${run ?? 'none'}`).join(', ') : `legacy=${baseline?.run ?? 'unavailable'}`;
+      const repeated = loadGateCompletionSummary(evidence.log);
+      this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs == null ? 'unavailable' : job.runMs + ' ms'}; exit ${job.outcome.code}; batch interaction ${JSON.stringify(batchInteractionSummary(evidence.job.selection?.batchInteraction))}; load gate baselines ${baselines}; repeated identities ${repeated.unknown ? 'unknown' : repeated.complete} (confirmed complete ${repeated.complete}; completion unknown ${repeated.unknown}); log ${log?.id ?? 'unavailable'}: ${log?.path ?? 'unavailable'}\n${steps.join('\n')}\n${batch.candidate.budgetLines.join('\n')}`);
       if (batch.confirmation) this.boundary.report(batch,
         `Diagnosis confirmation of ${batch.confirmation.original}: skipped files (no execution receipt): ${skippedFilesText(batch.confirmation.skipped)}; covering run ${job.id}; tree ${job.tree}; exit ${job.outcome.code}; ${original.result === 'green' ? 'full plan green' : original.result}\n${failureText(batchFailures(evidence.log))}`, 'confirmation');
       batch.reportedRun = job.id; this.#save(batch);

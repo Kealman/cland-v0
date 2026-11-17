@@ -7,6 +7,8 @@ The [closed-item wording guard](../docs/hub/running.md) covers Markdown docs and
 site MDX prose against the candidate checkout's tracker.
 Nightly soak deadline admission and timeout execution inventories are described
 in [Running](../docs/hub/running.md#soak-deadline-accounting).
+Merge batch baselines select green receipts per executed tier; see
+[Running](../docs/hub/running.md) for summary provenance and repetition counts.
 The [logins reference](../docs/hub/logins.md) also covers terminal renewal of an
 existing disk with `cland login signin`, binding-preserving admission and the
 24-hour one-sign-in hint.

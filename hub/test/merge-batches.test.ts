@@ -18,6 +18,7 @@ import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 import { authorizeVerifyOccasion } from '../src/verification-occasion.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
+import { caseDeadlines } from './case-deadlines.ts';
 import { selectionFromEnv, selectionTransport } from '../src/suite-selection.ts';
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 import { fixtureWork, type FixtureStep } from '../../test-support/fixture-work.ts';
@@ -1371,6 +1372,39 @@ test('batch load gate repeats only new T3 identities', () => {
   assert.equal(loadGateRepetitions('hub/test/unit.test.ts::new', selection, {}), 0);
   assert.equal(loadGateRepetitions('hub/test/integration.test.ts::known', selection, {}), 0);
   assert.equal(loadGateRepetitions('hub/test/integration.test.ts::new', selection, {}), 5);
+});
+
+for (const source of ['stage', 'batch'] as const) test(`batch retains the latest green ${source} T3 baseline after a T1-only batch`, async t => {
+  const scope = caseDeadlines(t);
+  await scope.wait('baseline setup and body', async () => {
+    const state = await fixture(scope.fixtures);
+    const { f, reports } = state;
+    const unit = 'hub/test/unit.test.ts', process = 'hub/test/process.test.ts', moved = 'hub/test/moved.test.ts';
+    for (const file of [unit, process, moved]) await writeFile(join(f.root, file), '');
+    await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [unit]: 'T1', [process]: 'T3', [moved]: 'T3' } }));
+    const seed = await f.launch(); await f.finish(seed.id);
+    const original = (await f.suites.receipt(seed.id)).job;
+    const row = (tier: 'T1' | 'T3', file: string) => ({ tier, files: [file], tests: 1, seconds: 0.01, projectedWall: 0.01, workers: 1, missing: 0 });
+    const stage = { ...original, id: 'older-stage', sequence: 1, occasion: 'stage' as const, branch: 'dev', integrated: true,
+      selection: { mode: 'full' as const, files: [], reason: 'recorded stage' }, tierPlan: [row('T1', unit), row('T3', process)], timingIdentities: [`${unit}::old`, `${process}::old`] };
+    const batch = { ...stage, id: 'green-T3-batch', sequence: 2, occasion: 'batch' as const, batch: { id: 'prior', members: [] }, timingIdentities: [`${process}::old`, `${process}::batch addition`] };
+    const narrow = { ...batch, id: 'newer-T1-only', sequence: 3, tierPlan: [{ ...row('T1', unit), files: [unit, moved] }], timingIdentities: [`${unit}::new`, `${moved}::moved from T1`] };
+    const red = { ...batch, id: 'red-T3', sequence: 4, outcome: { ...original.outcome!, code: 1 } };
+    await f.reopen([stage, ...(source === 'batch' ? [batch] : []), narrow, red]);
+    await state.reopen();
+    await state.runner.tick();
+    const job = (await f.jobs()).at(-1)!;
+    const selection = job.selection!;
+    assert.equal(loadGateRepetitions(`${process}::old`, selection, {}), 0);
+    assert.equal(loadGateRepetitions(`${process}::added`, selection, {}), 5);
+    assert.equal(loadGateRepetitions(`${process}::batch addition`, selection, {}), source === 'batch' ? 0 : 5);
+    assert.equal(loadGateRepetitions(`${moved}::moved from T1`, selection, {}), 5, 'the current T3 baseline cannot borrow an identity from prior T1');
+    assert.deepEqual(job.batchBaselineRuns, { T1: narrow.id, T3: source === 'batch' ? batch.id : stage.id });
+    await f.finish(job.id, 0, `suite timing ${JSON.stringify({ file: process, name: 'old', seconds: 0.01 })}\nload gate: ${process}::added 5/5 passed\n# tests 1\n# pass 1\n`);
+    await state.runner.tick();
+    assert.match(reports[0]!, new RegExp(`load gate baselines T1=${narrow.id}, T3=${source === 'batch' ? batch.id : stage.id}`));
+    assert.match(reports[0]!, /repeated identities 1/);
+  });
 });
 
 for (const tiers of [undefined, ['T1']] as const) test(`batch runs configured tiers ${tiers ?? 'default' } and lands on green`, async t => {

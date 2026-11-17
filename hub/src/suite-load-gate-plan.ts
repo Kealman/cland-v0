@@ -24,6 +24,25 @@ export function loadProofIdentities(log: string): string[] {
   }))].sort();
 }
 
+/** Legacy failures lack an attempt count: interrupted and complete failures have
+ * the same text. Only positive success/quarantine totals prove completion. */
+export function loadGateCompletionSummary(log: string): { complete: number; unknown: number } {
+  const complete = new Set<string>(), unknown = new Set<string>(), skipped = new Set<string>();
+  for (const line of log.split('\n')) {
+    const start = /^load gate start: (.+::.+); five repetitions alongside phase$/.exec(line);
+    if (start) unknown.add(start[1]!);
+    const result = /^(?:✖ |quarantine )?load gate: (.+::.+) ([0-5])\/5 passed(?:; ([0-5])\/5 quarantined failures)?$/.exec(line);
+    if (result) {
+      if (Number(result[2]) + Number(result[3] ?? 0) === 5) complete.add(result[1]!);
+      else unknown.add(result[1]!);
+    }
+    const skip = /^load gate: (.+::.+) skipped, not load-gated; 5\/5 skipped; reasons:/.exec(line);
+    if (skip) skipped.add(skip[1]!);
+  }
+  for (const identity of [...complete, ...skipped]) unknown.delete(identity);
+  return { complete: complete.size, unknown: unknown.size };
+}
+
 /** Occasion receipts replace the baseline; landed task proofs extend it. */
 export function loadGateRepetitions(identity: string, selection: SuiteSelection | undefined, durationTests: Record<string, number>): 0 | 5 {
   if (selection?.durationCheck?.files.includes(identity.split('::')[0]!)) return 0; // Task process identities execute once.

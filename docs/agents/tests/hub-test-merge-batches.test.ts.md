@@ -14,6 +14,14 @@ Each asynchronous body step checks admission. The public T2 counterpart uses
 caseDeadlines with the shared beforeDirectories/guardDirectoryRemoval owner.
 CLI help consumers are the frozen commands.json composition, T1
 cli-usage-compatibility and T2 cli-help; retain their exact byte comparisons.
+Tier-baseline cases seed recorded green stage/T3-batch receipts followed by a
+newer T1-only batch and a failed T3 batch. After reopening the fake controller,
+assert the admitted per-tier run ids, exact old/new identity repetition choices
+and the Agents summary's completed-identity count. The newer T1 receipt also
+contains a file now assigned T3: that identity must still repeat against its
+selected T3 baseline. Native-free caseDeadlines is registered before fixture
+acquisition and joins the setup/body before collected fixture hooks; failed
+joins retain roots. No native worker runs, so no process-cleanup owner is imported.
 
 Interrupted file diagnosis uses the same fake-only T1 seam. Plant an interrupted
 prefix, pass every failing-file diagnostic, and assert no member lands. Reopen
