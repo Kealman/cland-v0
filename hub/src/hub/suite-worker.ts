@@ -16,11 +16,12 @@ import { processStartedAsync } from './lock.ts';
 import { SuiteTicketLost, acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
 import { selectionTransport } from '../suite-selection.ts';
 import { clandRunner, recordedCommands } from '../verification-commands.ts';
-import { suiteCommand } from '../suite-command.ts';
+import { suiteCommand, type SuiteInspectionReceipt } from '../suite-command.ts';
 import { compatibilityCleanupCause, runWorkerWithAdmission } from '../suite-worker-admission.ts';
 export { compatibilityCleanupCause } from '../suite-worker-admission.ts';
 
-export async function suiteWorker(input: string): Promise<void> {
+const workerNative = { processStartedAsync, suiteCommand };
+export async function suiteWorker(input: string, native = workerNative): Promise<void> {
   const job = JSON.parse(await readFile(input, 'utf8')) as RunRef;
   let signal: NodeJS.Signals | null = null;
   for (const name of ['SIGINT', 'SIGTERM'] as const) process.on(name, () => {
@@ -32,7 +33,7 @@ export async function suiteWorker(input: string): Promise<void> {
   await runWorkerWithAdmission({
     gate: () => access(job.gate).then(() => true, () => false),
     signal: () => signal, clock: realClock,
-    run: () => runAdmittedWorker(job, () => signal),
+    run: () => runAdmittedWorker(job, () => signal, native),
     log: line => { process.stdout.write(line); },
     persist: async receipt => {
       await writeFile(`${job.result}.tmp`, JSON.stringify(receipt), { mode: 0o600 });
@@ -41,18 +42,19 @@ export async function suiteWorker(input: string): Promise<void> {
   });
 }
 
-async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | null) {
+async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | null, native: typeof workerNative) {
   if (job.queued) process.stdout.write(`verification queue wait ${((Date.now() - Date.parse(job.queued)) / 1000).toFixed(2)}s\n`);
   let code = 0;
+  const inspections: Array<{ commandId: string; receipt: SuiteInspectionReceipt }> = [];
   let cause = '';
   let platform: Platform | undefined;
   const leases: Lease[] = [];
   const token = randomUUID();
   const dirs = job.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'];
   try {
-    const started = await processStartedAsync(process.pid);
+    const started = await native.processStartedAsync(process.pid);
     if (!started) throw new Error('cannot establish compatibility lease identity');
-    const holder = { pid: process.pid, started, startedUtc: await processStartedAsync(process.pid, undefined, undefined, 'UTC'), token, since: new Date().toISOString(), worktree: job.cwd, ...(job.integrated ? { integrated: job.id } : {}) };
+    const holder = { pid: process.pid, started, startedUtc: await native.processStartedAsync(process.pid, undefined, undefined, 'UTC'), token, since: new Date().toISOString(), worktree: job.cwd, ...(job.integrated ? { integrated: job.id } : {}) };
     if (!signal()) leases.push(...await acquireBroker(dirs, () => signal() !== null, holder));
     const checkHead = async () => {
       const head = await promisify(execFile)('git', ['rev-parse', 'HEAD'], { cwd: job.cwd }).then(r => r.stdout.trim(), () => 'unknown');
@@ -100,7 +102,8 @@ async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | nul
       else delete env.CLAND_COVERAGE_OUTPUT;
       if (commands.plan && name !== 'check') env.CLAND_COVERAGE_APPEND = '1';
       else delete env.CLAND_COVERAGE_APPEND;
-      const outcome = await suiteCommand(verificationStepCommand(step), job.cwd, withoutExecutorCredentials(env));
+      const outcome = await native.suiteCommand(verificationStepCommand(step), job.cwd, withoutExecutorCredentials(env), undefined,
+        receipt => inspections.push({ commandId, receipt }));
       process.stdout.write(`\nsuite command end ${commandId} ${outcome.code}\n`);
       code = outcome.code;
       cause = outcome.cause;
@@ -121,7 +124,7 @@ async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | nul
       }
     } catch (error) { code = 1; cause = compatibilityCleanupCause(cause, error); }
   }
-  return { code, cause, ...(platform ? { platform } : {}) };
+  return { code, cause, ...(platform ? { platform } : {}), ...(inspections.length ? { inspections } : {}) };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await suiteWorker(process.argv[2]!);

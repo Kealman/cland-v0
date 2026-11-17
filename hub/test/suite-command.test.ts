@@ -1,6 +1,7 @@
 // T2: diagnostic wording uses a fake child; no real processes or wall-clock waits.
 // T1 lint conservatively rejects the mocked child_process import (T-682).
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
+import { fixtureWork } from '../../test-support/fixture-work.ts';
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
 import { EventEmitter } from 'node:events';
@@ -8,8 +9,27 @@ import { syncBuiltinESMExports } from 'node:module';
 import { PassThrough } from 'node:stream';
 import { suiteCommand } from '../src/suite-command.ts';
 import { startupOwnerLine } from '../src/suite-startup-owner.ts';
-for (const mode of ['infrastructure', 'hung', 'unrelated', 'other-reporter', 'duplicate', 'test', 'suite', 'empty', 'scaled', 'capped', 'legacy', 'closed', 'owner-finish', 'owner-exit', 'owner-active', 'invalid-owner', 'owner-reclaim-open-pipe'] as const)
-test(`file startup watchdog handles ${mode} receipts`, async t => {
+import { suiteWorker } from '../src/hub/suite-worker.ts';
+import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
+
+function ownedMocks(t: TestContext, body: (signal: AbortSignal, cleanup: (release: () => Promise<void>, dispose: () => void | Promise<void>) => void) => Promise<void>) {
+  const work = fixtureWork();
+  let release = async () => {}, dispose: () => void | Promise<void> = () => {};
+  t.after(async () => {
+    const joined = work.close(); // Fence the whole callback before releasing held work.
+    await release();
+    await joined;
+    t.mock.restoreAll();
+    await dispose();
+    syncBuiltinESMExports();
+  });
+  return work.run(async (_step, signal) => body(signal, (unblock, destroy) => { release = unblock; dispose = destroy; }));
+}
+for (const mode of ['infrastructure', 'hung', 'unrelated', 'other-reporter', 'duplicate', 'test', 'suite', 'empty', 'scaled', 'capped', 'legacy', 'closed', 'owner-finish', 'owner-exit', 'owner-active', 'invalid-owner', 'owner-reclaim-open-pipe', 'inspection-recovery'] as const)
+test(`file startup watchdog handles ${mode} receipts`, t => ownedMocks(t, async (signal, cleanup) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const child = Object.assign(new EventEmitter(), { pid: 40001, stdout: new PassThrough(), stderr: new PassThrough() });
   const launched = Promise.withResolvers<void>();
@@ -32,21 +52,20 @@ test(`file startup watchdog handles ${mode} receipts`, async t => {
   // The fake process never has host process authority, including on regression.
   t.mock.method(cp, 'execFile', () => { throw new Error('native probe forbidden'); });
   syncBuiltinESMExports();
-  t.after(async () => {
-    try {
+  cleanup(async () => {
       if (result) {
         await Promise.race([launched.promise, result.then(() => {}, () => {})]);
         child.emit('close', 0, null);
-        await result;
+        launched.resolve();
+        await result.then(() => {}, () => {});
       }
-    } finally {
+    }, () => {
       child.stdout.destroy(); child.stderr.destroy();
-      t.mock.restoreAll(); syncBuiltinESMExports();
-    }
-  });
+    });
   const row = { pid: 40001, parent: 1, group: 40001, started: 'birth', identity: 'root', state: 'S', command: '/bin/fake-command' };
   const writer = { ...row, pid: 40002, parent: 40001, identity: 'writer', command: '/bin/fake-inherited-writer' };
   const ended: number[] = [];
+  let inspections = 0;
   const budget = mode === 'scaled' ? 60000 : mode === 'capped' ? 5000 : 30000;
   result = suiteCommand('fake command', '/scratch/t1841', {
     CLAND_SUITE_LIMITS_CWD: '/scratch/t1841',
@@ -54,7 +73,14 @@ test(`file startup watchdog handles ${mode} receipts`, async t => {
     CLAND_TEST_LOAD_FACTOR: mode === 'scaled' ? '2' : '1',
   }, {
     processIdentityAsync: async () => 'root', processStartedAsync: async () => 'birth',
-    systemProcesses: async () => mode === 'owner-reclaim-open-pipe' ? nativeExited ? [writer] : [row, writer] : [row],
+    systemProcesses: async () => {
+      if (mode === 'inspection-recovery') {
+        inspections++;
+        if (inspections <= 3 || inspections === 5) throw new Error('fake inspection unavailable');
+        return inspections === 4 ? [row, writer] : [row, { ...writer, parent: 1 }, { ...writer, pid: 40003, parent: 1, identity: 'unrelated' }];
+      }
+      return mode === 'owner-reclaim-open-pipe' ? nativeExited ? [writer] : [row, writer] : [row];
+    },
     stdioWriters: async () => mode === 'owner-reclaim-open-pipe' ? [writer] : [],
     endProcess: async proof => {
       ended.push(proof.pid!);
@@ -65,7 +91,15 @@ test(`file startup watchdog handles ${mode} receipts`, async t => {
   });
   // Observe the launch receipt before injecting a file that never registers a test.
   await launched.promise;
+  signal.throwIfAborted();
   await Promise.resolve();
+  if (mode === 'inspection-recovery') {
+    const drain = async () => { for (let i = 0; i < 30; i++) { signal.throwIfAborted(); await Promise.resolve(); } };
+    await drain();
+    for (let i = 0; i < 4; i++) { t.mock.timers.tick(1000); await drain(); }
+    assert.equal(inspections, 5, 'three failures, recovery, then another failed round');
+    assert.deepEqual(ended, []);
+  }
   if (mode === 'infrastructure') {
     const cause = 'suite infrastructure: suite ticket lost; remover unknown';
     child.stderr.write(cause + '\n');
@@ -127,9 +161,158 @@ test(`file startup watchdog handles ${mode} receipts`, async t => {
   assert.match(log, mode === 'owner-exit' || mode === 'owner-reclaim-open-pipe' ? /command exit 0; stdout open; stderr open/ : /command exit pending; stdout open; stderr open/);
   assert.match(log, /suite stall processes /);
   if (mode === 'owner-reclaim-open-pipe') assert.ok(ended.includes(writer.pid), 'outer owner joins inherited writer cleanup before returning');
-});
+  if (mode === 'inspection-recovery') assert.deepEqual(ended, [40001, 40002], 'failed rounds retain the proven writer without admitting an unrelated process');
+}));
 
 import { suiteEvidence } from '../src/suite-log.ts';
+
+test('failed stall inspection reaches the durable worker result', t => ownedMocks(t, async (signal, cleanup) => {
+  let root: string | undefined;
+  const child = Object.assign(new EventEmitter(), { pid: 40001, stdout: new PassThrough(), stderr: new PassThrough() });
+  const launched = Promise.withResolvers<void>();
+  let worker: Promise<void> | undefined;
+  let attempts = 0;
+  const originalExec = cp.execFile;
+  let nativeDelegations = 0;
+  cleanup(async () => {
+    if (worker) {
+      await Promise.race([launched.promise, worker]);
+      child.emit('close', 0, null);
+      launched.resolve();
+      await worker;
+    }
+  }, async () => {
+    cp.execFile = originalExec;
+    child.stdout.destroy(); child.stderr.destroy();
+    if (root) await rm(root, { recursive: true, force: true });
+  });
+  root = await mkdtemp(join(tmpdir(), 'cland-inspection-result-'));
+  signal.throwIfAborted();
+  const result = join(root, 'result.json'), input = join(root, 'job.json');
+  await writeFile(join(root, 'gate'), 'ready');
+  await writeFile(input, JSON.stringify({ id: 'fake', cwd: root, result, gate: join(root, 'gate'), locks: [],
+    commands: { check: 'fake', test: '' }, limits: { stallTimeoutMs: 7000 } }));
+  signal.throwIfAborted();
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 10000 });
+  t.mock.method(cp, 'spawn', () => { launched.resolve(); return child; });
+  // A synthetic native boundary makes the inherited-custom bug fail without
+  // ever reaching the host. Prove the negative control before installing fakes.
+  const nativeBoundary = () => { nativeDelegations++; throw new Error('native delegation forbidden'); };
+  cp.execFile = Object.assign(nativeBoundary, { [promisify.custom]: nativeBoundary }) as unknown as typeof cp.execFile;
+  // cland-allow-child-env: synthetic throwing custom-promisifier control cannot launch a native process or consume an environment
+  assert.throws(() => promisify(cp.execFile)('git', [], {}), /native delegation forbidden/);
+  assert.equal(nativeDelegations, 1);
+  // Node exposes this native entry at runtime but omits it from ChildProcess's public type.
+  t.mock.method(cp.ChildProcess.prototype as unknown as { spawn: () => void }, 'spawn', () => { assert.fail('native child launch forbidden'); });
+  let callbackProbes = 0, customProbes = 0;
+  const fakeExec = (bin: string, _args: string[], _options: unknown, callback: (error: null, stdout: string, stderr: string) => void) => {
+    assert.ok(bin === 'git' || bin === 'node');
+    callbackProbes++;
+    callback(null, 'fake', ''); return new EventEmitter();
+  };
+  Object.defineProperty(fakeExec, promisify.custom, { value: (bin: string, args: string[], options: unknown) => {
+    customProbes++;
+    return new Promise(resolve => fakeExec(bin, args, options, (_error, stdout, stderr) => resolve({ stdout, stderr })));
+  } });
+  // Replace the entire binding: t.mock.method proxies can inherit the old
+  // custom promisifier, which closes over its native launch implementation.
+  cp.execFile = fakeExec as unknown as typeof cp.execFile;
+  let callbackControl = false;
+  fakeExec('git', [], {}, () => { callbackControl = true; });
+  assert.equal(callbackControl, true);
+  // The worker installs process-entry signal forwarding; this fixture owns no group.
+  const on = process.on.bind(process);
+  t.mock.method(process, 'on', (event: string, listener: (...args: unknown[]) => void) => event === 'SIGINT' || event === 'SIGTERM' ? process : on(event, listener));
+  t.mock.method(process.stdout, 'write', () => true);
+  t.mock.method(process.stderr, 'write', () => true);
+  syncBuiltinESMExports();
+  worker = suiteWorker(input, {
+    processStartedAsync: async () => 'fake birth',
+    suiteCommand: (line, cwd, env, _native, report) => suiteCommand(line, cwd, env, {
+      processIdentityAsync: async () => 'root', processStartedAsync: async () => 'birth',
+      systemProcesses: async () => { attempts++; throw new TypeError('fake inspection failed'); },
+      stdioWriters: async () => [],
+      endProcess: async () => { assert.fail('failed inspection cannot signal a process'); },
+    }, report),
+  });
+  await Promise.race([launched.promise, worker.then(() => { throw new Error('worker completed before fake command launch'); })]);
+  const drain = async () => { for (let i = 0; i < 40; i++) { signal.throwIfAborted(); await Promise.resolve(); } };
+  await drain();
+  for (let i = 0; i < 7; i++) { t.mock.timers.tick(1000); await drain(); }
+  await worker;
+  const receipt = JSON.parse(await readFile(result, 'utf8'));
+  assert.equal(receipt.code, 1);
+  assert.equal(receipt.cause, 'fake inspection failed');
+  assert.ok(attempts >= 8, 'periodic retries and terminal cleanup both failed');
+  assert.equal(receipt.inspections.length, 1);
+  assert.equal(receipt.inspections[0].receipt.unobservedPastBound, true);
+  assert.equal(receipt.inspections[0].receipt.unobservedBoundMs, 5000);
+  assert.equal(receipt.inspections[0].receipt.lastErrorClass, 'TypeError');
+  assert.equal(nativeDelegations, 1, 'only the deliberate negative control reaches the synthetic native boundary');
+  assert.ok(customProbes > 0, 'worker setup used the explicit fake custom promisifier');
+  assert.equal(callbackProbes, customProbes + 1, 'custom and callback control share the same fake');
+}));
+
+for (const recovers of [true, false]) test(`inspection failures are summarized when observation ${recovers ? 'recovers' : 'stays unavailable'}`, t => ownedMocks(t, async (signal, cleanup) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 10000 });
+  const child = Object.assign(new EventEmitter(), { pid: 40001, stdout: new PassThrough(), stderr: new PassThrough() });
+  const launched = Promise.withResolvers<void>();
+  let result: ReturnType<typeof suiteCommand> | undefined;
+  let attempts = 0, log = '';
+  t.mock.method(cp, 'spawn', () => { launched.resolve(); return child; });
+  t.mock.method(cp, 'execFile', () => { throw new Error('native probe forbidden'); });
+  const stderr = process.stderr.write.bind(process.stderr);
+  t.mock.method(process.stderr, 'write', (chunk: string) => {
+    if (!chunk.startsWith('suite inspection ')) return stderr(chunk);
+    log += chunk; return true;
+  });
+  syncBuiltinESMExports();
+  cleanup(async () => {
+      if (result) {
+        await Promise.race([launched.promise, result.then(() => {}, () => {})]);
+        child.emit('close', 0, null); launched.resolve(); await result.then(() => {}, () => {});
+      }
+    }, () => {
+      child.stdout.destroy(); child.stderr.destroy();
+    });
+  result = suiteCommand('fake command', '/scratch/inspection', {
+    CLAND_SUITE_LIMITS_CWD: '/scratch/inspection',
+    CLAND_SUITE_LIMITS: JSON.stringify({ stallTimeoutMs: 600000 }),
+  }, {
+    processIdentityAsync: async () => 'root', processStartedAsync: async () => 'birth',
+    systemProcesses: async () => {
+      attempts++;
+      if (!recovers || attempts <= 3) throw new TypeError('secret token must not be logged');
+      return [];
+    },
+    stdioWriters: async () => [],
+    endProcess: async () => { assert.fail('ordinary close grants no cleanup authority'); },
+  });
+  await launched.promise;
+  signal.throwIfAborted();
+  // Drain the fake capture and its scheduled retry; no native time passes.
+  const drain = async () => { for (let i = 0; i < 30; i++) { signal.throwIfAborted(); await Promise.resolve(); } };
+  await drain();
+  for (let i = 0; i < 6; i++) { t.mock.timers.tick(1000); await drain(); }
+  assert.equal(attempts, 7, 'inspection retries after failures and after recovery');
+  child.emit('close', 0, null);
+  const outcome = await result;
+  assert.equal(outcome.code, 0, 'observation diagnostics are report-only');
+  assert.equal(outcome.cause, '');
+  const lines = log.trim().split('\n');
+  assert.equal(lines.length, 1, 'one summary per command, without retry log flooding');
+  const receipt = JSON.parse(lines[0]!.slice('suite inspection '.length));
+  assert.equal(receipt.failures, recovers ? 3 : 7);
+  assert.equal(receipt.maxConsecutiveFailures, recovers ? 3 : 7);
+  assert.equal(receipt.firstFailureAt, 10000);
+  assert.equal(receipt.lastErrorClass, 'TypeError');
+  assert.equal(receipt.unobservedBoundMs, 5000);
+  assert.equal(receipt.unobservedPastBound, !recovers);
+  assert.equal(receipt.consecutiveFailures, recovers ? 0 : 7);
+  assert.deepEqual(outcome.inspection, receipt);
+  assert.match(suiteEvidence(log + 'later noise\n'.repeat(40)), /suite inspection /);
+  assert.doesNotMatch(log, /secret|token/);
+}));
 
 for (const inspectionFails of [false, true]) for (const exited of [false, true]) test(`stall retains completed-file and ${exited ? 'exited command with open pipes' : 'live command'} evidence${inspectionFails ? ' when inspection fails' : ''}`, async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
@@ -237,13 +420,11 @@ test('non-npm command signal diagnostic uses stack-neutral wording', async t => 
     CLAND_SUITE_LIMITS_CWD: process.cwd(),
     CLAND_SUITE_LIMITS: JSON.stringify({ stallTimeoutMs: 1000 }),
   });
-  assert.deepEqual(outcome, { code: 1, cause: 'command terminated by SIGTERM' });
+  // Older callers consume code/cause; additive inspection metadata is advisory.
+  assert.deepEqual({ code: outcome.code, cause: outcome.cause }, { code: 1, cause: 'command terminated by SIGTERM' });
 });
 
 import { fixtureWork as ownFixtureWork } from './fixture-work.ts';
-import { mkdtemp, writeFile, readFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { liveTickets } from '../src/suite-lock.ts';
 
 for (const late of [false, true]) test(`native ticket census shares the total deadline (late evidence: ${late})`, async t => {

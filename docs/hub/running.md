@@ -855,7 +855,20 @@ silence it fails with `stalled: no output for <n> min` and up to eight tests
 whose reporter start has no matching completion (cancelled tests remain in flight).
 Before cleanup it records the command's native exit receipt (or pending) and
 stdout/stderr EOF state in a bounded `suite stall command` semantic record,
-before any native inspection can fail. A `suite stall processes` log line retains up to 32
+before any native inspection can fail. Periodic ancestry inspection retries after
+failure, preserving earlier ownership proofs. At command settlement, one bounded
+`suite inspection` JSON receipt records the first failure timestamp, total and
+consecutive failure counts, maximum consecutive count and last error class
+(never the error message or argv). `unobservedPastBound` reports any failure
+episode longer than `unobservedBoundMs` (5000 ms), even if inspection later
+recovers. The command result carries optional `inspection` metadata; the local
+worker preserves these as optional `inspections` entries keyed by command id in
+its result JSON. The command's settlement callback also hands the finalized
+receipt to the worker when native cleanup rejects, preserving the original
+failure cause and lack of cleanup authority. Older result readers can ignore these additive fields. The log
+receipt survives semantic reduction. These diagnostics are report-only and do
+not change the command's exit status, cause or cleanup authority.
+A `suite stall processes` log line retains up to 32
 current birth-matched owned pids and executable names, with a total count;
 it excludes argv and environment values. Inspection uses bounded native probes.
 The command-state record and complete census survive semantic log reduction and cached evidence;

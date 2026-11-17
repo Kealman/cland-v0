@@ -14,7 +14,17 @@ import { stallCommandEvidence } from './suite-stall-evidence.ts';
 import { parseStartupOwner } from './suite-startup-owner.ts';
 
 const nativeProcesses = { processIdentityAsync, processStartedAsync, systemProcesses, stdioWriters, endProcess };
-export async function suiteCommand(line: string, cwd: string, env: NodeJS.ProcessEnv = process.env, native = nativeProcesses): Promise<{ code: number; cause: string }> {
+export interface SuiteInspectionReceipt {
+  firstFailureAt: number;
+  failures: number;
+  consecutiveFailures: number;
+  maxConsecutiveFailures: number;
+  lastErrorClass: string;
+  unobservedBoundMs: number;
+  unobservedPastBound: boolean;
+}
+const unobservedBoundMs = 5000;
+export async function suiteCommand(line: string, cwd: string, env: NodeJS.ProcessEnv = process.env, native = nativeProcesses, reportInspection?: (receipt: SuiteInspectionReceipt) => void): Promise<{ code: number; cause: string; inspection?: SuiteInspectionReceipt }> {
   const { stallTimeoutMs, workers } = await suiteLimits(cwd, 'local', env);
   // Test-process startup/import readiness needs load headroom, independently of
   // test behaviour. Never let setup headroom consume the no-output guard.
@@ -59,8 +69,29 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     }
   };
   let observing: Promise<void> = Promise.resolve();
+  let inspection: SuiteInspectionReceipt | undefined;
+  let unobservedSince: number | undefined;
+  const noteUnobserved = () => {
+    if (inspection && unobservedSince !== undefined && Date.now() - unobservedSince > unobservedBoundMs) inspection.unobservedPastBound = true;
+  };
   const observe = () => {
-    observing = capture().catch(() => { /* failed inspection establishes no new ownership */ }).finally(() => {
+    const attemptedAt = Date.now();
+    observing = capture().then(() => {
+      noteUnobserved();
+      unobservedSince = undefined;
+      if (inspection) inspection.consecutiveFailures = 0;
+    }).catch(error => {
+      // No messages, argv or arbitrary class names: native errors can contain secrets.
+      const lastErrorClass = error instanceof TypeError ? 'TypeError' : error instanceof Error ? 'Error' : 'NonError';
+      inspection ??= { firstFailureAt: attemptedAt, failures: 0, consecutiveFailures: 0, maxConsecutiveFailures: 0, lastErrorClass, unobservedBoundMs, unobservedPastBound: false };
+      unobservedSince ??= attemptedAt;
+      inspection.failures++;
+      inspection.consecutiveFailures++;
+      inspection.maxConsecutiveFailures = Math.max(inspection.maxConsecutiveFailures, inspection.consecutiveFailures);
+      inspection.lastErrorClass = lastErrorClass;
+      noteUnobserved();
+      // Failed inspection establishes no new descendant ownership; prior proofs remain.
+    }).finally(() => {
       if (!ending && !interrupted && !closed) observeTimer = setTimeout(observe, 1000);
     });
   };
@@ -175,13 +206,25 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
       return { code: 1, signal: null };
     })]);
     await ending;
-    return { code: cause ? 1 : outcome.code ?? 1, cause: cause || infrastructure || (outcome.signal ? `command terminated by ${outcome.signal}` : '') };
+    closed = true;
+    clearTimeout(timer);
+    clearTimeout(observeTimer);
+    startup.stop();
+    await observing;
+    noteUnobserved();
+    return { code: cause ? 1 : outcome.code ?? 1, cause: cause || infrastructure || (outcome.signal ? `command terminated by ${outcome.signal}` : ''), ...(inspection ? { inspection } : {}) };
   } finally {
     closed = true;
     clearTimeout(timer);
     clearTimeout(observeTimer);
     startup.stop();
     await observing;
+    noteUnobserved();
+    if (inspection) {
+      process.stderr.write(`suite inspection ${JSON.stringify(inspection)}\n`);
+      // The worker owns the durable result even when cleanup rejects this call.
+      reportInspection?.(inspection);
+    }
     for (const { signal, handler } of handlers) process.off(signal, handler);
   }
 }
