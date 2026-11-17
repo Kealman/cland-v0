@@ -8,9 +8,15 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { testWaitMs } from './until.ts';
+import { DatabaseSync } from 'node:sqlite';
+import { LoginRecords } from '../src/host/logins.ts';
+import { LoginSnapshots } from '../src/host/login-snapshots.ts';
+import { FakeClock } from './fake-clock.ts';
+import type { Host } from '../src/host/host.ts';
+import type { HostProvider } from '../src/host/provider/provider.ts';
+import { fixtureWork } from './fixture-work.ts';
 
-function fixture() {
-  const root = mkdtempSync(join(tmpdir(), 'cland-auth-script-'));
+function fixture(root = mkdtempSync(join(tmpdir(), 'cland-auth-script-'))) {
   const bin = join(root, 'bin'); mkdirSync(bin);
   const log = join(root, 'commands'); writeFileSync(log, '');
   for (const command of ['mount', 'umount', 'fsfreeze', 'sync', 'fuser', 'mountpoint', 'findmnt', 'readlink', 'mkdir', 'chown', 'chmod', 'rmdir', 'sleep', 'flock']) {
@@ -73,6 +79,96 @@ test('helper dispatches freeze and thaw only for the matching mounted volume', (
     assert.equal(refused.status, 3);
     assert.equal(readFileSync(f.log, 'utf8'), 'flock -x -w 30 9\nreadlink -f /dev/disk/by-id/scsi-0DO_Volume_volume\n');
   } finally { rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('thaw replay recognizes an already thawed userspace freeze and preserves other failures', () => {
+  const f = fixture();
+  try {
+    writeFileSync(join(f.bin, 'findmnt'), '#!/bin/bash\n[[ "$*" = *FSTYPE ]] && { echo ext4; exit 0; }\nprintf "%s\\n" "51 /dev/disk/by-id/scsi-0DO_Volume_volume"\n', { mode: 0o755 });
+    assert.equal(f.run(['thaw', 'volume', '/cland/auth/codex-work']).status, 0);
+    for (const [message, status] of [
+      ['fsfreeze: /cland/auth/codex-work: unfreeze failed: Invalid argument', 0],
+      ['fsfreeze: /cland/auth/codex-work: unfreeze failed: Permission denied', 1],
+      ['fsfreeze: /cland/auth/other-work: unfreeze failed: Invalid argument', 1],
+      ['unfreeze failed: Invalid argument', 1],
+      ['', 1],
+    ] as const) {
+      writeFileSync(join(f.bin, 'fsfreeze'), `#!/bin/bash\nprintf '%s\\n' '${message}' >&2\nexit 1\n`, { mode: 0o755 });
+      const result = f.run(['thaw', 'volume', '/cland/auth/codex-work']);
+      assert.equal(result.status, status, result.stderr);
+      assert.equal(result.stdout, status === 0 ? 'already thawed by userspace\n' : '');
+      if (status !== 0) assert.equal(result.stderr, message ? message + '\n' : '');
+    }
+  } finally { rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('EINVAL on an unsupported or unobserved filesystem never confirms thaw', () => {
+  const f = fixture();
+  try {
+    writeFileSync(join(f.bin,'fsfreeze'), '#!/bin/bash\nprintf "fsfreeze: %s: unfreeze failed: Invalid argument\\n" "$2" >&2\nexit 1\n', {mode:0o755});
+    for (const observation of ['echo tmpfs', 'exit 1', 'echo ext4; echo tmpfs']) {
+      writeFileSync(join(f.bin,'findmnt'), `#!/bin/bash\nif [[ "$*" = *FSTYPE ]]; then ${observation}; else echo '51 /dev/disk/by-id/scsi-0DO_Volume_volume'; fi\n`, {mode:0o755});
+      const result = f.run(['thaw','volume','/cland/auth/codex-work']);
+      assert.equal(result.status,1);
+      assert.equal(result.stdout,'');
+      assert.match(result.stderr,/unfreeze failed: Invalid argument/);
+    }
+  } finally { rmSync(f.root,{recursive:true,force:true}); }
+});
+
+test('mount replacement after EINVAL refuses the already thawed userspace result', () => {
+  const f = fixture();
+  try {
+    const identity = join(f.root,'identity'); writeFileSync(identity,'51 /dev/disk/by-id/scsi-0DO_Volume_volume\n');
+    writeFileSync(join(f.bin,'findmnt'), `#!/bin/bash\n[[ "$*" = *FSTYPE ]] && { echo ext4; exit 0; }\nread -r row < '${identity}'\nprintf '%s\\n' "$row"\n`, {mode:0o755});
+    writeFileSync(join(f.bin,'fsfreeze'), `#!/bin/bash\nprintf '52 /dev/disk/by-id/scsi-0DO_Volume_volume\\n' > '${identity}'\nprintf 'fsfreeze: %s: unfreeze failed: Invalid argument\\n' "$2" >&2\nexit 1\n`, {mode:0o755});
+    const result = f.run(['thaw','volume','/cland/auth/codex-work']);
+    assert.equal(readFileSync(identity,'utf8'),'52 /dev/disk/by-id/scsi-0DO_Volume_volume\n','fsfreeze changed the mount before its EINVAL receipt');
+    assert.equal(result.status,3,result.stderr);
+    assert.equal(result.stdout,'');
+    assert.match(result.stderr,/mount identity changed/);
+  } finally { rmSync(f.root,{recursive:true,force:true}); }
+});
+
+test('lost thaw receipt replays through the helper and settles the snapshot release fence', {timeout:testWaitMs()}, async t => {
+  const owner = fixtureWork(t);
+  let database: DatabaseSync|undefined;
+  // This finalizer runs only after the original body and scheduler have joined.
+  // An incomplete bounded join retains the database together with its root.
+  owner.restore(() => database?.close());
+  return owner.run(async owned => {
+  const resources = await owned.acquire(async () => ({scheduler:undefined as LoginSnapshots|undefined}), async resource => {
+    await resource.scheduler?.close();
+  });
+  const root = await owned.root(async () => mkdtempSync(join(tmpdir(),'cland-auth-replay-')));
+  const f = await owned.step(() => fixture(root));
+  const db = await owned.step(() => database = new DatabaseSync(':memory:'));
+  const logins = new LoginRecords(db), clock = new FakeClock();
+  logins.useClock(clock);
+  logins.insert({name:'work',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId:'v',snapshotIds:[],lastSignIn:null});
+  logins.transition('work','ready');
+  const volume = {id:'v',name:'volume',project:'/project',region:'fake-1',sizeGiB:1,created:clock.now().toISOString(),attachedTo:'machine'};
+  const state = join(f.root, 'frozen'); writeFileSync(state, 'no\n');
+  writeFileSync(join(f.bin, 'findmnt'), '#!/bin/bash\n[[ "$*" = *FSTYPE ]] && { echo ext4; exit 0; }\nprintf "%s\\n" "51 /dev/disk/by-id/scsi-0DO_Volume_volume"\n', {mode:0o755});
+  writeFileSync(join(f.bin, 'fsfreeze'), `#!/bin/bash\nif [[ "$1" = -f ]]; then printf 'yes\\n' > '${state}'; exit 0; fi\nread -r frozen < '${state}'\nif [[ "$frozen" = yes ]]; then printf 'no\\n' > '${state}'; exit 0; fi\nprintf 'fsfreeze: %s: unfreeze failed: Invalid argument\\n' "$2" >&2\nexit 1\n`, {mode:0o755});
+  let loseReceipt = true; const outputs: string[] = [];
+  const host = {name:'host-a',loginDisk:async ({op,volume,path}:{op:string;volume:string;path:string})=>{
+    const result = f.run([op,volume,path]);
+    assert.equal(result.status,0,result.stderr); outputs.push(result.stdout);
+    if(op==='thaw' && loseReceipt){loseReceipt=false;throw Error('lost thaw receipt');}
+  }} as unknown as Host;
+  const provider = {snapshotVolume:async()=>({state:'snapshotted',snapshot:{id:'snapshot',volumeId:'v',created:clock.now().toISOString()}})} as unknown as HostProvider;
+  const scheduler = await owned.step(() => resources.scheduler = new LoginSnapshots({logins,clock,resolve:async()=>({host,volume,provider})}));
+    await owned.step(() => assert.rejects(scheduler.snapshot('work'),/lost thaw receipt/));
+    assert.equal(readFileSync(state,'utf8'),'no\n','native thaw completed before receipt loss');
+    let row = logins.get('work'); assert.ok(row?.kind==='disk' && row.backup?.freeze);
+    await owned.step(() => scheduler.beginRelease('work'));
+    assert.equal(outputs.at(-1),'already thawed by userspace\n');
+    row = logins.get('work'); assert.ok(row?.kind==='disk'); assert.equal(row.backup?.freeze,undefined);
+    // The detach owner supplies its own positive receipt before the release fence clears.
+    await owned.step(() => scheduler.onReleased('work',{volumeId:'v'}));
+    row = logins.get('work'); assert.ok(row?.kind==='disk'); assert.equal(row.backup?.releasing,false);
+  });
 });
 
 test('unmount observes writers gone and refuses a disk with persistent writers', () => {

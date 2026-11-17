@@ -635,6 +635,16 @@ Public cross-host relaunch admission uses the same checkout checkpoint policy be
 
 The root-owned helper accepts exactly `cland-auth mount|umount|freeze|thaw <volume-name> /cland/auth/<harness>-<login>`. Volume names match `[a-z][a-z0-9-]{0,63}`; the final path component matches `[a-z][a-z0-9]*-[a-z0-9][a-z0-9-]*`. `/cland/auth` stays root-owned and final symlinks are refused. Devices use DigitalOcean's `/dev/disk/by-id/scsi-0DO_Volume_<volume-name>` naming; another provider needs a matching helper device convention before using login disks. All operations hold one root-owned `/cland/auth/.operation.lock` with a 30 second acquisition bound. Existing mounted paths must belong to that volume; their mount ID and exact source are pinned and rechecked before each census, signal, freeze/thaw, permission change and unmount. Helper operations are the mount owner; concurrent administrative mount changes outside the helper are outside this ownership contract. Signals use fuser’s mountpoint-only `-M` safeguard. Missing, changed or ambiguous mount receipts refuse mutation, including unmount of an already absent mount. Mount waits at most 120 quarter-second device polls. Unmount first observes writers. If needed, it sends TERM, observes up to 20 quarter-second writer polls, then KILL and another 20 polls; remaining writers keep the disk mounted with a nonzero result. Freeze syncs before freezing; thaw unfreezes. A silent psmisc fuser census must first successfully detect the helper’s open lock file as a positive control; only a subsequent silent status 1 with no diagnostic counts as no users. Status 0 means users; other statuses, missing commands or census diagnostics fence the operation. Signal errors also fence it. Exit 2 means invalid arguments, 3 means missing/wrong/changed mount, 4 means persistent writers, 5 means lock contention and 6 means incomplete writer census or signal; the latter includes native status and bounded diagnostics. Other native command failures propagate their status.
 
+On cland-provisioned hosts the helper is the sole freeze owner; kernel-held freezes (Linux v6.8 fs/super.c), device-mapper snapshots, suspend/hibernate freezes and other FIFREEZE users are outside the host contract.
+
+Thaw replay on a validated ext4 mount exits 0 with `already thawed by userspace` only for util-linux fsfreeze's exit 1
+and complete C-locale `fsfreeze: <path>: unfreeze failed: Invalid argument`
+diagnostic. FSTYPE and mount ID/source are rechecked under the operation lock;
+unsupported or unknown filesystem types stay failures. This is a userspace thaw
+receipt, not proof of the absence of a kernel freeze holder. Other native failures keep their nonzero status. Existing path,
+volume and mount-identity checks run before fsfreeze. Hosts require an updated
+image or installed helper; a hub update alone leaves deployed helpers unchanged.
+
 Stub-script and rendering checks are documented in [cland-auth tests](tests/hub-test-cland-auth.test.ts.md) and [prelude tests](tests/hub-test-host-prelude.test.ts.md).
 
 ### Agent login-disk operation

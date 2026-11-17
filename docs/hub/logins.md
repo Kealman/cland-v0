@@ -333,6 +333,21 @@ provider keys are arguments. Refusals carry `bad-argument`, `busy`,
 Helper execution is checkpointed by the agent’s durable prepared-command owner before native launch. An incomplete native close retains that checkpoint and fences all new mutations across agent restart; recycling the host is required if native settlement cannot be proved. An unknown SSH outcome fences subsequent mutations on that Host; callers must
 reconcile the disk rather than blindly retrying.
 
+On cland-provisioned hosts this helper is the sole freeze owner: kernel-held freezes ([Linux v6.8 fs/super.c](https://github.com/torvalds/linux/blob/v6.8/fs/super.c#L1993-L2004)), device-mapper snapshots, suspend/hibernate freezes and other FIFREEZE users are outside the host contract.
+
+On a validated matching ext4 mount, `thaw` also succeeds with stdout `already thawed by userspace`
+when util-linux fsfreeze exits 1 with exactly its C-locale
+`fsfreeze: <path>: unfreeze failed: Invalid argument` diagnostic (FITHAW EINVAL).
+The helper observes FSTYPE and rechecks the mount ID/source under its operation
+lock before accepting that diagnostic. Unsupported or unknown filesystem types
+and other failures remain failures. This result means no userspace freeze held
+by cland remains; it does not prove the absence of a kernel freeze holder.
+The agent maps either successful thaw to its
+existing null reply; snapshot recovery clears the persisted freeze on that
+success, and the release owner clears its fence after confirmed detach.
+This behaviour requires a host image or installed helper containing the change;
+updating the hub alone does not replace `/usr/local/sbin/cland-auth` on existing hosts.
+
 Mount discovers existing device mount targets, including `/mnt` automounts,
 and drains each through the mount-ID/source fence before unmounting it.
 Discovery failure retains the mounts. It then mounts at the requested login

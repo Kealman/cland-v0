@@ -1,5 +1,19 @@
 # hub/test/cland-auth.test.ts
 
+Thaw replay tests drive a stateful fake fsfreeze through the helper and snapshot
+scheduler. A completed thaw with a lost receipt retains the freeze; replay's
+`already thawed by userspace` success removes it, and a separate detach receipt permits the
+release fence to clear. EINVAL controls cover unsupported, missing and ambiguous
+filesystem observations, wrong diagnostic paths and unrelated native failures.
+Only a matching ext4 FSTYPE receipt with a rechecked mount identity authorizes
+the EINVAL success. A mount-replacement regression changes the ID inside the
+fake fsfreeze before EINVAL; disabling the final check made it red. The async
+replay callback enters fixtureWork(t) before acquisition, adopts the root and
+SQLite/scheduler owners, and fences each asynchronous step under a test deadline;
+disposal joins scheduler and callback work before closing SQLite and removing
+the root. No real filesystem freeze semantics are measured; kernel-held freezes
+are outside the Coordinator's provisioned-host sole-freeze-owner scope.
+
 T3 executes a copy of `hub/src/host/cland-auth.sh` in a disposable root through `/bin/bash`. All external commands, including mount, umount, fsfreeze, process discovery and signals, are stubs in that root. The child environment is sealed by `fixtureEnvironment`; PATH contains only the stubs. Never use sudo or a real mount to run this test.
 
 Run `node --test hub/test/cland-auth.test.ts` with supported Node 24 and inherited `CLAND_*` removed. For the Logins stage, take the assigned native preservation slot. QA repeats it on the integrated stage head. Assertions check native exit receipts, refusal without external commands, freeze/thaw dispatch for a matching volume, wrong-volume refusal, writer drainage before unmount and refusal when writers persist. Each child has a `testWaitMs()` diagnostic timeout and is synchronously reaped before its scratch root is removed. Stubbed sleeps do not measure the production wait duration. No browser or provider API is used.

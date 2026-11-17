@@ -1,6 +1,7 @@
 #!/bin/bash
 # cland-auth mount|umount|freeze|thaw <volume-name> /cland/auth/<harness>-<login>
 # /cland/auth must remain root-owned. No operation follows a symlink mount point.
+# Provisioned hosts use this helper as sole freeze owner; kernel-held freezes (Linux v6.8 fs/super.c), device-mapper snapshots, suspend/hibernate and other FIFREEZE users are outside this host contract.
 set -eu
 [[ "$#" = 3 ]] || { echo 'expected operation, volume and mount point' >&2; exit 2; }
 op="$1"; vol="$2"; dir="$3"
@@ -119,5 +120,25 @@ case "$op" in
     rmdir "$dir" 2>/dev/null || true
     ;;
   freeze) admit_mount; sync; check_source; fsfreeze -f "$dir" ;;
-  thaw) admit_mount; check_source; fsfreeze -u "$dir" ;;
+  thaw)
+    admit_mount
+    check_source
+    status=0
+    message=$(LC_ALL=C fsfreeze -u "$dir" 2>&1) || status=$?
+    # util-linux reports FITHAW's EINVAL when no userspace freeze remains.
+    # Match its complete C-locale diagnostic and native exit, never a substring.
+    # EINVAL alone also covers filesystems without freeze support. Only ext4,
+    # at the same validated exact mount, supports this userspace-thaw receipt.
+    filesystem=''
+    if [[ "$status" = 1 && "$message" = "fsfreeze: $dir: unfreeze failed: Invalid argument" ]]; then
+      filesystem=$(findmnt -rn -M "$dir" -o FSTYPE) || filesystem=''
+      check_source
+    fi
+    if [[ "$status" = 1 && "$filesystem" = ext4 && "$message" = "fsfreeze: $dir: unfreeze failed: Invalid argument" ]]; then
+      echo 'already thawed by userspace'
+    else
+      [[ -z "$message" ]] || printf '%s\n' "$message" >&2
+      exit "$status"
+    fi
+    ;;
 esac

@@ -411,6 +411,17 @@ Role host pool settings use `[<role>.launch] pool` (default `local`) or
 `local`. Check syntax independently of pool existence; see
 [role pool defaults](../../../docs/hub/roles.md#role-host-pool-defaults).
 
+Login thaw replay uses the helper's exit-0 receipt, including `already thawed by userspace`
+for the exact util-linux C-locale FITHAW EINVAL diagnostic on a validated ext4
+mount with FSTYPE and mount identity rechecked under the operation lock. Provisioned
+hosts use the helper as sole freeze owner; kernel freeze holders (Linux v6.8
+fs/super.c), device-mapper snapshots, suspend/hibernate and other FIFREEZE users
+are outside that host contract. This receipt concerns cland's userspace freeze.
+The agent's null
+reply and Host's void result remain compatible; snapshot recovery removes its
+freeze after success and release still requires confirmed detach. Existing hosts
+need the updated image or installed helper; see docs/hub/logins.md.
+
 For project login work, use `HostRecords.logins` and isolated SQLite or projectHub
 fixtures. Authenticated web users can list, snapshot and remove logins, stop hosts,
 and start disk sign-ins through the card runner; users mode requires an admin.
