@@ -3,7 +3,7 @@ id: T-1915
 kind: task
 title: T2 files whose native CLI reads the hub lock, and other native calls in T2 found by T-1768's census, need a tier or a hermetic seam
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels: []
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-1588
 branch: t/T-1915-t2-files-whose-native-cli-reads-the-hub
 created: 2026-11-16T15:13:39.720Z
-updated: 2026-11-17T05:17:36.488Z
+updated: 2026-11-17T05:49:48.222Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ For each file, decide and apply one of: move to T3 (it exercises native lock beh
 
 - [x] C1. A shared hermetic CLI and fixture boundary replaces the native lock-identity read for T2. config-reload-component, config-set, hub-priority, hub-status-component and startup-ready-component use it and pass an enforce-mode T2 tripwire run with no native process call; or a file is in T3 with its reason recorded (test).
   - done: impl-1915 · 2026-11-17T05:14:42.575Z
+  - verified: rev-35 [reviewer] · run rev-35-1915-final-1 · 2026-11-17T05:49:47.736Z · commit 6e813ea91fe9dc8f8b62db176e2b40760087c5b9
 - [x] C2. The boundary has its own regression test: a T2 fixture using it cannot reach the real machine lock identity, and the five migrated files' assertions are unchanged (test).
   - done: impl-1915 · 2026-11-17T05:14:43.104Z
+  - verified: rev-35 [reviewer] · run rev-35-1915-final-1 · 2026-11-17T05:49:47.736Z · commit 6e813ea91fe9dc8f8b62db176e2b40760087c5b9
 
 ## Comments
 
@@ -85,3 +87,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Consolidated full source clear; A-20652. All3 A-20637 mediums resolved: serialized overlapping helper operations retain original environment/context, captured identity reaches cold projectHub acquisition, and new/extended callbacks own setup/body/acquisitions/CLI waits before resource/root/env restoration. Partial socket setup and hub close joined/idempotent. Production native defaults unchanged; original assertions/foreign/mute controls retained. A-20647 independently records53/53targetedT2 across5files at current head/tree with each native exit0 and explicit worker post-bootstrapT2/enforce receipt; cold metadata absent/present and overlap positives inspected apart from exits. Raw JSON/observer hashes match suppliedf7c49d.../d0dc07... . Typing/lint0/0refusals; advisories/native-signal/PID/stream/earlier masked-loop limits retained. Standards/Spec0 findings; C1/C2 unverified pending configured exact-head result. No dev merge, Reviewer runtime or final suite claim.
+
+### impl-1915 · 2026-11-17T05:46:46.405Z
+
+Configured same-head run fd531d09-f980-4b6e-9e2b-fbe1714e6e93 at 6e813ea91fe9dc8f8b62db176e2b40760087c5b9 returned auto exit0 / full fallback selection: 6557 pass, 0 fail/cancel/skip/todo. T0, T1, all fallback T2 and Web completed. A-20662 retains durable result/log. Executor droplet c-8 ams3, Linux x64 6.8.0-147-generic, Node24.21.0, Neovim0.12.5; browser Chrome Headless Shell / Chrome for Testing156.0.8078.4. Lifetime1166s/cost$0.0809, not test-only wall time. Named new identity/overlap and both cold-start cases have passing timing receipts. Configured resource/duration advisories are report-only; local five-file enforce evidence is separately A-20647. No T3/T4 execution claimed for this task receipt; hub result names T3 merge-batch coverage separately. Reviewer received same result automatically; awaiting final settlement, claim retained.
+
+### rev-35 · 2026-11-17T05:49:47.736Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1915-final-1
+commit: 6e813ea91fe9dc8f8b62db176e2b40760087c5b9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-20665. fd531d09/A-20662 matches reviewed6e813ea91, normalizedfbbcfb4c... . C1 current-head Darwin independent enforce53/53+worker acknowledgements/native exits in A-20647/48/49 combines with Linux configured five-file53/53. C2identity20391/overlap20396/cold absent27814/present27829 pass; new identity/overlap/present5/5proof20774/20749/28072. No matched five-file tier diagnostic; no blanket no-CLI-subprocess claim.6557ordinary/707file plus265load positives; T0/all224T1/all428T2/55Web green,269T3/17T4 unexecuted. Provenance37940 uncachedLinuxx64/Node24.21/Nvim0.12.5, actual browser35384 HeadlessShell1248/CfT156. Report-only advisories, scope split and historical/native-stream/PID/signal/scan limits retained. Standards/Spec0 findings; C1/C2 verified. No Reviewer runtime/edit or integrated/QA claim.
+
+Criteria: C1 verified, C2 verified.

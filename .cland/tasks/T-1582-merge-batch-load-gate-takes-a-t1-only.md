@@ -3,7 +3,7 @@ id: T-1582
 kind: task
 title: Merge batch load gate takes a T1-only batch as its T3 baseline and repeats every T3 test five times
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-1585
 branch: t/T-1582-merge-batch-load-gate-takes-a-t1-only
 created: 2026-11-01T10:39:22.454Z
-updated: 2026-11-17T05:14:39.921Z
+updated: 2026-11-17T05:50:51.690Z
 ---
 
 ## Summary
@@ -26,10 +26,13 @@ A merge batch's load gate repeats five times every T3 identity that is absent fr
 
 - [x] C1. A batch's load-gate baseline is the latest green receipt that actually ran each tier the batch runs: for T3 identities, a T1-only batch never counts as their baseline, while a green stage cover or T3 batch does (test).
   - done: impl-1582 · 2026-11-17T05:04:28.612Z
+  - verified: rev-35 [reviewer] · run rev-35-1582-final-1 · 2026-11-17T05:50:51.079Z · commit 436b18b8439cf85b62f78065ad9a25cd2319e587
 - [x] C2. With a newer green T1-only batch and an older green stage cover, a T1–T3 batch repeats only the T3 identities absent from the stage cover (test).
   - done: impl-1582 · 2026-11-17T05:04:29.373Z
+  - verified: rev-35 [reviewer] · run rev-35-1582-final-1 · 2026-11-17T05:50:51.079Z · commit 436b18b8439cf85b62f78065ad9a25cd2319e587
 - [x] C3. The batch summary line names the baseline run per tier, and the number of identities it repeats.
   - done: impl-1582 · 2026-11-17T05:04:29.911Z
+  - verified: rev-35 [reviewer] · run rev-35-1582-final-1 · 2026-11-17T05:50:51.079Z · commit 436b18b8439cf85b62f78065ad9a25cd2319e587
 
 ## Comments
 
@@ -76,3 +79,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Consolidated full source clear; A-20650. All3 A-20632 mediums resolved: prior same-tier files intersect current row.files before identity union, migration controls preserve current T3 authority; pure shared parser requires positive5/5 success/quarantine and keeps partial/start-only/ambiguous legacy completion unknown; pre-acquisition caseDeadlines owns full fake setup/body and collected cleanup. Coordinator2d5e64f8 explicitly approves native-free T1 owner without process-cleanup import. Nominal older-stage/T3-batch/newer-T1/red-T3, old selection and internal-provenance/pinned-confirmation design retained. Producer text unchanged; docs/skill match unknown/confirmed counts. A-20640 correction red controls then83/83T1+2/2pure, typing/lint0/0refusals remain precommit with raw/tree/native-signal/architecture/advisory limits; A-20628/A-20632 ledger retained. Standards/Spec0 findings; C1-C3 unverified pending exact-head configured evidence. No dev merge, Reviewer runtime or final suite claim.
+
+### rev-35 · 2026-11-17T05:50:51.079Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1582-final-1
+commit: 436b18b8439cf85b62f78065ad9a25cd2319e587
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-20666.6e67d41c/A-20663 exit0 matches clean436b18b84 and normalized145f5a57... . Stage/T3-batch baseline cases4466/4471 pass with5/5proof4246/4255, retaining migration/per-tier authority/report assertions; old-shape control4461 pass. Completion parser9199 passes/5/5proof9568 with unknown/skip/deduplication controls.83/83batchT1+2/2plan/parser; no matched changed-file tier diagnostic.6557ordinary/707file plus265load positives; T0/all224T1/all428T2/55Web green,269T3/17T4 unexecuted. Provenance37962 uncachedLinuxx64/Node24.21/Nvim0.12.5, actual browser35395 HeadlessShell1248/CfT156;1391s/$0.0966 provider interval distinct from test wall. Report-only advisories and historical precommit/raw/hash/native/scan limits retained. Standards/Spec0 findings; C1-C3 verified. T1policy proof is not nativeT3 or realbatch/QA proof; no Reviewer runtime/edit.
+
+Criteria: C1 verified, C2 verified, C3 verified.

@@ -3,7 +3,7 @@ id: T-1630
 kind: task
 title: Merge bisect blocks when the failing test file belongs to the omitted member
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1586
 branch: t/T-1630-merge-bisect-blocks-when-the-failing
 created: 2026-11-02T07:20:05.309Z
-updated: 2026-11-17T05:09:29.927Z
+updated: 2026-11-17T05:39:38.024Z
 ---
 
 ## Summary
@@ -32,10 +32,13 @@ A failing file that is absent from an omit candidate attributes the failure to t
 
 - [x] C1. A batch whose only failing file was added by one member drops that member with a reason naming the file and lands the others after their own run, with no blocked state (test).
   - done: impl-1630 · 2026-11-17T05:02:14.549Z
+  - verified: rev-35 [reviewer] · run rev-35-1630-final-1 · 2026-11-17T05:39:37.813Z · commit fb00b18811274c5de2ef9707f000f98fc8867edf
 - [x] C2. The blocked notice for a genuinely unrunnable candidate names the members and the recovery command (test).
   - done: impl-1630 · 2026-11-17T05:02:15.320Z
+  - verified: rev-35 [reviewer] · run rev-35-1630-final-1 · 2026-11-17T05:39:37.813Z · commit fb00b18811274c5de2ef9707f000f98fc8867edf
 - [x] C3. Cancelling a member of a blocked batch and re-enqueueing it leaves exactly one queue entry or batch membership for that head (test).
   - done: impl-1630 · 2026-11-17T05:02:15.892Z
+  - verified: rev-35 [reviewer] · run rev-35-1630-final-1 · 2026-11-17T05:39:37.813Z · commit fb00b18811274c5de2ef9707f000f98fc8867edf
 
 ## Comments
 
@@ -82,3 +85,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Consolidated source clear; A-20643. Both A-20630 mediums resolved: pure fixtureWork/late-hook joins fence four T1 callbacks before acquisition; public T2 uses caseDeadlines shared normal/signal owner, proxy hooks/root adoption and fenced body. Original nominal assertions retained. Frozen MERGE_USAGE now statically equals production exactly; only that block/two policy lines changed, exact compatibility/help assertions unchanged. Production/duration/docs/skill basis unchanged, no dev merge. A-20635 correction partial4T1/1T2, compatibility red→1/1green, CLI-help9/9, hub typing0 and reported lint0/0refusals remain precommit working-tree evidence with unknown raw/hash/native-signal/scan controls. Standards/Spec findings none; C1-C3 unverified test criteria pending configured same-head evidence. No Reviewer runtime or final verification claim.
+
+### impl-1630 · 2026-11-17T05:36:02.813Z
+
+Configured same-head receipt: run 108d24cb-1100-4c14-88d0-cfd78f7338b5, A-20656, head fb00b18811274c5de2ef9707f000f98fc8867edf / tree 0a88e91dbe5c61387121a6666d35a2a76751b123. Exit0; 6558 tests passed, zero fail/cancel/skip. T0, all T1, fallback all T2 and Web completed; no T3/T4 in this task run (remaining T3 deferred to batch/integrated coverage). Droplet Linux x64 6.8.0-147-generic, Node24.21, Neovim0.12.5; isolated Chrome Headless Shell / Google Chrome for Testing156.0.8078.4. New four merge-batches named cases have 5/5 load receipts; changed public same-head merge-queue case has a positive pass receipt. Duration/lint/budget findings are report-only, retained in the log, including merge-batches file 13.373s >10s. Droplet lifetime1375s, cost$0.0955. Source unchanged. Reviewer received same result and will settle final criteria/verdict.
+
+### rev-35 · 2026-11-17T05:39:37.813Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1630-final-1
+commit: fb00b18811274c5de2ef9707f000f98fc8867edf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-20660.108d24cb/A-20656 exit0 matches clean reviewedfb00b1881 and normalized0a88e91d... . C1file-owner/survivor policy pass4043/proof4277; C2present-file held notice4052/proof4224; C3running/held request cases4058/4065 with5/5proof4426/4489 and public case23536 pass. Frozen-help compatibility1135 pass; nominal/source assertions retained, no matched required-case tier diagnostic. Parsed6558ordinary/707file plus270load positives, nofail/cancel/skip; T0/all224T1/all428T2/55Web green,269T3/17T4 unexecuted. Provenance38008 uncachedLinuxx64/Node24.21/Nvim0.12.5, actual browser35438 HeadlessShell1248/CfT156. Delivered1375s/$0.0955 provider interval separate from test wall; report-only lint/budget/ratchet/skip advisories and historical provenance limits retained. Standards/Spec0 findings; C1-C3 verified. No Reviewer runtime, real production batch landing or integrated/QA claim.
+
+Criteria: C1 verified, C2 verified, C3 verified.

@@ -2,8 +2,8 @@
 id: T-1840
 kind: task
 title: The web connection clones the whole retained askCards map on every card delta and inbox publication
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1580
 branch: t/T-1840-the-web-connection-clones-the-whole
 created: 2026-11-12T22:58:19.834Z
-updated: 2026-11-17T04:58:58.686Z
+updated: 2026-11-17T05:58:25.725Z
+closed: 2026-11-17T05:58:25.725Z
 ---
 
 ## Summary
@@ -152,3 +153,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; A-20634. Run dab1cd92/A-20633 matches clean source-clear8387a4628 and normalized verification treeeaa269ba630b46a4d8b241da6f8497fd669017ba. C1 ordinary10851 plus five load passes/proof11111; C2 actual Inbox/Hosts/remote rendered-order case36029/file36033 pass; previous-wire case35627 pass. Doctor former blocker both token variants15779/15788/file15858 pass. Parsed6543ordinary test/707file passes, separate220load test/file positives, no failure/cancel/skip. T0/all224T1/all428T2 fallback/55Web exit0;269T3/17T4 unexecuted. Uncached Linuxx64/Node24.21/Nvim0.12.5 droplet; actual browser34979/provenance37543 HeadlessShell1248/CfT156.0.8078.4. Delivered accountingc8ams3,2workers1204s/$0.0836 is provider lifetime, not test wall. Report-only lint/budget/ratchet/skip checks and historical precommit/raw/hash/signal/scan limits retained. Older failed receipts remain historical incomplete results. Standards/Spec findings none; C1/C2 verified. No Reviewer runtime/edit or integrated/T3/T4/QA claim.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T05:58:25.725Z
+
+Merged 04d1f6a0f3a7ef4cfb6bea77cbf15cd80ffc74de onto dev.

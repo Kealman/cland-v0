@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1587
 branch: t/T-1848-the-suite-command-s-process-observer
 created: 2026-11-14T02:03:07.406Z
-updated: 2026-11-17T05:06:45.977Z
+updated: 2026-11-17T06:35:50.458Z
 ---
 
 ## Summary
@@ -27,9 +27,12 @@ A failed process inspection in the suite command's observer leaves one bounded, 
 ## Acceptance criteria
 
 - [x] C1. A fake inspector that fails N times then succeeds produces one deduplicated failure receipt with the count, and observation resumes on success without new ownership from failed rounds (test).
-  - done: impl-1848 · 2026-11-17T04:57:05.638Z
+  - verified: rev-35 [reviewer] · run rev-35-1848-final-1 · 2026-11-17T05:36:42.930Z · commit 0fa58ed98f7565c7b9d512835c73f0588959e6b2
+  - verified: rev-35 [reviewer] · run rev-35-1848-final-2 · 2026-11-17T06:19:29.570Z · commit 12d730d45aa8c33103459a6f1af8e8ea53a95cd0
+  - done: impl-1848 · 2026-11-17T06:35:25.551Z
 - [x] C2. A run whose inspection never succeeds reports, in its result, that descendants went unobserved past the named bound (test).
-  - done: impl-1848 · 2026-11-17T04:57:07.694Z
+  - verified: rev-35 [reviewer] · run rev-35-1848-final-2 · 2026-11-17T06:19:29.570Z · commit 12d730d45aa8c33103459a6f1af8e8ea53a95cd0
+  - done: impl-1848 · 2026-11-17T06:35:26.127Z
 
 ## Comments
 
@@ -68,3 +71,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Consolidated source clear; A-20641. Both A-20625 mediums resolved: finalized inspection is handed from suiteCommand finally to worker before normal return/original cleanup rejection, preserving code/cause/authority and atomic result persistence; ownedMocks/fixtureWork joins full admitted body plus command/worker before stream/root/mock disposal. New regression reads actual durable worker result after periodic+terminal inspection failures and checks original outcome plus crossed5000ms bound. Existing summaries/recovery/prior-proof and compatibility assertions retained. A-20631 native targeted25/25T2+2/2T1, typing/lint0/0refusals and candidate-tree claim match committed1ce907...; note SHA256 independently matches8ad503... . Earlier raw/native-signal/scan-control limits retained, other consumers explicitly deferred, no configured/Web/T3/T4/load proof. Standards/Spec findings none; C1/C2 unverified test criteria pending exact-head configured result. No dev merge, Reviewer runtime or final verification claim.
+
+### rev-35 · 2026-11-17T05:37:46.102Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1848-final-1
+commit: 0fa58ed98f7565c7b9d512835c73f0588959e6b2
+scope: evidence
+findings: [{"severity":"medium","text":"Configured report33314 enters execFile's native promisify.custom wrapper from worker checkHead. The callback mock does not replace/clear that symbol, so native delegation is not excluded and the fake-only durable-result regression is not isolated. Lead confirms no other interception owner; repair callback/custom seam while retaining atomic-result assertions.","file":"hub/test/suite-command.test.ts","line":185}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Final review not clear despite configured01e7e8c7/A-20655 exit0; A-20658. I missed the native custom-promisifier route in source review; callback mock alone cannot dismiss report33314 as false positive. C1 independently verified from recovery28291/28299 plus5/5 proofs28415/28529; C2 normal summary28303 and actual durable result28295 pass but fixture isolation unproven. No production metadata regression or credential exposure inferred.6558ordinary/707file positives plus270load positives; T0/all224T1/all428T2/55Web green,269T3/17T4 unexecuted. Provenance38039 pins normalizedda07ceeb..., uncachedLinuxx64/Node24.21/Nvim0.12.5; actual browser35446 HeadlessShell1248/CfT156. Report-only diagnostics/budgets/skip checks and earlier raw/native/hash/scan limits retained. Fix both callback/custom fake paths, fresh source review before further verification. No Reviewer runtime/edit.
+
+Criteria: C2 failed (Green worker-result assertions do not establish the fake-only boundary: retained custom-promisifier stack bypasses the callback mock; native delegation exclusion is unproved.).
+
+### rev-35 · 2026-11-17T05:47:34.803Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1848-source-3
+commit: 12d730d45aa8c33103459a6f1af8e8ea53a95cd0
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Custom-route correction source clear; A-20664. A-20658 medium resolved by replacing entire execFile binding with own callback/custom fake, positive synthetic inherited-custom control/count1, explicit callback/custom counters and fail-fast native ChildProcess.spawn guard. Whole body/worker joins and original atomic-result assertions retained; restoration covers manual binding and ESM. Production unchanged, two test/guide paths only, no dev merge. A-20661 preserves incomplete first control, deterministic24/25red then instrumented/final25/25green; evidence hash matches109f2c... . Final lint0/0refusals now123report findings60files/tier-process9 includes synthetic control; typing predates comment only. Raw/native/scan limits retained. Standards/Spec0 findings. Both C1/C2 unverified at changed head; prior C1 mark stale and old green A-20655 not new-head proof. Request new Coordinator window; no Reviewer runtime/edit or final configured claim.
+
+### rev-35 · 2026-11-17T06:19:29.571Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1848-final-2
+commit: 12d730d45aa8c33103459a6f1af8e8ea53a95cd0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Same-head final evidence clear; A-20697 reconciles A-20692/run e5297f8d with current source clearance A-20664. Head/source tree unchanged; normalized verification tree 397655c793ae40be93ac5903963288a94e791d4a, uncached Linux x64 droplet/Node24.21.0, actual isolated Headless Shell1248 / Chrome for Testing156.0.8078.4. T0/T1/all-T2 fallback/Web exit0. Semantic census6558 ordinary test passes/707 files, separate270 load passes; all224 T1/428 T2/55 Web files complete;269 T3/17 T4 unexecuted. All four required inspection identities have ordinary pass plus5/5 load proofs. Durable-result case positively asserts synthetic native boundary/custom and callback fake counters plus atomic receipt across cleanup rejection; no own-case tier warning. Structured warning comparison: no added rows, old own warning removed;64 unrelated report-only rows retained. Test lint123/60, timing/ratchet/skip checks remain report-only; no skips/missing skip reasons. C1/C2 verified at this exact head. No findings or new Reviewer runtime/probe/edit; historical local/incomplete/old-head limitations retained.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-17T06:21:52.222Z
+
+Rule 36 preflight (coord, 06:20Z): head 12d730d45 merged with origin/dev conflicts in suite-worker.ts, suite-command.ts, suite-log.ts and suite-command.test.ts. Not enqueued. Requested a dev merge (rule 11), a fresh review and a new verify. T-1850 shares suite-worker code, so the two are serialized.

@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-17T01:31:58.101Z
+updated: 2026-11-17T05:27:42.154Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -622,3 +622,11 @@ Coord re-exec after a Claude Code auto-update (2026-11-16 23:03:13Z, 2.1.325 →
 ### human · 2026-11-17T01:31:58.101Z
 
 Hub restart #80 (2026-11-17 01:28:45Z, stand-in, launchd). Reason: T-1924 (f25977d1d, timed-out Claude deliveries become uncertain), T-1922 (c74b7141f, pgrep failure no longer read as no processes), T-1927 (297243fd9, verify admission deadline) on dev; coord go with two remote runs waived (batch fd43c35f past host T0, impl-1700). Gate: dev=origin/dev=297243fd9, root clean, no local run, load 4.1. Stop: launchctl remove cland-hub-r79 → hub 1948 gone in 1 s. Serve: launchctl submit cland-hub-r80 → listening 01:28:58Z, restoring sessions 01:29:48Z, serving 01:29:52Z. Gap stop→serve 67 s (50 s of it before 'restoring sessions'). New hub 96298, port 60359, web 56935, nice 0, ppid 1, env check 2, /opt/homebrew/bin on PATH, one launchd job. Coord 72123: bridge-connected 01:29:52Z → session-resumed → hello and coordinator-filled 01:30:17Z → injected 01:30:17Z; no relaunch. Both remote runs survived (watchdogs alive); merge queue answered at once with batch 08f9791f. T-1924 check: zero inject-unconfirmed events for coord after this start (195 at restart #79); coord's 79 'delivered' rows were still present 2.5 min after serving. doctor 36 ok 7 warn 0 fail.
+
+### human · 2026-11-17T05:20:14.341Z
+
+Hub restart #81 (2026-11-17 05:18:50Z, stand-in, launchd). Reason: coord go onto the covered dev tip (hub/nvim/web/shared identical to batch a882d98f's tree): T-1924 drain, T-1922, T-1927, T-1925, T-1921, T-1864, T-1767, T-1586, T-1576, T-1700. I waited until merge batch 7aab2910's run 67dd1a0d was on droplet cland-v0-02e8ea65 past its host T0; three remote runs waived (that batch, T-1848 01e7e8c7, T-1630 108d24cb). Stop: launchctl remove cland-hub-r80 → hub 96298 gone in 3 s. Serve: launchctl submit cland-hub-r81 → listening 05:19:13Z, serving 05:19:18Z. Gap stop→serve 29 s (restoring sessions took 5 s; 38–50 s on the previous three starts). New hub 58279, port 62080, web 56935, nice 0, ppid 1, env check 2, /opt/homebrew/bin on PATH, one launchd job; DIGITALOCEAN_TOKEN still from the shell rc (ask e79b22c7 unanswered). Coord 72123: bridge-connected 05:19:18Z → session-resumed → hello and coordinator-filled 05:19:21Z → injected 05:19:22Z. All three remote runs alive (watchdogs alive), merge queue holds batch 7aab2910. doctor 36 ok 7 warn 0 fail.
+
+### coord · 2026-11-17T05:27:42.154Z
+
+Incident 2026-11-17 about 05:26–05:27Z, seven minutes after hub restart #81 (pid 58279, unchanged throughout). Several sessions lost their hub connection at once: coord's bridge reconnected and its role clause was re-sent at 05:26:26Z, impl-1915's send timed out with unknown delivery, and impl-1931's artifact.create failed with WebSocket close 1006 (it retried successfully as A-20653). No runs were lost; all five remote runs stayed alive. Cause not diagnosed. Candidates: post-restart catch-up load (79 uncertain deliveries), or a stall on the hub's event loop.
