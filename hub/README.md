@@ -10,6 +10,9 @@ receipts and timeout execution inventories are described
 in [Running](../docs/hub/running.md#soak-deadline-accounting).
 Merge batch baselines select green receipts per executed tier; see
 [Running](../docs/hub/running.md) for summary provenance and repetition counts.
+That reference also describes same-run host-check retries: a later pass with
+matching tree and command supersedes an aborted attempt while retaining its log
+and notice evidence; unmatched interruptions keep the batch inconclusive.
 The [logins reference](../docs/hub/logins.md) also covers terminal renewal of an
 existing disk with `cland login signin`, binding-preserving admission and the
 24-hour one-sign-in hint.

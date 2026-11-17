@@ -13,7 +13,7 @@ import type { Suites, SuiteJob } from './suites.ts';
 import { failingTests } from './shared-defects.ts';
 import type { TopicNotice } from './core.ts';
 import { recordBatchFlakes } from './batch-flakes.ts';
-import { verificationStepLabel, verificationStepResults, type VerificationStep } from '../verification-plan.ts';
+import { verificationStepLabel, verificationStepResults, verificationInterrupted, type VerificationStep } from '../verification-plan.ts';
 import { MergeError, MergeLintReadError } from '../merge.ts';
 import type { LogFn } from '../log.ts';
 
@@ -64,9 +64,9 @@ export class BatchRefusal extends Error {
   constructor(entry: MergeQueueEntry, reason: string) { super(reason); this.entry = entry; this.reason = reason; }
 }
 /** Completed gate steps and measured, file-addressable failures drive diagnosis. */
-function batchFailures(log: string): { failures: string[]; budgetLines: string[]; steps: VerificationStep['name'][] } {
+function batchFailures(log: string, owner?: { id?: string; tree?: string | null }): { failures: string[]; budgetLines: string[]; steps: VerificationStep['name'][] } {
   const failures = new Set(failingTests(log));
-  const steps = [...new Set(verificationStepResults(log).filter(step => (step.name === 'check' || step.name === 'Web') && step.code !== 0).map(step => step.name))];
+  const steps = [...new Set(verificationStepResults(log, owner).filter(step => !step.superseded && (step.name === 'check' || step.name === 'Web') && step.code !== 0).map(step => step.name))];
   for (const step of steps) failures.add(verificationStepLabel(step));
   const budgetLines = new Set<string>();
   for (const line of log.replace(/\x1b\[[0-9;]*m/g, '').split('\n')) {
@@ -79,17 +79,17 @@ function failureText(evidence: { failures: string[]; budgetLines?: string[] }): 
   return [evidence.failures.join(', '), ...evidence.budgetLines ?? []].join('\n');
 }
 /** Executor interruption and absence of an observed test failure cannot prove a red alternative. */
-export function diagnosticResult(job: Pick<SuiteJob, 'state' | 'outcome' | 'cancelled' | 'requesterDied' | 'timedOut' | 'cached'>, log: string, steps: VerificationStep['name'][] = []): DiagnosticResult {
-  const results = verificationStepResults(log);
+export function diagnosticResult(job: Pick<SuiteJob, 'state' | 'outcome' | 'cancelled' | 'requesterDied' | 'timedOut' | 'cached'> & Partial<Pick<SuiteJob, 'id' | 'tree'>>, log: string, steps: VerificationStep['name'][] = []): DiagnosticResult {
+  const results = verificationStepResults(log, job).filter(step => !step.superseded);
   if (job.cancelled || job.requesterDied || job.timedOut || job.cached || job.state !== 'finished' || !job.outcome
-    || !Number.isInteger(job.outcome.code) || [124, 130, 137, 143].includes(job.outcome.code)
-    || results.some(step => [124, 130, 137, 143].includes(step.code))
+    || !Number.isInteger(job.outcome.code) || verificationInterrupted(job.outcome.code)
+    || results.some(step => verificationInterrupted(step.code))
     || /cancelled|abandon|unknown|remote machine lost|worker disappeared|without an exit receipt|lifetime expired/i.test(job.outcome?.cause ?? '')) {
     return { result: 'inconclusive', reason: job.outcome?.cause || 'aborted or unavailable worker result' };
   }
   if (job.outcome.code === 0) return steps.every(name => results.some(step => step.name === name && step.code === 0) && !results.some(step => step.name === name && step.code !== 0))
     ? { result: 'green' } : { result: 'inconclusive', reason: 'missing passing step receipt' };
-  try { if (batchFailures(log).failures.length) return { result: 'red' }; } catch { /* malformed evidence is inconclusive */ }
+  try { if (batchFailures(log, job).failures.length) return { result: 'red' }; } catch { /* malformed evidence is inconclusive */ }
   return { result: 'inconclusive', reason: 'no failing-test receipt' };
 }
 export class MergeBatches {
@@ -207,7 +207,7 @@ export class MergeBatches {
     const original = diagnosticResult(evidence.job, evidence.log, requiredSteps);
     if (batch.reportedRun !== job.id) {
       const tiers = job.selection?.tiers?.join(', ') || 'unavailable';
-      const steps = verificationStepResults(evidence.log).map(step => `${verificationStepLabel(step.name)}: exit ${step.code}; duration ${step.seconds} s`);
+      const steps = verificationStepResults(evidence.log, evidence.job).map(step => `${verificationStepLabel(step.name)}: exit ${step.code}; duration ${step.seconds} s${step.superseded ? ' (superseded aborted attempt)' : ''}`);
       const log = this.store.resolveArtifact(evidence.job.artifact ?? '');
       const baseline = evidence.job.selection?.loadGateBaseline;
       const runs = evidence.job.batchBaselineRuns;
@@ -215,7 +215,7 @@ export class MergeBatches {
       const repeated = loadGateCompletionSummary(evidence.log);
       this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs == null ? 'unavailable' : job.runMs + ' ms'}; exit ${job.outcome.code}; batch interaction ${JSON.stringify(batchInteractionSummary(evidence.job.selection?.batchInteraction))}; load gate baselines ${baselines}; repeated identities ${repeated.unknown ? 'unknown' : repeated.complete} (confirmed complete ${repeated.complete}; completion unknown ${repeated.unknown}); log ${log?.id ?? 'unavailable'}: ${log?.path ?? 'unavailable'}\n${steps.join('\n')}\n${batch.candidate.budgetLines.join('\n')}`);
       if (batch.confirmation) this.boundary.report(batch,
-        `Diagnosis confirmation of ${batch.confirmation.original}: skipped files (no execution receipt): ${skippedFilesText(batch.confirmation.skipped)}; covering run ${job.id}; tree ${job.tree}; exit ${job.outcome.code}; ${original.result === 'green' ? 'full plan green' : original.result}\n${failureText(batchFailures(evidence.log))}`, 'confirmation');
+        `Diagnosis confirmation of ${batch.confirmation.original}: skipped files (no execution receipt): ${skippedFilesText(batch.confirmation.skipped)}; covering run ${job.id}; tree ${job.tree}; exit ${job.outcome.code}; ${original.result === 'green' ? 'full plan green' : original.result}\n${failureText(batchFailures(evidence.log, evidence.job))}`, 'confirmation');
       batch.reportedRun = job.id; this.#save(batch);
     }
     if (original.result === 'inconclusive') {
@@ -231,7 +231,7 @@ export class MergeBatches {
     let candidate: BatchCandidate | undefined = batch.candidate;
     if (job.outcome.code !== 0) {
       if (batch.members.length === 1) {
-        this.boundary.drop(batch.members[0]!, `merge-bisected: ${failureText(batchFailures(evidence.log))}`);
+        this.boundary.drop(batch.members[0]!, `merge-bisected: ${failureText(batchFailures(evidence.log, evidence.job))}`);
         await this.#cleanup(batch); this.#save(null); return;
       }
       candidate = await this.#diagnose(batch);
@@ -241,7 +241,7 @@ export class MergeBatches {
       {
         const progress = suiteProgress(evidence.log, 0, { fileEnvelopes: true });
         const observed = new Set([...(progress?.completed ?? []), ...(progress?.unfinished ?? [])].map(row => row.file));
-        for (const identity of batchFailures(evidence.log).failures) observed.add(identity.split('::')[0]!);
+        for (const identity of batchFailures(evidence.log, evidence.job).failures) observed.add(identity.split('::')[0]!);
         // Only the admitted package planner's retained file list establishes
         // inventory. Empty/absent plans cannot enumerate custom test commands.
         const selected = evidence.job.tierPlan?.flatMap(row => row.files);
@@ -324,7 +324,7 @@ export class MergeBatches {
   async #diagnose(batch: MergeBatch): Promise<BatchCandidate | undefined> {
     if (!batch.diagnosis) {
       const { job, log } = await this.suites.receipt(batch.run!);
-      const { failures, budgetLines, steps } = batchFailures(log);
+      const { failures, budgetLines, steps } = batchFailures(log, job);
       if (!failures.length) { batch.failed = `suite ${batch.run} failed without identifiable test files`; this.#save(batch); return; }
       const artifact = this.store.resolveArtifact(job.artifact!);
       if (!artifact) throw new Error('batch failure log artifact unavailable');

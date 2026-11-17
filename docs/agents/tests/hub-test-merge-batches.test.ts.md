@@ -1,5 +1,14 @@
 # hub/test/merge-batches.test.ts
 
+Restarted host-gate coverage closes Suites while its fake host check is held,
+releases an exit-143 receipt, then reopens the controller and Suites against the
+disposable store. The same run must execute a second host attempt and land all
+members after a green worker receipt. No native hub, worker or provider runs.
+Binding controls retain inconclusive results for missing, earlier, legacy and
+different-run/tree/command passes; the notice retains the aborted duration and
+labels supersession. Existing same-head re-enqueue controls cover retained batch
+membership without a recovery command.
+
 Missing-file attribution uses a candidate checkout with a real absent file and
 manifest, through Suites admission and fake executor receipts. Assert the
 owner's file-naming drop, no blocked state, and a fresh survivor run before

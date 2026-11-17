@@ -6,11 +6,29 @@ export type VerificationStep = { name: 'check' | 'test' | VerificationTier; comm
 export type TierCommands = { prepare: string; check: string; test: string; tiers?: Partial<Record<VerificationTier, string>>; plan?: VerificationStep[] };
 
 export const verificationStepLabel = (name: VerificationStep['name']): string => name === 'check' ? 'T0' : name;
+export const verificationInterrupted = (code: number): boolean => [124, 130, 137, 143].includes(code);
 
 /** Completed command receipts, shared by batch diagnosis and its result report. */
-export function verificationStepResults(log: string): { name: VerificationStep['name']; code: number; seconds: number }[] {
-  return [...log.matchAll(/^tier (T[0-4]|Web): exit (\d+); duration (\d+(?:\.\d+)?) s; output tail:.*$/gm)]
-    .map(([, name, code, seconds]) => ({ name: name === 'T0' ? 'check' : name as VerificationTier, code: Number(code), seconds: Number(seconds) }));
+export function verificationStepResults(log: string, owner?: { id?: string; tree?: string | null }) {
+  const results = [...log.matchAll(/^(?:verification step binding (.*)\n)?tier (T[0-4]|Web): exit (\d+); duration (\d+(?:\.\d+)?) s; output tail:.*$/gm)]
+    .map(([, binding, name, code, seconds]) => {
+      let identity: { run: string; tree: string; command: string } | undefined;
+      try {
+        const value = JSON.parse(binding ?? 'null');
+        if (value && typeof value.run === 'string' && typeof value.tree === 'string' && typeof value.command === 'string' && value.command) identity = value;
+      } catch { /* Older or malformed bindings grant no supersession. */ }
+      return { name: name === 'T0' ? 'check' as const : name as VerificationTier, code: Number(code), seconds: Number(seconds), identity, superseded: false };
+    });
+  const passed = new Set<string>();
+  for (let index = results.length - 1; index >= 0; index--) {
+    const result = results[index]!;
+    const binding = result.identity;
+    if (!binding || binding.run !== owner?.id || binding.tree !== owner?.tree) continue;
+    const key = JSON.stringify([result.name, binding.run, binding.tree, binding.command]);
+    if (verificationInterrupted(result.code)) result.superseded = passed.has(key);
+    if (result.code === 0) passed.add(key);
+  }
+  return results;
 }
 
 /** Pin the executable tier plan beside the commands resolved at admission. */

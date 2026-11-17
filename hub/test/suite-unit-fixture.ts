@@ -116,6 +116,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_RUN_POLL_MS: '1', CLAND_TEST_DROPLET_MACHINE_MS: '20', CLAND_TEST_DROPLET_RELEASE_MS: '20',
     ...controls, CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'),
   }), { token, api: api.provider }, api.provider);
+  let hostGate = async (run: RunRef) => ({ tree: run.tree ?? null, command: 'npm run typecheck', code: 0 });
   const make = () => new Suites(store, root, async (job, checkpoint) => {
     await beforeReport(job);
     const artifact = store.registerArtifact(id => ({ id, title: job.id, kind: 'file', path: job.log, creator: 'hub', time: clock.now().toISOString(), topic: job.topic, status: 'shared' }), () => {});
@@ -127,7 +128,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     tree: async () => candidate.tree,
     inspect: async () => { await inspectBarrier(); return { ...structuredClone(candidate), tierPlan: [], budgetBase: undefined }; },
   }, projectConfig: () => config,
-  dropletServices: { ...machine.dependencies, api: api.provider, hostGate: async run => ({ tree: run.tree ?? null, command: 'npm run typecheck', code: 0 }) },
+  dropletServices: { ...machine.dependencies, api: api.provider, hostGate: run => hostGate(run) },
   log: entry => { logs.push(entry); publish(); }, onFallback: job => { notices.push(job.id); publish(); }, onShardingSkipped: (_job, cause) => { shardingNotices.push(cause); publish(); }, onJob: publish, onQueue: publish, ...options, env });
   let suites = make();
   partial.push(() => suites.close());
@@ -193,6 +194,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   }
   return { root, env, clock, api, machine, acquisitions, candidate, ancestry, logs, notices, shardingNotices, reports, delivered, receipts, when, launch, tick, result, status, finish, reopen, close,
     ownIO(release: () => void) { releases.add(release); },
+    hostGate(gate: typeof hostGate) { hostGate = gate; },
     get suites() { return suites; }, get store() { return store; }, get config() { return config; },
     beforeReport(barrier: typeof beforeReport) { beforeReport = barrier; },
     beforeInspect(barrier: () => Promise<void>) { inspectBarrier = barrier; },

@@ -524,6 +524,10 @@ Re-enqueue of the same branch/head/base rejoins a retained batch request. A
 running batch keeps its evidence; recovery of a held batch requires a fresh run
 after worker drainage. See [Running](../hub/running.md) for missing-file
 attribution and the recovery commands printed in held notices.
+Host-check retries after shutdown retain the same run. Only a later passing
+receipt bound to that run, tree and command supersedes an aborted attempt;
+legacy unbound or unmatched interruptions remain inconclusive. Logs retain the
+attempts, and batch notices label the superseded exit and duration.
 
 Enqueue's advisory `merge-demo-warning` names open epics with running or due
 demos and the overlapping landed files; it goes to the candidate's topic and

@@ -494,6 +494,14 @@ to the human and the Coordinator; reap requires the token.
 
 #### Run and result
 
+A host check interrupted by hub shutdown can rerun under the same admitted run.
+Each new T0 receipt records its run, candidate tree and command. Batch settlement
+ignores an interrupted attempt only after a later passing receipt with all three
+bindings equal. The raw log retains both attempts and a supersession note; the
+batch notice labels the aborted exit and duration as superseded. An unbound
+legacy interruption, an unmatched retry or an interruption without a later pass
+still holds the batch as inconclusive. Ordinary failing receipts remain failures.
+
 Before acquiring a droplet, the hub runs the recorded check command at the
 submitted head on the host (`Host gate: <command>`). A failure posts
 `host check failed (exit <n>); no droplet created`; an unset check logs

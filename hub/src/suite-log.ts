@@ -55,7 +55,7 @@ export async function retainedLoadProofs(path: string): Promise<string[]> {
  */
 const evidence = /^(?:suite (?:inspection |infrastructure: |execution summary |web phase |browser |provenance |timing |progress |skip |interruption |stall |test failures |quarantine |admission timeouts |machine health |duration |budget overhead |command excerpt )|(?:#|ℹ) (?:tests|pass|fail|cancelled|skipped|todo) \d+\s*$|\s*not ok \d+|✖ |test at |duration (?:budget:|regression |check:|allowance stanza )|shard[- ]|verification queue wait |total cost |occasion |--- close shards ---|(?:unexecuted|incomplete) tier |tier |typecheck: |load gate|quarantine load gate: |test lint |budget|T3 ratchet)/;
 function semanticEvidence(line: string): boolean {
-  return evidence.test(line) || SOAK_RUNNER_STARTED.test(line);
+  return line.startsWith('verification step binding ') || evidence.test(line) || SOAK_RUNNER_STARTED.test(line);
 }
 export class SuiteLogEvidence {
   readonly #records: string[] = [];

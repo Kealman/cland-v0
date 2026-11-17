@@ -140,6 +140,10 @@ supported version. This warning does not replace cover-quiet admission.
 
 Landing test-lint read failures retry three times, then retain batch membership and green evidence under `merge-git` for automatic retry, including after restart. Genuine lint findings still drop their member. See `docs/hub/running.md`.
 
+After shutdown, a later passing host-check receipt supersedes an aborted attempt
+only at the same run, tree and command. Retain both attempts in log and notice;
+unbound legacy interruptions stay inconclusive. No recovery command is added.
+
 Run typechecking and targeted single test files while implementing. Merge batches run T0 before configured tiers and add Web after T1 for web/ diffs; use the receipt/bisection seams in `docs/agents/tests.md#queued-merge-batches` for changes there. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
 
 For README/docs edits, follow [documentation placement](../../../docs/agents/documentation.md).

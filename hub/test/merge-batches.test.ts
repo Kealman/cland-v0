@@ -35,6 +35,11 @@ function joinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureS
   return owner.run(step => body(fixtures, step));
 }
 
+function boundedJoinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep) => Promise<void>) {
+  const scope = caseDeadlines(t);
+  return scope.wait('fixture setup and receipt assertions', () => joinedCase(scope.fixtures, body));
+}
+
 test('batch and periodic failing-file selections round-trip to exactly the requested package files', async t => {
   // T1: real Suites admission, transport decoder and package planner; no worker needed.
   const f = await suiteUnit(t);
@@ -91,6 +96,60 @@ const failureLog = 'suite test failures [{"file":"hub/test/example.test.ts","nam
 const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/example.test.ts","name":"rejects stale input","at":1,"nesting":0,"outcome":"pass","seconds":0.01}\nsuite test failures []\n# tests 1\n# pass 1\n';
 const t0Green = 'tier T0: exit 0; duration 1 s; output tail: static checks passed\n';
 const t0Red = 'tier T0: exit 2; duration 1 s; output tail: error TS2344\n';
+
+test('a bound passing retry supersedes an aborted host attempt and keeps its history', t => boundedJoinedCase(t, async (fixtures, step) => {
+  const state = await step(() => fixture(fixtures));
+  const { f, landed, reports } = state;
+  await step(() => state.runner.tick());
+  const run = f.suites.status()[0]!;
+  await step(() => state.reopen());
+  const binding = `verification step binding ${JSON.stringify({ run: run.id, tree: f.candidate.tree, command: 'npm run typecheck' })}\n`;
+  await step(() => f.finish(run.id, 0, binding + 'tier T0: exit 143; duration 35.33 s; output tail: host check\n' + binding + t0Green + passLog));
+  await step(() => state.runner.tick());
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3'], reports.join('\n') + await step(() => f.log(run.id)));
+  assert.match(reports.join('\n'), /T0: exit 143; duration 35.33 s.*superseded/);
+  assert.match(await step(() => f.log(run.id)), /tier T0: exit 143; duration 35.33 s/);
+}));
+
+test('stopping during a host gate resumes the same batch run and lands after its green retry', t => boundedJoinedCase(t, async (fixtures, step) => {
+  const state = await step(() => fixture(fixtures));
+  const { f, landed, reports } = state;
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  let attempts = 0;
+  f.ownIO(() => release.resolve());
+  f.hostGate(async run => {
+    if (++attempts === 1) { entered.resolve(); await release.promise; }
+    return { tree: run.tree ?? null, command: 'true', code: attempts === 1 ? 143 : 0 };
+  });
+  const admission = state.runner.tick();
+  await step(() => f.machine.waits.run(entered.promise));
+  const run = f.suites.status()[0]!;
+  const stopping = f.suites.close();
+  release.resolve();
+  await step(() => stopping);
+  await step(() => admission);
+  await step(() => state.reopen());
+  await step(() => f.tick());
+  await step(() => state.runner.tick());
+  await step(() => f.finish(run.id, 0, passLog));
+  await step(() => state.runner.tick());
+  assert.equal(attempts, 2);
+  assert.equal(f.suites.status().length, 1);
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3'], reports.join('\n'));
+  assert.match(reports.join('\n'), /T0: exit 143; duration .*superseded aborted attempt/);
+  assert.match(await step(() => f.log(run.id)), /Host gate retry superseded aborted attempt:.*exit 143/);
+}));
+
+test('aborted receipts stay inconclusive without a later pass bound to their run tree and command', () => {
+  const job = { id: 'run', tree: 'tree', state: 'finished' as const, outcome: { code: 0, cause: 'complete' } };
+  const bound = (run: string, tree: string, command: string, receipt: string) => `verification step binding ${JSON.stringify({ run, tree, command })}\n${receipt}`;
+  const aborted = bound('run', 'tree', 'check', 'tier T0: exit 143; duration 35 s; output tail: stop\n');
+  for (const later of ['', t0Green, bound('other', 'tree', 'check', t0Green), bound('run', 'other', 'check', t0Green), bound('run', 'tree', 'other', t0Green)]) {
+    assert.equal(diagnosticResult(job, aborted + later, ['check']).result, 'inconclusive');
+  }
+  assert.equal(diagnosticResult(job, bound('run', 'tree', 'check', t0Green) + aborted, ['check']).result, 'inconclusive');
+  assert.equal(diagnosticResult(job, aborted.replace('T0:', 'T1:') + t0Green, ['check']).result, 'inconclusive');
+});
 
 test('an omitted member owning the absent failing file is dropped and survivors run before landing', t => joinedCase(t, async (fixtures, step) => {
   const { f, runner, boundary, dropped, landed, reports } = await step(() => fixture(fixtures));
