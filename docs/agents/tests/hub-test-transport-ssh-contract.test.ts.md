@@ -10,9 +10,11 @@ the carrier, host run directory, endpoint exchanges, a carrier-drop operation
 and native no-TCP inspection. It owns setup and complete resource drainage.
 `outbound` remains unsupported in 0.4.0; this suite adds no carrier or runtime gate.
 
-The contract requires all four host paths to be Unix socket nodes in the
-agent-owned 0700 run directory. The directory mode is 0700; socket nodes are
-0600 in the fake. Host-to-hub exchanges use hub, spoke and git; hub-to-host
+The contract asserts that the host's agent-owned run directory has mode 0700
+and that each of the four endpoint paths inside it is a Unix socket node.
+The contract does not assert the socket nodes’ permission bits; the private
+directory guards access to them. The fake creates socket nodes at mode 0600.
+Host-to-hub exchanges use hub, spoke and git; hub-to-host
 exchanges use agent. Binary requests and distinct replies prove both directions,
 including a stub-side exact-byte receipt. Agent requests use the existing agent
 framing so the carrier's authenticated readiness probe can use the same stub.
