@@ -9,9 +9,59 @@ import { defaultConfig, parseConfig } from '../src/init/config.ts';
 const hubReadme = hubReference();
 const webReadme = readFileSync(new URL('../../web/README.md', import.meta.url), 'utf8');
 
+test('hub reference retains described and anchored subsystem links on the same index line', () => {
+  const files: Record<string, string> = {
+    'hub/README.md': '- [Roles](../docs/hub/roles.md): role procedures; [Rules](../docs/hub/rulebook.md#rules) too.\n- [Modules](../docs/hub/modules.md)',
+    'docs/hub/roles.md': 'Complete roles guide',
+    'docs/hub/rulebook.md': 'Complete rulebook',
+    'docs/hub/modules.md': 'Complete modules guide',
+  };
+  assert.equal(hubReference(url => {
+    const path = Object.keys(files).find(path => url.pathname.endsWith(`/${path}`));
+    assert.ok(path, `unexpected document ${url.pathname}`);
+    return files[path]!;
+  }), 'Complete roles guide\nComplete rulebook\nComplete modules guide');
+});
+
 test('hub reference retains the indexed merge queue landing guide', () => {
   const guide = readFileSync(new URL('../../docs/hub/merge-queue-landing-reports-t-1503.md', import.meta.url), 'utf8');
   assert.ok(hubReadme.includes(guide), 'the bare subsystem pointer must retain the complete guide');
+});
+
+test('hub reference retains subsystem links with Markdown titles', () => {
+  for (const title of ['"Role guide"', "'Role guide'", '(Role guide)']) {
+    assert.equal(hubReference(url => url.pathname.endsWith('/hub/README.md')
+      ? `- [Roles](../docs/hub/roles.md#roles ${title}): role procedures`
+      : 'Complete roles guide'), 'Complete roles guide', title);
+  }
+});
+
+test('hub reference retains subsystem links with escaped Markdown title delimiters', () => {
+  for (const title of [String.raw`"Role \"guide\""`, String.raw`'Role \'guide\''`, String.raw`(Role \(guide\))`]) {
+    assert.equal(hubReference(url => url.pathname.endsWith('/hub/README.md')
+      ? `- [Roles](../docs/hub/roles.md#roles ${title}): role procedures`
+      : 'Complete roles guide'), 'Complete roles guide', title);
+  }
+});
+
+test('hub reference names a malformed subsystem index line instead of dropping it', () => {
+  const malformed = '- [Roles](../docs/hub/roles.txt): role procedures';
+  assert.throws(() => hubReference(url => url.pathname.endsWith('/hub/README.md')
+    ? `# Index\n- [Modules](../docs/hub/modules.md)\n${malformed}`
+    : 'Complete modules guide'), {
+    message: `hub/README.md:3: malformed subsystem pointer: ${malformed}`,
+  });
+});
+
+test('hub reference refuses unsupported destination forms with the index line', () => {
+  for (const destination of ['<../docs/hub/roles.md>', ' ../docs/hub/roles.md']) {
+    const unsupported = `- [Roles](${destination}): role procedures`;
+    assert.throws(() => hubReference(url => url.pathname.endsWith('/hub/README.md')
+      ? `# Index\n- [Modules](../docs/hub/modules.md)\n${unsupported}`
+      : 'Complete modules guide'), {
+      message: `hub/README.md:3: malformed subsystem pointer: ${unsupported}`,
+    });
+  }
 });
 
 // Grep feature deferrals, not live request/approval states or the human's named
