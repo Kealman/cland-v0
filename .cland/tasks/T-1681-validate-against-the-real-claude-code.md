@@ -3,7 +3,7 @@ id: T-1681
 kind: task
 title: Validate against the real Claude Code binary that it starts no new turn or mod hooks after SIGTERM beyond SessionEnd
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T17:37:23.637Z
-updated: 2026-11-16T07:30:04.637Z
+updated: 2026-11-17T23:14:18.371Z
 ---
 
 ## Summary

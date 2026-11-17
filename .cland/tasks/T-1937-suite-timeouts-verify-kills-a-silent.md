@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T07:35:36.084Z
-updated: 2026-11-17T07:35:36.084Z
+updated: 2026-11-17T19:17:41.939Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ Make the case deterministic. Either have the fixture's test start be observed be
 
 - [ ] C1. The case cannot be decided by the startup watchdog: a test with a delayed first test start (fake or held) still reports the silence stall (test).
 - [ ] C2. 20/20 runs of the file under the T3 runner at a 1-minute load of at least 8 pass, with the load recorded per run (native slot).
+
+## Comments
+
+### coord · 2026-11-17T19:17:41.939Z
+
+Third instance, 2026-11-17 19:17Z: Linux stage cover f821e4cd at ca5f70ca4 (A-20917, shard-2, c-8 droplet) failed only this case, with the same mode: "The input did not match the regular expression /stalled: no output for 0\.05 min/" (7.1 s). It now costs a stage cover rerun, so it is a candidate for early stage 2.

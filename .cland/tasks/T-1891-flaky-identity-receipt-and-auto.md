@@ -3,7 +3,7 @@ id: T-1891
 kind: task
 title: Flaky-identity receipt and auto-quarantine
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - retro-improvement
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T07:29:45.132Z
-updated: 2026-11-16T07:29:45.132Z
+updated: 2026-11-17T23:15:25.055Z
 ---
 
 ## Summary

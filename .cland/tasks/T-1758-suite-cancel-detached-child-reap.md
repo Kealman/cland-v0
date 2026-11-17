@@ -3,7 +3,7 @@ id: T-1758
 kind: task
 title: suite-cancel detached-child reap assertion fails under load right after the cancelled result
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T16:25:55.075Z
-updated: 2026-11-16T07:31:29.390Z
+updated: 2026-11-17T23:14:12.146Z
 ---
 
 ## Summary

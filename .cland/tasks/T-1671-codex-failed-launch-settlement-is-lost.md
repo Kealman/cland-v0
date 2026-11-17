@@ -3,7 +3,7 @@ id: T-1671
 kind: task
 title: "Codex and OpenCode failed-launch settlement is lost across a hub restart: the async unforward callback lives only in memory"
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -14,7 +14,7 @@ regression_of: T-1606
 topic: null
 branch: null
 created: 2026-11-04T02:35:52.074Z
-updated: 2026-11-16T07:29:19.470Z
+updated: 2026-11-17T23:14:17.664Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1649
 kind: task
 title: Per-item guidance keeps landing in the implement skill, making it the remaining merge hotspot
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-03T01:51:41.764Z
-updated: 2026-11-16T07:29:27.297Z
+updated: 2026-11-17T23:14:18.876Z
 ---
 
 ## Summary

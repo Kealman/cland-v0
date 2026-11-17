@@ -3,7 +3,7 @@ id: T-1898
 kind: task
 title: Delivery fail-fast and one-command fallback off droplets
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - retro-improvement
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-16T07:29:46.497Z
-updated: 2026-11-16T07:29:48.454Z
+updated: 2026-11-17T23:15:25.837Z
 ---
 
 ## Summary

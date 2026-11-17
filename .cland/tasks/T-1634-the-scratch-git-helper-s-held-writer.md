@@ -3,7 +3,7 @@ id: T-1634
 kind: task
 title: The scratch Git helper's held-writer cancellation test fails on a slow droplet disk
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - flaky
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T14:37:15.028Z
-updated: 2026-11-16T07:31:30.504Z
+updated: 2026-11-17T23:14:13.504Z
 ---
 
 ## Summary

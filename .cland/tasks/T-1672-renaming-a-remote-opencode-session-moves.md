@@ -3,7 +3,7 @@ id: T-1672
 kind: task
 title: Renaming a remote OpenCode session moves its config and password directory on the hub's machine, not on the host
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-04T04:18:17.821Z
-updated: 2026-11-16T07:29:14.785Z
+updated: 2026-11-17T23:14:16.637Z
 ---
 
 ## Summary

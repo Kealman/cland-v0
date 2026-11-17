@@ -3,7 +3,7 @@ id: T-1903
 kind: task
 title: QA brief kit checks the recurring run-copy corrections
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - retro-improvement
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-16T07:29:47.508Z
-updated: 2026-11-16T07:29:49.236Z
+updated: 2026-11-17T23:15:26.015Z
 ---
 
 ## Summary

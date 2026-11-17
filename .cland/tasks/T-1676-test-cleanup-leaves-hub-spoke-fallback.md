@@ -3,7 +3,7 @@ id: T-1676
 kind: task
 title: Test cleanup leaves hub/spoke fallback endpoints, Codex placeholder cx-*.sock files and fixture-owner receipts in TMPDIR
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - qa-found
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T14:47:20.399Z
-updated: 2026-11-16T07:28:57.965Z
+updated: 2026-11-17T23:14:15.228Z
 ---
 
 ## Summary

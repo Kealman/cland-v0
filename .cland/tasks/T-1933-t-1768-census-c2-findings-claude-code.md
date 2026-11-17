@@ -3,7 +3,7 @@ id: T-1933
 kind: task
 title: "T-1768 census C2 findings: claude-code-schedule lock caller, codex-remote process cleanup and host fixture lock probes still make native calls in T2"
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T04:43:27.159Z
-updated: 2026-11-17T04:43:27.159Z
+updated: 2026-11-17T23:14:16.116Z
 ---
 
 ## Summary

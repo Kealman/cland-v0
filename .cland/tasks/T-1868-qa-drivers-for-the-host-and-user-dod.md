@@ -3,7 +3,7 @@ id: T-1868
 kind: task
 title: QA drivers for the host and user DoD journeys (live workbenches, hosts-view logins, scripted setup, combined doctor)
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-15T10:48:29.034Z
-updated: 2026-11-16T07:29:30.491Z
+updated: 2026-11-17T23:15:26.332Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1680
 kind: task
 title: A shared recording-Host test helper so Host doubles stay coherent when Host operations are added
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T16:28:22.539Z
-updated: 2026-11-16T07:28:56.875Z
+updated: 2026-11-17T23:14:14.711Z
 ---
 
 ## Summary

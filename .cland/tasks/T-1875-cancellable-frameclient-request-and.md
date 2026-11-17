@@ -3,7 +3,7 @@ id: T-1875
 kind: task
 title: Cancellable FrameClient request and waitFor in the shared test client, so card-web's inner receipts can use the load-scaled waits
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-15T19:47:41.913Z
-updated: 2026-11-16T07:31:31.092Z
+updated: 2026-11-17T23:14:14.198Z
 ---
 
 ## Summary

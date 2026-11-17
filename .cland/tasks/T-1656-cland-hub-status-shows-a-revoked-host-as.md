@@ -3,7 +3,7 @@ id: T-1656
 kind: task
 title: "cland hub status shows a revoked host as plain 'down': host status rows carry no revoked state"
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ regression_of: T-1595
 topic: null
 branch: null
 created: 2026-11-03T05:54:30.566Z
-updated: 2026-11-16T07:29:14.237Z
+updated: 2026-11-17T23:14:16.316Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1873
 kind: task
 title: "host-tunnel-outage-native: fake host stays cloning past the 15 s alert wait under Linux batch load"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - flaky
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-15T16:30:06.052Z
-updated: 2026-11-16T07:31:30.682Z
+updated: 2026-11-17T23:14:13.691Z
 ---
 
 ## Summary

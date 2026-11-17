@@ -3,7 +3,7 @@ id: T-1805
 kind: task
 title: login-add leaves a fixture-owner registry whose roots list a removed fixture root and the live source worktree
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -14,7 +14,7 @@ found_by: review
 topic: null
 branch: null
 created: 2026-11-10T12:19:52.954Z
-updated: 2026-11-16T07:28:58.535Z
+updated: 2026-11-17T23:14:15.554Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1646
 kind: task
 title: Branch tip moves recompute explorer summaries and demo freshness for the whole tracker
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T23:57:57.064Z
-updated: 2026-11-16T07:29:20.529Z
+updated: 2026-11-17T23:14:17.850Z
 ---
 
 ## Summary

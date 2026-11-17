@@ -3,7 +3,7 @@ id: T-1808
 kind: task
 title: A shared evidence-publish helper that calls artifact.create only after a clean secret scan with a positive control
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-11T00:11:39.952Z
-updated: 2026-11-16T07:29:26.767Z
+updated: 2026-11-17T23:14:18.688Z
 ---
 
 ## Summary

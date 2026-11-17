@@ -3,7 +3,7 @@ id: T-1858
 kind: task
 title: Paid host offers can act on pool terms that changed after the human's yes
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T18:10:52.958Z
-updated: 2026-11-16T07:29:15.848Z
+updated: 2026-11-17T23:14:17.136Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1895
 kind: task
 title: Periodic dev T3 only for new integrated evidence
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - retro-improvement
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T07:29:45.935Z
-updated: 2026-11-16T07:29:45.935Z
+updated: 2026-11-17T23:15:25.523Z
 ---
 
 ## Summary

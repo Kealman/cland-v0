@@ -3,7 +3,7 @@ id: T-1932
 kind: task
 title: "Five more T2 files opt into nativeIdentityProjectHub: migrate them onto T-1915's hermetic CLI boundary or move them to T3 with a reason"
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-17T04:43:21.058Z
-updated: 2026-11-17T04:43:21.058Z
+updated: 2026-11-17T23:14:15.747Z
 ---
 
 ## Summary

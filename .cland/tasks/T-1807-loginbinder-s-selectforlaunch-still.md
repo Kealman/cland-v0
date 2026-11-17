@@ -3,7 +3,7 @@ id: T-1807
 kind: task
 title: "LoginBinder's selectForLaunch still walks rejected reader-intent history: reuse the maintained capacity eligibility"
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T23:04:20.883Z
-updated: 2026-11-16T07:29:15.302Z
+updated: 2026-11-17T23:14:16.824Z
 ---
 
 ## Summary

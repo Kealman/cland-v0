@@ -3,7 +3,7 @@ id: T-1761
 kind: task
 title: suite-recovery nested-runner setup wait uses the 15 s default and times out under macOS cover load
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T23:19:52.447Z
-updated: 2026-11-16T07:31:29.698Z
+updated: 2026-11-17T23:14:12.479Z
 ---
 
 ## Summary

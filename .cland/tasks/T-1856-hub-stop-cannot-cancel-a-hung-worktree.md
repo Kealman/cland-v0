@@ -3,7 +3,7 @@ id: T-1856
 kind: task
 title: Hub stop cannot cancel a hung worktree prune git; it can outlive the hub
 state: open
-status: backlog
+status: planned
 size: M
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T10:12:33.598Z
-updated: 2026-11-16T07:29:21.031Z
+updated: 2026-11-17T23:14:18.178Z
 ---
 
 ## Summary

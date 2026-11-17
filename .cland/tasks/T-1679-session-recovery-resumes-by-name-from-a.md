@@ -3,7 +3,7 @@ id: T-1679
 kind: task
 title: Session recovery resumes by name from a stale snapshot and can resume a renamed or replaced session
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T15:48:11.031Z
-updated: 2026-11-16T07:29:18.968Z
+updated: 2026-11-17T23:14:17.326Z
 ---
 
 ## Summary

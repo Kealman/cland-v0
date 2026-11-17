@@ -3,7 +3,7 @@ id: T-1669
 kind: task
 title: A scripted fake-Claude __session from a fixture outlived its test for nine days, reparented to launchd with its spoke
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T00:16:33.070Z
-updated: 2026-11-16T07:28:57.400Z
+updated: 2026-11-17T23:14:15.038Z
 ---
 
 ## Summary

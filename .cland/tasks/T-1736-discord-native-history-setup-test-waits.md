@@ -3,7 +3,7 @@ id: T-1736
 kind: task
 title: Discord native history setup test waits for native acquisition with a fixed 2000 ms bound
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-07T13:26:06.144Z
-updated: 2026-11-16T07:31:28.596Z
+updated: 2026-11-17T23:14:11.074Z
 ---
 
 ## Summary

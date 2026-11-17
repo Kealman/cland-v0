@@ -3,7 +3,7 @@ id: T-1641
 kind: task
 title: The Discord 620-message history test times out at 10 s on a loaded droplet
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - flaky
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T20:13:15.234Z
-updated: 2026-11-16T07:31:28.837Z
+updated: 2026-11-17T23:14:11.434Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1890
 kind: task
 title: Lint ratchet for fixed bounds in condition waits
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - retro-improvement
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-16T07:29:44.909Z
-updated: 2026-11-16T07:29:47.678Z
+updated: 2026-11-17T23:15:23.073Z
 ---
 
 ## Summary

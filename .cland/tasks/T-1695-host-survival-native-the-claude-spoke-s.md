@@ -3,7 +3,7 @@ id: T-1695
 kind: task
 title: "host-survival-native: the Claude spoke's persisted response misses its 15 s window after master loss under load"
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -14,7 +14,7 @@ regression_of: T-1686
 topic: null
 branch: null
 created: 2026-11-05T19:05:01.746Z
-updated: 2026-11-16T07:31:30.906Z
+updated: 2026-11-17T23:14:14.011Z
 ---
 
 ## Summary

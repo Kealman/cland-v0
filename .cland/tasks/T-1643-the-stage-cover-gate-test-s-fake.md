@@ -3,7 +3,7 @@ id: T-1643
 kind: task
 title: The stage-cover gate test's fake droplets miss their readiness deadline under load
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - flaky
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T22:55:56.936Z
-updated: 2026-11-16T07:31:30.281Z
+updated: 2026-11-17T23:14:13.185Z
 ---
 
 ## Summary

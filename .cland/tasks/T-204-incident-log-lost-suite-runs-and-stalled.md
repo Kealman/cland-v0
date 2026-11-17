@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-17T07:37:10.261Z
+updated: 2026-11-17T21:05:25.803Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -634,3 +634,7 @@ Incident 2026-11-17 about 05:26–05:27Z, seven minutes after hub restart #81 (p
 ### coord · 2026-11-17T07:37:10.261Z
 
 Landing follow-up failure, 2026-11-17 07:36Z, batch 6f3b0153. T-1850 merged (c722503c1), but the hub's follow-up failed: 'stop sessions: could not stop "impl-1850": its process identity cannot be verified; it is still watched'. The repair `cland merge T-1850` removed the worktree but exited 1. A later MCP session.stop of impl-1850 succeeded at 07:36:59Z, and the session was then archived. impl-1850's pid 61793 started at 05:51:10Z, before hub restart #81 (05:19Z)... no, after it. The identity check failing on a live, hub-launched Codex session is unexplained. No work was lost.
+
+### human · 2026-11-17T21:05:25.803Z
+
+Hub restart #82 (stand-in, on coord's GO): dev ca5f70ca4, web/dist rebuilt first. Stop 21:02:34Z, serving 21:04:01Z as pid 57331 (launchd job cland-hub-r82), gap 87 s, over the 60 s target. nice 0, env check 2, homebrew on PATH, one cland-hub job, port 61834, web 56935. coord's bridge closed 21:02:35Z, reconnected and injected 21:04:07Z; coordinator: coord; one bridge. Merge queue empty, no leases active, no run in flight at the stop. doctor 37 ok, 6 warn, 0 fail; the web bundle warning is gone.

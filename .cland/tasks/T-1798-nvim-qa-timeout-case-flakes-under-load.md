@@ -3,7 +3,7 @@ id: T-1798
 kind: task
 title: "nvim qa --timeout case flakes under load: the Neovim wrapper's pid wait is not load-tolerant"
 state: open
-status: backlog
+status: planned
 size: XS
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-09T20:40:55.555Z
-updated: 2026-11-16T07:31:29.879Z
+updated: 2026-11-17T23:14:12.662Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1894
 kind: task
 title: No batch T1 when every member's verify is current
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - retro-improvement
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-16T07:29:45.714Z
-updated: 2026-11-16T07:29:48.286Z
+updated: 2026-11-17T23:15:25.225Z
 ---
 
 ## Summary

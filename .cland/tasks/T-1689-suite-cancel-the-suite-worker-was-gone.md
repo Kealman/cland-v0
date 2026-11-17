@@ -3,7 +3,7 @@ id: T-1689
 kind: task
 title: "suite-cancel: the suite worker was gone straight after a refused cancel on a slow-disk droplet"
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -13,7 +13,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-05T13:32:28.305Z
-updated: 2026-11-16T07:31:29.196Z
+updated: 2026-11-17T23:14:11.932Z
 ---
 
 ## Summary

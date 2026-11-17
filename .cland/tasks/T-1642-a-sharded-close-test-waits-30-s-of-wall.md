@@ -3,7 +3,7 @@ id: T-1642
 kind: task
 title: A sharded close test waits 30 s of wall clock for its remote group and times out on a slow droplet
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - flaky
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-02T20:18:54.422Z
-updated: 2026-11-16T07:31:30.103Z
+updated: 2026-11-17T23:14:12.995Z
 ---
 
 ## Summary

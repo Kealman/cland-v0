@@ -3,7 +3,7 @@ id: T-1906
 kind: task
 title: remote-discovery-host readiness retry and cleanup waits are fixed 3000/2000 ms and time out under Linux load
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - flaky
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-16T07:55:28.994Z
-updated: 2026-11-16T08:55:01.541Z
+updated: 2026-11-17T23:14:14.522Z
 ---
 
 ## Summary
