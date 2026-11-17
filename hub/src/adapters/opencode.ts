@@ -2,7 +2,7 @@ import { remoteRedactor } from '../remote/redact.ts';
 import { generationAdapter } from './generation-adapter.ts';
 import { hostGenerationKey } from './processes.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
-import { boundedSettlement } from './launch-settlement.ts';
+import { boundedSettlement, withSpawnSettlement } from './launch-settlement.ts';
 import { hostCommandEnvironment } from '../host/command-environment.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { harnessBinary } from '../doctor/harnesses.ts';
@@ -197,6 +197,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       await client?.close();
       await this.#unforward(owner.sessionId);
       this.#connections.delete(owner.sessionId);
+      this.#host.spawnFailureSettled?.();
     });
     if (this.#closed) {
       try { await owner.files.rollback(); await finish(); }
@@ -286,7 +287,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return { $schema: 'https://opencode.ai/config.json', mcp: { servers: { cland: { type: 'local', command: [layout.node, layout.spoke], environment } } } };
   }
 
-  async #launch(p: Pick<HarnessProcess, 'host' | 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId' | 'account' | 'accountEnv' | 'login' | 'item' | 'effort'> & LaunchPolicy, scope: LaunchScope, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false, secretEnv?: Record<string,string>): Promise<HarnessProcess> {
+  async #launch(p: Pick<HarnessProcess, 'host' | 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId' | 'account' | 'accountEnv' | 'login' | 'item' | 'effort'> & LaunchPolicy, scope: LaunchScope, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false, secretEnv?: Record<string,string>, acquiring: () => void = () => {}): Promise<HarnessProcess> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#assertOpen();
       this.#recoveries.assertAvailable(p.name, p.sessionId);
@@ -296,6 +297,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       const files = this.#files(p.name, host);
       const transaction = new LaunchFiles(resumed, host);
       let pid: number | undefined;
+      acquiring();
       try {
         const password = yield* this.#activeWait(prepareFiles(dirname(host.layout(this.#host).discoveryFile), files, this.#config(p.name, p.role, p.sessionId, launchToken, host), !relaunch, transaction, resumed, entry => this.#host.log(entry), host));
         const canonicalDirectory=host.name==='local'?undefined:yield* this.#activeWait(host.realpath(files.dir));
@@ -420,7 +422,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#operation(scope => this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), ...(request.login?{login:request.login}:{}), account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null, effort: request.effort ?? null, approval: request.approval ?? null, sandbox: request.sandbox ?? null, permissions: request.permissions ?? null }, scope, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined, request.secretEnv));
+    return this.#operation(scope => withSpawnSettlement(() => this.#host.spawnFailureSettled?.(), acquiring => this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), ...(request.login?{login:request.login}:{}), account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null, effort: request.effort ?? null, approval: request.approval ?? null, sandbox: request.sandbox ?? null, permissions: request.permissions ?? null }, scope, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined, request.secretEnv, acquiring)));
   }
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */

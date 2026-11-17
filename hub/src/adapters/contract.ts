@@ -174,6 +174,9 @@ export type AdapterHost = {
   root: string;
   /** The sessions layer takes failed handshakes into its durable pending-stop receipts. */
   durableLaunchRecovery?: boolean;
+  /** Producer receipt: failed spawn acquired nothing, or joined native/file cleanup.
+   * In-memory only; the generation facade captures the owner before launch. */
+  spawnFailureSettled?: () => void;
   /** The project's `.cland/hub.json`: the spoke, the hooks and the mod find the hub through it, so no secret is put on a command line. */
   discoveryFile: string;
   /** The node binary and the `cland` CLI entry that hooks and the mod call (`cland hook …`). */
@@ -259,6 +262,8 @@ export interface HarnessAdapter {
   /** Drop only unreachable generation transport/supervision, without native or Host operations.
    * Does not settle native closure or delete retained files. Repeated calls join the drain. */
   releaseUnreachableGeneration?(process: HarnessProcess): Promise<GenerationReleaseReceipt>;
+  /** Sessions calls only after all native/resource obligations have positively settled. */
+  retireGeneration?(process: HarnessProcess): void;
   readonly capabilities: Capabilities;
   /** The launch's first turn carries the role's clause (`SpawnRequest.clause`). */
   readonly clauseAtSpawn?: boolean;

@@ -9,7 +9,7 @@ import type { WaitingLaunch } from '../protocol.ts';
 import { PoolCapacityUnavailable, PoolCreationNotAdmitted, PoolRuntime } from '../host/pool-runtime.ts';
 import type { HostPools } from '../host/pools.ts';
 import { hostRelaunchIntentKey, hostRelaunchWarningKey, type HostRelaunchIntent, type HostRelaunchCompletion } from '../host/relaunch-state.ts';
-import { tunnelStatuses, dropHostForwardsLocal, localForwardOwner } from '../transport/transport.ts';
+import { tunnelStatuses, dropHostForwardsLocal, localForwardOwner, retainLocalForwardOwner } from '../transport/transport.ts';
 import { AGENT_LAUNCH_DIRECTORY } from '../host/agent/processes.ts';
 import { serverFiles, retainedPrivateServerFiles } from './opencode/server.ts';
 import { settleHostBeforeCut, HostSettlementIncomplete, type HostSettlement } from '../host/settle.ts';
@@ -352,10 +352,14 @@ export class Sessions {
     if (receipt.generation !== generation || receipt.released !== true) throw new Error('adapter generation release receipt does not match captured process');
     const host = p.host ?? 'local';
     const forwards = receipt.forwardIds.map(id => {
-      const owner = this.#localForwardOwners.get(JSON.stringify([host, id]));
+      const owner = this.#localForwardOwners.get(JSON.stringify([host, id]))?.owner;
       if (!owner) throw new Error(`host ${host}: captured local forward owner unavailable`);
       return { id, owner };
     });
+    this.#generationForwards.set(generation, receipt.forwardIds.map(id => {
+      const key = JSON.stringify([host, id]);
+      return {key, entry: this.#localForwardOwners.get(key)!};
+    }));
     await dropHostForwardsLocal(this.#root, host, forwards);
     return receipt;
   }
@@ -408,6 +412,7 @@ export class Sessions {
         if(this.adapter(current.harness).releaseHostGeneration)fencePrivateFiles(current,p.name);
         await this.adapter(current.harness).releaseHostGeneration?.(current, authorize);
         this.#table.clearHostGeneration(p);
+        this.#retireGeneration(p);
       },
     }] as const; }));
     for (const entry of this.#pendingStops.values()) if (entry.process.host === name) steps.set(entry.process.sessionId, {
@@ -446,6 +451,7 @@ export class Sessions {
           if(!adapter.releaseHostGeneration)throw new HostSettlementIncomplete('native closure confirmed; retained generation resource cleanup unavailable',['receipt (unconfirmed)','private files (unconfirmed)']);
           fencePrivateFiles(owner,p.name);authorize();await adapter.releaseHostGeneration(owner,authorize);authorize();
           this.#table.clearHostGeneration(p);
+          this.#retireGeneration(p);
         }};
       }
     }).call(this);
@@ -489,6 +495,7 @@ export class Sessions {
         this.#table.clearPendingStop(p.sessionId);this.#pendingStops.delete(p.sessionId);
       }
       this.#table.clearHostGeneration(p);
+      this.#retireGeneration(p);
       const current=this.#table.bySessionId(p.sessionId);
       if(!current||hostGenerationKey(current)!==generation)continue;
       this.#table.update(current.name,{status:'exited',cleanupItem:this.#stopItem(current)});
@@ -498,16 +505,37 @@ export class Sessions {
     }
   }
 
-  readonly #localForwardOwners = new Map<string, string>();
+  readonly #localForwardOwners = new Map<string, { owner: string; release: () => void }>();
+  readonly #generationForwards = new Map<string, Array<{key: string; entry: {owner: string; release: () => void}}>>();
+  #retireGeneration(p: HarnessProcess): void {
+    const generation = hostGenerationKey(p);
+    for (const {key, entry} of this.#generationForwards.get(generation) ?? []) {
+      entry.release();
+      if (this.#localForwardOwners.get(key) === entry) this.#localForwardOwners.delete(key);
+    }
+    this.#generationForwards.delete(generation);
+    this.adapter(p.harness).retireGeneration?.(p);
+  }
   #captureForwardOwner(host: Host): Host {
     if (host.name === 'local') return host;
     return new Proxy(host, { get: (target, key) => {
       const value: unknown = Reflect.get(target, key, target);
       if (typeof value !== 'function') return value;
+      if (key === 'unforward') return async (id: string) => {
+        const key = JSON.stringify([host.name, id]);
+        const entry = this.#localForwardOwners.get(key);
+        await value.call(target, id);
+        entry?.release();
+        if (this.#localForwardOwners.get(key) === entry) this.#localForwardOwners.delete(key);
+      };
       if (key !== 'forward') return value.bind(target);
       return (id: string, ...args: unknown[]) => {
         const owner = localForwardOwner(this.#root, host.name);
-        if (owner) this.#localForwardOwners.set(JSON.stringify([host.name, id]), owner);
+        const key = JSON.stringify([host.name, id]);
+        if (owner && this.#localForwardOwners.get(key)?.owner !== owner) {
+          this.#localForwardOwners.get(key)?.release();
+          this.#localForwardOwners.set(key, {owner, release: retainLocalForwardOwner(owner, id)});
+        }
         return value.apply(target, [id, ...args]);
       };
     } });
@@ -3290,7 +3318,11 @@ export class Sessions {
     this.#usageTimers.clear();
     this.#unrename();
     const drain = [...[...this.#hostResumes.values()].map(flight => flight.work), ...adapterDrains, ...this.#settlingHosts.values(), ...this.#nativeChecks, ...this.#credentialTasks.values(), ...this.#lifecycle.values(), ...(this.#archiveWork ? [this.#archiveWork] : [])];
-    const finish = () => { if (failures.length) throw new AggregateError(failures, 'session adapter cleanup failed'); };
+    const finish = () => {
+      if (failures.length) throw new AggregateError(failures, 'session adapter cleanup failed');
+      for (const entry of this.#localForwardOwners.values()) entry.release();
+      this.#localForwardOwners.clear(); this.#generationForwards.clear();
+    };
     if (drain.length) return Promise.all(drain.map(work => work.catch(() => {}))).then(finish);
     finish();
   }

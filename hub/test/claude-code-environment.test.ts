@@ -189,7 +189,8 @@ test('Claude environment composition preserves implicit, pathless, pinned and in
       await adapter.stop(process);
       const resumed = await adapter.resume({ ...process, status: 'stopped' }, { relaunch: true });
       assert.equal(resumed.found, true, selection);
-      await adapter.stop(process);
+      if (!resumed.found) throw new Error('resumed process missing');
+      await adapter.stop(resumed.process);
       const bg = calls.filter(c => c.args[0] === '--bg');
       assert.equal(bg.length, 2, 'launch and relaunch both reach the command boundary');
       assert.ok(bg[1]!.args.includes('--resume'), 'relaunch retains the native conversation');

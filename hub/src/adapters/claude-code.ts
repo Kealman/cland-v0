@@ -42,7 +42,7 @@ import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { createHash } from 'node:crypto';
 import { continueWith, wait, untimed } from './continuations.ts';
 import { LaunchFiles, FailedLaunches } from './launch-files.ts';
-import { boundedSettlement, type LaunchSettled } from './launch-settlement.ts';
+import { boundedSettlement, withSpawnSettlement, type LaunchSettled } from './launch-settlement.ts';
 import type { Host } from '../host/host.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { claudeLocalHost } from './claude-code-local.ts';
@@ -598,6 +598,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         this.#setGeneration(p.sessionId,record.previousGeneration??'');
         if(record.previousDirectory)this.#launchDirectories.set(p.sessionId,record.previousDirectory);else this.#launchDirectories.delete(p.sessionId);
         this.#host.adapterState?.write('claude-cleanup:'+p.sessionId,'');
+        this.#host.spawnFailureSettled?.();
       });
       this.#settlementWriters.add(work);void work.then(()=>this.#settlementWriters.delete(work),()=>this.#settlementWriters.delete(work));return work;
     });
@@ -618,7 +619,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return claudeBackgroundId(stdout);
   }
 
-  async #launch(p: ClaudeLaunch, resume: boolean, effort: string | null = null, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, permissions: Permissions | null = null): Promise<HarnessProcess> {
+  async #launch(p: ClaudeLaunch, resume: boolean, effort: string | null = null, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, permissions: Permissions | null = null, acquiring: () => void = () => {}): Promise<HarnessProcess> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       const files = new LaunchFiles(resumed, this.#host.hostForLaunch?.(p));
       let launched: HarnessProcess | undefined;
@@ -626,6 +627,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       let attempted=false;
       const previousDirectory=this.#launchDirectories.get(p.sessionId);
       const previousGeneration = this.#host.adapterState?.read(launchGenerationKey(p.sessionId));
+      acquiring();
       try {
         const worktree = p.item && p.role !== 'lead' ? p.cwd : null;
         // `--bg` picks its own session id (observed with 2.1.294: `--session-id` is accepted and not used); the
@@ -720,13 +722,14 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
           yield* wait(files.rollback());
           if(previousDirectory)this.#launchDirectories.set(p.sessionId,previousDirectory);else this.#launchDirectories.delete(p.sessionId);
         }
+        this.#host.spawnFailureSettled?.();
         throw err;
       }
     }).call(this), resumed);
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    const work = this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), account: request.account ?? null, accountEnv: { ...((this.#host.hostForLaunch?.(request)?.name ?? request.host ?? 'local') === 'local' ? this.#inheritedEnv() : {}), ...request.accountEnv }, name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null);
+    const work = withSpawnSettlement(() => this.#host.spawnFailureSettled?.(), acquiring => this.#launch({ ...(request.host !== undefined ? { host: request.host } : {}), account: request.account ?? null, accountEnv: { ...((this.#host.hostForLaunch?.(request)?.name ?? request.host ?? 'local') === 'local' ? this.#inheritedEnv() : {}), ...request.accountEnv }, name: request.name, harness: this.harness, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null }, request.resumeConversation !== undefined, request.effort ?? null, resumed, request.launchToken, authorize, request.permissions ?? null, acquiring));
     this.#launches.add(work);
     void work.then(()=>this.#launches.delete(work),()=>this.#launches.delete(work));
     return work;

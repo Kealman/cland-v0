@@ -226,3 +226,12 @@ no native --bg call or worker row, and a typed direct launchClaude refusal namin
 host f1 and available bytes. It then sets 1,300,000,000 bytes and proves the real
 adapter route has a durable native worker before stopping it. The shared fixture
 owns teardown. No provider API or live account is used.
+
+The failed-adoption rollback case closes the facade from the native adoption
+boundary before spawn returns a process. Keep the full scan of regular files in
+both fake host roots, require each scan to inspect retained fixture files, and
+retain the sibling job assertions. Never print the credential bytes. The facade
+must join spawn admission and preserve its pending durable rollback Host after
+transient shutdown, then retire on the producer's positive receipt. This native
+file is changed by the regression correction so mode-free task verification
+selects it; explicit same-head file runs are additional native evidence.

@@ -19,3 +19,11 @@ export function boundedSettlement(callback: LaunchSettled, timeoutMs = LAUNCH_SE
     });
   };
 }
+
+/** Before acquisition, rejection leaves no launch obligation. Afterwards only the
+ * producer's positive native/file settlement can publish the receipt. */
+export async function withSpawnSettlement<T>(settled: () => void, work: (acquiring: () => void) => Promise<T>): Promise<T> {
+  let acquiring = false;
+  try { return await work(() => { acquiring = true; }); }
+  catch (error) { if (!acquiring) settled(); throw error; }
+}

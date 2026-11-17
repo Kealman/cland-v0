@@ -1,7 +1,7 @@
 import { deadLoginReason } from '../host/login-signals.ts';
 import { generationAdapter } from './generation-adapter.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
-import { boundedSettlement } from './launch-settlement.ts';
+import { boundedSettlement, withSpawnSettlement } from './launch-settlement.ts';
 import { hostCommandEnvironment } from '../host/command-environment.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { harnessBinary } from '../doctor/harnesses.ts';
@@ -416,6 +416,7 @@ export class CodexAdapter implements HarnessAdapter {
       if (!nativeClosed) { closeNative(); nativeClosed = true; }
       if (connecting) await connecting;
       await this.#unforward(sessionId);
+      this.#host.spawnFailureSettled?.();
     });
     if (this.#closed) {
       try { await files.rollback(); await finish(); }
@@ -977,10 +978,10 @@ export class CodexAdapter implements HarnessAdapter {
   // ---------------------------------------------------------------- launch
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#operation(() => this.#spawn(request, resumed, authorize));
+    return this.#operation(() => withSpawnSettlement(() => this.#host.spawnFailureSettled?.(), acquiring => this.#spawn(request, resumed, authorize, acquiring)));
   }
 
-  async #spawn(request: SpawnRequest, resumed: Resumed, authorize: () => void): Promise<HarnessProcess> {
+  async #spawn(request: SpawnRequest, resumed: Resumed, authorize: () => void, acquiring: () => void): Promise<HarnessProcess> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#recoveries.assertAvailable(request.name);
       const machine = this.#host.hostForLaunch?.(request) ?? this.#local;
@@ -994,6 +995,7 @@ export class CodexAdapter implements HarnessAdapter {
       let pid: number | undefined;
       let client: AppServerConnection | undefined;
       let exited!: Promise<{ code: number | null; signal: string | null }>;
+      acquiring();
       try {
         const policy = yield* this.#activeWait(this.#threadPolicy(machine, request.cwd, request, files, resumed));
         ({ pid, client, exited } = yield* wait(this.#startServer(machine, base, socket, policy.overrides, files, resumed, request.launchToken, authorize)));

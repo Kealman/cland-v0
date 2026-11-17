@@ -24,13 +24,30 @@ export function updateHostWatches(root:string,host:string,rows:NonNullable<HostT
 type RegisteredTransport = { transport: Transport; owner: string };
 const projects = new Map<string, Map<string, RegisteredTransport>>();
 const stoppedOwners = new Map<string, { root: string; host: string; ids: Set<string> }>();
+const forwardReferences = new Map<string, Map<string, number>>();
+/** Hold stop proof only while an outstanding generation can consume it. */
+export function retainLocalForwardOwner(owner: string, id: string): () => void {
+  let ids = forwardReferences.get(owner);
+  if (!ids) { ids = new Map(); forwardReferences.set(owner, ids); }
+  ids.set(id, (ids.get(id) ?? 0) + 1);
+  let held = true;
+  return () => {
+    if (!held) return;
+    held = false;
+    const count = ids.get(id)! - 1;
+    if (count) ids.set(id, count);
+    else { ids.delete(id); stoppedOwners.get(owner)?.ids.delete(id); }
+    if (!ids.size) { forwardReferences.delete(owner); stoppedOwners.delete(owner); }
+  };
+}
 export type LocalForwardOwner = { id: string; owner: string };
 export function localForwardOwner(root: string, host: string): string | null { return projects.get(root)?.get(host)?.owner ?? null; }
 /** Published only after the carrier joined every writer and observed local removal. */
 export function noteTransportStopped(root: string, transport: Transport, ids: readonly string[]): void {
   const registered = projects.get(root)?.get(transport.host);
   if (registered?.transport !== transport) throw new Error('transport stop owner changed');
-  stoppedOwners.set(registered.owner, { root, host: transport.host, ids: new Set(ids) });
+  const retained = ids.filter(id => forwardReferences.get(registered.owner)?.has(id));
+  if (retained.length) stoppedOwners.set(registered.owner, { root, host: transport.host, ids: new Set(retained) });
 }
 export function claimTransport(root: string, transport: Transport): () => void {
   let hosts = projects.get(root);

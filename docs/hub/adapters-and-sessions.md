@@ -1028,3 +1028,41 @@ no native closure or private-file deletion receipt. Retained native and file
 obligations continue through host generation settlement. A relaunch caller must
 retain the old generation durably, await the Sessions method and recheck lifecycle
 ownership before admitting a destination launch; rejection holds admission.
+
+Sessions calls the optional `retireGeneration` hook after positively clearing a
+retained remote generation's resource obligation. The facade also retires
+superseded local aliases after a successful changed-identity relaunch, or after a
+successful stop and replacement spawn. A stopped current scope stays available
+for resume; pending or failed stops retain their scopes. A stop completing after
+a replacement retires only after its captured work drains. Strong identity,
+current, launch and forward-owner indexes are removed on retirement; weak aliases
+keep already captured process objects fenced. Each replacement keeps the forward
+namespace assigned at acquisition even after an older scope retires.
+
+Carrier stop receipts retain only forward ids held by outstanding Sessions
+references. Positive unforward, resource retirement and successful joined Sessions
+shutdown release those references. Repeated release while held is idempotent;
+unknown or retired carrier proof refuses without consulting a replacement owner.
+These receipts and indexes are in memory; persisted generation records retain
+their existing shape and native/file settlement rules.
+
+A failed spawn that never returns a process row has a separate positive owner:
+the optional in-memory `AdapterHost.spawnFailureSettled` producer receipt, captured
+by its facade scope before admission. All native adapters use the shared
+`withSpawnSettlement` preparation boundary. A rejection before acquisition
+publishes that receipt; after acquisition, only the existing native/file rollback
+and transport settlement owner publishes it. Codex and OpenCode publish at the
+end of their LaunchSettled callback, and Claude after local rollback or its
+remote failed-generation settlement. The facade retires only a rejected,
+process-less scope with this receipt. A rejection, replacement launch or failed
+rollback alone retains the scope. Existing persisted recovery records and older
+AdapterHost objects remain compatible; the callback is optional and never crosses
+the wire.
+
+Facade shutdown joins whole spawn admissions before inspecting retirement state.
+Transient adapter close can hand an unreturned failed launch to Sessions' durable
+rollback owner, so successful transient close keeps that scope and its captured
+Host usable while settlement is unknown. The producer's positive rollback receipt
+then retires it. Already settled scopes still retire at shutdown; pending rollback
+never regains ordinary launch authority because the facade and native adapter are
+closed.

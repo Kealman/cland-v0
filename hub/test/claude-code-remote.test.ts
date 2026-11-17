@@ -273,7 +273,11 @@ test('remote Claude failed adoption handshake joins rollback and removes its cre
      const path=join(directory,entry.name);if(entry.isDirectory())result.push(...await files(path));else if(entry.isFile())result.push(path);
    }return result;
  };
- for(const root of [d.f.fake.home,d.fake.home])for(const path of await files(root))assert.equal((await readFile(path)).includes(credential),false,'rollback scan contains no token');
+ for(const root of [d.f.fake.home,d.fake.home]){
+   const scanned=await files(root);
+   assert.ok(scanned.length>0,'rollback scan inspected retained fixture files');
+   for(const path of scanned)assert.equal((await readFile(path)).includes(credential),false,'rollback scan contains no token');
+ }
  assert.deepEqual((await readdir(join(d.fake.home,'jobs'))).filter(path=>/^[^.]+\.json$/.test(path)),['sibling.json']);
  assert.equal(await readFile(join(d.fake.home,'jobs','sibling.json'),'utf8'),'{}');
 });
