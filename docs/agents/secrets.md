@@ -98,7 +98,22 @@ receipts are documented in [child environment tests](tests/hub-test-secrets-envi
 Keep one `remoteRedactor()` per project hub. Startup and reload call
 `validateAndRegisterSecrets(secrets, remoteOutput)` before provider setup;
 reuse that registry across rotation so old in-flight errors remain masked.
-The callable form bounds diagnostics; `.text` preserves full artifact text and
+The callable form bounds diagnostics; `.text` retains full artifact text and
+redacts complete JSON lines (including prefixed suite timing records) through
+decoded strings before re-serializing them, including root JSON strings and
+secret-bearing capture keys. Unquoted scalar text stays text: numeric-looking
+identifiers are never parsed as JSON numbers or rounded. If a registered secret spans serialized syntax
+(such as a formatted nested object or a credential crossing JSON records),
+every intersected JSON payload becomes the JSON string
+`"[redacted]"`. This preserves parseability while withholding that record.
+Original registered spans govern masking before normalization; output slices
+retain their intersections rather than re-matching fragments independently.
+Raw credential spans are scanned once across the capture so multiline contexts
+remain masked without repeatedly scanning accumulated fallback lines;
+non-JSON or incomplete lines retain conservative plain-text redaction. Capture
+writers must assemble complete lines before calling `.text` for JSON preservation;
+arbitrary chunks still receive secret filtering but have no JSON guarantee.
+The bounded callable can truncate long JSON diagnostics; use `.text` for captures.
 `.value` preserves JSON record keys; incoming `redactFrame` preserves frame routing or
 disables the remote safely on a credential collision. Plain-function injection
 uses the same supplied policy for structured content. Every new remote/speech journal,
