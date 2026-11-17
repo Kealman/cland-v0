@@ -658,6 +658,9 @@ Host creation, inventory and destruction (`cland host create [pool]`, `cland hos
 share prepare/revoke's local human CLI or Neovim boundary. Implementers exercise
 these through sealed disposable fixtures. The [provider reference](../hub/host-providers.md#create-to-ready)
 names current provider prerequisites, lifecycle receipts and retained failures.
+Destroy joins its watchdog before reporting destroyed, including positive
+non-acquisition. A `watchdog-stop-incomplete` failure retains the lease and input
+for retry; do not discard ownership when exit is unknown.
 
 
 Pool configuration is now modeled by `host/pools.ts`; the transport-config entry

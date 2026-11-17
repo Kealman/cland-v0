@@ -409,7 +409,13 @@ and drains identity-bound local forwards. Cleanup streams retained generations,
 including those whose display row moved; only an exact current generation can
 receive the exited update after an asynchronous release. Failed cleanup retains
 the obligation and leaves destruction incomplete.
-After both deletions are confirmed the provision record becomes `destroyed`.
+After both deletions are confirmed and the captured watchdog's exit is joined,
+the provision record becomes `destroyed`. Positive non-acquisition also retires
+the watchdog before cancelling its lease. Stop uses the shared five-second TERM
+grace and five-second KILL join. Unknown birth or an exhausted join retains the
+lease, watchdog identity and input, with state `destroying`, release `incomplete`,
+`failure.code: watchdog-stop-incomplete` and reason `host watchdog stop incomplete`.
+Retrying destroy clears that failure only after confirmed retirement.
 Records remain in `host list` as lifecycle history. If deletion cannot be
 confirmed, the record stays `destroying` with `deletion not confirmed`; its
 unconfirmed sessions stay fenced. A second destroy retries the removal and

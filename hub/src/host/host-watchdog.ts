@@ -30,10 +30,16 @@ export async function armHostWatchdog(input:HostWatchdogInput|HostWatchdogAdmiss
  return armWatchdog(path,env,{...options,launch:()=>spawn(process.execPath,[fileURLToPath(import.meta.url),path],{env,detached:true,stdio:'ignore'})});
 }
 /** Reuses executor ownership probes and escalation; never signals an unproved PID. */
+export class HostWatchdogStopIncomplete extends Error {
+ readonly code='watchdog-stop-incomplete' as const;
+ constructor(cause?:unknown){super('host watchdog stop incomplete (watchdog stop unconfirmed); identity and input retained',{cause});}
+}
 export async function stopHostWatchdog(watchdog:HostWatchdogIdentity|undefined,env:NodeJS.ProcessEnv,options:WatchdogOptions={}):Promise<void> {
  if(!watchdog)return;
- await stopWatchdog({watchdog} as DropletLease,env,options);
- if(!await watchdogStopped(watchdog,env,options))throw Error('host watchdog stop unconfirmed; identity and input retained');
+ try {
+  await stopWatchdog({watchdog} as DropletLease,env,options);
+  if(!await watchdogStopped(watchdog,env,options))throw new HostWatchdogStopIncomplete();
+ }catch(error){if(error instanceof HostWatchdogStopIncomplete)throw error;throw new HostWatchdogStopIncomplete(error);}
 }
 
 export async function retireHostWatchdog(root:string,id:string,watchdog:HostWatchdogIdentity|undefined,env:NodeJS.ProcessEnv,options:WatchdogOptions={}):Promise<void> {

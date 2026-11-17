@@ -431,7 +431,9 @@ native resume keeps its recorded binding.
 Host-stop release leaves pending bindings fenced for the binder's positive
 mount/commit or full rollback receipt. Settled disk
 bindings release in parallel through the shared destroy boundary before transport
-removal. Use the snapshot beginRelease/onReleased hooks and positive detach
+removal. Destroy also joins watchdog retirement before lease cancellation or
+release; retain `watchdog-stop-incomplete` ownership for retry (see
+docs/hub/host-providers.md). Use the snapshot beginRelease/onReleased hooks and positive detach
 receipts; lost/gone hosts use the snapshot owner's hostLost release mode,
 skip unmount and retry detached volume inventory with the hub Clock. Existing
 SSH reachability is observed synchronously; deleted-host sessions settle before

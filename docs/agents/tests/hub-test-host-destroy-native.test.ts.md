@@ -4,6 +4,17 @@ T3 native fake SSH/OpenCode destruction. Cases `C1/C2/C3 destroy settles native 
 
 Run: `node --test hub/test/host-destroy-native.test.ts`.
 
+`destroy joins a delayed native watchdog after positive non-acquisition` uses
+an IPC-controlled local Node child, no SSH or provider API. Setup observes the
+child's ready message separately from destroy. SIGTERM is acknowledged while
+exit remains held; destroy must remain pending until release, then its result
+must be destroyed with the native close observed and captured identity absent.
+The shared caseDeadlines whole-callback owner registers before acquisition,
+adopts the scratch root and fences each subsequent step. Its close releases the
+held child, joins the callback and only then kills/joins the exact child and
+closes storage before root disposal. Setup and child-close observation each
+have a five-second receipt bound.
+
 Each launched fake host starts with `mountedSettledLogin`: an attached,
 Host.loginDisk-mounted OpenCode volume recorded as settled. Its cleanup follows
 all native joins and precedes root disposal; the destruction assertions and

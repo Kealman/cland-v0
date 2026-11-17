@@ -31,7 +31,50 @@ test('release names confirming machine and key reads, including an already gone 
 
 import { Store } from '../src/hub/store.ts';
 import { destroyHost } from '../src/host/provision-host.ts';
-import { onCleanup } from './process-cleanup.ts';
+import { onCleanup, guardDirectoryRemoval } from './process-cleanup.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { realClock } from '../src/hub/clock.ts';
+import cp from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+import { fakeLockProcesses } from './fakes/lock-processes.ts';
+test('destroy retains a typed unknown watchdog stop and its ownership for retry',async t=>{
+ const scope=caseDeadlines(t,{ownership:{beforeDirectories,guardDirectoryRemoval}});
+ let native=0;
+ const trap=()=>{native++;throw Error('unexpected native launch in watchdog component case');};
+ for(const method of ['spawn','spawnSync','exec','execSync','execFile','execFileSync','fork'] as const)t.mock.method(cp,method,trap);
+ t.mock.method(cp.ChildProcess.prototype as unknown as {spawn:()=>void},'spawn',trap);
+ syncBuiltinESMExports();
+ // The shared callback/resource/root drain precedes restoration of this guard.
+ t.after(()=>{try{assert.equal(native,0,'setup, ledger, retry and teardown never delegate to native launch');}finally{t.mock.restoreAll();syncBuiltinESMExports();}});
+ // cland-allow-child-env: positive control throws at the installed guard before any native child executes
+ assert.throws(()=>cp.spawn('fixture-positive-control'),/unexpected native launch/);
+ assert.equal(native,1);native=0;
+ const lock=fakeLockProcesses();
+ let store:Store|undefined;
+ scope.fixtures.after(async()=>{if(store){await store.hosts.leases.close();store.close();}});
+ await scope.run(async step=>{
+ const root=await step(()=>tempProject(scope.fixtures));scope.adoptRoot(root);
+ const env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root});
+ const records=await step(async()=>{store=new Store(join(root,'fixture.db'));return store.hosts;});
+ const created=new Date().toISOString();
+ records.provisions.save({id:'held-watchdog',pool:'agents',provider:'fake',size:'fake',region:'fake',created,state:'failed',nonAcquisition:{kind:'not-called',at:created}});
+ // The native probe cannot establish whether the captured process has exited.
+ await step(()=>records.leases.create('held-watchdog',{root,env,clock:realClock,processes:lock.processes,leaseMs:60000,caps:{shared:10,hosts:10},priceHourly:0,billingMinimumMs:0,pool:'agents',size:'fake'}));
+ await step(async()=>{records.leases.checkpointWatchdog('held-watchdog',root,{pid:123,startedUtc:'fixture',pidIdentity:'captured'});});
+ let alive=true;
+ const options={root,id:'held-watchdog',env,records,processes:lock.processes,owner:{} as Parameters<typeof destroyHost>[0]['owner'],watchdogOptions:{processes:{started:async()=>null,identity:async()=>null,alive:()=>alive,signal:()=>assert.fail('unknown birth cannot authorize a signal')}},log:()=>{}};
+ const result=await step(()=>destroyHost(options));
+ assert.equal(result.state,'destroying');assert.equal(result.release,'incomplete');
+ assert.deepEqual(result.failure,{code:'watchdog-stop-incomplete'});
+ assert.match(result.reason!,/watchdog stop incomplete/);
+ assert.ok(records.leases.get('held-watchdog')?.watchdog,'unknown stop retains ownership');
+ alive=false;
+ const retried=await step(()=>destroyHost(options));
+ assert.equal(retried.state,'destroyed');assert.equal(retried.failure,undefined);
+ assert.equal(records.leases.get('held-watchdog'),null);
+ assert.ok(lock.reads.some(read=>read.kind==='started'),'ledger uses the injected lock birth observer');
+ });
+});
 for(const outcome of ['missing','throw'] as const)test(`destroy requires confirming reads: ${outcome}`,async t=>{
  const root=await tempProject(t),env=fixtureEnvironment(root,process.env,{CLAND_FAKE_HOST_ROOT:root});
  const store=new Store(join(root,'hub.db'));onCleanup(t,()=>store.close());

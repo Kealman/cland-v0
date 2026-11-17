@@ -14,6 +14,50 @@ import { ProcessTable } from '../src/adapters/processes.ts';
 import type { Machine, ReleaseObserver } from '../src/host/provider/provider.ts';
 import { FakeHostProvider } from '../src/host/provider/fake.ts';
 import { mountedSettledLogin } from './settled-login-fixture.ts';
+import { spawn } from 'node:child_process';
+import { scratchMachine } from './init-machine.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { Store } from '../src/hub/store.ts';
+import { realClock } from '../src/hub/clock.ts';
+import { armWatchdog } from '../src/executor/droplet/watchdog.ts';
+import { destroyHost } from '../src/host/provision-host.ts';
+
+test('destroy joins a delayed native watchdog after positive non-acquisition',{timeout:30000},async t=>{
+ let ready=false,term=false,closed=false,returned=false;
+ let child:ReturnType<typeof spawn>|undefined;
+ let store:Store|undefined;
+ let destroying:ReturnType<typeof destroyHost>|undefined;
+ const scope=caseDeadlines(t,{ownership:{beforeDirectories,guardDirectoryRemoval},releaseOnClose:()=>{child?.kill('SIGKILL');}});
+ // This first hook follows the whole callback join and precedes root disposal.
+ scope.fixtures.after(async()=>{if(child){child.kill('SIGKILL');await eventually('fake watchdog native close before fixture disposal',()=>closed?true:undefined,5000);}await destroying;if(store){await store.hosts.leases.close();store.close();}});
+ await scope.run(async step=>{
+ const f=await step(()=>scratchMachine(scope.fixtures,{identity:false}));scope.adoptRoot(f.root);
+ const env=fixtureEnvironment(f.root,f.env,{CLAND_FAKE_HOST_ROOT:f.root});
+ const records=await step(async()=>{store=new Store(join(f.root,'fixture.db'));return store.hosts;});
+ const watchdog=await step(()=>armWatchdog(f.root,env,{launch:()=>{
+  child=spawn(process.execPath,['-e',`process.on('SIGTERM',()=>process.send('term'));process.on('message',()=>process.exit(0));process.send('ready');`],{cwd:f.root,env:fixtureEnvironment(f.root,env,{}),stdio:['ignore','ignore','ignore','ipc']});
+  child.on('message',message=>{if(message==='ready')ready=true;if(message==='term')term=true;});
+  child.once('close',()=>{closed=true;});return child;
+ }}));
+ await step(()=>eventually('native fake watchdog ready',()=>ready?true:undefined,5000));
+ const created=new Date().toISOString();
+ await step(()=>records.leases.create('late',{root:f.root,env,clock:realClock,leaseMs:60000,caps:{shared:10,hosts:10},priceHourly:0,billingMinimumMs:0,pool:'agents',size:'fake'}));
+ await step(async()=>{
+ records.leases.checkpointWatchdog('late',f.root,watchdog);
+ records.provisions.save({id:'late',pool:'agents',provider:'fake',size:'fake',region:'fake',created,state:'failed',nonAcquisition:{kind:'not-called',at:created}});
+ destroying=destroyHost({root:f.root,id:'late',env,records,owner:{} as Parameters<typeof destroyHost>[0]['owner'],log:()=>{}}).then(result=>{returned=true;return result;});
+ });
+ await step(()=>eventually('watchdog stop admitted or destroy returned',()=>term||returned?true:undefined,5000));
+ assert.equal(returned,false,'destroy cannot return before the watchdog closes');
+ assert.equal(closed,false,'fake watchdog holds its native exit until released');
+ await step(async()=>{child!.send('release');});
+ const result=await step(()=>destroying!);
+ assert.equal(result.state,'destroyed');assert.equal(closed,true,'destroy joins the native close receipt');
+ assert.equal(await step(()=>watchdogAlive({watchdog} as DropletLease,env)),false);
+ });
+});
 const SETUP_MS=testWaitMs(60000);
 // Twelve sequential setup allowances plus 120s for exact CLI behaviour and joined cleanup.
 const OUTER_MS=12*SETUP_MS+120000;

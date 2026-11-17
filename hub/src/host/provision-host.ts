@@ -6,7 +6,7 @@ import { provisionSsh } from './provision-ssh.ts';
 import { hostCreateAdmission } from './create-admission.ts';
 import { hostLeaseRenewable } from './provision-records.ts';
 import type { LockProcessTable } from '../hub/lock.ts';
-import { armHostWatchdog, stopHostWatchdog, retireHostWatchdog, recordHostAbsence } from './host-watchdog.ts';
+import { armHostWatchdog, stopHostWatchdog, retireHostWatchdog, recordHostAbsence, HostWatchdogStopIncomplete } from './host-watchdog.ts';
 import { parseConfig } from '../init/config.ts';
 import { parsePoolName } from './pool-name.ts';
 import { hostSettlementComplete } from './settle.ts';
@@ -242,15 +242,15 @@ async function destroyHostOnce(o:{lost?:boolean;watchdogOptions?:import('../exec
   // Keep removal for live registrations and any carrier still owned here.
   if(registration&&(registration.state==='registered'||o.owner?.hosts?.some(host=>host.name===record.id)))await o.owner.remove(record.id);
   const confirmed=new Set<string>();const releaseReads:ReleaseRead[]=[];
-  if(!record.machine){if(record.nonAcquisition){await o.records.leases.cancel(record.id,o.processes?{root:o.root,env:o.env,clock:o.clock??realClock,processes:o.processes}:{root:o.root,env:o.env,clock:o.clock??realClock});record.release='released';record.state='destroyed';delete record.reason;o.records.provisions.save(record);return publicProvision(record);}throw Error('acquisition outcome unknown');}
+  if(!record.machine){if(record.nonAcquisition){await retireHostWatchdog(o.root,record.id,o.records.leases.get(record.id)?.watchdog,o.env,o.watchdogOptions?{...o.watchdogOptions,clock:o.clock??realClock}:{clock:o.clock??realClock});await o.records.leases.cancel(record.id,o.processes?{root:o.root,env:o.env,clock:o.clock??realClock,processes:o.processes}:{root:o.root,env:o.env,clock:o.clock??realClock});record.release='released';record.state='destroyed';delete record.reason;if(record.failure?.code==='watchdog-stop-incomplete')delete record.failure;o.records.provisions.save(record);return publicProvision(record);}throw Error('acquisition outcome unknown');}
   const result=await provider.release(record.machine,receipt=>{confirmed.add(receipt.resource);releaseReads.push(receipt);if(receipt.resource==='machine'){record.machineDeletionRead=receipt.read;o.records.provisions.save(record);}o.log({event:'host-destroy',host:record.id,...receipt});});
   settleLoginSignInsForHost(o.records,record.id);
   if(record.machineDeletionRead&&o.records.get(record.id))await o.settleDeleted?.(record.id,record.machineDeletionRead);
   if(confirmed.has('machine'))await finishLogins();
   record.release=result.state;
-  if(result.state==='released'&&(!record.machine||confirmed.has('machine')&&confirmed.has('key'))){const clock=o.clock??realClock;const receipt=await recordHostAbsence({root:o.root,id:record.id,provider:record.provider,machine:record.machine!},clock,releaseReads);await retireHostWatchdog(o.root,record.id,o.records.leases.get(record.id)?.watchdog,o.env,o.watchdogOptions?{...o.watchdogOptions,clock}:{clock});await o.records.leases.release(record.id,o.processes?{root:o.root,env:o.env,clock,processes:o.processes}:{root:o.root,env:o.env,clock},receipt.confirmedAt);record.state='destroyed';delete record.reason;}
+  if(result.state==='released'&&(!record.machine||confirmed.has('machine')&&confirmed.has('key'))){const clock=o.clock??realClock;const receipt=await recordHostAbsence({root:o.root,id:record.id,provider:record.provider,machine:record.machine!},clock,releaseReads);await retireHostWatchdog(o.root,record.id,o.records.leases.get(record.id)?.watchdog,o.env,o.watchdogOptions?{...o.watchdogOptions,clock}:{clock});await o.records.leases.release(record.id,o.processes?{root:o.root,env:o.env,clock,processes:o.processes}:{root:o.root,env:o.env,clock},receipt.confirmedAt);record.state='destroyed';delete record.reason;if(record.failure?.code==='watchdog-stop-incomplete')delete record.failure;}
   else {record.release='incomplete';record.reason='deletion not confirmed'+(result.state==='incomplete'?': '+result.reason:': confirming reads missing');}
- }catch{record.release='incomplete';record.reason='deletion not confirmed';}
+ }catch(error){record.release='incomplete';record.reason=error instanceof HostWatchdogStopIncomplete?error.message:'deletion not confirmed';if(error instanceof HostWatchdogStopIncomplete)record.failure={code:error.code};}
  o.records.provisions.save(record);
  return publicProvision(record);
 }

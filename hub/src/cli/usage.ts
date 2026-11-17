@@ -47,11 +47,11 @@ export const HOST_USAGE = `  host create [pool] human-only local CLI: create a p
                   five-minute boot gate; automatic retries back off 1–30 minutes; provider retry times pause the pool
                   unknown acquisition retains its slot; failures notify Coordinator in Agents
   host status [--json] human-only local CLI: pool slots, UTC spend including monthly login storage; bound logins
-  host stop <id> human CLI/Neovim or authenticated web: stop renewal and destroy with confirming reads
+  host stop <id> human CLI/Neovim or authenticated web: stop renewal, confirm deletion and watchdog exit
   host list [--json] human-only local CLI: id, pool, provider, size, region, state, uptime, USD/hour
   host prepare [pool] human-only local CLI: prepare one or all configured pool images
                   pool: 1–64 letters, digits and hyphens; first character letter or digit
-  host destroy <id> human-only local CLI: remove host, delete machine and key with confirming reads
+  host destroy <id> human-only local CLI: remove host, confirm machine/key deletion and watchdog exit
   host revoke <id> human-only local CLI: allow a 12s settlement budget, revoke secret, report leftovers
   host git-proxy <socket> relay Git stdin/stdout through the forwarded Unix socket
   host attach <session> attach using this agent run folder’s private launch record
