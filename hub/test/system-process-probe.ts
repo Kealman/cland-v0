@@ -1,15 +1,15 @@
 // Shared isolated native-process boundary; all OS processes and signals inside the child are synthetic.
 import { execFile } from 'node:child_process';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownDirectory } from './process-cleanup.ts';
 
 const entry = fileURLToPath(new URL('../src/system-processes.ts', import.meta.url));
-export async function systemProcessProbe(body: string, platform: 'darwin' | 'linux' = 'darwin') {
+export async function systemProcessProbe(body: string, platform: 'darwin' | 'linux' = 'darwin', options: { suiteRoot?: boolean } = {}) {
   const source = `
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
@@ -23,7 +23,7 @@ const nativeBirth = r => r && process.platform === 'linux' ? 'linux:' + boot + '
 const start = 'Mon Oct 5 12:00:00 2026';
 const row = (pid, parent, group, started = start) => ({ pid, parent, group, started, state: 'S', command: 'node fixture' });
 let onNative = async () => {}, nativeFailure = false, nativePid = pid => pid;
-let rows = [], onProbe = () => {}, onSignal = () => {}, onTable = () => {}, onChildren = () => {}, cwdOf = () => '', tableOutput;
+let rows = [], onProbe = () => {}, onSignal = () => {}, onTable = () => {}, onChildren = () => {}, cwdOf = () => '', tableOutput, pgrepStderr = '', pgrepCode = 0;
 const signals = []; const listings = []; const liveness = [];
 let onStat = async () => {};
 if (process.platform === 'linux') {
@@ -65,8 +65,9 @@ cp.spawn = (bin, args) => {
       output = Buffer.concat(records);
     } else if (bin === 'pgrep') {
       await onChildren();
-      const parents = args[args.indexOf('-P') + 1].split(',').map(Number);
-      output = rows.filter(p => parents.includes(p.parent)).map(p => p.pid).join('\\n');
+      if (pgrepStderr) { child.stdout.end(); child.stderr.end(pgrepStderr); child.emit('close', pgrepCode); return; }
+      const parents = args[1].split(',').map(Number);
+      output = rows.filter(p => parents.includes(args[0] === '-P' ? p.parent : p.group)).map(p => p.pid).join('\\n');
     } else if (bin === 'lsof') {
       output = 'fcwd\\nn' + cwdOf(Number(args[args.indexOf('-p') + 1]));
     } else if (args.includes('pid=,ppid=,pgid=,lstart=,stat=,command=')) {
@@ -90,6 +91,11 @@ cp.spawn = (bin, args) => {
   });
   return child;
 };
+cp.spawnSync = (bin, args) => {
+  assert.ok(bin === 'ps' || bin === 'pgrep');
+  if (bin === 'pgrep') return { status: pgrepCode, stdout: pgrepStderr ? '' : rows.filter(p => args[1].split(',').includes(String(p.group))).map(p => p.pid).join('\\n'), stderr: pgrepStderr };
+  return { status: 0, stdout: rows.find(p => p.pid === Number(args[args.indexOf('-p') + 1]))?.started ?? '', stderr: '' };
+};
 syncBuiltinESMExports();
 process.kill = (pid, signal) => {
   if (signal === 0) {
@@ -112,12 +118,24 @@ const { endProcess: nativeEndProcess, systemProcesses } = await import(${JSON.st
 const endProcess = (p, ...args) => nativeEndProcess({ ...p, pidIdentity: Object.hasOwn(p, 'pidIdentity') ? p.pidIdentity : nativeBirth(rows.find(r => r.pid === p.pid)) }, ...args);
 ${body}
 `;
-  const root = await mkdtemp(join(tmpdir(), 'cland-process-identity-'));
+  // Acquire and register every root before yielding: a signal cleanup must not
+  // finish while an asynchronous mkdir can still publish an unowned sibling.
+  const root = mkdtempSync(join(tmpdir(), 'cland-process-identity-'));
   const cleanup = ownDirectory(undefined, root);
+  let cleanupSuite: (() => Promise<void>) | undefined;
   try {
+    if (options.suiteRoot) {
+      const suiteRoot = join(realpathSync('/tmp'), `cland-suite-${basename(root)}`);
+      mkdirSync(suiteRoot, { mode: 0o700 });
+      cleanupSuite = ownDirectory(undefined, suiteRoot);
+    }
     await promisify(execFile)(process.execPath, ['--input-type=module', '-e', source], { timeout: 10_000, cwd: root, env: fixtureEnvironment(root, process.env) });
   } catch (error) {
     throw new Error((error as { stderr?: string }).stderr?.slice(-5000) || String(error));
-  } finally { await cleanup(); }
+  } finally {
+    // execFile settles after native close, including its timeout kill. Both
+    // roots are parent-owned before launch, so child finally blocks are optional.
+    try { await cleanupSuite?.(); } finally { await cleanup(); }
+  }
 }
 

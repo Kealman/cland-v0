@@ -1,7 +1,8 @@
+import { pgrepMembers } from '../src/pgrep-result.ts';
 import { removeFixtureSockets } from '../../shared/fixture-sockets.ts';
 import { processIdentities } from '../src/process-identity.ts';
 // Test-only ownership: registered groups for teardown; directory/ancestry discovery for phase recovery.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, readlinkSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { readdir, rm } from 'node:fs/promises';
@@ -26,14 +27,9 @@ function alive(pid: number): boolean {
 }
 
 function groupMembers(groups: number[]): number[] {
-  let members: string;
   // cland-allow-child-env: read-only OS discovery for fixture groups; no account, provider or Git operation
-  try { members = execFileSync('pgrep', ['-g', groups.join(',')], { encoding: 'utf8' }); }
-  catch (error) {
-    if ((error as { status?: number }).status !== 1) throw error;
-    members = String((error as { stdout?: string }).stdout ?? '');
-  }
-  return members.trim().split(/\s+/).filter(Boolean).map(Number);
+  const result = spawnSync('pgrep', ['-g', groups.join(',')], { encoding: 'utf8', timeout: 1000 });
+  return pgrepMembers({ code: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '', error: result.error });
 }
 function processes(pids?: number[], groups: number[] = []): ProcessRow[] {
   if (groups.length) pids = [...new Set([...(pids ?? []), ...groupMembers(groups)])];

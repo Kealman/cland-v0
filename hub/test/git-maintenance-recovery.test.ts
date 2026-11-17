@@ -1,3 +1,4 @@
+import { pgrepMembers } from '../src/pgrep-result.ts';
 // T1: durable collector ownership and bounded recovery policy with explicit native observations.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -116,4 +117,19 @@ test('incomplete cleanup with unreadable ownership stops the pass before a secon
     },
   }), /cleanup incomplete/);
   assert.equal(commands.filter(args => args.includes('gc')).length, 1);
+});
+
+test('pgrep inspection separates confirmed empty lists from unavailable and malformed results', () => {
+  for (const code of [0, 1]) {
+    assert.deepEqual(pgrepMembers({ code, stdout: '', stderr: '' }), []);
+    assert.deepEqual(pgrepMembers({ code, stdout: '123\n456\n', stderr: '' }), [123, 456]);
+    for (const stderr of ['warning', ' ', 'sysmon request failed with error: sysmond service not found\npgrep: Cannot get process list']) {
+      assert.throws(() => pgrepMembers({ code, stdout: '', stderr }), /process inspection unavailable/);
+    }
+  }
+  for (const stdout of ['pgrep: Cannot get process list', 'sysmon request failed', '123 garbage', '0', '9007199254740992']) {
+    assert.throws(() => pgrepMembers({ code: 0, stdout, stderr: '' }), /process inspection unavailable/);
+  }
+  assert.throws(() => pgrepMembers({ code: 2, stdout: '', stderr: '' }), /process inspection unavailable/);
+  assert.throws(() => pgrepMembers({ code: null, stdout: '', stderr: '', error: 'timeout' }), /process inspection unavailable/);
 });

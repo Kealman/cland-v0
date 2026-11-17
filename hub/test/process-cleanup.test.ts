@@ -47,6 +47,7 @@ cp.execFileSync = (command, args) => {
   assert.deepEqual(args, ['-ww', ...selection, '-o', 'pid=,ppid=,pgid=,lstart=,stat=,command=']);
   return rows.map(r => r.pid + ' ' + r.parent + ' ' + r.group + ' ' + r.started + ' R ' + r.command).join('\\n');
 };
+cp.spawnSync = (command, args) => ({ status: 0, stdout: cp.execFileSync(command, args), stderr: '' });
 syncBuiltinESMExports();
 process.kill = (pid, signal) => { if (signal === undefined || signal === 0) { if (rows.some(row => row.pid === pid)) return true; const e = new Error('gone'); e.code = 'ESRCH'; throw e; } signals.push({ pid, signal }); rows = rows.filter(row => pid < 0 ? row.group !== -pid : row.pid !== pid); return true; };
 const start = 'Mon Oct 5 12:00:00 2026';
@@ -928,4 +929,16 @@ for (const setup of ['omitted', 'aborted'] as const) test(`FrameClient native co
   assert.equal(exit.rootPresent, true, 'directory fence joins close before removal');
   assert.equal(captureProcess(owner.child.pid), null);
   assert.equal(await fs.stat(owner.dir).catch(() => null), null);
+});
+
+for (const code of [0, 1]) test(`failed pgrep exit ${code} preserves a registered live fixture group`, () => {
+  assert.deepEqual(probe(`
+rows = [{ pid: 420100, parent: process.pid, group: 420100, started: start, command: 'fixture' }];
+const seed = captureProcess(420100);
+cp.spawnSync = () => ({ status: ${code}, stdout: '', stderr: 'sysmon request failed with error: sysmond service not found\\npgrep: Cannot get process list' });
+syncBuiltinESMExports();
+await assert.rejects(cleanupProcesses(undefined, [seed]), /process inspection unavailable/);
+assert.equal(rows.length, 1);
+assert.deepEqual(signals, []);
+`), []);
 });

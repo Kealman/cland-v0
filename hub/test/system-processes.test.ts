@@ -860,3 +860,54 @@ assert.deepEqual(signals.map(signal => signal.signal), ['SIGTERM', 'SIGSTOP']);
 assert.equal(rows[0].state, 'T', 'revoked ownership retains the captured stopped process');
 `);
 });
+
+for (const code of [0, 1]) test(`pgrep stderr with exit ${code} preserves captured descendants and collector ownership`, async () => {
+  await probe(`
+pgrepStderr = 'sysmon request failed with error: sysmond service not found\\npgrep: Cannot get process list';
+pgrepCode = ${code};
+rows = [row(420100, 1, 420100), row(420101, 420100, 420100)];
+const { recoverMaintenanceOwner, recoverMaintenanceOwnerSync, writeMaintenanceOwner, readMaintenanceOwner } = await import(${JSON.stringify(new URL('../src/git-maintenance-owner.ts', import.meta.url).href)});
+const { hostname } = await import('node:os');
+const root = process.cwd();
+{
+ const { watchdogAlive } = await import(${JSON.stringify(new URL('../src/executor/droplet/watchdog.ts', import.meta.url).href)});
+ const { DropletRun } = await import(${JSON.stringify(new URL('../src/executor/droplet/run.ts', import.meta.url).href)});
+ const { writeLease, readLease } = await import(${JSON.stringify(new URL('../src/executor/droplet/lease.ts', import.meta.url).href)});
+ const lease = { provider: 'digitalocean', tags: ['cland'], run: 'inspection-fixture', name: 'inspection-fixture', lease: 'inspection-fixture', resource: 42, state: 'active', deadline: new Date(Date.now() + 60000).toISOString(), watchdog: { pid: 420100, startedUtc: start, pidIdentity: nativeBirth(rows[0]) }, execution: { started: true, delivered: true } };
+ await writeLease(root, lease);
+ let stream = 'before inspection\\n';
+ const remote = new DropletRun(root, process.env, { api: { droplet: async () => ({ status: 'active' }) }, machine: { exec: async (_lease, command) => command.includes('base64') ? Buffer.from(stream).subarray(Number(command.split('tail -c +')[1].split(' ')[0]) - 1).toString('base64') : JSON.stringify({ state: 'running' }) } });
+ const before = await remote.log(lease, 0);
+ assert.equal(before.text, stream);
+ assert.equal((await remote.status(lease)).state, 'running');
+ await assert.rejects(systemProcesses(undefined, undefined, [420100], true), /process inspection unavailable/);
+ const owner = { token: 'fixture', root, cwd: root, gitDirectory: root + '/.git', host: hostname(), pid: 420100, group: 420100, started: start };
+ await writeMaintenanceOwner(root, owner);
+ await assert.rejects(recoverMaintenanceOwner(root), /process inspection unavailable/);
+ assert.throws(() => recoverMaintenanceOwnerSync(root), /process inspection unavailable/);
+ assert.deepEqual(await readMaintenanceOwner(root), owner);
+ assert.deepEqual(signals, []);
+ const { sweep } = await import(${JSON.stringify(new URL('../src/suite-lock.ts', import.meta.url).href)});
+ const token = root.split('/').pop();
+ const suiteRoot = (await nativeFiles.realpath('/tmp')) + '/cland-suite-' + token;
+ assert.ok((await nativeFiles.stat(suiteRoot)).isDirectory(), 'parent owns suite root before child launch');
+ {
+  const holder = { pid: 420199, started: start, token, root: suiteRoot, device: 0, inode: 0, runner: { pid: 420198, group: 420198, started: start } };
+  await assert.rejects(sweep(holder), /process inspection unavailable/);
+  assert.ok((await nativeFiles.stat(suiteRoot)).isDirectory());
+  stream += 'after inspection\\n';
+  assert.equal((await remote.status(lease)).state, 'running');
+  assert.equal((await remote.log(lease, before.next)).text, 'after inspection\\n', 'stream remains readable after failed local inspection');
+  assert.deepEqual(await readLease(root + '/.cland/run/executor/leases/' + lease.lease), lease);
+  assert.equal(await watchdogAlive(lease), true);
+  assert.deepEqual(signals, []);
+  pgrepStderr = ''; rows = [];
+  await recoverMaintenanceOwner(root);
+  assert.equal(await readMaintenanceOwner(root), null, 'clean empty listing still clears a gone owner');
+  await writeMaintenanceOwner(root, owner);
+  recoverMaintenanceOwnerSync(root);
+  assert.equal(await readMaintenanceOwner(root), null);
+ }
+}
+`, 'darwin', { suiteRoot: true });
+});

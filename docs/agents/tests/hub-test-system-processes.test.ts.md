@@ -110,3 +110,20 @@ Lease binding is rechecked after awaited scope proof and at the native signal
 boundary. No generic temporary-directory grant is added. The original cancellation and
 setup-failure cleanup controls and native no-inherited-authority cases must pass
 alongside outside-group refusal and ordinary restart recovery.
+
+## Failed macOS process inspection
+
+The `pgrep stderr with exit 0/1 preserves captured descendants and collector ownership`
+cases inject the sysmond failure into the synthetic OS boundary. Each case starts
+with a persisted remote lease and readable stream, exercises descendant discovery,
+async/sync collector recovery and changed-inode suite root recovery, and observes
+the retained roots/receipts, incremental stream bytes and native watchdog identity.
+All PIDs and signals are synthetic; no system service is stopped. Collector records
+live in the parent-owned probe cwd; the parent creates and owns the suite-root
+sibling synchronously before the first await, so signal cleanup cannot pass a
+pending directory acquisition. It cleans both only after native child close, including
+the execFile timeout path. Clean empty
+collector inspections still release the collector receipt. The companion
+`process-cleanup.test.ts` cases retain a registered live fixture group on the same
+stderr failures; pure result validation runs in `git-maintenance-recovery.test.ts`.
+These tests do not establish the cause of historical SSH stream loss (T-1925).

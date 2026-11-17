@@ -1,3 +1,4 @@
+import { pgrepMembers } from './pgrep-result.ts';
 // Shared compatibility lease for hand runners and hub-admitted verification workers.
 import { type Stats, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { link, lstat, mkdir, readFile, realpath, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
@@ -78,7 +79,7 @@ export async function sweep(holder: Holder): Promise<void> {
       const group = holder.runner?.group;
       if (!Number.isSafeInteger(group) || group! <= 1) throw new Error('suite root identity changed; runner group unknown; ownership preserved');
       const members = await run('pgrep', ['-g', String(group)], process.env, 1000);
-      if (members.error || members.code !== 1 || members.stdout.trim()) throw new Error('suite root identity changed; runner group live or unknown; ownership preserved');
+      if (pgrepMembers(members).length || members.code !== 1) throw new Error('suite root identity changed; runner group live or unknown; ownership preserved');
       // A dead recorded group does not rule out detached, reparented writers.
       // Token/path/uid authorize cwd discovery, never deletion of these bytes.
       let ambiguous = false;

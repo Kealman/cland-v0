@@ -1980,6 +1980,14 @@ Tests proving startup cleanup pass the fourth argument `{ sweep: true }`; an
 explicit environment value takes precedence over that option. Production startup
 without the variable still sweeps. Doctor and on-demand cleanup are unaffected.
 
+Process inspection treats any `pgrep` stderr, malformed PID output, known failure
+text, timeout or unexpected exit as unavailable, including macOS sysmond errors
+with exit 0. Failed inspection preserves collector receipts, fixture writers and
+suite recovery roots, reporting `process inspection unavailable`. A clean empty
+listing remains an absence observation; it does not replace the separate native
+birth and ownership checks. Remote stream/status reads and watchdog identity
+checks use their existing SSH and native process probes independently of pgrep.
+
 Test helpers record each process's PID, process group and start identity at spawn
 or first observation through the CLI, hub frames or fake harness records. PIDs
 from one protocol result are captured together. Teardown

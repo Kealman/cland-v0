@@ -1,3 +1,4 @@
+import { pgrepMembers } from './pgrep-result.ts';
 import type { HostCapturedProcess } from './host/host.ts';
 // Bounded asynchronous termination requires verified identities; recovery CONT has an explicit exception.
 import { probeTimeout, run } from './doctor/report.ts';
@@ -55,11 +56,8 @@ export async function systemProcesses(resumed: Resumed = untimed, deadline?: num
       // Select children of captured PIDs, then walk only those newly selected parents.
       // The ps snapshot below must still prove every ancestry edge before capture.
       const children = await run('pgrep', ['-P', parents.join(',')], env, timeout(discoveryDeadline, env));
-      if (children.error || children.code !== 0 && children.code !== 1) throw new Error('cannot inspect captured process descendants: pgrep failed or timed out');
-      parents = resumed(() => children.stdout.trim().split(/\s+/).filter(Boolean).map(value => {
-        if (!/^\d+$/.test(value) || Number(value) <= 1) throw new Error('cannot verify captured process descendants');
-        return Number(value);
-      }).filter(pid => {
+      const discovered = pgrepMembers(children);
+      parents = resumed(() => discovered.filter(pid => {
         if (selected.has(pid)) return false;
         selected.add(pid); return true;
       }));

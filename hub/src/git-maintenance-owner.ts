@@ -1,3 +1,4 @@
+import { pgrepMembers } from './pgrep-result.ts';
 // Durable collector ownership gates every territory mutation after bounded cleanup handoff.
 import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -57,6 +58,7 @@ function state(owner: MaintenanceOwner, started: string | null, members: string,
 async function inspect(owner: MaintenanceOwner, env: NodeJS.ProcessEnv): Promise<OwnerState> {
   const started = await processStartedAsync(owner.pid, 200, work => work(), 'UTC', env);
   const group = await run('pgrep', ['-g', String(owner.group)], env, 200);
+  try { pgrepMembers(group); } catch { return 'unknown'; }
   // Recheck after the group read: a replacement PID never authorizes a signal.
   const current = await processStartedAsync(owner.pid, 200, work => work(), 'UTC', env);
   if (started !== null && current !== null && started !== current) return 'mismatch';
@@ -75,7 +77,7 @@ export async function recoverMaintenanceOwner(root: string, env: NodeJS.ProcessE
   if (observed === 'alive') { io.kill(owner); do { observed = await io.inspect(owner); if (observed !== 'alive') break; await io.wait(); } while (io.now() < deadline); }
   if (observed === 'gone' || observed === 'mismatch') { await clearOwner(root, owner, observed === 'gone', io.alive ?? pidAlive); return; }
   (io.report ?? reporters.get(root))?.(owner);
-  throw new MaintenanceRecoveryRequired(owner);
+  throw new MaintenanceRecoveryRequired(owner, observed === 'unknown' ? 'process inspection unavailable' : undefined);
 }
 /** Init's synchronous territory path has the same bounded recovery and reuse refusal. */
 export function recoverMaintenanceOwnerSync(root: string, env: NodeJS.ProcessEnv = process.env): void {
@@ -86,6 +88,7 @@ export function recoverMaintenanceOwnerSync(root: string, env: NodeJS.ProcessEnv
     const start = spawnSync('ps', ['-o', 'lstart=', '-p', String(owner.pid)], { env: { ...env, TZ: 'UTC', LC_ALL: 'C' }, encoding: 'utf8', timeout: 200 });
     const group = spawnSync('pgrep', ['-g', String(owner.group)], { env, encoding: 'utf8', timeout: 200 });
     const again = spawnSync('ps', ['-o', 'lstart=', '-p', String(owner.pid)], { env: { ...env, TZ: 'UTC', LC_ALL: 'C' }, encoding: 'utf8', timeout: 200 });
+    try { pgrepMembers({ code: group.status, stdout: group.stdout ?? '', stderr: group.stderr ?? '', error: group.error }); } catch { return 'unknown'; }
     const before = start.status === 0 ? parseStarted(start.stdout) : null, current = again.status === 0 ? parseStarted(again.stdout) : null;
     if (before !== null && current !== null && before !== current) return 'mismatch';
     return state(owner, current, group.stdout ?? '', !start.error && !again.error && !group.error && (group.status === 0 || group.status === 1));
@@ -93,7 +96,7 @@ export function recoverMaintenanceOwnerSync(root: string, env: NodeJS.ProcessEnv
   const deadline = Date.now() + 750;
   let observed = inspectSync();
   if (observed === 'alive') { kill(owner); do { observed = inspectSync(); if (observed !== 'alive') break; } while (Date.now() < deadline); }
-  if (observed !== 'gone' && observed !== 'mismatch') { reporters.get(root)?.(owner); throw new MaintenanceRecoveryRequired(owner); }
+  if (observed !== 'gone' && observed !== 'mismatch') { reporters.get(root)?.(owner); throw new MaintenanceRecoveryRequired(owner, observed === 'unknown' ? 'process inspection unavailable' : undefined); }
   if (decode(root, readFileSync(maintenanceOwnerPath(root), 'utf8')).token !== owner.token) throw new Error('Git collector ownership changed during recovery');
   const gc = join(owner.gitDirectory, 'gc.pid');
   try { if (observed === 'gone' && gcOwned(readFileSync(gc, 'utf8'), owner) && !pidAlive(owner.pid)) unlinkSync(gc); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
