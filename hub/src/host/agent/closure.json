@@ -74,7 +74,7 @@
     },
     {
       "path": "hub/src/host/agent/native.ts",
-      "sha256": "388b2802ecdd18204727d9bfe0476081e1111963c3883c23269dccc4556994c2"
+      "sha256": "7d2b6b95f16ec760267740c4e6e55c175a033bf78a2c3bcf67fc4e0a05cdba2f"
     },
     {
       "path": "hub/src/host/agent/occupants.ts",

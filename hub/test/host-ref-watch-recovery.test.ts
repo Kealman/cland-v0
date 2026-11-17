@@ -8,10 +8,12 @@ import { RefWatches } from '../src/host/agent/watch.ts';
 import type { RefPushOwner, PushAdmission, PushObservation } from '../src/host/agent/ref-push.ts';
 import { HOST_ORIGIN } from '../src/host/agent/protocol.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { ownDirectory } from './process-cleanup.ts';
+import { ownDirectory, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import type { FixtureStep } from '../../test-support/fixture-work.ts';
 import type { TestContext } from 'node:test';
-async function fixture(t:TestContext){
- const root=await mkdtemp(join(tmpdir(),'ref-watch-'));const cleanup=ownDirectory(undefined,root);t.after(cleanup);
+async function fixture(t:TestContext,adoptRoot?:(root:string)=>void){
+ const root=await mkdtemp(join(tmpdir(),'ref-watch-'));adoptRoot?.(root);const cleanup=ownDirectory(undefined,root);t.after(cleanup);
  const run=join(root,'run');await mkdir(run);
  const heads=new Map<string,string>(),remotes=new Map<string,string>(),signatures=new Map<string,string>(),ancestors=new Set<string>();
  const states=new Map<string,PushObservation>(),attempts:Array<{path:string;args:string[];pending:PushAdmission}>=[],events:Array<any>=[],statuses:Array<Array<{path:string;state:string;cause?:string}>>=[];
@@ -181,13 +183,41 @@ for(const terminal of ['absent','replaced','live','unobservable'] as const)test(
    if(reads===1||terminal==='unobservable')throw Object.assign(Error('proc read raced exit'),{code:'ESRCH'});
    if(terminal==='absent')throw Object.assign(Error('proc entry gone'),{code:'ENOENT'});
    return `124 (git) S ${Array.from({length:19},(_,i)=>i===18?(terminal==='live'?'2':'3'):'0').join(' ')}`;
-  })],
+  },()=>{throw Object.assign(Error('no native process'),{code:'ESRCH'});})],
  ]));
  const state=await owner.observe(pending);
  assert.equal(state.state,terminal==='live'?'running':terminal==='unobservable'?'unknown':'gone');
  assert.equal(stops,0,'observation never authorizes a signal');
  assert.equal(reads,terminal==='unobservable'?3:2,'retry work is bounded');
 });
+
+async function ownedFixtureCase(t:TestContext,run:(f:Awaited<ReturnType<typeof fixture>>,step:FixtureStep)=>Promise<void>){
+ const owner=caseDeadlines(t,{ownership:{beforeDirectories,guardDirectoryRemoval}});
+ await owner.run(async step=>{
+  const f=await step(()=>owner.wait('fixture setup',()=>fixture(owner.fixtures,root=>owner.adoptRoot(root))));
+  await run(f,step);
+ });
+}
+for(const probe of ['live','EPERM','EACCES','unknown'] as const)test(`hidden Linux child retains its producer files: ${probe}`,async t=>ownedFixtureCase(t,async(f,step)=>{
+ const {refPushOwner}=await import('../src/host/agent/ref-push.ts');
+ const {observeLinuxProcess}=await import('../src/host/agent/native.ts');
+ const native={pid:123,identity:'admitted-birth'},child={pid:124,identity:'child-birth'};
+ let stops=0;
+ const processes={operationRecord:async()=>({...native,authority:'owned',targets:[child]}),stop:async()=>{stops++;return true;}} as unknown as import('../src/host/agent/processes.ts').AgentProcesses;
+ const pending:PushAdmission={id:'hidden-child',head:'A',signature:'one',started:0,native};
+ await step(()=>mkdir(join(f.run,'ref-push')));
+ const path=join(f.run,'ref-push/hidden-child.json');
+ const bytes=JSON.stringify({launchId:pending.id,...native,head:'A',complete:true,result:{code:0,stdout:'',stderr:''}});
+ await step(()=>writeFile(path,bytes));
+ const observation=await step(()=>observeLinuxProcess(child.pid,'00000000-0000-4000-8000-000000000001',async()=>{
+  throw Object.assign(Error('hidden proc entry'),{code:'ENOENT'});
+ },()=>{if(probe!=='live')throw Object.assign(Error('probe unavailable'),{code:probe});}));
+ assert.deepEqual(observation,{identity:null,ended:false});
+ const owner=refPushOwner(processes,{},f.run,async()=>new Map([[native.pid,{identity:null,ended:true}],[child.pid,observation]]));
+ assert.deepEqual(await step(()=>owner.observe(pending)),{state:'unknown',cause:'native producer target identity unobservable'});
+ assert.equal(await step(()=>readFile(path,'utf8')),bytes,'private receipt retained while child is unobservable');
+ assert.equal(stops,0,'unknown observation never signals');
+}));
 
 for (const ended of [true, false]) test(`producer completion during native observation is reread before settlement (ended=${ended})`,async t=>{
  const { refPushOwner }=await import('../src/host/agent/ref-push.ts');

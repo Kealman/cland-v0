@@ -2,6 +2,12 @@
 
 Each UTF-8 JSON line is at most 1 MiB. Requests are `{id,op,args}` with a nonempty string id and object args. Replies are `{id,ok:true,result}` or `{id,ok:false,error}`. Malformed requests use a null id. An authenticated stream stays open after malformed input or unknown operations. Before any operation send `hello` with `{protocol:1,secret}`. Invalid hello or pre-hello operations receive an error and close. Hello returns `{protocol:1,version,pid,bootId}`. Protocol mismatch refuses; product version mismatch is exposed for the code-delivery owner to handle. This protocol is new; there is no previous agent wire version. Existing hub/spoke wire shapes are unaffected.
 
+Linux process observation treats a missing `/proc/<pid>/stat` as unknown unless
+an independent `kill(pid, 0)` probe returns ESRCH in the agent's PID namespace.
+Successful probes and permission errors cannot supply a birth or prove exit.
+Visible zombie/dead states and observed birth replacement retain their existing
+exit handling. Observation never grants signal authority.
+
 | Operation | Args | Result |
 | --- | --- | --- |
 | spawn | command, args (string array), cwd, env (string map), optional logFile | pid, identity, optional warning |

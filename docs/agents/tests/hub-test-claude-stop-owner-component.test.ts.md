@@ -4,6 +4,29 @@ T2 runs the real AgentProcesses persistence, adoption, reconciliation, prepared
 stop admission and stop helper against scripted ps/proc and signal boundaries.
 No child is launched or signalled. Each mode gets a disposable root and the
 shared fixtureEnvironment. It drains owner writes before removing the root.
+The whole case enrolls shared normal/signal ownership before acquisition, guards
+each root immediately, and defers removal until the sequence and owner drain.
+Each original nested callback is independently admitted into that same owner,
+so cancellation settling `t.test` cannot release its setup/body/drain promise.
+Setup has named acquisition and admission deadlines; subsequent steps are fenced.
+Positive launch controls reject spawn, low-level `ChildProcess.prototype.spawn`
+and both exec forms; execFile callback refuses while its promisified ps boundary
+is scripted. Non-control attempts are counted even if callers swallow errors.
+A final zero-attempt assertion runs after owned callback/drain/directory cleanup,
+before global mocks restore.
+Mocks and the shared Date use the standalone tracker, so node:test context
+cleanup cannot restore them automatically on timeout. Original callback and raw
+setup promises are tracked independently of deadline races. The final cleanup
+check bounds their join and restores globals only after that join succeeds;
+an incomplete join retains mocks and guarded roots for worker recovery.
+
+The native signal fake distinguishes signal zero from termination. A missing
+synthetic PID returns ESRCH; a present PID succeeds without changing rows or
+recording a termination. The replacement case explicitly feeds fake proc ENOENT
+through the production Linux observer on every platform, for both a hidden live
+child (unknown) and the exited captured child (ended). Before this fake migration,
+the exited control reports ended false and fails; afterward closure settles
+without granting authority over the replacement root.
 
 The positive case replaces the admitted root birth while keeping a live row at
 that same PID and group, and reparents an already pinned hook. The owner must

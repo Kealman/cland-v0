@@ -20,13 +20,21 @@ export async function agentBootId(env: NodeJS.ProcessEnv): Promise<string> {
   return boot;
 }
 /** Read one Linux birth; an observation never grants native signal authority. */
-export async function observeLinuxProcess(pid:number, boot:string, readStat:()=>Promise<string>=()=>readFile(`/proc/${pid}/stat`, 'utf8')):Promise<Observation> {
+export async function observeLinuxProcess(pid:number, boot:string, readStat:()=>Promise<string>=()=>readFile(`/proc/${pid}/stat`, 'utf8'), probe:()=>void=()=>{process.kill(pid,0);}):Promise<Observation> {
   try {
     let ended = false;
     const identity = linuxIdentity(pid, await readLinuxStat(readStat), boot, undefined, () => { ended = true; });
     return { identity, ended };
   } catch (error) {
-    return { identity: null, ended: (error as NodeJS.ErrnoException).code === 'ENOENT' };
+    // hidepid or a foreign procfs namespace can hide a live native PID. Only
+    // the agent's own PID namespace can confirm absence; a successful probe
+    // supplies no birth identity and never grants signal or cleanup authority.
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      try { probe(); } catch (probeError) {
+        if ((probeError as NodeJS.ErrnoException).code === 'ESRCH') return { identity: null, ended: true };
+      }
+    }
+    return { identity: null, ended: false };
   }
 }
 export async function observeProcesses(pids: number[], env: NodeJS.ProcessEnv): Promise<Map<number, Observation>> {

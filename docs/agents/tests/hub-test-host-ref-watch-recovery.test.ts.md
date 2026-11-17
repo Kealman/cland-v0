@@ -35,11 +35,21 @@ Boot comparison uses the same canonical birth parser as reboot admission.
 
 Four Linux stat-read controls feed the production native observer into
 `refPushOwner` with a completed producer receipt and an exiting captured
-descendant. The first read raises ESRCH. A later ENOENT or replaced birth proves
-closure; the same birth stays running. Persistent ESRCH remains unknown after
+descendant. The first read raises ESRCH. A later ENOENT with an independent
+signal-zero ESRCH receipt, or a replaced birth, proves closure; the same birth
+stays running. Persistent stat ESRCH remains unknown after
 exactly three reads. Every case checks zero stop calls: observation grants no
 signal authority. These injected component cases run on both platforms; the
 native Linux push file exercises actual procfs under CPU load.
+
+Hidden-proc controls return ENOENT for a known-live captured child. Successful,
+EPERM, EACCES and unknown signal-zero probes all retain unknown observation,
+the producer's private receipt bytes and zero stop calls. No process starts and
+no mount changes; the injected component boundary runs on macOS and Linux.
+The shared `ownedFixtureCase` enrolls `caseDeadlines` with normal/signal cleanup
+before acquisition, bounds setup with a named `owner.wait`, adopts the root immediately after mkdtemp, and fences each
+callback step. Fixture after-hooks wait for the entire sequence to join before
+directory cleanup; a failed join retains the guarded root.
 
 T-1693 scripts completion inside the push owner's native census: its first
 receipt read would be absent, then the producer checkpoints and the census
