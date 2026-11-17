@@ -7,6 +7,18 @@ import type { SuiteJob } from '../src/hub/suites.ts';
 import type { ItemSummary } from '../src/tracker/tracker.ts';
 import { FakeClock } from './fake-clock.ts';
 
+test('heartbeat retains skipped and trimmed soak coverage as unexecuted', t => {
+  const store = new Store();
+  t.after(() => store.close());
+  const digest = () => heartbeatDigest(store, [], 1000, 10000, 0, 1000);
+  assert.doesNotMatch(digest().text, /unexecuted coverage/); // Older stores have no receipt.
+  for (const text of ['nightly soak skipped; unexecuted coverage: all tiers', 'nightly soak trimmed; unexecuted coverage: T4 hub/test/slow.test.ts']) {
+    store.setMeta('soak-coverage', text);
+    assert.ok(digest().text.includes(text));
+    assert.doesNotMatch(digest().text, /passed/);
+  }
+});
+
 test('ended runs leave the stale digest on item closure or a later posted result while history stays intact', t => {
   const clock = new FakeClock();
   const store = new Store();

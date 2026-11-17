@@ -2,11 +2,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { suiteSummary } from '../src/hub/suites.ts';
+import { suiteEvidence } from '../src/suite-log.ts';
+import { soakExecutionSeconds } from '../src/suite-load-gate-plan.ts';
 
 function commandLog(line: string, output: string[], code: number, id = 'command-1') {
   return [`$ ${line}`, `suite command start ${JSON.stringify({ id, name: 'test', line })}`, ...output,
     '', `suite command end ${id} ${code}`, `Finished: exit ${code}`].join('\n');
 }
+
+test('native runner timing survives semantic retention without changing test results', () => {
+  const marker = 'suite runner started 2026-11-17T01:00:00Z';
+  const malformed = 'suite runner started ordinary command noise';
+  const log = marker + '\n' + malformed + '\n' + commandLog('sh test.sh', ['assertion passed'], 0);
+  const retained = suiteEvidence(log);
+  assert.equal(soakExecutionSeconds(retained, '2026-11-17T01:00:03Z'), 3);
+  assert.ok(retained.includes(marker));
+  assert.ok(!retained.includes(malformed));
+  assert.equal(suiteSummary(retained), 'test exited 0: sh test.sh');
+  assert.equal(soakExecutionSeconds(suiteEvidence(commandLog('sh test.sh', [], 0)), '2026-11-17T01:00:03Z'), null);
+});
 
 test('a failed command without node counts reports its exit and last 20 output lines', () => {
   const output = Array.from({ length: 25 }, (_, n) => `assertion ${n + 1}`);

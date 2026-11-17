@@ -430,18 +430,31 @@ release finishes its original receipt even after dev moves.
 (the default for new projects). The hub attempts at most once per UTC day after
 that time, including when it starts late, and persists the attempt across restarts.
 It requires clean `dev` at freshly fetched `origin/dev` and skips an unchanged
-candidate tree. A soak uses one droplet with Coordinator priority, plans T1–T4
+candidate tree after a complete base selection; trimmed selections continue rotating on unchanged trees. A soak uses one droplet with Coordinator priority, plans T1–T4
 with `CLAND_TEST_SOAK=1`, and load-repeats measured identities absent from the last
 green soak. Admission pins the timeout/configuration and a five-repetition identity
-list from `durations.json`. Its base estimate reserves the serial sum of package
-phase file weights (including the manifest median for missing files), or the
-worker projection if greater. Worker speedup under contention is not assumed
-for deadline admission. It then charges each repeated identity its
-whole file cost (or identity cost, if greater) serially, plus one second per fresh
-process. It reserves 20% of `run_timeout` for load variance
-and 60 seconds for check/coverage/runner overhead, trimming repetitions to fit.
+list from `durations.json`. Worker wall projections use a calibration floor of
+2.17 from A-19799 (4480 s observed T0–T4 versus 2066.985 s projected T1–T4,
+rounded upward). A later successful soak with positive file-completion receipts
+updates the persisted observed/projected ratio; admission uses the larger of
+that ratio and the floor. For droplets, run.sh's advisory `suite runner started`
+line and native `/done` stamp use the same remote UTC clock. The interval includes
+remote setup, check if executed remotely, tests, repetitions and final health;
+it excludes host T0, acquisition, delivery and collection. Missing, duplicate or
+invalid start markers leave timing unknown and retain the last valid calibration
+or the floor. Local runs do
+not update this remote calibration. Projected time includes base and repetition costs.
+Missing file weights use the manifest median. It reserves 20% of `run_timeout`
+and 60 seconds plus one second per file, then trims repetitions to fit.
+If the base exceeds this budget, it takes contiguous rotating file prefixes in
+each tier, with cursors persisted on admission across restarts. At least one file
+per tier runs; round-robin filling charges calibrated serial file costs. With an
+unchanged manifest and calibration, the full cycle takes at most the largest tier's
+file count in admitted nights. The plan reports that bound, omitted tier counts,
+sample names and the reason; suite.log keeps every omitted file. Heartbeats retain
+the latest skip/trim receipt as unexecuted coverage, independently of exit status.
 Unmeasured identities still run in the base phase but do not acquire repetitions;
-a missing duration manifest or a base projection beyond that budget refuses admission
+a missing duration manifest or first rotating file set beyond that budget refuses admission
 with a reason before any machine is created. The plan and omitted counts stay in
 the selection/log. The executor reserves shared daily spend before creating the machine;
 a cap refusal skips the night with one notice naming `daily_spend_usd`'s cap.

@@ -10,6 +10,10 @@ if test -f "$run/done" || test -f "$run/pgid"; then exit 0; fi
 : >"$run/started"
 echo $$ >"$run/pgid"
 cat "$run/delivery.log" >"$run/suite.log"
+# Advisory timing receipt: both boundaries use this machine's UTC clock.
+# Missing evidence leaves calibration unchanged; it must never block a run.
+printf '\n' >>"$run/suite.log" || true
+date -u +'suite runner started %Y-%m-%dT%H:%M:%SZ' >>"$run/suite.log" || true
 finish() {
   code=$?
   trap - EXIT TERM INT

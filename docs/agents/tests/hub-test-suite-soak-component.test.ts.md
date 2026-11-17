@@ -49,3 +49,14 @@ artifact schema) and chip sender/fromKind `hub`. Human shell suite.start frames
 omit `as`: assert human queue rows and artifact ownership in General and Agents.
 General chips stay human; read-only Agents keeps automatic hub report chips.
 Setup and execution/completion publication have separate `caseDeadlines` bounds.
+
+Deadline fixtures use scripted machines only. The repetition fixture reserves an
+eight-minute run in an eighteen-minute lifetime with the calibration floor.
+The rotation fixture admits one of two T4 files per night, observes the persisted
+cursor and omitted log line, reopens the scratch store, and admits the other file
+on the same tree the next day. FakeClock.block advances the date before reopen;
+it avoids replaying a day's periodic timers. A zero exit without file envelopes
+cannot update calibration; a terminal file receipt plus the remote start marker
+can. The rotation case enrolls caseDeadlines with the shared pre-acquisition
+cleanup owner, adopts the acquired root, and admits every asynchronous step
+through that owner so caller FS/reopen continuations settle before disposal.

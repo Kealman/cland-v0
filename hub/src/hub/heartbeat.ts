@@ -64,5 +64,6 @@ export function heartbeatDigest(store: Store, items: ItemSummary[], interval: nu
     if (lease.state !== 'released' && Date.parse(lease.deadline) > now) flight.push(`lease ${lease.name} · ${lease.state} · expires ${lease.deadline}`);
   }
   const section = (title: string, rows: string[]) => `${title} (${rows.length})\n${rows.slice(0, 10).map(row => `- ${row.replace(/[\r\n]+/g, ' ')}`).join('\n') || '- none'}${rows.length > 10 ? `\n- and ${rows.length - 10} more` : ''}`;
-  return { text: `${section('In flight', flight)}\n\n${section('Stale', stale)}`, inFlight: flight.length, stale: stale.length };
+  const soak = store.meta('soak-coverage');
+  return { text: `${section('In flight', flight)}\n\n${section('Stale', stale)}${soak ? `\n\nSoak coverage\n${soak}` : ''}`, inFlight: flight.length, stale: stale.length };
 }

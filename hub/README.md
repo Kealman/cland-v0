@@ -5,7 +5,8 @@ The [remote command reference](../docs/hub/remote-commands.md) describes local
 approval-code validation and known-invalid versus unknown request refusals.
 The [closed-item wording guard](../docs/hub/running.md) covers Markdown docs and
 site MDX prose against the candidate checkout's tracker.
-Nightly soak deadline admission and timeout execution inventories are described
+Calibrated nightly soak deadlines, durable file rotation, unexecuted heartbeat
+receipts and timeout execution inventories are described
 in [Running](../docs/hub/running.md#soak-deadline-accounting).
 Merge batch baselines select green receipts per executed tier; see
 [Running](../docs/hub/running.md) for summary provenance and repetition counts.

@@ -12,6 +12,12 @@ native cwd census before removing its canonical root, including failure and
 cancellation teardown. See the executor-safety guide for the positive census
 and short-bound native exit regressions.
 
+The delivered runner appends its advisory UTC start receipt before command
+output, on a separate log line, ignoring write errors. Calibration pairs it only
+with that machine's native `/done` stamp. Existing delivery/typecheck/failure,
+incremental-log and native cleanup assertions remain unchanged. Pure marker and
+unknown/invalid interval cases live in suite-load-gate-plan.test.ts; scripted
+calibration publication lives in suite-soak-component.test.ts.
 The ticket-loss collection regression emits the package runner's reserved
 infrastructure diagnostic and exit 75 from a disposable fake machine. It asserts
 the collected durable result's code, cause and infrastructure classification,

@@ -72,8 +72,14 @@ evidence, not a failed test; see `docs/hub/running.md#waiting-suite-tickets`.
 
 ## Merge-delta advisory comments
 
-Nightly soak admission budgets serial base file costs, including Web, before
-repetitions; a base beyond the reserved deadline refuses before machine creation.
+Nightly soak admission calibrates worker projections, including Web, against
+observed soak receipts with a 2.17 floor, retaining its deadline reserve. Dynamic
+calibration requires a remote start log marker and native finish on the same
+remote clock; unknown intervals retain the last valid calibration or floor,
+and exclude host T0. Oversized
+bases rotate files within each tier through durable cursors before repetitions;
+omitted files stay unexecuted in the log and heartbeat. An unfittable first-file
+set refuses before machine creation.
 Timeout evidence distinguishes unexecuted files from incomplete files and
 completed tests. See `docs/hub/running.md#soak-deadline-accounting`.
 

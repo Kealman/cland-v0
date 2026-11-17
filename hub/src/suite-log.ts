@@ -1,7 +1,7 @@
 // Suite receipts retain semantic records, never arbitrary command output.
 import { createReadStream, createWriteStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
-import { loadProofIdentities } from './suite-load-gate-plan.ts';
+import { loadProofIdentities, SOAK_RUNNER_STARTED } from './suite-load-gate-plan.ts';
 
 /** Shared with legacy load-proof backfill. Ordinary lines are bounded to the
  * displayed excerpt width, including output without newlines. Semantic records
@@ -12,7 +12,7 @@ export async function* suiteLogLines(path: string): AsyncGenerator<string> {
   let partial = '';
   const retained = (line: string) => {
     const prefix = line.replace(/\x1b\[[0-9;]*m/g, '');
-    return evidence.test(prefix) || prefix.startsWith('suite command ');
+    return semanticEvidence(prefix) || prefix.startsWith('suite command ');
   };
   const add = (part: string) => {
     if (partial.length < 200 || retained(partial)) partial += part;
@@ -54,6 +54,9 @@ export async function retainedLoadProofs(path: string): Promise<string[]> {
  * Storage scales with test receipts/diagnostics, not ordinary command output.
  */
 const evidence = /^(?:suite (?:infrastructure: |execution summary |web phase |browser |provenance |timing |progress |skip |interruption |stall |test failures |quarantine |admission timeouts |machine health |duration |budget overhead |command excerpt )|(?:#|ℹ) (?:tests|pass|fail|cancelled|skipped|todo) \d+\s*$|\s*not ok \d+|✖ |test at |duration (?:budget:|regression |check:|allowance stanza )|shard[- ]|verification queue wait |total cost |occasion |--- close shards ---|(?:unexecuted|incomplete) tier |tier |typecheck: |load gate|quarantine load gate: |test lint |budget|T3 ratchet)/;
+function semanticEvidence(line: string): boolean {
+  return evidence.test(line) || SOAK_RUNNER_STARTED.test(line);
+}
 export class SuiteLogEvidence {
   readonly #records: string[] = [];
   readonly #commands = new Map<string, { name: string; line: string; tail: string[]; blanks: string[] }>();
@@ -77,7 +80,7 @@ export class SuiteLogEvidence {
         if (typeof row.id === 'string' && !this.#commands.has(row.id) && typeof row.line === 'string' && (row.name === 'check' || row.name === 'test' || /^(?:T[1-4]|Web)$/.test(row.name))) this.#commands.set(row.id, { name: row.name, line: row.line, tail: [], blanks: [] });
       } catch { /* ordinary output */ }
     }
-    if ((!line.startsWith('suite command excerpt ') && evidence.test(line)) || /failureType: ['"]testTimeoutFailure['"]/.test(line)) this.#records.push(line);
+    if ((!line.startsWith('suite command excerpt ') && semanticEvidence(line)) || /failureType: ['"]testTimeoutFailure['"]/.test(line)) this.#records.push(line);
   }
   text(): string { return '\n' + this.#records.concat(this.#command).join('\n') + '\n'; }
 }

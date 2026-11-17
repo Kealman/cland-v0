@@ -12,6 +12,7 @@ import { drive } from './remote-clock.ts';
 import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { coverageMaps, coverageSelection } from '../src/suite-coverage.ts';
 import { caseDeadlines } from './case-deadlines.ts';
+import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fixtureEnvironment } from './fixture-environment.ts';
@@ -130,7 +131,7 @@ test('nightly skips with one cap notice when another project holds shared spend'
   await reserveShardSpend('/another-project', ['other-run'], 'c-8', 0.25, 900_000, 0.1, env, f.clock, f.machine.dependencies.processes);
   await f.tick(); await f.suites.settled();
   assert.equal(f.suites.status().length, 0);
-  assert.deepEqual(notices, ['nightly soak 2026-10-16 skipped: daily spend cap $0.1 reached']);
+  assert.deepEqual(notices, ['nightly soak 2026-10-16 skipped; unexecuted coverage: all selected tiers; daily spend cap $0.1 reached']);
   await f.reopen(); await f.tick(); await f.suites.settled();
   assert.equal(notices.length, 1);
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
@@ -279,7 +280,7 @@ test('human shell verification keeps human queue and artifact authors in General
 
 // T2: the admitted deadline plan crosses the scripted provider without real time.
 test('nightly trims repetitions to the manifest projection before creating its machine', async t => {
-  const f = await suiteUnit(t, { executor: 'droplet' }, 'workers=1\nsoak="12:00"\nlifetime="15m"\nrun_timeout="5m"');
+  const f = await suiteUnit(t, { executor: 'droplet' }, 'workers=1\nsoak="12:00"\nlifetime="18m"\nrun_timeout="8m"');
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   const file = 'hub/test/example.test.ts';
@@ -320,8 +321,47 @@ test('nightly refuses a base run beyond the deadline before reserving a droplet'
   await f.tick(); await f.suites.settled();
   assert.equal(f.suites.status().length, 0);
   assert.equal(notices.length, 1);
-  assert.match(notices[0]!, /soak deadline plan refused: base projection 301.0 s exceeds 180.0 s/);
+  assert.match(notices[0]!, /soak deadline plan refused: base projection 652.0 s exceeds 180.0 s/);
+  assert.match(f.store.meta('soak-coverage')!, /unexecuted coverage/);
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
+});
+
+test('nightly rotates files durably across restarts and reports omitted coverage', async t => {
+  const run = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return run.run(async step => {
+    const f = await step(() => run.wait('fixture setup', async () => {
+      const fixture = await suiteUnit(run.fixtures, {}, 'workers=1\nsoak="12:00"\nlifetime="15m"\nrun_timeout="175s"');
+      run.adoptRoot(fixture.root);
+      return fixture;
+    }));
+    f.candidate.branch = 'dev';
+    f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+    const files = ['hub/test/first.test.ts', 'hub/test/second.test.ts'];
+    await step(() => mkdir(join(f.root, 'hub/test'), { recursive: true }));
+    for (const file of files) await step(() => writeFile(join(f.root, file), "test('case', () => {});"));
+    await step(() => writeFile(join(f.root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: Object.fromEntries(files.map(file => [file, 'T4'])) })));
+    await step(() => writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { artifacts: [], commit: f.candidate.head }, budget: { testSeconds: 5, fileSeconds: 60 }, files: Object.fromEntries(files.map(file => [file, { seconds: 30, tests: 1 }])), tests: {}, allow: {} })));
+    await step(() => run.wait('first admission', async () => { await f.tick(); await f.suites.settled(); }));
+    const first = (await step(() => f.jobs()))[0]!;
+    assert.deepEqual(first.selection?.shard?.files, [files[0]]);
+    assert.equal(JSON.parse(f.store.meta('soak-cursors')!).T4, 1);
+    assert.match(f.store.meta('soak-coverage')!, /unexecuted coverage/);
+    assert.ok((await step(() => f.log(first.id))).includes(`unexecuted tier T4: ${files[1]}`));
+    await step(() => run.wait('first machine started', () => f.machine.waits.run(f.machine.started(first.id))));
+    await step(() => run.wait('first completion', () => f.finish(first.id)));
+    assert.equal(f.store.meta('soak-calibration'), null, 'exit zero without file completion cannot calibrate');
+    f.clock.block(86400000);
+    await step(() => run.wait('reopen', () => f.reopen()));
+    await step(() => run.wait('second admission', async () => { await f.tick(); await f.suites.settled(); }));
+    const second = (await step(() => f.jobs())).find(job => job.id !== first.id)!;
+    assert.deepEqual(second.selection?.shard?.files, [files[1]]);
+    assert.equal(JSON.parse(f.store.meta('soak-cursors')!).T4, 2);
+    await step(() => run.wait('second machine started', () => f.machine.waits.run(f.machine.started(second.id))));
+    const remoteStart = f.clock.now().toISOString().replace(/\.\d{3}Z$/, 'Z');
+    f.clock.block(1000);
+    await step(() => run.wait('second completion', () => f.finish(second.id, 0, `suite runner started ${remoteStart}\n# tests 1\n# pass 1\nsuite progress ` + JSON.stringify({ event: 'finish', id: 'file', type: 'file', file: files[1], name: files[1], nesting: 0, at: 1, outcome: 'pass', seconds: 1 }) + '\n')));
+    assert.equal(JSON.parse(f.store.meta('soak-calibration')!).run, second.id);
+  });
 });
 
 test('periodic dev T3 skips tracker-only commits and runs a changed verification tree', async t => {

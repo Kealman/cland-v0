@@ -9,7 +9,7 @@ import { appendSuiteProvenance } from '../suite-provenance.ts';
 import { suiteAuthor } from './suite-author.ts';
 import { missingDependencyHint } from '../dependency-install.ts';
 import { pinVerificationPlan, verificationSteps } from '../verification-plan.ts';
-import { loadProofIdentities, skipT4LoadRepetitions, soakDeadlinePlan } from '../suite-load-gate-plan.ts';
+import { loadProofIdentities, skipT4LoadRepetitions, soakDeadlinePlan, soakCalibration, soakExecutionSeconds } from '../suite-load-gate-plan.ts';
 import { suiteProgress, progressLines } from '../suite-progress.ts';
 import { tierExecution, executionLines } from '../suite-execution.ts';
 import { suiteCandidate, type SuiteCandidate } from './suite-candidate.ts';
@@ -652,10 +652,22 @@ export class Suites {
         recent: recentCoverGreens(covers.map(prior => ({ completed: completed(prior),
           green: prior.outcome?.code === 0, identities: this.#full(prior).selection?.loadGateRerun?.passed ?? [] })), this.#clock.now().getTime()) };
     } else delete selection.loadGateRerun;
-    const tierPlan = !runner || input.devT3Probe ? [] : input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
+    let tierPlan = !runner || input.devT3Probe ? [] : input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
     selection = skipT4LoadRepetitions(selection, tierPlan);
+    const soakCursors: Record<string, number> = JSON.parse(this.#store.meta('soak-cursors') ?? '{}');
+    let soakDropped: string[] = [];
+    if (runner && input.occasion === 'soak' && (!commands.tiers || tierPlan.length)) {
+      const calibration = JSON.parse(this.#store.meta('soak-calibration') ?? 'null');
+      selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000, soakCursors, soakCalibration(calibration));
+      selection.reason += `; calibration receipt ${calibration?.run ?? 'A-19799'}`;
+      if (selection.shard) {
+        const completePlan = tierPlan;
+        tierPlan = await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext));
+        const kept = new Set(tierPlan.flatMap(row => row.files));
+        soakDropped = completePlan.flatMap(row => row.files.filter(file => !kept.has(file)).map(file => `unexecuted tier ${row.tier}: ${file}`));
+      }
+    }
     let batchBaselineRuns = pinned?.batchBaselineRuns;
-    if (runner && input.occasion === 'soak' && (!commands.tiers || tierPlan.length)) selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
     if (runner && input.occasion === 'batch' && !files) {
       if (!pinned) {
         const baseline = await this.#batchIdentities(tierPlan);
@@ -682,13 +694,13 @@ export class Suites {
     if (existing) return existing;
     await mkdir(dir, { recursive: true, mode: 0o700 });
     const cacheExecutor = input.occasion === 'stage' || input.occasion === 'release' ? executor : input.executor === 'droplet' ? 'droplet' : undefined;
-    const cached = !input.fresh && tree ? this.#cached(tree, selection, workers, commands, input.size, cacheExecutor, input.occasion) : undefined;
+    const cached = !input.fresh && tree && !(input.occasion === 'soak' && selection.shard) ? this.#cached(tree, selection, workers, commands, input.size, cacheExecutor, input.occasion) : undefined;
     const cacheBypass = !input.fresh && tree && input.executor === 'droplet' && !cached && this.#cached(tree, selection, workers, commands, input.size)?.executor === 'local'
       ? 'explicit --executor droplet requires a droplet green; cached green ran locally' : undefined;
 
     // Older candidate runners and fixture packages remain usable. Coverage is
     // recorded only by a capable runner on a clean integrated full dev run.
-    if (input.integrated && branch === 'dev' && tree && selection.mode === 'full' && !cached && runner?.reduceCoverage) selection.recordCoverage = { head, tree, run: id };
+    if (input.integrated && branch === 'dev' && tree && selection.mode === 'full' && !selection.shard && !cached && runner?.reduceCoverage) selection.recordCoverage = { head, tree, run: id };
     authorize();
     const workerPolicy = config ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(this.#root, 'local', this.#env)).workers, droplet: (await suiteLimits(this.#root, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;
@@ -700,6 +712,7 @@ export class Suites {
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nCommands: check ${commands.check || 'not set'} · test ${commands.test}\n${commands.plan ? 'Tier commands: ' + commands.plan.map(step => `${step.name} ${step.command}`).join(' · ') + '\n' : ''}Prepare: ${commands.prepare || 'not set'}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
     if (input.devT3Probe) await appendFile(job.log, 'Historical probe: hosting hub manifest and test lint skipped; candidate commands retained; tier projections unavailable\n');
+    if (soakDropped.length) await appendFile(job.log, soakDropped.join('\n') + '\n');
     if (cacheBypass) await appendFile(job.log, `Cache bypassed: ${cacheBypass}\n`);
     if (cached) {
       const artifact = this.#store.resolveArtifact(cached.artifact!)!;
@@ -733,6 +746,15 @@ export class Suites {
     const concurrent = this.#existingSubmission(input, head, authorize);
     if (concurrent) return concurrent;
     this.#jobs.push(job); this.#save(job);
+    if (input.occasion === 'soak') {
+      if (selection.shard) {
+        for (const row of tierPlan) soakCursors[row.tier] = (soakCursors[row.tier] ?? 0) + row.files.length;
+        this.#store.setMeta('soak-cursors', JSON.stringify(soakCursors));
+      }
+      const text = `nightly soak ${job.id}: ${selection.reason}`;
+      this.#store.setMeta('soak-coverage', text);
+      if (selection.shard) this.#options.onSoakNotice?.(`soak-trim:${job.id}`, text);
+    }
     if (!job.cached && executor === 'droplet' && (!this.#env.DIGITALOCEAN_TOKEN || !tree)) this.#fallback(job, !this.#env.DIGITALOCEAN_TOKEN ? 'DIGITALOCEAN_TOKEN is required' : 'dirty worktree cannot be bundled for droplet');
     // Socket/RPC callers can acknowledge the durable checkpoint without changing
     // start()'s scheduler-completion contract for in-process callers.
@@ -1301,12 +1323,13 @@ export class Suites {
       if (candidate.branch !== 'dev' || !candidate.tree || candidate.selection.fetchedDev !== candidate.head) throw new Error('clean dev at freshly fetched origin/dev is required');
       const last = this.#jobs.findLast(job => job.occasion === 'soak' && !job.cached
         && (!job.outcome || (job.lease as DropletLease | undefined)?.execution?.started));
-      if (last?.tree === candidate.tree) return;
+      if (last?.tree === candidate.tree && !last.selection?.shard) return;
       // No session identity is borrowed; this job and its reports belong to the hub.
       await this.start({ mode: 'all', cwd: this.#root, topic: 'agents', to: ['coordinator'], actor: null,
         occasion: 'soak', integrated: true, executor: 'droplet', fresh: true, priority: Number.MAX_SAFE_INTEGER }, () => {});
     })().catch(error => {
-      const text = `nightly soak ${day} skipped: ${error instanceof Error ? error.message : String(error)}`;
+      const text = `nightly soak ${day} skipped; unexecuted coverage: all selected tiers; ${error instanceof Error ? error.message : String(error)}`;
+      this.#store.setMeta('soak-coverage', text);
       this.#options.log?.({ event: 'verification-soak-skipped', day, text });
       this.#options.onSoakNotice?.(`soak-skip:${day}`, text);
     }).catch(error => {
@@ -1731,6 +1754,16 @@ export class Suites {
       }
       if (job.integrated && job.occasion && !job.cached && job.outcome.code === 0 && !job.timingIdentities) {
         job.timingIdentities = [...new Set(timingReceipts(await logEvidence()).map(test => `${test.file}::${test.name}`))].sort();
+      }
+      if (job.occasion === 'soak' && !job.cached && !job.outcome.notRun && job.outcome.code === 0 && !job.cancelled && !job.webPhase && job.tierPlan?.length) {
+        const execution = tierExecution(job.tierPlan, await logEvidence());
+        const weights = new Map(job.tierPlan.flatMap(row => row.files.map((file, i) => [file, row.phases?.flatMap(phase => phase.weights)[i] ?? row.seconds / row.files.length] as const)));
+        const projected = job.tierPlan.reduce((sum, row) => sum + row.projectedWall, 0)
+          + (job.selection?.loadGateTests ?? []).reduce((sum, identity) => sum + 5 * ((weights.get(identity.split('::')[0]!) ?? 0) + 1), 0);
+        const observed = job.executor === 'droplet' ? soakExecutionSeconds(await logEvidence(), job.finished) : null;
+        if (projected > 0 && observed !== null && execution.every(row => !row.unexecuted.length && !row.incomplete.length)) {
+          this.#store.setMeta('soak-calibration', JSON.stringify({ run: job.id, projected, observed, interval: 'remote runner start through /done; includes remote setup, check if executed, tests, repetitions and final health; excludes host T0, acquisition, delivery and collection' }));
+        }
       }
       this.#save(job);
       await appendSuiteProvenance(job.log, job, await logEvidence(), async () => {

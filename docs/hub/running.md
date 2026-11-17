@@ -1582,7 +1582,7 @@ cancelled or incomplete runs do not. The refusal names the needed
 `[verification] soak = "03:00"` schedules this repository's nightly UTC T1–T4
 run on one droplet; the new-project default `""` disables it. The hub attempts
 once per day, including late startup, on clean dev at fetched origin/dev and
-skips an unchanged tree. It repeats identities absent from the last green soak,
+skips an unchanged tree only after an untrimmed selection. It repeats identities absent from the last green soak,
 reserves daily spend before creation and reports a cap skip. Results and
 quarantine proposals go to the Coordinator in Agents; a red soak leaves the
 merge queue running. Proposals require the normal evidence before the
@@ -2410,10 +2410,24 @@ When changing dictionary membership or prototype checks in this repository's
 
 ## Soak deadline accounting
 
-Nightly soak admission reserves serial base file weights across every selected
-tier, including Web, before choosing fivefold repetitions. It keeps the existing
-20% of `run_timeout` plus 60 seconds for overhead; a base that cannot fit refuses
-before machine creation. Package worker projections remain report estimates.
+Nightly soak admission calibrates worker wall projections across every selected
+tier, including Web, before choosing fivefold repetitions. Its 2.17 floor comes
+from A-19799; a later successful soak with completed file receipts updates the
+persisted observed/projected ratio, bounded below by that floor. Dynamic time
+uses only the remote run.sh start log receipt and remote native `/done` finish;
+host T0, acquisition, delivery and collection are excluded. Remote setup, check
+if executed, tests, repetitions and final health are included. An absent,
+duplicate or invalid start marker leaves timing unknown and retains the last
+valid calibration or floor; local runs do not
+update it. The advisory marker is written on its own runner-log line with write
+errors ignored; older logs without it stay compatible. It keeps 20%
+of `run_timeout` plus 60 seconds and one second per file. Oversized bases rotate
+contiguous file prefixes within every tier using durable admission cursors, with
+calibrated serial costs for selected files. The selection states a conservative
+cycle bound in admitted nights, omitted counts and reason; suite.log lists all
+omitted files. First-file sets that cannot fit refuse before machine creation.
+Skip/trim receipts persist in the Coordinator heartbeat as unexecuted coverage.
+Trimmed runs neither reuse green cache nor publish full coverage maps.
 Generated and inherited configuration use the same calculation on either executor.
 On a local or remote timeout, `result.json` adds per-tier `execution` entries with
 `unexecuted` and `incomplete` file lists. A terminal file envelope proves file
