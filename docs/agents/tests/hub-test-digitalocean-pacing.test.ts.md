@@ -9,6 +9,13 @@ to the fake's declared 100000/minute through `CLAND_DIGITALOCEAN_API`. Its fragm
 is metadata, never part of HTTP paths. All tokens are `cland-test-*`; the fake owns and drains its disposable root.
 No GUI/browser runs. The clock starts at the fixture date and remains shared
 between provider and clients; advancing it supplies no real timing measurement.
+Both HTTP cases select `machine: 'scripted', transport: 'http'`: the fake closes
+its loopback listener, drains admitted work, then removes its disposable root
+without a native process census. Machine and transport selection are independent;
+omitting transport preserves HTTP for process machines and direct calls for
+scripted machines. Run `node hub/test/run-suite.ts hub hub/test/digitalocean-pacing.test.ts`
+to collect the report-only T2 resource receipt; plain `node --test` does not load
+the resource tripwire. Retain the 24-test completion and zero mismatch findings.
 
 The 300-call case uses two clients sharing a token, observes 250 admissions,
 advances to 59,999 ms with no extra sends, then completes all 300 at 60,000 ms.

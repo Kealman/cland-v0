@@ -26,7 +26,7 @@ test('300 queued calls share a token budget across clients in every 60 second wi
 for (const mode of ['http', 'scripted'] as const) test(`429 carries retry time and fences the shared token without automatic resend (${mode})`, async t => {
   const clock = new FakeClock();
   const token = `cland-test-429-${mode}`;
-  const fake = await fakeDigitalOcean(token, { clock, requestsPerMinute: 250, ...(mode === 'scripted' ? { machine: 'scripted' } : {}) });
+  const fake = await fakeDigitalOcean(token, { clock, requestsPerMinute: 250, machine: 'scripted', transport: mode });
   t.after(() => fake.close());
   Object.assign(fake.faults, { rateLimits: 1, retryAfter: '2', rateLimitReset: String(clock.now().getTime() / 1000 + 3) });
   const client = mode === 'scripted' ? fake.provider : new DigitalOceanApi({ DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: fake.url }, clock);
@@ -80,7 +80,7 @@ for (const [headers, offset] of [
 test('a missing-header 429 preserves provider text and permits the next explicit call', async t => {
   const clock = new FakeClock();
   const token = 'cland-test-429-compatibility';
-  const fake = await fakeDigitalOcean(token, { clock, requestsPerMinute: 250 });
+  const fake = await fakeDigitalOcean(token, { clock, requestsPerMinute: 250, machine: 'scripted', transport: 'http' });
   t.after(() => fake.close());
   fake.faults.create = 429;
   fake.faults.echoToken = true;

@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import type { BlockVolume, BlockVolumeSnapshot, Action, SnapshotImage, Droplet, Key, Region, Size } from '../../../src/executor/droplet/api.ts';
 
 /** Provider boundary: never retains Authorization in its request log. */
-export async function fakeDigitalOcean(token: string, options: { machine?: 'scripted' | 'process'; clock?: Clock; requestsPerMinute?: number; testContext?: TestContext } = {}) {
+export async function fakeDigitalOcean(token: string, options: { machine?: 'scripted' | 'process'; transport?: 'http' | 'scripted'; clock?: Clock; requestsPerMinute?: number; testContext?: TestContext } = {}) {
   const limit = options.requestsPerMinute ?? 100000;
   declareDigitalOceanEndpoint('http://127.0.0.1/v2', limit);
   const clock = options.clock ?? realClock;
@@ -341,7 +341,9 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     }
     return answer(404, { id: 'not_found', message: 'unknown endpoint' });
   };
-  const server = scripted ? null : createServer((req, res) => {
+  // HTTP protocol coverage does not require native machine ownership or its process census.
+  const http = (options.transport ?? (scripted ? 'scripted' : 'http')) === 'http';
+  const server = !http ? null : createServer((req, res) => {
     // Own body reads as well as handler continuations; connection close alone does not join them.
     void admit(async () => {
       if (req.headers.authorization !== `Bearer ${auth.token}`) { res.writeHead(401); res.end(JSON.stringify({ id: 'unauthorized', message: 'bad authorization' })); return; }
