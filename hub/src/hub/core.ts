@@ -1788,10 +1788,10 @@ export class HubCore {
    * delivery is `uncertain`, logged, and the human's inbox notes it. Never retried on its own; `retryUncertain`
    * sends it again.
    */
-  markUncertain(messageId: string, session: string, why: string): boolean {
+  markUncertain(messageId: string, session: string, why: string, batchReport = false): boolean {
     if (!this.#store.markUncertain(messageId, session)) return false;
     for (const id of this.#store.deliveryIds(messageId, session)) this.#log({ event: 'inject-uncertain', id, session, why });
-    this.inbox.uncertain(session, this.label(session), messageId, why);
+    this.inbox.uncertain(session, this.label(session), messageId, why, batchReport);
     this.#drainVerifierRequests();
     return true;
   }

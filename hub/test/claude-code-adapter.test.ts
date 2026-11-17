@@ -4,7 +4,7 @@
 //   the mod bridge to injected, hook signals to state, model and usage, permission hooks.
 // - "Claude Code StopFailure hook": failure reaches Agents, events and the sender.
 // - "a crashed Claude Code process": process exit and replacement bridge identity.
-// - "Claude Code mod confirmation timeout": missing native confirmation and retry.
+// - "Claude Code mod confirmation timeout": missing native confirmation and explicit retry.
 // - "after a hub restart": resume across a real hub-process restart, with hooks/mod reconnected.
 // - "Claude unpinned binary launch": stop, native-conversation relaunch and environment frame.
 // Scheduler and signed-out-latch negatives live in claude-code-schedule.test.ts on FakeClock.
@@ -260,7 +260,7 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   assert.ok(!log.includes(`"inject-unconfirmed","session":"impl-1","id":"${id}"`), `injected at once, through the new process:\n${log.split('\n').filter((l) => /impl-1|bridge|inject/.test(l)).slice(-40).join('\n')}`);
 });
 
-test('Claude Code mod confirmation timeout leaves delivery retryable at the next turn', async (t) => {
+test('Claude Code mod confirmation timeout requires explicit retry', async (t) => {
   const root = await tempProject(t);
   // The retry needs an observed busy→idle transition, not a turn shorter than its hook processes' startup.
   const fake = await fakeClaude(t, { injectTimeoutMs: 1000, dropFirst: true, awaitSignals: true });
@@ -273,15 +273,17 @@ test('Claude Code mod confirmation timeout leaves delivery retryable at the next
   // the first turn a launched session gets is its role clause, a hub notice with no topic: the fake drops it
   const clause = await eventually('the clause recorded', async () => /"event":"role-clause","session":"coord"[^\n]*"id":"([^"]+)"/.exec(await hubLog(root, ui))?.[1]);
   // An earlier attempt may have failed before the bridge connected; only this timeout proves the drop.
-  await eventually('the dropped inject timed out', async () => ((await hubLog(root, ui)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}","error":"the mod did not confirm the turn within `) ? true : undefined));
+  await eventually('the dropped inject timed out', async () => ((await hubLog(root, ui)).includes(`"event":"inject-uncertain","id":"${clause}","session":"coord","why":"the mod did not confirm the turn within `) ? true : undefined));
   const injected = async () => (await hubLog(root, ui)).includes(`"event":"injected","id":"${clause}"`);
   // The observed unconfirmed-inject record is the completion barrier. Hub-only repeated idle
   // notifications are covered in adapter-composition.test.ts without a binary or elapsed-time wait.
-  assert.equal(await injected(), false, 'not confirmed: still delivered');
+  assert.equal(await injected(), false, 'not confirmed: uncertain');
 
-  // the next turn ends idle: what waited is injected again, and this time confirmed
+  // An unrelated successful turn cannot prove receipt of the earlier input.
   const first = ((await ui.request({ type: 'topic.send', topic: 'general', text: 'first' })).value as { message: { id: string } }).message.id;
   await ui.waitFor((f) => f.type === 'delivery' && f.message === first && f.stage === 'injected', 15_000);
+  assert.equal(await injected(), false, 'unrelated turn does not settle old input');
+  assert.equal((await ui.request({ type: 'session.retry', session: 'coord', message: clause })).ok, true);
   await eventually('the clause injected on the retry', async () => ((await injected()) ? true : undefined));
   await clauseAnswered(ui, 'coord');
   await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: first', 15_000);

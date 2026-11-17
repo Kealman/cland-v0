@@ -99,6 +99,15 @@ export class InboxBoard {
   #waitingLaunches: (() => import('../protocol.ts').WaitingLaunch[]) | null = null;
   useWaitingLaunches(list: (() => import('../protocol.ts').WaitingLaunch[]) | null): void { this.#waitingLaunches = list; this.#changed(); }
   #closed = false;
+  readonly #uncertainBatches = new Map<string, { label: string; count: number; first: string; last: string; firstSeq: number; lastSeq: number; timer: ClockTimer }>();
+
+  #flushUncertain(session: string): void {
+    const batch = this.#uncertainBatches.get(session);
+    if (!batch) return;
+    this.#clock.clearTimeout(batch.timer);
+    this.#uncertainBatches.delete(session);
+    this.#notify('delivery-uncertain', `${batch.label}: ${batch.count} submitted messages have no turn receipt; oldest ${batch.first}, newest ${batch.last}. They remain uncertain and are not sent again automatically. List exact IDs in .cland/log/hub.log: inject-uncertain records for session ${session}. Inspect content with history; retry one with cland session retry ${session} <id>.`, { session });
+  }
 
   constructor(port: InboxPort) {
     this.#port = port;
@@ -140,6 +149,7 @@ export class InboxBoard {
   }
 
   close(): void {
+    for (const session of this.#uncertainBatches.keys()) this.#flushUncertain(session);
     this.#closed = true;
     this.pairingCodes.close();
     if (this.#scheduled) this.#clock.clearTimeout(this.#scheduled);
@@ -257,7 +267,21 @@ export class InboxBoard {
   }
 
   /** An inject whose outcome is unknown: the human decides whether to send it again. */
-  uncertain(session: string, label: string, messageId: string, why: string): void {
+  uncertain(session: string, label: string, messageId: string, why: string, batchReport = false): void {
+    if (batchReport) {
+      const seq = this.#port.store.messageSeq(messageId) ?? 0;
+      const batch = this.#uncertainBatches.get(session);
+      if (batch) {
+        batch.count++;
+        if (seq < batch.firstSeq) { batch.first = messageId; batch.firstSeq = seq; }
+        if (seq > batch.lastSeq) { batch.last = messageId; batch.lastSeq = seq; }
+      } else {
+        const timer = this.#clock.setTimeout(() => this.#flushUncertain(session), 250);
+        timer.unref();
+        this.#uncertainBatches.set(session, { label, count: 1, first: messageId, last: messageId, firstSeq: seq, lastSeq: seq, timer });
+      }
+      return;
+    }
     this.#notify('delivery-uncertain', `${label}: a message may or may not have reached its harness (${why}); it is not sent again on its own: \`cland session retry ${session} ${messageId}\` sends it again`, { session });
   }
 

@@ -1,5 +1,18 @@
 # hub/test/inject-stalled.test.ts
 
+The 200-input Claude regression composes the production adapter bridge and
+deadline with the retained Store/Sessions fixture and FakeClock. It asserts
+200 durable uncertain outcomes, one aggregated notification naming the oldest
+and newest IDs, and zero automatic injections after reopening storage. Late
+exact confirmation, explicit retry and definite pre-submission failure remain
+separate controls. The notification count is distinct from per-ID log records.
+The whole-case normal/signal owner enrolls before root acquisition. Every awaited
+phase enters through its admission fence; roots and both storage generations
+belong to that owner. The cancellation control holds the actual scenario between
+first-generation drainage and reopening, then closes the shared owner. It keeps
+the root through release, joins the admitted continuation, refuses second storage
+acquisition and observes the root removed only after cleanup.
+
 Use projectHub, fake harnesses and FakeClock for advisory deaf supervision.
 Every role uses a strict age greater than five minutes from the durable queue
 receipt. Assert session.list/CLI, default hub.status, one Agents notice and one

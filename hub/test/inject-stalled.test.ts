@@ -1,11 +1,13 @@
 // T2: failed-inject notice policy through real hub frames, fake harnesses and fake time.
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
-import { afterCleanup, onCleanup } from './process-cleanup.ts';
+import { afterCleanup, onCleanup, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { replayAgentsRecord } from '../src/hub/agents-topic.ts';
 import type { HarnessProcessView, Message } from '../src/protocol.ts';
 import { sessionLine } from '../src/cli/session.ts';
+import { existsSync } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { sqliteProbe } from './sqlite-probe.ts';
@@ -15,9 +17,134 @@ import type { AdapterHost } from '../src/adapters/contract.ts';
 import { fakeHarness, type FakeHarness } from './fakes/harness.ts';
 import { realClock } from '../src/hub/clock.ts';
 import { HubCore } from '../src/hub/core.ts';
+import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+
+type ReceiptRestartGate = {
+  entered: ReturnType<typeof Promise.withResolvers<void>>;
+  release: ReturnType<typeof Promise.withResolvers<void>>;
+  close?: () => Promise<unknown>;
+  root?: string;
+  first?: ReturnType<typeof retainedDeliveryFixture>;
+  reopened: boolean;
+  retainedAtRelease: boolean;
+};
+
+function claudeReceiptRestart(t: TestContext, gate?: ReceiptRestartGate) {
+  const scope = caseDeadlines(t, { timeoutMs: 15_000,
+    ownership: {
+      beforeDirectories(context, close) { if (gate) gate.close = close; beforeDirectories(context, close); },
+      guardDirectoryRemoval,
+    },
+    releaseOnClose: () => {
+      if (gate) { gate.retainedAtRelease = !!gate.root && existsSync(gate.root); gate.release.resolve(); }
+    },
+  });
+  return scope.run(async step => {
+    const root = await step(() => scope.wait('scratch root setup', async () => {
+      const acquired = await tempProject(scope.fixtures);
+      scope.adoptRoot(acquired);
+      return acquired;
+    }));
+    const clock = new FakeClock();
+    const logs: Array<Record<string, unknown>> = [];
+    const first = await step(() => scope.wait('first storage setup', async () => retainedDeliveryFixture(scope.fixtures, root, clock, logs)));
+    const host = first.sessions.host({ discoveryFile: '', node: '', cli: '', spoke: '' });
+    const adapter = new ClaudeCodeAdapter(host, { clock, env: fixtureEnvironment(root, globalThis.process.env), injectTimeoutMs: 1000 });
+    onCleanup(scope.fixtures, () => adapter.close());
+    const process = await step(() => scope.wait('fake launch', () => first.fake.spawn({ name: 'impl', role: 'implementer', model: null, cwd: root })));
+    first.table.put(process);
+    const joined = first.core.hello({ type: 'hello', protocol: 2, name: 'impl', role: 'implementer', sessionId: process.sessionId, cwd: root }, () => true);
+    assert.ok(joined.ok);
+    const submitted: string[] = [];
+    adapter.bridge(process, frame => { submitted.push(frame.message); return true; });
+    first.fake.inject = adapter.inject.bind(adapter);
+    const ids: string[] = [];
+    for (let i = 0; i < 200; i++) {
+      const message = first.core.sendFromHuman('general', `submitted ${i}`, ['impl']).message;
+      ids.push(message.id);
+      first.core.ack(joined.connection, message.id);
+    }
+    assert.equal(submitted.length, 200, 'bridge accepted each exact ID');
+    await step(() => scope.wait('clock receipt', () => clock.advance(1000)));
+    for (const id of ids) assert.equal(first.core.store.deliveriesOf(id)[0]?.state, 'uncertain', 'durable unknown outcome, never a receipt');
+    assert.equal(logs.filter(row => row.event === 'inject-uncertain').length, 200, 'each unknown input reported');
+    await step(() => scope.wait('clock receipt', () => clock.advance(250)));
+    const notices = logs.filter(row => row.event === 'notification' && row.kind === 'delivery-uncertain');
+    assert.equal(notices.length, 1, '200 durable outcomes produce one inbox notification');
+    assert.match(String(notices[0]!.text), /200 submitted messages/);
+    assert.ok(String(notices[0]!.text).includes(ids[0]!));
+    assert.ok(String(notices[0]!.text).includes(ids.at(-1)!));
+    assert.equal(first.core.store.uninjected('impl').length, 0);
+    assert.equal(first.core.store.unacknowledgedCount('impl'), 200, 'reported rows remain counted');
+    adapter.bridge(process, frame => { adapter.confirm(process, frame.message); return true; });
+    const confirmed: string[] = [];
+    for (let i = 0; i < 200; i++) {
+      const message = first.core.sendFromHuman('general', `received ${i}`, ['impl']).message;
+      confirmed.push(message.id);
+      first.core.ack(joined.connection, message.id);
+    }
+    await step(() => scope.wait('clock receipt', () => clock.advance(0)));
+    for (const id of confirmed) assert.equal(first.core.store.deliveriesOf(id)[0]?.state, 'injected', 'positive exact bridge receipt');
+    await step(() => scope.wait('adapter drainage', async () => adapter.close()));
+    await step(() => scope.wait('first storage drainage', first.close));
+    if (gate) await step(async () => {
+      gate.root = root;
+      gate.first = first;
+      gate.entered.resolve();
+      await gate.release.promise;
+    });
+    const second = await step(() => scope.wait('second storage setup', async () => {
+      if (gate) gate.reopened = true;
+      return retainedDeliveryFixture(scope.fixtures, root, clock, logs);
+    }));
+    second.fake.watch(process);
+    const rejoined = second.core.hello({ type: 'hello', protocol: 2, name: 'impl', role: 'implementer', sessionId: process.sessionId, cwd: root }, () => true);
+    assert.ok(rejoined.ok);
+    second.fake.busy('impl');
+    second.fake.idle('impl');
+    second.sessions.host({ discoveryFile: '', node: '', cli: '', spoke: '' }).reconnected!(process.sessionId);
+    await step(() => scope.wait('clock receipt', () => clock.advance(0)));
+    assert.equal(second.fake.injections.length, 0, 'startup/idle performs zero per-row injections for 200 reported and 200 confirmed rows');
+    assert.equal(second.core.store.uninjected('impl').length, 0);
+    assert.equal(logs.filter(row => row.event === 'notification' && row.kind === 'delivery-uncertain').length, 1, 'restart does not report the 200 outcomes again');
+    assert.equal(second.core.markInjected(ids[0]!, 'impl', process.sessionId), true, 'late exact receipt still settles');
+    assert.equal(second.core.store.deliveriesOf(ids[0]!)[0]?.state, 'injected');
+    assert.equal(second.core.store.deliveriesOf(ids[1]!)[0]?.state, 'uncertain', 'no sequence watermark');
+    assert.deepEqual(second.sessions.retry('impl', ids[1]!), { retried: true });
+    await step(() => scope.wait('clock receipt', () => clock.advance(0)));
+    assert.equal(second.core.store.deliveriesOf(ids[1]!)[0]?.state, 'injected', 'explicit retry has its own receipt');
+    second.fake.scriptInject('impl', 'reject');
+    const unseen = second.core.sendFromHuman('general', 'never submitted', ['impl']).message;
+    second.core.ack(rejoined.connection, unseen.id);
+    await step(() => scope.wait('clock receipt', () => clock.advance(0)));
+    assert.equal(second.core.store.isUninjected(unseen.id, 'impl'), true, 'definite non-delivery still retries');
+  });
+}
+
+test('200 submitted Claude inputs without turn receipts stay reported across restart', async t => {
+  await claudeReceiptRestart(t);
+});
+
+test('cancelling the Claude receipt restart case joins held work before root removal and fences storage reopen', async t => {
+  const gate: ReceiptRestartGate = { entered: Promise.withResolvers<void>(), release: Promise.withResolvers<void>(), reopened: false, retainedAtRelease: false };
+  const setup = caseDeadlines(t, { timeoutMs: 15_000 });
+  const work = claudeReceiptRestart(t, gate);
+  const rejected = assert.rejects(work, /fixture work admission closed/);
+  void rejected.catch(() => {});
+  t.after(async () => { await gate.close?.(); await rejected; });
+  await setup.wait('held storage-reopen boundary', () => gate.entered.promise);
+  assert.ok(gate.root && existsSync(gate.root), 'root retained while admitted continuation is held');
+  assert.throws(() => gate.first!.core.store.meta('closed-receipt'), /not open|closed/, 'first storage has drained');
+  await setup.wait('normal/signal owner cancellation and join', () => gate.close!());
+  await rejected;
+  assert.equal(gate.retainedAtRelease, true, 'shared owner releases held continuation before root removal');
+  assert.equal(gate.reopened, false, 'cancelled continuation cannot acquire second storage');
+  await assert.rejects(stat(gate.root!), { code: 'ENOENT' });
+});
 
 test('an injection completion with a queued reconnect does not reconstruct unrelated pending messages', async t => {
   const clock = new FakeClock();

@@ -54,7 +54,7 @@ import { accountPrefix } from '../accounts/registry.ts';
 import { addUsage } from './usage.ts';
 import { turnError } from './turn-error.ts';
 import { claudeWindows } from '../accounts/limits.ts';
-import { envelope, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type Permissions, type ResumeResult, type ResumeOptions, type SpawnRequest } from './contract.ts';
+import { envelope, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type InjectFrame, type Interpretation, type Permissions, type ResumeResult, type ResumeOptions, type SpawnRequest } from './contract.ts';
 
 
 
@@ -798,7 +798,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     return new Promise<void>((resolve, reject) => {
       const timer = this.#clock.setTimeout(() => {
         this.#pending.delete(key);
-        reject(new Error(`the mod did not confirm the turn within ${this.#injectTimeoutMs} ms`));
+        reject(new InjectUncertain(`the mod did not confirm the turn within ${this.#injectTimeoutMs} ms`, true));
       }, this.#injectTimeoutMs);
       this.#pending.set(key, { resolve, reject, timer });
       if (!send({ type: 'inject', session: p.name, message: message.id, text: envelope(message, topic) })) {

@@ -3094,7 +3094,7 @@ export class Sessions {
         if (this.#closed) return;
         // the request reached the harness and no answer came: never replayed on its own
         if (err instanceof InjectUncertain) {
-          this.#core.markUncertain(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name, err.message);
+          this.#core.markUncertain(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name, err.message, err.batchReport);
           // Automatic retry policy no longer applies; only an explicit human retry may replay it.
           this.#clearUnconfirmedMessage(sessionId, messageId);
         }

@@ -405,7 +405,7 @@ test('Claude re-exec bridge acknowledgement without a model turn remains unconfi
   await f.clock.advance(60_000);
   await ui.request({ type: 'hub.status', flushLogs: true });
   const log = await readFile(join(f.root, '.cland/log/hub.log'), 'utf8');
-  assert.match(log, new RegExp(`"event":"inject-unconfirmed","session":"coord","id":"${id}"`));
+  assert.match(log, new RegExp(`"event":"inject-uncertain","id":"${id}","session":"coord"`));
   assert.equal(ui.frames.some(frame => frame.type === 'delivery' && frame.message === id && frame.stage === 'injected'), false);
   // An unrelated turn cannot confirm this input; the exact envelope can, even after timeout.
   await signal('mod-turn-start', { text: 'unrelated human prompt' });

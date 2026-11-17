@@ -333,8 +333,10 @@ export interface HarnessAdapter {
  * on its own: only the human's `session.retry`, or an adapter that proves the turn did not start, sends it again.
  */
 export class InjectUncertain extends Error {
-  constructor(message: string) {
+  readonly batchReport: boolean;
+  constructor(message: string, batchReport = false) {
     super(message);
+    this.batchReport = batchReport;
     this.name = 'InjectUncertain';
   }
 }

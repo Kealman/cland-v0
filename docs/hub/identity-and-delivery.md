@@ -28,6 +28,18 @@ A delivery row is `queued` until the spoke accepts it, then `delivered`, then `i
 - Each delivery keeps the session id its addressee had when it was recorded (or when a role's queue was claimed), and an agent's message the session id it was sent from: a grant tied to a delivery (the mention rule) and a reply to a message follow the session, never a name another session may take later.
 - A session no adapter launched (a spoke started by hand) has nobody to confirm a turn: its messages stay `delivered`.
 
+Claude mod submissions whose envelope-bearing turn receipt times out become
+`uncertain` too. Submission acceptance alone cannot prove that the model received
+the content. The mod remembers submitted IDs across bridge reconnects, so replay
+cannot manufacture the missing turn receipt. These rows remain counted and
+queryable, leave automatic pending work across hub restart, and accept a late
+exact receipt or an explicit `cland session retry <name> <id>`.
+Claude timeout notifications coalesce for 250 ms per session into a count with
+the oldest/newest message IDs. Individual `inject-uncertain` log records retain
+every ID and reason; the summary names that listing and explicit retry command.
+Definite failures before submission retain normal retry/backoff. Other adapters'
+uncertainty reports keep their existing individual notification behavior.
+
 
 <!-- Implementation guidance moved from the implement skill. -->
 

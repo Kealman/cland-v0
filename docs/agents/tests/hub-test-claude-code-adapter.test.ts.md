@@ -3,6 +3,11 @@
 `hub/test/claude-code-adapter.test.ts` uses the sealed fake Claude binary and
 production hub frames for native launch, delivery, hooks and lifecycle evidence.
 
+The mod confirmation-timeout case waits for `inject-uncertain`, verifies an
+unrelated successful turn leaves that input unsettled, then explicitly retries
+the exact ID and waits for its injected receipt. A timeout is unknown delivery,
+so idle/reconnect cannot replay it automatically.
+
 The crash case advances its injected clock while the discovered process is still
 running, then kills it. This forces the native exit to follow the initial advance.
 Its bounded `eventually` advances another 150 ms on each attempt (50 ms watcher

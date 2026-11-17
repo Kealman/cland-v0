@@ -4485,7 +4485,7 @@
     "hub/test/claude-code-accounts.test.ts::logged-out turns fail authentication and a per-account latch survives the restart reconnect turn for three 30 s periods": 3.936285,
     "hub/test/claude-code-adapter.test.ts::Claude Code StopFailure hook reports its turn failure to Agents, events and sender": 3.75035,
     "hub/test/claude-code-adapter.test.ts::Claude Code binary contract: launch, attach, first clause, mod injection, hook state and usage": 6.191958,
-    "hub/test/claude-code-adapter.test.ts::Claude Code mod confirmation timeout leaves delivery retryable at the next turn": 3.999001,
+    "hub/test/claude-code-adapter.test.ts::Claude Code mod confirmation timeout requires explicit retry": 3.999001,
     "hub/test/claude-code-adapter.test.ts::Claude unpinned binary launch, native relaunch and remedies preserve an unset CLAUDE_CONFIG_DIR (T-603)": 3.893488,
     "hub/test/claude-code-adapter.test.ts::a crashed Claude Code process: the state turns unknown and the hub logs it once; launched again under its name, it works": 4.51779,
     "hub/test/claude-code-adapter.test.ts::after a hub restart, resume re-finds the running session through the process table and state reporting continues": 6.99131,
