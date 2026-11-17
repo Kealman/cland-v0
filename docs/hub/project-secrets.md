@@ -1,13 +1,16 @@
 ## Project secrets
 
+See [provider credential migration](provider-credential-migration.md) for the
+one-time human shell change and harness startup conditions.
+
 `cland secret set <name>` reads one value from stdin or a hidden terminal prompt;
 it accepts no value argument. Supported names are `telegram.token`,
-`discord.token`, `speech.elevenlabs_key` `speech.xai_key` and `auth.key`. Run it in an
+`discord.token`, `speech.elevenlabs_key`, `speech.xai_key`, `auth.key` and `digitalocean.token`. Run it in an
 initialized project; it works with the hub stopped. Use the hidden prompt or
 pipe from a credential source, keeping the value out of shell history and argv.
 
 Values live in `.cland/secrets.toml`, in `[telegram]`, `[discord]`, `[speech]` and `[auth]`
-tables with string values. Writes replace the file atomically at mode 600.
+tables (and `[digitalocean]` for the provider token) with string values. Writes replace the file atomically at mode 600.
 The resolver checks and tightens an existing file to 600 before hub startup
 opens its logs or listeners; symbolic links, non-regular files and multiple
 hard links are refused. Parse errors report a fixed reason without quoting
@@ -22,14 +25,14 @@ explicit environment to the resolver at both boundaries, falling back to the
 process environment only when no daemon environment was supplied.
 
 At hub/provider resolution, `CLAND_TELEGRAM_TOKEN`, `CLAND_DISCORD_TOKEN`,
-`ELEVENLABS_API_KEY` and `XAI_API_KEY` override `telegram.token`, `discord.token`,
-`speech.elevenlabs_key` and `speech.xai_key`, respectively. An absent variable
+`ELEVENLABS_API_KEY`, `XAI_API_KEY` and `DIGITALOCEAN_TOKEN` override `telegram.token`, `discord.token`,
+`speech.elevenlabs_key`, `speech.xai_key` and `digitalocean.token`, respectively. An absent variable
 falls back to the file; a present variable is an explicit override. An absent
 file is allowed. File safety and parsing checks still apply when overrides exist.
 Set these in the hub's launch environment; changing another shell's environment
 does not change a running hub's environment.
 
-All four environment variable names, alongside `DIGITALOCEAN_TOKEN`, are removed by the shared
+All five environment variable names are removed by the shared
 `withoutExecutorCredentials` filter after child environment overlays. Harnesses,
 verification workers and fixture children use that filter. The speech command
 provider uses the same final filter; its native launcher is covered by

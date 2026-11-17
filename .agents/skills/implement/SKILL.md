@@ -13,6 +13,9 @@ unknown types. Pairing codes share the CLI/protocol format module; preserve
 error-only older-hub replies when changing request diagnostics. See
 [remote commands](../../../docs/hub/remote-commands.md).
 
+For provider credential work, read docs/hub/provider-credential-migration.md for
+the human's startup-export migration, store command and shell evidence limits.
+
 Doctor's release-tool check (`[release] web_bundle = true`) asks the running hub
 for an opt-in gh executable lookup, never auth/network. Old/offline hub results
 stay unknown. Missing release tools name the hub PATH and require restart with

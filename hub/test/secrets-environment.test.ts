@@ -4,14 +4,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { existsSync, readFileSync, watch, writeFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { accountClaude, accountFixtureEnvironment } from './account-fixture-env.ts';
 import { connectUi, eventually, projectHub, tempProject } from './harness.ts';
 import { beforeDirectories } from './process-cleanup.ts';
-import { launchSecretCommand, secretProject } from './secrets-fixture.ts';
+import { launchSecretCommand, launchSecretShell, secretProject, secretSequence } from './secrets-fixture.ts';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
+import { EXECUTOR_CREDENTIALS } from '../../shared/executor-credentials.ts';
 
 const fakeSecrets = {
   CLAND_TELEGRAM_TOKEN: `123456:${'fake_override_'.repeat(3)}`,
@@ -20,6 +21,43 @@ const fakeSecrets = {
   XAI_API_KEY: 'fake-xai-override',
 };
 const names = Object.keys(fakeSecrets);
+
+test('migrated startup files leave provider names absent in harness shell startup modes', async t => {
+  const owner = secretSequence(t);
+  await owner.run(async step => {
+    const { root, remove } = await step(() => secretProject(t));
+    owner.root(root, remove);
+    const home = join(root, 'home');
+    await step(() => mkdir(home));
+    const files = ['.zshenv', '.zprofile', '.zshrc', '.bash_profile', '.bashrc'];
+    const planted = [...EXECUTOR_CREDENTIALS].map(name => `export ${name}=fake\n`).join('');
+    const command = `${JSON.stringify(process.execPath)} -e 'process.stdout.write(JSON.stringify(Object.keys(process.env).filter(n => ${JSON.stringify([...EXECUTOR_CREDENTIALS])}.includes(n))))'`;
+    for (const [shell, args] of [
+      ['/bin/bash', ['--noprofile', '--norc', '-c', `source "$HOME/.bashrc"; ${command}`]],
+      ['/bin/zsh', ['-f', '-d', '-c', `source "$ZDOTDIR/.zshenv"; ${command}`]],
+      // Suppress /etc/profile: some Linux images reset HOME there. Explicitly
+      // source the scratch login profile so this emulation cannot visit /root.
+      ['/bin/bash', ['--noprofile', '--norc', '-lc', `source "$HOME/.bash_profile"; ${command}`]],
+      // system zshenv is read; no user startup file (outside this scratch HOME).
+      ['/bin/zsh', ['-f', '-d', '-lc', `source "$ZDOTDIR/.zshenv"; source "$ZDOTDIR/.zprofile"; ${command}`]],
+      ['/bin/zsh', ['-f', '-d', '-lic', `source "$ZDOTDIR/.zshenv"; source "$ZDOTDIR/.zprofile"; source "$ZDOTDIR/.zshrc"; ${command}`]],
+      ['/bin/zsh', ['-f', '-d', '-lc', `source "$HOME/.zshenv"; source "$ZDOTDIR/.zshrc"; ${command}`]],
+    ] as const) {
+      if (!existsSync(shell)) { await step(() => t.test(`${shell} prerequisite`, { skip: `${shell} is not installed on this executor` }, () => {})); continue; }
+      for (const file of files) await step(() => writeFile(join(home, file), planted));
+      const control = await step(() => launchSecretShell(t, root, shell, [...args]).result);
+      assert.equal(control.incomplete, null);
+      assert.equal(control.code, 0);
+      assert.deepEqual(JSON.parse(control.stdout).sort(), [...EXECUTOR_CREDENTIALS].sort(), 'positive control sees planted names only');
+      // The human performs this migration; product code never edits startup files.
+      for (const file of files) await step(() => writeFile(join(home, file), '# credentials moved to hub store\n'));
+      const result = await step(() => launchSecretShell(t, root, shell, [...args]).result);
+      assert.equal(result.incomplete, null, `shell completion: ${result.code}/${result.signal}`);
+      assert.equal(result.code, 0);
+      assert.deepEqual(JSON.parse(result.stdout), [], 'provider names after migration');
+    }
+  });
+});
 
 test('generic speech stand-in command receives no remote secrets after the final overlay filter', async t => {
   const { root } = await secretProject(t);

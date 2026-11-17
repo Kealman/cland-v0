@@ -343,12 +343,12 @@ test('C2 no terminal skips untouched hosts with exact pool and role commands wit
   assert.match(line.fix!, /cland hub reload/);
 });
 
-test('C5 missing hub token stops before roles and asks for hub environment and restart', async () => {
+test('C5 missing hub token stops before roles and asks for the hub store and restart', async () => {
   const o = options();
   o.prompter = scriptedPrompter([{ kind: 'confirm', question: 'Set up agent hosts?', answer: true }]);
   const line = (await hosts(o))[0]!;
   assert.equal(line.verdict, 'open');
-  assert.match(line.detail, /DIGITALOCEAN_TOKEN.*hub.*restart/i);
+  assert.match(line.detail, /cland secret set digitalocean\.token.*restart.*hub/i);
 });
 
 test('C3/C4 paid pool consent names defaults and only yes writes and reloads', async () => {
@@ -397,7 +397,7 @@ test('C5 configured ready DigitalOcean pool still needs the hub token before ok'
   o.hub!.providers = async () => ({ providers: [{ provider: 'digitalocean', present: false, fingerprint: null }] });
   const line = (await hosts(o))[0]!;
   assert.equal(line.verdict, 'open');
-  assert.match(line.detail, /DIGITALOCEAN_TOKEN.*hub.*restart/);
+  assert.match(line.detail, /cland secret set digitalocean\.token.*restart.*hub/);
 });
 
 test('C2 existing pool nonterminal and failed-read guidance never resets settings or placed roles', async () => {

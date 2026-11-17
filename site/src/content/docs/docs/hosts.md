@@ -11,9 +11,12 @@ the tracker and your workbenches.
 ## Configuration
 
 Pools live in `.cland/config.toml`. No pool is created by the default config.
-DigitalOcean needs `DIGITALOCEAN_TOKEN` in the **running hub's environment**;
-restart the hub after changing it. Never put the token in project config or a
-command argument. Provider API access and SSH connectivity are required for
+Store the DigitalOcean token with `cland secret set digitalocean.token`, using
+the hidden prompt or stdin, then restart the hub. The human removes startup-file
+credential exports and restarts role sessions; `cland doctor` warns with names
+only for literal exports. Explicit `DIGITALOCEAN_TOKEN` in the hub launch
+environment remains a compatibility override. Never put the token in project
+config or a command argument. Provider API access and SSH connectivity are required for
 real host creation and disk sign-in.
 
 The `[hosts]` settings are:

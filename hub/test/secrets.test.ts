@@ -6,13 +6,88 @@ import { createHash } from 'node:crypto';
 import { chmod, mkdir, readFile, stat, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse } from 'smol-toml';
-import { projectHub } from './harness.ts';
-import { secretCli as cli, secretProject } from './secrets-fixture.ts';
+import { projectHub, testWaitMs } from './harness.ts';
+import { beforeDirectories } from './process-cleanup.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
+import { secretCli as cli, secretProject, secretSequence } from './secrets-fixture.ts';
+import { askHubFrame } from '../src/cli/socket-client.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { projectSshHosts } from '../src/host/registry.ts';
+
+test('hub provider metadata resolves a stored token without a provider environment variable', async t => {
+  const owner = secretSequence(t);
+  await owner.run(async step => {
+    const { root, remove } = await step(() => secretProject(t));
+    owner.root(root, remove);
+    await step(() => mkdir(join(root, '.cland')));
+    const result = await step(() => cli(t, root, ['set', 'digitalocean.token'], 'fake-provider-store-only\n'));
+    assert.equal(result.code, 0, 'provider secret command accepts stdin');
+    let runtimeEnvironment: NodeJS.ProcessEnv | undefined;
+    const hub = await step(() => projectHub(t, root, {}, { createHostRegistry: options => {
+      runtimeEnvironment = options.env;
+      return projectSshHosts(options);
+    } }));
+    owner.resource(() => hub.stop()); // Capture a late acquisition before checking the next admission.
+    assert.ok(runtimeEnvironment, 'host owner receives its runtime environment');
+    runtimeEnvironment.CLAND_FAKE_HOSTS = 'restored-fixture';
+    assert.equal(hub.hostEnvironment.CLAND_FAKE_HOSTS, 'restored-fixture', 'restored membership reaches the fixture view');
+    hub.hostEnvironment.CLAND_FAKE_HOSTS = 'runtime-fixture';
+    assert.equal(runtimeEnvironment.CLAND_FAKE_HOSTS, 'runtime-fixture', 'runtime admission updates the host owner environment');
+    const reply = await step(() => askHubFrame(hub.discovery, { type: 'host.providers', provider: 'digitalocean' }, 3000, fixtureEnvironment(root, process.env)));
+    const row = (reply as { providers: { present: boolean; fingerprint: string }[] }).providers[0]!;
+    assert.equal(row.present, true);
+    assert.equal(row.fingerprint, createHash('sha256').update('fake-provider-store-only').digest('hex').slice(0, 12));
+    await step(() => hub.stop());
+  });
+});
 
 function storedToml(text: string) {
   try { return parse(text); }
   catch { throw new Error('stored secret file must parse as TOML'); }
 }
+
+test('secret sequence cleanup joins held writes and adopts late resources before removing its root', async t => {
+  const entered = Promise.withResolvers<string>();
+  const release = Promise.withResolvers<void>();
+  let owner: ReturnType<typeof secretSequence> | undefined;
+  let sequence: Promise<void> | undefined;
+  // Own the deliberate hold before admitting any work: a failed assertion
+  // still releases and joins it before the normal owner attempts disposal.
+  beforeDirectories(t, async () => {
+    const closing = owner?.close();
+    release.resolve();
+    await sequence?.catch(() => {});
+    await closing;
+  });
+  owner = secretSequence(t);
+  const captured = owner;
+  let writeCompleted = false, resourceClosed = false, laterAdmitted = false;
+  sequence = captured.run(async step => {
+    const { root, remove } = await step(() => secretProject(t));
+    captured.root(root, remove);
+    const lateClose = await step(async () => {
+      entered.resolve(root);
+      await release.promise;
+      await writeFile(join(root, 'held-receipt'), 'complete\n');
+      writeCompleted = true;
+      return async () => { resourceClosed = true; };
+    });
+    captured.resource(lateClose);
+    await step(async () => { laterAdmitted = true; });
+  });
+  const rejected = assert.rejects(sequence, /fixture work admission closed/);
+  void rejected.catch(() => {});
+  const root = await within(entered.promise, testWaitMs(1000));
+  const closing = captured.close();
+  assert.equal((await stat(root)).isDirectory(), true, 'held writer retains its root');
+  release.resolve();
+  await within(closing, testWaitMs(1000));
+  await rejected;
+  assert.equal(writeCompleted, true, 'admitted filesystem work completed before removal');
+  assert.equal(resourceClosed, true, 'late resource was captured and closed');
+  assert.equal(laterAdmitted, false, 'next operation was fenced');
+  await assert.rejects(stat(root), { code: 'ENOENT' });
+});
 
 test('hub start tightens secrets to 600 before serving', { timeout: 10_000 }, async t => {
   const { root } = await secretProject(t);

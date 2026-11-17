@@ -50,3 +50,11 @@ test('Codex temp-root registration accepts only the local versus host expression
 test('hub source conforms to the named state path inventory', async () => {
   assert.deepEqual(await scanStatePaths(new URL('../src/', import.meta.url)), []);
 });
+
+test('doctor startup HOME registration accepts only its captured lookup context', () => {
+  assert.deepEqual(statePathFindings('doctor/shell-credentials.ts', 'const home = env.HOME;'), []);
+  for (const source of ["join(env.HOME, 'unregistered')", 'const other = env.HOME;', "const home = env['HOME'];"]) {
+    assert.ok(statePathFindings('doctor/shell-credentials.ts', source).length, source);
+  }
+  assert.ok(statePathFindings('future.ts', 'const home = env.HOME;').length);
+});

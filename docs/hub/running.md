@@ -331,9 +331,11 @@ keeps the hourly tag check; the hub's sweep and watchdog do the automatic cleanu
 Legacy hand-driver droplets carry only `cland` and are swept only after the
 configured lifetime plus ten minutes.
 
-The droplet lifecycle uses DigitalOcean's REST API. Set `DIGITALOCEAN_TOKEN` in the
-shell that starts the hub. Each API call reads it at use and sends it only in the
-Authorization header; cland never prints, logs or saves its value, or sends it to a droplet. Calls
+The droplet lifecycle uses DigitalOcean's REST API. Run `cland secret set digitalocean.token`,
+then restart the hub. See [provider credential migration](provider-credential-migration.md)
+for removing startup exports; an explicit hub environment token still overrides the store.
+Each API call sends the resolved token only in the Authorization header;
+cland never prints or logs its value, or sends it to a droplet. Calls
 have a 15-second bound. A create refused with exactly `422 unprocessable_entity:
 Size is not available in this region` advances to the next catalog-supported
 configured region (also present in the prepared snapshot for verification).
@@ -744,7 +746,7 @@ binaries after retirement. This command does not run automatically during upgrad
 
 During machine creation and delivery, demo status reports `state: "provisioning"` with the lease id, commit, deadline and accounting. Exec refuses with that provisioning lease and commit, advising the caller to wait for start to complete. Once delivery persists readiness, start and status report `active` and exec accepts commands until the deadline. These demo states describe usability; the executor's durable provider lease can already be `active` during delivery. Cleanup retains `releasing` and `released`.
 
-Demo leases share `remote_budget` and the daily spend cap with verification and snapshot preparation. No slot or budget means a nonzero refusal naming the reason, without creating a droplet; QA runs locally at the same commit while the lane merge hold stays active. Callers are QA holding that epic, the Coordinator or the human. The hub owns provider calls, stores no DigitalOcean token, and uses the existing tagged lease, spend ledger, watchdog and reaper. Stop, the epic's QA verdict, or the earlier of `run_timeout` and `lifetime` ends the lease. Restart retains the lease; create, confirmed destroy and cost are comments on the epic.
+Demo leases share `remote_budget` and the daily spend cap with verification and snapshot preparation. No slot or budget means a nonzero refusal naming the reason, without creating a droplet; QA runs locally at the same commit while the lane merge hold stays active. Callers are QA holding that epic, the Coordinator or the human. The hub owns provider calls, loads the project DigitalOcean token privately, and uses the existing tagged lease, spend ledger, watchdog and reaper. Stop, the epic's QA verdict, or the earlier of `run_timeout` and `lifetime` ends the lease. Restart retains the lease; create, confirmed destroy and cost are comments on the epic.
 
 Release confirms absence by droplet id, including when an accepted deletion leaves an archived response without tags. A genuine name or tag mismatch preserves the resource and spend reservation. Demo status and executor status then show operator attention with expected and observed identity fields and provider status; the epic records the refusal and the hub alerts the Coordinator once for that lease. The hub retries cleanup on reconciliation, clearing attention only after the identity is valid again or absence is confirmed.
 

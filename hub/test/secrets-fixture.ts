@@ -6,7 +6,8 @@ import { dirname, join } from 'node:path';
 import type { TestContext } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { beforeDirectories, ownDirectory } from './process-cleanup.ts';
+import { beforeDirectories, guardDirectoryRemoval, ownDirectory } from './process-cleanup.ts';
+import { fixtureWork } from '../../test-support/fixture-work.ts';
 import { clandCliLaunch } from './tier-cli.ts';
 import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
 import { remoteRedactor } from '../src/remote/redact.ts';
@@ -18,6 +19,35 @@ type Command = { result: Promise<Result>; closed: Promise<{ code: number | null;
 type Owner = { root: string; commands: Set<Command>; values: Set<string> };
 const owners = new Map<string, Owner>();
 const entry = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
+
+/** Register before acquiring anything. Join the entire callback, then settle
+ * captured (including late) resources before any captured root can be removed. */
+export function secretSequence(t: TestContext) {
+  const work = fixtureWork();
+  const resources: Array<() => Promise<unknown>> = [];
+  const roots: Array<() => Promise<void>> = [];
+  let settling: Promise<void> | undefined;
+  const settle = () => settling ??= (async () => {
+    await work.close();
+    const results = await Promise.allSettled(resources.map(close => Promise.resolve().then(close)));
+    const errors = results.filter(result => result.status === 'rejected').map(result => result.reason);
+    if (errors.length) throw new AggregateError(errors, 'secret sequence resources did not close; retain roots');
+  })();
+  let closing: Promise<void> | undefined;
+  const close = () => closing ??= (async () => {
+    await settle();
+    for (const remove of roots) await remove();
+  })();
+  beforeDirectories(t, close);
+  return {
+    run: work.run, close,
+    resource: (close: () => Promise<unknown>) => { resources.push(close); },
+    root: (root: string, remove = ownDirectory(undefined, root)) => {
+      roots.push(remove);
+      guardDirectoryRemoval(root, settle);
+    },
+  };
+}
 
 export async function secretProject(t: TestContext) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-secrets-')));
@@ -54,7 +84,7 @@ function launch(t: TestContext, cwd: string, executable: string, args: string[],
   let tail = '';
   // cland-allow-child-env: sealed disposable fixture plus synthetic inputs exercise the production final-overlay credential filter
   const child = execFile(executable, args, {
-    cwd, env: withoutExecutorCredentials({ ...fixtureEnvironment(owner.root, process.env), ...syntheticEnvironment }),
+    cwd, env: withoutExecutorCredentials({ ...fixtureEnvironment(owner.root, process.env), ZDOTDIR: join(owner.root, 'home'), ...syntheticEnvironment }),
     signal: signal ? AbortSignal.any([t.signal, signal]) : t.signal, timeout: 5000,
   }, (error, stdout, stderr) => {
     tail = redact(stderr.slice(-500));
@@ -109,6 +139,11 @@ export async function secretGit(t: TestContext, cwd: string, args: string[]): Pr
 /** Generic command stand-in uses the CLI fixture's registered close/output owner. */
 export function launchSecretCommand(t: TestContext, cwd: string, script: string, options: { env?: SyntheticCommandEnvironment; signal?: AbortSignal } = {}): Command {
   return launch(t, cwd, process.execPath, ['-e', script], undefined, options.signal, options.env);
+}
+
+/** Scratch startup-file subject, using the same bounded native-close owner. */
+export function launchSecretShell(t: TestContext, cwd: string, shell: string, args: string[]): Command {
+  return launch(t, cwd, shell, args);
 }
 
 /** Login-key stdin/argv subject shares the redacting native-close owner. */

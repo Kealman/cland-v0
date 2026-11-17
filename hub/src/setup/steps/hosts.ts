@@ -17,7 +17,7 @@ const commands = (pool: Record<string, unknown>, roles: string[]) => [
   ...Object.entries(pool).map(([key, value]) => `cland config set hosts.agents.${key} ${String(value)}`),
   ...roles.map(role => `cland role launch ${role} --pool agents`), 'cland hub reload',
 ].join('; ');
-const missingToken = () => [{ name: 'agent hosts', verdict: 'open' as const, detail: 'Set DIGITALOCEAN_TOKEN in the hub environment and restart the hub', fix: 'cland hub stop; cland hub start' }];
+const missingToken = () => [{ name: 'agent hosts', verdict: 'open' as const, detail: 'Store the provider token with cland secret set digitalocean.token and restart the hub', fix: 'cland hub stop; cland hub start' }];
 
 // Each paid operation has its own consent, independent of pool configuration.
 async function finishPool(o: SetupOptions, chosen: { role: string; launch: { harness: string; account: string | null } }[], document: Record<string, unknown>): Promise<SetupLine[]> {

@@ -1,12 +1,13 @@
 // T1: source-only public docs contracts; no runtime/native imports.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { HOST_USAGE, LOGIN_USAGE, CONFIG_USAGE, ROLE_USAGE, HUB_USAGE, SETUP_USAGE, DOCTOR_USAGE } from '../../hub/src/cli/usage.ts';
+import { HOST_USAGE, LOGIN_USAGE, CONFIG_USAGE, ROLE_USAGE, HUB_USAGE, SETUP_USAGE, DOCTOR_USAGE, SECRET_USAGE } from '../../hub/src/cli/usage.ts';
 import { commands, hostsPath, source, poolSteps } from './hosts-docs-source.ts';
 import { readHostPools } from '../../hub/src/host/pools.ts';
 import { DEFAULT_HOST_WEIGHTS } from '../../hub/src/host/scheduler.ts';
 
-const help = [HOST_USAGE, LOGIN_USAGE, CONFIG_USAGE, ROLE_USAGE, HUB_USAGE, SETUP_USAGE, DOCTOR_USAGE].join('\n');
+const usages = [HOST_USAGE, LOGIN_USAGE, CONFIG_USAGE, ROLE_USAGE, HUB_USAGE, SETUP_USAGE, DOCTOR_USAGE, SECRET_USAGE];
+const help = usages.join('\n');
 export function vocabularyErrors(page: string): string[] {
   const errors: string[] = [];
   for (const command of commands(page)) {
@@ -15,7 +16,7 @@ export function vocabularyErrors(page: string): string[] {
     const line = help.split('\n').find(line => line.trimStart().startsWith(prefix + ' ') || line.trim() === prefix);
     if (!line) errors.push(`command: ${prefix}`);
     for (const flag of words.filter(word => word.startsWith('--'))) {
-      const usage = [HOST_USAGE, LOGIN_USAGE, CONFIG_USAGE, ROLE_USAGE, HUB_USAGE, SETUP_USAGE, DOCTOR_USAGE].find(text => text.includes(`  ${words[0]} `)) ?? '';
+      const usage = usages.find(text => text.includes(`  ${words[0]} `)) ?? '';
       if (![...usage.matchAll(/--[a-z][a-z-]*/g)].some(match => match[0] === flag)) errors.push(`flag: ${flag}`);
     }
   }

@@ -11,9 +11,10 @@ const overrides = {
   CLAND_DISCORD_TOKEN: 'fake-discord-override',
   ELEVENLABS_API_KEY: 'fake-elevenlabs-override',
   XAI_API_KEY: 'fake-xai-override',
+  DIGITALOCEAN_TOKEN: 'fake-provider-override',
 };
 
-test('all four environment overrides win over file values and work without a file', async t => {
+test('all five environment overrides win over file values and work without a file', async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-secret-resolution-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(join(root, '.cland'));

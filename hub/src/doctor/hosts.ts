@@ -37,7 +37,7 @@ export async function checkHosts(root: string, env: NodeJS.ProcessEnv): Promise<
       const result = await askHubFrame(discovery, { type: 'host.providers' }, 3000, env) as ReturnType<typeof providerTokens>;
       const row = result.providers.find(p => p.provider === provider);
       out.push(!row ? warn(name, 'provider status unavailable', 'cland hub stop && cland hub start') : !row.tokenNeeded ? ok(name, 'not required') : row.present
-        ? ok(name, `present (${row.fingerprint})`) : warn(name, 'absent', "set DIGITALOCEAN_TOKEN in the hub's environment, then cland hub stop && cland hub start"));
+        ? ok(name, `present (${row.fingerprint})`) : warn(name, 'absent', 'cland secret set digitalocean.token; cland hub stop && cland hub start'));
     } catch { out.push(warn(name, 'provider status unavailable', 'cland hub stop && cland hub start')); }
   }
   if (!live) for (const name of ['host logins', 'host reachability', 'host spend']) out.push(warn(name, 'hub not running', 'cland hub start'));

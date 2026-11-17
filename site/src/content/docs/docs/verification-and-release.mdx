@@ -121,14 +121,16 @@ Cloud runs let the crew verify several tasks in parallel while the fast `check` 
 ### Setting up cloud runs
 
 1. Create a DigitalOcean API token that can read the account, sizes and regions, and create, read and delete droplets and SSH keys.
-2. Export it in the shell that starts the hub:
+2. Store it in this project using the hidden prompt or stdin from your credential source:
 
    ```sh
-   export DIGITALOCEAN_TOKEN=...
+   cland secret set digitalocean.token
    cland hub stop && cland hub start
    ```
 
-   The hub reads it for DigitalOcean API calls. Its local watchdog also inherits it so it can delete a machine if the hub dies. cland strips the token from launched harness sessions, verification workers and commands, test runners, Neovim test/QA clients, and SSH/SCP tools. It does not write the token to configuration or send it to a remote machine. The shell that exported it still holds it; independently started processes can inherit that shell's environment.
+   The token lives in the private project secret store. The hub resolves it for DigitalOcean API calls; its local watchdog also inherits it so it can delete a machine if the hub dies. cland strips it from launched harness sessions, verification workers and commands, test runners, Neovim test/QA clients, and SSH/SCP tools. It does not send the token to a remote machine.
+
+   One-time human step: remove credential exports from your shell startup files and any files they source, then restart the hub and role sessions. Only the human edits those files. `cland doctor` warns with names only for literal exports; indirect sources and system files remain unverified. The filter cannot stop a startup file from adding a credential back. Explicit `DIGITALOCEAN_TOKEN` in the hub launch environment still overrides the store for compatibility, including an empty value that disables the provider. Keep values out of argv and shell history.
 3. Build the snapshot every run starts from:
 
    ```sh

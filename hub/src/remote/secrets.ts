@@ -7,7 +7,7 @@ import { parse, stringify } from 'smol-toml';
 import { symlinkOnPath } from '../init/files.ts';
 import type { RemoteRedactor } from './redact.ts';
 
-export const SECRET_NAMES = ['telegram.token', 'discord.token', 'speech.elevenlabs_key', 'speech.xai_key', 'auth.key'] as const;
+export const SECRET_NAMES = ['telegram.token', 'discord.token', 'speech.elevenlabs_key', 'speech.xai_key', 'auth.key', 'digitalocean.token'] as const;
 export type SecretName = typeof SECRET_NAMES[number];
 export type Secrets = Partial<Record<SecretName, string>>;
 
@@ -16,6 +16,7 @@ const SECRET_ENV: Partial<Record<SecretName, string>> = {
   'discord.token': 'CLAND_DISCORD_TOKEN',
   'speech.elevenlabs_key': 'ELEVENLABS_API_KEY',
   'speech.xai_key': 'XAI_API_KEY',
+  'digitalocean.token': 'DIGITALOCEAN_TOKEN',
 };
 
 /** Hub/provider resolution: explicit environment values override stored values. */
@@ -54,7 +55,7 @@ export function readSecretsFile(root: string): Secrets {
   catch { throw new Error('.cland/secrets.toml: invalid TOML; fix the file without sharing its contents'); }
   const secrets: Secrets = {};
   for (const [section, table] of Object.entries(parsed)) {
-    if (!['telegram', 'discord', 'speech', 'auth'].includes(section) || !table || typeof table !== 'object' || Array.isArray(table)) {
+    if (!['telegram', 'discord', 'speech', 'auth', 'digitalocean'].includes(section) || !table || typeof table !== 'object' || Array.isArray(table)) {
       throw new Error('.cland/secrets.toml: unsupported secret section');
     }
     for (const [key, value] of Object.entries(table)) {

@@ -1,5 +1,18 @@
 # hub/test/secrets.test.ts
 
+The provider callback and held-work control use secretSequence, backed by the
+shared fixtureWork owner. Register before acquisition; capture roots and late
+resources before the next step. Removal joins the whole callback and resource
+settlement. The held writer's release/join is registered before admission;
+its late resource must close and its next step must be fenced before removal.
+
+The provider-store case sends a synthetic token to the secret command via stdin,
+starts a sealed projectHub without a provider variable, and checks the existing
+local-human host.providers presence/fingerprint shape. No provider is called.
+It also observes the actual host-registry environment: membership restored there
+must reach `hostEnvironment`, and runtime membership written through that fixture
+view must reach the registry. This catches a stale launch-input copy at T2.
+
 `hub/test/secrets.test.ts` is T2. `projectHub` supplies the startup completion
 receipt before mode assertions and proves symlink refusal releases the hub lock.
 The CLI is the subject of real child launches through the shared

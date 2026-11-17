@@ -31,6 +31,7 @@ import { WebSocket } from 'ws';
 import { z } from 'zod';
 import type { Dispatcher } from '../src/hub/dispatch.ts';
 import { serveProject } from '../src/hub/daemon.ts';
+import { projectSshHosts } from '../src/host/registry.ts';
 import { settleRetainedMergeStop } from '../src/hub/merge.ts';
 import { Journal } from '../src/hub/journal.ts';
 import { hubResources } from './hub-resources.ts';
@@ -523,9 +524,15 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     ? { ...options.droplet, processes: options.droplet?.processes ?? lockProcesses }
     : options.droplet;
   let daemon;
+  let runtimeEnvironment: NodeJS.ProcessEnv | undefined;
+  const createHostRegistry = options.createHostRegistry ?? projectSshHosts;
+  const captureHostRegistry: typeof projectSshHosts = options => {
+    runtimeEnvironment = options.env;
+    return createHostRegistry(options);
+  };
   try {
     const lockIdentity = options.lockIdentity === 'native' ? fixtureLockIdentity(env, true) : options.lockIdentity ?? fixtureLockIdentity(env);
-    daemon = await resources.run(() => serveProject(root, { ...probes, ...hubOptions, ...(processes ? { processes } : {}), lockIdentity, ...(droplet ? { droplet } : {}), ...(adapters ? { adapters } : {}), env, log: entry => { options.log?.(entry); if (options.processLog !== false) processLog.write({ ...entry, event: String(entry.event) }); }, flushLog: () => processLog.flush() }));
+    daemon = await resources.run(() => serveProject(root, { ...probes, ...hubOptions, ...(processes ? { processes } : {}), lockIdentity, ...(droplet ? { droplet } : {}), ...(adapters ? { adapters } : {}), env, createHostRegistry: captureHostRegistry, log: entry => { options.log?.(entry); if (options.processLog !== false) processLog.write({ ...entry, event: String(entry.event) }); }, flushLog: () => processLog.flush() }));
     await processLog.flush();
   }
   catch (error) {
@@ -536,6 +543,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   }
   options.registerHubCards?.(daemon.hub.core.cards);
   assert.ok(daemon.discovery, 'projectHub must bind both real edges');
+  assert.ok(runtimeEnvironment, 'projectHub must capture the host owner runtime environment');
   const stopFixtureHub = async () => { await settleRetainedMergeStop(() => daemon.stop()); await processLog.close(); };
   guardDirectoryRemoval(root, stopFixtureHub);
   beforeDirectories(t, stopFixtureHub);
@@ -550,7 +558,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
       };
     }),
   };
-  return { fakes, hostEnvironment: env, discovery: daemon.discovery, dispatcher, hostOwner: daemon.hub.dispatcher.hostOwner, stopped: daemon.stopped, stop: () => daemon.stop(), dispose: stopFixtureHub, verificationSettled: () => resources.run(() => daemon.hub.dispatcher.verificationSettled()) };
+  return { fakes, hostEnvironment: runtimeEnvironment, discovery: daemon.discovery, dispatcher, hostOwner: daemon.hub.dispatcher.hostOwner, stopped: daemon.stopped, stop: () => daemon.stop(), dispose: stopFixtureHub, verificationSettled: () => resources.run(() => daemon.hub.dispatcher.verificationSettled()) };
 }
 
 /** T3 native contracts/lifecycle: explicitly retain production adapters and Git/ps probes.

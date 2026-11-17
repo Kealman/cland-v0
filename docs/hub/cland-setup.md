@@ -125,8 +125,9 @@ for an existing pool preserves its settings and placed roles; unreadable setting
 leave `cland setup in a terminal` as the repair path rather than pool defaults.
 
 On acceptance, setup reads only token presence and fingerprint from the hub's
-environment. A missing token leaves `open`: set `DIGITALOCEAN_TOKEN` in that
-environment and restart the hub. Setup never requests or stores that token.
+resolved environment. A missing token leaves `open`: run `cland secret set digitalocean.token`
+and restart the hub. Setup never requests or stores that token. The human removes
+startup exports as described in [provider credential migration](provider-credential-migration.md).
 It offers eligible roles individually, with Implementer preselected; Coordinator
 and Aide stay local. A separate default-No confirmation names the size,
 `min_hosts` and the recorded spec price ($0.0714/h without VAT for s-4vcpu-8gb,

@@ -1,5 +1,13 @@
 # hub/test/doctor-hosts.test.ts
 
+The planted-rc callback runs inside secretSequence with step-fenced acquisitions,
+reads, writes and doctor calls. Both the toolchain root and project root are
+captured immediately after acquisition; directory removal joins the whole body.
+
+The shell-credential case plants a fake export in scratch HOME, checks names-only
+JSON and unchanged file bytes, then removes the export as the human would and
+checks the advisory scan's explicitly unverified clean result.
+
 `doctor warns for every missing role pool without writes or provider requests`
 checks text and JSON for two missing pools, exact shared repair commands,
 unchanged config/roles bytes, and zero fake DigitalOcean API requests. Capture

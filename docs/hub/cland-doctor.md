@@ -37,9 +37,9 @@ unchanged; this is one additional `{name, verdict, detail, fix?}` check.
 For configured host pools, doctor adds `host <provider> token`, `host <pool> image`,
 `host <pool> <harness> logins`, `host login <name>`, host reachability and `host spend`
 checks in the same text/JSON report. Token presence and its 12-character fingerprint
-come from the running hub's environment; doctor never reads the provider token or
-calls a provider. An absent DigitalOcean token names `DIGITALOCEAN_TOKEN` in the
-hub environment and `cland hub stop && cland hub start`. Image checks read the local
+come from the running hub's resolved store/environment; doctor never reads the provider token or
+calls a provider. An absent DigitalOcean token names `cland secret set digitalocean.token`
+and `cland hub stop && cland hub start`. Image checks read the local
 pool image record and use preparation's key and changed-part comparison; missing,
 stale or unreadable records name `cland host prepare <pool>`.
 

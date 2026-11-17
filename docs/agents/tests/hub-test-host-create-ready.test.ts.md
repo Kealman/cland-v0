@@ -2,6 +2,10 @@
 
 T3 native lifecycle: fake SSH/scp, delivered runtime, supervisor, authenticated
 tunnel, territory clone and scripted OpenCode. No real provider API is called.
+`projectHub.hostEnvironment` must expose the host owner's current runtime object,
+captured at registry creation, rather than the input environment copied before
+private credential resolution. Restored membership and direct-create readiness
+use that same object; retain the existing restart and settlement assertions.
 Use supported Node and the preservation lock specified by the stage brief.
 Run `node --test hub/test/host-create-ready.test.ts` with inherited `CLAND_*`
 removed. The scratch environment comes from fixtureEnvironment after all overlays.

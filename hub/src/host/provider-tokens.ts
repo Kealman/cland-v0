@@ -1,7 +1,7 @@
 import type { HostPools } from './pools.ts';
 import { secretFingerprint } from '../remote/secrets.ts';
 
-/** Environment-only diagnostics: never instantiate a provider or persist a value. */
+/** Resolved hub environment diagnostics: never instantiate a provider or persist a value. */
 export function providerTokens(settings: HostPools, env: NodeJS.ProcessEnv, requested?: 'digitalocean') {
  return {providers:[...new Set(requested ? [requested] : Object.values(settings.pools).map(pool=>pool.provider))].sort().map(provider=>{
   if(provider==='fake')return {provider,tokenNeeded:false,present:false,fingerprint:null};

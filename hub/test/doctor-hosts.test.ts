@@ -3,7 +3,8 @@ import './cover-quiet.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { secretSequence } from './secrets-fixture.ts';
 import { doctor, initialised, toolchain } from './doctor-fixture.ts';
 import { projectHub } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -20,6 +21,29 @@ import { askHubFrame } from '../src/cli/socket-client.ts';
 
 const rows = (text: string): Check[] => JSON.parse(text).checks;
 const named = (checks: Check[], name: string) => { const row = checks.find(c => c.name === name); assert.ok(row, name); return row; };
+test('doctor warns with credential names only for planted shell startup exports', async t => {
+  const owner = secretSequence(t);
+  await owner.run(async step => {
+    const tools = await step(() => toolchain(t));
+    owner.root(dirname(tools.env.HOME!));
+    const root = await step(() => initialised(t, tools.env));
+    owner.root(root);
+    await step(() => mkdir(tools.env.HOME!, { recursive: true }));
+    const file = join(tools.env.HOME!, '.zshrc');
+    const content = 'export DIGITALOCEAN_TOKEN=fake-provider-rc-only\n';
+    await step(() => writeFile(file, content));
+    const result = await step(() => doctor(root, tools.env, '--json'));
+    const row = named(rows(result.stdout), 'shell credentials');
+    assert.equal(row.verdict, 'warn');
+    assert.match(row.detail, /DIGITALOCEAN_TOKEN/);
+    assert.equal(result.stdout.includes('fake-provider-rc-only'), false);
+    assert.equal(await step(() => readFile(file, 'utf8')), content, 'doctor never modifies startup files');
+    await step(() => writeFile(file, '# export DIGITALOCEAN_TOKEN is no longer present\nexport PATH=/fixture/bin\n'));
+    const migrated = named(rows((await step(() => doctor(root, tools.env, '--json'))).stdout), 'shell credentials');
+    assert.equal(migrated.verdict, 'ok');
+    assert.match(migrated.detail, /unverified/);
+  });
+});
 test('doctor warns for every missing role pool without writes or provider requests', async t => {
   const tools = await toolchain(t), root = await initialised(t, tools.env);
   const roles = '[implementer.launch]\nharness="codex"\npool="agents"\n[reviewer.launch]\nharness="codex"\npool="workers"\n';
@@ -59,7 +83,7 @@ for (const present of [false, true]) test(`C1/C6 doctor reads hub token presence
       const row = named(rows(result.stdout), 'host digitalocean token');
       assert.equal(row.verdict, present ? 'ok' : 'warn');
       if (present) assert.match(row.detail, /aea02ac771f2/);
-      else assert.match(row.fix!, /DIGITALOCEAN_TOKEN.*hub.*cland hub stop && cland hub start/);
+      else assert.match(row.fix!, /cland secret set digitalocean\.token.*cland hub stop && cland hub start/);
     } else assert.match(result.stdout, /host digitalocean token/);
   }
   assert.deepEqual(api.requests, before);

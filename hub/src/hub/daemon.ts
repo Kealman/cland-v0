@@ -97,7 +97,8 @@ export type Daemon = {
 export async function serveProject(root: string, options: { createHostRegistry?: typeof projectSshHosts; prepareLogin?: import('./dispatch.ts').DispatcherOptions['prepareLogin']; runLoginSignIn?: import('./dispatch.ts').DispatcherOptions['runLoginSignIn']; createHost?: import('./dispatch.ts').DispatcherOptions['createHost']; uploadOpen?: typeof import('node:fs/promises').open; uploadAllocate?: (size: number) => Buffer; gatewayMessenger?: MessengerFactory; gatewayState?: RemoteStates; gatewayProcesses?: PollerProcesses; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; lockIdentity?: import('./lock.ts').LockHostIdentity; processes?: LockProcessTable; droplet?: DropletDependencies; hostConfigurations?: Readonly<Record<string, import('../host/registry.ts').HostConfiguration>>; hosts?: readonly import('../host/host.ts').Host[]; adapters?: AdapterFactory[]; transportClock?: Clock; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
-  const env = options.env ?? process.env;
+  const launchEnv = options.env ?? process.env;
+  const env = { ...launchEnv };
   const listen = options.listen ?? 'required';
   const l = layout(root);
   mkdirSync(l.dir, { recursive: true });
@@ -124,8 +125,12 @@ export async function serveProject(root: string, options: { createHostRegistry?:
     // Only serving loads credentials; lightweight project/CLI reads keep their import budget.
     const { resolveSecrets, validateAndRegisterSecrets } = await import('../remote/secrets.ts');
     resolveRemoteSecrets = () => {
-      const secrets = resolveSecrets(root, env);
+      const secrets = resolveSecrets(root, launchEnv);
       validateAndRegisterSecrets(secrets, remoteOutput);
+      // Provider clients share this private hub environment. Never mutate the
+      // caller's environment; child launch boundaries still filter credentials.
+      if (secrets['digitalocean.token'] === undefined) delete env.DIGITALOCEAN_TOKEN;
+      else env.DIGITALOCEAN_TOKEN = secrets['digitalocean.token'];
       return secrets;
     };
     remoteSecrets = resolveRemoteSecrets();

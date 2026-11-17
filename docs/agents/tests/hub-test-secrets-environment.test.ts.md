@@ -1,5 +1,22 @@
 # hub/test/secrets-environment.test.ts
 
+The shell sequence uses secretSequence/fixtureWork for its full setup, writes,
+native results and migration continuation. Each asynchronous step checks
+admission; the captured root is retained until the whole sequence joins.
+Non-login cases complement the login/interactive and historical explicit-source
+emulations. The latter is unverified for current OpenCode; see the migration doc.
+
+The migrated-startup case uses only scratch HOME and ZDOTDIR. Every startup mode
+first sees all five planted credential names, then the fixture performs the
+human's export removal and checks zero names after native close. These are shell
+emulations, not native harness receipts. Missing bash/zsh is a reasoned skipped
+prerequisite, never passing coverage for that mode. No real rc file is read.
+Bash suppresses system profiles and explicitly sources its scratch login profile;
+this avoids Linux /etc/profile resetting HOME to a real account's directory.
+Zsh uses `-f -d` and explicit scratch sources: system zshenv is read; no user
+startup file outside scratch HOME is read. The Coordinator authorized this
+unavoidable machine-file boundary for the local regression.
+
 T3 native environment contracts, using made-up values only. A generic Node
 command stands in for the speech launcher required by E-1311: after synthetic
 credential overlays it calls the production `withoutExecutorCredentials` filter,

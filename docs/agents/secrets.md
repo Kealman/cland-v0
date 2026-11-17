@@ -6,20 +6,19 @@ from `user.list`, never names, invite links, passkeys or password material. Its
 prove the detector catches it before checking text and JSON.
 
 For host provider diagnostics, doctor reads `host.providers` from the running hub.
-It never resolves `DIGITALOCEAN_TOKEN` itself. Set that variable in the hub's
-environment, then run `cland hub stop && cland hub start`; the diagnostic exposes
+It never resolves `DIGITALOCEAN_TOKEN` itself. Store it with `cland secret set digitalocean.token`, then run `cland hub stop && cland hub start`; the diagnostic exposes
 presence and fingerprint only. See [doctor hosts tests](tests/hub-test-doctor-hosts.test.ts.md).
 
 Use the [local secret commands](../hub/project-secrets.md#project-secrets) to manage
-the project's messenger tokens and speech keys. Values enter through stdin or
+the project's messenger tokens, speech keys and provider token. Values enter through stdin or
 a hidden terminal prompt. Only names and SHA-256 fingerprint prefixes belong in
 reports; never share the file, parser input or a credential-bearing command.
 The file store is separate from `.cland/secret`, which authenticates local clients.
 
 Remote and speech code share `resolveSecrets(root, env)` in
-`hub/src/remote/secrets.ts`. It resolves the four supported dotted keys from the file, then overlays
-`CLAND_TELEGRAM_TOKEN`, `CLAND_DISCORD_TOKEN`, `ELEVENLABS_API_KEY` and
-`XAI_API_KEY`, respectively. Missing variables fall back to file values; present
+`hub/src/remote/secrets.ts`. It resolves the messenger, speech and provider dotted keys from the file, then overlays
+`CLAND_TELEGRAM_TOKEN`, `CLAND_DISCORD_TOKEN`, `ELEVENLABS_API_KEY`,
+`XAI_API_KEY` and `DIGITALOCEAN_TOKEN`, respectively. Missing variables fall back to file values; present
 variables override them, including when no file exists. File safety checks still
 apply. `readSecretsFile(root)` serves file-only CLI list/preflight and mutations,
 so editing one stored value cannot persist unrelated environment credentials.

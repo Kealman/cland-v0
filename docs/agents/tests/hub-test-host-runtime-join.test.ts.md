@@ -6,6 +6,9 @@ forwarding children. Run through the preservation lock in the E-1533 stage brief
 with inherited CLAND variables removed, supported Node 24, and load below 20.
 It creates no cloud resources. `sshHostFixture` owns the scratch root, HOME,
 Git environment, agent and child cleanup.
+The authoritative `projectHub.hostEnvironment` is captured at registry creation;
+its mutable membership is shared with the running registry/carrier, while the
+daemon's launch-input environment remains separate for credential isolation.
 Its owned work scope fences admission synchronously at disposal and joins the
 whole setup and admitted Git/FS sequences before native owners, database or root
 are closed. Each next step checks that fence; newly acquired owners are recorded

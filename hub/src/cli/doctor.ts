@@ -13,6 +13,7 @@ import { VERSION } from '../version.ts';
 import { harnessesInUse } from '../roles/harnesses.ts';
 import { checkRemotes } from '../doctor/remotes.ts';
 import { checkHosts } from '../doctor/hosts.ts';
+import { checkShellCredentials } from '../doctor/shell-credentials.ts';
 import { checkUsers } from '../doctor/users.ts';
 import { checkReleaseTools } from '../doctor/release.ts';
 
@@ -64,7 +65,7 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
     else orphanChecks.push(warn('orphan sweep', 'OS process inspection failed; unverified candidates were preserved', 'check that ps and process cwd inspection are available, then rerun cland doctor'));
   }
   const checks = [...toolchain, ...requirementChecks, ...project, ...await checkRemotes(root, env), ...await checkHosts(root, env), ...await checkUsers(root, env), ...keys, await (readers.webBundle ?? checkWebBundle)(), ...orphanChecks];
-  checks.push(...await checkReleaseTools(root, env));
+  checks.push(...await checkReleaseTools(root, env), ...await checkShellCredentials(env));
   const summary = summarise(checks);
   if (json) write(`${JSON.stringify({ root, version: VERSION, checks, summary })}\n`);
   else {
