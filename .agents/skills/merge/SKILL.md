@@ -35,6 +35,12 @@ Test-lint read failures retry three times, then retain batch members and green e
 
 For a recoverable landing block, resolve the named cause and let the queue retry automatically with its retained green evidence; see `docs/agents/tests.md#queued-merge-batches` for the codes. Other held failures require human or Coordinator action as the notice states.
 
+A confirmed absent failing file in a leave-one-out checkout drops the omitted
+member with the file named; survivors require their full run. For held recovery,
+resolve the cause and use the notice's cancel/re-enqueue commands. An unchanged
+head rejoins a running batch; a held batch restarts after worker drainage with
+fresh evidence. See docs/hub/running.md for the retained-request conditions.
+
 When the item is closed with a durable merge receipt, a failed follow-up is reported for that item and the batch continues. Repair the named step with `cland merge T-n`; the landing is not repeated. A retained blocked batch whose members are all landed or completed clears on the next tick, including startup, after admitted workers finish. Follow-up notices have a durable delivery obligation separate from the batch. A failed notice retains the original follow-up reason and separate report error; later ticks retry it even after candidate cleanup or hub restart, without holding remaining landings or the next batch.
 
 Results reach Agents, the requester and each item lead. The supervising Lead or Coordinator handles queue refusals below; the item's Implementer owns any fix and new review/verify cycle. When the queue is disabled, or changes stay wholly in the documentation/tracker allowlist below, the gate lands immediately with its required verdicts. The allowlist does not include skills or role configuration.

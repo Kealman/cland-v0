@@ -22,7 +22,7 @@ import { verificationFixture } from './verification-fixture.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { Store } from '../src/hub/store.ts';
 import { caseDeadlines } from './case-deadlines.ts';
-import { beforeDirectories } from './process-cleanup.ts';
+import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { MergeError } from '../src/merge.ts';
 import { TaskMerges } from '../src/hub/merge.ts';
 import { HubCore } from '../src/hub/core.ts';
@@ -422,8 +422,19 @@ test('a red singleton posts its bisection refusal to the member lead after appea
   assert.ok(history.messages.some(message => /merge-queue-dropped.*merge-bisected.*hub\/test\/parser.test.ts::rejects stale input/s.test(message.text) && message.to.includes('coord')));
 });
 
-test('refusing a cancelled live batch member preserves its re-enqueued request', async t => {
+test('a cancelled live batch member re-enqueued at the same head keeps its admitted run', async t => {
   // T2: public merge frames through projectHub; only the executor and Git edges are fake.
+  const setup = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return setup.run(async step => {
+  const merge = TaskMerges.prototype.merge;
+  t.mock.method(TaskMerges.prototype, 'merge', async function (this: TaskMerges, ...args: Parameters<TaskMerges['merge']>) {
+    if (!args[5]) return merge.apply(this, args);
+    const [id, actor] = args;
+    const commit = 'c'.repeat(40);
+    this.tracker.recordMerge(id, { commit, base: 'dev', branch: 't/parser', tip: 'b'.repeat(40) });
+    await this.tracker.close(actor, id);
+    return { item: id, commit, base: 'dev', cleanup: 'fixture' };
+  });
   const started = Promise.withResolvers<RunRef>();
   let receipt: RunStatus = { state: 'running' };
   t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
@@ -438,36 +449,38 @@ test('refusing a cancelled live batch member preserves its re-enqueued request',
   t.mock.method(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
   t.mock.method(LocalExecutor.prototype, 'cancel', async () => {});
   const head = 'f'.repeat(40), tree = 'e'.repeat(40);
-  const { ui, item, clock } = await fixture(t, { durationContext: null, candidate: {
+  const { root, ui, item, clock } = await step(() => fixture(setup.fixtures, { durationContext: null, candidate: {
     head: async () => head, tree: async () => tree,
     inspect: async () => ({ head, tree, branch: '', selection: { mode: 'full', files: [], reason: 'batch' }, tierPlan: [], budgetBase: undefined }),
   }, batchRepository: {
     git: async args => args[0] === 'rev-parse' ? args.at(-1) === 'refs/heads/dev' ? 'a'.repeat(40) : 'b'.repeat(40) : args[0] === 'merge-tree' ? tree + '\0' : head,
     facts: async () => ({ context: null, workers: 1 }), identity: async () => tree,
     checkout: async candidate => checkoutClandFixture(candidate.cwd), remove: async () => {},
-  } });
-  await value(ui, { type: 'merge', item: item.id });
-  await clock.advance(601_000);
-  const run = await started.promise;
-  const original = await value<{ entries: unknown[]; batch: MergeBatchStatus }>(ui, { type: 'merge.queue' });
-  assert.equal((await value<{ cancelled: boolean }>(ui, { type: 'merge', item: item.id, cancel: true })).cancelled, true);
-  assert.equal((await value<{ queued: number }>(ui, { type: 'merge', item: item.id })).queued, 1);
-  const replacement = await value<{ entries: unknown[]; batch: MergeBatchStatus }>(ui, { type: 'merge.queue' });
-  assert.notDeepEqual(replacement.entries, original.entries, 'the new request has a fresh enqueue time at the same head');
+  } }));
+  setup.adoptRoot(root);
+  await step(() => value(ui, { type: 'merge', item: item.id }));
+  await step(() => clock.advance(601_000));
+  const run = await step(() => setup.wait('admitted worker start', () => started.promise));
+  const original = await step(() => value<{ entries: unknown[]; batch: MergeBatchStatus }>(ui, { type: 'merge.queue' }));
+  assert.equal((await step(() => value<{ cancelled: boolean }>(ui, { type: 'merge', item: item.id, cancel: true }))).cancelled, true);
+  assert.equal((await step(() => value<{ queued: number }>(ui, { type: 'merge', item: item.id }))).queued, 1);
+  const replacement = await step(() => value<{ entries: unknown[]; batch: MergeBatchStatus }>(ui, { type: 'merge.queue' }));
+  assert.deepEqual(replacement.entries, original.entries, 'the same head rejoins its admitted request');
   assert.equal(replacement.batch.id, original.batch.id, 'the live worker keeps its pinned batch');
-  assert.equal((await value<{ suites: unknown[] }>(ui, { type: 'hub.status', history: true })).suites.length, 1);
+  assert.equal((await step(() => value<{ suites: unknown[] }>(ui, { type: 'hub.status', history: true }))).suites.length, 1);
   receipt = { state: 'done', code: 0, finished: clock.now().toISOString() };
-  await until(async () => {
+  await step(() => until(async () => {
     await clock.advance(1000);
     const suites = (await value<{ suites: Array<{ id: string; reported: boolean }> }>(ui, { type: 'hub.status', history: true })).suites;
     return suites.some(job => job.id === run.id && job.reported);
-  }, { what: 'live batch worker completion receipt', timeoutMs: 1500 });
-  await until(async () => {
+  }, { what: 'live batch worker completion receipt', timeoutMs: 1500 }));
+  await step(() => until(async () => {
     await clock.advance(1000);
     return (await value<{ batch: MergeBatchStatus | null }>(ui, { type: 'merge.queue' })).batch === null;
-  }, { what: 'cancelled batch resolves', timeoutMs: 1500 });
-  assert.deepEqual((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries, replacement.entries);
-  assert.equal((await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.state, 'open');
+  }, { what: 'cancelled batch resolves', timeoutMs: 1500 }));
+  assert.deepEqual((await step(() => value<{ entries: unknown[] }>(ui, { type: 'merge.queue' }))).entries, []);
+  assert.equal((await step(() => value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id }))).item.state, 'closed');
+  });
 });
 
 test('a code movement rebuild notice survives the original green result notice', async t => {

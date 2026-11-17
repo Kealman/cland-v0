@@ -507,6 +507,10 @@ heads, requesters and the current batch. `cland merge T-<n> --cancel` removes a
 request through the same role/subtree permission check as merge. Cancellation
 waits for any active worker to finish before the candidate checkout is replaced.
 A changed or deleted head, a closed item or a not-clear verdict drops its entry.
+Re-enqueue of the same branch/head/base rejoins a retained batch request. A
+running batch keeps its evidence; recovery of a held batch requires a fresh run
+after worker drainage. See [Running](../hub/running.md) for missing-file
+attribution and the recovery commands printed in held notices.
 
 Enqueue's advisory `merge-demo-warning` names open epics with running or due
 demos and the overlapping landed files; it goes to the candidate's topic and

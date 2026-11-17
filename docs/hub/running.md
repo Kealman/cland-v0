@@ -1464,6 +1464,14 @@ failing files or the failed T0/Web step on leave-one-out trees: `merge-bisected`
 (or a red singleton). Without a unique green removal, one original-tree repeat
 can select a candidate; otherwise `merge-bisect-unresolved` rejects every member
 and notifies the Coordinator. Inconclusive runs hold the batch for its decision.
+If explicit failing-file admission refuses and the file is confirmed absent
+from a leave-one-out checkout, that omission attributes the failure to its
+member. The queue drops that member with the file in the reason and runs the
+survivors' full plan before landing. An existing but unclassified file remains
+held. Held notices name pinned members and `cland merge T-n --cancel` followed
+by `cland merge T-n` for recovery after resolving the cause. Re-enqueue at the
+same branch, head and base rejoins an active batch's pinned request; a held
+batch instead restarts with fresh evidence after its workers have drained.
 Batch checkouts and periodic diagnostic clones link the root dependency install
 through task worktrees' shared install policy before admission. Missing or stale
 dependencies hold preparation as inconclusive, naming the install or locked

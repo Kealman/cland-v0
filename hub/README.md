@@ -111,6 +111,10 @@ Every successful batch diagnosis requires its pinned full plan on the selected
 tree before landing. Test-lint read failures retry three times, then hold membership
 and green evidence for a later retry; genuine findings retain member-drop behaviour. [Running](../docs/hub/running.md) describes skipped-file and
 covering-run notices.
+Confirmed absence of a failing file in a leave-one-out candidate drops its
+omitted member; survivors run their full plan. Same-head re-enqueue rejoins a
+running batch or restarts a held batch with fresh evidence. Recovery details
+and commands are in [Running](../docs/hub/running.md).
 - [Standing duration allowance owners](../docs/hub/standing-duration-allowance-owners.md)
 
 The shared duration manifest reader, including `npm run check` lint and immutable

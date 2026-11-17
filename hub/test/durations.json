@@ -5175,7 +5175,7 @@
     "hub/test/merge-queue.test.ts::merge CLI renders queue replies, ordered entries and task positions": 0.815112,
     "hub/test/merge-queue.test.ts::queued cancellation replies forbidden when its caller loses merge authority": 0.132769,
     "hub/test/merge-queue.test.ts::queued merged-tree budget refusal moves no ref or checkout": 0.680541,
-    "hub/test/merge-queue.test.ts::refusing a cancelled live batch member preserves its re-enqueued request": 0.462023,
+    "hub/test/merge-queue.test.ts::a cancelled live batch member re-enqueued at the same head keeps its admitted run": 0.462023,
     "hub/test/merge-queue.test.ts::reviewed code is queued without landing and visible through task view and queue": 0.118591,
     "hub/test/merge-queue.test.ts::startup preserves the durable queue when branch enumeration omits a live ref": 0.336127,
     "hub/test/merge-queue.test.ts::the production batch Git adapter preserves whitespace in unknown paths": 0.002873,

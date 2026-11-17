@@ -6,7 +6,7 @@ import { TaskMerges, joinMergeCleanup } from '../src/hub/merge.ts';
 import { MergeError } from '../src/merge.ts';
 import { TerritoryGitError } from '../src/territory.ts';
 import { MergeQueue } from '../src/hub/merge-queue.ts';
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { MergeBatches, BatchRefusal, BatchRebuild, diagnosticResult, batchInteractionSummary, batchNoticeId, type BatchBoundary, type BatchCandidate } from '../src/hub/merge-batches.ts';
 import type { MergeQueueEntry } from '../src/protocol.ts';
@@ -20,6 +20,19 @@ import { authorizeVerifyOccasion } from '../src/verification-occasion.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { selectionFromEnv, selectionTransport } from '../src/suite-selection.ts';
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
+import { fixtureWork, type FixtureStep } from '../../test-support/fixture-work.ts';
+
+/** Enroll before acquisition; even late fixture hooks must join the whole body. */
+function joinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep) => Promise<void>) {
+  const owner = fixtureWork();
+  t.after(() => owner.close());
+  const fixtures = new Proxy(t, { get(target, key) {
+    if (key === 'after') return (close: () => unknown) => t.after(async () => { await owner.close(); await close(); });
+    const value = Reflect.get(target, key, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  } });
+  return owner.run(step => body(fixtures, step));
+}
 
 test('batch and periodic failing-file selections round-trip to exactly the requested package files', async t => {
   // T1: real Suites admission, transport decoder and package planner; no worker needed.
@@ -77,6 +90,84 @@ const failureLog = 'suite test failures [{"file":"hub/test/example.test.ts","nam
 const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/example.test.ts","name":"rejects stale input","at":1,"nesting":0,"outcome":"pass","seconds":0.01}\nsuite test failures []\n# tests 1\n# pass 1\n';
 const t0Green = 'tier T0: exit 0; duration 1 s; output tail: static checks passed\n';
 const t0Red = 'tier T0: exit 2; duration 1 s; output tail: error TS2344\n';
+
+test('an omitted member owning the absent failing file is dropped and survivors run before landing', t => joinedCase(t, async (fixtures, step) => {
+  const { f, runner, boundary, dropped, landed, reports } = await step(() => fixture(fixtures));
+  const file = 'hub/test/introduced.test.ts';
+  const checkout = boundary.checkout;
+  boundary.checkout = async candidate => {
+    await checkout(candidate);
+    const present = candidate.head.includes('T-1');
+    await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: present ? { [file]: 'T1' } : {} }));
+    if (present) await writeFile(join(f.root, file), '');
+    else await rename(join(f.root, file), join(f.root, 'removed-test.ts')).catch(error => { if (error.code !== 'ENOENT') throw error; });
+  };
+  await step(() => runner.tick());
+  await step(() => f.finish(f.suites.status()[0]!.id, 1, `suite test failures [{"file":"${file}","name":"fails"}]\n`));
+  await step(() => runner.tick());
+  assert.equal(runner.snapshot()?.failed, undefined);
+  assert.match(dropped[0] ?? '', /T-1: merge-bisected.*hub\/test\/introduced.test.ts/);
+  assert.deepEqual(landed, []);
+  const surviving = f.suites.status().at(-1)!;
+  assert.equal(surviving.batch?.diagnostic, undefined);
+  assert.deepEqual(surviving.batch?.members.map(entry => entry.item), ['T-2', 'T-3']);
+  await step(() => f.finish(surviving.id)); await step(() => runner.tick());
+  assert.deepEqual(landed, ['T-2', 'T-3']);
+  assert.ok(reports.every(text => !text.includes('blocked')));
+}));
+
+test('an unregistered but present failing file holds the batch with members and recovery commands', t => joinedCase(t, async (fixtures, step) => {
+  const { f, runner, dropped, reports } = await step(() => fixture(fixtures));
+  await step(() => runner.tick());
+  await step(() => f.finish(f.suites.status()[0]!.id, 1, failureLog));
+  await step(() => writeFile(join(f.root, 'hub/test/example.test.ts'), ''));
+  await step(() => writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {} })));
+  await step(() => runner.tick());
+  assert.match(runner.snapshot()?.failed ?? '', /unclassified tests/);
+  assert.deepEqual(dropped, []);
+  assert.match(reports.at(-1)!, /T-1.*T-2.*T-3/);
+  assert.match(reports.at(-1)!, /cland merge T-1 --cancel/);
+  assert.match(reports.at(-1)!, /cland merge T-1(?:\s|$)/);
+}));
+
+for (const blocked of [false, true]) test(`same-head re-enqueue ${blocked ? 'restarts a held batch with fresh evidence' : 'joins its running batch without invalidating its run'}`, t => joinedCase(t, async (fixtures, step) => {
+  const { f, runner, entries, boundary, landed } = await step(() => fixture(fixtures));
+  const tracker = new Tracker({ root: f.root, db: join(f.root, 'tracker.db'), git: async () => null,
+    readBase: async () => 'dev', clock: f.clock, scheduleTips: () => ({ poke() {}, stop() {} }) });
+  fixtures.after(() => tracker.stop());
+  for (const entry of entries) await step(() => tracker.create(entry.by, { title: entry.item, branch: entry.branch, size: 'S' }));
+  const queue = new MergeQueue(f.store, tracker, f.clock, () => true, async () => null);
+  fixtures.after(() => queue.stop());
+  for (const entry of entries) f.store.enqueueMerge(entry);
+  boundary.entries = () => queue.entries();
+  const land = boundary.land;
+  boundary.land = async (entry, candidate) => { await land(entry, candidate); f.store.dropMerge(entry.item); };
+  await step(() => runner.tick());
+  const run = f.suites.status()[0]!;
+  if (blocked) {
+    await step(() => f.finish(run.id, 2, 'worker failed before test receipts\n'));
+    await step(() => runner.tick());
+    assert.match(runner.snapshot()?.failed ?? '', /inconclusive/);
+  }
+  const original = queue.entries()[0]!;
+  queue.cancel(original.item);
+  await step(() => f.clock.advance(1));
+  const view = await step(() => tracker.viewAsync(original.item, work => work()));
+  queue.enqueue(view, original.head, 'dev', original.by);
+  assert.deepEqual(queue.entries().find(entry => entry.item === original.item), original, 'same pinned head rejoins its admitted request');
+  assert.equal(queue.entries().filter(entry => entry.head === original.head).length, 1);
+  if (!blocked) await step(() => f.finish(run.id));
+  await step(() => runner.tick());
+  if (blocked) {
+    await step(() => runner.tick());
+    assert.deepEqual(landed, [], 'held recovery requires its own fresh run');
+    await step(() => f.finish(f.suites.status().at(-1)!.id)); await step(() => runner.tick());
+  }
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+  assert.equal(runner.snapshot(), null);
+  assert.deepEqual(queue.entries(), []);
+  assert.equal(f.suites.status().length, blocked ? 2 : 1);
+}));
 
 test('a custom command without package inventory retains unknown skipped files', async t => {
   const state = await fixture(t);

@@ -1,6 +1,9 @@
 import { TerritoryBusy } from '../territory-lock-context.ts';
 // Durable merge-batch policy; Git preparation and landing are owned by the territory boundary.
 import { randomUUID } from 'node:crypto';
+import { stat } from 'node:fs/promises';
+import { join } from 'node:path';
+import { ShardManifestError } from '../suite-shards.ts';
 import { suiteProgress } from '../suite-progress.ts';
 import type { MergeQueueEntry } from '../protocol.ts';
 import type { Store } from './store.ts';
@@ -28,12 +31,15 @@ export type BatchCandidate = { base: string; head: string; tree: string; cwd: st
 type DiagnosticResult = { result: 'green' | 'red' | 'inconclusive'; reason?: string };
 export type FileJob = { key: string; omitted?: string; candidate: BatchCandidate; run?: string; result?: DiagnosticResult['result']; reason?: string; seconds?: number | null; costUsd?: number | null; log?: { artifact: string; path: string } };
 export type BatchDiagnosis = { failure: { run: string; tree: string; log: { artifact: string; path: string } }; failures: string[]; budgetLines?: string[]; files: string[]; steps?: VerificationStep['name'][]; jobs: FileJob[]; selected?: number; excluded?: string[]; reported?: boolean; unresolved?: boolean };
-export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; planFrom?: string; confirmation?: { original: string; skipped: string[] | null }; failed?: string; reportError?: string; retryLanding?: boolean; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
+export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; planFrom?: string; confirmation?: { original: string; skipped: string[] | null }; failed?: string; reportError?: string; retryLanding?: boolean; retryRequested?: boolean; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
 type FollowUpReport = { batch: MergeBatch; item: string; error: string; reportError?: string };
 export function batchNoticeId(batch: MergeBatch, phase?: string, item?: string): string {
   return `merge-batch:${batch.id}:${batch.run ?? 'blocked'}:${phase ?? (batch.failed ? 'blocked' : batch.diagnosis ? 'diagnosis' : 'suite')}${item ? ':' + item : ''}`;
 }
 function skippedFilesText(files: string[] | null): string { return files === null ? 'unknown; full selection rerun' : files.join(', ') || 'none'; }
+function recoveryText(batch: MergeBatch): string {
+  return `Members: ${batch.members.map(entry => `${entry.item} (${entry.head})`).join(', ')}\nCoordinator: diagnose and resolve the cause, then cancel and re-enqueue each retained head:\n${batch.members.map(entry => `cland merge ${entry.item} --cancel\ncland merge ${entry.item}`).join('\n')}`;
+}
 export type BatchBoundary = {
   log?: LogFn;
   changed?(): void;
@@ -113,7 +119,7 @@ export class MergeBatches {
         batch.failed = error instanceof Error ? error.message : String(error);
         batch.retryLanding = error instanceof RetryLanding || error instanceof TerritoryBusy || error instanceof MergeLintReadError;
         this.#save(batch);
-        try { this.boundary.report(batch, `batch ${batch.id} blocked: ${batch.failed}\n${batch.retryLanding ? 'The queue retries automatically on a later tick once the cause is resolved.' : 'Waiting for human or Coordinator action before retrying.'}`); }
+        try { this.boundary.report(batch, `batch ${batch.id} blocked: ${batch.failed}\n${batch.retryLanding ? 'The queue retries automatically on a later tick once the cause is resolved.' : 'Waiting for human or Coordinator action before retrying.\n' + recoveryText(batch)}`); }
         catch (error) {
           batch.reportError = error instanceof Error ? error.message : String(error);
           this.#save(batch);
@@ -159,6 +165,13 @@ export class MergeBatches {
     if (admitted && !batch.run) { batch.run = admitted.id; this.#save(batch); }
     // A cancellation cannot replace the candidate checkout under a live worker.
     if (admitted && !admitted.reported || this.suites.findRun(job => job.batch?.id === batch!.id && !job.reported)) return;
+    if (batch.retryRequested) {
+      await this.#cleanup(batch);
+      const members = batch.members.filter(entry => this.boundary.entries().some(current => current.item === entry.item && current.head === entry.head && current.enqueued === entry.enqueued)
+        && !batch!.completed?.includes(entry.item) && !batch!.diagnosis?.excluded?.includes(entry.item) && !this.boundary.isLanded(entry));
+      this.#save(members.length ? { id: randomUUID(), members } : null);
+      return;
+    }
     // Retained failures cannot hold a batch after every member has finished.
     // Keep this after the worker barrier: cleanup must not remove a live checkout.
     if (batch.members.every(entry => batch!.completed?.includes(entry.item) || batch!.diagnosis?.excluded?.includes(entry.item) || this.boundary.isLanded(entry))) {
@@ -387,7 +400,7 @@ export class MergeBatches {
   #hold(batch: MergeBatch, reason: string, evidence: string, detail: Record<string, unknown>): void {
     this.store.transaction(() => {
       batch.failed = reason;
-      const text = `batch ${batch.id} held: ${reason}\nCoordinator: diagnose the held batch before recovering it; no member has been blamed or refused.\n${evidence}`;
+      const text = `batch ${batch.id} held: ${reason}\nCoordinator: diagnose the held batch before recovering it; no member has been blamed or refused.\n${recoveryText(batch)}\n${evidence}`;
       this.boundary.notice({ id: `merge-inconclusive:${batch.id}`, kind: 'report', to: ['coordinator'], text, detail: { ...detail, batch: batch.id } });
       this.boundary.report(batch, text); this.#save(batch);
     });
@@ -400,7 +413,19 @@ export class MergeBatches {
       if (!prior) await this.boundary.checkout(job.candidate);
       if (this.#closed) return false;
       const run = prior ?? await this.suites.start({ mode: 'all', cwd: job.candidate.cwd, topic: 'agents', to: [], actor: null,
-        batch: { id: batch.id, members: batch.members, diagnostic: { key: job.key, files: batch.diagnosis!.files, ...(batch.diagnosis!.steps ? { steps: batch.diagnosis!.steps } : {}) } }, priority: 0, fresh: true }, () => {});
+        batch: { id: batch.id, members: batch.members, diagnostic: { key: job.key, files: batch.diagnosis!.files, ...(batch.diagnosis!.steps ? { steps: batch.diagnosis!.steps } : {}) } }, priority: 0, fresh: true }, () => {}).catch(async error => {
+          if (error instanceof ShardManifestError && job.omitted) {
+            for (const file of error.files.filter(file => batch.diagnosis!.files.includes(file))) {
+              try { await stat(join(job.candidate.cwd, file)); }
+              catch (missing) {
+                if ((missing as NodeJS.ErrnoException).code !== 'ENOENT') throw missing;
+                const member = batch.members.find(entry => entry.item === job.omitted)!;
+                throw new BatchRefusal(member, `merge-bisected: failing file ${file} is absent when omitting ${member.item}`);
+              }
+            }
+          }
+          throw error;
+        });
       if (!('id' in run)) throw new Error('file job needs an admitted suite');
       job.run = run.id; this.#save(batch);
     }

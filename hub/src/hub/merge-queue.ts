@@ -9,6 +9,7 @@ import type { Clock } from './clock.ts';
 import type { Resumed } from './worktrees.ts';
 import { readLeases } from '../executor/droplet/lease.ts';
 import { epicMergeFiles } from '../tracker/epic-surfaces.ts';
+import type { MergeBatch } from './merge-batches.ts';
 
 export type DemoWarning = { epic: string; state: 'running' | 'due'; files: string[] } | { unavailable: string };
 
@@ -145,7 +146,14 @@ export class MergeQueue {
 
   enqueue(view: ItemView, head: string, base: string, actor: Actor, dependencies: DependencyInstall | undefined = undefined, warnings: DemoWarning[] = []): { item: string; queued: number } {
     this.reconcile();
-    const queued = this.store.enqueueMerge({ ...(dependencies ? { dependencies } : {}), item: view.id, branch: view.branch!, head, verdictBase: base, enqueued: this.clock.now().toISOString(), by: actor });
+    const batch = JSON.parse(this.store.meta('merge-batch') ?? 'null') as MergeBatch | null;
+    const retained = batch?.members.find(entry => entry.item === view.id && entry.branch === view.branch && entry.head === head && entry.verdictBase === base
+      && !batch.completed?.includes(entry.item) && !batch.diagnosis?.excluded?.includes(entry.item));
+    const queued = this.store.transaction(() => {
+      const position = this.store.enqueueMerge(retained ?? { ...(dependencies ? { dependencies } : {}), item: view.id, branch: view.branch!, head, verdictBase: base, enqueued: this.clock.now().toISOString(), by: actor });
+      if (retained && batch?.failed) { batch.retryRequested = true; this.store.setMeta('merge-batch', JSON.stringify(batch)); }
+      return position;
+    });
     if (warnings.length) this.warn(view, warnings);
     return { item: view.id, queued };
   }

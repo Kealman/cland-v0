@@ -1,5 +1,20 @@
 # hub/test/merge-batches.test.ts
 
+Missing-file attribution uses a candidate checkout with a real absent file and
+manifest, through Suites admission and fake executor receipts. Assert the
+owner's file-naming drop, no blocked state, and a fresh survivor run before
+landing. A present unclassified file is the held control: no drop, named members
+and cancel/re-enqueue commands. Same-head cancel/re-enqueue composes MergeQueue
+with the controller: running evidence survives, held recovery runs afresh, and
+only one request remains for the head. The public-frame equivalent is in
+merge-queue.test.ts. These tests use disposable files and no native processes.
+Their pure fixtureWork owner is enrolled before acquisition; deferred fixture
+hooks join the entire setup/body before closing resources or removing roots.
+Each asynchronous body step checks admission. The public T2 counterpart uses
+caseDeadlines with the shared beforeDirectories/guardDirectoryRemoval owner.
+CLI help consumers are the frozen commands.json composition, T1
+cli-usage-compatibility and T2 cli-help; retain their exact byte comparisons.
+
 Interrupted file diagnosis uses the same fake-only T1 seam. Plant an interrupted
 prefix, pass every failing-file diagnostic, and assert no member lands. Reopen
 before the full confirmation; a later Neovim file either passes and permits FIFO
