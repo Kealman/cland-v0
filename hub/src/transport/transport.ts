@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { realClock, type Clock } from '../hub/clock.ts';
 import type { HostRecord } from '../host/records.ts';
+import type { TransportKind } from '../host/transport-kind.ts';
 export { parseTransportKind } from '../host/transport-kind.ts';
 export type { TransportKind } from '../host/transport-kind.ts';
 export type HostTunnelStatus = {
@@ -12,7 +13,7 @@ export type HostTunnelStatus = {
 /** One carrier per registered host. start admits its loop; stop joins all owned I/O.
  * wake interrupts a pending retry after machine wake. status never performs I/O. */
 export interface Transport {
-  readonly kind: 'ssh'; readonly host: string;
+  readonly kind: TransportKind; readonly host: string;
   /** Local inventory/socket release only; never invokes a mux or remote agent. */
   dropForwardLocal?(ids: readonly string[]): Promise<void>;
   start(): Promise<void>; stop(): Promise<void>; wake(): void; status(): HostTunnelStatus;

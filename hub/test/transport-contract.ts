@@ -3,7 +3,7 @@ import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { Transport } from '../src/transport/transport.ts';
+import type { Transport, TransportKind } from '../src/transport/transport.ts';
 import { parseTransportKind } from '../src/host/transport-kind.ts';
 import { eventually } from './harness.ts';
 
@@ -19,7 +19,8 @@ export type ContractFixture = {
 export async function transportContract(t: TestContext, fixture: (t: TestContext) => Promise<ContractFixture>): Promise<void> {
   assert.deepEqual(TRANSPORT_ENDPOINTS, ['hub.sock', 'spoke.sock', 'git.sock', 'agent.sock']);
   const f = await fixture(t);
-  assert.equal(parseTransportKind(f.transport.kind), f.transport.kind);
+  const kind: TransportKind = f.transport.kind;
+  assert.equal(parseTransportKind(kind), kind);
   const answers = async () => {
     for (const endpoint of TRANSPORT_ENDPOINTS) await f.exchange(endpoint);
   };

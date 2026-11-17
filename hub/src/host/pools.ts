@@ -1,10 +1,10 @@
 import { parsePoolName } from './pool-name.ts';
-import { parseTransportKind } from './transport-kind.ts';
+import { parseTransportKind, type TransportKind } from './transport-kind.ts';
 import { durationMs } from '../duration.ts';
 
 export const POOL_KEYS = ['provider', 'size', 'region', 'transport', 'slots', 'min_hosts', 'max_hosts', 'idle_stop', 'spread'] as const;
 export type HarnessPins = Partial<Record<'claude-code' | 'codex' | 'opencode', string>>;
-export type HostPool = { provider: string; size: string; region: string; transport: 'ssh'; slots: number; minHosts: number; maxHosts: number; idleStop: string; idleStopMs: number; spread: boolean };
+export type HostPool = { provider: string; size: string; region: string; transport: TransportKind; slots: number; minHosts: number; maxHosts: number; idleStop: string; idleStopMs: number; spread: boolean };
 export type HostPools = { pools: Record<string, HostPool>; harnesses: HarnessPins; dailySpendUsd: number; lease: string; leaseMs: number; relaunchAfterSignIn: boolean; weights?: Record<string, number> };
 const GLOBAL_KEYS = ['harnesses', 'daily_spend_usd', 'lease', 'weights', 'relaunch_after_signin'];
 const SIZE_SLOTS: Record<string, number> = { 's-2vcpu-4gb': 4, 's-4vcpu-8gb': 8 };
@@ -53,7 +53,7 @@ function parseHostPools(hosts: unknown): HostPools {
     const provider = text(value.provider, `${key}.provider`);
     const size = text(value.size ?? 's-4vcpu-8gb', `${key}.size`);
     const region = text(value.region ?? 'lon1', `${key}.region`);
-    let transport: 'ssh';
+    let transport: TransportKind;
     try { transport = parseTransportKind(value.transport ?? 'ssh'); }
     catch (error) { throw new Error(`${key}.transport: ${(error as Error).message}`); }
     const slots = number(value.slots ?? (Object.hasOwn(SIZE_SLOTS, size) ? SIZE_SLOTS[size] : undefined), `${key}.slots`);
