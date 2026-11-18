@@ -3,13 +3,119 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import type { StageCover } from '../src/hub/suites.ts';
 import { connectWsUi, eventually, startHub, tempProject } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { planStageHub, PlanGit, seedPlanStageCover } from './plan-stage-fixture.ts';
 import { connectUi, inProcessSpoke } from './harness.ts';
+import { Store } from '../src/hub/store.ts';
+import type { SuiteJob } from '../src/hub/suites.ts';
+import { stageCase } from './stage-case-fixture.ts';
+
+test('ten three-stage plans share one job scan across planned checks and explorer refresh', t => {
+  const owner = stageCase(t);
+  return owner.run(async step => {
+  const root = await owner.wait('root setup', () => step(async () => {
+    const root = await tempProject(owner.fixtures); owner.adoptRoot(root); return root;
+  })), facts = new PlanGit();
+  await mkdir(join(root, '.cland'));
+  await seedPlanStageCover(root, facts.head);
+  const store = new Store(join(root, '.cland/hub.db'));
+  try {
+    const seeds = JSON.parse(store.meta('suite-jobs')!) as SuiteJob[];
+    const jobs = Array.from({ length: 5000 }, (_, n) => ({ ...seeds[n % 2]!, id: `history-${n}`,
+      tree: n >= 4998 ? 'f'.repeat(40) : `tree-${n % 100}`,
+      occasion: n % 7 === 0 ? 'release' as const : 'stage' as const,
+      ...(n % 11 === 0 ? { outcome: { code: 1, cause: 'synthetic failure' } } : {}),
+    }));
+    store.setMeta('suite-jobs', JSON.stringify(jobs));
+  } finally { store.close(); }
+  let visits = 0;
+  const component = await owner.wait('hub setup', () => step(() => planStageHub(owner.resources, root, facts, {
+    stageJobs: function* (jobs) { for (const job of jobs) { visits++; yield job; } },
+  })));
+  const ui = await connectUi(owner.fixtures, component.discovery);
+  const tracker = component.tracker;
+  const actor = { id: 'human', name: 'human', role: null };
+  const epics: string[] = [], first: string[] = [];
+  const plannedMs: number[] = [];
+  for (let n = 0; n < 10; n++) {
+    const epic = await tracker.create(actor, { kind: 'epic', title: `Synthetic epic ${n}` });
+    const children: ItemView[] = [];
+    for (let stage = 0; stage < 3; stage++) children.push(await tracker.create(actor, { title: `Stage ${stage}`, size: 'S', parent: epic.id }));
+    epics.push(epic.id); first.push(children[0]!.id);
+    const plannedAt = performance.now();
+    const jobsBeforePlan = visits;
+    await tracker.setPlan(actor, epic.id, JSON.stringify({ stages: children.map((child, stage) => ({
+      name: `stage-${stage}`, qa: { scope: 'none', when: 'after-stage' }, lanes: [[child.id]],
+    })) }));
+    await eventually('planned check persists the first-stage status', async () =>
+      (await tracker.viewAsync(children[0]!.id)).status === 'planned' ? true : undefined);
+    plannedMs.push(performance.now() - plannedAt);
+    assert.equal(visits - jobsBeforePlan, 0, 'the completed planned check reuses shared eligibility');
+  }
+  // Setup ends at the durable status written by each planned check, not at its scheduling reply.
+  await eventually('all ten planned checks persist their first-stage status', async () =>
+    (await Promise.all(first.map(id => tracker.viewAsync(id)))).every(item => item.status === 'planned') ? true : undefined);
+  const started = performance.now();
+  for (const id of epics) {
+    const response = await ui.request({ type: 'task.plan', item: id, op: 'show' });
+    assert.equal(response.ok, true, response.error);
+    const plan = response.value as ItemView;
+    assert.equal(plan.stages?.length, 3);
+    const stages = (await tracker.viewAsync(id)).stages!;
+    for (const stage of stages) {
+      assert.equal(stage.state, 'open');
+      assert.deepEqual(stage.cover, { tree: 'f'.repeat(40), missing: [], linux: 'history-4999', macos: 'history-4998' });
+      assert.equal(stage.closure, undefined, 'unmerged children cannot close a covered stage');
+    }
+  }
+  assert.equal(tracker.list().length, 40);
+  const refresh = Promise.withResolvers<void>();
+  const off = tracker.onChange(change => {
+    if (change.id === epics[0] && change.item?.title === 'Forced refresh receipt') refresh.resolve();
+  });
+  owner.fixtures.after(off);
+  const beforeRefresh = visits;
+  await tracker.edit(actor, epics[0]!, { title: 'Forced refresh receipt' });
+  await owner.wait('changed explorer row publication', () => refresh.promise);
+  assert.equal(tracker.list().find(item => item.id === epics[0])?.title, 'Forced refresh receipt');
+  assert.equal(visits - beforeRefresh, 0, 'forced explorer source refresh consumes no retained suite jobs');
+  let headReads = 0;
+  const rejected = Array.from({ length: 5000 }, (_, n): StageCover => ({
+    id: `rejected-${n}`, tree: 'f'.repeat(40), platform: n % 2 ? 'Linux droplet' : 'macOS',
+    get head() { headReads++; return 'b'.repeat(40); },
+  }));
+  tracker.useVerify(() => null, () => rejected);
+  await owner.wait('rejected ancestry settles', () => eventually('all-rejected history has settled missing Linux', async () => {
+    const values = await Promise.all(epics.map(id => tracker.viewAsync(id)));
+    return values.every(item => item.stages!.every(stage => stage.cover?.missing.includes('Linux droplet') && !stage.cover.pending?.length)) ? true : undefined;
+  }));
+  headReads = 0;
+  for (const id of epics) for (const stage of (await tracker.viewAsync(id)).stages!) {
+    assert.deepEqual(stage.cover, { tree: 'f'.repeat(40), missing: ['Linux droplet'], macos: 'rejected-4998' });
+  }
+  assert.equal(headReads, 0, 'thirty stages never revisit the settled rejected heads');
+  // Positive control for the former per-stage candidate walk, using the same observed accessors.
+  for (let stage = 0; stage < 30; stage++) for (const cover of rejected.toReversed()) {
+    if (cover.platform === 'Linux droplet') void cover.head;
+  }
+  assert.equal(headReads, 75000, 'the observer detects the historical N-times-stages candidate walk');
+  assert.throws(() => assert.ok(headReads <= 5000), /AssertionError/, 'the control must fail the shared-work bound');
+  t.diagnostic(`report-only latency: plan-write-to-persisted-planned status ${plannedMs.map(ms => ms.toFixed(1)).join(', ')} ms; stage reads, forced refresh, rejected-history settlement and positive control ${(performance.now() - started).toFixed(1)} ms, excludes initial setup; injected Git, ${process.platform}/${process.arch}, Node ${process.version}, no browser`);
+  await component.flush();
+  const events = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as Record<string, unknown>);
+  assert.equal(events.filter(event => event.event === 'stage-ancestry-visit' && event.head === 'b'.repeat(40)).length, 1,
+    'one shared ancestry query serves every rejected receipt and stage');
+  t.diagnostic(`stage-specific containment checks: ${events.filter(event => event.event === 'stage-containment-visit').length}; rejected candidate control: ${headReads} actual head reads; indexed settled reads: 0`);
+  assert.equal(visits, 5000,
+    'all thirty stages share one visit of each retained suite job');
+  await tracker.stop();
+  await component.stop();
+  });
+});
 
 test('stage QA recorded after restart stays pending then current with restored two-platform covers', async t => {
   const root = await tempProject(t);

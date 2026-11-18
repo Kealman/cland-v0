@@ -87,6 +87,7 @@ export function writeBarrier(t: TestContext) {
 /** The Tracker-only seams (stageTree and writeGate) are not exposed by projectHub.
  * Compose the same store, dispatcher and socket edges here rather than use a daemon. */
 export async function planStageHub(t: TestContext, root: string, facts = new PlanGit(), options: {
+  stageJobs?: (jobs: readonly SuiteJob[]) => Iterable<Readonly<SuiteJob>>;
   stageTree?: (head: string) => Promise<string | null>;
   openDatabase?: (path: string) => DatabaseSync;
   memory?: boolean; locks?: string[]; watch?: ConstructorParameters<typeof Tracker>[0]['watch']; approval?: boolean; levels?: string[] | undefined; qaDefault?: QaPolicy; gate?: ReturnType<typeof writeBarrier> | undefined; settleBeforeHub?: (tracker: Tracker, signal: AbortSignal) => Promise<void>;
@@ -138,7 +139,7 @@ export async function planStageHub(t: TestContext, root: string, facts = new Pla
     const storeDatabase = new DatabaseSync(db);
     owners.push(() => { if (storeDatabase.isOpen) storeDatabase.close(); });
     const store = new Store(db, () => storeDatabase);
-    const hub = await startHub({ tracker, store, clock, journal, root, verification: { compatibility: { holder: async () => null, occupied: async () => false }, ...(options.locks ? { locks: options.locks } : {}) }, roles: fixedRoles(), hasTerritory: async () => false,
+    const hub = await startHub({ tracker, store, clock, journal, root, verification: { ...(options.stageJobs ? { stageJobs: options.stageJobs } : {}), compatibility: { holder: async () => null, occupied: async () => false }, ...(options.locks ? { locks: options.locks } : {}) }, roles: fixedRoles(), hasTerritory: async () => false,
       git: facts.read, log: entry => journal.write({ ...entry, event: String(entry.event) }),
       control: { status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: '', uptimeMs: 0 }), stop() {} },
     });

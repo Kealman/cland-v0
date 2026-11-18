@@ -4,6 +4,21 @@ import assert from 'node:assert/strict';
 import { authorizeVerifyOccasion } from '../src/verification-occasion.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
+import { StageCandidates } from '../src/tracker/stage-candidates.ts';
+
+test('rejected stage candidates leave traversal and retry restores their original newest-first order', () => {
+  const covers = [0, 1, 2].map(n => ({ id: String(n), head: String(n), tree: 'tree', platform: 'Linux droplet' as const }));
+  const candidates = new StageCandidates(covers);
+  const ids = () => [...candidates].map(cover => cover.id);
+  for (const n of [2, 0, 1]) candidates.set(covers[n]!, false);
+  assert.deepEqual(ids(), []);
+  candidates.set(covers[0]!, true); assert.deepEqual(ids(), ['0']);
+  candidates.set(covers[2]!, true); assert.deepEqual(ids(), ['2', '0']);
+  candidates.set(covers[1]!, true); assert.deepEqual(ids(), ['2', '1', '0']);
+  const visited = [];
+  for (const cover of candidates) { visited.push(cover.id); for (const row of covers) candidates.set(row, false); }
+  assert.deepEqual(visited, ['2'], 'a settled rejection group is not traversed after its first candidate');
+});
 
 test('occasion load gate repeats only identities absent from the last green stage', async t => {
   const f = await suiteUnit(t, { machineReceiptsOnly: true });

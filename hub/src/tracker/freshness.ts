@@ -47,6 +47,7 @@ const scheduleTips: TipSchedule = (read, intervalMs) => {
 };
 
 export type FreshnessOptions = {
+  ancestryChanged?: (commit: string, tip: string, current: boolean | undefined) => void;
   git: Git;
   /** The territory task base, read asynchronously alongside branch tips; defaults to dev/main. */
   readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
@@ -61,6 +62,7 @@ export type FreshnessOptions = {
 };
 
 export class Freshness {
+  readonly #ancestryChanged: FreshnessOptions['ancestryChanged'];
   readonly #git: Git;
   readonly #gitStop = new AbortController();
   readonly #readBase: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
@@ -100,6 +102,7 @@ export class Freshness {
   #failureReset: NodeJS.Timeout | null = null;
 
   constructor(options: FreshnessOptions) {
+    this.#ancestryChanged = options.ancestryChanged;
     this.#git = (args, input) => {
       this.#gitStop.signal.throwIfAborted();
       return options.git(args, input, this.#gitStop.signal);
@@ -321,6 +324,7 @@ export class Freshness {
       if (retry.after > now) continue;
       this.#retries.delete(key);
       this.#results.delete(key);
+      if (retry.want.ancestry && !retry.want.settledOnly) this.#ancestryChanged?.(retry.want.commit, retry.want.tip, undefined);
       this.#wants.set(key, retry.want);
       this.#startWork();
     }
@@ -349,6 +353,7 @@ export class Freshness {
         this.#wants.delete(key);
         if (this.#stopped) continue;
         this.#results.set(key, value);
+        if (want.ancestry && !want.settledOnly) this.#ancestryChanged?.(want.commit, want.tip, value);
         if (failed && (want.ancestry || want.demoTasks)) this.#retries.set(key, { want, after: performance.now() + this.#intervalMs });
         this.#settled([...want.ids]);
         if (!failed) this.#queueDelta(key, want, value);

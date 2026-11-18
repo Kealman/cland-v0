@@ -1,5 +1,24 @@
 # hub/test/suite-persistence.test.ts
 
+The 5,000-job stage-cover case retains the SHA-256 oracle recorded before the
+index change, counts actual job-iterator yields across thirty reads, and reopens the store
+to retain equality. A separate stopped-store prune removes a receipt, then
+reopens Suites and proves the missing receipt is absent. A transient unreported
+include override supplies only that reporting call's platform coverage and
+never changes the cached history. Live suite receipt transitions are covered
+by suite-stage-rules.test.ts with fake workers and time. These two callbacks use
+the item-local stageCase before acquisition, adopt their roots immediately,
+and register partial cleanup early. Successful Suites and store close receipts
+precede root removal and manual executor/native-guard restoration. The prune
+case injects a real owned Suites.close refusal, checks the retained native
+function and executor-seam identities, reads the still-open store and retained
+database, then retries the same cleanup owner before checking restoration.
+Removing the restoration fence fails that actual function-identity assertion.
+A separate post-close diagnostic refusal remains reported while preserving
+confirmed closure. A timed-out observer never substitutes for the underlying
+work/close receipt. The shared guardedLeaseCase helper and its other callers
+are unchanged.
+
 Terminal no-lease remote seeds lose both result and log receipts before recovery,
 with and without a scheduler restart. Queue membership, explicit missing-receipt
 outcome, persisted reported state, heartbeat clearance and no repeat publication

@@ -113,7 +113,7 @@ export type StageCover = { id: string; head: string; tree: string; platform: Sta
 const verifyResult = (job: SuiteJob): VerifyResult => ({ ...(job.webPhase ? { webPhase: job.webPhase } : {}), executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome?.notRun ? 'unavailable' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 // A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
-export type SuiteSchedulerOptions = { onTestSlotAvailable?: (waiter: TestSlotWaiter) => void; taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { stageJobs?: (jobs: readonly SuiteJob[]) => Iterable<Readonly<SuiteJob>>; onTestSlotAvailable?: (waiter: TestSlotWaiter) => void; taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
@@ -220,6 +220,10 @@ export class Suites {
   readonly #root: string;
   readonly #report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>;
   readonly #jobs: SuiteJob[];
+  readonly #stageJobs = new Map<string, SuiteJob>();
+  #stageReceipts: StageCover[] | undefined;
+  #stagePlatforms = new Map<string, Record<StagePlatform, number>>();
+  #stageById = new Map<string, StageCover>();
   readonly #rawCoverage: RawCoverageSweep;
   readonly #waitMetrics: VerificationWait;
   #waitTimer: ClockTimer | null;
@@ -410,6 +414,7 @@ export class Suites {
     this.#save(job);
   }
   #save = (job?: SuiteJob) => {
+    this.#stageReceipts = undefined;
     if (job && !job.parentRun && !this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
     const parent = job?.parentRun ? this.#jobs.find(parent => parent.id === job.parentRun) : job;
     const changed = parent ? [parent] : this.#jobs.filter(job => !this.#summaries.has(job.id));
@@ -434,6 +439,8 @@ export class Suites {
     this.#options.log?.({ event: 'verification-checkpoint', jobs: changed.length });
   };
   #remember(job: SuiteJob, announce: boolean): void {
+    this.#stageJobs.set(job.id, job);
+    this.#stageReceipts = undefined;
     this.#rawCoverage.remember(job);
     if (!this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
     // A successful report checkpoints the log artifact across async I/O. Publish its
@@ -464,21 +471,36 @@ export class Suites {
   }
   /** Completed integrated full receipts, never a cache label borrowed from another platform. */
   stageCovers(include?: Readonly<SuiteJob>): StageCover[] {
-    const originals = new Map(this.#jobs.map(job => [job.id, job]));
-    return [...this.#jobs.filter(job => job.id !== include?.id), ...(include ? [include] : [])].flatMap<StageCover>(job => {
-      if (!job.integrated || job.branch !== 'dev' || !job.tree || !job.selection?.soak || job.selection.mode !== 'full' || job.outcome?.code !== 0 || job.cancelled || job.requesterDied || !job.reported && job !== include) return [];
-      if (job.executor === 'local' && job.platform?.os === 'darwin') return [{ id: job.id, head: job.head, tree: job.tree, platform: 'macOS' as const }];
-      const source = job.cached ? originals.get(job.cached.run) : job;
-      if (job.executor === 'droplet' && source?.occasion === 'stage' && job.platform?.os === 'linux'
-        && (source.shards ? source.shards.length >= 2 && source.shards.every(shard => shard.outcome?.code === 0 && shard.platform?.os === 'linux') : !!source.shardingSkipped)) {
-        return [{ id: job.id, head: job.head, tree: job.tree, platform: 'Linux droplet' as const }];
+    if (!this.#stageReceipts) {
+      this.#stageReceipts = [];
+      this.#stagePlatforms.clear(); this.#stageById.clear();
+      for (const job of this.#options.stageJobs?.(this.#jobs) ?? this.#jobs) for (const cover of this.#stageReceipt(job)) {
+        this.#stageReceipts.push(cover); this.#stageById.set(cover.id, cover);
+        const platforms = this.#stagePlatforms.get(cover.tree) ?? { 'Linux droplet': 0, macOS: 0 };
+        platforms[cover.platform]++; this.#stagePlatforms.set(cover.tree, platforms);
       }
-      return [];
-    });
+    }
+    return include ? [...this.#stageReceipts.filter(cover => cover.id !== include.id), ...this.#stageReceipt(include, true)] : this.#stageReceipts;
+  }
+  #stageReceipt(job: Readonly<SuiteJob>, include = false): StageCover[] {
+    if (!job.integrated || job.branch !== 'dev' || !job.tree || !job.selection?.soak || job.selection.mode !== 'full' || job.outcome?.code !== 0 || job.cancelled || job.requesterDied || !job.reported && !include) return [];
+    if (job.executor === 'local' && job.platform?.os === 'darwin') return [{ id: job.id, head: job.head, tree: job.tree, platform: 'macOS' }];
+    const source = job.cached ? this.#stageJobs.get(job.cached.run) : job;
+    if (job.executor === 'droplet' && source?.occasion === 'stage' && job.platform?.os === 'linux'
+      && (source.shards ? source.shards.length >= 2 && source.shards.every(shard => shard.outcome?.code === 0 && shard.platform?.os === 'linux') : !!source.shardingSkipped)) {
+      return [{ id: job.id, head: job.head, tree: job.tree, platform: 'Linux droplet' }];
+    }
+    return [];
   }
   stageMissing(tree: string | null | undefined, include?: Readonly<SuiteJob>): StagePlatform[] {
-    const covers = this.stageCovers(include).filter(cover => cover.tree === tree);
-    return (['Linux droplet', 'macOS'] as const).filter(platform => !covers.some(cover => cover.platform === platform));
+    this.stageCovers();
+    const counts = { ...(tree ? this.#stagePlatforms.get(tree) : undefined) };
+    if (include) {
+      const previous = this.#stageById.get(include.id);
+      if (previous && previous.tree === tree) counts[previous.platform] = (counts[previous.platform] ?? 0) - 1;
+      for (const cover of this.#stageReceipt(include, true)) if (cover.tree === tree) counts[cover.platform] = (counts[cover.platform] ?? 0) + 1;
+    }
+    return (['Linux droplet', 'macOS'] as const).filter(platform => !counts[platform]);
   }
   #active = (job: SuiteJob) => !job.reported && (!job.outcome || (job.outcome.code !== 0 && !job.cleaned));
   // Terminal report recovery without an acquired resource holds no execution

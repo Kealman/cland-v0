@@ -5,6 +5,7 @@ import { mkdtemp, mkdir, writeFile, rm, readFile, unlink } from 'node:fs/promise
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
 import { Store } from '../src/hub/store.ts';
 import { Suites, releaseT3Cover, suiteSummary, type SuiteJob } from '../src/hub/suites.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
@@ -13,6 +14,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { heartbeatDigest } from '../src/hub/heartbeat.ts';
 import { devT3Result } from '../src/hub/dev-t3-result.ts';
+import { stageCase } from './stage-case-fixture.ts';
 
 test('legacy green report without a native finish receipt retains its report-only budget exit', async t => {
   const f = await fixture(t, 1, false, { job: { cleaned: true }, omitFinished: true });
@@ -78,13 +80,25 @@ for (const restart of [false, true]) for (const refused of [false, true]) test(`
   assert.equal(f.reports(), 1);
 });
 
-async function fixture(t: test.TestContext, count: number, reported: boolean, options: { job?: Partial<SuiteJob>; omitFinished?: boolean; onJob?: (job: Readonly<SuiteJob>) => void } = {}) {
+async function fixture(t: test.TestContext, count: number, reported: boolean, options: { owner?: ReturnType<typeof stageCase>; stageJobs?: (jobs: readonly SuiteJob[]) => Iterable<Readonly<SuiteJob>>; job?: Partial<SuiteJob>; omitFinished?: boolean; onJob?: (job: Readonly<SuiteJob>) => void; log?: (event: Record<string, unknown>) => void } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'suite-persistence-'));
+  options.owner?.adoptRoot(root);
+  let suites: Suites | undefined;
+  let store: Store | undefined;
+  if (options.owner) {
+    options.owner.requireClose(async () => { await suites?.close(); store?.close(); });
+    t.after(() => rm(root, { recursive: true, force: true }));
+  } else t.after(async () => { await suites?.close(); store?.close(); await rm(root, { recursive: true, force: true }); });
   const env = fixtureEnvironment(root, process.env);
   const database = join(root, 'hub.db');
-  const store = new Store(database), clock = new FakeClock();
-  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
-  t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
+  store = new Store(database); const clock = new FakeClock();
+  if (options.owner) {
+    options.owner.patch(LocalExecutor.prototype, 'reconcile', async () => {});
+    options.owner.patch(LocalExecutor.prototype, 'holder', async () => null);
+  } else {
+    t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
+    t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
+  }
   const jobs: SuiteJob[] = [];
   for (let i = 0; i < count; i++) {
     const dir = join(root, String(i));
@@ -101,12 +115,97 @@ async function fixture(t: test.TestContext, count: number, reported: boolean, op
   }
   store.setMeta('suite-jobs', JSON.stringify(jobs));
   let reports = 0, allowed = false;
-  const make = () => new Suites(store, root, async () => { reports++; if (!allowed) throw new Error('forbidden: artifact.create (a session with no role has no tools)'); }, { clock, env, ...(options.onJob ? { onJob: options.onJob } : {}) });
-  let suites = make();
-  t.after(async () => { await suites.close(); store.close(); await rm(root, { recursive: true, force: true }); });
-  return { root, env, store, get suites() { return suites; }, clock, database, reports: () => reports, allowReports: () => { allowed = true; },
-    async reopen() { await suites.close(); suites = make(); } };
+  const make = () => new Suites(store!, root, async () => { reports++; if (!allowed) throw new Error('forbidden: artifact.create (a session with no role has no tools)'); }, { clock, env, ...(options.stageJobs ? { stageJobs: options.stageJobs } : {}), ...(options.log ? { log: options.log } : {}), ...(options.onJob ? { onJob: options.onJob } : {}) });
+  suites = make();
+  return { root, env, store, get suites() { return suites!; }, clock, database, reports: () => reports, allowReports: () => { allowed = true; },
+    async reopen() { await suites!.close(); suites = make(); } };
 }
+
+test('five thousand stage receipts retain the recorded cover oracle across thirty stage reads and reload', t => {
+  const owner = stageCase(t);
+  return owner.run(async step => {
+  let visits = 0;
+  const f = await owner.wait('fixture setup', () => step(() => fixture(owner.fixtures, 5000, true, { owner, stageJobs: function* (jobs) { for (const job of jobs) { visits++; yield job; } }, job: {
+    branch: 'dev', integrated: true, tree: 'tree', head: 'head', occasion: 'stage',
+    platform: { os: 'linux', arch: 'x64', release: 'fixture', node: process.version, nvim: 'fixture' }, shardingSkipped: 'fixture',
+    selection: { mode: 'full', files: [], reason: 'synthetic stage history', soak: true },
+  } })));
+  const covers = f.suites.stageCovers();
+  // Recorded against the pre-index implementation on this synthetic history.
+  assert.equal(createHash('sha256').update(JSON.stringify(covers)).digest('hex'), 'dd0e96b39e2e7e98b74aac2e8080611f91364f71491382e3f903cdc79874e8cd');
+  for (let epic = 0; epic < 10; epic++) for (let stage = 0; stage < 3; stage++) {
+    assert.strictEqual(f.suites.stageCovers(), covers);
+    assert.deepEqual(f.suites.stageMissing('tree'), ['macOS']);
+  }
+  assert.equal(visits, 5000);
+  await f.reopen();
+  assert.deepEqual(f.suites.stageCovers(), covers);
+  assert.equal(visits, 10000, 'reloaded history really traverses the instrumented source again');
+  });
+});
+
+test('stage cover reload drops pruned receipts and temporary reporting includes never enter the index', t => {
+  const owner = stageCase(t);
+  return owner.run(async step => {
+  const f = await owner.wait('fixture setup', () => step(() => fixture(owner.fixtures, 2, true, { owner, job: { executor: 'local', branch: 'dev', integrated: true, tree: 'tree', head: 'head',
+    platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'fixture' }, selection: { mode: 'full', files: [], reason: 'stage', soak: true } } })));
+  const covers = f.suites.stageCovers();
+  assert.deepEqual(covers.map(cover => cover.id), ['0', '1']);
+  const included = { ...(JSON.parse(f.store.suiteJob('1')!) as { job: SuiteJob }).job, reported: false, tree: 'temporary' };
+  assert.deepEqual(f.suites.stageMissing('temporary', included), ['Linux droplet']);
+  assert.strictEqual(f.suites.stageCovers(), covers);
+  await f.suites.close();
+  f.store.clearMeta('suite-job:1');
+  await f.reopen();
+  assert.deepEqual(f.suites.stageCovers(), [covers[0]]);
+  assert.deepEqual(f.suites.stageMissing('temporary'), ['Linux droplet', 'macOS']);
+  // Exercise the actual registered cleanup/restoration owner with a rejected
+  // Suites close, then recover through that same owner before leaving the case.
+  let nested: ReturnType<typeof stageCase> | undefined;
+  let refuseClose = true;
+  owner.releaseOnClose(() => { refuseClose = false; });
+  owner.fixtures.after(async () => { refuseClose = false; await nested?.close(); await nested?.restore(); });
+  const outerBoundary = owner.nativeBoundary(), outerReconcile = LocalExecutor.prototype.reconcile;
+  nested = stageCase(owner.fixtures);
+  owner.requireClose(async () => { await nested!.close(); await nested!.restore(); });
+  let child: Awaited<ReturnType<typeof fixture>> | undefined;
+  await nested.run(async admit => {
+    child = await nested!.wait('refusal fixture setup', () => admit(() => fixture(nested!.fixtures, 1, true, { owner: nested! })));
+    const actualClose = child.suites.close.bind(child.suites);
+    nested!.patch(child.suites, 'close', async () => {
+      if (refuseClose) throw new Error('controlled Suites close refusal');
+      await actualClose();
+    });
+  });
+  assert.ok(child);
+  const heldBoundary = nested.nativeBoundary(), heldReconcile = LocalExecutor.prototype.reconcile;
+  await assert.rejects(nested.close(), /controlled Suites close refusal/);
+  let restorationError: unknown;
+  try { await nested.restore(); } catch (error) { restorationError = error; }
+  assert.equal(nested.nativeBoundary(), heldBoundary, 'failed close retains the actual positive-controlled native guard');
+  assert.equal(LocalExecutor.prototype.reconcile, heldReconcile, 'failed close retains the actual executor seam');
+  assert.match(String(restorationError), /resource close unconfirmed/);
+  assert.notEqual(child.store.meta('suite-jobs'), null, 'storage remains usable while closure is unconfirmed');
+  assert.ok((await readFile(child.database)).length > 0, 'the fixture root and database remain retained');
+  refuseClose = false;
+  await nested.close();
+  await nested.restore();
+  assert.equal(nested.nativeBoundary(), outerBoundary, 'successful original-work and resource close releases the nested guard');
+  assert.equal(LocalExecutor.prototype.reconcile, outerReconcile);
+  let ancillary: ReturnType<typeof stageCase> | undefined;
+  owner.fixtures.after(async () => { await ancillary?.restore(); });
+  ancillary = stageCase(owner.fixtures);
+  owner.requireClose(async () => { await ancillary!.close(); await ancillary!.restore(); });
+  let positiveCloses = 0;
+  ancillary.requireClose(async () => { positiveCloses++; });
+  await ancillary.run(async () => {});
+  ancillary.fixtures.after(() => { throw new Error('controlled post-close diagnostic failure'); });
+  await assert.rejects(ancillary.close(), /ancillary cleanup failed after confirmed writer close/);
+  assert.equal(positiveCloses, 1);
+  await ancillary.restore();
+  assert.equal(ancillary.nativeBoundary(), outerBoundary, 'an ancillary diagnostic preserves positive close authority');
+  });
+});
 
 test('six permanently forbidden finished reports perform no writes on later inspect ticks', async t => {
   const f = await fixture(t, 6, false);

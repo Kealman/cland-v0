@@ -78,6 +78,7 @@ import { MergeError, type MergeCode } from '../merge.ts';
 import type { MergeReceipt } from './index-db.ts';
 import { deltaComment } from './merge-delta.ts';
 import { Freshness, pending, type TipSchedule } from './freshness.ts';
+import { StageCandidates } from './stage-candidates.ts';
 import { watchFolder, type FolderWatch } from '../watch.ts';
 
 /** How long the watcher waits for a file to settle before reading it. */
@@ -365,6 +366,38 @@ export class Tracker {
   useReadyAdmission(check:(view:ItemView)=>Promise<void>):void {this.#readyAdmission=check;}
   #verify: (item: string, branch: string | null) => VerifyResult | null = () => null;
   #stageCovers: () => StageCover[] = () => [];
+  #stageAncestors = new Map<string, boolean | undefined>();
+  #stageAncestorTip: string | null = null;
+  #coverIndex: { source: StageCover[]; byId: Map<string, StageCover>; mac: Map<string, StageCover>; paired: StageCandidates; unpaired: StageCandidates; byTree: Map<string, StageCandidates>; byHead: Map<string, StageCover[]> } | undefined;
+  #indexedCovers() {
+    const source = this.#stageCovers();
+    const tip = this.#fresh.tip('dev');
+    if (this.#coverIndex?.source === source && this.#stageAncestorTip === tip) return this.#coverIndex;
+    this.#stageAncestorTip = tip; this.#stageAncestors.clear();
+    const byId = new Map<string, StageCover>(), mac = new Map<string, StageCover>();
+    const byHead = new Map<string, StageCover[]>();
+    for (const cover of source) {
+      byId.set(cover.id, cover);
+      if (cover.platform === 'macOS') mac.set(cover.tree, cover);
+      const head = cover.head;
+      const rows = byHead.get(head) ?? []; rows.push(cover); byHead.set(head, rows);
+    }
+    const paired = [], unpaired = [], trees = new Map<string, StageCover[]>();
+    for (const cover of source) if (cover.platform === 'Linux droplet') {
+      if (mac.has(cover.tree)) paired.push(cover);
+      else {
+        unpaired.push(cover);
+        const rows = trees.get(cover.tree) ?? []; rows.push(cover); trees.set(cover.tree, rows);
+      }
+    }
+    const byTree = new Map([...trees].map(([tree, rows]) => [tree, new StageCandidates(rows)]));
+    return this.#coverIndex = { source, byId, mac, paired: new StageCandidates(paired), unpaired: new StageCandidates(unpaired), byTree, byHead };
+  }
+  #stageCandidateState(cover: StageCover, active: boolean): void {
+    this.#coverIndex?.paired.set(cover, active);
+    this.#coverIndex?.unpaired.set(cover, active);
+    this.#coverIndex?.byTree.get(cover.tree)?.set(cover, active);
+  }
   #stageCoverKey = '[]';
   readonly #stageCoverDependents = new Set<string>();
   readonly #stageTrees = new Map<string, string | null>();
@@ -426,6 +459,14 @@ export class Tracker {
     this.#index = new TrackerIndex(options.db, [...this.kinds, 'category'], options.openDatabase);
     this.#git = options.git ?? gitIn(options.root);
     this.#fresh = new Freshness({
+      ancestryChanged: (head, tip, current) => {
+        if (tip !== this.#stageAncestorTip || !this.#stageAncestors.has(head)) return;
+        this.#stageAncestors.set(head, current);
+        for (const cover of this.#coverIndex?.byHead.get(head) ?? []) {
+          if (cover.platform !== 'Linux droplet') continue;
+          this.#stageCandidateState(cover, current !== false);
+        }
+      },
       git: this.#git,
       readBase: options.readBase ?? (async (tips) => await this.#files.stat(territoryPath(this.#root)).then(() => true, () => false) ? await taskBase(this.#root, tips, this.#env) : tips.has('dev') ? 'dev' : tips.has('main') ? 'main' : null),
       log: this.#log,
@@ -443,6 +484,7 @@ export class Tracker {
         }
       },
       settled: (ids) => {
+        if (this.#stageAncestors.size) ids = [...new Set([...ids, ...this.#stageCoverDependents])];
         this.#announceBatch(ids);
         for (const id of ids) { this.#scheduleReady(id); this.#schedulePlannedFor(id); }
       },
@@ -1929,34 +1971,41 @@ export class Tracker {
     if (recorded?.hash === snapshot.hash && (!build || build === recorded.head)) {
       return { tree: recorded.tree, missing: [], linux: recorded.linux, macos: recorded.macos };
     }
-    const covers = this.#stageCovers();
+    const covers = this.#indexedCovers();
     const expected = this.#stageTree(id, build ?? this.#fresh.tip('dev'));
     const landings = snapshot.items.flatMap(child => this.#index.landingReceipt(child)?.commit ?? []);
     // Search newest first. An unresolved newer pair can still win, so settle
     // that candidate before asking Git about older history. Unpaired trees
     // cannot win; only the expected tree can provide a Linux-only fallback.
-    const macTrees = new Set(covers.filter(cover => cover.platform === 'macOS').map(cover => cover.tree));
     const candidates: Array<{ cover: StageCover; current: boolean | undefined }> = [];
     const check = (cover: StageCover): boolean | undefined => {
       const treeMatches = expected === null ? undefined : !build || cover.tree === expected;
       if (treeMatches !== true) return treeMatches;
-      const ancestor = this.#fresh.ancestor(id, cover.head);
+      let ancestor = this.#stageAncestors.get(cover.head);
+      if (!this.#stageAncestors.has(cover.head)) {
+        this.#log({ event: 'stage-ancestry-visit', head: cover.head });
+        ancestor = this.#fresh.ancestor(id, cover.head);
+        this.#stageAncestors.set(cover.head, ancestor);
+        if (ancestor === false) for (const rejected of covers.byHead.get(cover.head) ?? []) this.#stageCandidateState(rejected, false);
+      }
       if (ancestor !== true) return ancestor;
-      const facts = landings.map(landing => this.#fresh.contains(id, landing, cover.head));
+      const facts = landings.map(landing => {
+        this.#log({ event: 'stage-containment-visit', head: cover.head, landing });
+        return this.#fresh.contains(id, landing, cover.head);
+      });
       return facts.includes(false) ? false : facts.includes(undefined) ? undefined : true;
     };
     let pair: StageCover | undefined;
     let waitingPair = false;
-    for (const cover of covers.toReversed()) {
-      if (cover.platform !== 'Linux droplet' || !macTrees.has(cover.tree)) continue;
+    for (const cover of covers.paired) {
       const current = check(cover);
       candidates.push({ cover, current });
       if (current === true) { pair = cover; break; }
       if (current === undefined) { waitingPair = true; break; }
     }
     if (!pair && !waitingPair) {
-      for (const cover of covers.toReversed()) {
-        if (cover.platform !== 'Linux droplet' || expected !== null && cover.tree !== expected || macTrees.has(cover.tree)) continue;
+      const unpaired = expected === null ? covers.unpaired : covers.byTree.get(expected) ?? [];
+      for (const cover of unpaired) {
         const current = check(cover);
         candidates.push({ cover, current });
         if (current !== false) break;
@@ -1965,7 +2014,7 @@ export class Tracker {
     const eligible = candidates.filter(candidate => candidate.current === true).map(candidate => candidate.cover);
     const tree = pair?.tree ?? expected;
     const linux = pair ?? eligible.find(cover => cover.tree === tree);
-    const mac = covers.findLast(cover => cover.platform === 'macOS' && cover.tree === tree);
+    const mac = tree === null ? undefined : covers.mac.get(tree);
     const pending: StagePlatform[] = [];
     const missing: StagePlatform[] = [];
     if (!linux) {
@@ -1973,7 +2022,7 @@ export class Tracker {
         && (candidate.current === undefined || tree === null));
       (unresolved ? pending : missing).push('Linux droplet');
     }
-    if (!mac) (tree === null && covers.some(cover => cover.platform === 'macOS') ? pending : missing).push('macOS');
+    if (!mac) (tree === null && covers.mac.size ? pending : missing).push('macOS');
     return { tree, missing, ...(pending.length ? { pending } : {}), ...(linux ? { linux: linux.id } : {}), ...(mac ? { macos: mac.id } : {}) };
   }
 
@@ -1994,7 +2043,7 @@ export class Tracker {
         && (!closure || this.#fresh.ancestor(item.fm.id, closure.head) !== false)
         && (!needsQa || !!verdict && verdict.result === 'clear' && this.#stageCurrent(item.fm.id, verdict));
       if (completed && cover?.tree && cover.linux && cover.macos && !closure) {
-        const head = needsQa ? verdict?.commit : this.#stageCovers().find(run => run.id === cover.linux)?.head;
+        const head = needsQa ? verdict?.commit : this.#indexedCovers().byId.get(cover.linux)?.head;
         if (head) {
           closure = { hash: snapshot.hash, head, tree: cover.tree, linux: cover.linux, macos: cover.macos };
           this.#index.recordStageClosure(item.fm.id, stage.name, closure);
@@ -2388,6 +2437,7 @@ export class Tracker {
   useMergeQueue(lookup: (id: string) => ItemView['mergeQueue']): void { this.#mergeQueue = lookup; }
 
   useVerify(lookup: (item: string, branch: string | null) => VerifyResult | null, stageCovers: () => StageCover[] = () => []): void {
+    this.#coverIndex = undefined;
     this.#verify = lookup; this.#stageCovers = stageCovers;
     // The dispatcher binds restored receipts after the startup projection exists.
     if (this.#explorer) for (const item of this.#index.list()) this.#explorer.update(item.id, this.#rawSummary(item));
