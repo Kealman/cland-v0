@@ -1,5 +1,18 @@
 # hub/test/suite-timeouts.test.ts
 
+The silent-tree case deliberately holds its first test import for 2 seconds,
+beyond the former 1.5-second startup deadline. A 100ms heartbeat covers import
+and child setup through the persisted PID receipt. Only its generated inner
+package runner receives a 120-second stall policy, giving the startup watchdog
+min(60 seconds, load-adjusted 30 seconds) of setup headroom; the outer verifier
+retains its 3-second no-output policy. After setup the heartbeat stops, so the
+silence watchdog owns the kill.
+Keep the silence diagnostic, last-started-test name, dead-tree and successor
+admission assertions. Run the named case for the delayed-import regression;
+T-1937 also requires 20 serial full-file T3 runner runs with each starting
+1-minute load in [8, 20), under an exclusive native slot. Record each native
+exit/signal and load, and stop and join the fixed load generator afterwards.
+
 T-1846 separates denied-census fast-exit setup from the 3-second production stall
 watchdog. `PIPE_HOLDER_SETUP_MS = testWaitMs()` uses the shared 15-second default.
 The parent explicitly requests and atomically publishes its pre-child native ps

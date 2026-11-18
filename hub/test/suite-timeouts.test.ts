@@ -172,16 +172,31 @@ test('verify kills a silent test tree and spoke, names the last started test and
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
   const harness = fileURLToPath(new URL('./harness.ts', import.meta.url));
   const marker = join(f.root, 'pids.json');
-  await writeFile(join(f.root, 'package.mjs'), `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', 'silent.test.mjs']], {cwd: ${JSON.stringify(f.root)}, lockDirs: [${JSON.stringify(join(f.root, 'suite.lock'))}, ${JSON.stringify(join(f.root, 'suite.lock-nvim'))}]});`);
+  // Only the inner package runner gets setup headroom:
+  // min(60s, load-adjusted 30s), with the injected 120s stall policy.
+  // The outer verifier keeps its 3s no-output policy and owns the silence kill.
+  await writeFile(join(f.root, 'package.mjs'), `import {runSuite} from ${JSON.stringify(runner)};
+import {suiteLimits} from ${JSON.stringify(new URL('../src/suite-limits.ts', import.meta.url).href)};
+const limits = await suiteLimits(${JSON.stringify(f.root)});
+process.env.CLAND_SUITE_LIMITS_CWD = ${JSON.stringify(f.root)};
+process.env.CLAND_SUITE_LIMITS = JSON.stringify({...limits, stallTimeoutMs: 120000});
+process.exitCode = await runSuite([['--test', 'silent.test.mjs']], {cwd: ${JSON.stringify(f.root)}, lockDirs: [${JSON.stringify(join(f.root, 'suite.lock'))}, ${JSON.stringify(join(f.root, 'suite.lock-nvim'))}]});`);
   await writeFile(join(f.root, 'silent.test.mjs'), `import {test} from 'node:test'; import {spawn} from 'node:child_process'; import {writeFile} from 'node:fs/promises'; import {spawnSpoke} from ${JSON.stringify(harness)};
+// Hold imports beyond the old 1500ms startup deadline. Heartbeats isolate
+// startup readiness from the outer command's no-output watchdog.
+const heartbeat = setInterval(() => console.log('silent fixture importing'), 100);
+await new Promise(resolve => setTimeout(resolve, 2000)); // lint-allow-wall-clock: intentional native-startup fault injection beyond the old 1500ms deadline, not a readiness wait
 test('silent with a spoke', async () => {
   const spoke = await spawnSpoke({unconfigured: true});
   const stubborn = spawn(process.execPath, ['-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], {detached: true, stdio: 'ignore'});
   await writeFile(${JSON.stringify(marker)}, JSON.stringify([process.pid, spoke.pid, stubborn.pid]));
+  clearInterval(heartbeat);
   await new Promise(() => {});
 });`);
   const job = await f.launch();
-  const pids = await eventually('silent test owns children', () => readFile(marker, 'utf8').then(text => JSON.parse(text) as number[], () => undefined));
+  const pids = await eventually('silent test owns children', () => readFile(marker, 'utf8').then(text => JSON.parse(text) as number[], () => undefined)).catch(async error => {
+    throw new Error(`${error.message}; results: ${JSON.stringify(await f.results())}`);
+  });
   for (const pid of pids) ownProcess(t, pid);
   const result = await eventually('stall reported after cleanup', async () => (await f.results())[0], 20000);
   assert.match(result.text, /exit 1/);
