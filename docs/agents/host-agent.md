@@ -187,6 +187,16 @@ retrying. Its external owner must confirm cleanup before the worker can settle.
 Fresh adoption's process census is memory-only; a recovered adoption flag alone
 grants no new acquisition.
 
+## Failed Codex and OpenCode launch settlement
+
+Pending file rollback includes the adapter generation, Host and exact forward
+identity. After a hub restart, native rollback must finish before the adapter
+cancels that forward; the role remains held until cancellation confirms success.
+The in-memory callback also closes the current hub's native client. Missing or
+mismatched persisted state keeps the failed row and role with `cleanup-incomplete`,
+including pre-existing pending receipts without this metadata. Report that cause
+to the item lead; never infer a forward identity from a display name.
+
 ## Failed Claude launch settlement
 
 Pending agent records retain the generation, private-directory/config/jobs

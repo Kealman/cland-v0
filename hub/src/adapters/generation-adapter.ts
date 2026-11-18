@@ -2,12 +2,15 @@ import { randomUUID } from 'node:crypto';
 import type { AdapterHost, GenerationReleaseReceipt, HarnessAdapter, HarnessProcess } from './contract.ts';
 import type { Host } from '../host/host.ts';
 import { hostGenerationKey } from './processes.ts';
+import { LaunchRecoveryPending } from './launch-files.ts';
 
 type ScopedAdapter = HarnessAdapter & {
   assertLaunchAvailable(name: string): void;
   detachUnreachable(): Promise<GenerationReleaseReceipt['dropped']>;
 };
 type Scope = {
+  generation: string;
+  host?: string;
   adapter: ScopedAdapter;
   fenced: boolean;
   stopped: boolean;
@@ -37,8 +40,10 @@ export function generationAdapter<T extends ScopedAdapter>(baseline: T, host: Ad
   const make = (): Scope => {
     const scope = { fenced: false, stopped: false, spawnFailed: false, failureSettled: false, work: new Set<Promise<unknown>>(), rows: new Set<HarnessProcess>(), identities: new Set<string>(), forwardIds: new Set<string>(), forwardNames: new Map<string, string>() } as Scope;
     const forwardId = randomUUID();
+    scope.generation = forwardId;
     const hosts = new WeakMap<Host, Host>();
     const wrapHost = (machine: Host): Host => {
+      scope.host = machine.name;
       const previous = hosts.get(machine);
       if (previous) return previous;
       const wrapped = new Proxy(machine, { get(target, key) {
@@ -108,6 +113,13 @@ export function generationAdapter<T extends ScopedAdapter>(baseline: T, host: Ad
     retire(scope);
   };
   const identity = hostGenerationKey;
+  const failed = (scope: Scope, error: unknown): never => {
+    if (error instanceof LaunchRecoveryPending && (baseline.harness === 'codex' || baseline.harness === 'opencode')) {
+      error.files.settlement = {harness:baseline.harness,host:scope.host ?? 'local',sessionId:error.sessionId,generation:scope.generation,
+        forwardId:scope.forwardNames.get(error.sessionId) ?? null};
+    }
+    throw error;
+  };
   const bind = (p: HarnessProcess, scope: Scope): void => {
     byProcess.set(p, scope);
     scope.rows.add(p);
@@ -183,6 +195,16 @@ export function generationAdapter<T extends ScopedAdapter>(baseline: T, host: Ad
     }
     const method = Reflect.get(target, key);
     if (typeof method !== 'function') return method;
+    if (key === 'acknowledgeFailedLaunch') return method.bind(target);
+    if (key === 'settleFailedLaunch' && (target.harness === 'codex' || target.harness === 'opencode')) return (process:HarnessProcess, ...args:unknown[]) => {
+      if (closed) throw new Error('adapter is closed');
+      const captured = byProcess.get(process) ?? byIdentity.get(identity(process));
+      if (captured?.fenced) throw new Error('unreachable adapter generation is fenced');
+      // This owner receives an exact persisted Host identity. Never pass it through
+      // a display-name selector or a live scope's namespace translation, and never
+      // allocate a native generation merely to cancel its remaining forward.
+      return method.apply(target,[process,...args]);
+    };
     if (key === 'spawn') return async (...args: unknown[]) => {
       if (closed) throw new Error('adapter is closed');
       const request = args[0] as {name: string; sessionId?: string};
@@ -203,7 +225,7 @@ export function generationAdapter<T extends ScopedAdapter>(baseline: T, host: Ad
         } catch (error) {
           scope.spawnFailed = true;
           retireFailedSpawn(scope);
-          throw error;
+          return failed(scope,error);
         }
       };
       void launch().then(completion.resolve, completion.reject);
@@ -226,7 +248,8 @@ export function generationAdapter<T extends ScopedAdapter>(baseline: T, host: Ad
         current.set(process.sessionId, scope);
       }
       const admittedGeneration = process ? hostGenerationKey(process) : null;
-      const result = scope ? own(scope, invoke()) : invoke();
+      const invocation = scope ? own(scope, invoke()) : invoke();
+      const result = key === 'resume' && scope ? Promise.resolve(invocation).catch(error => failed(scope,error)) : invocation;
       if (key === 'stop' && scope) return Promise.resolve(result).then(async value => {
         scope.stopped = true;
         const replacement = scope.process && current.get(scope.process.sessionId);

@@ -1505,7 +1505,7 @@ export class Sessions {
     // transition and row removal before releasing the role and clearing the recovery receipt.
     this.#table.pendingStop(entry);
     const observer=this.#recoveryObservers.get(process.sessionId);
-    const settlement=observer?observer():entry.files?this.adapter(process.harness).settleFailedLaunch?.(process):undefined;
+    const settlement=observer?observer():entry.files?this.adapter(process.harness).settleFailedLaunch?.(process,entry.files):undefined;
     if (settlement) await settlement;
     resumed(() => {
       if (this.#closed) return;
@@ -1537,6 +1537,10 @@ export class Sessions {
       const prune=!!adapter.settleFailedLaunch&&!entry.published&&!entry.preserveRow;
       if(prune){this.#settlementPrunes.set(process.sessionId,process.harness);this.#core.store.setMeta('launch-settlement-prunes',JSON.stringify([...this.#settlementPrunes]));}
       this.#table.clearPendingStop(process.sessionId);
+      // Recovery caches own no native generation. Acknowledge the exact captured
+      // receipt after durable clearance, including published/preserved failures.
+      try { adapter.acknowledgeFailedLaunch?.(process,entry.files); }
+      catch(error){try{this.#log({event:'launch-settlement-acknowledgement-incomplete',sessionId:process.sessionId,error:String(error)});}catch{/* ancillary reporting cannot reopen settled ownership */}}
       for (const id of rollbackIds) this.#core.store.clearMeta(`launch-role-rollback:${checkpoint(id)}`);
       this.#pendingStops.delete(process.sessionId);
       this.#recoveryObservers.delete(process.sessionId);

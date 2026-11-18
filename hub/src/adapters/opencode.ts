@@ -1,5 +1,7 @@
 import { remoteRedactor } from '../remote/redact.ts';
 import { generationAdapter } from './generation-adapter.ts';
+import { FailedForwardSettlement } from './failed-forward.ts';
+import type { LaunchFilesState } from './launch-files.ts';
 import { hostGenerationKey } from './processes.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
 import { boundedSettlement, withSpawnSettlement } from './launch-settlement.ts';
@@ -159,6 +161,14 @@ export class OpenCodeAdapter implements HarnessAdapter {
     const Adapter = new.target;
     if (!generationScope) return generationAdapter(this, host, scoped => new Adapter(scoped, options, true, this.#privateDirectories));
   }
+
+  readonly #failedForwards = new FailedForwardSettlement();
+  settleFailedLaunch(process: HarnessProcess, files?: LaunchFilesState): void | Promise<void> {
+    return this.#failedForwards.settle(process, files, this.#processHost(process));
+  }
+  acknowledgeFailedLaunch(process:HarnessProcess,files?:LaunchFilesState):void { this.#failedForwards.acknowledge(process,files); }
+  /** In-memory outstanding recovery producers; no retained-history/native work. */
+  failedLaunchSettlementCount():number { return this.#failedForwards.size; }
 
   #assertOpen(): void { if (this.#closed) throw new Error('the OpenCode adapter is closed'); }
 
@@ -1104,6 +1114,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       await Promise.allSettled([...this.#flights, ...(this.#pidCheck ? [this.#pidCheck] : [])]);
       await this.#recoveries.drain();
       const failures: unknown[] = [];
+      try { await this.#failedForwards.drain(); } catch (error) { failures.push(error); }
       for (const id of this.#forwards.keys()) {
         try { await this.#unforward(id); } catch (error) { failures.push(error); }
       }

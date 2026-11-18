@@ -365,13 +365,36 @@ authority; unknown results remain fenced until a positive owner receipt reconcil
 Only that typed outcome or the agent client's typed CLAND_AGENT_ADMISSION_REFUSED
 proves non-admission; an untyped error, even with that text, stays supervised.
 
-HarnessAdapter.settleFailedLaunch(process) is optional. For a file-backed pending
+HarnessAdapter.settleFailedLaunch(process, files?) is optional. For a file-backed pending
 launch, Sessions invokes it only when its captured recovery observer is absent
 after restart; adapters without the member keep their current behavior. Claude
 rebuilds the same bounded single-flight callback from generation-scoped adapter
 state. Missing/mismatched state or an unproved agent receipt holds the row and
 role as cleanup-incomplete. A terminal hub checkpoint covers a restart after
 native cleanup but before the pending-stop transaction finishes.
+
+Codex and OpenCode persist an additive `files.settlement` receipt with the
+adapter, captured Host, session, adapter generation and exact forward identity
+(or a positive no-acquisition `null`). The generation facade captures it before
+Sessions persists the failed launch; every rollback checkpoint preserves it.
+After restart generic rollback first confirms native closure and restores files.
+The fresh adapter then joins bounded, single-flight cancellation of that exact
+forward before pending-row removal or role rollback. Its old client belonged to
+the previous hub lifetime; the captured observer remains the fast path while
+that lifetime is active. Missing or mismatched generation state, including older
+Codex/OpenCode receipts without settlement metadata, stays held with the
+`cleanup-incomplete` cause. Claude's existing one-argument fallback remains
+compatible and continues to use its adapter-state receipt.
+
+Codex/OpenCode recovery runs on the facade's baseline owner with the unmodified
+Host identity; it neither selects by display name nor allocates a native scope.
+Its cache retains rejected/pending producers. After durable pending-stop clearance,
+the optional `acknowledgeFailedLaunch(process, files?)` drops only completed recovery entries and
+weakly fences their captured process aliases; it leaves current native selectors
+alone. Sessions calls this pure acknowledgement for published/preserved failures
+too; it grants no native work. A crash before acknowledgement drops the old hub's
+memory cache, so no additional durable intent is needed. Shutdown joins all
+admitted cancellation producers before storage closes.
 
 After clearPendingStop is durable, only opted-in adapters' unpublished and
 unpreserved launches receive forget(sessionId) as acknowledgement. A small

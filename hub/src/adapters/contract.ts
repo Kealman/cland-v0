@@ -5,6 +5,7 @@
 // Optional: history, usage, setModel, approval relay — each declared in the capability table and never
 // emulated when declared `none`. Every state signal is published with its reliability too.
 import type { Host } from '../host/host.ts';
+import type { LaunchFilesState } from './launch-files.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import type { ApprovalChoice, ApprovalOutcome, ApprovalRecord, ApprovalSubject, Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 
@@ -270,7 +271,9 @@ export interface HarnessAdapter {
   /** resume(relaunch) owns the native stop receipt; otherwise Sessions stops a running row first. */
   readonly relaunchStopsProcess?: boolean;
   /** Rebuild generation-owned failed-launch settlement after loss of its in-memory observer. */
-  settleFailedLaunch?(process: HarnessProcess): void | Promise<void>;
+  settleFailedLaunch?(process: HarnessProcess, files?: LaunchFilesState): void | Promise<void>;
+  /** Pure acknowledgement after durable pending-stop clearance; grants no native work. */
+  acknowledgeFailedLaunch?(process: HarnessProcess, files?: LaunchFilesState): void;
   /** Launch a session; resolves once the harness process runs, with its process-table row.
    * Recheck authorize after preparation, immediately before process creation and native first-turn admission. */
   spawn(request: SpawnRequest, resumed?: Resumed, authorize?: () => void): Promise<HarnessProcess>;

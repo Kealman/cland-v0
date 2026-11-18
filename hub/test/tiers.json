@@ -585,6 +585,8 @@
     "hub/test/remote-docs-pairing.test.ts": "T2",
     "hub/test/remote-docs.test.ts": "T1",
     "hub/test/remote-fixture-lifecycle.test.ts": "T4",
+    "hub/test/remote-launch-restart.test.ts": "T2",
+    "hub/test/remote-launch-settlement.test.ts": "T2",
     "hub/test/remote-neutral.test.ts": "T1",
     "hub/test/remote-publications.test.ts": "T1",
     "hub/test/remote-scripted.test.ts": "T2",

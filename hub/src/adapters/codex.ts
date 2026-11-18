@@ -1,5 +1,7 @@
 import { deadLoginReason } from '../host/login-signals.ts';
 import { generationAdapter } from './generation-adapter.ts';
+import { FailedForwardSettlement } from './failed-forward.ts';
+import type { LaunchFilesState } from './launch-files.ts';
 import { terminalAccountPrefix, writeAttachRecord } from '../host/attach.ts';
 import { boundedSettlement, withSpawnSettlement } from './launch-settlement.ts';
 import { hostCommandEnvironment } from '../host/command-environment.ts';
@@ -392,6 +394,14 @@ export class CodexAdapter implements HarnessAdapter {
     const Adapter = new.target;
     if (!generationScope) return generationAdapter(this, host, scoped => new Adapter(scoped, options, true));
   }
+
+  readonly #failedForwards = new FailedForwardSettlement();
+  settleFailedLaunch(process: HarnessProcess, files?: LaunchFilesState): void | Promise<void> {
+    return this.#failedForwards.settle(process, files, this.#machine(process));
+  }
+  acknowledgeFailedLaunch(process:HarnessProcess,files?:LaunchFilesState):void { this.#failedForwards.acknowledge(process,files); }
+  /** In-memory outstanding recovery producers; no retained-history/native work. */
+  failedLaunchSettlementCount():number { return this.#failedForwards.size; }
 
   #assertOpen(): void { if (this.#closed) throw new Error('the Codex adapter is closed'); }
 
@@ -1581,6 +1591,7 @@ export class CodexAdapter implements HarnessAdapter {
     this.#closing = (async () => {
       while (this.#flights.size) await Promise.allSettled([...this.#flights]);
       const failures: unknown[] = [];
+      try { await this.#failedForwards.drain(); } catch (error) { failures.push(error); }
       try { await this.#recoveries.drain(); } catch (error) { failures.push(error); }
       for (const id of this.#forwards.keys()) {
         try { await this.#unforward(id); } catch (error) { failures.push(error); }

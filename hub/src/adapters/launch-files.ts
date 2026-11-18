@@ -13,6 +13,16 @@ type FileUndo = { kind: 'remove' | 'directory'; path: string }
 export type LaunchFilesState = {
   undo: FileUndo[];
   children: Array<{ pid: number; pidStarted: string | null; pidIdentity?: string | null; graceMs: number }>;
+  settlement?: FailedForwardReceipt;
+};
+
+/** Exact adapter generation and Host forward admitted before a failed handshake. */
+export type FailedForwardReceipt = {
+  harness: string;
+  host: string;
+  sessionId: string;
+  generation: string;
+  forwardId: string | null;
 };
 
 /** Hand an unsuccessful adapter handshake to the hub's durable recovery owner. */
@@ -36,6 +46,7 @@ export class LaunchFiles {
   readonly #host: Host;
   readonly #exitReceiptMs: number;
   #rollbackFlight: Promise<void> | undefined;
+  #settlement: FailedForwardReceipt | undefined;
   constructor(resumed: Resumed = untimed, host?: Host, exitReceiptMs = LAUNCH_SETTLEMENT_MS) {
     this.#exitReceiptMs = exitReceiptMs;
     this.resumed = resumed;
@@ -44,6 +55,7 @@ export class LaunchFiles {
 
   static restore(state: LaunchFilesState, resumed: Resumed = untimed, host?: Host): LaunchFiles {
     const files = new LaunchFiles(resumed, host);
+    files.#settlement = state.settlement;
     files.#undo.push(...state.undo);
     files.#children.push(...state.children.map(({ pid, pidStarted, pidIdentity, graceMs }) => ({ pid, identity: Promise.resolve(pidStarted), birth: Promise.resolve(pidIdentity ?? null), graceMs })));
     return files;
@@ -51,7 +63,7 @@ export class LaunchFiles {
 
   async snapshot(): Promise<LaunchFilesState> {
     const children = await Promise.all(this.#children.map(async ({ pid, identity, birth, graceMs }) => ({ pid, pidStarted: await identity, pidIdentity: await birth, graceMs })));
-    return this.resumed(() => ({ undo: [...this.#undo], children }));
+    return this.resumed(() => ({ undo: [...this.#undo], children, ...(this.#settlement ? {settlement:this.#settlement} : {}) }));
   }
 
   async directory(path: string, mode?: number): Promise<void> {
