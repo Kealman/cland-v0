@@ -2,8 +2,8 @@
 id: T-1672
 kind: task
 title: Renaming a remote OpenCode session moves its config and password directory on the hub's machine, not on the host
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -14,7 +14,8 @@ blocked_by:
 topic: topic-1622
 branch: t/T-1672-renaming-a-remote-opencode-session-moves
 created: 2026-11-04T04:18:17.821Z
-updated: 2026-11-18T15:20:16.024Z
+updated: 2026-11-18T17:05:55.720Z
+closed: 2026-11-18T17:04:25.386Z
 ---
 
 ## Summary
@@ -210,3 +211,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; Standards and Spec have no findings. A-21304 audits owner fca6eb2c/A-21303 finished/passed at reviewed6c71cb66, all718 selected ordinary file envelopes and6877 ordinary test finishes, all40 OpenCode Host cases, all26 new OpenCode identities plus mapped recording-Host move with base+5/5 load and file receipts, and the corrected README assertion. C1/C2/C3 verified. T0/allT1/allT2 including Neovim/selected3T3/selected1T4baseonly/Web complete; remainingT3/T4 unexecuted. Recording-Host warnings trace to counted shared-guard refusal controls; report-only diagnostics remain separate. C3 also uses explicitly carried A-21297 macOS native21/1/18 at code-identical aa082b696 under Coordinator0c3f4a47, not relabelled as current-head executions. Verification snapshot b1d15955 differs from Git tree080fbb04. Prior45031eb0 remains failed/partial. Full named-receipt audit: A-21304, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21304-t-1672-final-same-head-evidence-clearance-at-6c71cb66d.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-18T17:04:25.386Z
+
+Merged dbc64994c67166186167f17964a7af58aeed9310 onto dev.

@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-18T12:30:30.381Z
+updated: 2026-11-18T17:06:12.539Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -646,3 +646,7 @@ Hub restart #83 (stand-in, on coord's GO): dev 303b482b8, web/dist rebuilt first
 ### human · 2026-11-18T12:30:30.381Z
 
 Hub restart #84 and an unplanned hub exit three minutes later. Restart #84 (stand-in, on coord's GO): dev 93026cbe9, web/dist rebuilt; stop 12:23:36Z, serving 12:24:26Z as pid 20702 (launchd job cland-hub-r84), gap 50 s, 'binding web listener' 2.0 s; nice 0, env check 2, homebrew on PATH; three remote runs (685da272, T-1680, T-1643) were in flight with active leases. 12:25:19Z git-maintenance-failed: collector pid 27316 'process inspection unavailable' (pid already gone; the ps/pgrep probes have a 200 ms timeout and the hub was at ~100% CPU). 12:27:57Z tracker-storage-stalled: planned check on E-1883 started 12:26:57Z, threshold 5,000 ms, waited 60 s; tracker-storage-fatal, exit code 1 ('shutdown deadline expired'). launchd respawned the same job: pid 52877, startup from 12:28:02Z, serving 12:29:09Z (second gap about 70 s; 'binding web listener' 51.7 s). 52877: nice 0, env check 2, homebrew on PATH, one job, port 65472. git maintenance completed 12:29:49Z and the owner record is gone. coord injected 12:30:05Z, one bridge; the three remote runs are still listed; merge queue empty; doctor 38 ok, 5 warn, 0 fail. The same 'tracker storage failure: shutdown deadline expired' exit appears twice earlier in hub.log.
+
+### coord · 2026-11-18T17:06:12.539Z
+
+2026-11-18 17:04Z: T-1672's landing follow-up failed with "stop sessions: cannot inspect the OS process table: ps failed or timed out" while the local macOS stage cover 172654e2 ran (load 6.7, swap 835 MB). Ten seconds later `ps -A` answered in 0.05 s. `cland merge T-1672` repaired it: worktree removed, then impl-1672 archived. No work lost. The hub's ps probe timeout may be too tight under cover load.

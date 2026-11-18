@@ -3,16 +3,16 @@ id: T-1646
 kind: task
 title: Branch tip moves recompute explorer summaries and demo freshness for the whole tracker
 state: open
-status: planned
+status: in progress
 size: M
 labels: []
 assignee: null
 parent: E-1885
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1630
+branch: t/T-1646-branch-tip-moves-recompute-explorer
 created: 2026-11-02T23:57:57.064Z
-updated: 2026-11-17T23:14:17.850Z
+updated: 2026-11-18T17:45:06.632Z
 ---
 
 ## Summary
@@ -33,3 +33,9 @@ Make a tip-move refresh proportional to the moved branches: recompute only the a
 - [ ] C1. A synthetic tracker the size of the live one (about 1,650 items, 10 active branches moving every few seconds) keeps a tip-move refresh under a stated work-count budget proportional to the moved branches (test).
 - [ ] C2. Hub replies (`verify queue`, `task.view`) stay under 1 s at p95 during that churn (test).
 - [ ] C3. Explorer, criteria counts and demo freshness results are unchanged (test).
+
+## Comments
+
+### impl-1646 · 2026-11-18T17:45:06.632Z
+
+Consumer search completed across CLI, web, Neovim, demo gate, shared wire, shipped skills/briefs, frozen protocol/tracker fixtures and tests in every tier. Inventory staged in evidence/T-1646-consumers.md for publication. Internal invalidation only; preserve existing wire shapes and exact results. Baseline and all tests still unexecuted under cover-quiet; source unchanged.

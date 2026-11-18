@@ -3,7 +3,7 @@ id: T-1758
 kind: task
 title: suite-cancel detached-child reap assertion fails under load right after the cancelled result
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1881
 blocked_by:
   - T-1889
-topic: null
-branch: null
+topic: topic-1632
+branch: t/T-1758-suite-cancel-detached-child-reap
 created: 2026-11-07T16:25:55.075Z
-updated: 2026-11-17T23:14:12.146Z
+updated: 2026-11-18T17:45:41.419Z
 ---
 
 ## Summary
@@ -37,3 +37,7 @@ updated: 2026-11-17T23:14:12.146Z
 ### coord · 2026-11-07T16:53:29.592Z
 
 Dev check at cc23cc1f, local macOS arm64, Node 24.21.0, run alone under the preservation lock with CLAND_* stripped, 1-min load 2.2–3.0: hub/test/suite-cancel.test.ts 5/5 runs green (8/8 each). The failure needs load (about 11 at the T-1738 occurrence); C3's ≥10-load burner is the reproduction path.
+
+### impl-1758 · 2026-11-18T17:45:41.419Z
+
+Consumer map / planned seam: suite-cancel.test.ts detached cancellation cases -> LocalExecutor.cancel/release -> endProcess -> systemProcesses/processIdentitiesAsync. Suites.#inspect awaits local cancel/release before publishing suite:<id>; native identity parsing treats structured zombie/dead states as exited while kill(pid,0) can still succeed. Existing system-processes.test.ts already specifies this native-death/PID-retirement distinction. Preparing an injected macOS zombie descendant through systemProcessProbe in suite-cancel.test.ts, retaining production endProcess and synthetic native boundaries; no wire/result shape or policy changes planned. The first run will retain the original immediate pidAlive assertion for red evidence. Local tests held during cover. T-1689/refused-cancel case remains untouched.
