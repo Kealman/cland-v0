@@ -1604,7 +1604,7 @@ for step receipts and combined-tree T0/Web bisection.
 review/verification. See the [merge skill](../../.agents/skills/merge/SKILL.md) for
 refusal ownership and recovery.
 
-`[verification] dev_t3_every = "2h"` enables this repository's hub-owned
+`[verification] dev_t3_every = "8h"` enables this repository's hub-owned
 `dev-t3` occasion; `""` (the default) disables it. It selects T2 and T3 on one
 droplet without load repetitions, under the shared remote budget and daily
 spend cap. The first attempt is due one interval after activation; later runs
@@ -1625,12 +1625,33 @@ fetched origin/dev. Periodic runs never hold or rebuild a merge batch.
 
 A periodic tick skips admission when a reported, executed green integrated dev
 cover completed within the last hour at the same head or a descendant of the
-captured dev tip. Integrated runs, stage/epic/release occasions and integrated
-batches qualify only with a full T3 selection; red, partial, cached, diagnostic
-and subset receipts do not. The skip notice names the covering run id and head,
-and the durable attempt cursor throttles another attempt for the configured
-interval, including across restart. Missing ancestry evidence never counts as
-coverage. This skips only the periodic admission, without changing cover gates.
+captured dev tip. Integrated runs and stage/epic/release occasions qualify with
+a full T3 selection; red, partial, cached, diagnostic and subset receipts do not.
+The notice names the covering run id and head. Missing ancestry stays unknown.
+
+A green merge batch also suppresses periodic admission when its captured
+verification tree equals dev's tree, regardless of commit ancestry or age.
+Structured producer receipts must prove every planned step, including T0 and T3,
+and T1 must either have run or have a recorded skip naming a current verify for
+every pinned member. Legacy receipts without these facts supply no batch cover.
+The notice names the batch, run and tree. The hub reads its checkpointed index,
+without scanning logs or hydrating archived full records.
+
+Batch-only suppression on changed dev stops after 24h since the last green
+full periodic completion, or the first batch skip when no such baseline exists.
+That cursor survives restart and is not extended by later batch skips. The next
+deadline attempt bypasses the normal attempt interval even when a prior batch
+skip fell just before it. A persisted deadline attempt restores ordinary retry
+throttling on admission failure. Only full unsharded periodic selection with
+complete structured T0/T2/T3/Web producer proof resets the baseline; unknown
+or legacy success metadata does not. The attempt runs full periodic T0, T2,
+T3 and Web; unchanged dev retains the
+existing same-tree early return. The configured 8h attempt interval, remote
+budget, credentials, network and spend cap still govern actual execution; the
+backstop does not guarantee a completed daily run when admission is unavailable.
+Nightly soak rotation does not reset it. All skips throttle another attempt for
+the configured interval. These rules change periodic admission only, without
+changing merge or release cover gates.
 
 Red results first probe each failing file at current local dev. A passing file
 reports `already fixed on dev at <commit>` without filing a Bug only when the

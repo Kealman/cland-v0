@@ -1,7 +1,6 @@
 import type { SuiteJob } from './hub/suites.ts';
 import type { MergeQueueEntry } from './protocol.ts';
-import { parseTierReceipts } from './verification-tier-receipts.ts';
-import { verificationInterrupted } from './verification-plan.ts';
+import { completeTierPlanReason } from './verification-tier-receipts.ts';
 
 export type BatchT1 = { skipped: boolean; members: Array<{ item: string; head: string; run: string; sourceRun?: string }>; reason?: string };
 
@@ -17,17 +16,7 @@ export function memberVerificationReason(member: Pick<MergeQueueEntry, 'item' | 
   const plan = proof.commands?.plan;
   if (!plan || !['check', 'T1', 'T2'].every(name => plan.some(step => step.name === name))
     || !proof.selection?.tiers?.includes('T1') || !proof.selection.tiers.includes('T2') || proof.selection.shard) return 'receipt does not cover T0–T2';
-  const rows = parseTierReceipts(proof.tierReceipts);
-  if (!rows || rows.some(row => row.run !== proof.id || row.tree !== proof.tree)) return 'missing producer tier receipts';
-  const key = (row: typeof rows[number]) => JSON.stringify([row.tier, row.run, row.tree, row.command]);
-  for (const [index, row] of rows.entries()) {
-    if (row.completion === 'complete' && row.exit === 0) continue;
-    if (row.exit !== null && verificationInterrupted(row.exit) && rows.slice(index + 1).some(later => key(later) === key(row) && later.exit === 0 && later.completion === 'complete')) continue;
-    return 'failed or incomplete producer tier receipt';
-  }
-  if (plan.some(step => !rows.some(row => row.tier === (step.name === 'check' ? 'T0' : step.name)
-    && row.command === step.command && row.exit === 0 && row.completion === 'complete'))) return 'missing complete passing step receipt';
-  return null;
+  return completeTierPlanReason(proof);
 }
 
 export function batchT1Summary(decision?: BatchT1): string {

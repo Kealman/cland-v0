@@ -178,7 +178,7 @@ test('this repository enables the merge batch queue while new projects keep it o
   assert.equal(config.merge.batch, 5);
   assert.deepEqual(config.merge.batchTiers, ['T1', 'T3']);
   assert.equal(config.verification.remoteBudget, 8);
-  assert.equal(config.verification.devT3Every, '2h');
+  assert.equal(config.verification.devT3Every, '8h');
 });
 
 test('marketing allow-list preserves configured exact paths and directory prefixes across updates', () => {

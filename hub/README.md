@@ -124,6 +124,14 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Pinned verifier request heads](../docs/hub/pinned-verifier-request-heads.md)
 - [Merge queue landing reports (T-1503)](../docs/hub/merge-queue-landing-reports-t-1503.md)
 
+Periodic dev T3 uses this repository's `dev_t3_every = "8h"` (new projects:
+disabled). A green batch at the same verification tree suppresses it only with
+structured T0/T3 and executed or member-verified T1 proof; its notice names the
+batch and run. Changed-tree batch-only suppression has a durable 24h backstop
+for full periodic T2/T3/Web. Unchanged trees retain their skip. Execution still
+requires configured executor capacity, credentials, network and spend budget.
+See [Running](../docs/hub/running.md).
+
 Every successful batch diagnosis requires its pinned full plan on the selected
 tree before landing. Test-lint read failures retry three times, then hold membership
 and green evidence for a later retry; genuine findings retain member-drop behaviour. [Running](../docs/hub/running.md) describes skipped-file and

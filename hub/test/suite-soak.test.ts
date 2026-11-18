@@ -212,7 +212,7 @@ for (const scenario of ['newer', 'older', 'unrelated', 'stale', 'red', 'partial'
     if (scenario === 'missing-time') { delete saved.completedAt; delete saved.finished; }
     f.clock.block(200_000);
     await f.reopen(jobs); await f.tick(); await f.suites.settled();
-    const eligible = ['newer', 'integrated', 'batch', 'epic', 'boundary'].includes(scenario);
+    const eligible = ['newer', 'integrated', 'epic', 'boundary'].includes(scenario);
     assert.equal(f.suites.status().some(job => job.occasion === 'dev-t3'), !eligible);
     assert.equal(notices.some(text => text.includes(`fresh green cover ${cover.id}`)), eligible);
   });

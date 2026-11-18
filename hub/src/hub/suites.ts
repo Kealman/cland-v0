@@ -3,6 +3,7 @@ import { hostVerifyWorktree, removeHostVerifyWorktree, validateHostVerifyWorktre
 import { RawCoverageSweep, removeRawCoverage } from '../suite-raw-coverage.ts';
 import { recentCoverGreens } from '../suite-load-rerun.ts';
 import { memberVerificationReason, batchT1Summary, type BatchT1 } from '../batch-member-verification.ts';
+import { batchDevT3Cover, fullPeriodicDevT3Cover, DEV_T3_BACKSTOP_MS } from '../dev-t3-coverage.ts';
 import { parseTierReceipts, tierReceipt, type TierReceipt } from '../verification-tier-receipts.ts';
 
 import { suiteRecoveryState, isolatedUnavailableReport, isolatedSuiteProcessOwned, isolatedSuiteEvidencePath, outsideSuitePath, sealSuiteJob } from './suite-isolation.ts';
@@ -1315,8 +1316,19 @@ export class Suites {
     const startedAt = (lastStarted?.lease as DropletLease | undefined)?.execution?.startedAt ?? lastStarted?.admittedAt ?? lastStarted?.queued;
     const anchor = this.#store.meta('dev-t3-attempt');
     if (!anchor) { this.#store.setMeta('dev-t3-attempt', String(now)); return; }
-    if (now - Math.max(Number(anchor), Date.parse(startedAt ?? '') || 0) < interval) return;
-    if (now < this.#nextDevT3Check) return;
+    const lastGreen = this.#jobs.findLast(job => fullPeriodicDevT3Cover(job) && this.#store.resolveArtifact(job.artifact!)
+      && Date.parse(job.completedAt ?? job.finished ?? '') <= now);
+    const greenAt = Date.parse(lastGreen?.completedAt ?? lastGreen?.finished ?? '') || 0;
+    const storedSuppression = Number(this.#store.meta('dev-t3-batch-suppressed-since')) || 0;
+    const suppressedSince = Math.max(greenAt, storedSuppression) || now;
+    const deadline = suppressedSince + DEV_T3_BACKSTOP_MS;
+    const lastAttempt = Math.max(Number(anchor), Date.parse(startedAt ?? '') || 0);
+    // A skip near the daily deadline must not defer it by another interval.
+    // Once an actual deadline attempt is persisted, failures retain ordinary
+    // admission throttling instead of retrying on every scheduler tick.
+    const backstopDue = storedSuppression > 0 && now >= deadline && lastAttempt < deadline;
+    if (now - lastAttempt < interval && !backstopDue) return;
+    if (now < this.#nextDevT3Check && !backstopDue) return;
     this.#nextDevT3Check = now + Math.min(interval, 60_000);
     this.#periodic = (async () => {
       if (lastStarted?.tree && await this.#candidate.tree(this.#root) === lastStarted.tree) return;
@@ -1324,6 +1336,19 @@ export class Suites {
       if (this.#closed || this.#options.projectConfig?.().verification.devT3EveryMs !== interval) return;
       if (candidate.branch !== 'dev' || !candidate.tree || candidate.selection.fetchedDev !== candidate.head) return;
       if (lastStarted?.tree === candidate.tree) return;
+      if (now - suppressedSince < DEV_T3_BACKSTOP_MS) {
+        for (let index = this.#jobs.length - 1; index >= 0; index--) {
+          const cover = this.#jobs[index]!;
+          const proof = batchDevT3Cover(cover, candidate.tree);
+          if (!proof || !this.#store.resolveArtifact(cover.artifact!)) continue;
+          this.#store.setMeta('dev-t3-batch-suppressed-since', String(suppressedSince));
+          this.#store.setMeta('dev-t3-attempt', String(now));
+          const text = `periodic dev T3 skipped: green batch ${proof.batch} run ${proof.run} covers dev tree ${candidate.tree}; full periodic backstop within 24h`;
+          this.#options.log?.({ event: 'verification-dev-t3-skipped', text, batch: proof.batch, run: proof.run, tree: candidate.tree });
+          this.#options.onSoakNotice?.(`dev-t3-skip:${now}`, text);
+          return;
+        }
+      }
       // Only complete, positively reported execution can suppress a scheduled run.
       // #jobs is the scheduler's loaded/checkpointed index; do not rescan logs here.
       for (let index = this.#jobs.length - 1; index >= 0; index--) {
@@ -1331,7 +1356,7 @@ export class Suites {
         const age = now - Date.parse(cover.completedAt ?? cover.finished ?? '');
         if (!Number.isFinite(age) || age < 0 || age > 3_600_000
           || !cover.integrated || cover.branch !== 'dev' || cover.mode !== 'all'
-          || cover.occasion === 'dev-t3' || cover.occasion === 'soak'
+          || cover.occasion === 'dev-t3' || cover.occasion === 'soak' || cover.occasion === 'batch'
           || cover.parentRun || cover.batch?.diagnostic || cover.devT3Probe
           || cover.state !== 'finished' || !cover.reported || !cover.artifact
           || !this.#store.resolveArtifact(cover.artifact) || cover.outcome?.code !== 0 || cover.outcome.notRun

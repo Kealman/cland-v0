@@ -33,7 +33,9 @@ no periodic admission and the skip event/notice naming the cover. Eligibility
 cases retain the final positive admission assertion for red, partial, stale,
 cached, subset, diagnostic, cancelled, missing-time, older and unrelated covers.
 Candidate ancestry facts distinguish descendants from ancestors. Full integrated,
-stage, epic, release and T3 batch covers qualify; T1-only batches do not.
+stage, epic and release covers qualify. Legacy T3 batches without structured
+producer proof and T1-only batches do not. Structured batch-tree coverage and
+the daily backstop are covered separately in dev-t3-coverage-component.test.ts.
 
 The native ancestry control in `suite-soak-component.test.ts` uses scratchMachine
 and commandIn for setup Git, with sealed final environment and explicit exit

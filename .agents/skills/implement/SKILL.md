@@ -151,7 +151,7 @@ After shutdown, a later passing host-check receipt supersedes an aborted attempt
 only at the same run, tree and command. Retain both attempts in log and notice;
 unbound legacy interruptions stay inconclusive. No recovery command is added.
 
-Run typechecking and targeted single test files while implementing. Merge batches run T0 before configured tiers, skip T1 only with complete structured mode-free exact-head member receipts and another configured runtime tier, and add Web after T1 (after configured tiers without T1) for web/ diffs; use the receipt/bisection seams in `docs/agents/tests.md#queued-merge-batches` for changes there. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
+Run typechecking and targeted single test files while implementing. Merge batches run T0 before configured tiers, skip T1 only with complete structured mode-free exact-head member receipts and another configured runtime tier, and add Web after T1 (after configured tiers without T1) for web/ diffs; use the receipt/bisection seams in `docs/agents/tests.md#queued-merge-batches` for changes there. A green same-tree batch with structured T0/T3 and executed or member-verified T1 suppresses periodic dev admission; changed-tree batch-only suppression has a durable 24h full-periodic backstop, while unchanged trees retain their skip. See `docs/hub/running.md` for cadence and executor availability. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
 
 For README/docs edits, follow [documentation placement](../../../docs/agents/documentation.md).
 

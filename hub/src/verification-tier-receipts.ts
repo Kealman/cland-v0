@@ -1,6 +1,23 @@
-import type { VerificationStep } from './verification-plan.ts';
+import { verificationInterrupted, type VerificationStep } from './verification-plan.ts';
 
 export type TierReceipt = { tier: 'T0' | VerificationStep['name']; exit: number | null; completion: 'complete' | 'incomplete'; tree: string; run: string; command: string };
+
+/** Complete planned execution, with ordered same-command interruption recovery. */
+export function completeTierPlanReason(proof: { id: string; tree?: string | null; tierReceipts?: unknown; commands?: { plan?: VerificationStep[] } }): string | null {
+  const plan = proof.commands?.plan;
+  if (!plan?.length) return 'missing execution plan';
+  const rows = parseTierReceipts(proof.tierReceipts);
+  if (!rows || rows.some(row => row.run !== proof.id || row.tree !== proof.tree)) return 'missing producer tier receipts';
+  const key = (row: typeof rows[number]) => JSON.stringify([row.tier, row.run, row.tree, row.command]);
+  for (const [index, row] of rows.entries()) {
+    if (row.completion === 'complete' && row.exit === 0) continue;
+    if (row.exit !== null && verificationInterrupted(row.exit) && rows.slice(index + 1).some(later => key(later) === key(row) && later.exit === 0 && later.completion === 'complete')) continue;
+    return 'failed or incomplete producer tier receipt';
+  }
+  if (plan.some(step => !rows.some(row => row.tier === (step.name === 'check' ? 'T0' : step.name)
+    && row.command === step.command && row.exit === 0 && row.completion === 'complete'))) return 'missing complete passing step receipt';
+  return null;
+}
 
 /** One grammar for native status ingestion and persisted receipt eligibility. */
 export function parseTierReceipts(value: unknown): TierReceipt[] | undefined {
