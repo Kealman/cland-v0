@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {OpenCodeAdapter} from '../src/adapters/opencode.ts';
 import {OpenCodeClient} from '../src/adapters/opencode/client.ts';
 import {LaunchRecoveryPending} from '../src/adapters/launch-files.ts';
-import {localHost} from '../src/host/local.ts';
+import {recordingHost} from './recording-host.ts';
 import {tempProject,eventually} from './harness.ts';
 import {fixtureEnvironment} from './fixture-environment.ts';
 import {deferred} from './fakes/scripted-opencode.ts';
@@ -14,7 +14,7 @@ test('OpenCode failed launch retains a single-flight unforward until its positiv
  const root=await tempProject(t),env=fixtureEnvironment(root,process.env);
  const exit=deferred<{code:number|null;signal:string|null}>(),release=deferred<void>();
  let cancellations=0,stops=0;
- const machine={...localHost(env),name:'remote',freePort:async()=>12345,
+ const machine={...recordingHost(root),name:'remote',freePort:async()=>12345,
   spawn:async()=>({pid:99191,exited:exit.promise}),identity:async(pid:number)=>({pid,pidStarted:'start',pidIdentity:'remote:birth'}),
   stop:async()=>{stops++;exit.resolve({code:0,signal:null});return true;},
   forward:async()=>({socket:join(root,'forward.sock')}),unforward:async()=>{cancellations++;await release.promise;}};
@@ -53,7 +53,7 @@ for (const boundary of ['poll', 'shutdown', 'stop'] as const) test(`OpenCode rem
  t.mock.method(OpenCodeClient.prototype,'events',async(onEvent:typeof publish,onOpen:()=>void,signal:AbortSignal)=>{
   publish=onEvent;signal.addEventListener('abort',()=>{aborted=true;},{once:true});opened=true;onOpen();await stream.promise;
  });
- const machine={...localHost(env),name:'remote',alive:async()=>alive,stop:async()=>{alive=false;return true;},forward:async()=>({socket:join(root,'forward.sock')}),unforward:async()=>{cancellations++;if(failCancellation){failCancellation=false;throw new Error('synthetic cancellation failure');}await cancel.promise;}};
+ const machine={...recordingHost(root),name:'remote',alive:async()=>alive,stop:async()=>{alive=false;return true;},forward:async()=>({socket:join(root,'forward.sock')}),unforward:async()=>{cancellations++;if(failCancellation){failCancellation=false;throw new Error('synthetic cancellation failure');}await cancel.promise;}};
  const logs:Record<string,unknown>[]=[];
  const adapter=new OpenCodeAdapter({root,discoveryFile:join(root,'hub.json'),node:'node',cli:'cli',spoke:'spoke',hostForProcess:()=>machine,signal:()=>{},recordPid:()=>{},exited:()=>{exits++;},log:entry=>logs.push(entry)},{env,clock,pollMs:100});
  t.after(async()=>{snapshots.resolve();stream.resolve();cancel.resolve();await adapter.stop(row);await adapter.close();});

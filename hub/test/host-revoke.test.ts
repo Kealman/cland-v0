@@ -6,7 +6,7 @@ import { HOST_SETTLEMENT_MS } from '../src/host/settle.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { HubCore } from '../src/hub/core.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import { fakeHarness } from './fakes/harness.ts';
 import { tempProject } from './harness.ts';
 
@@ -14,7 +14,7 @@ test('revoke settles every harness through its placed Host and fences later acce
   const root = await tempProject(t), core = new HubCore(), table = new ProcessTable(':memory:', core.clock);
   const workers = new Set<number>(), files = new Set<string>(), stopped: string[] = [];
   let cut = false;
-  const machine = {...localHost(),name:'f1',layout:()=>({runDirectory:'/fake/run',logDirectory:'/fake/log',node:'',cli:'',spoke:'',discoveryFile:''}),
+  const machine = {...recordingHost(root),name:'f1',layout:()=>({runDirectory:'/fake/run',logDirectory:'/fake/log',node:'',cli:'',spoke:'',discoveryFile:''}),
     identity:async(pid:number)=>{assert.equal(cut,false);return {pid,pidIdentity:'linux:boot:'+pid};},
     stop:async(p:{pid:number|null})=>{assert.equal(cut,false);workers.delete(p.pid!);return true;},
     listFolder:async()=>{assert.equal(cut,false);return [];},
@@ -42,7 +42,7 @@ test('held host settlement follows captured identity through rename and name reu
   const root=await tempProject(t), core=new HubCore(), table=new ProcessTable(':memory:',core.clock);
   const entered=Promise.withResolvers<void>(), release=Promise.withResolvers<void>();
   const stopped:string[]=[];
-  const machine={...localHost(),name:'f1',listFolder:async()=>[]};
+  const machine={...recordingHost(root),name:'f1',listFolder:async()=>[]};
   const sessions=new Sessions({root,core,table,hosts:[machine,{...machine,name:'f2'}]});
   t.after(async()=>{release.resolve();await sessions.close();table.close();core.close();core.store.close();});
   const fake=fakeHarness('codex',{clock:core.clock});
@@ -67,7 +67,7 @@ test('revoke joins held failed-launch owner and reports it until durable cleanup
   const root=await tempProject(t), core=new HubCore(), table=new ProcessTable(':memory:',core.clock), clock=new FakeClock(Date.now());
   const held=Promise.withResolvers<void>(), entered=Promise.withResolvers<void>();
   let cut=false, remoteReads=0;
-  const machine={...localHost(),name:'f1',listFolder:async()=>[],readFile:async()=>{remoteReads++;return Buffer.alloc(0);}};
+  const machine={...recordingHost(root),name:'f1',listFolder:async()=>[],readFile:async()=>{remoteReads++;return Buffer.alloc(0);}};
   const fake=fakeHarness('codex',{clock:core.clock});
   const process={...await fake.spawn({name:'failed',cwd:root,model:null,role:null}),host:'f1'};
   table.pendingStop({process,error:'pending',stages:{stopped:false,rowRemoved:false,roleRolledBack:false}});
@@ -102,7 +102,7 @@ for(const terminal of ['stop','exit'] as const)for(const retained of ['pruned-ro
   const {FakeClock}=await import('./fake-clock.ts');const timers=new FakeClock(Date.now());
   const adapterClock={now:()=>new Date(),setTimeout:timers.setTimeout.bind(timers),clearTimeout:timers.clearTimeout.bind(timers),setInterval:timers.setInterval.bind(timers),clearInterval:timers.clearInterval.bind(timers)};
   const ended=Promise.withResolvers<{code:number|null;signal:string|null}>();
-  const baseHost=localHost(env);
+  const baseHost=recordingHost(remote);
   const machine={...baseHost,name:'f1',layout:()=>({discoveryFile:join(remote,'hub.json'),runDirectory:remote,logDirectory:remote,node:'',cli:'',spoke:''}),
     identity:async(pid:number)=>({pid,pidIdentity:'linux:fixture:123'}),alive:async()=>nativeAlive,
     spawn:async()=>({pid:987654,exited:ended.promise}),freePort:async()=>12345,
@@ -160,7 +160,7 @@ test('retained generation enumeration yields to the deadline and preserves unexe
   for(let index=0;index<256;index++)table.retainHostGeneration({...base,name:'retained'+index,sessionId:'retained-'+index,host:'f1'});
   let settled=0;
   const adapter=Object.assign(fake,{releaseHostGeneration:async()=>{settled++;}});
-  const sessions=new Sessions({root,core,table,hosts:[{...localHost(),name:'f1',listFolder:async()=>[]}]});sessions.register(adapter);
+  const sessions=new Sessions({root,core,table,hosts:[{...recordingHost(root),name:'f1',listFolder:async()=>[]}]});sessions.register(adapter);
   t.after(async()=>{await sessions.close();table.close();core.close();core.store.close();});
   const run=sessions.settleHostBeforeCut('f1',()=>{}, {clock});
   await clock.advance(HOST_SETTLEMENT_MS);const result=await run;
@@ -200,7 +200,7 @@ test('untracked agent launch records are named without acquiring process authori
   const generation='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',directory=join(remote,'run',AGENT_LAUNCH_DIRECTORY,generation);
   await mkdir(directory,{recursive:true});await writeFile(join(directory,'admission.json'),'{}');
   let signals=0;
-  const host={...localHost(fixtureEnvironment(root,process.env)),name:'f1',layout:()=>({discoveryFile:join(remote,'hub.json'),runDirectory:join(remote,'run'),logDirectory:remote,node:'',cli:'',spoke:''}),stop:async()=>{signals++;throw new Error('untracked records grant no signal authority');}};
+  const host={...recordingHost(remote),name:'f1',layout:()=>({discoveryFile:join(remote,'hub.json'),runDirectory:join(remote,'run'),logDirectory:remote,node:'',cli:'',spoke:''}),stop:async()=>{signals++;throw new Error('untracked records grant no signal authority');}};
   const sessions=new Sessions({root,core,table,hosts:[host]});t.after(async()=>{await sessions.close();table.close();core.close();core.store.close();});
   const result=await sessions.settleHostBeforeCut('f1',()=>{});
   assert.equal(result.inventoryComplete,true);assert.equal(result.leftovers.some(row=>row.generation==='agent-launch:'+generation&&row.remaining.includes('agent launch records')),true);
@@ -221,7 +221,7 @@ for(const harness of ['claude-code','codex','opencode'] as const)for(const pendi
   await mkdir(join(remote,'outside-run'),{recursive:true});await writeFile(privateFile,'private retained data');
   if(harness==='claude-code'){await mkdir(join(run,'claude'),{recursive:true});await writeFile(join(run,'claude',generation+'.json'),'{}');}
   let nativeCalls=0,adapterCalls=0,cut=false;
-  const base=localHost(fixtureEnvironment(root,process.env)),forbidden=async()=>{nativeCalls++;throw new Error('no native authority after reboot');};
+  const base=recordingHost(remote),forbidden=async()=>{nativeCalls++;throw new Error('no native authority after reboot');};
   const machine={...base,name:'f1',layout:()=>({discoveryFile:join(remote,'hub.json'),runDirectory:run,logDirectory:remote,node:'',cli:'',spoke:''}),identity:forbidden,processes:forbidden,stop:forbidden,adopt:forbidden};
   let table=new ProcessTable(path),sessions=new Sessions({root,core,table,hosts:[machine],recoveryClock:clock});
   const fake=fakeHarness(harness,{clock:core.clock});
@@ -251,7 +251,7 @@ for(const harness of ['claude-code','codex','opencode'] as const)for(const pendi
 });
 
 test('changed-boot receipt rejects same boot, malformed proof, foreign and replaced owners',async t=>{
-  const root=await tempProject(t),core=new HubCore(),table=new ProcessTable(),sessions=new Sessions({root,core,table,hosts:[{...localHost(),name:'f1',listFolder:async()=>[]}]});
+  const root=await tempProject(t),core=new HubCore(),table=new ProcessTable(),sessions=new Sessions({root,core,table,hosts:[{...recordingHost(root),name:'f1',listFolder:async()=>[]}]});
   t.after(async()=>{await sessions.close();table.close();core.close();core.store.close();});
   const fake=fakeHarness('claude-code',{clock:core.clock}),p={...await fake.spawn({name:'worker',cwd:root,model:null,role:null}),host:'f1',pid:123,pidIdentity:`linux:${oldBoot}:1`};
   sessions.register(fake);table.put(p);
@@ -271,7 +271,7 @@ test('changed boot fences an already-admitted failed-stop continuation before it
   const {eventually}=await import('./harness.ts');
   const root=await tempProject(t),core=new HubCore(),table=new ProcessTable(),clock=new FakeClock(Date.now());
   const held=Promise.withResolvers<void>(),entered=Promise.withResolvers<void>();let nativeStops=0;
-  const machine={...localHost(),name:'f1',listFolder:async()=>[],stop:async()=>{nativeStops++;return true;}};
+  const machine={...recordingHost(root),name:'f1',listFolder:async()=>[],stop:async()=>{nativeStops++;return true;}};
   const fake=fakeHarness('codex',{clock:core.clock}),p={...await fake.spawn({name:'worker',cwd:root,model:null,role:null}),host:'f1',pid:123,pidIdentity:`linux:${oldBoot}:1`};
   table.pendingStop({process:p,error:'pending',stages:{stopped:false,rowRemoved:false,roleRolledBack:false}});
   const sessions=new Sessions({root,core,table,hosts:[machine],recoveryClock:clock});
@@ -286,7 +286,7 @@ test('changed boot fences an already-admitted failed-stop continuation before it
 });
 
 test('reboot receipts preserve distinct Claude generations of the same stable session',async t=>{
-  const root=await tempProject(t),core=new HubCore(),table=new ProcessTable(),sessions=new Sessions({root,core,table,hosts:[{...localHost(),name:'f1'}]});
+  const root=await tempProject(t),core=new HubCore(),table=new ProcessTable(),sessions=new Sessions({root,core,table,hosts:[{...recordingHost(root),name:'f1'}]});
   t.after(async()=>{await sessions.close();table.close();core.close();core.store.close();});
   const fake=fakeHarness('claude-code',{clock:core.clock}),first={...await fake.spawn({name:'worker',cwd:root,model:null,role:null}),host:'f1',pid:123,pidIdentity:`linux:${oldBoot}:1`};
   sessions.register(fake);table.put(first);sessions.retainHostGeneration(first,{cause:'host-rebooted',bootId:newBoot});
@@ -303,7 +303,7 @@ for(const storage of ['independent-fence','prior-resource-marker'] as const)test
   const entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>();
   const privateFile=join(remote,'outside-run','password'),readable=join(remote,'readable');
   await mkdir(join(remote,'outside-run'));await writeFile(privateFile,'private');await writeFile(readable,'read remains authorised');
-  const base=localHost(fixtureEnvironment(root,process.env));
+  const base=recordingHost(remote);
   const target={...base,name:'f1',layout:()=>({discoveryFile:join(remote,'hub.json'),runDirectory:join(remote,'run'),logDirectory:remote,node:'',cli:'',spoke:''}),
     listFolder:async()=>{entered.resolve();await release.promise;return [];}};
   const machine=new Proxy(target,{get(target,key){if(['stop','run','spawn','launchClaude','adopt'].includes(String(key)))return ()=>{nativeCalls++;throw new Error('underlying native call reached');};return Reflect.get(target,key);}});
@@ -339,10 +339,11 @@ for(const delay of [3000,6000])test(`revoke observes OpenCode child-exit receipt
   const { OpenCodeClient }=await import('../src/adapters/opencode/client.ts');
   const { fixtureEnvironment }=await import('./fixture-environment.ts');
   const { join }=await import('node:path');
-  const { stat }=await import('node:fs/promises');
+  const { stat, mkdir }=await import('node:fs/promises');
   const {realClock}=await import('../src/hub/clock.ts');
   const {beforeDirectories}=await import('./process-cleanup.ts');
-  const root=await tempProject(t),storage=await tempProject(t);
+  const root=await tempProject(t),storage=join(root,'storage');
+  await mkdir(storage);
   const nativeTimeout=setTimeout,nativeClear=clearTimeout;
   let watchdogTimer:ReturnType<typeof setTimeout>;
   const watchdog=new Promise<never>((_resolve,reject)=>{watchdogTimer=nativeTimeout(()=>reject(new Error('OpenCode receipt fixture exceeded its I/O bound')),5000);});
@@ -355,7 +356,7 @@ for(const delay of [3000,6000])test(`revoke observes OpenCode child-exit receipt
   const timers=realClock,adapterClock=realClock;
   const entered=Promise.withResolvers<void>();
   const ended=Promise.withResolvers<{code:number|null;signal:string|null}>();
-  const baseHost=localHost(env);
+  const baseHost=recordingHost(root);
   const machine={...baseHost,name:'local',layout:()=>({discoveryFile:join(remote,'hub.json'),runDirectory:remote,logDirectory:remote,node:'',cli:'',spoke:''}),
     identity:async(pid:number)=>({pid,pidIdentity:'linux:fixture:123'}),alive:async()=>nativeAlive,
     spawn:async()=>({pid:987654,exited:ended.promise}),freePort:async()=>12345,

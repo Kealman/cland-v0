@@ -9,7 +9,7 @@ import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import { OpenCodeClient } from '../src/adapters/opencode/client.ts';
 import type { AdapterHost, HarnessAdapter, HarnessProcess } from '../src/adapters/contract.ts';
 import { hostGenerationKey } from '../src/adapters/processes.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import { FakeClock } from './fake-clock.ts';
 import { tempProject } from './harness.ts';
 import { until, testWaitMs } from './until.ts';
@@ -38,7 +38,7 @@ function generationTest(t: TestContext, body: (fixture: {
     closed = true;
   });
   return lifetime.run(async signal => {
-    const root = await tempProject(t);
+    const root = await tempProject(t, 'gen-', '/tmp');
     guardDirectoryRemoval(root, () => { if (!closed) throw new Error('generation fixture drainage unconfirmed; root retained'); });
     signal.throwIfAborted();
     await body({root, signal, own: close => resources.defer(close)});
@@ -52,7 +52,7 @@ for (const harness of ['opencode', 'codex', 'claude-code'] as const) test(`${har
   const held = Promise.withResolvers<boolean>();
   const calls: string[] = [], forwards: string[] = [], clients: ScriptedCodex[] = [];
   let oldEntered = false, oldClosed = false, newChecks = 0;
-  const machine = { ...localHost(env), name: 'remote',
+  const machine = { ...recordingHost(root), name: 'remote',
     alive: async (p: {pid: number | null}) => { calls.push(`alive:${p.pid}`); if (p.pid === 100) { oldEntered = true; return held.promise; } newChecks++; return true; },
     stop: async () => { calls.push('stop'); return true; },
     forward: async (id: string) => { calls.push('forward'); forwards.push(id); return {socket: join(root, 'native.sock')}; },
@@ -116,7 +116,7 @@ test('generation release joins admitted stop and permanently fences metadata and
   const writes: string[] = [], effects: string[] = [];
   const host: AdapterHost = {root,discoveryFile:'',node:'',cli:'',spoke:'',log:()=>{},
     adapterState:{read:()=>null,write:key=>{writes.push(key);}},
-    hostForProcess:()=>({...localHost(fixtureEnvironment(root,process.env)),alive:async()=>{effects.push('alive');return true;}}),
+    hostForProcess:()=>({...recordingHost(root),alive:async()=>{effects.push('alive');return true;}}),
     signal:()=>{effects.push('signal');},recordPid:()=>{},exited:()=>{effects.push('exited');}};
   const make = (scoped: AdapterHost) => Object.assign(fakeHarness('codex'), {
     assertLaunchAvailable:()=>{},detachUnreachable:async()=>[],
@@ -189,7 +189,7 @@ test('missing stopped-owner proof refuses release without touching a replacement
   const effects:string[]=[];
   const carrier={kind:'ssh' as const,host:'f1',start:async()=>{},stop:async()=>{},wake:()=>{},status:()=>({name:'f1',state:'down' as const,since:null,lastProbe:null,reconnects:0}),dropForwardLocal:async(ids:readonly string[])=>{effects.push(...ids);}};
   const release=claimTransport(root,carrier);
-  const host={...localHost(fixtureEnvironment(root,process.env)),name:'f1',forward:async()=>({socket:join(root,'synthetic-forward')})};
+  const host={...recordingHost(root),name:'f1',forward:async()=>({socket:join(root,'synthetic-forward')})};
   const sessions=new Sessions({root,core,table,hosts:[host]});
   const adapter=fakeHarness('codex');
   const p={...await adapter.spawn({name:'old',role:null,model:null,cwd:root}),host:'f1'};
@@ -246,7 +246,7 @@ test('Sessions retires captured forward proof only after retained resource settl
   own(() => { core.close(); core.store.close(); });
   const table = new ProcessTable(':memory:');
   own(() => table.close());
-  const host = {...localHost(fixtureEnvironment(root,process.env)),name:'remote',forward:async()=>({socket:join(root,'synthetic')}),listFolder:async()=>[]};
+  const host = {...recordingHost(root),name:'remote',forward:async()=>({socket:join(root,'synthetic')}),listFolder:async()=>[]};
   const carrier = {kind:'ssh' as const,host:'remote',start:async()=>{},stop:async()=>{},wake:()=>{},status:()=>({name:'remote',state:'down' as const,since:null,lastProbe:null,reconnects:0})};
   const unregister = claimTransport(root,carrier);
   own(unregister);
@@ -273,7 +273,7 @@ test('Sessions retires captured forward proof only after retained resource settl
 test('replacement keeps its assigned forward namespace after older scope retirement', async t => generationTest(t, async ({root, signal, own}) => {
   signal.throwIfAborted();
   const forwarded: string[] = [], removed: string[] = [];
-  const machine = {...localHost(fixtureEnvironment(root,process.env)),name:'remote',
+  const machine = {...recordingHost(root),name:'remote',
     forward:async(id:string)=>{forwarded.push(id);return {socket:join(root,id)};},
     unforward:async(id:string)=>{removed.push(id);}};
   const host: AdapterHost = {root,discoveryFile:'',node:'',cli:'',spoke:'',log:()=>{},signal:()=>{},recordPid:()=>{},exited:()=>{},hostForProcess:()=>machine};
@@ -371,7 +371,7 @@ for (const harness of ['codex', 'opencode'] as const) test(`local ${harness} fai
   const { generationOwnershipCounts } = await import('../src/adapters/generation-adapter.ts');
   const { LaunchRecoveryPending, LaunchFiles } = await import('../src/adapters/launch-files.ts');
   signal.throwIfAborted();
-  const env = fixtureEnvironment(root,process.env), files = localHost(env);
+  const env = fixtureEnvironment(root,process.env), files = recordingHost(root);
   let nativeAttempts = 0, refuseUndo = false;
   const machine = {...files,
     run:async()=>({code:0,signal:null,stdout:'codex 0.160.0',stderr:''}),
@@ -420,7 +420,7 @@ test('unknown failed-spawn outcome stays retained across replacement until its p
 test('local Claude retires repeated failed spawns after prepared-file rollback', async t => generationTest(t, async ({root, signal, own}) => {
   const { generationOwnershipCounts } = await import('../src/adapters/generation-adapter.ts');
   signal.throwIfAborted();
-  const env=fixtureEnvironment(root,process.env),files=localHost(env);
+  const env=fixtureEnvironment(root,process.env),files=recordingHost(root);
   let writes=0,commands=0;
   const machine={...files,
     writeFile:async(...args:Parameters<typeof files.writeFile>)=>{writes++;await files.writeFile(...args);},
@@ -477,7 +477,7 @@ test('facade close preserves an unreturned failed launch until its rollback owne
   signal.addEventListener('abort',()=>release.resolve(),{once:true});
   let entered=false,transientClosed=false;
   let spawning:Promise<HarnessProcess>|undefined,closing:Promise<void>|void;
-  const host:AdapterHost={root,discoveryFile:'',node:'',cli:'',spoke:'',log:()=>{},signal:()=>{},recordPid:()=>{},exited:()=>{},hostForLaunch:()=>localHost(fixtureEnvironment(root,process.env))};
+  const host:AdapterHost={root,discoveryFile:'',node:'',cli:'',spoke:'',log:()=>{},signal:()=>{},recordPid:()=>{},exited:()=>{},hostForLaunch:()=>recordingHost(root)};
   const make=(scoped:AdapterHost)=>Object.assign(fakeHarness('codex'),{
     assertLaunchAvailable:()=>{},detachUnreachable:async()=>[],
     spawn:async(request:Parameters<HarnessAdapter['spawn']>[0])=>{

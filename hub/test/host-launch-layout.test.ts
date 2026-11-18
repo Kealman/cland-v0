@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { ClaudeCodeAdapter, MOD_DIR } from '../src/adapters/claude-code.ts';
 import { CodexAdapter } from '../src/adapters/codex.ts';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import type { HostCommand, HostLaunchLayoutInput } from '../src/host/host.ts';
 import type { AdapterHost } from '../src/adapters/contract.ts';
 import { tempProject } from './harness.ts';
@@ -36,8 +36,8 @@ for (const mask of [0o022, 0o002]) for (const mapped of [false, true]) for (cons
       captured = { command, disk };
       throw Object.assign(new Error('recorded launch boundary'), mapped && name === 'claude' ? { code: 'CLAND_AGENT_ADMISSION_REFUSED' } : {});
     };
-    const machine = { ...localHost(env), name: mapped ? 'recording' : 'local',
-      layout: (input: HostLaunchLayoutInput) => mapped ? { discoveryFile: join(root, 'host/hub.json'), node: '/host/node', cli: '/host/cli', spoke: '/host/spoke', modDir: '/host/mod', runDirectory: join(root, 'host/runtime'), logDirectory: join(root, 'host/logs') } : localHost(env).layout(input),
+    const machine = { ...recordingHost(root), name: mapped ? 'recording' : 'local',
+      layout: (input: HostLaunchLayoutInput) => mapped ? { discoveryFile: join(root, 'host/hub.json'), node: '/host/node', cli: '/host/cli', spoke: '/host/spoke', modDir: '/host/mod', runDirectory: join(root, 'host/runtime'), logDirectory: join(root, 'host/logs') } : recordingHost(root).layout(input),
       freePort: async () => 43210,
       ...(mapped && name === 'claude' ? { launchClaude: record } : {}),
       run: async (command: HostCommand) => command.args[0] === '--version' ? { code: 0, stdout: 'codex 0.160.0', stderr: '' } : record(command), spawn: record };
@@ -80,10 +80,11 @@ for (const mask of [0o022, 0o002]) for (const mapped of [false, true]) for (cons
   });
 }
 
-test('OpenCode password reads use the supplied Host', async () => {
+test('OpenCode password reads use the supplied Host', async t => {
+  const root = await tempProject(t);
   const { readPassword, serverFiles } = await import('../src/adapters/opencode/server.ts');
   const reads: string[] = [];
-  const machine = { ...localHost(), name: 'recording', readFile: async (path: string) => { reads.push(path); return Buffer.from('remote-password\n'); } };
+  const machine = { ...recordingHost(root), name: 'recording', readFile: async (path: string) => { reads.push(path); return Buffer.from('remote-password\n'); } };
   assert.equal(await readPassword(serverFiles('/host', 'worker'), undefined, machine), 'remote-password');
   assert.deepEqual(reads, ['/host/opencode/worker/password']);
 });
@@ -93,7 +94,7 @@ test('nonlocal rollback restores overwritten bytes and mode and truncates append
   const { writeFile } = await import('node:fs/promises');
   const root = await tempProject(t); const path = join(root, 'existing');
   await writeFile(path, 'before', {mode: 0o640});
-  const machine = {...localHost(), name: 'remote'};
+  const machine = {...recordingHost(root), name: 'remote'};
   const files = new LaunchFiles(undefined, machine);
   await files.write(path, Buffer.from('after'), 0o600);
   await files.rollback();
@@ -108,7 +109,7 @@ test('nonlocal OpenCode prepares shared ignore through supplied Host', async t =
   const { prepareFiles, serverFiles } = await import('../src/adapters/opencode/server.ts');
   const { LaunchFiles } = await import('../src/adapters/launch-files.ts');
   const root = await tempProject(t, 'cx-', '/tmp');
-  const machine = { ...localHost(), name: 'remote' };
+  const machine = { ...recordingHost(root), name: 'remote' };
   const files = new LaunchFiles(undefined, machine);
   await prepareFiles(root, serverFiles(root, 'worker'), {}, true, files, undefined, undefined, machine);
   assert.equal(await readFile(join(root, 'opencode/.gitignore'), 'utf8'), '# managed by cland: generated OpenCode configs and server passwords, never committed\n*\n');
@@ -118,7 +119,7 @@ test('nonlocal OpenCode prepares shared ignore through supplied Host', async t =
 test('Claude nonlocal layout without a mod directory refuses before native launch', async t => {
   const root = await tempProject(t, 'cx-', '/tmp');
   const env = fixtureEnvironment(root, {});
-  const machine = { ...localHost(env), name: 'remote', layout: (input: HostLaunchLayoutInput) => ({ ...input, runDirectory: '/remote/run', logDirectory: '/remote/log' }), run: async () => { assert.fail('no native launch'); } };
+  const machine = { ...recordingHost(root), name: 'remote', layout: (input: HostLaunchLayoutInput) => ({ ...input, runDirectory: '/remote/run', logDirectory: '/remote/log' }), run: async () => { assert.fail('no native launch'); } };
   const host: AdapterHost = { root, discoveryFile: join(root, 'hub.json'), node: '/node', cli: '/cli', spoke: '/spoke', hostForLaunch: () => machine, log: () => {}, signal: () => {}, exited: () => {}, recordPid: () => {} };
   const adapter = new ClaudeCodeAdapter(host, { env, bin: '/fixture/claude' });
   try { await assert.rejects(adapter.spawn({ name: 'worker', role: null, model: null, cwd: root }), /remote layout has no mod directory yet/); }
@@ -130,7 +131,7 @@ for (const existing of [false, true]) test(`OpenCode ignore preserves concurrent
   const {writeFile, readdir} = await import('node:fs/promises');
   const {untimed} = await import('../src/adapters/continuations.ts');
   const root = await tempProject(t), path = join(root, '.gitignore');
-  const machine = localHost(); let publishCalls = 0;
+  const machine = recordingHost(root); let publishCalls = 0;
   if (existing) await writeFile(path, 'user-rule');
   const host = {...machine, name: 'remote', publishFile: async (...args: Parameters<typeof machine.publishFile>) => {
     publishCalls++; await writeFile(path, 'user-rule'); return machine.publishFile(...args);

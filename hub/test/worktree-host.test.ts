@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import { access, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import type { Host } from '../src/host/host.ts';
 import { ensureTaskWorktree, removeTaskWorktree, withTerritoryLockAsync, territoryGitAsync, territoryPath } from '../src/territory.ts';
 import { territoryLockHeld } from '../src/territory-lock-context.ts';
@@ -31,11 +32,18 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 // Exact behaviour bound for the simulated receive admission in lock-cycle regressions.
 const RECEIVE_JOIN_BOUND_MS = 100;
 const human = { id: 'human', name: 'human', role: null };
-function recording(root: string, env: NodeJS.ProcessEnv) {
+function recordingWorktreeHost(root: string, env: NodeJS.ProcessEnv): Host {
   const native = localHost(env);
+  return recordingHost(root, {overrides: {
+    run: native.run, worktreeAdd: native.worktreeAdd, worktreeRemove: native.worktreeRemove,
+    occupants: native.occupants,
+  }});
+}
+function recording(root: string, env: NodeJS.ProcessEnv) {
+  const native = recordingWorktreeHost(root, env);
   const calls: string[] = [];
   const held = async () => assert.rejects(withTerritoryLockAsync(root, async () => {}), /another territory operation holds the lock/);
-  const host: Host = { ...native,
+  const host: Host = { ...recordingHost(root),
     worktreeAdd: async options => { await held(); if (!options.reuseOnly) calls.push(`add:${options.branch}`); return { ...await native.worktreeAdd(options), warning: 'host install warning' }; },
     worktreeRemove: async options => { await held(); calls.push(`remove:${options.path}`); await native.worktreeRemove(options); },
   };
@@ -103,7 +111,7 @@ test('post-Git confinement precedes every install read, including an install fai
     const branch = 't/T-1-escape';
     if (existing) await git('branch', branch);
     const parent = join(root, '.cland/worktrees'), path = join(parent, 'T-1');
-    const native = localHost(env);
+    const native = recordingWorktreeHost(root, env);
     const proceed = Promise.withResolvers<void>();
     let created = false, installRead = false;
     const host: Host = { ...native, worktreeAdd: async options => {
@@ -211,11 +219,13 @@ test('Host occupants govern list and prune even with a different recorded cwd', 
   const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), env });
   t.after(() => tracker.stop());
   const item = await tracker.create(human, { title: 'Occupied', kind: 'task' });
-  const native = localHost(env);
+  const native = recordingWorktreeHost(root, env);
   const calls: Array<{ path: string; sessions: readonly { name: string; cwd: string }[] }> = [];
   const sessions = [{ name: 'remote-worker', cwd: '/host-only/alias' }];
   let removed = false;
   const host: Host = { ...native,
+    realpath: async path => path === sessions[0]!.cwd ? path : native.realpath(path),
+    statDirectory: async path => path === sessions[0]!.cwd ? {refusal: null, identity: null} : native.statDirectory(path),
     occupants: async (path, candidates) => { calls.push({ path, sessions: candidates }); return ['remote-worker']; },
     worktreeRemove: async () => { removed = true; },
   };
@@ -238,9 +248,11 @@ test('prune rechecks Host occupants at both locked admission and the last pre-Gi
     const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), env });
     t.after(() => tracker.stop());
     const item = await tracker.create(human, { title: 'Late occupant', kind: 'task' });
-    const native = localHost(env);
+    const native = recordingWorktreeHost(root, env);
     let checks = 0, removed = false;
     const host: Host = { ...native,
+      realpath: async path => path === '/host-only/cwd' ? path : native.realpath(path),
+      statDirectory: async path => path === '/host-only/cwd' ? {refusal: null, identity: null} : native.statDirectory(path),
       occupants: async () => ++checks >= boundary ? ['late-worker'] : [],
       worktreeRemove: async options => { removed = true; await native.worktreeRemove(options); },
     };
@@ -262,7 +274,7 @@ test('prune retains a directory when the Host reports a changed worktree or sess
     const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), env });
     t.after(() => tracker.stop());
     const item = await tracker.create(human, { title: 'Host identity', kind: 'task' });
-    const native = localHost(env);
+    const native = recordingWorktreeHost(root, env);
     const cwd = '/host-only/session';
     const stats: string[] = [], paths: string[] = [];
     let checks = 0, removed = false;
@@ -291,7 +303,7 @@ test('prune retains a directory when the Host reports a changed worktree or sess
 test('host prune joins a pending territory push outside the lock before deleting its record', async t => {
   const root = await preparedProject(t);
   const env = fixtureEnvironment(root, process.env);
-  const native = localHost(env);
+  const native = recordingWorktreeHost(root, env);
   const tree = await ensureTaskWorktree(root, { id: 'T-1', slug: 'cycle', branch: null }, undefined, undefined, env);
   const tip = await territoryGitAsync(root, ['rev-parse', tree.branch], false, undefined, env);
   const row = { item: 'T-1', host: native.name, root, path: tree.path, branch: tree.branch, tip, createdBranch: true };
@@ -311,7 +323,7 @@ test('host prune joins a pending territory push outside the lock before deleting
 
 for (const operation of ['add', 'relaunch'] as const) test(`host ${operation} watch registration can join a pending territory receive without holding its lock`, async t => {
   const root = await preparedProject(t), env = fixtureEnvironment(root, process.env);
-  const native = localHost(env), branch = 't/T-1-watch-cycle';
+  const native = recordingWorktreeHost(root, env), branch = 't/T-1-watch-cycle';
   const tip = await territoryGitAsync(root, ['rev-parse', 'HEAD'], false, undefined, env);
   let rows: HostWorktreeRecord[] = [];
   if (operation === 'relaunch') {
@@ -334,7 +346,7 @@ for (const operation of ['add', 'relaunch'] as const) test(`host ${operation} wa
 
 for (const change of ['row', 'tip', 'lease'] as const) test(`host prune retains changed ${change} state after its unlocked removal window`, async t => {
   const root = await preparedProject(t), env = fixtureEnvironment(root, process.env);
-  const native = localHost(env);
+  const native = recordingWorktreeHost(root, env);
   const tree = await ensureTaskWorktree(root, { id: 'T-1', slug: 'changed', branch: null }, undefined, undefined, env);
   const tip = await territoryGitAsync(root, ['rev-parse', tree.branch], false, undefined, env);
   const row: HostWorktreeRecord = { item: 'T-1', host: native.name, root, path: tree.path, branch: tree.branch, tip, createdBranch: true, phase: 'ready' };
@@ -382,7 +394,7 @@ async function admittedReceive(t: test.TestContext, root: string, env: NodeJS.Pr
 
 test('host prune preflight waits for an admitted receive to release its territory lock', async t => {
   const root = await preparedProject(t), env = fixtureEnvironment(root, process.env);
-  const native = localHost(env);
+  const native = recordingWorktreeHost(root, env);
   const tree = await ensureTaskWorktree(root, { id: 'T-1', slug: 'preflight', branch: null }, undefined, undefined, env);
   const tip = await territoryGitAsync(root, ['rev-parse', tree.branch], false, undefined, env);
   const row: HostWorktreeRecord = { item: 'T-1', host: native.name, root, path: tree.path, branch: tree.branch, tip, createdBranch: true };
@@ -429,7 +441,7 @@ test('host prune retains its branch and row when the item reopens during final o
   const item = await tracker.create(human, { title: 'reopen during prune', kind: 'task' });
   const tree = await ensureTaskWorktree(root, { id: item.id, slug: 'reopen', branch: null }, undefined, undefined, env);
   const tip = await territoryGitAsync(root, ['rev-parse', tree.branch], false, undefined, env);
-  const native = localHost(env);
+  const native = recordingWorktreeHost(root, env);
   let removed = false, held = false;
   const host = { ...native, name: 'remote', worktreeRemove: async (options: Parameters<Host['worktreeRemove']>[0]) => { await native.worktreeRemove(options); removed = true; }, occupants: async () => { if (removed && !held) { held = true; await release.promise; } return []; } };
   store.hosts.insert({ id: host.name, address: 'fixture', user: 'agent', clientKeyPath: 'unused', knownHosts: 'unused' }, 'synthetic');
@@ -452,7 +464,7 @@ test('host prune retains its branch and row when the item reopens during final o
 });
 
 test('host prune retains replacement ownership arriving during final validation', async t => {
-  const root = await preparedProject(t), env = fixtureEnvironment(root, process.env), native = localHost(env);
+  const root = await preparedProject(t), env = fixtureEnvironment(root, process.env), native = recordingWorktreeHost(root, env);
   const tree = await ensureTaskWorktree(root, { id: 'T-1', slug: 'last-check', branch: null }, undefined, undefined, env);
   const tip = await territoryGitAsync(root, ['rev-parse', tree.branch], false, undefined, env);
   const row: HostWorktreeRecord = { item: 'T-1', host: native.name, root, path: tree.path, branch: tree.branch, tip, createdBranch: true };

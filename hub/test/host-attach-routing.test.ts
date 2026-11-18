@@ -6,7 +6,7 @@ import { createConnection } from 'node:net';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import { terminalAttachCommand } from '../src/host/attach.ts';
 import { remoteHostLayout } from '../src/host/remote-layout.ts';
 import { hostPaths } from '../src/host/records.ts';
@@ -20,7 +20,7 @@ test('host session.attach and list return pinned separate SSH command; prior loc
   const layout=remoteHostLayout(join(root,'host'));
   const record={id:'f1',transport:'ssh' as const,address:'host.example',user:'agent',state:'registered' as const};
   const command=terminalAttachCommand(root,record,layout,'worker');
-  const host={...localHost(fixtureEnvironment(root,process.env)),name:'f1',terminalAttachCommand:(name:string)=>terminalAttachCommand(root,record,layout,name)};
+  const host={...recordingHost(root),name:'f1',terminalAttachCommand:(name:string)=>terminalAttachCommand(root,record,layout,name)};
   const hub=await projectHub(t,root,{}, {hosts:[host]});const ui=await sessionUi(t,hub.discovery);
   const launch=await ui.request({type:'session.launch',name:'worker',harness:'codex',host:'f1',cwd:root});assert.equal(launch.ok,true,launch.error);
   const attach=await ui.request({type:'session.attach',session:'worker'});assert.equal(attach.ok,true,attach.error);assert.deepEqual(attach.value,{command});
@@ -34,7 +34,7 @@ test('host session.attach and list return pinned separate SSH command; prior loc
 for (const reason of ['host is revoked','ENOENT: client-key-path missing']) test(`unavailable terminal ${reason} preserves launch, list, snapshot and unrelated rows`,async t=>{
   const {frameClient}=await import('./harness.ts');const {onCleanup}=await import('./process-cleanup.ts');
   const root=await tempProject(t);
-  const host={...localHost(fixtureEnvironment(root,process.env)),name:'f1',terminalAttachCommand:()=>{throw new Error(reason);}};
+  const host={...recordingHost(root),name:'f1',terminalAttachCommand:()=>{throw new Error(reason);}};
   const hub=await projectHub(t,root,{}, {hosts:[host]});const ui=await sessionUi(t,hub.discovery);
   for(const [name,placement] of [['worker','f1'],['other','local']]) {
     const launch=await ui.request({type:'session.launch',name,harness:'codex',host:placement,cwd:root});assert.equal(launch.ok,true,launch.error);

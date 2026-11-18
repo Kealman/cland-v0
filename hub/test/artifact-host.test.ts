@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createArtifact } from '../src/hub/artifacts.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import { Store } from '../src/hub/store.ts';
 import { tempProject } from './harness.ts';
 
@@ -12,7 +12,7 @@ test('artifact source type and binary bytes are read only on the supplied Host',
   const store = new Store(':memory:');
   t.after(() => store.close());
   const calls: string[] = [];
-  const host = { ...localHost(), fileType: async (path: string) => { calls.push(`type:${path}`); return 'file' as const; }, readFile: async (path: string) => { calls.push(`read:${path}`); return new Uint8Array([0, 255, 10]); } };
+  const host = { ...recordingHost(root), fileType: async (path: string) => { calls.push(`type:${path}`); return 'file' as const; }, readFile: async (path: string) => { calls.push(`read:${path}`); return new Uint8Array([0, 255, 10]); } };
   const artifact = await createArtifact(store, root, { type: 'artifact.create', id: 'file', kind: 'file', title: 'Bytes', path: 'bytes.bin', topic: 'general' },
     { name: 'worker', cwd: '/host-only', kind: 'agent', role: () => null }, () => {}, work => work(), () => {}, async () => { throw new Error('legacy read must not run'); }, undefined, host);
   assert.deepEqual(calls, ['type:/host-only/bytes.bin', 'read:/host-only/bytes.bin']);
@@ -24,7 +24,7 @@ test('folder source listing and nested files remain on its Host', async t => {
   const store = new Store(':memory:');
   t.after(() => store.close());
   const calls: string[] = [];
-  const host = { ...localHost(), fileType: async () => 'directory' as const, listFolder: async (path: string) => { calls.push(`list:${path}`); return ['index.md', 'nested/data.bin']; }, readFile: async (path: string) => { calls.push(`read:${path}`); return Buffer.from(path.endsWith('.md') ? '# Entry' : 'nested bytes'); } };
+  const host = { ...recordingHost(root), fileType: async () => 'directory' as const, listFolder: async (path: string) => { calls.push(`list:${path}`); return ['index.md', 'nested/data.bin']; }, readFile: async (path: string) => { calls.push(`read:${path}`); return Buffer.from(path.endsWith('.md') ? '# Entry' : 'nested bytes'); } };
   const artifact = await createArtifact(store, root, { type: 'artifact.create', id: 'folder', kind: 'note', title: 'Folder', path: 'folder', topic: 'general' },
     { name: 'worker', cwd: '/host-only', kind: 'agent', role: () => null }, () => {}, work => work(), () => {}, readFile, undefined, host);
   assert.deepEqual(calls, ['list:/host-only/folder', 'read:/host-only/folder/index.md', 'read:/host-only/folder/nested/data.bin']);
@@ -42,7 +42,7 @@ test('session frames resolve relative paths through Sessions Host while human fr
   t.after(() => hub.close());
   const table = new ProcessTable(':memory:', hub.core.clock);
   const calls: string[] = [];
-  const host = { ...localHost(), fileType: async (path: string) => { calls.push(`type:${path}`); return 'file' as const; }, readFile: async (path: string) => { calls.push(`read:${path}`); return Buffer.from('session bytes'); } };
+  const host = { ...recordingHost(root), fileType: async (path: string) => { calls.push(`type:${path}`); return 'file' as const; }, readFile: async (path: string) => { calls.push(`read:${path}`); return Buffer.from('session bytes'); } };
   const sessions = new Sessions({ root, core: hub.core, table, hosts: [host] });
   hub.dispatcher.useSessions(sessions);
   t.after(async () => { await sessions.close(); table.close(); });
@@ -77,7 +77,7 @@ test('upload checks stored attachment types on local Host while new bytes stay i
   const existing = await createArtifact(store, root, { type: 'artifact.create', id: 'existing', kind: 'note', title: 'Existing', content: 'old', topic: 'general' },
     { name: 'human', cwd: root, kind: 'human', role: () => null }, () => {}, work => work(), () => {}, readFile);
   const calls: string[] = [];
-  const host = { ...localHost(), fileType: async (path: string) => { calls.push(path); return 'missing' as const; }, readFile: async () => { throw new Error('upload bytes are frame-owned'); } };
+  const host = { ...recordingHost(root), fileType: async (path: string) => { calls.push(path); return 'missing' as const; }, readFile: async () => { throw new Error('upload bytes are frame-owned'); } };
   await assert.rejects(uploadArtifacts(store, root, { type: 'artifact.upload', id: 'upload', topic: 'general', artifacts: [existing.id], files: [{ name: 'new.txt', mime: 'text/plain', data: 'bmV3' }] }, undefined, 50, artifacts => artifacts, () => {}, () => undefined, work => work(), () => new Date(), undefined, undefined, false, host), /artifact file unavailable/);
   assert.deepEqual(calls, [existing.path]);
   assert.equal(store.artifacts().length, 1);

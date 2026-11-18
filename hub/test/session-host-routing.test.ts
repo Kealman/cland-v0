@@ -8,12 +8,19 @@ import { ProcessTable } from '../src/adapters/processes.ts';
 import { HubCore } from '../src/hub/core.ts';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
 import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import { testHost } from '../src/host/test-host.ts';
 import { fakeHarness } from './fakes/harness.ts';
 import { tempProject, projectHub, connectUi, eventually, flushProjectLogs } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { sweepOrphans } from '../src/orphans.ts';
+
+function observingHost(root: string, name: string, record: (operation: string) => void) {
+  return recordingHost(root, {record, overrides: {name, limitPolls: false,
+    identity: async pid => { record('identity'); return {pid, pidStarted: null, pidIdentity: `linux:test-${name}:${pid}`}; },
+  }});
+}
 
 async function seed(root: string) {
   return { ...await fakeHarness('opencode').spawn({ name: 'remote', cwd: root, role: null, model: null }), host: 't1', pid: process.pid, pidStarted: null, pidIdentity: `linux:test-t1:${process.pid}`, harnessId: null, harnessSessionId: null };
@@ -23,7 +30,7 @@ test('startup, poll, resume and stop reach only the named Host despite a live lo
   const root = await tempProject(t);
   const calls: string[] = [];
   // The limitPolls getter is pure fixture configuration, not a process operation.
-  const record = (name: string) => ({ ...testHost(name, e => { if (e.operation !== 'limitPolls') calls.push(`${name}:${e.operation}`); }), layout: localHost(fixtureEnvironment(root, {})).layout });
+  const record = (name: string) => observingHost(root, name, operation => calls.push(`${name}:${operation}`));
   let alive = true;
   const remote = { ...record('t1'), alive: async () => { calls.push('t1:alive'); return alive; }, stop: async () => { calls.push('t1:stop'); alive = false; return true; } };
   const core = new HubCore();
@@ -52,7 +59,7 @@ test('startup, poll, resume and stop reach only the named Host despite a live lo
 test('remote pending-stop recovery completes with Linux birth and no legacy timestamp', async t => {
   const root = await tempProject(t);
   const calls: string[] = [];
-  const remote = { ...testHost('t1', e => calls.push(String(e.operation))),
+  const remote = { ...observingHost(root, 't1', operation => calls.push(operation)),
     processes: async () => { calls.push('processes'); return [{ pid: process.pid, parent: 1, rssBytes: 0, cpuPercent: 0 }]; },
     stop: async () => { calls.push('stop'); return true; },
   };
@@ -111,7 +118,7 @@ for (const harness of ['codex', 'claude-code'] as const) test(`${harness} stop r
   const { ClaudeCodeAdapter } = await import('../src/adapters/claude-code.ts');
   const root = await tempProject(t);
   const calls: string[] = [];
-  const remote = { ...testHost('t1', e => calls.push(`t1:${e.operation}`)), layout: localHost(fixtureEnvironment(root, {})).layout, run: async () => { calls.push('t1:run'); return { code: 0, stdout: '', stderr: '' }; }, stop: async (p: import('../src/host/host.ts').HostProcess) => {
+  const remote = { ...observingHost(root, 't1', operation => calls.push(`t1:${operation}`)), run: async () => { calls.push('t1:run'); return { code: 0, stdout: '', stderr: '' }; }, stop: async (p: import('../src/host/host.ts').HostProcess) => {
     calls.push('t1:stop');
     assert.equal(p.pid, process.pid);
     assert.equal(p.pidIdentity, `linux:test-t1:${process.pid}`);
@@ -144,7 +151,7 @@ for (const mode of ['poll', 'resume'] as const) for (const pending of [false, tr
   const replacement = 987654;
   const clock = new FakeClock(Date.now());
   let discoveries = 0;
-  const remote = { ...testHost('t1', e => calls.push(String(e.operation))),
+  const remote = { ...observingHost(root, 't1', operation => calls.push(operation)),
     run: async () => { discoveries++; return { code: 0, stdout: JSON.stringify([{ id: 'job', sessionId: 'native', pid: replacement, status: 'idle' }]), stderr: '' }; },
     identity: async (pid: number) => { calls.push(`identity:${pid}`); return { pid, pidStarted: null, pidIdentity: `linux:boot:${pid}` }; },
     alive: async (p: import('../src/host/host.ts').HostProcess) => { calls.push(`alive:${p.pid}`); return p.pid === replacement; },
@@ -199,7 +206,7 @@ for (const control of ['different-job', 'different-conversation', 'changed-birth
   const release = Promise.withResolvers<void>();
   const publications: number[] = [];
   let reads = 0;
-  const remote = { ...testHost('t1', () => {}),
+  const remote = { ...observingHost(root, 't1', () => {}),
     run: async () => ({ code: 0, stdout: JSON.stringify([{ id: control === 'different-job' ? 'other-job' : 'job', sessionId: control === 'different-conversation' ? 'other-native' : 'native', pid: 987654, status: 'idle' }]), stderr: '' }),
     identity: async (pid: number) => {
       if (pid === 987654) {

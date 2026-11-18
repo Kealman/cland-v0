@@ -167,21 +167,13 @@ test('production OpenCode launch prepares nonlocal shared ignore and reaches onl
   const root = await tempProject(t);
   const operations: string[] = [];
   const launches: Array<{ host: string; role: string | undefined }> = [];
-  const { localHost } = await import('../src/host/local.ts');
-  const fileHost = localHost(fixtureEnvironment(root, process.env));
+  const { recordingHost } = await import('./recording-host.ts');
+  const fileHost = recordingHost(root);
   const recording = (name: string) => {
     const machine = testHost(name, e => operations.push(`${name}:${e.operation}`));
     return {
-      ...machine,
+      ...fileHost, name,
       // Reach the explicit nonlocal file-preparation boundary in scratch storage.
-      layout: fileHost.layout,
-      makeDirectory: fileHost.makeDirectory,
-      writeFile: fileHost.writeFile,
-      publishFile: fileHost.publishFile, appendFile: fileHost.appendFile, stat: fileHost.stat, readFile: fileHost.readFile,
-      removePath: fileHost.removePath,
-      freePort: fileHost.freePort,
-      realpath: fileHost.realpath,
-      statDirectory: fileHost.statDirectory,
       spawn: async (command: import('../src/host/host.ts').HostCommand) => {
         launches.push({ host: name, role: command.env.CLAND_ROLE });
         return machine.spawn(command);

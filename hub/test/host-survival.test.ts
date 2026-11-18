@@ -6,11 +6,10 @@ import { join } from 'node:path';
 import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { HubCore } from '../src/hub/core.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import { testHost } from '../src/host/test-host.ts';
 import { fakeHarness, FAKE_FLAVOURS } from './fakes/harness.ts';
 import { tempProject, eventually } from './harness.ts';
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { FakeClock } from './fake-clock.ts';
 import type { HarnessProcess } from '../src/adapters/contract.ts';
 import { LaunchRecoveryPending } from '../src/adapters/launch-files.ts';
@@ -52,7 +51,7 @@ async function recoveryFixture(root: string, t: import('node:test').TestContext,
   });
   const clock = new FakeClock(); core = new HubCore({clock}); table = new ProcessTable(':memory:', clock);
   const logs: Record<string, unknown>[] = [], attempts: string[] = [];
-  const remote = {...testHost('remote', () => {}), layout:localHost(fixtureEnvironment(root, {})).layout,
+  const remote = {...recordingHost(root), name:'remote',
     statDirectory:async () => ({refusal:null, identity:null})};
   const local = {...remote, name:'local'};
   sessions = new Sessions({root, core, table, hosts:[remote, {...remote, name:'elsewhere'}, local], recoveryClock:clock, transportClock:clock, log:e => logs.push(e)});
@@ -176,8 +175,7 @@ test('host ready retries unavailable mixed-harness startup without vacating or s
   table = new ProcessTable(file, clock);
   const calls: string[] = [], forwards = new Set<string>();
   let available = false, missing: string | null = null;
-  const hosts = ['f1', 'f2'].map(name => ({ ...testHost(name, event => calls.push(`${name}:${event.operation}`)),
-    layout: localHost(fixtureEnvironment(root, {})).layout,
+  const hosts = ['f1', 'f2'].map(name => ({ ...recordingHost(root, {record: operation => calls.push(`${name}:${operation}`)}), name,
     statDirectory: async () => ({ refusal: null, identity: null }),
     alive: async (p: {pid: number | null; pidIdentity?: string | null}) => {
       if (!available) throw new Error('tunnel unavailable');
@@ -226,7 +224,7 @@ test('readiness during a held startup pass retries the earlier failed row before
   let inHeld = false;
   const recovered = new Set<string>(), attempts: string[] = [];
   let available = false;
-  const remote = {...testHost('remote',()=>{}), layout:localHost(fixtureEnvironment(root,{})).layout,
+  const remote = {...recordingHost(root), name:'remote',
     statDirectory:async()=>({refusal:null,identity:null})};
   for (const name of ['early','held']) table.put({...await fakeHarness('codex').spawn({name,cwd:root,role:null,model:null}),host:'remote',pid:123,pidStarted:'start',pidIdentity:'birth-'+name});
   const sessions = new Sessions({root,core,table,hosts:[remote]});

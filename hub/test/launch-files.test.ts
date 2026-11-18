@@ -9,10 +9,11 @@ import { localHost } from '../src/host/local.ts';
 import { testHost } from '../src/host/test-host.ts';
 import { tempProject } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { recordingHost } from './recording-host.ts';
 
 test('LaunchFiles routes directory, write, restore, truncate and removal through its Host', async t => {
   const root = await tempProject(t);
-  const local = localHost(fixtureEnvironment(root, process.env));
+  const local = recordingHost(root);
   const calls: string[] = [];
   const host = {
     ...local,
@@ -92,7 +93,8 @@ test('test Host stat requires explicit local file delegation', async t => {
 import fsp from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 test('remote LaunchFiles reads only Host metadata and bytes while the hub mirror stays unread', async t => {
-  const root = await tempProject(t), mirror = join(root, 'hub-file'), remote = join(root, 'remote-file');
+  const root = await tempProject(t), mirror = join(root, 'hub-file'), storage = join(root, 'remote'), remote = join(storage, 'hub-file');
+  await mkdir(storage);
   await writeFile(mirror, 'hub-only', {mode: 0o644});
   await writeFile(remote, 'remote-before', {mode: 0o640});
   const nativeRead = fsp.readFile, nativeStat = fsp.stat;
@@ -111,8 +113,8 @@ test('remote LaunchFiles reads only Host metadata and bytes while the hub mirror
   assert.throws(() => fsp.readFile(mirror), /hub mirror read forbidden/);
   assert.equal(mirrorReads, 2, 'positive controls reach both native mirror guards');
   mirrorReads = 0;
-  const base = localHost(fixtureEnvironment(root, process.env));
-  const mapped = (path: string) => { assert.equal(path, mirror); return remote; };
+  const base = recordingHost(storage, {sourceRoot: root});
+  const mapped = (path: string) => { assert.equal(path, mirror); return path; };
   const host = {...base, name: 'remote', stat: (path: string) => base.stat(mapped(path)),
     readFile: (path: string) => base.readFile(mapped(path)),
     writeFile: (path: string, bytes: Uint8Array, options?: Parameters<typeof base.writeFile>[2]) => base.writeFile(mapped(path), bytes, options)};
@@ -131,7 +133,7 @@ test('rollback bounds a missing native exit receipt and fences undo and repeated
   const {beforeDirectories}=await import('./process-cleanup.ts');
   const root=await tempProject(t);const env=fixtureEnvironment(root,process.env);
   const exit=Promise.withResolvers<{code:number|null;signal:string|null}>();let stops=0;
-  const host={...localHost(env),identity:async(pid:number)=>({pid,pidStarted:'start',pidIdentity:'birth'}),stop:async()=>{stops++;return true;}};
+  const host={...recordingHost(root),identity:async(pid:number)=>({pid,pidStarted:'start',pidIdentity:'birth'}),stop:async()=>{stops++;return true;}};
   const files=new LaunchFiles(undefined,host,10);
   const owned=join(root,'owned');await files.write(owned,Buffer.from('retained'));
   files.spawned({pid:987654,exited:exit.promise},()=>{},50);

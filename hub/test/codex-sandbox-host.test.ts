@@ -6,7 +6,7 @@ import { mkdir, readFile, realpath, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { CodexAdapter, threadPolicy } from '../src/adapters/codex.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import type { Host, HostCommand } from '../src/host/host.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { ScriptedCodex } from './fakes/scripted-codex.ts';
@@ -40,7 +40,7 @@ test('local Codex policies retain the captured byte-identical overrides', async 
 test('remote Codex policy refuses a missing run directory before consulting paths', async t => {
   const root = await tempProject(t, 'cx-', '/tmp');
   const calls: string[] = [];
-  const machine: Host = { ...localHost(fixtureEnvironment(root,process.env)), name: 'missing-layout', realpath: async path => { calls.push(path); return path; } };
+  const machine: Host = { ...recordingHost(root), name: 'missing-layout', realpath: async path => { calls.push(path); return path; } };
   await assert.rejects(threadPolicy({discoveryFile: join(root,'.cland/hub.json')}, root, {
     sandbox: {mode:'workspace-write',writableRoots:[root],network:'local'},
   }, undefined, machine), /host missing-layout.*runDirectory/);
@@ -51,7 +51,7 @@ test('Codex takes roots, linked git bytes and socket paths from the selected Hos
   const root = await tempProject(t, 'cx-', '/tmp');
   const calls: string[] = [];
   const machine: Host = {
-    ...localHost(fixtureEnvironment(root, process.env)),
+    ...recordingHost(root),
     name: 'mapped',
     async realpath(path) {
       calls.push(`real:${path}`);
@@ -94,7 +94,7 @@ test('spawn and relaunch serialize the captured session Host policy', async t =>
   const root = await tempProject(t, 'cx-', '/tmp');
   const env = fixtureEnvironment(root, process.env);
   const commands: HostCommand[] = [];
-  const files = localHost(env);
+  const files = recordingHost(root);
   let exit: ReturnType<typeof Promise.withResolvers<{code:number|null;signal:string|null}>> | undefined;
   const machine: Host = {
     ...files, name: 'mapped',
@@ -141,9 +141,11 @@ test('mapped network-local launch denies the canonical directory containing its 
   await mkdir(canonicalRun);
   await symlink(canonicalRun, runDirectory);
   const canonical = await realpath(runDirectory);
+  const files = recordingHost(root);
   let captured: HostCommand | undefined;
   const machine: Host = {
-    ...localHost(env), name: 'mapped',
+    ...files, name: 'mapped',
+    realpath: path => files.realpath(path === '/tmp' ? root : path),
     layout: input => ({ ...input, discoveryFile: join(state, 'hub.json'), runDirectory, logDirectory: join(root, 'host-log') }),
     run: async () => ({ code: 0, stdout: 'codex 0.160.0', stderr: '' }),
     spawn: async command => { captured = command; throw new Error('captured native launch'); },

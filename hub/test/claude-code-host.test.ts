@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost } from '../src/adapters/contract.ts';
 import type { HostCommand } from '../src/host/host.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import { tempProject } from './harness.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
@@ -15,7 +15,7 @@ test('Claude launch, directory discovery and settings reach the selected Host wi
   const root = await tempProject(t);
   const commands: HostCommand[] = [];
   const reads: string[] = [];
-  const machine = { ...localHost(), run: async (command: HostCommand) => {
+  const machine = { ...recordingHost(root), run: async (command: HostCommand) => {
     commands.push(command);
     return { code: 0, stdout: command.args[0] === '--bg' ? 'claude attach abcdef12' : '[]', stderr: '' };
   }, readFile: async (path: string) => { reads.push(path); return Buffer.from('{"worktree":{"bgIsolation":"worktree"}}'); } };
@@ -41,7 +41,7 @@ test('Claude identities, resume fallback, signed-out liveness and stop stay on t
   const root = await tempProject(t);
   const calls: string[] = [];
   let listed = true;
-  const machine = { ...localHost(),
+  const machine = { ...recordingHost(root),
     run: async (command: HostCommand) => {
       calls.push(command.args[0]!);
       return { code: 0, stdout: command.args[0] === '--bg' ? 'claude attach abcdef12' : command.args[0] === 'agents' ? JSON.stringify(listed ? [{ id: 'abcdef12', sessionId: 'native', pid: 987654, status: 'idle' }] : []) : '', stderr: '' };
@@ -82,7 +82,7 @@ test('Claude close joins an in-flight Host liveness observation before releasing
   const clock = new FakeClock();
   const entered = Promise.withResolvers<void>();
   const release = Promise.withResolvers<boolean>();
-  const machine = { ...localHost(), alive: () => { entered.resolve(); return release.promise; } };
+  const machine = { ...recordingHost(root), alive: () => { entered.resolve(); return release.promise; } };
   const host: AdapterHost = { root, discoveryFile: join(root, 'hub.json'), node: '', cli: '', spoke: '', log: () => {}, signal: () => assert.fail('no signal after close'), recordPid: () => {}, exited: () => assert.fail('no exit after close'), hostForProcess: () => machine };
   const adapter = new ClaudeCodeAdapter(host, { clock, env: fixtureEnvironment(root, process.env), pollMs: 5 });
   t.after(async () => { release.resolve(true); await adapter.close(); });
@@ -106,7 +106,7 @@ for (const boundary of ['signed-out alive', 'listed identity', 'fallback alive',
   const entered = Promise.withResolvers<void>();
   const release = Promise.withResolvers<void>();
   const row = { name: 'worker', harness: 'claude-code', role: null, model: null, cwd: root, sessionId: 'fixture', harnessId: 'job', harnessSessionId: 'native', pid: 987654, pidStarted: 'host-start', pidIdentity: 'host-birth', startedAt: clock.now().toISOString(), status: 'running' as const };
-  const machine = { ...localHost(),
+  const machine = { ...recordingHost(root),
     run: async () => ({ code: 0, stdout: boundary === 'listed identity' ? JSON.stringify([{ id: 'job', sessionId: 'native', pid: row.pid }]) : '[]', stderr: '' }),
     identity: async () => { if (boundary === 'listed identity') { entered.resolve(); await release.promise; } return { pid: row.pid, pidStarted: row.pidStarted, pidIdentity: row.pidIdentity }; },
     alive: async () => { entered.resolve(); await release.promise; return true; },
@@ -143,7 +143,7 @@ for (const stopConfirmed of [true, false]) test(stopConfirmed ? 'Claude close st
   let nativeRunning = false;
   let settingsFile = '';
   const stopped: number[] = [];
-  const machine = { ...localHost(),
+  const machine = { ...recordingHost(root),
     readFile: async () => Buffer.from('{}'),
     run: async (command: HostCommand) => {
       if (command.args[0] === '--bg') { nativeRunning = true; settingsFile = command.args[command.args.indexOf('--settings') + 1]!; return { code: 0, stdout: 'claude attach new-job', stderr: '' }; }
@@ -179,7 +179,6 @@ for (const stopConfirmed of [true, false]) test(stopConfirmed ? 'Claude close st
 
 // Nonlocal commands are scripted at the Host boundary; Linux proof is checked by processHost.
 async function remoteFixture(t: import('node:test').TestContext) {
-  const { testHost } = await import('../src/host/test-host.ts');
   const { processHost } = await import('../src/host/process-host.ts');
   const { FakeClock } = await import('./fake-clock.ts');
   const root = await tempProject(t);
@@ -196,17 +195,8 @@ async function remoteFixture(t: import('node:test').TestContext) {
   let listed = true;
   let living = true;
   // File preparation is real but confined to this disposable project's Host.
-  const fileHost = localHost(fixtureEnvironment(root, process.env));
-  const machine = processHost({ ...testHost('t1', () => {}),
-    layout: fileHost.layout,
-    fileType: fileHost.fileType,
-    makeDirectory: fileHost.makeDirectory,
-    writeFile: fileHost.writeFile,
-    publishFile: fileHost.publishFile,
-    appendFile: fileHost.appendFile,
-    stat: fileHost.stat,
-    removePath: fileHost.removePath,
-    statDirectory: fileHost.statDirectory,
+  const fileHost = recordingHost(root);
+  const machine = processHost({ ...fileHost, name: 't1',
     readFile: path => path.endsWith('/.claude/settings.json') || path.endsWith('/.claude/settings.local.json') ? Promise.resolve(Buffer.from('{}')) : fileHost.readFile(path),
     run: async (command: HostCommand) => {
       commands.push(command);

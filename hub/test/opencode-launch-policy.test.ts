@@ -14,7 +14,7 @@ import { OpenCodeClient } from '../src/adapters/opencode/client.ts';
 import { FakeClock } from './fake-clock.ts';
 import { connectUi, projectHub, tempProject } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import { HostMemoryFloorRefusal } from '../src/host/ssh-host.ts';
 import { AccountLimited } from '../src/accounts/limits.ts';
 import { ToolForbidden } from '../src/roles/permissions.ts';
@@ -69,7 +69,7 @@ async function fixture(t: TestContext, unavailable: boolean | string = false, sp
     return child;
   });
   syncBuiltinESMExports();
-  const failedHost={...localHost(fixtureEnvironment(root,process.env)),spawn:async()=>{throw spawnFailure;}};
+  const failedHost={...recordingHost(root),spawn:async()=>{throw spawnFailure;}};
   const adapter = new OpenCodeAdapter({ ...(spawnFailure?{hostForLaunch:()=>failedHost,hostForProcess:()=>failedHost}:{}), root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: '', spoke: '', log: entry => { logs.push(entry); }, signal: () => {}, recordPid: () => {}, exited: () => {} }, { bin: 'fake-opencode', env: { HOME: root }, clock: new FakeClock() });
   t.after(async () => {
     adapter.close();

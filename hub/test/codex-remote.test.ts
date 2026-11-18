@@ -6,7 +6,7 @@ import { setRoleKey } from '../src/roles/editor.ts';
 import { join, dirname } from 'node:path';
 import { CodexAdapter } from '../src/adapters/codex.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import type { Host, HostCommand } from '../src/host/host.ts';
 import { ScriptedCodex, deferred } from './fakes/scripted-codex.ts';
 import { projectHub, connectUi, tempProject, eventually, inProcessSpoke } from './harness.ts';
@@ -15,12 +15,13 @@ import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 
 test('remote Codex frame launch uses a session forward and host sandbox paths', async t => {
   const root = await tempProject(t);
-  const remote = await tempProject(t);
+  const remote = await tempProject(t, 'cx-', '/tmp');
   const hostTemp = join(remote, 'temp-root');
   const hostTempAlias = join(remote, 'tmp-alias');
   await mkdir(hostTemp);
   await symlink(hostTemp, hostTempAlias);
-  const run = dirname(fixtureSocketPath(remote, 'remote'));
+  const run = join(remote, 'run');
+  await mkdir(run);
   const localSocket = fixtureSocketPath(root, 'forward');
   const layout = { discoveryFile: join(remote, 'hub.json'), runDirectory: run, logDirectory: join(remote, 'log'), node: '/remote/node', cli: '/remote/cli', spoke: '/remote/spoke' };
   const native = new ScriptedCodex();
@@ -31,7 +32,7 @@ test('remote Codex frame launch uses a session forward and host sandbox paths', 
   let exit = deferred<{code: number | null; signal: string | null}>();
   let alive = false;
   let refuseRealpath = false;
-  const base = localHost();
+  const base = recordingHost(remote);
   const canonicalized: string[] = [];
   const host: Host = { ...base, name: 'f1', layout: () => layout,
     realpath: async path => { canonicalized.push(path); if (refuseRealpath) throw new Error('synthetic remote realpath failure'); return base.realpath(path === '/tmp' ? hostTempAlias : path); },

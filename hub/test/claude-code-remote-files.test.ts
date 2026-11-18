@@ -6,14 +6,14 @@ import { join } from 'node:path';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost } from '../src/adapters/contract.ts';
 import type { HostCommand } from '../src/host/host.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import { tempProject } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 
 test('remote Claude private credential files are removed only after confirmed stop', async t => {
   const root = await tempProject(t), commands: HostCommand[] = [], state = new Map<string,string>();
   let confirmed = false;
-  const machine = { ...localHost(), name: 'f1',
+  const machine = { ...recordingHost(root), name: 'f1',
     layout: () => ({ node: '/host/node', cli: '/host/cli', spoke: '/host/spoke', discoveryFile: '/host/hub.json', runDirectory: join(root,'run'), logDirectory: join(root,'log'), modDir: '/host/mod' }),
     run: async (command: HostCommand) => { commands.push(command); return { code: 0, stdout: command.args[0] === '--bg' ? 'claude attach abcdef12' : '[]', stderr: '' }; },
     identity: async (pid:number) => ({pid,pidIdentity:'linux:fixture:1',pidStarted:null}),
@@ -41,7 +41,7 @@ test('remote Claude shutdown during adoption joins rollback before removing priv
  const root=await tempProject(t),commands:HostCommand[]=[];let adapter:ClaudeCodeAdapter,closing:Promise<void>|undefined,closed=false,released=false;
  const entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>();
  const {within}=await import('../src/executor/droplet/deadline.ts');
- const machine={...localHost(),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
+ const machine={...recordingHost(root),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
    run:async(command:HostCommand)=>{commands.push(command);return {code:0,stdout:'claude attach abcdef12',stderr:''};},
    launchClaude:async(command:HostCommand)=>machine.run(command),
    adopt:async()=>{closing=Promise.resolve(adapter.close()).then(()=>{closed=true;});return {process:{pid:987654,pidIdentity:'linux:fixture:1'},job:'abcdef12',session:'native',release:async()=>{assert.ok(commands.some(command=>command.args[0]==='stop'));released=true;}};},
@@ -60,7 +60,7 @@ test('remote Claude shutdown during adoption joins rollback before removing priv
 
 for(const mode of ['native-refused','native-unknown','release-reply-lost'] as const)test(`Claude ${mode} retains generation files until confirmed release`,async t=>{
  const root=await tempProject(t),commands:HostCommand[]=[];let releases=0,refuse=true;
- const machine={...localHost(),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
+ const machine={...recordingHost(root),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
    run:async(command:HostCommand)=>{commands.push(command);if(command.args[0]==='stop'&&mode==='native-unknown'&&refuse)throw new Error('native reply unknown');return {code:command.args[0]==='stop'&&mode==='native-refused'&&refuse?1:0,stdout:command.args[0]==='agents'?'[{"id":"abcdef12","sessionId":"native","pid":987654}]':'claude attach abcdef12',stderr:''};},
    launchClaude:async(command:HostCommand)=>machine.run(command),
    adopt:async()=>({process:{pid:987654,pidIdentity:'linux:fixture:1'},job:'abcdef12',session:'native',release:async()=>{releases++;if(mode==='release-reply-lost'&&refuse)throw new Error('Claude release cleanup incomplete: reply lost');}}),
@@ -84,7 +84,7 @@ for(const mode of ['missing-marker','other-generation','old-error-shape'] as con
  const root=await tempProject(t),state=new Map<string,string>(),generation='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';let forgotten=0;
  state.set(launchGenerationKey('worker-session'),generation);
  if(mode!=='missing-marker')state.set('claude-cleanup:worker-session',mode==='other-generation'?'other-generation':generation);
- const machine={...localHost(),name:'f1',adopt:async()=>{if(mode==='old-error-shape')throw new Error('Claude generation receipt missing');throw new MissingClaudeGeneration(generation,async()=>{forgotten++;});},run:async()=>{assert.fail('no native CLI authority');},stop:async()=>{assert.fail('no signal authority');}};
+ const machine={...recordingHost(root),name:'f1',adopt:async()=>{if(mode==='old-error-shape')throw new Error('Claude generation receipt missing');throw new MissingClaudeGeneration(generation,async()=>{forgotten++;});},run:async()=>{assert.fail('no native CLI authority');},stop:async()=>{assert.fail('no signal authority');}};
  const host:AdapterHost={root,discoveryFile:'/hub/discovery',node:'/hub/node',cli:'/hub/cli',spoke:'/hub/spoke',log:()=>{},signal:()=>{},exited:()=>{},recordPid:()=>{},hostForProcess:()=>machine,adapterState:{read:key=>state.get(key)??null,write:(key,value)=>{state.set(key,value);}}};
  const adapter=new ClaudeCodeAdapter(host,{env:fixtureEnvironment(root,process.env),pollMs:600000});t.after(()=>adapter.close());
  await assert.rejects(adapter.resume({name:'worker',host:'f1',harness:'claude-code',role:'implementer',model:null,cwd:root,sessionId:'worker-session',harnessId:'job',harnessSessionId:'native',pid:987654,pidIdentity:'linux:fixture:1',startedAt:new Date().toISOString(),status:'running'}),/generation receipt missing/);
@@ -97,7 +97,7 @@ for(const failing of [false,true])test(`terminal generation restart retry ${fail
  const row:import('../src/adapters/contract.ts').HarnessProcess={name:'worker',host:'f1',harness:'claude-code',role:'implementer',model:null,cwd:root,sessionId:'terminal-session',harnessId:'abcdef12',harnessSessionId:'native',pid:987654,pidIdentity:'linux:fixture:1',startedAt:new Date().toISOString(),status:'running'};
  state.set(launchGenerationKey(row.sessionId),generation);state.set('claude-terminal:'+row.sessionId,JSON.stringify({generation,attempts:1,cause:'prior native confirmation failed'}));
  let releases=0;
- const machine={...localHost(),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
+ const machine={...recordingHost(root),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
    adopt:async()=>({process:{pid:row.pid,pidIdentity:row.pidIdentity??null},job:row.harnessId!,session:'native',closed:true,release:async()=>{releases++;},forget:async()=>{}}),
    stop:async()=>true,
    run:async(command:HostCommand)=>{calls.push(command.args[0]!);return {code:failing?1:0,stdout:'',stderr:'synthetic native refusal'};},
@@ -122,7 +122,7 @@ test('an unconfirmed explicit stop stays held on restart without replaying nativ
  const root=await tempProject(t),generation='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',state=new Map<string,string>();
  const row:import('../src/adapters/contract.ts').HarnessProcess={name:'worker',host:'f1',harness:'claude-code',role:'implementer',model:null,cwd:root,sessionId:'held-session',harnessId:'abcdef12',harnessSessionId:'native',pid:987654,pidIdentity:'linux:fixture:1',startedAt:new Date().toISOString(),status:'running'};
  state.set(launchGenerationKey(row.sessionId),generation);state.set('claude-stop-failure:'+row.sessionId+':'+generation,'native tree completion unknown');
- const machine={...localHost(),name:'f1',adopt:async()=>({process:{pid:row.pid,pidIdentity:row.pidIdentity??null},job:row.harnessId!,session:'native',closed:true}),run:async()=>assert.fail('unknown native cleanup is never replayed'),stop:async()=>assert.fail('unknown signal outcome is never replayed')};
+ const machine={...recordingHost(root),name:'f1',adopt:async()=>({process:{pid:row.pid,pidIdentity:row.pidIdentity??null},job:row.harnessId!,session:'native',closed:true}),run:async()=>assert.fail('unknown native cleanup is never replayed'),stop:async()=>assert.fail('unknown signal outcome is never replayed')};
  const host:AdapterHost={root,discoveryFile:'/hub/discovery',node:'/hub/node',cli:'/hub/cli',spoke:'/hub/spoke',log:()=>{},signal:()=>{},exited:()=>assert.fail('row stays held'),recordPid:()=>{},hostForProcess:()=>machine,adapterState:{read:key=>state.get(key)??null,write:(key,value)=>{state.set(key,value);}}};
  const adapter=new ClaudeCodeAdapter(host,{env:fixtureEnvironment(root,process.env)});t.after(()=>adapter.close());
  const result=await adapter.resume(row);assert.equal(result.found,false);if(!result.found)assert.equal(result.alive,true);
@@ -132,7 +132,7 @@ test('an unconfirmed explicit stop stays held on restart without replaying nativ
 test('close after accepted Claude launch result re-adopts before rollback and joins settlement',async t=>{
  const {within}=await import('../src/executor/droplet/deadline.ts');
  const root=await tempProject(t),entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>(),commands:HostCommand[]=[];let adopts=0,stops=0,releases=0;
- const machine={...localHost(),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
+ const machine={...recordingHost(root),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
    launchClaude:async(command:HostCommand)=>{commands.push(command);entered.resolve();await release.promise;return {code:0,stdout:'claude attach abcdef12',stderr:''};},
    adopt:async()=>{adopts++;return {process:{pid:987654,pidIdentity:'linux:fixture:1'},job:'abcdef12',session:'native',release:async()=>{releases++;}};},
    run:async(command:HostCommand)=>{commands.push(command);return {code:0,stdout:'',stderr:''};},stop:async()=>{stops++;return true;},
@@ -151,7 +151,7 @@ test('close after accepted Claude launch result re-adopts before rollback and jo
 test('captured and reconstructed failed-launch callbacks share one native settlement producer',async t=>{
  const {LaunchRecoveryPending}=await import('../src/adapters/launch-files.ts');const {within}=await import('../src/executor/droplet/deadline.ts');
  const root=await tempProject(t),state=new Map<string,string>(),entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>();let first=true,stops=0,releases=0;
- const machine={...localHost(),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
+ const machine={...recordingHost(root),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
    launchClaude:async()=>({code:0,stdout:'claude attach abcdef12',stderr:''}),adopt:async()=>{if(first){first=false;throw new Error('planted adoption failure');}return {process:{pid:987654,pidIdentity:'linux:fixture:1'},job:'abcdef12',session:'native',release:async()=>{releases++;}};},
    run:async()=>({code:0,stdout:'',stderr:''}),stop:async()=>{stops++;entered.resolve();await release.promise;return true;},
  };
@@ -170,7 +170,7 @@ test('captured and reconstructed failed-launch callbacks share one native settle
 for(const typed of [false,true])test(`Claude ${typed?'typed non-admission':'untyped lookalike error'} ${typed?'rolls back without adoption':'stays supervised'}`,async t=>{
  const {LaunchRecoveryPending}=await import('../src/adapters/launch-files.ts');const {MissingClaudeGeneration}=await import('../src/host/host.ts');
  const root=await tempProject(t),state=new Map<string,string>();let generation='',adopts=0,launches=0;
- const machine={...localHost(),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
+ const machine={...recordingHost(root),name:'f1',layout:()=>({node:'/host/node',cli:'/host/cli',spoke:'/host/spoke',discoveryFile:'/host/hub.json',runDirectory:join(root,'run'),logDirectory:join(root,'log'),modDir:'/host/mod'}),
    launchClaude:async(_command:HostCommand,id:string)=>{launches++;generation=id;throw Object.assign(new Error('CLAND_AGENT_ADMISSION_REFUSED'),typed?{code:'CLAND_AGENT_ADMISSION_REFUSED'}:{});},
    adopt:async()=>{adopts++;if(typed)assert.fail('positive non-admission has no native worker');throw new MissingClaudeGeneration(generation,async()=>assert.fail('missing receipt grants no cleanup authority'));},
    run:async()=>assert.fail('no replay or discovery'),

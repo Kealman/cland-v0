@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { CodexAdapter } from '../src/adapters/codex.ts';
 import type { AdapterHost, HarnessProcess } from '../src/adapters/contract.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import type { Host, HostCommand, HostProcess } from '../src/host/host.ts';
 import { tempProject, eventually } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
@@ -33,7 +33,7 @@ function adapterHost(root: string, host: Host): AdapterHost {
 
 test('Codex launch refuses the Host directory refusal before running a command', async t => {
   const root = await tempProject(t, 'cx-', '/tmp');
-  const host: Host = { ...localHost(), statDirectory: async () => ({ refusal: 'recorded Host refusal', identity: null }), run: async () => { throw new Error('must not run'); } };
+  const host: Host = { ...recordingHost(root), statDirectory: async () => ({ refusal: 'recorded Host refusal', identity: null }), run: async () => { throw new Error('must not run'); } };
   const adapter = new CodexAdapter(adapterHost(root, host), { bin: 'missing-fixture-codex', env: fixtureEnvironment(root, process.env) });
   t.after(() => receipt('adapter fixture close', adapter.close()));
   await assert.rejects(adapter.spawn({ name: 'worker', role: null, model: null, cwd: root }), /recorded Host refusal/);
@@ -53,7 +53,7 @@ test('Codex launches, resumes, polls and stops only through the selected Host', 
   native.handlers.set('thread/start', () => ({ thread: { id: native.thread, status: { type: 'idle' } } }));
   let living = true;
   const host: Host = {
-    ...localHost(env),
+    ...recordingHost(root),
     name: 'selected-host',
     statDirectory: async path => { dirs.push(path); return { refusal: null, identity: { dev: 1, ino: 2 } }; },
     run: async command => { versions.push(command); return { code: 0, stdout: 'codex 0.160.0', stderr: '' }; },
@@ -114,7 +114,7 @@ test('Codex launches, resumes, polls and stops only through the selected Host', 
 test('Codex version failure from the Host refuses spawn', async t => {
   const root = await tempProject(t, 'cx-', '/tmp');
   let spawns = 0;
-  const host: Host = { ...localHost(), run: async () => ({ code: 7, stdout: '', stderr: 'fixture version failure' }), spawn: async () => { spawns++; throw new Error('must not spawn'); } };
+  const host: Host = { ...recordingHost(root), run: async () => ({ code: 7, stdout: '', stderr: 'fixture version failure' }), spawn: async () => { spawns++; throw new Error('must not spawn'); } };
   const adapter = new CodexAdapter(adapterHost(root, host), { bin: 'host-codex', env: fixtureEnvironment(root, process.env) });
   t.after(() => receipt('adapter fixture close', adapter.close()));
   await assert.rejects(adapter.spawn({ name: 'worker', role: null, model: null, cwd: root }), /host-codex --version: fixture version failure/);
@@ -128,7 +128,7 @@ test('a late Host liveness reply cannot retire a replacement Codex row', async t
   const oldReply = deferred<boolean>();
   const seen: number[] = [];
   let currentAlive = true;
-  const host: Host = { ...localHost(), alive: async row => { seen.push(row.pid!); return row.pid === 111111 ? oldReply.promise : currentAlive; } };
+  const host: Host = { ...recordingHost(root), alive: async row => { seen.push(row.pid!); return row.pid === 111111 ? oldReply.promise : currentAlive; } };
   const gone: string[] = [];
   const boundary = adapterHost(root, host);
   boundary.exited = id => { gone.push(id); };
@@ -160,7 +160,7 @@ for (const reject of [false, true]) test(`Codex close joins and coalesces a held
   let calls = 0;
   let probeFinished = false;
   const callbacks: string[] = [];
-  const host: Host = { ...localHost(), alive: async () => { calls++; requested.resolve(); try { return await reply.promise; } finally { probeFinished = true; } } };
+  const host: Host = { ...recordingHost(root), alive: async () => { calls++; requested.resolve(); try { return await reply.promise; } finally { probeFinished = true; } } };
   const boundary = adapterHost(root, host);
   boundary.log = () => { callbacks.push('log'); };
   boundary.exited = () => { callbacks.push('exit'); };
@@ -196,7 +196,7 @@ async function heldLaunchClose(t: TestContext, relaunch: boolean, stage: HeldSta
   native.thread = 'held-thread';
   native.handlers.set('thread/start', () => ({ thread: { id: native.thread, status: { type: 'idle' } } }));
   const host: Host = {
-    ...localHost(), name: 'held-host',
+    ...recordingHost(root), name: 'held-host',
     run: async () => { if (stage === 'version') await held(); return { code: 0, stdout: 'codex 0.160.0', stderr: '' }; },
     spawn: async (_command, options) => {
       if (stage === 'prepare') await held();
@@ -263,7 +263,7 @@ test('Codex close reports incomplete late-launch cleanup and retains its durable
   let cleanupAttempted = false;
   let allowStop = false;
   const host: Host = {
-    ...localHost(),
+    ...recordingHost(root),
     run: async () => ({ code: 0, stdout: 'codex 0.160.0', stderr: '' }),
     spawn: async () => { admitted = true; await release.promise; producerFinished = true; return { pid: 987654, exited: exited.promise }; },
     identity: async pid => ({ pid, pidStarted: 'start', pidIdentity: 'birth' }),
@@ -321,7 +321,7 @@ for (const stage of ['alive', 'connect'] as const) test(`Codex close joins live 
   const held = async () => { entered = true; await release.promise; producerFinished = true; };
   const native = new ScriptedCodex();
   native.thread = 'resume-thread';
-  const host: Host = { ...localHost(), alive: async () => { if (stage === 'alive') await held(); return true; } };
+  const host: Host = { ...recordingHost(root), alive: async () => { if (stage === 'alive') await held(); return true; } };
   const adapter = new CodexAdapter(adapterHost(root, host), { env: fixtureEnvironment(root, process.env), connect: async () => { if (stage === 'connect') await held(); return native; } });
   t.after(async () => { release.resolve(); await receipt('adapter fixture close', adapter.close()); });
   const socket = join(root, 'resume.sock');
@@ -348,7 +348,7 @@ test('Codex keeps Host liveness polling while reconnect connection acquisition i
   native.thread = 'held-subscription';
   let subscribed = false;
   let probes = 0;
-  const host: Host = { ...localHost(), alive: async () => { probes++; return true; } };
+  const host: Host = { ...recordingHost(root), alive: async () => { probes++; return true; } };
   const adapter = new CodexAdapter(adapterHost(root, host), { clock, pollMs: 10, env: fixtureEnvironment(root, process.env), connect: async () => { subscribed = true; await release.promise; return native; } });
   t.after(async () => { release.resolve(); await receipt('adapter fixture close', adapter.close()); });
   adapter.watch({ name: 'worker', harness: 'codex', role: null, model: null, cwd: root, pid: 111111, harnessId: 'scripted.sock', harnessSessionId: native.thread, sessionId: 'held-subscription', startedAt: new Date().toISOString(), status: 'running' });
@@ -373,7 +373,7 @@ for (const outcome of ['receipt', 'deadline'] as const) test(`Codex local stop j
   const native = new ScriptedCodex();
   native.thread = 'receipt-thread';
   native.handlers.set('thread/start', () => ({ thread: { id: native.thread, status: { type: 'idle' } } }));
-  const host: Host = { ...localHost(env),
+  const host: Host = { ...recordingHost(root),
     run: async () => ({ code: 0, stdout: 'codex 0.160.0', stderr: '' }),
     spawn: async () => ({ pid: 987654, exited: exit.promise }),
     identity: async pid => ({ pid, pidStarted: 'start', pidIdentity: 'birth' }),
@@ -415,7 +415,7 @@ for (const outcome of ['receipt', 'deadline'] as const) test(`Codex local stop j
 test('Codex recovered local stop without a child receipt uses Host confirmation', async t => {
   const root = await tempProject(t, 'cx-', '/tmp');
   const stops: HostProcess[] = [];
-  const host: Host = { ...localHost(fixtureEnvironment(root, process.env)), stop: async row => { stops.push(row); return true; } };
+  const host: Host = { ...recordingHost(root), stop: async row => { stops.push(row); return true; } };
   const adapter = new CodexAdapter(adapterHost(root, host), { env: fixtureEnvironment(root, process.env) });
   t.after(() => adapter.close());
   const row: HarnessProcess = { name: 'recovered', harness: 'codex', role: null, model: null, cwd: root, pid: 987654, pidIdentity: 'birth', harnessId: null, harnessSessionId: null, sessionId: 'recovered', startedAt: new Date().toISOString(), status: 'running' };
@@ -428,7 +428,7 @@ test('Codex restored subscription retries refused input only after its held rece
   const entered = deferred<void>(), release = deferred<void>();
   const native = new ScriptedCodex(); native.thread = 'restored-thread';
   native.handlers.set('thread/resume', async () => { entered.resolve(); await release.promise; return {thread:{id:native.thread,status:{type:'idle'}}}; });
-  const host = {...localHost(fixtureEnvironment(root,process.env)),alive:async()=>true};
+  const host = {...recordingHost(root),alive:async()=>true};
   const boundary = adapterHost(root,host);
   const adapter = new CodexAdapter(boundary,{connect:async()=>native});
   beforeDirectories(t,async()=>{release.resolve();await receipt('adapter closed',adapter.close());});
@@ -450,7 +450,7 @@ test('Codex restored subscription retries refused input only after its held rece
 
 for (const [error,reason] of [[{message:'refresh_token_reused'},'refresh_token_reused'],[{codexErrorInfo:'unauthorized'},'unauthorized'],[{message:'HTTP 401'},'401']] as const) test(`Codex remote native error reports dead login ${reason} without stopping`,async t=>{
  const root=await tempProject(t,'cx-','/tmp'),env=fixtureEnvironment(root,process.env),native=new ScriptedCodex(),hits:unknown[]=[];
- const host:Host={...localHost(env),name:'pool-host',statDirectory:async()=>({refusal:null,identity:null}),run:async()=>({code:0,stdout:'codex 0.160.0',stderr:''}),spawn:async()=>({pid:987654,exited:new Promise(()=>{})}),identity:async pid=>({pid,pidStarted:'start',pidIdentity:'birth'}),alive:async()=>true,stop:async()=>{throw Error('sign-out must not stop');}};
+ const host:Host={...recordingHost(root),name:'pool-host',statDirectory:async()=>({refusal:null,identity:null}),run:async()=>({code:0,stdout:'codex 0.160.0',stderr:''}),spawn:async()=>({pid:987654,exited:new Promise(()=>{})}),identity:async pid=>({pid,pidStarted:'start',pidIdentity:'birth'}),alive:async()=>true,stop:async()=>{throw Error('sign-out must not stop');}};
  native.handlers.set('thread/start',()=>({thread:{id:native.thread,status:{type:'idle'}}}));
  const boundary=adapterHost(root,host);boundary.loginDead=(...args)=>hits.push(args);
  const adapter=new CodexAdapter(boundary,{env,clock:new FakeClock(),connect:async()=>native});

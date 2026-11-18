@@ -10,13 +10,13 @@ import type { AdapterHost, HarnessProcess } from '../src/adapters/contract.ts';
 
 for (const target of ['local', 'recording-remote']) for (const harness of ['claude-code', 'codex', 'opencode'] as const) for (const restored of [false, true]) {
   test(`${harness} final ${target} ${restored ? 'restored row' : 'new role'} launch strips executor transport controls`, async t => fakeOnlyFixture(t, async root => {
-    const { localHost } = await import('../src/host/local.ts');
+    const { recordingHost } = await import('./recording-host.ts');
     const env = fixtureEnvironment(root, {}, { CLAND_TEST_EXECUTOR_TRANSPORT: '1', CLAND_TEST_FAKE_MACHINE_ROOT: root });
     const poison = { CLAND_TEST_EXECUTOR_TRANSPORT: '1', CLAND_TEST_FAKE_MACHINE_ROOT: root, RETAINED: 'fixture' };
     const frames: HostCommand[] = [];
     const exits: Array<(r: { code: number | null; signal: string | null }) => void> = [];
     let launched = false;
-    const machine: Host = { ...localHost(env), name: target,
+    const machine: Host = { ...recordingHost(root), name: target,
       freePort: async () => 12345,
       forward: async () => ({ socket: join(root, 'fake-forward.sock') }),
       run: async command => {

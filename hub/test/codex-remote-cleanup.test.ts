@@ -10,7 +10,7 @@ import { Sessions } from '../src/adapters/sessions.ts';
 import { HubCore } from '../src/hub/core.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { fixedRoles, parseRoles } from '../src/roles/config.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import type { Host } from '../src/host/host.ts';
 import { FakeClock } from './fake-clock.ts';
 import { ScriptedCodex, deferred } from './fakes/scripted-codex.ts';
@@ -33,9 +33,9 @@ async function fixture(t: TestContext, withRoles = false, durable = true) {
     assert.equal(drained, true, 'Sessions drained before root removal');
     assert.equal(storageClosed, true, 'storage closed before root removal');
   });
-  const mapped = (path: string) => path.replace(root, storage);
   const clock = new FakeClock(Date.now());
-  const base = localHost(fixtureEnvironment(root,process.env));
+  const base = recordingHost(root);
+  const files = recordingHost(storage, {sourceRoot: root});
   const native = new ScriptedCodex(); native.thread = 'cleanup-thread';
   native.handlers.set('thread/start', () => ({thread: {id:native.thread,status:{type:'idle'}}}));
   const exited = deferred<{code:number|null;signal:string|null}>();
@@ -43,15 +43,7 @@ async function fixture(t: TestContext, withRoles = false, durable = true) {
   let alive = true, revoked = false, stopAllowed = true, unforwardAllowed = true;
   let forwardGate: Promise<void> | undefined;
   let unforwardGate: Promise<void> | undefined;
-  const host: Host = {...base,name:'f1',
-    makeDirectory: (path,mode) => base.makeDirectory(mapped(path),mode),
-    writeFile: (path,bytes,options) => base.writeFile(mapped(path),bytes,options),
-    publishFile: (path,bytes,options) => base.publishFile(mapped(path),bytes,options),
-    appendFile: (path,bytes) => base.appendFile(mapped(path),bytes),
-    readFile: path => base.readFile(mapped(path)),
-    fileType: path => base.fileType(mapped(path)),
-    stat: path => base.stat(mapped(path)),
-    statDirectory: path => base.statDirectory(mapped(path)),
+  const host: Host = {...files,name:'f1',
     run: async () => ({code:0,stdout:'codex 0.160.0',stderr:''}),
     spawn: async () => ({pid:process.pid,exited:exited.promise}),
     identity: async pid => ({pid,pidStarted:'start',pidIdentity:`linux:remote:${pid}`}),
@@ -59,7 +51,7 @@ async function fixture(t: TestContext, withRoles = false, durable = true) {
     forward: async (_id,endpoint) => { calls.push('forward'); if(forwardGate) await forwardGate; return endpoint; },
     unforward: async () => { calls.push('unforward'); if(unforwardGate)await unforwardGate; if(!unforwardAllowed) throw new Error('cancel refused'); },
     stop: async () => { calls.push('remote-stop'); if(revoked) throw new Error('host f1 revoked'); if(!stopAllowed) return false; alive=false;exited.resolve({code:0,signal:null});return true; },
-    removePath: async (...args) => { calls.push('remote-remove'); return base.removePath(mapped(args[0]),args[1]); },
+    removePath: async (...args) => { calls.push('remote-remove'); return files.removePath(...args); },
   };
   const core = new HubCore({clock,...(withRoles?{roles:fixedRoles(parseRoles('[implementer.launch]\nharness="codex"\nsandbox="workspace-write"\nwritable_roots=["."]\nnetwork="none"'))}:{})}); const table = new ProcessTable();
   const local: Host = {...base,stop:async()=>{calls.push('LOCAL-STOP');throw new Error('local stop forbidden');},removePath:async()=>{calls.push('LOCAL-REMOVE');throw new Error('local undo forbidden');}};

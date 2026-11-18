@@ -7,6 +7,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { TaskWorktrees } from '../src/hub/worktrees.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import { ensureTaskWorktree, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../src/territory.ts';
 
 const human = { id: 'human', name: 'human', role: null };
@@ -35,7 +36,7 @@ test('territory branch exists at territory dev before the launch Host adds its w
   const tip = await remote('rev-parse', 'dev');
   const native = localHost(env);
   let observed = false;
-  const host = { ...native, name: 'recording', worktreeAdd: async (options: Parameters<typeof native.worktreeAdd>[0]) => {
+  const host = { ...recordingHost(root, {overrides: {worktreeRemove: native.worktreeRemove}}), name: 'recording', worktreeAdd: async (options: Parameters<typeof native.worktreeAdd>[0]) => {
     assert.equal(await remote('rev-parse', 'refs/heads/t/T-1-first'), tip);
     await assert.rejects(withTerritoryLockAsync(root, async () => {}), /another territory operation holds the lock/);
     observed = true;
@@ -62,7 +63,7 @@ test('failed Host add rolls back the newly created territory ref and root branch
   const root = await preparedProject(t);
   const env = fixtureEnvironment(root, process.env);
   const native = localHost(env);
-  const host = { ...native, worktreeAdd: async () => { throw new Error('injected add failure'); } };
+  const host = { ...recordingHost(root, {overrides: {worktreeRemove: native.worktreeRemove}}), worktreeAdd: async () => { throw new Error('injected add failure'); } };
   await assert.rejects(ensureTaskWorktree(root, { id: 'T-1', slug: 'failed', branch: null }, undefined, undefined, env, host), /injected add failure/);
   for (const cwd of [root, territoryPath(root)]) assert.equal(await territoryGitAsync(cwd, ['branch', '--list', 't/T-1-failed'], undefined, undefined, env), '');
 });
@@ -107,7 +108,7 @@ test('divergent dev tips: local starts at root and nonlocal starts at territory'
     assert.notEqual(rootTip, remoteTip);
     const native = localHost(env);
     const expected = name === 'local' ? rootTip : remoteTip;
-    const host = { ...native, name, worktreeAdd: async (options: Parameters<typeof native.worktreeAdd>[0]) => {
+    const host = { ...recordingHost(root, {overrides: {worktreeRemove: native.worktreeRemove}}), name, worktreeAdd: async (options: Parameters<typeof native.worktreeAdd>[0]) => {
       assert.equal(await territoryGitAsync(territoryPath(root), ['rev-parse', 't/T-1-divergent'], undefined, undefined, env), expected);
       return native.worktreeAdd(options);
     } };
@@ -125,7 +126,7 @@ test('item launch calls the admitted Host rather than the worktree service defau
   const env = fixtureEnvironment(root, process.env);
   const native = localHost(env);
   let called = false;
-  const host = { ...native, name: 'recording', worktreeAdd: async (options: Parameters<typeof native.worktreeAdd>[0]) => {
+  const host = { ...recordingHost(root, {overrides: {worktreeRemove: native.worktreeRemove}}), name: 'recording', worktreeAdd: async (options: Parameters<typeof native.worktreeAdd>[0]) => {
     assert.equal(await territoryGitAsync(territoryPath(root), ['rev-parse', 't/T-1-launch'], undefined, undefined, env), await territoryGitAsync(territoryPath(root), ['rev-parse', 'dev'], undefined, undefined, env));
     called = true;
     return native.worktreeAdd(options);

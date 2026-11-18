@@ -1,7 +1,7 @@
 // T2: independent production adapter environments with an injected command edge and FakeClock.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import type { HostCommand, HostRunResult } from '../src/host/host.ts';
 import { join } from 'node:path';
 import { connectUi, projectHub, tempProject } from './harness.ts';
@@ -38,7 +38,7 @@ test('two project hubs keep their adapter timing environments independent under 
     const { discovery } = await projectHub(t, root, {
       CLAND_CLAUDE_BIN: 'fixture-claude', CLAND_ADAPTER_POLL_MS: '50',
       CLAND_CLAUDE_AGENTS_MS: String(agentsMs), CLAUDE_CONFIG_DIR: directory,
-    }, { clock, harnesses: 'native', hosts: [{ ...localHost(), run }] });
+    }, { clock, harnesses: 'native', hosts: [{ ...recordingHost(root), run }] });
     const ui = await connectUi(t, discovery);
     const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'claude-code', role: 'implementer' });
     assert.equal(launched.ok, true, launched.error);

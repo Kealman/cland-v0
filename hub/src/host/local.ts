@@ -1,7 +1,6 @@
 import { processUsage } from './agent/process-usage.ts';
-import { LOCAL_MOD_DIR } from './launch-layout.ts';
+import { localHostLayout } from './launch-layout.ts';
 import { folderFiles } from '../hub/artifact-folder.ts';
-import { dirname, join } from 'node:path';
 import { occupants } from './occupants.ts';
 import { open } from 'node:fs/promises';
 import { fileOperations } from './agent/files.ts';
@@ -17,7 +16,7 @@ export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Rec
   return {
     name: 'local',
     loginDisk: async () => { throw Object.assign(new Error('login-disk unavailable on local Host'), {code:'wrong-volume'}); },
-    layout: input => Object.freeze({ ...input, modDir: LOCAL_MOD_DIR, runDirectory: join(dirname(input.discoveryFile), 'run'), logDirectory: join(dirname(input.discoveryFile), 'log') }),
+    layout: localHostLayout,
     ...fileOperations,
     listFolder: path => folderFiles(path),
     forward: async (_sessionId, endpoint) => endpoint,

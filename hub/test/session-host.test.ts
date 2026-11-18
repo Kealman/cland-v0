@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { HubCore } from '../src/hub/core.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import { fakeHarness } from './fakes/harness.ts';
 import { fixtureWork } from './fixture-work.ts';
 import { tempProject } from './harness.ts';
@@ -15,7 +15,7 @@ test('AdapterHost resolves rows and launches to local and launch/relaunch use it
   const table = new ProcessTable(':memory:', core.clock);
   const calls: string[] = [];
   let refusal: string | null = null;
-  const local = { ...localHost(), statDirectory: async (path: string) => { calls.push(path); return { refusal, identity: null }; } };
+  const local = { ...recordingHost(root), statDirectory: async (path: string) => { calls.push(path); return { refusal, identity: null }; } };
   const sessions = new Sessions({ root, core, table, hosts: [local] });
   t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   sessions.register(fakeHarness('codex', { clock: core.clock }));
@@ -36,7 +36,7 @@ test('launch identity and legacy stop read the recording Host identity', async t
   const core = new HubCore();
   const table = new ProcessTable(':memory:', core.clock);
   const calls: number[] = [];
-  const local = { ...localHost(), identity: async (pid: number) => { calls.push(pid); return { pid, pidStarted: 'fixture-start', pidIdentity: 'fixture-birth' }; } };
+  const local = { ...recordingHost(root), identity: async (pid: number) => { calls.push(pid); return { pid, pidStarted: 'fixture-start', pidIdentity: 'fixture-birth' }; } };
   const sessions = new Sessions({ root, core, table, hosts: [local] });
   t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   const fake = fakeHarness('codex', { clock: core.clock });
@@ -52,10 +52,11 @@ test('launch identity and legacy stop read the recording Host identity', async t
   assert.deepEqual(calls, [123456, 123456]);
 });
 
-test('legacy LaunchFiles receipt upgrades identity durably and stops through its Host before undo', async () => {
+test('legacy LaunchFiles receipt upgrades identity durably and stops through its Host before undo', async t => {
+  const root = await tempProject(t);
   const { LaunchFiles } = await import('../src/adapters/launch-files.ts');
   const calls: string[] = [];
-  const host = { ...localHost(), identity: async (pid: number) => { calls.push('identity'); return { pid, pidStarted: 'old-start', pidIdentity: 'birth' }; }, stop: async () => { calls.push('stop'); return true; } };
+  const host = { ...recordingHost(root), identity: async (pid: number) => { calls.push('identity'); return { pid, pidStarted: 'old-start', pidIdentity: 'birth' }; }, stop: async () => { calls.push('stop'); return true; } };
   const files = LaunchFiles.restore({ undo: [], children: [{ pid: 123456, pidStarted: 'old-start', graceMs: 10 }] }, work => work(), host);
   await files.rollback(state => { if (state.children.length) { assert.equal(state.children[0]?.pidIdentity, 'birth'); calls.push('checkpoint'); } });
   assert.deepEqual(calls, ['identity', 'checkpoint', 'stop']);
@@ -75,7 +76,7 @@ test('a legacy durable pending-stop receipt reopens and recovers through Host pr
   before.close();
   const table = new ProcessTable(path, core.clock);
   const calls: string[] = [];
-  const local = { ...localHost(), processes: async () => { calls.push('processes'); return [{ pid: 123456, parent: 1, rssBytes: 0, cpuPercent: 0 }]; }, identity: async (pid: number) => { calls.push('identity'); return { pid, pidStarted: 'replacement-start', pidIdentity: 'replacement-birth' }; } };
+  const local = { ...recordingHost(root), processes: async () => { calls.push('processes'); return [{ pid: 123456, parent: 1, rssBytes: 0, cpuPercent: 0 }]; }, identity: async (pid: number) => { calls.push('identity'); return { pid, pidStarted: 'replacement-start', pidIdentity: 'replacement-birth' }; } };
   const sessions = new Sessions({ root, core, table, hosts: [local] });
   t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   sessions.register(fake);
@@ -100,7 +101,7 @@ test('deaf episodes use Host liveness both at startup and on the held-message ti
   core.store.setMeta(`deaf-episode:${row.sessionId}`, JSON.stringify(episode));
   let checks = 0;
   let alive = false;
-  const local = { ...localHost(), alive: async () => { checks++; return alive; } };
+  const local = { ...recordingHost(root), alive: async () => { checks++; return alive; } };
   const sessions = new Sessions({ root, core, table, hosts: [local] });
   t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   sessions.register(fake);
@@ -135,7 +136,7 @@ test('Implementer pool restart checks the requested cwd through Host before stop
   const core = new HubCore({ crew: { get: () => config, set: async () => config } });
   const table = new ProcessTable(':memory:', core.clock);
   const calls: string[] = [];
-  const local = { ...localHost(), statDirectory: async (path: string) => { calls.push(path); return { refusal: 'fixture directory refusal', identity: null }; } };
+  const local = { ...recordingHost(root), statDirectory: async (path: string) => { calls.push(path); return { refusal: 'fixture directory refusal', identity: null }; } };
   const sessions = new Sessions({ root, core, table, hosts: [local] });
   t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   const fake = fakeHarness('codex', { clock: core.clock, host: sessions.host({ discoveryFile: '', node: '', cli: '', spoke: '' }) });
@@ -157,12 +158,12 @@ test('remote process liveness and signals require its matching Linux birth, neve
   const table = new ProcessTable();
   const calls: string[] = [];
   let birth: string | null = 'linux:boot:123';
-  const remote = { ...localHost(), name: 't1',
+  const remote = { ...recordingHost(root), name: 't1',
     identity: async (pid: number) => { calls.push('t1:identity'); return { pid, pidStarted: null, pidIdentity: birth }; },
     alive: async () => { calls.push('t1:alive'); return true; },
     stop: async () => { calls.push('t1:stop'); return true; },
   };
-  const local = { ...localHost(), identity: async () => { throw new Error('local probe'); }, alive: async () => { throw new Error('local probe'); }, stop: async () => { throw new Error('local signal'); } };
+  const local = { ...recordingHost(root), identity: async () => { throw new Error('local probe'); }, alive: async () => { throw new Error('local probe'); }, stop: async () => { throw new Error('local signal'); } };
   const sessions = new Sessions({ root, core, table, hosts: [local, remote] });
   t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   const row = { ...await fakeHarness('codex').spawn({ name: 'remote', cwd: root, role: null, model: null }), host: 't1', pid: process.pid, pidStarted: null, pidIdentity: 'linux:boot:123' };
@@ -193,7 +194,7 @@ test('remote legacy timestamps never acquire signal authority during stop or Lau
   const core = new HubCore();
   const table = new ProcessTable();
   const calls: string[] = [];
-  const remote = { ...localHost(), name: 't1', identity: async (pid: number) => { calls.push('identity'); return { pid, pidStarted: 'legacy', pidIdentity: 'linux:boot:1' }; }, stop: async () => { calls.push('stop'); return true; } };
+  const remote = { ...recordingHost(root), name: 't1', identity: async (pid: number) => { calls.push('identity'); return { pid, pidStarted: 'legacy', pidIdentity: 'linux:boot:1' }; }, stop: async () => { calls.push('stop'); return true; } };
   const sessions = new Sessions({ root, core, table, hosts: [remote] });
   t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   sessions.register(new OpenCodeAdapter(sessions.host({ node: '', cli: '', spoke: '', discoveryFile: '' }), { env: fixtureEnvironment(root, process.env) }));

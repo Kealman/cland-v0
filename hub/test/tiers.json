@@ -570,6 +570,7 @@
     "hub/test/qa-shipped-catalogue.test.ts": "T1",
     "hub/test/quarantine-runner.test.ts": "T3",
     "hub/test/quarantine.test.ts": "T1",
+    "hub/test/recording-host.test.ts": "T2",
     "hub/test/release-item.test.ts": "T3",
     "hub/test/release-preflight-component.test.ts": "T2",
     "hub/test/release-preflight.test.ts": "T1",

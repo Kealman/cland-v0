@@ -9,7 +9,7 @@ import { EventEmitter } from 'node:events';
 import { ProjectConfiguration } from '../src/hub/configuration.ts';
 import { CodexAdapter } from '../src/adapters/codex.ts';
 import { AppServerClient } from '../src/adapters/codex/app-server.ts';
-import { localHost } from '../src/host/local.ts';
+import { recordingHost } from './recording-host.ts';
 import type { Host } from '../src/host/host.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -124,7 +124,7 @@ test('live subtree authority covers launch, stop, verifier holds and root-only o
 
 test('adapter preparation rechecks Lead authority before native work is admitted', async t => {
   const work = heldOperations(t);
-  const root = await tempProject(t);
+  const root = await tempProject(t, 'lp-', '/tmp');
   const { discovery, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator' });
@@ -161,7 +161,7 @@ test('adapter preparation rechecks Lead authority before native work is admitted
     let end!: () => void;
     const exited = new Promise<{ code: number | null; signal: string | null }>(resolve => { end = () => resolve({ code: 0, signal: null }); });
     const host: Host = {
-      ...localHost(fixtureEnvironment(root, process.env)),
+      ...recordingHost(root),
       run: async command => {
         assert.equal(command.command, 'codex-in-memory');
         assert.deepEqual(command.args, ['--version']);
