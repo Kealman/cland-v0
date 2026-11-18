@@ -12,6 +12,25 @@ import { readLock } from '../src/hub/lock.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { FakeClock } from './fake-clock.ts';
 import { fixtureWork } from './fixture-work.ts';
+import { testWaitMs, waitTimeoutMs } from './until.ts';
+
+async function assertTimerLeak(root: string, script: string, name: string) {
+  const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
+  const reporter = new URL('./hub-cleanup-reporter.ts', import.meta.url).pathname;
+  const result = await promisify(execFile)(process.execPath, ['--test', `--test-reporter=${reporter}`, script], {
+    encoding: 'utf8', env: runnerFixtureEnvironment(root, env),
+    timeout: Math.ceil(waitTimeoutMs(testWaitMs(30_000))), killSignal: 'SIGKILL', maxBuffer: 65_536,
+  }).then(result => ({ code: 0, signal: null, ...result }), error => ({ code: error.code, signal: error.signal, stdout: error.stdout, stderr: error.stderr }));
+  const diagnostic = `incomplete leak control: exit ${result.code}, signal ${result.signal}; tail: ${(result.stdout + result.stderr).slice(-4000)}`;
+  assert.equal(result.code, 1, diagnostic);
+  const failure = result.stdout.trim().split('\n').map((line: string) => JSON.parse(line)).find((row: { name: string }) => row.name === name);
+  assert.ok(failure, diagnostic);
+  assert.equal(failure.error.failureType, 'hookFailed', diagnostic);
+  assert.equal(failure.error.cause.code, 'ERR_ASSERTION', diagnostic);
+  assert.equal(failure.error.cause.operator, 'deepStrictEqual', diagnostic);
+  assert.deepEqual(failure.error.cause.expected, { resources: [], listeners: [] }, diagnostic);
+  assert.ok(failure.error.cause.actual.resources.includes('Timeout'), diagnostic);
+}
 
 test('projectHub explicitly opts into native lock identity with fake infrastructure probes', async t => {
   await fixtureWork(t).run(async work => {
@@ -55,11 +74,7 @@ test('leaked hub timer', async t => {
  await projectHub(t, await tempProject(t));
  t.after(() => { globalThis.clearInterval = original; original(retained); });
 });\n`);
-  const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
-  const result = await promisify(execFile)(process.execPath, ['--test', script], { encoding: 'utf8', env: runnerFixtureEnvironment(root, env) }).then(result => ({ code: 0, ...result }), error => ({ code: error.code, stdout: error.stdout, stderr: error.stderr }));
-  assert.equal(result.code, 1, result.stdout + result.stderr);
-  assert.match(result.stdout, /projectHub leaked resources/);
-  assert.match(result.stdout, /Timeout/);
+  await assertTimerLeak(root, script, 'leaked hub timer');
 });
 
 test('projectHub cleanup detects a timer retained during a direct dispatcher request', async t => {
@@ -83,9 +98,5 @@ test('leaked request timer', async t => {
  assert.ok(retained, 'request reached the response boundary');
  t.after(() => clearInterval(retained));
 });\n`);
-  const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
-  const result = await promisify(execFile)(process.execPath, ['--test', script], { encoding: 'utf8', env: runnerFixtureEnvironment(root, env) }).then(result => ({ code: 0, ...result }), error => ({ code: error.code, stdout: error.stdout, stderr: error.stderr }));
-  assert.equal(result.code, 1, result.stdout + result.stderr);
-  assert.match(result.stdout, /projectHub leaked resources/);
-  assert.match(result.stdout, /Timeout/);
+  await assertTimerLeak(root, script, 'leaked request timer');
 });

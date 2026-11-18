@@ -3,6 +3,34 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadDiagnostic, redactLoadDiagnostic } from '../src/suite-load-diagnostics.ts';
 import LoadGateReporter from './load-gate-reporter.ts';
+import cleanupReporter from './hub-cleanup-reporter.ts';
+
+test('cleanup reporter waits for a held failure receipt and retains the assertion outcome', async () => {
+  const held = Promise.withResolvers<void>();
+  const entered = Promise.withResolvers<void>();
+  const assertion = Object.assign(new Error('arbitrary rendered wording'), {
+    code: 'ERR_ASSERTION', actual: { resources: ['Timeout'], listeners: [] },
+    expected: { resources: [], listeners: [] }, operator: 'deepStrictEqual',
+  });
+  async function* events() {
+    entered.resolve();
+    await held.promise;
+    yield { type: 'test:fail', data: { name: 'leaked hub timer', details: {
+      error: Object.assign(new Error('hook failed', { cause: assertion }), { failureType: 'hookFailed' }),
+    } } };
+  }
+  let reported = false;
+  const reporting = cleanupReporter(events()).next().then(receipt => { reported = true; return receipt; });
+  await entered.promise;
+  assert.equal(reported, false, 'an entered producer supplies no outcome before its held receipt');
+  held.resolve();
+  const receipt = JSON.parse((await reporting).value!);
+  assert.equal(receipt.name, 'leaked hub timer');
+  assert.equal(receipt.error.failureType, 'hookFailed');
+  assert.deepEqual(receipt.error.cause, { code: 'ERR_ASSERTION',
+    actual: { resources: ['Timeout'], listeners: [] },
+    expected: { resources: [], listeners: [] }, operator: 'deepStrictEqual' });
+});
 
 test('a reasoned platform skip supplies five skipped receipts while a boolean skip supplies no proof', async () => {
   const otherPlatform = process.platform === 'linux' ? 'darwin' : 'linux';

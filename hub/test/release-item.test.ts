@@ -10,6 +10,9 @@ import { cland, dispatcherUi, nativeProjectHub as projectHub, type CliResult } f
 import { preparedReleaseProject } from './prepared-project.ts';
 import { value } from './validation-support.ts';
 import type { ReleaseResult } from '../src/release.ts';
+import { fixtureWork } from './fixture-work.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
+import { testWaitMs, waitTimeoutMs } from './until.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
 const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
@@ -32,23 +35,45 @@ async function create(ui: Awaited<ReturnType<typeof dispatcherUi>>, title: strin
 const refs = (...repos: string[]) => repos.map(repo => git(repo, 'show-ref')).join('\n');
 
 // T3: native Git refs and committed package metadata at the item release boundary; no hub process starts.
-test('item release refuses a dev package version different from its version', { timeout: 5_000 }, async t => {
-  const { root, github, territory, ui } = await project(t);
-  const item = await create(ui, 'Next release', '--kind', 'release', '--version', '0.1.4');
-  const path = join(root, 'package.json');
-  await writeFile(path, '{"version":"0.1.3"}\n');
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Record release plan and package version');
-  const before = refs(root, territory, github);
-  const source = await readFile(join(root, item.path), 'utf8');
-  await releaseCover(root);
-  const refused = await cland(root, 'release', '--item', item.id, '--dry-run');
-  assert.notEqual(refused.code, 0);
-  assert.match(refused.stderr, /release-version: dev's package.json says 0\.1\.3, the release is v0\.1\.4/);
-  assert.equal(refs(root, territory, github), before);
-  assert.equal(await readFile(join(root, item.path), 'utf8'), source);
-  assert.equal(await readFile(path, 'utf8'), '{"version":"0.1.3"}\n');
-  assert.equal(git(root, 'status', '--porcelain'), '');
+test('item release refuses a dev package version different from its version', async t => {
+  const owner = fixtureWork(t);
+  const held = Promise.withResolvers<void>();
+  const prepared = Promise.withResolvers<void>();
+  owner.release(() => held.resolve());
+  await owner.run(async work => {
+    let delivered = false;
+    const setup = work.acquire(async () => {
+      const projectReceipt = await project(t);
+      prepared.resolve();
+      await held.promise;
+      delivered = true;
+      return projectReceipt;
+    }, project => project.hub.dispose());
+    void setup.catch(() => {}); // The final await and fixture owner still join rejection.
+    try {
+      await within(Promise.race([prepared.promise, setup]), waitTimeoutMs(testWaitMs()), undefined, () => new Error('release fixture setup receipt incomplete'));
+      assert.equal(delivered, false, 'setup remains held until the prepared receipt is observed');
+    } finally {
+      held.resolve();
+      await setup; // Join a late startup before the owner or test can remove its root.
+    }
+    const { root, github, territory, ui } = await setup;
+    const item = await create(ui, 'Next release', '--kind', 'release', '--version', '0.1.4');
+    const path = join(root, 'package.json');
+    await writeFile(path, '{"version":"0.1.3"}\n');
+    git(root, 'add', '.');
+    git(root, 'commit', '-qm', 'Record release plan and package version');
+    const before = refs(root, territory, github);
+    const source = await readFile(join(root, item.path), 'utf8');
+    await releaseCover(root);
+    const refused = await cland(root, 'release', '--item', item.id, '--dry-run');
+    assert.notEqual(refused.code, 0);
+    assert.match(refused.stderr, /release-version: dev's package.json says 0\.1\.3, the release is v0\.1\.4/);
+    assert.equal(refs(root, territory, github), before);
+    assert.equal(await readFile(join(root, item.path), 'utf8'), source);
+    assert.equal(await readFile(path, 'utf8'), '{"version":"0.1.3"}\n');
+    assert.equal(git(root, 'status', '--porcelain'), '');
+  });
 });
 
 test('release from an item refuses a missing version through the protocol and CLI without changing refs or the item', async t => {
