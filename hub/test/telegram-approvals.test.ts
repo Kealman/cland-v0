@@ -1,4 +1,5 @@
 // T2: real frames and native Telegram HTTP, with only platform and harness faked.
+import { testWaitMs, testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { join } from 'node:path';
@@ -70,11 +71,10 @@ async function fixture(t: TestContext, scripted?: 'codex' | 'opencode', drop?: (
     const name = `${harness}-worker`;
     const launched = await ui.request({ type: 'session.launch', name, harness, role: 'implementer' });
     assert.equal(launched.ok, true, launched.error);
+    if (script) await until(script.ready, { timeoutMs: testWaitMs(), what: 'native subscription ready before raising approval' });
     const delta = ui.waitFor(f => f.type === 'approval' && (f.approval as InboxApproval).session === name && (f.approval as InboxApproval).answerIn === 'hub', 1000);
-    if (script) {
-      await until(script.ready, { timeoutMs: 1000, what: 'native subscription ready before raising approval' });
-      script.raise(command);
-    } else hub.fakes[harness]!.raiseApproval(name, { id: 'remote', kind: 'command', subject: { command }, choices: ['once', 'always', 'deny'] });
+    if (script) script.raise(command);
+    else hub.fakes[harness]!.raiseApproval(name, { id: 'remote', kind: 'command', subject: { command }, choices: ['once', 'always', 'deny'] });
     const record = (await delta).approval as InboxApproval;
     let card: TgMessage | undefined;
     const mapped = until(async () => {
@@ -407,8 +407,8 @@ for (const interruption of ['omitted', 'aborted'] as const) test(`Telegram appro
     .then(() => { joined = true; });
   void failed.catch(() => {});
   try {
-    const hub = await within(f.owner.serving, 1000);
-    await within(f.polled, 1000);
+    const hub = await within(f.owner.serving, testSetupWaitMs());
+    await within(f.polled, testSetupWaitMs());
     assert.equal(f.observing(), true);
     if (interruption === 'omitted') await setupClock.advance(1000);
     else setupAbort.abort(new Error('cancel initial-poll setup'));
@@ -445,7 +445,7 @@ test('Telegram stale approval press after restart returns Already answered witho
   const next = f.newRemote();
   const initial = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
-  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  await driveTelegram(f.clock, f.state, within(initial, testSetupWaitMs()));
   assert.ok(card.reply_markup && 'inline_keyboard' in card.reply_markup);
   const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: f.fake.url, clock: f.clock });
   await api.editMessageText({ chat_id: '101', message_id: card.message_id, text: card.text!, reply_markup: card.reply_markup });
@@ -487,7 +487,7 @@ test('Telegram foreign approval press gets one private alert without hub frames 
   const next = f.newRemote();
   const initial = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
-  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  await driveTelegram(f.clock, f.state, within(initial, testSetupWaitMs()));
   const replayBefore = f.requests.length;
   const confirmedReplay = f.fake.waitForPoll();
   const replay = await control<{ update_id: number }>(f.fake.url, 'update', { callback_query: press.callback_query });
@@ -584,7 +584,7 @@ test('Telegram uncertain stale approval outcome stays fenced while callback and 
   const next = f.newRemote();
   const initial = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
-  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  await driveTelegram(f.clock, f.state, within(initial, testSetupWaitMs()));
   const progressed = f.fake.waitForPoll();
   const input = await control<{ update_id: number }>(f.fake.url, 'say', { text: 'After uncertain approval outcome' });
   assert.equal((await driveTelegram(f.clock, f.state, within(progressed, 1000))).params.offset, input.update_id + 1);
@@ -618,7 +618,7 @@ test('Telegram uncertain approval reply note confirms its input and never retran
   const next = f.newRemote();
   const initial = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
-  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  await driveTelegram(f.clock, f.state, within(initial, testSetupWaitMs()));
   const later = f.fake.waitForPoll();
   const last = await control<{ update_id: number }>(f.fake.url, 'say', { text: 'After unknown approval note' });
   assert.equal((await driveTelegram(f.clock, f.state, within(later, 1000))).params.offset, last.update_id + 1);

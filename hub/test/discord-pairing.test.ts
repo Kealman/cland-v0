@@ -1,4 +1,5 @@
 // T2: sealed production frame/fake Discord REST and gateway.
+import { testWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -13,7 +14,7 @@ test('Discord global cland definition writes once, compares on restart and repai
   await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   const start = () => projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } });
   let hub = await start();
-  await until(async () => (await fake.control('state')).commandWrites === 1, { timeoutMs: 1500, what: 'global command write' });
+  await until(async () => (await fake.control('state')).commandWrites === 1, { timeoutMs: testWaitMs(), what: 'global command write' });
   const commands = (await fake.control('state')).commands as Array<Record<string, unknown>>;
   assert.equal(commands.length, 1); const command = commands[0]!;
   for (const name of ['decision', 'question']) assert.deepEqual((command.options as Array<{ name: string; options?: object[] }>).find(o => o.name === name)!.options, [{ type: 3, name: 'text', description: 'Text', required: true }]);
@@ -39,7 +40,7 @@ test('Discord pair uses private bounded code replies, expiry and stranger reply 
   await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { clock, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } });
   const ui = await connectUi(t, hub.discovery, 'nvim');
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: 2000 });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: testWaitMs() });
   const first = await fake.control('interact', { user: 'member' });
   await until(async () => !!(await fake.control('state')).interactions.find(r => r.id === first.id)?.callbacks.length, { what: 'ephemeral pair callback', timeoutMs: 2000 });
   const row = (await fake.control('state')).interactions[0]!;
@@ -94,7 +95,7 @@ test('Discord CLI approval edits original privately, replaces old channel and pr
     },
   });
   hub = await start(); const ui = await connectUi(t, hub.discovery, 'nvim');
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: 2000 });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: testWaitMs() });
   const pair = async (channel_id: string) => {
     const interaction = await fake.control('interact', { channel_id });
     await until(async () => !!(await fake.control('state')).interactions.find(r => r.id === interaction.id)?.callbacks.length, { what: 'code callback', timeoutMs: 2000 });

@@ -1,4 +1,5 @@
 // T2: native Telegram mirror through public frames and the loopback Bot API.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
@@ -68,7 +69,7 @@ test('Telegram text decisions questions and formatting reach General as the huma
   const polled = fake.waitForPoll();
   const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
   const ui = await connectUi(t, hub.discovery, 'nvim');
-  const poll = await drive(within(polled, 1_000));
+  const poll = await drive(within(polled, testSetupWaitMs()));
   const history = await ui.request({ type: 'topic.history', topic: 'general' });
   assert.equal(history.ok, true, history.error);
   const messages = (history.value as { messages: TopicMessage[] }).messages.filter(message => message.via === 'telegram');
@@ -93,7 +94,7 @@ test('Telegram replies use the mirrored topic and react stored before delivered'
   const { root, clock, fake, owner, start, drive } = await fixture(t);
   const initialPoll = fake.waitForPoll();
   const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
-  await drive(within(initialPoll, 1_000));
+  await drive(within(initialPoll, testSetupWaitMs()));
   const ui = await connectUi(t, hub.discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
@@ -143,7 +144,7 @@ test('Telegram replies to the native outbound mirror without an echo or a seeded
   const { root, clock, fake, owner, start, drive } = await fixture(t);
   const initial = fake.waitForPoll();
   const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
-  await drive(within(initial, 1_000));
+  await drive(within(initial, testSetupWaitMs()));
   const ui = await connectUi(t, hub.discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
@@ -202,7 +203,7 @@ test('Telegram replays a stored input after interrupted feedback without a secon
   assert.equal((await drive(within(closed, 1_000))).id, entered.id);
   const polled = fake.waitForPoll();
   const second = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
-  const poll = await drive(within(polled, 1_000));
+  const poll = await drive(within(polled, testSetupWaitMs()));
   const ui = await connectUi(t, second.discovery);
   const history = await ui.request({ type: 'topic.history', topic: 'general' });
   assert.equal(history.ok, true, history.error);
@@ -219,7 +220,7 @@ test('Telegram stored feedback does not claim delivery until the queued addresse
   await control(fake.url, 'say', { text: 'Waiting for the Coordinator' });
   const polled = fake.waitForPoll();
   const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
-  const poll = await drive(within(polled, 1_000));
+  const poll = await drive(within(polled, testSetupWaitMs()));
   const before = await control<{ requests: Array<{ method: string; params: unknown }> }>(fake.url, 'state');
   assert.deepEqual(before.requests.filter(request => request.method === 'setMessageReaction').map(request => request.params), [
     { chat_id: '101', message_id: 1, reaction: [{ type: 'emoji', emoji: '👌' }] },
@@ -245,7 +246,7 @@ test('Telegram preserves workbench mention routing including named Aides and ite
   const { root, clock, fake, owner, start, drive } = await fixture(t);
   const initial = fake.waitForPoll();
   const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
-  await drive(within(initial, 1_000));
+  await drive(within(initial, testSetupWaitMs()));
   const ui = await connectUi(t, hub.discovery);
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   const aide = await inProcessSpoke(t, { cwd: root, discover: true, name: 'aide-1', role: 'aide', sessionId: 'aide' });
@@ -303,7 +304,7 @@ test('Telegram delivery arriving as stored feedback settles acquires the next re
     } };
   const initial = fake.waitForPoll();
   const hub = await start({}, { gatewayRemotes: [remote] });
-  await drive(within(initial, 1_000));
+  await drive(within(initial, testSetupWaitMs()));
   const storedClose = fake.waitForConnectionClose('setMessageReaction');
   await control(fake.url, 'say', { text: 'Reaction handoff' });
   const ok = await drive(within(held.completed, 1_000));
@@ -409,7 +410,7 @@ for (const legacy of [false, true]) test(`Telegram restart reconciles a confirme
   const polled = fake.waitForPoll();
   const storedClose = fake.waitForConnectionClose('setMessageReaction');
   const first = await start({}, { gatewayRemotes: [remote] });
-  const poll = await drive(within(polled, 1_000));
+  const poll = await drive(within(polled, testSetupWaitMs()));
   await drive(within(storedClose, 1_000));
   assert.equal(poll.params.offset, 2, 'the input was confirmed before session delivery');
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
@@ -467,7 +468,7 @@ test('Telegram unsupported messages reply once confirm and do not replay after r
   await control(fake.url, 'say', { text: 'Text after unsupported input' });
   const polled = owner.observe(signal => fake.waitForPoll(signal));
   const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
-  const poll = await drive(within(polled, 1_000));
+  const poll = await drive(within(polled, testSetupWaitMs()));
   assert.equal(poll.params.offset, 7);
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const history = await ui.request({ type: 'topic.history', topic: 'general' });
@@ -500,7 +501,7 @@ test('Telegram replies to an edit and delivers the following text', async t => {
   await control(fake.url, 'say', { text: 'After edit' });
   const polled = owner.observe(signal => fake.waitForPoll(signal));
   const hub = await start({ CLAND_TELEGRAM_API_ROOT: fake.url });
-  const poll = await drive(within(polled, 1_000));
+  const poll = await drive(within(polled, testSetupWaitMs()));
   assert.equal(poll.params.offset, 3);
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const history = await ui.request({ type: 'topic.history', topic: 'general' });

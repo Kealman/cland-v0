@@ -1,4 +1,5 @@
 // T2: sealed hub frames and the native messenger against a loopback fake Bot API.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -42,7 +43,7 @@ async function fixture(t: TestContext, muteDefault = false) {
   const { root, clock, fake, state, remote, owner } = f;
   const initial = fake.waitForPoll();
   const hub = await owner.start(root, {}, clock, { hubOptions: { gatewayRemotes: [remote] } });
-  await within(initial, 1000);
+  await within(initial, testSetupWaitMs());
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   const say = async (text: string, user = 'human') => {
@@ -204,7 +205,7 @@ for (const failure of ['missed receipt', 'aborted startup', 'rejected startup'] 
     if (closed) assert.equal((await closed).id, request.id);
     if (sending) assert.equal(await sending, 'incomplete');
     else {
-      const lateHub = await within(f.owner.serving, 1_000);
+      const lateHub = await within(f.owner.serving, testSetupWaitMs());
       await within(lateHub.stopped, 1_000);
     }
     assert.throws(() => f.state.outbox(), /not open|closed/i);

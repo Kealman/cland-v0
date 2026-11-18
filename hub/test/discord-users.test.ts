@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { discordCardsFixture } from './discord-cards-fixture.ts';
 import { DISCORD_IDS as ids } from './fakes/discord/fake-api.ts';
-import { connectUi, inProcessSpoke, until } from './harness.ts';
+import { connectUi, inProcessSpoke, until, testWaitMs } from './harness.ts';
 import type { TopicMessage } from '../src/protocol.ts';
 
 for (const separate of [false, true]) test(`Discord users in ${separate ? 'separate channels' : 'one channel'} receive General and cards once and fold every copy`, async t => {
@@ -94,7 +94,7 @@ for (const separate of [false, true]) test(`Discord users frozen history survive
   for (const [user, target] of [['human', ids.channel], ['member', channel]] as const) {
     const seed = await f.fake.control('say', { user, channel_id: target, content: `Seed ${user}` });
     await f.fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: seed });
-    await until(() => !!f.state.message(target, seed.id), { what: 'durable cursor seed', timeoutMs: 1500 });
+    await until(() => !!f.state.message(target, seed.id), { what: 'durable cursor seed', timeoutMs: testWaitMs() });
   }
   f.holdFrames('topic.send');
   const pending: Array<{ id: string; channel: string; userId: string; text: string }> = [];
@@ -147,11 +147,11 @@ for (const boundary of ['history', 'gap', 'card'] as const) test(`Discord users 
   for (const [user, channel] of [['human', ids.channel], ['member', ids.secondChannel]] as const) {
     const seed = await f.fake.control('say', { user, channel_id: channel, content: `Seed ${user}` });
     await f.fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: seed });
-    await until(() => !!f.state.message(channel, seed.id), { what: 'durable channel cursor seed', timeoutMs: 1500 });
+    await until(() => !!f.state.message(channel, seed.id), { what: 'durable channel cursor seed', timeoutMs: testWaitMs() });
   }
   const open = await f.coord.call<{ ask: string }>('ask', { topic: 'general', question: 'Recover this card', options: ['Yes'] });
   await f.clock.advance(250);
-  await until(() => f.state.messagesForAsk(open.ask).length === 2, { what: 'both initial cards durable', timeoutMs: 1500 });
+  await until(() => f.state.messagesForAsk(open.ask).length === 2, { what: 'both initial cards durable', timeoutMs: testWaitMs() });
   if (boundary === 'gap') {
     const at = f.clock.now().toISOString();
     f.state.putOutbox({ id: 'blocked-gap-job', kind: 'general', source: 'blocked-gap-source', state: 'missed', created: at, updated: at,
@@ -241,7 +241,7 @@ test('Discord users slash commands preserve invocation attribution and first ans
   }
   const ask = await f.coord.call<{ ask: string }>('ask', { topic: 'general', question: 'Inbox first winner', options: ['Ship', 'Wait'] });
   await f.clock.advance(250);
-  await until(() => f.state.messagesForAsk(ask.ask).length === 2, { what: 'initial durable copies', timeoutMs: 1500 });
+  await until(() => f.state.messagesForAsk(ask.ask).length === 2, { what: 'initial durable copies', timeoutMs: testWaitMs() });
   for (const user of ['human', 'member'] as const) {
     const before = f.state.messagesForAsk(ask.ask);
     await command(user, 'inbox');

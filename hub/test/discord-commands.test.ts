@@ -1,4 +1,5 @@
 // T2: production frame port and sealed loopback Discord REST/ws.
+import { testWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -41,9 +42,9 @@ async function fixture(t: TestContext, holdType?: string, projectName = 'Command
     if (exchange.signal.aborted) await hub.stop();
   });
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
-  await until(async () => (await exchange.fake.control('state')).gateway.identifies === 1, { what: 'Discord READY', timeoutMs: 2000 });
+  await until(async () => (await exchange.fake.control('state')).gateway.identifies === 1, { what: 'Discord READY', timeoutMs: testWaitMs() });
   await exchange.fake.control('dispatch', { op: 1, d: null });
-  await until(() => remote.status!().connected, { what: 'READY plus native heartbeat ACK', timeoutMs: 1500 });
+  await until(() => remote.status!().connected, { what: 'READY plus native heartbeat ACK', timeoutMs: testWaitMs() });
   const command = (name: string, text?: string) => exchange.run(async () => {
     const { id } = await exchange.fake.control('interact', { command: name, ...(text === undefined ? {} : { text }) });
     await until(async () => !!(await exchange.fake.control('state')).interactions.find(row => row.id === id)?.callbacks.length,

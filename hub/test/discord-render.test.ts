@@ -1,4 +1,5 @@
 // T2: production General frames and loopback Discord native receipts.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -205,7 +206,7 @@ test('Discord render owner stops late subject acquisition before closing its Sto
   let closing: Promise<void> | undefined;
   try {
     const { within } = await import('../src/executor/droplet/deadline.ts');
-    await within(acquired.promise, 1000);
+    await within(acquired.promise, testSetupWaitMs());
     closing = close(); void closing.catch(() => {});
     assert.doesNotThrow(() => state!.outbox(), 'Store remains usable during unresolved startup');
     release.resolve();

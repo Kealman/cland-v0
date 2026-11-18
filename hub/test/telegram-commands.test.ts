@@ -1,4 +1,5 @@
 // T2: phone commands through the production gateway and loopback Bot API.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -46,7 +47,7 @@ test('Telegram registers the private menu on first start and only repairs platfo
     if (expectedWrites === 2) await control(fake.url, 'commands', { commands: [{ command: 'stale', description: 'Old menu' }] });
     const polling = fake.waitForPoll();
     const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
-    const poll = await within(polling, 1_000);
+    const poll = await within(polling, testSetupWaitMs());
     const state = await control<{ requests: Array<{ method: string; params: Record<string, unknown> }> }>(fake.url, 'state');
     const writes = state.requests.filter(request => request.method === 'setMyCommands');
     assert.equal(writes.length, expectedWrites);
@@ -73,7 +74,7 @@ test('Telegram help is phone text with bold sections, command bullets and trust 
   try { store.remotes.forMessenger('telegram').setPairing(pairing); } finally { store.close(); }
   const polling = fake.waitForPoll();
   const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
-  await within(polling, 1_000);
+  await within(polling, testSetupWaitMs());
   const confirmed = fake.waitForPoll();
   const update = await control<{ update_id: number }>(fake.url, 'say', { text: '/help@cland_fixture_bot' });
   const poll = await within(confirmed, 1_000, undefined, () => new Error('help durable handling receipt missing'));
@@ -110,7 +111,7 @@ test('Telegram status reads gateway facts with six session bullets and transport
   try { store.remotes.forMessenger('telegram').setPairing(pairing); } finally { store.close(); }
   const polling = fake.waitForPoll();
   const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
-  await within(polling, 1_000);
+  await within(polling, testSetupWaitMs());
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   for (let n = 1; n <= 6; n++) await inProcessSpoke(t, { cwd: root, discover: true, name: `worker-${n}`, sessionId: `worker-${n}` });
@@ -157,7 +158,7 @@ test('Telegram inbox repeats open asks and cancel leaves them open while start n
   const polling = fake.waitForPoll();
   const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
   const { drive, ownHub } = commandPacing(t, root, clock, hub);
-  let poll = await drive(within(polling, 1_000));
+  let poll = await drive(within(polling, testSetupWaitMs()));
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   const say = async (text: string) => {
@@ -212,7 +213,7 @@ test('Telegram command replay does not repeat a reply committed before its lost 
   const polling = fake.waitForPoll();
   const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
   const { drive, ownHub } = commandPacing(t, root, clock, hub);
-  await drive(within(polling, 1_000));
+  await drive(within(polling, testSetupWaitMs()));
   await control(fake.url, 'fault', { method: 'sendMessage', code: 503, response: 'hold-after-send' });
   const committed = fake.waitForHeldRequest('sendMessage');
   const update = await control<{ update_id: number }>(fake.url, 'say', { text: '/cancel' });
@@ -253,7 +254,7 @@ test('Telegram inbox uses one long literal card while long status replies retain
   const polling = fake.waitForPoll();
   const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
   const { drive, ownHub } = commandPacing(t, root, clock, hub);
-  await drive(within(polling, 1_000));
+  await drive(within(polling, testSetupWaitMs()));
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   const question = '**literal** _text_ [link](target)\n' + '📦'.repeat(1000) + 'q'.repeat(3500);
   const options = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];

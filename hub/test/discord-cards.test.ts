@@ -1,4 +1,5 @@
 import { discordCardsFixture as fixture, discordHistorySeed as historySeed } from './discord-cards-fixture.ts';
+import { testWaitMs } from './until.ts';
 import { DISCORD_HISTORY_LIMIT } from '../src/remote/discord-catchup.ts';
 import { abortable, within } from '../src/executor/droplet/deadline.ts';
 // T2: production frame port and sealed loopback Discord REST/ws.
@@ -611,7 +612,7 @@ for (const harness of ['codex', 'opencode'] as const) test(`Discord ${harness} a
   const ui = await connectUi(t, f.hub.discovery, 'nvim');
   await ui.request({ type: 'subscribe' });
   assert.equal((await ui.request({ type: 'session.launch', name: 'approval-worker', harness, role: 'implementer' })).ok, true);
-  await until(f.script!.ready, { what: 'scripted native approval subscription', timeoutMs: 1500 });
+  await until(f.script!.ready, { what: 'scripted native approval subscription', timeoutMs: testWaitMs() });
   const raised = ui.waitFor(frame => frame.type === 'approval' && (frame.approval as import('../src/protocol.ts').InboxApproval).answerIn === 'hub', 1500);
   f.script!.raise('x'.repeat(5000));
   const record = (await raised).approval as import('../src/protocol.ts').InboxApproval;
@@ -808,7 +809,7 @@ test('Discord resumed scripted approval press preserves the colon-bearing approv
   const ui = await connectUi(t, f.hub.discovery, 'nvim');
   await ui.request({ type: 'subscribe' });
   assert.equal((await ui.request({ type: 'session.launch', name: 'approval-worker', harness: 'codex', role: 'implementer' })).ok, true);
-  await until(f.script!.ready, { what: 'scripted native approval subscription', timeoutMs: 1500 });
+  await until(f.script!.ready, { what: 'scripted native approval subscription', timeoutMs: testWaitMs() });
   const raised = ui.waitFor(frame => frame.type === 'approval' && (frame.approval as import('../src/protocol.ts').InboxApproval).answerIn === 'hub', 1500);
   f.script!.raise('x'.repeat(5000));
   const record = (await raised).approval as import('../src/protocol.ts').InboxApproval;
@@ -1001,7 +1002,7 @@ test('Discord fresh Identify catches history in order and resends every open car
   const peer = await openCard(f);
   const seed = await f.fake.control('say', { content: 'History cursor' });
   await f.fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: seed });
-  await until(() => f.state.get('discord.lastMessageId') === seed.id, { what: 'stored cursor', timeoutMs: 2000 });
+  await until(() => f.state.get('discord.lastMessageId') === seed.id, { what: 'stored cursor', timeoutMs: testWaitMs() });
   const hub = await f.restart(180000, async () => {
     f.state.set('discord.session', null);
     await f.fake.control('say', { content: 'Offline first' });

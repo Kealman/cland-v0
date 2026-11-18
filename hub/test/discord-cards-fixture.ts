@@ -1,4 +1,5 @@
 import type { TestContext } from 'node:test';
+import { testWaitMs } from './until.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { projectHub, inProcessSpoke, until } from './harness.ts';
@@ -54,9 +55,9 @@ export async function discordCardsFixture(t: TestContext, holdType?: string, pro
   });
   await startHub();
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
-  await until(async () => (await exchange.fake.control('state')).gateway.identifies === 1, { what: 'Discord READY', timeoutMs: 2000 });
+  await until(async () => (await exchange.fake.control('state')).gateway.identifies === 1, { what: 'Discord READY', timeoutMs: testWaitMs() });
   await exchange.fake.control('dispatch', { op: 1, d: null });
-  await until(() => remote.status!().connected, { what: 'READY plus native heartbeat ACK', timeoutMs: 1500 });
+  await until(() => remote.status!().connected, { what: 'READY plus native heartbeat ACK', timeoutMs: testWaitMs() });
   const command = (name: string, text?: string) => exchange.run(async () => {
     const { id } = await exchange.fake.control('interact', { command: name, ...(text === undefined ? {} : { text }) });
     await until(async () => !!(await exchange.fake.control('state')).interactions.find(row => row.id === id)?.callbacks.length,
@@ -71,8 +72,8 @@ export async function discordHistorySeed(f: Awaited<ReturnType<typeof discordCar
   await f.fake.control('configure', { interval: 1000000, sendLimit: 10000, sendWindow: 0 });
   const seed = await f.fake.control('say', { content: 'Cursor seed' });
   await f.fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: seed });
-  await until(() => f.state.get('discord.lastMessageId') === seed.id, { what: 'TEXT cursor committed', timeoutMs: 2000 });
-  await until(() => f.state.outbox().some(j => j.source === `discord.reaction:${ids.channel}:${seed.id}:👌` && j.state === 'sent'), { what: 'seed feedback settled', timeoutMs: 2000 });
+  await until(() => f.state.get('discord.lastMessageId') === seed.id, { what: 'TEXT cursor committed', timeoutMs: testWaitMs() });
+  await until(() => f.state.outbox().some(j => j.source === `discord.reaction:${ids.channel}:${seed.id}:👌` && j.state === 'sent'), { what: 'seed feedback settled', timeoutMs: testWaitMs() });
   return seed;
 }
 

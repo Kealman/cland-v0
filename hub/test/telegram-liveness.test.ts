@@ -1,4 +1,5 @@
 // T2: production Telegram factory, sealed project frames and loopback fake; fake time owns behavior.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { writeFile } from 'node:fs/promises';
@@ -64,7 +65,7 @@ test('Telegram restarts stalled 40-second and offline zero-timeout polls exactly
   await control(f.fake.url, 'stall', { enabled: true });
   const polled = f.fake.waitForPoll();
   const { hub, status } = await f.start();
-  const poll = await within(polled, 1_000);
+  const poll = await within(polled, testSetupWaitMs());
   assert.equal(poll.params.timeout, 40);
   assert.equal((await status()).connection, 'connected', 'getMe is a successful exchange');
   await f.clock.advance(54_999);
@@ -157,7 +158,7 @@ for (const code of [401, 403]) {
     const f = await fixture(t);
     const polled = f.fake.waitForPoll();
     const { hub, ui, status, history } = await f.start();
-    const poll = await within(polled, 1_000);
+    const poll = await within(polled, testSetupWaitMs());
     await control(f.fake.url, 'fault', { method: 'getUpdates', code, echoToken: true, description: 'Long provider detail. '.repeat(40) });
     const text = code === 401 ? 'wrong or revoked token (401)' : 'bot blocked (403)';
     const notice = ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).topic === 'general'
@@ -231,7 +232,7 @@ for (const code of [401, 403]) {
     finally { store.close(); }
     const polled = f.fake.waitForPoll();
     const { hub, ui, status, history } = await f.start();
-    const poll = await within(polled, 1_000);
+    const poll = await within(polled, testSetupWaitMs());
     await control(f.fake.url, 'fault', { method: 'sendRichMessage', code, echoToken: true });
     const cause = code === 401 ? 'wrong or revoked token (401)' : 'bot blocked (403)';
     const notice = ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).text.includes(cause), 1_000);
@@ -257,7 +258,7 @@ test('Telegram unblocked after 403 resumes on unchanged reload while configurati
   const f = await fixture(t);
   const polled = f.fake.waitForPoll();
   const { hub, ui, status } = await f.start();
-  const poll = await within(polled, 1_000);
+  const poll = await within(polled, testSetupWaitMs());
   await control(f.fake.url, 'fault', { method: 'getUpdates', code: 403 });
   const notice = ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).text.includes('bot blocked (403)'), 1_000);
   const closed = f.fake.waitForPollClose(poll.id);
@@ -293,7 +294,7 @@ test('Telegram membership unblock and queued paired start survive unchanged relo
   finally { store.close(); }
   const initial = f.fake.waitForPoll();
   const { hub, ui, status, history } = await f.start();
-  const poll = await within(initial, 1_000);
+  const poll = await within(initial, testSetupWaitMs());
   const blockedLine = 'Telegram remote: bot blocked (403); unblock the bot in Telegram, then run cland hub reload';
   const blocked = ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).text === blockedLine, 1_000);
   const closed = f.fake.waitForPollClose(poll.id);

@@ -1,4 +1,5 @@
 // T2: users-mode Telegram fan-out and native answers against the sealed Bot API.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -37,7 +38,7 @@ async function fixture(t: TestContext) {
   owner.close(() => remote.stop());
   const initial = fake.waitForPoll();
   const hub = await owner.start(root, {}, clock, { hubOptions: { gatewayRemotes: [remote] } });
-  await within(initial, 1000);
+  await within(initial, testSetupWaitMs());
   const ui = await connectUi(t, hub.discovery, 'nvim');
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });

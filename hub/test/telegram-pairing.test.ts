@@ -1,4 +1,5 @@
 // T2: production Telegram pairing through sealed CLI/frames and the loopback fake Bot API.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -63,7 +64,7 @@ test('Telegram private starts respect stranger limits and CLI approval names the
   const stateStore = owner.store(join(root, '.cland/hub.db')).remotes.forMessenger('telegram');
   const initial = owner.observe(signal => fake.waitForPoll(signal));
   const hub = await owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock);
-  let poll = await within(initial, 1_000);
+  let poll = await within(initial, testSetupWaitMs());
   const ui = await pairingFrames(owner, hub, root);
   const say = async (user: 'human' | 'stranger', text: string) => {
     await clock.advance(1_000);
@@ -130,7 +131,7 @@ for (const [approvalPath, recovery] of [['nvim', 'live'], ['setup', 'live'], ['n
   const state = owner.store(join(root, '.cland/hub.db')).remotes.forMessenger('telegram');
   const initial = owner.observe(signal => fake.waitForPoll(signal));
   let hub = await owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock);
-  await within(initial, 1_000);
+  await within(initial, testSetupWaitMs());
   const ui = await pairingFrames(owner, hub, root);
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   for (const question of ['Older question', 'Newer question']) {
@@ -186,7 +187,7 @@ for (const source of ['membership', '403'] as const) test(`Telegram stops and re
   finally { store.close(); }
   const initial = fake.waitForPoll();
   const hub = await projectHub(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url }, { clock });
-  let poll = await within(initial, 1_000);
+  let poll = await within(initial, testSetupWaitMs());
   const ui = await connectUi(t, hub.discovery, 'nvim');
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'remote.test', messenger: 'telegram' })).ok, true);

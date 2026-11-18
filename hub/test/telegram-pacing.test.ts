@@ -1,4 +1,5 @@
 // T2: production gateway frames and a loopback fake API; all time is injected.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -420,7 +421,7 @@ for (const failure of ['missed receipt', 'aborted receipt', 'rejected startup'] 
   const rejected = assert.rejects(starting, failure === 'missed receipt' ? /setup receipt deadline/ : failure === 'aborted receipt' ? /setup cancelled/ : /Invalid TOML document: unfinished array/);
   let hub: Awaited<typeof owner.serving> | undefined;
   if (failure !== 'rejected startup') {
-    hub = await within(owner.serving, 1_000);
+    hub = await within(owner.serving, testSetupWaitMs());
     assert.equal(state.outbox()[0]?.state, 'sending', 'the producer remains owned while setup has no receipt');
     if (failure === 'missed receipt') await setupClock.advance(1_000);
     else setupAbort.abort(new Error('Telegram pacing fixture setup cancelled'));
@@ -477,13 +478,13 @@ for (const interruption of ['abort', 'missing startup deadline'] as const) test(
   const starting = owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock, { clock: setupClock, setupTimeoutMs: 1_000, signal: setupAbort.signal });
   void starting.catch(() => {});
   try {
-    const request = await within(entered, 1_000);
+    const request = await within(entered, testSetupWaitMs());
     const rejected = assert.rejects(within(starting, 1_000, undefined,
       () => new Error('pre-serving setup observer did not settle')), interruption === 'abort' ? /cancel held acquisition/ : /setup receipt deadline reached/);
     if (interruption === 'abort') setupAbort.abort(new Error('cancel held acquisition'));
     else await setupClock.advance(1_000);
     await rejected;
-    const lateHub = await within(owner.serving, 1_000);
+    const lateHub = await within(owner.serving, testSetupWaitMs());
     await within(lateHub.stopped, 1_000);
     assert.equal(request.method, 'getMe');
     assert.deepEqual(native.receipts(), { listening: true, closed: true, connections: 0, handlers: 0, nativeError: null });

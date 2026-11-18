@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { telegramMarks } from './telegram-marks-fixture.ts';
 import { access } from 'node:fs/promises';
@@ -14,8 +15,8 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Telegram marks fixt
   const closed = f.owner.observe(async signal => f.fake.waitForPollClose((await poll).id, signal), { drain: true });
   const starting = f.startHub(root, f.env, {}, { receipt: new Promise<void>(() => {}), clock: setupClock, setupTimeoutMs: 1_000, signal: abort.signal });
   const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /cancelled/);
-  const hub = await within(f.owner.serving, 2000);
-  await within(poll, 2000);
+  const hub = await within(f.owner.serving, testSetupWaitMs());
+  await within(poll, testSetupWaitMs());
   if (failure === 'omitted') await setupClock.advance(1000);
   else abort.abort(new Error('setup cancelled'));
   await rejected;
@@ -43,7 +44,7 @@ test('Telegram marks incomplete drain retains root and Store until actual settle
   try {
     const removing = project.remove();
     const incomplete = assert.rejects(removing, /drainage incomplete; root retained/);
-    await within(entered.promise, 2000);
+    await within(entered.promise, testSetupWaitMs());
     await drainClock.advance(1000);
     await incomplete;
     await access(project.root);

@@ -1,4 +1,5 @@
 // T2: sealed frame gateway and loopback Bot API, with durable handler receipts.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { join } from 'node:path';
@@ -30,7 +31,7 @@ test('Telegram confirms only durable handling and deduplicates update and messag
   await control(fake.url, 'update', { message: original.message });
   const polled = fake.waitForPoll();
   const hub = await projectHub(t, root, {}, { gatewayRemotes: [native.gateway], clock });
-  const receipt = await within(polled, 1_000);
+  const receipt = await within(polled, testSetupWaitMs());
   assert.equal(receipt.params.offset, 3);
   assert.equal(receipt.params.timeout, 40);
   assert.deepEqual(receipt.params.allowed_updates, ['message', 'edited_message', 'callback_query', 'my_chat_member']);
@@ -72,7 +73,7 @@ test('Telegram filters foreign identities unlisted kinds and bots before the han
   const accepted = await control<TgUpdate>(fake.url, 'say', { text: 'approved human' });
   const polled = fake.waitForPoll();
   const hub = await projectHub(t, root, {}, { gatewayRemotes: [native.gateway], clock });
-  const receipt = await within(polled, 1_000);
+  const receipt = await within(polled, testSetupWaitMs());
   assert.equal(receipt.params.offset, accepted.update_id + 1);
   assert.deepEqual(native.handled, [accepted.update_id], 'no download, command or handler work for rejected input');
   const ui = await connectUi(t, hub.discovery, 'nvim');
@@ -200,7 +201,7 @@ test('Telegram registry isolates private pairing starts and distinct callbacks o
   await control(fake.url, 'membership', { status: 'kicked' });
   const polled = fake.waitForPoll();
   const hub = await projectHub(t, root, {}, { gatewayRemotes: [remote], clock });
-  const receipt = await within(polled, 1_000);
+  const receipt = await within(polled, testSetupWaitMs());
   assert.equal(receipt.params.offset, 9);
   assert.deepEqual(handled, [['pairing', 2], ['paired', 3], ['callback', 4], ['callback', 6], ['paired', 7], ['paired', 8]]);
   const closed = fake.waitForPollClose(receipt.id);
@@ -228,7 +229,7 @@ test('Telegram confirms unmatched registry input without a retry loop', async t 
     text: 'payload must stay out of diagnostic' } });
   running = pollTelegram(api, clock, 123456789, { store: state, handlers: [], log: entry => { logs.push(entry); } }, abort.signal, () => {});
   void running.catch(() => {});
-  const receipt = await within(polled, 1_000);
+  const receipt = await within(polled, testSetupWaitMs());
   assert.equal(receipt.params.offset, 2);
   assert.equal(state.get('telegram.offset'), '2');
   assert.deepEqual(logs, [{ event: 'telegram-update-unhandled', update: 1, kind: 'edited_message' }]);

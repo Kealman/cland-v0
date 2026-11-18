@@ -1,4 +1,5 @@
 // T2: production messenger construction through projectHub's public frames and a loopback Bot API.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -113,7 +114,7 @@ test('Telegram configuration reload starts the native client only when enabled',
   const polled = fake.waitForPoll();
   const enabled = await ui.request({ type: 'hub.reload' });
   assert.equal(enabled.ok, true, enabled.error);
-  const poll = await within(polled, 1_000);
+  const poll = await within(polled, testSetupWaitMs());
   assert.deepEqual(await methods(), ['getMe', 'getMyCommands', 'setMyCommands', 'getUpdates']);
   const unchanged = await ui.request({ type: 'hub.reload' });
   assert.equal(unchanged.ok, true, unchanged.error);

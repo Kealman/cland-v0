@@ -1,6 +1,7 @@
 // T2: plain-fetch Discord client against a loopback REST fake; no hub process.
 import './cover-quiet.ts';
 import { discordExchangeOwner } from './fakes/discord/exchange.ts';
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DiscordApi, DiscordError } from '../src/remote/discord-api.ts';
@@ -294,7 +295,7 @@ test('Discord fake omitted and aborted websocket close observers retain held RES
     const call = new DiscordApi(DISCORD_TEST_TOKEN, { apiRoot: fake.url }).getCurrentApplication({ signal: callAbort.signal });
     void call.catch(() => {});
     try {
-      await within(hello, 1000); await held;
+      await within(hello, testSetupWaitMs()); await held;
       await within(fake.closeGateway(), 1000); await within(closed, 1000);
       assert.deepEqual(fake.gatewayReceipts(), { listening: true, closed: true, clients: 0 });
       if (mode === 'omitted') await setupClock.advance(1000); else observerAbort.abort();

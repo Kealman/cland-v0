@@ -1,4 +1,5 @@
 // T3: a real hub process is SIGKILLed with an unconfirmed Telegram update or mid Discord history catch-up; restart recovers it.
+import { testWaitMs, testSetupWaitMs } from './until.ts';
 import { discordHistoryProfile } from './discord-history-profile.ts';
 import { discordCardsFixture as fixture, discordHistorySeed as historySeed } from './discord-cards-fixture.ts';
 import assert from 'node:assert/strict';
@@ -19,6 +20,8 @@ import { lockHostIdentity } from '../src/hub/lock-identity.ts';
 import { pacingOwner } from './telegram-pacing-fixture.ts';
 import { recordedProcess } from './process-cleanup.ts';
 import { abortable, within } from '../src/executor/droplet/deadline.ts';
+
+const SETUP_RECEIPT_DEADLINE_MS = 1_000; // Exact FakeClock fault boundary.
 
 test('SIGKILL mid-update leaves the Telegram offset unconfirmed and restart handles it once', async t => {
   const owner = pacingOwner(t, { lockIdentity: lockHostIdentity() });
@@ -45,13 +48,13 @@ test('SIGKILL mid-update leaves the Telegram offset unconfirmed and restart hand
   const live = await processes.inspect(first.discovery.pid);
   assert.equal(live.alive, true, 'positive control: native inspection retains the live writer');
   assert.equal(live.identity, captured.identity, 'the inspected writer is the owned incarnation');
-  assert.equal((await within(initialPoll, 2_000)).params.offset, undefined);
+  assert.equal((await within(initialPoll, testSetupWaitMs())).params.offset, undefined);
   // The production text handler awaits feedback after its durable human commit.
   // Hold that native exchange, rather than relying on unmatched input to stall.
   await control(fake.url, 'fault', { method: 'setMessageReaction', code: 503, response: 'hold' });
   const interrupted = owner.observe(signal => fake.waitForHeldRequest('setMessageReaction', signal));
   await control(fake.url, 'say', { text: 'recover after real kill' });
-  const held = await within(interrupted, 3_000);
+  const held = await within(interrupted, testSetupWaitMs());
   const before = new Store(db);
   let original: TopicMessage | undefined;
   try {
@@ -126,7 +129,7 @@ test('SIGKILL after Telegram human commit before adapter receipt replays the dur
   const first = await startDaemon(t, root, { CLAND_TELEGRAM_API_ROOT: fake.url,
     CLAND_TEST_CRASH_AT: 'telegram-input-committed' });
   nativePid = first.discovery.pid;
-  const poll = await within(polled, 2_000);
+  const poll = await within(polled, testSetupWaitMs());
   const processes = nativePollerProcesses(fixtureEnvironment(root, process.env));
   const captured = recordedProcess(first.discovery.pid);
   assert.ok(captured?.identity, 'the fixture owns this native incarnation');
@@ -198,13 +201,13 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Telegram restart ob
   const closed = owner.observe(signal => fake.waitForConnectionClose('setMessageReaction', signal), { drain: true });
   await control(fake.url, 'say', { text: 'setup control' });
   const starting = owner.start(root, { CLAND_TELEGRAM_API_ROOT: fake.url }, clock, {
-    receipt: new Promise<void>(() => {}), clock: setupClock, setupTimeoutMs: 1_000, signal: abort.signal,
+    receipt: new Promise<void>(() => {}), clock: setupClock, setupTimeoutMs: SETUP_RECEIPT_DEADLINE_MS, signal: abort.signal,
   });
   const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /setup cancelled/);
-  const hub = await within(owner.serving, 1_000);
-  const receipt = await within(held, 1_000);
+  const hub = await within(owner.serving, testSetupWaitMs());
+  const receipt = await within(held, testSetupWaitMs());
   assert.equal(store.remotes.forMessenger('telegram').get('telegram.offset'), null);
-  if (failure === 'omitted') await setupClock.advance(1_000);
+  if (failure === 'omitted') await setupClock.advance(SETUP_RECEIPT_DEADLINE_MS);
   else abort.abort(new Error('Telegram pacing fixture setup cancelled'));
   await rejected;
   await owner.dispose();
@@ -235,7 +238,7 @@ async function discordHistoryCrashOwner(t: import('node:test').TestContext) {
     startNative: (extra: Record<string, string>, setup: { receipt?: Promise<void>; signal?: AbortSignal; timeoutMs?: number; clock?: import('../src/hub/clock.ts').Clock } = {}) => {
       const ready = Promise.withResolvers<Awaited<ReturnType<typeof startDaemon>>>();
       const observed = lifetime.observe(signal => within(abortable(ready.promise,
-        AbortSignal.any([signal, ...(setup.signal ? [setup.signal] : [])])), setup.timeoutMs ?? 10000, setup.clock, () => new Error('Discord native setup receipt deadline')));
+        AbortSignal.any([signal, ...(setup.signal ? [setup.signal] : [])])), testSetupWaitMs(setup.clock, setup.timeoutMs), setup.clock, () => new Error('Discord native setup receipt deadline')));
       acquiring = startDaemon(t, root, extra);
       void acquiring.then(async hub => {
         native = hub;
@@ -281,7 +284,7 @@ for (const boundary of ['committed', 'page-uncommitted'] as const) test(boundary
   const live = await processes.inspect(pid);
   assert.equal(live.alive, true);
   assert.equal(live.identity, captured.identity);
-  await until(async () => (await owner.fake.control('state')).gateway.identifies === 1, { what: 'initial native READY', timeoutMs: 2000 });
+  await until(async () => (await owner.fake.control('state')).gateway.identifies === 1, { what: 'initial native READY', timeoutMs: testWaitMs() });
   await owner.fake.control('say', { contents: ['Killed history first', 'Killed history second'] });
   // The first Identify had no missing history. A session-invalidating 4003 now
   // exercises a fresh Identify and history, respecting the native five-second budget.
@@ -326,13 +329,13 @@ for (const failure of ['omitted', 'aborted'] as const) test(`Discord native hist
   const abort = new AbortController();
   const unmatched = owner.waitForExit(async () => ({ alive: true }));
   const cancelled = assert.rejects(unmatched, /abort|cancel/i);
-  const starting = owner.startNative({ CLAND_DISCORD_API_ROOT: owner.fake.url }, { receipt: new Promise<void>(() => {}), signal: abort.signal, clock, timeoutMs: 1000 });
+  const starting = owner.startNative({ CLAND_DISCORD_API_ROOT: owner.fake.url }, { receipt: new Promise<void>(() => {}), signal: abort.signal, clock, timeoutMs: SETUP_RECEIPT_DEADLINE_MS });
   const rejected = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /abort/i);
-  await until(() => !!owner.native(), { what: 'owned native acquisition before losing setup receipt', timeoutMs: 2000 });
+  await until(() => !!owner.native(), { what: 'owned native acquisition before losing setup receipt', timeoutMs: testWaitMs() });
   const native = owner.native()!;
   const processes = nativePollerProcesses(fixtureEnvironment(owner.root, process.env));
   assert.equal((await processes.inspect(native.discovery.pid)).alive, true);
-  if (failure === 'omitted') await clock.advance(1000); else abort.abort();
+  if (failure === 'omitted') await clock.advance(SETUP_RECEIPT_DEADLINE_MS); else abort.abort();
   await rejected;
   await cancelled;
   assert.deepEqual(await processes.inspect(native.discovery.pid), { alive: false, started: null, identity: null });

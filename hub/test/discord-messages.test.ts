@@ -1,4 +1,5 @@
 // T2: production frames and loopback Discord REST/ws.
+import { testWaitMs, testSetupWaitMs } from './until.ts';
 import { discordExchangeOwner } from './fakes/discord/exchange.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
@@ -45,7 +46,7 @@ test('Discord accepts paired ordinary/reply text once, excludes other authors, a
   const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url, CLAND_TELEGRAM_API_ROOT: telegram.url },
     { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, 'telegram.token': TELEGRAM_TEST_TOKEN } });
   const ui = await connectUi(t, hub.discovery, 'nvim');
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: 1500, what: 'Discord READY' });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: testWaitMs(), what: 'Discord READY' });
   const send = (d: object) => fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d });
   const base = { id: '90071992547420000', channel_id: ids.channel, author: { id: ids.human }, content: 'From Discord', type: 0 };
   for (const change of [{ author: { id: ids.member } }, { author: { id: ids.human, bot: true } }, { webhook_id: ids.webhook },
@@ -84,7 +85,7 @@ test('Discord cursor waits for the durable hub result and survives duplicate rep
     return remote;
   } });
   let hub = await start(); let ui = await connectUi(t, hub.discovery, 'nvim');
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: 1500, what: 'READY' });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: testWaitMs(), what: 'READY' });
   const d = { id: '90071992547430000', channel_id: ids.channel, author: { id: ids.human }, type: 0, content: 'Held at ingress' };
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d });
   await until(() => !!release, { timeoutMs: 1500, what: 'native frame waiting at ingress' });
@@ -438,10 +439,10 @@ test('Discord routes mapped replies and leaves unknown references as plain Gener
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   await coord.call('send', { topic: 'general', text: 'Reply target', kind: 'report' });
-  await until(async () => (await fake.control('state')).messages.some(m => m.content.includes('Reply target')), { timeoutMs: 1500, what: 'native mirror' });
+  await until(async () => (await fake.control('state')).messages.some(m => m.content.includes('Reply target')), { timeoutMs: testWaitMs(), what: 'native mirror' });
   const native = (await fake.control('state')).messages.find(m => m.content.includes('Reply target'))!;
-  await until(() => !!state.message(ids.channel, native.id), { timeoutMs: 1500, what: 'durable target map' });
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: 1500, what: 'READY' });
+  await until(() => !!state.message(ids.channel, native.id), { timeoutMs: testWaitMs(), what: 'durable target map' });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: testWaitMs(), what: 'READY' });
   const dispatch = (id: string, reference: string, deleted = false) => fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: {
     id, type: 19, channel_id: ids.channel, author: { id: ids.human }, content: reference,
     message_reference: { message_id: reference }, ...(deleted ? { referenced_message: null } : {}),
@@ -484,7 +485,7 @@ for (const lostDelivery of [false, true]) test(`Discord stored and delivered rea
   } });
   state.set('discord.inbound:90071992547449999', '1'); // Previous persisted wire shape.
   let hub = await start();
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: 1500, what: 'READY' });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: testWaitMs(), what: 'READY' });
   const d = { id: '90071992547450000', type: 0, channel_id: ids.channel, author: { id: ids.human }, content: 'Deliver after restart' };
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: { ...d, id: '90071992547449999', content: 'Legacy replay' } });
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d });
@@ -548,7 +549,7 @@ for (const replace of [false, true]) test(`Discord stops old-input feedback afte
   const state = store.remotes.forMessenger('discord');
   state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Fixture human' });
   const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } });
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: 1500, what: 'READY' });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { timeoutMs: testWaitMs(), what: 'READY' });
   const abort = new AbortController(); onCleanup(t, () => abort.abort());
   const held = fake.waitForHold(abort.signal); void held.catch(() => {});
   await fake.control('fault', { response: 'hold' });
@@ -599,7 +600,7 @@ for (const origin of ['telegram', 'discord'] as const) for (const destination of
     const { root, clock, discord, telegram, ts, ds, hub, control, driveTelegram } = await pairedReplyFixture(t);
     const ui = await connectUi(t, hub.discovery, 'nvim');
     const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
-    await until(async () => (await discord.control('state')).gateway.identifies === 1, { timeoutMs: 1500, what: 'Discord connection setup' });
+    await until(async () => (await discord.control('state')).gateway.identifies === 1, { timeoutMs: testWaitMs(), what: 'Discord connection setup' });
     let source = '';
     const mapped = until(async () => {
       const history = await ui.request({ type: 'topic.history', topic: 'general' });
@@ -709,13 +710,13 @@ for (const failure of ['omitted', 'aborted'] as const) test(`General reply paire
   const { within } = await import('../src/executor/droplet/deadline.ts');
   const setupClock = new FakeClock(), cancellation = new AbortController();
   const ready = Promise.withResolvers<PairedReplyFacts>();
-  const factsReceipt = within(ready.promise, 2000);
+  const factsReceipt = within(ready.promise, testSetupWaitMs());
   void factsReceipt.catch(() => {});
   const starting = pairedReplyFixture(t, { clock: setupClock, setupTimeoutMs: 1_000, signal: cancellation.signal, receipt: new Promise<void>(() => {}) }, ready.resolve);
   void starting.catch(ready.reject);
   const incomplete = assert.rejects(starting, failure === 'omitted' ? /setup receipt deadline/ : /aborted paired setup/);
   const facts = await factsReceipt;
-  const acquired = await within(facts.owner.serving, 2000);
+  const acquired = await within(facts.owner.serving, testSetupWaitMs());
   if (failure === 'omitted') await setupClock.advance(1000);
   else cancellation.abort(new Error('aborted paired setup'));
   await incomplete;

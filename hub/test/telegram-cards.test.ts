@@ -1,4 +1,5 @@
 // T2: human frames and production Telegram renderer against the sealed fake Bot API.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { join } from 'node:path';
@@ -38,7 +39,7 @@ async function fixture(t: TestContext, drop?: (frame: HubFrame) => boolean) {
   const { remote, gateway } = newRemote(drop);
   const initial = fake.waitForPoll();
   const hub = await owner.start(root, {}, clock, { hubOptions: { gatewayRemotes: [gateway] } });
-  await within(initial, 1000);
+  await within(initial, testSetupWaitMs());
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   const messages = async () => (await control<{ messages: TgMessage[] }>(fake.url, 'state')).messages;
@@ -294,7 +295,7 @@ test('Telegram plain component restart under 150 seconds sends no extra card or 
   const next = f.newRemote();
   const polling = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
-  const active = await driveTelegram(f.clock, f.state, within(polling, 1000));
+  const active = await driveTelegram(f.clock, f.state, within(polling, testSetupWaitMs()));
   const close = f.fake.waitForPollClose(active.id);
   await hub.stop();
   await within(close, 1000);
@@ -325,7 +326,7 @@ test('Telegram uncertain outage replacement survives restart without retiring it
   const next = f.newRemote();
   const polling = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
-  await driveTelegram(f.clock, f.state, within(polling, 1000));
+  await driveTelegram(f.clock, f.state, within(polling, testSetupWaitMs()));
   await hub.stop();
   const native = await f.messages();
   assert.equal(native.length, 4, 'unknown replacement never retransmits, later open card still replaces');
@@ -397,7 +398,7 @@ test('Telegram uncertain old-copy marker fallback stays incomplete while recover
   const remade = f.newRemote();
   const polled = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [remade.gateway] } });
-  await driveTelegram(f.clock, f.state, within(polled, 1000));
+  await driveTelegram(f.clock, f.state, within(polled, testSetupWaitMs()));
   await hub.stop();
   assert.equal((await f.messages()).length, 3, 'unknown marker reply never retransmits');
   assert.equal(f.state.outbox().filter(job => job.state === 'uncertain').length, 1);
@@ -728,7 +729,7 @@ test('Telegram card 429 holds its immutable request and an uncertain accepted ca
   const next = f.newRemote();
   const polling = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
-  await driveTelegram(f.clock, f.state, within(polling, 1000));
+  await driveTelegram(f.clock, f.state, within(polling, testSetupWaitMs()));
   await hub.stop();
   assert.deepEqual(await f.messages(), messages);
   assert.equal(f.state.outbox().filter(row => row.state === 'uncertain').length, 1);
@@ -1182,7 +1183,7 @@ test('Telegram prompt wait survives component restart and consumes the next text
   const next = f.newRemote();
   const initial = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
-  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  await driveTelegram(f.clock, f.state, within(initial, testSetupWaitMs()));
   const confirmed = f.fake.waitForPoll();
   const input = await control<{ update_id: number }>(f.fake.url, 'say', { text: 'After restart' });
   assert.equal((await driveTelegram(f.clock, f.state, within(confirmed, 1000))).params.offset, input.update_id + 1);
@@ -1325,7 +1326,7 @@ test('Telegram uncertain ForceReply send confirms the callback and safely consum
   const next = f.newRemote();
   const initial = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
-  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  await driveTelegram(f.clock, f.state, within(initial, testSetupWaitMs()));
   const note = until(async () => (await f.messages()).some(message => message.text === 'Prompt delivery is unconfirmed. Reply to the ask card or use /cancel.'),
     { timeoutMs: 1000, what: 'unverifiable prompt reply receives an explicit incomplete note' });
   void note.catch(() => {});
@@ -1387,7 +1388,7 @@ test('Telegram confirmed prompt answer recovers owed delivery feedback after com
   const reaction = await driveTelegram(f.clock, f.state, within(eyes, 1000, undefined, () => new Error('confirmed ask answer is missing recovered delivery feedback')));
   assert.equal((await driveTelegram(f.clock, f.state, within(closed, 1000))).id, reaction.id);
   assert.equal(reaction.params.message_id, input.message.message_id);
-  assert.equal((await driveTelegram(f.clock, f.state, within(polled, 1000))).params.offset, input.update_id + 1, 'input was already confirmed, not replayed');
+  assert.equal((await driveTelegram(f.clock, f.state, within(polled, testSetupWaitMs()))).params.offset, input.update_id + 1, 'input was already confirmed, not replayed');
   const ui = await connectUi(t, hub.discovery);
   const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ id: string; text: string; answerTo?: string }> };
   assert.deepEqual(history.messages.filter(message => message.text === 'Confirmed before missed delivery frame').map(message => ({ id: message.id, answerTo: message.answerTo })), [{ id: answerId, answerTo: id }]);
@@ -1412,7 +1413,7 @@ test('Telegram stale press on a closed mapped card makes no hub request and pres
   const next = f.newRemote();
   const initial = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
-  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  await driveTelegram(f.clock, f.state, within(initial, testSetupWaitMs()));
   // A native stale copy may still display its old buttons; keep the original opaque key.
   const api = new TelegramApi(TELEGRAM_TEST_TOKEN, { apiRoot: f.fake.url, clock: f.clock });
   assert.ok(card.reply_markup && 'inline_keyboard' in card.reply_markup);
@@ -1631,7 +1632,7 @@ test('Telegram uncertain stale-card outcome fallback releases its callback and l
   const next = f.newRemote();
   const initial = f.fake.waitForPoll();
   const hub = await f.owner.start(f.root, {}, f.clock, { hubOptions: { gatewayRemotes: [next.gateway] } });
-  await driveTelegram(f.clock, f.state, within(initial, 1000));
+  await driveTelegram(f.clock, f.state, within(initial, testSetupWaitMs()));
   const confirmedInput = f.fake.waitForPoll();
   const input = await control<{ update_id: number }>(f.fake.url, 'say', { text: 'After unknown stale outcome' });
   assert.equal((await driveTelegram(f.clock, f.state, within(confirmedInput, 1000))).params.offset, input.update_id + 1);

@@ -1,4 +1,5 @@
 import { discordChannelKey } from '../src/remote/discord-state.ts';
+import { testSetupWaitMs } from './until.ts';
 // T2: sealed production frames and fake Discord CDN / Telegram.
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
@@ -35,7 +36,7 @@ test('Discord captioned photo uploads original bytes once and reaches Telegram o
   const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url, CLAND_TELEGRAM_API_ROOT: telegram.url },
     { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, 'telegram.token': TELEGRAM_TEST_TOKEN } });
   const ui = await connectUi(t, hub.discovery);
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: 2000 });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: testWaitMs() });
   const bytes = Buffer.from('original photo');
   await fake.control('cdn', { id: 'photo', content: bytes.toString('base64') });
   const message = { id: '90071992547421000', channel_id: ids.channel, author: { id: ids.human }, type: 0, content: 'A photo',
@@ -69,7 +70,7 @@ test('Discord voice keeps original audio and replies with transcript duration ti
   const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url, CLAND_ELEVENLABS_API_ROOT: speech.url },
     { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, 'speech.elevenlabs_key': 'fictional-key' } });
   const ui = await connectUi(t, hub.discovery);
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: 2000 });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: testWaitMs() });
   const bytes = Buffer.from('original OGG'); await fake.control('cdn', { id: 'voice', content: bytes.toString('base64') });
   const message = { id: '90071992547422000', channel_id: ids.channel, author: { id: ids.human }, type: 0, content: '', flags: 8192,
     attachments: [{ id: 'voice', filename: 'recording.ogg', size: bytes.length, duration_secs: 42, url: `${fake.url}/cdn/voice` }] };
@@ -100,7 +101,7 @@ for (const answerMode of ['free', 'number', 'label'] as const) test(`Discord ref
     { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, 'speech.elevenlabs_key': 'fictional-key' } });
   const ui = await connectUi(t, hub.discovery);
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: 2000 });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: testWaitMs() });
   const message = { id: '90071992547423000', channel_id: ids.channel, author: { id: ids.human }, type: 0, content: '', flags: 8192,
     attachments: [{ id: 'voice', filename: 'voice.ogg', size: 5, duration_secs: 31, content_type: 'audio/ogg', url: `${fake.url}/cdn/voice` }] };
   await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: message });
@@ -133,7 +134,7 @@ for (const mode of ['expired', 'redirect', 'foreign', 'oversize'] as const) test
   const state = store.remotes.forMessenger('discord'); state.setPairing({ userId: ids.human, chatId: ids.channel, guildId: ids.guild, name: 'Human' });
   const hub = await projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url }, { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } });
   const ui = await connectUi(t, hub.discovery);
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: 2000 });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: testWaitMs() });
   await fake.control('cdn', { id: 'old', content: 'eA==', expired: mode === 'expired', ...(mode === 'redirect' ? { redirect: `${fake.url}/redirect-target` } : {}) });
   await fake.control('cdn', { id: 'fresh', content: 'eA==' });
   const attachment = { id: 'file', filename: 'file.png', size: mode === 'oversize' ? 100 * 1024 * 1024 : 1, content_type: 'image/png', url: `${fake.url}/cdn/fresh` };
@@ -169,7 +170,7 @@ for (const held of ['cdn', 'speech'] as const) test(`Discord stop during held ${
   const start = () => startup.start(root, { CLAND_DISCORD_API_ROOT: fake.url, CLAND_ELEVENLABS_API_ROOT: speech.url }, realClock,
     { hubOptions: { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, 'speech.elevenlabs_key': 'fictional-key' } } });
   const first = await start(), ui = await connectUi(t, first.discovery);
-  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: 2000 });
+  await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: testWaitMs() });
   await fake.control('cdn', { id: held, content: Buffer.from('original').toString('base64'), hold: held === 'cdn' });
   const hold = exchange.run(async signal => {
     if (held === 'cdn') await fake.waitForHold(signal);
@@ -215,9 +216,9 @@ test('Discord offline history pages attachment-only photo and voice with expired
   const start = () => projectHub(t, root, { CLAND_DISCORD_API_ROOT: fake.url, CLAND_ELEVENLABS_API_ROOT: speech.url },
     { clock, syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN, 'speech.elevenlabs_key': 'fictional-key' } });
   await fake.control('configure', { interval: 1000000, sendLimit: 10000, sendWindow: 0, reactionWindow: 0 });
-  const first = await start(); await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: 2000 });
+  const first = await start(); await until(async () => (await fake.control('state')).gateway.identifies === 1, { what: 'READY', timeoutMs: testWaitMs() });
   const seed = await fake.control('say', { content: 'seed' }); await fake.control('dispatch', { op: 0, t: 'MESSAGE_CREATE', d: seed });
-  await until(() => state.get('discord.lastMessageId') === seed.id, { what: 'seed cursor', timeoutMs: 2000 });
+  await until(() => state.get('discord.lastMessageId') === seed.id, { what: 'seed cursor', timeoutMs: testWaitMs() });
   await first.stop(); state.set('discord.session', null); // Model fresh Identify after the resumable session expired.
   await fake.control('cdn', { id: 'old-photo', content: 'eA==', expired: true, refresh: 'fresh-photo' });
   await fake.control('cdn', { id: 'fresh-photo', content: 'eA==' }); await fake.control('cdn', { id: 'history-voice', content: 'eQ==' });
@@ -256,7 +257,7 @@ for (const mode of ['omitted', 'aborted'] as const) test(`Discord media ${mode} 
   exchange.afterDrain(() => { drained = true; store.close(); });
   const state = store.remotes.forMessenger('discord'); state.set('startup-control', 'retained');
   startup.close(() => { entered.resolve(); return gate.promise; });
-  const acquired = within(startup.serving, 2000); void acquired.catch(() => {});
+  const acquired = within(startup.serving, testSetupWaitMs()); void acquired.catch(() => {});
   const observed = startup.start(project.root, { CLAND_DISCORD_API_ROOT: exchange.fake.url }, realClock,
     { receipt: new Promise<void>(() => {}), signal: abort.signal,
       hubOptions: { syntheticRemoteSecrets: { 'discord.token': DISCORD_TEST_TOKEN } } });

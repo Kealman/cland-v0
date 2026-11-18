@@ -1,4 +1,5 @@
 // T2: production Telegram factory, sealed frames and loopback Bot API; fake time owns outages.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { join } from 'node:path';
@@ -16,7 +17,7 @@ test('Telegram four-minute outage reports offline only after three minutes and r
   const since = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(f.clock.now());
   const initial = f.fake.waitForPoll();
   const { hub, ui, status, history } = await f.start();
-  const poll = await within(initial, 1_000);
+  const poll = await within(initial, testSetupWaitMs());
   await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 240, echoToken: true });
   const closed = f.fake.waitForPollClose(poll.id);
   await control(f.fake.url, 'release-polls', {});
@@ -70,7 +71,7 @@ test('Telegram ten-second outage marks retained input then sends one gap for thr
   try { db.remotes.forMessenger('telegram').setPairing(pairing); } finally { db.close(); }
   const initial = f.fake.waitForPoll();
   const { hub, ui, history } = await f.start();
-  const poll = await within(initial, 1_000);
+  const poll = await within(initial, testSetupWaitMs());
   await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 10 });
   const initialClosed = f.fake.waitForPollClose(poll.id);
   await control(f.fake.url, 'release-polls', {});
@@ -116,7 +117,7 @@ test('Telegram retries interrupted inbound feedback without duplicating its stor
   try { db.remotes.forMessenger('telegram').setPairing(pairing); } finally { db.close(); }
   const initial = f.fake.waitForPoll();
   const { hub, ui, status } = await f.start();
-  await within(initial, 1_000);
+  await within(initial, testSetupWaitMs());
   await control(f.fake.url, 'fault', { method: 'setMessageReaction', code: 503 });
   await control(f.fake.url, 'say', { text: 'Durable before transient feedback failure' });
   await f.waitRetry(1);
@@ -148,7 +149,7 @@ test('Telegram General arriving during a held gap stays missed until its own suc
   pair(f.root);
   const initial = f.fake.waitForPoll();
   const { hub, ui } = await f.start();
-  const poll = await within(initial, 1_000);
+  const poll = await within(initial, testSetupWaitMs());
   await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 10 });
   await control(f.fake.url, 'release-polls', {});
   await f.waitRetry(1);
@@ -193,7 +194,7 @@ test('Telegram uncertain native gap recovers while its native send stays fenced'
   pair(f.root);
   const initial = f.fake.waitForPoll();
   const { hub, ui, status } = await f.start();
-  const poll = await within(initial, 1_000);
+  const poll = await within(initial, testSetupWaitMs());
   await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 10 });
   await control(f.fake.url, 'release-polls', {});
   await f.waitRetry(1);
@@ -240,7 +241,7 @@ for (const code of [401, 403]) {
     pair(f.root);
     const initial = f.fake.waitForPoll();
     const { hub, ui, status, history } = await f.start();
-    const poll = await within(initial, 1_000);
+    const poll = await within(initial, testSetupWaitMs());
     await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503, retry_after: 10 });
     await control(f.fake.url, 'release-polls', {});
     await f.waitRetry(1);
@@ -274,7 +275,7 @@ test('Telegram membership kick during catch-up retains fatal reload recovery', a
   pair(f.root);
   const initial = f.fake.waitForPoll();
   const { hub, ui, status } = await f.start();
-  const poll = await within(initial, 1_000);
+  const poll = await within(initial, testSetupWaitMs());
   await control(f.fake.url, 'fault', { method: 'getUpdates', code: 503 });
   await control(f.fake.url, 'release-polls', {});
   await f.waitRetry(1);
@@ -316,7 +317,7 @@ for (const legacy of [false, true]) test(`Telegram seeded ${legacy ? 'legacy ' :
   const initial = f.fake.waitForPoll();
   const { hub, ui, status } = await f.start();
   await f.clock.advance(1_000);
-  const poll = await within(initial, 1_000);
+  const poll = await within(initial, testSetupWaitMs());
   await until(() => facts(f.root).jobs.find(job => job.id === 'card')?.state === 'sent', { what: 'seeded queued card durable delivery', timeoutMs: 1_000 });
   assert.equal((await status()).connection, 'connected');
   assert.equal(facts(f.root).gap, null);

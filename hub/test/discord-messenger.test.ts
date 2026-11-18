@@ -1,4 +1,5 @@
 // T2: native factory, sealed frames and loopback Discord gateway/REST.
+import { testWaitMs, waitTimeoutMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { discordAdmissionObserver } from './fakes/discord/admission.ts';
@@ -425,7 +426,7 @@ test('Discord hub fixture cold tempProject has a separate setup budget and timin
     return root;
   } });
   // Setup covers native fake startup plus the independent 15 s cold phase.
-  const setupReceipt = within(acquired.promise, 20000);
+  const setupReceipt = within(acquired.promise, waitTimeoutMs(testWaitMs(20_000)));
   const starting = owner.start(); void starting.catch(() => {});
   try {
     await setupReceipt;

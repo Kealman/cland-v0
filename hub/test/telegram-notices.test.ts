@@ -1,4 +1,5 @@
 // T2: needs-you notices through public frames and the sealed fake Bot API.
+import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -45,7 +46,7 @@ async function fixture(t: TestContext, origin?: string, drop?: (frame: HubFrame)
     } : {} });
   };
   const hub = await start(drop);
-  await within(polling, 1000);
+  await within(polling, testSetupWaitMs());
   const ui = await connectUi(t, hub.discovery, 'nvim');
   const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
   const request = async <T>(frame: { type: string } & Record<string, unknown>) => {
