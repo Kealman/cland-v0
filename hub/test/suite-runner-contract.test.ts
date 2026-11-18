@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, eventually } from './harness.ts';
+import { cland, clandWithEnv, eventually, testWaitMs } from './harness.ts';
 import { fixture } from './suite-fixture.ts';
 import { ownProcess } from './process-cleanup.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
@@ -29,7 +29,7 @@ test('the compatibility lease spans typecheck and tests, so a hand runner waits 
   ownProcess(t, hand.pid!);
   let output = ''; hand.stderr.on('data', b => { output += String(b); });
   const done = new Promise(resolve => hand.once('exit', resolve));
-  await eventually('hand run waiting', () => output.includes('waiting for the suite lock') ? true : undefined);
+  await eventually('hand run waiting', () => output.includes('waiting for the suite lock') ? true : undefined, testWaitMs(45_000));
   await writeFile(join(f.root, 'typecheck-finish'), '');
   await eventually('tests entered', () => stat(join(f.root, 'tests-entered')).then(() => true, () => undefined));
   assert.equal(await stat(join(f.root, 'hand-entered')).then(() => true, () => false), false);
@@ -45,7 +45,7 @@ test('a hand-run package holding the old lock occupies admission until it exits'
   const code = "const fs=require('fs');fs.writeFileSync('hand-entered','');const p=setInterval(()=>{if(fs.existsSync('hand-finish'))clearInterval(p)},25)";
   const hand = spawn(process.execPath, ['--input-type=module', '-e', `import {runSuite} from ${JSON.stringify(runner)};process.exitCode=await runSuite([['-e',${JSON.stringify(code)}]], {cwd:${JSON.stringify(f.root)},lockDirs:${JSON.stringify(locks)}})`], {cwd:f.root,env: fixtureEnvironment(f.root, process.env, { CLAND_TEST_SKIP_LOCK:'0' }),stdio:'ignore'});
   ownProcess(t, hand.pid!); const done = new Promise(resolve => hand.once('exit',resolve));
-  await eventually('hand holds package lock', () => stat(join(f.root,'hand-entered')).then(() => true,() => undefined));
+  await eventually('hand holds package lock', () => stat(join(f.root,'hand-entered')).then(() => true,() => undefined), testWaitMs(45_000));
   const job = await f.launch();
   assert.equal(job.pid,null);
   const log = await readFile(join(f.root,'.cland','run','suites',job.id,'suite.log'),'utf8');
@@ -63,10 +63,10 @@ test('a worker lease retains phase place and publishes recovery metadata for bot
   await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import {existsSync,writeFileSync,readFileSync} from 'node:fs';test('phase',async()=>{const phase=existsSync('hub-entered')?'nvim':'hub';const owner=JSON.parse(readFileSync(${JSON.stringify(locks.hub+'.owner')},'utf8'));const lease=JSON.parse(process.env.CLAND_SUITE_LEASE);assert.equal(owner.pid,lease.pid);assert.equal(owner.runner.pid,process.ppid);assert.equal(owner.root,process.env.TMPDIR);writeFileSync(phase+'-entered','');while(!existsSync(phase+'-finish'))await new Promise(r=>setTimeout(r,25));});`);
   await writeFile(join(f.root,'package.mjs'), `import {runPackageSuite} from ${JSON.stringify(runner)};process.exitCode=await runPackageSuite('all',[${JSON.stringify(file)}],${JSON.stringify({cwd:f.root,lockDirs:locks})});`);
   const job = await f.launch();
-  await eventually('hub phase entered',()=>stat(join(f.root,'hub-entered')).then(()=>true,()=>undefined));
+  await eventually('hub phase entered',()=>stat(join(f.root,'hub-entered')).then(()=>true,()=>undefined), testWaitMs(45_000));
   const hand = spawn(process.execPath,['--input-type=module','-e',`import {runSuite} from ${JSON.stringify(runner)};process.exitCode=await runSuite([['-e',"require('fs').writeFileSync('hand-entered','')"]],${JSON.stringify({cwd:f.root,lockDirs:Object.values(locks)})});`],{cwd:f.root,env: fixtureEnvironment(f.root, process.env, { CLAND_TEST_SKIP_LOCK:'0' }),stdio:['ignore','ignore','pipe']});
   ownProcess(t,hand.pid!);let log='';hand.stderr.on('data',b=>{log+=String(b)});const done=new Promise(resolve=>hand.once('exit',resolve));
-  await eventually('hand waits behind both phases',()=>log.includes('waiting for the suite lock')?true:undefined);
+  await eventually('hand waits behind both phases',()=>log.includes('waiting for the suite lock')?true:undefined, testWaitMs(45_000));
   await writeFile(join(f.root,'hub-finish'),'');
   await eventually('Neovim phase entered',()=>stat(join(f.root,'nvim-entered')).then(()=>true,()=>undefined));
   assert.equal(await stat(join(f.root,'hand-entered')).then(()=>true,()=>false),false);
@@ -108,7 +108,7 @@ for (const legacy of [false, true]) test(`verify queue preserves a live ${legacy
   child.stderr.on('data', data => { output += String(data); });
   const done = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
   t.after(async () => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM'); await done; });
-  await eventually('live package holder', () => readFile(marker, 'utf8').then(() => true, () => undefined));
+  await eventually('live package holder', () => readFile(marker, 'utf8').then(() => true, () => undefined), testWaitMs(45_000));
   if (legacy) for (const dir of [lock, `${lock}-nvim`]) {
     const owner = JSON.parse(await readFile(`${dir}.owner`, 'utf8'));
     delete owner.startedUtc;

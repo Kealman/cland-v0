@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, eventually, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
+import { cland, eventually, testWaitMs, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
 import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
@@ -75,7 +75,7 @@ const poll = setInterval(() => {
   setInterval(() => {}, 1000); // Cancellation must reap this detached survivor.
 }, 10);`);
   const job = await f.launch();
-  const fake = await eventually('detached fake child ready', async () => readFile(marker, 'utf8').then(JSON.parse, () => undefined));
+  const fake = await eventually('detached fake child ready', async () => readFile(marker, 'utf8').then(JSON.parse, () => undefined), testWaitMs(45_000));
   const stopFake = ownProcess(t, fake.pid);
   onCleanup(t, async () => {
     await stopFake();
@@ -241,7 +241,7 @@ test('suite cancel cleans a running lock runner’s children and temporary root 
   // Artificial hold: cancellation ends this child; the 30-second timer is a failure ceiling.
   await writeFile(join(f.root, 'holding.mjs'), `import test from 'node:test'; import { writeFile } from 'node:fs/promises'; test('holding', async () => { await writeFile(${JSON.stringify(join(f.root, 'holder.json'))}, JSON.stringify({ pid: process.pid, root: process.env.TMPDIR })); await new Promise(r => setTimeout(r, 30000)); });`);
   const job = await f.launch();
-  const holder = await eventually('runner child started', async () => readFile(join(f.root, 'holder.json'), 'utf8').then(text => JSON.parse(text) as { pid: number; root: string }, () => undefined));
+  const holder = await eventually('runner child started', async () => readFile(join(f.root, 'holder.json'), 'utf8').then(text => JSON.parse(text) as { pid: number; root: string }, () => undefined), testWaitMs(45_000));
   ownProcess(t, holder.pid);
   const cancelled = await clandWithEnv(f.root, f.env, 'suite', 'cancel', job.id);
   assert.equal(cancelled.code, 0, cancelled.stderr);

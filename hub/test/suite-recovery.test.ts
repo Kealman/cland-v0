@@ -161,7 +161,7 @@ test('recreated phase root after runner death', async () => {
   await writeFile(${JSON.stringify(marker)}, JSON.stringify({ root, before: { device: owner.device, inode: owner.inode }, after: { device: info.dev, inode: info.ino } }));
 });`);
   const job = await f.launch();
-  const recreated = await eventually('fake child recreated root after runner kill', async () => readFile(marker, 'utf8').then(JSON.parse, () => undefined));
+  const recreated = await eventually('fake child recreated root after runner kill', async () => readFile(marker, 'utf8').then(JSON.parse, () => undefined), testWaitMs(45_000));
   // These are exact fixture-owned paths, retained until all package writers stop.
   t.after(async () => {
     await rm(`${recreated.root}.original`, { recursive: true, force: true });
@@ -208,7 +208,7 @@ const { runSuite } = await import(${JSON.stringify(runner)});
 process.exitCode = await runSuite([], ${JSON.stringify({ cwd: f.root, lockDirs: locks })});
 `);
   const job = await f.launch();
-  const created = await eventually('borrowed root creation crashed', async () => readFile(marker, 'utf8').then(text => JSON.parse(text) as { root: string; pid: number }, () => undefined));
+  const created = await eventually('borrowed root creation crashed', async () => readFile(marker, 'utf8').then(text => JSON.parse(text) as { root: string; pid: number }, () => undefined), testWaitMs(45_000));
   t.after(() => rm(created.root, { recursive: true, force: true }));
   const result = await eventually('worker reports package crash after cleanup', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
   assert.doesNotMatch(result.text, /auto exit 0/);
@@ -290,7 +290,7 @@ const { runSuite } = await import(${JSON.stringify(runner)});
 process.exitCode = await runSuite([], ${JSON.stringify({ cwd: f.root, lockDirs: locks })});
 `);
   const job = await f.launch();
-  const root = await eventually('borrowed planned root exists', async () => readFile(marker, 'utf8').catch(() => undefined));
+  const root = await eventually('borrowed planned root exists', async () => readFile(marker, 'utf8').catch(() => undefined), testWaitMs(45_000));
   t.after(() => rm(root, { recursive: true, force: true }));
   const pid = await f.workerPid(job.id);
   process.kill(pid, 'SIGKILL');

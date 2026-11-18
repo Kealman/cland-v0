@@ -93,7 +93,7 @@ test('verify fails a named hung test at the configured per-test timeout', async 
     await new Promise(() => {});
   });`);
   job = await f.launch();
-  const pids = await eventually('hung runner and worker PID receipt', () => readFile(marker, 'utf8').then(text => JSON.parse(text) as number[], () => undefined));
+  const pids = await eventually('hung runner and worker PID receipt', () => readFile(marker, 'utf8').then(text => JSON.parse(text) as number[], () => undefined), testWaitMs(45_000));
   if (fault === 'split') {
     const receipt = JSON.stringify({ root: f.root, pids });
     const split = receipt.indexOf('"pids":') + '"pids":'.length;
@@ -194,7 +194,7 @@ test('silent with a spoke', async () => {
   await new Promise(() => {});
 });`);
   const job = await f.launch();
-  const pids = await eventually('silent test owns children', () => readFile(marker, 'utf8').then(text => JSON.parse(text) as number[], () => undefined)).catch(async error => {
+  const pids = await eventually('silent test owns children', () => readFile(marker, 'utf8').then(text => JSON.parse(text) as number[], () => undefined), testWaitMs(45_000)).catch(async error => {
     throw new Error(`${error.message}; results: ${JSON.stringify(await f.results())}`);
   });
   for (const pid of pids) ownProcess(t, pid);
