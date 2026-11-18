@@ -101,6 +101,7 @@ test('stage-one login database migrates private binding harness and indexes with
  old.insert({name:'key-old',kind:'key',harness:'opencode',account:'work',lastSignIn:null});
  const rows=old.list(),bindings=old.bindings('old');
  // Schema-only downgrade models stage1; every row was written via public API.
+ db.exec('drop index if exists login_ready_launch; drop index if exists login_reader_launch');
  db.exec('drop trigger if exists login_bindings_capacity_insert; drop trigger if exists login_bindings_capacity_delete; drop trigger if exists login_bindings_capacity_update; drop trigger if exists login_readers_capacity_insert; drop trigger if exists login_readers_capacity_delete; drop trigger if exists login_readers_capacity_update; drop index if exists login_capacity_launch; drop index if exists login_capacity_shared; alter table logins drop column pending_bindings');
  db.exec('drop index if exists login_bindings_launch; drop index if exists login_ready_launch; drop index if exists login_bindings_pending; drop index if exists login_reconcile_bindings');
  db.exec('alter table login_bindings drop column episode');

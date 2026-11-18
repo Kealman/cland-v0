@@ -13,6 +13,24 @@ import { DatabaseSync } from 'node:sqlite';
 import { HostRecords } from '../src/host/records.ts';
 import { PoolRuntime, PoolCapacityUnavailable } from '../src/host/pool-runtime.ts';
 import { readHostPools } from '../src/host/pools.ts';
+import { fakeNativeGuard } from './fake-native-guard.ts';
+import { fixtureWork } from '../../test-support/fixture-work.ts';
+import { LoginBinder } from '../src/host/login-binding.ts';
+
+function guardedMetadata(t:test.TestContext,body:(probe:ReturnType<typeof sqliteProbe>,db:DatabaseSync)=>Promise<void>):Promise<void> {
+ const work=fixtureWork();let db:DatabaseSync|undefined,guard:Awaited<ReturnType<typeof fakeNativeGuard>>|undefined,restore:(()=>void)|undefined;
+ onCleanup(t,async()=>{
+  await work.close();
+  const failures:unknown[]=[];
+  for(const close of [()=>db?.close(),()=>guard?.verify(),()=>restore?.()])try {close();}catch(error){failures.push(error);}
+  if(failures.length)throw new AggregateError(failures,'guarded metadata cleanup failed');
+ });
+ return work.run(async step=>{
+  guard=await step(()=>fakeNativeGuard(value=>{restore=value;}));
+  const probe=sqliteProbe();db=probe.open(':memory:');
+  await body(probe,db);
+ });
+}
 
 function ownMetadata(t:test.TestContext,db:DatabaseSync) {
  const owners:Array<()=>unknown|Promise<unknown>>=[()=>db.close()];
@@ -199,6 +217,7 @@ test('capacity migration backfills both fences and preserves counts across reope
  logins.bind('settled',{host:'s',role:'writer',volumeId:'volume-settled'});
  const publicRows=logins.list(),publicBindings=publicRows.map(row=>logins.bindings(row.name));
  // Model the landed pre-counter schema, retaining both types of unresolved work.
+ db.exec('drop index if exists login_ready_launch; drop index if exists login_reader_launch');
  db.exec('drop trigger login_bindings_capacity_insert; drop trigger login_bindings_capacity_delete; drop trigger login_bindings_capacity_update; drop trigger login_readers_capacity_insert; drop trigger login_readers_capacity_delete; drop trigger login_readers_capacity_update; drop index login_capacity_launch; drop index if exists login_capacity_shared; alter table logins drop column pending_bindings');
  db.close();db=new DatabaseSync(path);logins=new LoginRecords(db);
  for(let reopen=0;reopen<2;reopen++){
@@ -221,3 +240,65 @@ test('verdict reads only held bindings and eligible capacity across pending read
  assert.equal(loginVerdict(logins,{host:'absent',harness:'codex',provider:'fake',region:'fake-1',account:'work'}),'no-login');
  assert.equal(visits,0);assert.equal(queries,3);assert.equal(decodes,0);
 });
+
+test('launch selection bounds candidate visits and decodes across ten thousand retained reader intents',t=>guardedMetadata(t,async(probe,db)=>{
+ const logins=new LoginRecords(db);db.exec('begin');
+ // Selection is the seam under test. Seed retained metadata through the real
+ // schema/triggers without repeating public transition and notification work.
+ const insertLogin=db.prepare('insert into logins(name,record) values (?,?)');
+ const insertBinding=db.prepare('insert into login_bindings(login,host,role,volume_id,phase,harness,episode) values (?,?,?,?,?,?,?)');
+ const insertReader=db.prepare('insert into login_readers(login,host,harness,phase,record) values (?,?,?,?,?)');
+ for(let i=0;i<10000;i++){
+  const name='blocked-'+String(i).padStart(5,'0'),shared=i%2!==0;
+  insertLogin.run(name,JSON.stringify({name,harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',exclusive:false,volumeId:'volume-'+name,snapshotIds:[],lastSignIn:null,state:shared?'in-use':'ready'}));
+  if(shared)insertBinding.run(name,'writer-'+i,'writer','volume-'+name,'settled','codex','episode-'+i);
+  const intent=readerIntent(name,'intent-'+i),op:ReaderOperation=i%4>=2?{...intent,volume:readerVolume(intent),phase:'deleted'}:intent;
+  insertReader.run(name,op.host,op.harness,op.phase,JSON.stringify(op));
+ }
+ logins.insert({name:'wanted',harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',exclusive:false,volumeId:'wanted-volume',snapshotIds:[],lastSignIn:null});logins.transition('wanted','ready');db.exec('commit');
+ // Recreate the previous private index definitions on the retained corpus.
+ for(const [name,fields] of [['login_ready_launch',"json_extract(record,'$.kind')"],['login_reader_launch',"json_extract(record,'$.kind'),json_extract(record,'$.exclusive')"]]){
+  db.exec(`drop index ${name}; create index ${name} on logins(json_extract(record,'$.state'),${fields},json_extract(record,'$.harness'),json_extract(record,'$.provider'),json_extract(record,'$.region'),json_extract(record,'$.account'),name)`);
+ }
+ let rebuilds=0;const exec=db.exec.bind(db);
+ const migration=t.mock.method(db,'exec',((sql:string)=>{if(/^create index login_(ready|reader)_launch /i.test(sql))rebuilds++;return exec(sql);}) as typeof db.exec);
+ const started=performance.now();new LoginRecords(db);const migrationMs=performance.now()-started;
+ const firstRebuilds=rebuilds;new LoginRecords(db);const secondRebuilds=rebuilds;migration.mock.restore();
+ t.diagnostic(`10,001-login in-memory index migration: ${migrationMs.toFixed(3)} ms (constructor, excludes corpus setup)`);
+ let visits=0,decodes=0,queries=0,observing=false;
+ db.function('launch_visit',(_name:unknown)=>{visits++;return 1;});
+ db.prepare('select count(*) from logins not indexed where launch_visit(name)').get();assert.equal(visits,10001);
+ visits=0;
+ const old=db.prepare("select record from logins indexed by login_ready_launch where launch_visit(name) and json_extract(record,'$.state')='ready' and not exists (select 1 from login_readers where login=logins.name and phase in ('creating','deleted')) and json_extract(record,'$.kind')='disk' and json_extract(record,'$.harness')=? and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=? order by json_extract(record,'$.account'),name limit 1").get('codex','fake','fake-1');
+ assert.ok(old);assert.ok(visits>=5001,`old selection body visits ${visits} candidates`);
+ t.diagnostic(`old selection body control: ${visits} candidate visits`);
+ const parse=JSON.parse;t.mock.method(JSON,'parse',((source:string)=>{const value=parse(source);if(value?.name)decodes++;return value;}) as typeof JSON.parse);
+ logins.list();assert.equal(decodes,10001,'decode control observes retained history');
+ probe.mock(t,function(this:DatabaseSync,sql:string){return probe.prepare.call(this,observing&&sql.startsWith('select record from logins')?sql.replace(' where ',' where launch_visit(name) and '):sql);});
+ probe.trace(t,()=>{if(observing)queries++;});
+ for(const shared of [false,true]){
+  if(shared)logins.bind('wanted',{host:'writer-wanted',role:'writer',volumeId:'wanted-volume'});
+  for(const account of [null,'work','missing']){
+   visits=0;decodes=0;queries=0;observing=true;
+   const selected=logins.selectForLaunch({host:'absent',harness:'codex',provider:'fake',region:'fake-1',account});observing=false;
+   assert.equal(selected.ready?.name,account==='missing'?undefined:'wanted');assert.deepEqual(selected.held,[]);
+   assert.ok(visits<=1,`shared=${shared}, account=${account}: visited ${visits} candidates`);
+   assert.equal(decodes,account==='missing'?0:1);assert.ok(queries<=3);
+   t.diagnostic(`shared=${shared}, account=${account}: visits=${visits}, decodes=${decodes}, queries=${queries}`);
+  }
+ }
+ assert.equal(firstRebuilds,2);assert.equal(secondRebuilds,2,'reopen does not rebuild upgraded indexes');
+}));
+
+test('launch selection retains an earlier null-volume ready login and binder refuses before provider acquisition',t=>guardedMetadata(t,async(_probe,db)=>{
+ const logins=new LoginRecords(db);
+ for(const [name,volumeId] of [['a-missing',null],['z-valid','valid-volume']] as const){
+  logins.insert({name,harness:'codex',account:'work',kind:'disk',provider:'fake',region:'fake-1',volumeId,snapshotIds:[],lastSignIn:null});logins.transition(name,'ready');
+ }
+ for(const account of [null,'work'])assert.equal(logins.selectForLaunch({host:'target',harness:'codex',provider:'fake',region:'fake-1',account}).ready?.name,'a-missing');
+ const binder=new LoginBinder(logins);let providerCalls=0;
+ try {
+  await assert.rejects(binder.bind({host:{name:'target'},machine:{id:'target',address:'fake',architecture:'arm64',created:new Date(0).toISOString()},provider:()=>{providerCalls++;throw Error('provider must remain unacquired');},providerName:'fake',region:'fake-1',pool:'agents',project:'scratch',harness:'codex',account:null,validate:()=>{},checkAccount:()=>{}}),/no login codex in pool agents/);
+  assert.equal(providerCalls,0);assert.deepEqual(logins.bindings('a-missing'),[]);assert.equal(logins.get('z-valid')?.state,'ready');
+ }finally {await binder.close();}
+}));

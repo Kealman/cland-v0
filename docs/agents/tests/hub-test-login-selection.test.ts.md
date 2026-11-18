@@ -34,5 +34,8 @@ tier; the test itself launches no native process or socket.
 The schema-only stage-one downgrade drops the six binding/reader capacity
 triggers and `login_capacity_launch` before removing private pending_bindings
 and binding.phase. Public records and the selection assertions remain unchanged.
+It also drops the ready/reader launch indexes before pending_bindings, since
+their maintained pending-count keys depend on that column. Selection titles and
+assertions are unchanged.
 
 `status reads decode current storage only and bound harness work across retained history` seeds 300 deleted-only October records and two live records (including a removed pool). Its positive decode control sees all 302 rows; the November status range decodes only two. Three harness existence reads plus one storage range use SEARCH plans and the dedicated indexes, with no temporary sort or index scan. This is a fake-only retained corpus because logins are unreleased.

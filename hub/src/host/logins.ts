@@ -179,6 +179,14 @@ export class LoginRecords {
    db.exec('drop index if exists login_storage');
    db.exec("create index if not exists login_storage_current on logins(storage_through,storage_pool) where storage_through is not null; create index if not exists login_harnesses on logins(json_extract(record,'$.harness'))");
    db.exec(`create index if not exists login_capacity_launch on logins(json_extract(record,'$.harness'),json_extract(record,'$.kind'),json_extract(record,'$.provider'),json_extract(record,'$.region'),json_extract(record,'$.account'),name) where ${capacityEligibleSql}`);
+   // Upgrade the existing launch indexes once. State remains first for signedOut;
+   // equality on the maintained pending count skips unresolved reader/binding history.
+   for(const [name,fields] of [['login_ready_launch',"json_extract(record,'$.kind')"],['login_reader_launch',"json_extract(record,'$.kind'),json_extract(record,'$.exclusive')"]]){
+    const definition=`CREATE INDEX ${name} on logins(json_extract(record,'$.state'),pending_bindings,${fields},json_extract(record,'$.harness'),json_extract(record,'$.provider'),json_extract(record,'$.region'),json_extract(record,'$.account'),name)`;
+    if(db.prepare('select sql from sqlite_master where type=\'index\' and name=?').get(name!)?.sql!==definition){
+     db.exec(`drop index if exists ${name}`);db.exec(definition);
+    }
+   }
    db.exec('release login_launch_selection_migration');
   }catch(error){db.exec('rollback to login_launch_selection_migration; release login_launch_selection_migration');throw error;}
 
@@ -367,10 +375,10 @@ export class LoginRecords {
  selectForLaunch(input:{host:string;harness:string;provider:string;region:string;account:string|null}):{held:Array<{login:Login;binding:LoginBinding}>;ready:Login|null} {
   const held=this.heldForLaunch(input);
   if(held.length)return {held,ready:null};
-  const sql="select record from logins indexed by login_ready_launch where json_extract(record,'$.state')='ready' and not exists (select 1 from login_readers where login=logins.name and phase in ('creating','deleted')) and json_extract(record,'$.kind')='disk' and json_extract(record,'$.harness')=? and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=?"+(input.account===null?'':" and json_extract(record,'$.account')=?")+(input.account===null?" order by json_extract(record,'$.account'),name limit 1":" order by name limit 1");
+  const sql="select record from logins indexed by login_ready_launch where json_extract(record,'$.state')='ready' and pending_bindings=0 and json_extract(record,'$.kind')='disk' and json_extract(record,'$.harness')=? and json_extract(record,'$.provider')=? and json_extract(record,'$.region')=?"+(input.account===null?'':" and json_extract(record,'$.account')=?")+(input.account===null?" order by json_extract(record,'$.account'),name limit 1":" order by name limit 1");
   const parameters=[input.harness,input.provider,input.region,...(input.account===null?[]:[input.account])];
   const keySql="select record from logins indexed by login_ready_keys where json_extract(record,'$.state')='ready' and json_extract(record,'$.kind')='key' and json_extract(record,'$.harness')=?"+(input.account===null?"":" and json_extract(record,'$.account')=?")+(input.account===null?" order by json_extract(record,'$.account'),name limit 1":" order by name limit 1");
-  const row=(input.harness==='opencode' ? this.db.prepare(keySql).get(input.harness,...(input.account===null?[]:[input.account])) : undefined) ?? this.db.prepare(sql).get(...parameters) ?? this.db.prepare(sql.replace('indexed by login_ready_launch','indexed by login_reader_launch').replace("json_extract(record,'$.state')='ready'","json_extract(record,'$.state')='in-use' and json_extract(record,'$.exclusive')=0 and not exists (select 1 from login_bindings where login=logins.name and phase='pending')")).get(...parameters);
+  const row=(input.harness==='opencode' ? this.db.prepare(keySql).get(input.harness,...(input.account===null?[]:[input.account])) : undefined) ?? this.db.prepare(sql).get(...parameters) ?? this.db.prepare(sql.replace('indexed by login_ready_launch','indexed by login_reader_launch').replace("json_extract(record,'$.state')='ready'","json_extract(record,'$.state')='in-use' and json_extract(record,'$.exclusive')=0")).get(...parameters);
   return {held,ready:row?JSON.parse(String(row.record)) as Login:null};
  }
  /** Bounded capacity lookup: one ready regional disk or an unlimited shared login. */

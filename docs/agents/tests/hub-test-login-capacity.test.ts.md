@@ -65,3 +65,36 @@ login-selection and login-exclusive preserve T-1778/T-1786 selection behavior;
 only the former's schema setup is extended for the new private migration.
 T-1793 reconciliation is not implemented here; SQL writes through these tables
 receive the same triggers when that owner is introduced.
+
+`launch selection bounds candidate visits and decodes across ten thousand retained
+reader intents` seeds 10,000 matching disk logins with creating/deleted reader
+intents, split between ready and shared in-use states. Seed construction
+uses one transaction and reused prepared inserts into the real login, binding
+and reader tables, so their capacity-maintenance triggers remain active. The
+fixture avoids repeated public transition/notification writes; this case proves
+selection work, while the earlier cases prove the public mutation invariants.
+A full-scan visit control
+and list decode control each observe 10,001 rows including the eligible candidate.
+The previous selection SQL is a positive query-work control (at least 5,001
+visits). Ready and shared selection, with unpinned, pinned and missing accounts,
+require at most one candidate visit, one decode and three queries. The fixture
+recreates the old launch indexes, records constructor migration milliseconds
+(in-memory SQLite, excludes corpus setup), and checks that a second constructor
+does not rebuild them. This is work-count evidence, not a launch latency claim.
+Both schema downgrade fixtures drop ready/reader indexes before removing the
+pending counter on which their launch index keys depend. Existing selection
+assertions and titles remain unchanged.
+
+Both new launch-selection cases use the shared fixtureWork owner around guard
+acquisition and the complete callback. fakeNativeGuard positively exercises
+synchronous, callback, custom-promisify and lower spawn boundaries before SQLite
+setup. Cleanup joins the callback, closes the database, checks no unexpected
+launches, then restores the guard. No provider, process identity, lease or ledger
+is acquired by the work-count case.
+
+`launch selection retains an earlier null-volume ready login and binder refuses
+before provider acquisition` pins an earlier null-volume and later valid disk
+login in the same account. Pinned and unpinned selection keep the earlier row;
+LoginBinder rejects it before acquiring its provider. No binding is persisted and
+the later row stays ready. This retains the pre-optimization refusal contract;
+the launch query reuses only pending_bindings=0, not the broader capacity predicate.

@@ -470,8 +470,17 @@ retain the logical mount paths. OpenCode mount construction imports the canonica
 `mountedOpenCodeDatabase` helper from the account registry.
 
 Launch selection uses `login_bindings_launch(host,harness,login)` and a JSON-field
-`login_ready_launch` index matching the ready/disk/harness/provider/region/account
-query. The private binding harness column is backfilled from existing rows in a
+`login_ready_launch` index matching state, maintained pending-binding count,
+disk/harness/provider/region/account and name. `login_reader_launch` places the
+same counter after state for shared-reader selection. Both query
+it with equality to 0, excluding unresolved bindings and creating/deleted reader
+intents before candidate traversal. They reuse the maintained capacity counter;
+they do not query retained reader history per candidate. Existing databases rebuild
+these two indexes once in the migration savepoint; subsequent opens retain them.
+Ready selection still returns an earlier null-volume row; LoginBinder refuses it
+before acquiring a provider, retaining the existing selection/refusal boundary.
+State remains the first index key for signed-out reads. The private binding
+harness column is backfilled from existing rows in a
 savepoint with index creation; public binding shapes are unchanged. Every binding
 insert supplies its harness. Selection decodes at most two bound rows or one ready
 row, independently of signed-out/ineligible history. The normal SQLite indexes
