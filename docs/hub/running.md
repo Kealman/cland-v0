@@ -170,7 +170,7 @@ Project test commands are configured under `[verification]`: `test_unit` (T1),
 `test_component` (T2), `test_integration` (T3), and `test_soak` (T4).
 Each is a POSIX shell command; empty means unset. Use
 `cland config set verification.test_unit '<command>'` to store it verbatim.
-Tasks with hosting batch protection run `check`, unit and component; merge batches run `check` (T0) before commands matching `merge.batch_tiers` (default unit/integration; this repo unit only), adding Web after T1 for web/ candidate diffs; periodic `dev-t3` runs integration;
+Tasks with hosting batch protection run `check`, unit and component; merge batches run `check` (T0) before commands matching `merge.batch_tiers` (default unit/integration), omitting unit with complete exact-head member receipts, adding Web after T1 for web/ candidate diffs; periodic `dev-t3` runs integration;
 integrated dev, explicit `all` and tasks without batch protection run T1–T3; occasions and nightly soak run all
 four. Tier lines report exit, duration and output tail. Admission records the
 commands so config reloads cannot change queued evidence. With only `test` set,
@@ -1511,7 +1511,20 @@ The hub takes `[merge] batch` entries (default 3) when full or after `batch_wait
 (default `"10m"`). It runs the resolved `check` (T0) on the immutable merged
 candidate before its runtime tiers, on one slot using
 `[merge] batch_tiers`, a nonempty set of T1–T4 tiers. Its default is
-`["T1", "T3"]`; generated or inherited configuration can override it. When T3 is selected,
+`["T1", "T3"]`; generated or inherited configuration can override it. Configured
+T1 is omitted only when every member's latest mode-free verify is green at its
+exact pinned head and has complete producer-owned structured T0–T2 receipts.
+Another configured runtime tier must remain: sole-T1 configurations always run
+T1, and configurations without T1 stay unchanged. Cache hits
+require matching same-tree source receipts, even from another head or item. Missing, stale, partial and
+unavailable receipts retain T1 for the whole batch. The durable summary in each
+member topic says `T1 skipped`, naming each member run and head, or explains
+`T1 retained`. T0 and configured T3 remain; Web runs after the configured tiers
+when T1 is absent. Older persisted jobs without a decision render legacy/unknown.
+Tier metadata is additive: verifies made before the updated producing runner
+are missing evidence and keep T1. No log text establishes eligibility. See
+[structured tier receipts](verification-tier-receipts.md).
+When T3 is selected,
 identities absent from the latest green batch or stage receipt that ran T3 get five
 repetitions. Baselines are pinned per planned tier; a green T1-only batch supplies
 no T3 receipt and cannot supersede it. Failed, cancelled, cached, unreported and
@@ -1708,7 +1721,7 @@ refuses with `verify-tiers` before queueing; merge admission checks the immutabl
 merged candidate and refuses with `merge-tiers` before changing refs. The old
 `verify-shards`/`merge-shards` wire codes remain accepted aliases.
 
-T0 runs static checks. T1 maps to `hub free`, T2–T4 to `hub machine`, and Neovim keeps its package phase. Hub-owned batches plan T1/T3 on one slot. Ordinary `all` and integrated `dev` runs plan T1–T3. Stage, epic and release occasions plan T1–T4 on both executors and set `CLAND_TEST_SOAK=1` for tests and load-gate repetitions. Close-run balancing places T4 files like the others, and the merged result retains each shard’s tier lines. A pre-migration tree carrying only `hub/test/shards.json`
+T0 runs static checks. T1 maps to `hub free`, T2–T4 to `hub machine`, and Neovim keeps its package phase. Hub-owned batches default to configured T1/T3 on one slot, omitting redundant T1 only with complete producer receipts and another configured runtime tier. Ordinary `all` and integrated `dev` runs plan T1–T3. Stage, epic and release occasions plan T1–T4 on both executors and set `CLAND_TEST_SOAK=1` for tests and load-gate repetitions. Close-run balancing places T4 files like the others, and the merged result retains each shard’s tier lines. A pre-migration tree carrying only `hub/test/shards.json`
 remains admissible: `free` maps to T1 and `machine` to T3, without requiring
 Neovim entries or sorted keys. If both manifests exist, `tiers.json` takes priority.
 

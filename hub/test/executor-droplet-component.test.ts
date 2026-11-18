@@ -373,7 +373,7 @@ test('uploaded status bounds cause ingestion and keeps the recorded exit through
     let closed = 0;
     const rows: Array<{ code: number; cause: string; state: string }> = [];
     const fakeFs = {
-      existsSync: (path: string) => !path.endsWith('/platform'),
+      existsSync: (path: string) => !path.endsWith('/platform') && !path.endsWith('/tier-receipts.json'),
       readFileSync: (path: string) => {
         if (path.endsWith('/done')) return '2026-11-17T00:00:00Z';
         if (path.endsWith('/exit')) return mode === 'green read failure' ? '0' : '75';
@@ -397,12 +397,40 @@ test('uploaded status bounds cause ingestion and keeps the recorded exit through
     assert.equal(rows.length, 1);
     assert.equal(rows[0]!.state, 'done');
     assert.equal(rows[0]!.code, mode === 'green read failure' ? 0 : 75);
+    assert.equal(Object.hasOwn(rows[0]!, 'tierReceipts'), false, 'older remote status keeps its previous shape');
     assert.equal(closed, mode === 'missing' ? 0 : 1);
     if (mode === 'valid') assert.equal(rows[0]!.cause, cause);
     else if (mode === 'missing') assert.equal(rows[0]!.cause, '');
     else if (mode === 'close failure') assert.match(rows[0]!.cause, /^suite infrastructure:.*secondary diagnostic:.*close denied/);
     else assert.match(rows[0]!.cause, /secondary diagnostic:.*(?:exceeds 4096 bytes|read denied)/);
   }
+});
+
+test('uploaded status carries bounded producer receipts without changing its native exit', t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const { runStatusProgram } = await step(() => scope.wait('uploaded status import setup', () => import('../src/executor/droplet/run.ts')));
+    const receipt = { tier: 'T1', exit: 2, completion: 'complete', tree: 'tree', run: 'run', command: 'unit' };
+    for (const content of [JSON.stringify([receipt]), 'damaged', 'x'.repeat(100000)]) {
+      let closed = 0, kept = 0;
+      const rows: Array<{ code: number; tierReceipts?: unknown }> = [];
+      const bytes = Buffer.from(content);
+      const fs = {
+        existsSync: (path: string) => path.endsWith('/done') || path.endsWith('/tier-receipts.json'),
+        readFileSync: (path: string) => path.endsWith('/done') ? '2026-11-18T00:00:00Z' : '75',
+        openSync: (path: string) => { if (!path.endsWith('/tier-receipts.json')) throw Object.assign(new Error('absent'), { code: 'ENOENT' }); return 9; },
+        readSync: (_fd: number, target: Buffer, offset: number, length: number, position: number) => {
+          const part = bytes.subarray(position, position + Math.min(length, 37)); part.copy(target, offset); kept += part.length; assert.ok(kept <= 65537); return part.length;
+        },
+        closeSync: () => { closed++; },
+      };
+      await step(async () => { runInNewContext(runStatusProgram(), { Buffer, require: () => fs,
+        process: { argv: ['node', '/receipt'], kill: () => assert.fail('unexpected signal') }, console: { log: (text: string) => rows.push(JSON.parse(text)) } }); });
+      assert.equal(rows[0]!.code, 75);
+      assert.deepEqual(rows[0]!.tierReceipts, content.startsWith('[') ? [receipt] : undefined);
+      assert.equal(closed, 1);
+    }
+  });
 });
 
 

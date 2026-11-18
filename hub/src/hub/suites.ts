@@ -2,6 +2,8 @@ import { suiteCommandOutcome, suiteInfrastructureCauses, type SuiteInfrastructur
 import { hostVerifyWorktree, removeHostVerifyWorktree, validateHostVerifyWorktree, hostVerifyDirectory, type HostVerifySnapshot } from '../territory.ts';
 import { RawCoverageSweep, removeRawCoverage } from '../suite-raw-coverage.ts';
 import { recentCoverGreens } from '../suite-load-rerun.ts';
+import { memberVerificationReason, batchT1Summary, type BatchT1 } from '../batch-member-verification.ts';
+import { parseTierReceipts, tierReceipt, type TierReceipt } from '../verification-tier-receipts.ts';
 
 import { suiteRecoveryState, isolatedUnavailableReport, isolatedSuiteProcessOwned, isolatedSuiteEvidencePath, outsideSuitePath, sealSuiteJob } from './suite-isolation.ts';
 import { batchInteractionSelection } from '../suite-interactions.ts';
@@ -55,6 +57,8 @@ export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteAdmission = { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] };
 export type TestSlotWaiter = { id: string; sessionId: string; cover: string };
 export type SuiteJob = {
+  tierReceipts?: TierReceipt[];
+  batchT1?: BatchT1;
   webPhase?: WebPhaseUnavailable;
   commands?: import('../verification-commands.ts').VerificationCommands;
   batch?: import('../protocol.ts').BatchSuite;
@@ -118,7 +122,7 @@ const KEY = 'suite-jobs';
 const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion' | 'devT3Probe'>) => input.devT3Probe?.key ?? input.actor?.sessionId ?? (input.occasion === 'dev-t3' ? 'dev-t3' : input.occasion === 'soak' ? 'nightly-soak' : 'human');
 const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion' | 'devT3Probe'>, head: string): string => createHash('sha256').update(JSON.stringify([suiteOwner(input), input.cwd, head, input.mode])).digest('hex');
 const METRICS_WINDOW = 20;
-const runRef = (job: SuiteJob): RunRef => ({ ...(job.commands ? { commands: job.commands } : {}), ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
+const runRef = (job: SuiteJob): RunRef => ({ ...(job.tierReceipts ? { tierReceipts: job.tierReceipts } : {}), ...(job.commands ? { commands: job.commands } : {}), ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
 export function machineAccounting(machine: NonNullable<SuiteJob['machine']>): string {
   return `lifetime ${machine.lifetimeMs === null ? 'pending confirmation' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost ${machine.costUsd === null ? 'pending confirmation' : '$' + machine.costUsd.toFixed(4)}`;
 }
@@ -628,6 +632,12 @@ export class Suites {
     if (runner && input.batch && !input.batch.diagnostic && !pinned) selection = await batchInteractionSelection(input.cwd, selection, input.batch.members.map(member => member.head), async (...args) => { if (!this.#candidate.git) throw new Error('candidate Git delta boundary unavailable'); return this.#candidate.git(input.cwd, args); }, undefined, config?.merge.batchInteraction ?? 'report');
     const commandSelection = runner || !commands.tiers ? selection : occasionSelection(taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, config?.merge.queue ?? false), input.occasion, config?.merge.batchTiers);
     if (!runner && commands.tiers && commandSelection.tiers) selection = { ...selection, tiers: commandSelection.tiers };
+    let batchT1 = pinned?.batchT1;
+    if (!pinned && input.occasion === 'batch' && input.batch && !input.batch.diagnostic && selection.tiers?.includes('T1')) {
+      // Interaction fallback can add T2; it must not relax a sole-T1 configuration.
+      batchT1 = (config?.merge.batchTiers ?? ['T1', 'T3']).length === 1 ? { skipped: false, members: [], reason: 'T1 is the sole configured runtime tier' } : await this.#batchT1(input.batch.members);
+      selection = { ...selection, tiers: batchT1.skipped ? selection.tiers.filter(tier => tier !== 'T1') : selection.tiers };
+    }
     if (pinned) selection = structuredClone(pinned.selection ?? selection);
     else commands = pinVerificationPlan(commands, { branch, mode: input.mode, ...(input.occasion ? { occasion: input.occasion } : {}), selection, queueEnabled: config?.merge.queue ?? false });
     if (diagnosticSteps?.length) {
@@ -708,9 +718,11 @@ export class Suites {
     const {source: hostSource, ...jobInput}=input;
     const job: SuiteJob = { ...(hostSource?{hostSource}:{}), ...jobInput, ...(input.occasion === 'dev-t3' ? { devT3: { previousGreenHead: previousGreen?.head ?? null, previousGreenRun: previousGreen?.id ?? null } } : {}), commands, ...((input.occasion === 'soak' || input.occasion === 'dev-t3') && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (batchBaselineRuns) job.batchBaselineRuns = batchBaselineRuns;
+    if (batchT1) job.batchT1 = batchT1;
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nCommands: check ${commands.check || 'not set'} · test ${commands.test}\n${commands.plan ? 'Tier commands: ' + commands.plan.map(step => `${step.name} ${step.command}`).join(' · ') + '\n' : ''}Prepare: ${commands.prepare || 'not set'}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
+    if (batchT1) await appendFile(job.log, batchT1Summary(batchT1) + '\n');
     if (input.devT3Probe) await appendFile(job.log, 'Historical probe: hosting hub manifest and test lint skipped; candidate commands retained; tier projections unavailable\n');
     if (soakDropped.length) await appendFile(job.log, soakDropped.join('\n') + '\n');
     if (cacheBypass) await appendFile(job.log, `Cache bypassed: ${cacheBypass}\n`);
@@ -939,16 +951,22 @@ export class Suites {
   #cached(tree: string, selection: SuiteSelection, workers: number, commands: import('../verification-commands.ts').VerificationCommands, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
-    const job = this.#jobs.findLast(j => j.tree === tree && JSON.stringify(j.commands) === JSON.stringify(commands) && !j.batch?.diagnostic && !j.devT3Probe && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && sameSuiteSelection(this.#full(j).selection, selection) && (j.workers ?? 4) === workers && j.size === size
-      && (occasion !== 'stage' || requiredExecutor === 'local' || j.occasion === 'stage'));
-    if (!job || job.webPhase?.status === 'not-run' || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
-    if (!receiptExecutionMatches(job, { occasion, executor: requiredExecutor })) return undefined;
+    const job = this.#jobs.findLast(j => this.#cacheInputsMatch(j, tree, selection, workers, commands, size, requiredExecutor, occasion));
+    return job && this.#cacheReceiptAvailable(job, requiredExecutor, occasion) ? job : undefined;
+  }
+  #cacheInputsMatch(j: SuiteJob, tree: string, selection: SuiteSelection, workers: number, commands: import('../verification-commands.ts').VerificationCommands, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): boolean {
+    return j.tree === tree && JSON.stringify(j.commands) === JSON.stringify(commands) && !j.batch?.diagnostic && !j.devT3Probe && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && sameSuiteSelection(this.#full(j).selection, selection) && (j.workers ?? 4) === workers && j.size === size
+      && (occasion !== 'stage' || requiredExecutor === 'local' || j.occasion === 'stage');
+  }
+  #cacheReceiptAvailable(job: SuiteJob, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): boolean {
+    if (job.webPhase?.status === 'not-run' || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return false;
+    if (!receiptExecutionMatches(job, { occasion, executor: requiredExecutor })) return false;
     // Choose the newest compatible attempt before checking platform/success;
     // otherwise a failed or unreported fresh stage run resurrects an older green.
-    if (occasion === 'stage' && !this.stageCovers().some(cover => cover.id === job.id && cover.platform === (requiredExecutor === 'local' ? 'macOS' : 'Linux droplet'))) return undefined;
+    if (occasion === 'stage' && !this.stageCovers().some(cover => cover.id === job.id && cover.platform === (requiredExecutor === 'local' ? 'macOS' : 'Linux droplet'))) return false;
     const age = this.#clock.now().getTime() - Date.parse(job.finished);
     const artifact = this.#store.resolveArtifact(job.artifact);
-    return age >= 0 && age < (this.#options.cacheMaxAgeMs ?? 86400000) && artifact && artifact.status !== 'archived' && !artifact.fileDeleted ? job : undefined;
+    return Boolean(age >= 0 && age < (this.#options.cacheMaxAgeMs ?? 86400000) && artifact && artifact.status !== 'archived' && !artifact.fileDeleted);
   }
   #queue(): SuiteJob[] {
     return this.#jobs.filter(j => j.state === 'queued' && !j.outcome).sort((a, b) => Number(b.integrated === true) - Number(a.integrated === true) || (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER) || (a.queued ?? '').localeCompare(b.queued ?? ''));
@@ -992,6 +1010,7 @@ export class Suites {
           if (!job.lease) {
             if (!job.parentRun && !committedOnly) await this.#hostGate(job);
             if (job.hostGate) run.hostGate = job.hostGate;
+            if (job.tierReceipts) run.tierReceipts = job.tierReceipts;
             if (job.cancelled) throw new Error('cancelled');
             if (!committedOnly && await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
             if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
@@ -1232,6 +1251,7 @@ export class Suites {
     if (!command) return;
     const started = this.#clock.now().getTime();
     const record = async () => {
+      (job.tierReceipts ??= []).push(tierReceipt({ id: job.id, tree: job.hostGate!.tree }, { name: 'check', command: job.hostGate!.command }, job.hostGate!.code));
       this.#save(job);
       const binding = { run: job.id, tree: job.hostGate!.tree, command: job.hostGate!.command };
       await appendFile(job.log, `\nverification step binding ${JSON.stringify(binding)}\ntier T0: exit ${job.hostGate!.code}; duration ${(this.#clock.now().getTime() - started) / 1000} s; output tail: host check\n`);
@@ -1477,7 +1497,7 @@ export class Suites {
       throw error;
     });
     if (text === null) return false;
-    const result = JSON.parse(text) as { code: number; cause?: string; notRun?: 'infrastructure' | 'provider-capacity'; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
+    const result = JSON.parse(text) as { tierReceipts?: unknown; code: number; cause?: string; notRun?: 'infrastructure' | 'provider-capacity'; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
     if (!Number.isInteger(result.code) || typeof result.finished !== 'string' || !Number.isFinite(Date.parse(result.finished)) || result.cause !== undefined && typeof result.cause !== 'string') throw new Error('invalid remote result receipt');
     // The receipt survives deletion of the machine and can predate the last job
     // checkpoint. Reconcile it before polling or relaunching a persisted holder.
@@ -1489,6 +1509,8 @@ export class Suites {
     }
     if (!job.outcome?.notRun && (!job.outcome || !job.cancelled && !job.requesterDied && !job.timedOut)) job.outcome = { ...suiteCommandOutcome(result.code, result.cause ?? ''), ...(result.notRun ? { notRun: result.notRun } : {}) };
     job.finished = result.finished;
+    const tierReceipts = parseTierReceipts(result.tierReceipts);
+    if (tierReceipts) job.tierReceipts = tierReceipts;
     if (result.platform) job.platform = result.platform;
     if (result.health) job.health = result.health;
     if (result.shardHealth) { job.shardHealth = result.shardHealth; delete job.health; }
@@ -1572,11 +1594,15 @@ export class Suites {
         job.timedOut = true; job.outcome = { code: 124, cause: `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` }; this.#save(job);
       }
       const receipt = !restored && job.lease ? remote ? await this.#droplet.status(job.lease as DropletLease) : await this.#local.status(job.lease) : null;
+      if (receipt && (receipt.state === 'done' || receipt.state === 'lost')) {
+        const tierReceipts = parseTierReceipts(receipt.tierReceipts);
+        if (tierReceipts) job.tierReceipts = tierReceipts;
+      }
       let logError: unknown;
       if (!restored && remote && job.lease && job.remoteLogStart !== undefined) {
         try { await this.#collectLog(job); }
         catch (error) { logError = error; }
-        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ ...(job.outcome?.notRun ? job.outcome : suiteCommandOutcome(receipt.code ?? 1, receipt.cause ?? '')), finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
+        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ ...(job.outcome?.notRun ? job.outcome : suiteCommandOutcome(receipt.code ?? 1, receipt.cause ?? '')), finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.tierReceipts ? { tierReceipts: receipt.tierReceipts } : {}), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
       }
       if (receipt?.platform) job.platform = receipt.platform;
       if (receipt?.finished) job.finished = receipt.finished;
@@ -1626,7 +1652,7 @@ export class Suites {
         }
         // A recovered receipt can already contain the finalized partial results.
         // Do not replace it with a header-only receipt on a reporting retry.
-        if (!restored) await writeFile(job.result, JSON.stringify({ ...job.outcome, finished: job.finished ?? this.#clock.now().toISOString(), ...(job.platform ? { platform: job.platform } : {}), ...(job.health ? { health: job.health } : {}), ...(job.shardHealth ? { shardHealth: job.shardHealth } : {}) }));
+        if (!restored) await writeFile(job.result, JSON.stringify({ ...job.outcome, ...(job.tierReceipts ? { tierReceipts: job.tierReceipts } : {}), finished: job.finished ?? this.#clock.now().toISOString(), ...(job.platform ? { platform: job.platform } : {}), ...(job.health ? { health: job.health } : {}), ...(job.shardHealth ? { shardHealth: job.shardHealth } : {}) }));
       }
       job.state = 'finished';
       this.#save(job);
@@ -1838,11 +1864,39 @@ export class Suites {
   covers(): import('../protocol.ts').CoverStatus[] { return recentCovers(this.#jobs); }
   /** Collected immutable evidence for hub-owned batch diagnosis. */
   async receipt(id: string): Promise<{ job: SuiteJob; log: string }> {
+    const job = this.#collectedJob(id);
+    return { job: structuredClone(job), log: await this.evidence(job) };
+  }
+  #collectedJob(id: string): SuiteJob {
     const job = this.#jobs.find(job => job.id === id);
     if (!job?.reported || !job.outcome || !job.artifact) throw new Error(`suite ${id} has no collected receipt`);
     const artifact = this.#store.resolveArtifact(job.artifact);
     if (!artifact) throw new Error(`suite ${id} log artifact unavailable`);
-    return { job: structuredClone(this.#full(job)), log: await this.evidence(job) };
+    return this.#full(job);
+  }
+  async #batchT1(members: NonNullable<SuiteJob['batch']>['members']): Promise<BatchT1> {
+    const decision: BatchT1 = { skipped: false, members: [] };
+    if (!members.length) return { ...decision, reason: 'no pinned members' };
+    for (const member of members) {
+      const latest = this.latest(member.item, member.branch);
+      if (!latest) return { ...decision, reason: `${member.item}: missing member verify receipt` };
+      try {
+        const job = this.#collectedJob(latest.id);
+        let source: SuiteJob | undefined;
+        let sourceRun: string | undefined;
+        if (job.cached) {
+          source = this.#collectedJob(job.cached.run);
+          sourceRun = source.id;
+          const executor = job.requestedExecutor === 'droplet' ? 'droplet' : undefined;
+          if (!job.tree || !job.selection || !this.#cacheInputsMatch(source, job.tree, job.selection, job.workers ?? 4, recordedCommands(job), job.size, executor)
+            || !this.#cacheReceiptAvailable(source, executor)) return { ...decision, reason: `${member.item}: cache source no longer satisfies cache policy` };
+        }
+        const reason = memberVerificationReason(member, job, source);
+        if (reason) return { ...decision, reason: `${member.item}: ${reason}` };
+        decision.members.push({ item: member.item, head: member.head, run: latest.id, ...(sourceRun ? { sourceRun } : {}) });
+      } catch { return { ...decision, reason: `${member.item}: member verify receipt unavailable` }; }
+    }
+    return { ...decision, skipped: true };
   }
   #cacheEvidence(id: string, text: string): string {
     this.#evidence.delete(id); this.#evidence.set(id, text);

@@ -3,6 +3,7 @@ import type { SuiteSelection } from '../suite-selection.ts';
 export type ExecutorKind = 'local' | 'droplet';
 export type HostGate = { tree: string | null; command: string; code: number };
 export type RunRef = {
+  tierReceipts?: import('../verification-tier-receipts.ts').TierReceipt[];
   commands?: import('../verification-commands.ts').VerificationCommands;
   hostGate?: HostGate;
   limits?: import('../suite-limits.ts').SuiteLimits;
@@ -15,6 +16,7 @@ export type RunRef = {
 export type Lease = { kind: ExecutorKind; run: string; created: string; deadline: string; resource: unknown };
 export type Platform = { os: string; arch: string; release: string; node: string; nvim: string };
 export type RunStatus = {
+  tierReceipts?: import('../verification-tier-receipts.ts').TierReceipt[];
   state: 'pending' | 'running' | 'done' | 'lost' | 'paused' | 'unknown';
   code?: number; cause?: string; finished?: string; platform?: Platform;
 };

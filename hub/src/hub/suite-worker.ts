@@ -1,6 +1,7 @@
 import { SUITE_INFRASTRUCTURE_EXIT, suiteCommandOutcome } from '../suite-infrastructure.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { verificationSteps, verificationStepCommand } from '../verification-plan.ts';
+import { receiptStep, type TierReceipt } from '../verification-tier-receipts.ts';
 // Detached from both the CLI and the hub. Completion is a durable receipt, not a socket callback.
 import { execFile } from 'node:child_process';
 import { readFile, access, rename, writeFile } from 'node:fs/promises';
@@ -50,6 +51,7 @@ async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | nul
   if (job.queued) process.stdout.write(`verification queue wait ${((Date.now() - Date.parse(job.queued)) / 1000).toFixed(2)}s\n`);
   let code = 0;
   const inspections: Array<{ commandId: string; receipt: SuiteInspectionReceipt }> = [];
+  const tierReceipts: TierReceipt[] = [];
   let cause = '';
   let selected: { code: number; cause: string } | null = null;
   let currentCommandId: string | null = null;
@@ -110,8 +112,8 @@ async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | nul
       if (commands.plan && name !== 'check') env.CLAND_COVERAGE_APPEND = '1';
       else delete env.CLAND_COVERAGE_APPEND;
       env.CLAND_SUITE_CAUSE_FILE = join(dirname(job.result), 'command-cause');
-      const outcome = await native.suiteCommand(verificationStepCommand(step), job.cwd, withoutExecutorCredentials(env), undefined,
-        receipt => inspections.push({ commandId, receipt }));
+      const outcome = await receiptStep(tierReceipts, job, step, () => native.suiteCommand(verificationStepCommand(step), job.cwd, withoutExecutorCredentials(env), undefined,
+        receipt => inspections.push({ commandId, receipt })));
       code = outcome.code;
       cause = outcome.cause;
       if (code !== 0) selected = { code, cause };
@@ -142,7 +144,7 @@ async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | nul
       }
     } catch (error) { ({ code, cause } = compatibilityCleanupOutcome(selected ? { code, cause } : null, error)); }
   }
-  return { code, cause, ...(platform ? { platform } : {}), ...(inspections.length ? { inspections } : {}) };
+  return { code, cause, tierReceipts, ...(platform ? { platform } : {}), ...(inspections.length ? { inspections } : {}) };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await suiteWorker(process.argv[2]!);

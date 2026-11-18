@@ -18,7 +18,7 @@ export async function waitForWorkerAdmission(options: {
   return { admitted: true, cause: '' };
 }
 
-type WorkerOutcome = { code: number; cause: string; platform?: Platform };
+type WorkerOutcome = { code: number; cause: string; platform?: Platform; tierReceipts?: import('./verification-tier-receipts.ts').TierReceipt[] };
 export type WorkerCompletion = WorkerOutcome & { finished: string; notRun?: 'infrastructure' };
 
 /** The executable worker delegates admission and its terminal receipt to this owner. */

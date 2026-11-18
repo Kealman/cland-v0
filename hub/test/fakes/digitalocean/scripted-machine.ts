@@ -7,7 +7,7 @@ import type { RunRef, RunStatus } from '../../../src/executor/executor.ts';
 import { writeLease, type DropletLease } from '../../../src/executor/droplet/lease.ts';
 import type { PrepareKey } from '../../../src/executor/droplet/prepare.ts';
 
-export type MachineScript = { outcome?: 'green' | 'red' | 'lost' | 'slow'; code?: number; afterMs?: number; failures?: string[]; log?: string };
+export type MachineScript = { outcome?: 'green' | 'red' | 'lost' | 'slow'; code?: number; afterMs?: number; failures?: string[]; log?: string; tierReceipts?: NonNullable<RunStatus['tierReceipts']> };
 /** Semantic remote receipts, without shell parsing, SSH or a worker process.
  * Native writers are injectable so tests can hold their completion receipts. */
 export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey & { nvim?: { tag: string } }, initial: MachineScript = {}, io = { writeFile, writeLease }) {
@@ -56,7 +56,7 @@ export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey 
       if (execution.script.outcome === 'lost') return { state: 'lost', code: 1, cause: 'remote machine lost' };
       if (!execution.cancelled && (execution.script.outcome === 'slow' || clock.now().getTime() < execution.started + (execution.script.afterMs ?? 100))) return { state: 'running' };
       execution.finished ??= execution.started + (execution.script.afterMs ?? 100);
-      return { state: 'done', code: execution.cancelled ? 1 : execution.script.code ?? (execution.script.outcome === 'red' ? 1 : 0), finished: new Date(execution.finished).toISOString(), platform: { os: 'linux', arch: 'x64', release: 'scripted', node: key.node, nvim: key.nvim?.tag ?? 'none' } };
+      return { ...(execution.script.tierReceipts ? { tierReceipts: execution.script.tierReceipts } : {}), state: 'done', code: execution.cancelled ? 1 : execution.script.code ?? (execution.script.outcome === 'red' ? 1 : 0), finished: new Date(execution.finished).toISOString(), platform: { os: 'linux', arch: 'x64', release: 'scripted', node: key.node, nvim: key.nvim?.tag ?? 'none' } };
     },
     async log(lease, offset) {
       record('log', lease);
@@ -97,10 +97,10 @@ export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey 
     async put() { throw new Error('scripted transport does not copy files'); },
     async get() { throw new Error('scripted transport does not copy files'); },
   };
-  function finish(id: string, code = 0, log?: string) {
+  function finish(id: string, code = 0, log?: string, tierReceipts?: NonNullable<RunStatus['tierReceipts']>) {
     const execution = executions.get(id);
     if (execution?.started === undefined) throw new Error('observe machine start before completing a scripted run');
-    execution.script = { outcome: code ? 'red' : 'green', afterMs: 0, ...(log === undefined ? {} : { log }) };
+    execution.script = { outcome: code ? 'red' : 'green', afterMs: 0, ...(log === undefined ? {} : { log }), ...(tierReceipts ? { tierReceipts } : {}) };
     execution.finished = clock.now().getTime();
   }
   return { calls, waits, finish, started: (id: string) => startReceipt(id).promise, script: (...next: MachineScript[]) => scripts.push(...next), dependencies: { processes: { alive: pid => pid === process.pid, started: () => null }, clock, wait: waits.wait, run, host, machine, prepareKey: async () => key, prepareBase: async () => key.base,

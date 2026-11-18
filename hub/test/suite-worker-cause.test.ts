@@ -5,6 +5,19 @@ import { compatibilityCleanupOutcome } from '../src/hub/suite-worker.ts';
 import { compatibilityCleanupCause, runWorkerWithAdmission, type WorkerCompletion } from '../src/suite-worker-admission.ts';
 import { suiteCommandOutcome } from '../src/suite-infrastructure.ts';
 import { FakeClock } from './fake-clock.ts';
+import { tierReceipt } from '../src/verification-tier-receipts.ts';
+
+test('worker publication retains producing tier receipts through signal and cleanup diagnostics', async () => {
+  const rows = [tierReceipt({ id: 'run', tree: 'tree' }, { name: 'T1', command: 'unit' }, 0)];
+  for (const signal of [null, 'SIGTERM']) {
+    const receipts: WorkerCompletion[] = [];
+    await runWorkerWithAdmission({ gate: async () => true, signal: () => signal, clock: new FakeClock(1000),
+      run: async () => ({ ...compatibilityCleanupOutcome({ code: 0, cause: '' }, 'cleanup denied'), tierReceipts: rows }),
+      log: () => {}, persist: async receipt => { receipts.push(receipt); } });
+    assert.deepEqual(receipts[0]!.tierReceipts, rows);
+    assert.equal(receipts[0]!.code, signal ? 143 : 0);
+  }
+});
 
 test('worker admission gate expiry names its 15 second deadline', async () => {
   const clock = new FakeClock(1000);

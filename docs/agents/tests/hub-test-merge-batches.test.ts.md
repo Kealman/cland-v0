@@ -1,5 +1,28 @@
 # hub/test/merge-batches.test.ts
 
+Member-receipt cases use the same fake controller/Suites boundary. Complete
+mode-free exact-head T0–T2 verifies omit batch T1 while retaining T0/T3; the
+summary names each member run/head. An older-head green or missing member receipt
+retains T1 for the whole batch and explains why. Cache cases require the source
+receipt and retain both cache request and source run identities. These are
+semantic executor receipts, with no native worker, network or provider calls.
+Pure eligibility and ordered interrupted-attempt controls are in
+batch-member-verification.test.ts. No tier classification changed.
+The callbacks install `fakeNativeGuard` before fixture acquisition, under a joined
+whole-callback owner. Fixture setup and member-receipt setup have separate named
+bounds. Captured cleanup hooks must all finish and the original callback must
+settle before the guard's final zero-attempt assertion and restoration; incomplete
+cleanup retains the guard. Cache controls use another head/item at the same tree.
+Sole-T1 and no-T1 configurations are checked with present and missing metadata.
+Legacy printed tier lines never authorize a skip.
+The member callback's actual `fixtureWork` owner is created before guard setup.
+Test-signal abort and `caseDeadlines.releaseOnClose` fence it synchronously before
+the scope waits for pending continuations. Its positive join receipt then gates
+captured fixture cleanup and guard restoration. Held-continuation controls arm
+their completion observer before triggering teardown or abort, then require the
+owner's admission-closed rejection and retain the final no-later-step assertion.
+They do not import native cleanup or cancel a real process.
+
 Restarted host-gate coverage closes Suites while its fake host check is held,
 releases an exit-143 receipt, then reopens the controller and Suites against the
 disposable store. The same run must execute a second host attempt and land all

@@ -1,5 +1,12 @@
 # hub/test/executor-droplet-component.test.ts
 
+The uploaded tier-status VM case uses `guardedLeaseCase`: ownership is enrolled
+before guard setup, dynamic import has its own named setup wait, and each VM
+evaluation is an admitted step. The shared sequence fences before joining on
+normal or signal teardown; the launch guard verifies only after callback and
+cleanup drainage. Preserve native-exit, metadata, byte-bound and descriptor-close
+assertions while testing entirely through in-memory VM I/O.
+
 The loader control positively observes a pool-image import before trapping all
 synchronous filesystem exports. Recovery with no hosts directory must complete
 without requesting that module or reaching a provider. The serving-path trap

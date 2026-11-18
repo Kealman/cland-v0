@@ -27,6 +27,9 @@ Add subsystem text to its file; keep this index as pointers.
 Background merge-prune shutdown joins and its bounded incomplete outcome are
 documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merge-cleanup-shutdown).
 
+Conditional batch T1 reuse, receipt requirements and per-member summaries are
+documented under [queued batches](../docs/agents/tests.md#queued-merge-batches).
+
 - [Prerequisite and packaging reports](../docs/hub/prerequisite-and-packaging-reports.md)
 - [Start a project with cland](../docs/hub/start-a-project-with-cland.md)
 - [Web workspace](../docs/hub/web-workspace.md)

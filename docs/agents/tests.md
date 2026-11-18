@@ -225,7 +225,7 @@ selected tier plan; queued runs keep those commands after a config reload.
 | Run | Commands after check |
 | --- | --- |
 | Task with hosting merge queue enabled | `test_unit`, `test_component` |
-| Merge batch | Commands matching `merge.batch_tiers` (default unit/integration; this repo unit only), plus Web after T1 for web/ diffs |
+| Merge batch | Commands matching `merge.batch_tiers` (default unit/integration), omitting unit with complete exact-head member receipts, plus Web after T1 for web/ diffs |
 | Periodic `dev-t3` | `test_integration` |
 | Integrated dev, explicit all, or task without batch protection | unit, component, integration |
 | Stage, epic, release or nightly soak | all four |
@@ -277,7 +277,7 @@ Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the c
 | Run kind | Plan after T0 |
 | --- | --- |
 | Queue-enabled task, no mode | All T1, selected T2; fallback is all T2 in both packages; added/changed T3/T4 files and mapped T4 guards once |
-| Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3), plus Web after T1 for web/ diffs; five repetitions of T3 identities absent from the latest green batch or stage receipt that ran T3 |
+| Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; T1 omitted with complete exact-head member receipts), plus Web after T1 (after configured tiers without T1) for web/ diffs; five repetitions of T3 identities absent from the latest green batch or stage receipt that ran T3 |
 | Ordinary integrated `dev` or explicit `all` | T1–T3 |
 | Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
 | Periodic dev (`dev-t3`) | T2 and T3, one droplet; no load repetitions |
@@ -300,6 +300,12 @@ uses the same mode-free selection. Unchanged T3 smoke files are filtered out of 
 
 `[merge] batch_tiers` selects a nonempty set of T1–T4 tiers for each batch.
 Its default is `["T1", "T3"]`; generated or inherited configuration can override it.
+When another configured runtime tier remains and every pinned member has a
+complete green mode-free T0–T2 producer receipt at its exact head, the batch omits
+T1. Missing, stale, partial or unavailable receipts retain configured T1 for the
+whole batch. Cache hits require complete same-tree source receipts, including
+from another head or item. Sole-T1 configurations always run T1; configurations
+without T1 stay unchanged. The batch still runs T0 and applicable Web.
 Task verification adds changed T3/T4 files and mapped T4 guards once to T0–T2 (selection mapping and duration check below). A green batch with T1 only supplies no T3 receipt.
 When batches omit T2, automated T2 coverage after merge runs
 only in the periodic dev run, the nightly soak and close occasions (stage, epic
@@ -553,6 +559,15 @@ candidate with the hub-owned `batch` occasion. That run selects
 T0 first through the candidate's resolved `[verification] check` command, then
 `[merge] batch_tiers` (default T1 and T3), with five load repetitions only for T3
 identities absent from the latest green batch or stage receipt that actually ran T3.
+Before pinning that plan, the hub checks each member's latest verify. Only a green
+mode-free verify at the exact pinned head with complete producer-owned structured T0–T2 command
+receipts permits omitting T1. A cache hit needs a complete same-tree source receipt, including from another head or item;
+stale, missing, partial and unavailable evidence keeps configured T1 for the whole
+batch. The summary says `T1 skipped` and lists every member run and head, or
+`T1 retained` with its reason. It is durably posted in each member topic. This
+internal decision survives restart and full-plan confirmation; old persisted
+jobs without it render legacy/unavailable. T3 and T0 remain in their configured
+plans, and Web follows configured tiers when T1 is omitted.
 The baseline is selected separately for each planned tier; a newer T1-only batch
 cannot replace the T3 baseline. Failed, cancelled, cached, unreported and diagnostic
 runs supply no baseline. With no qualifying receipt, that tier's identities are new.

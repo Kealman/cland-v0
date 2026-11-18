@@ -117,12 +117,13 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     ...controls, CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'),
   }), { token, api: api.provider }, api.provider);
   let hostGate = async (run: RunRef) => ({ tree: run.tree ?? null, command: 'npm run typecheck', code: 0 });
+  let candidateGit = async (_cwd: string, _args: string[]): Promise<string> => '';
   const make = () => new Suites(store, root, async (job, checkpoint) => {
     await beforeReport(job);
     const artifact = store.registerArtifact(id => ({ id, title: job.id, kind: 'file', path: job.log, creator: 'hub', time: clock.now().toISOString(), topic: job.topic, status: 'shared' }), () => {});
     checkpoint(artifact.id); reports.push(structuredClone(job)); publish();
   }, { clock, durationContext, candidate: {
-    git: async () => '', // Synthetic candidates have no sibling Git delta.
+    git: (cwd, args) => candidateGit(cwd, args), // Synthetic candidates default to no sibling delta.
     isAncestor: async (_cwd, ancestor, descendant) => ancestry.some(pair => pair[0] === ancestor && pair[1] === descendant),
     head: async () => candidate.head,
     tree: async () => candidate.tree,
@@ -166,13 +167,13 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   async function tick(ms = 1000) { await clock.advance(ms); }
   const status = (id: string) => suites.status().find(job => job.id === id)!;
   const result = (id: string) => when(() => status(id)?.reported ? status(id) : undefined);
-  async function finish(id: string, code = 0, log = '# tests 1\n# pass 1\n', report = true) {
+  async function finish(id: string, code = 0, log = '# tests 1\n# pass 1\n', report = true, tierReceipts?: NonNullable<RunStatus['tierReceipts']>) {
     await suites.settled();
-    if (status(id).executor === 'droplet') machine.finish(id, code, log);
+    if (status(id).executor === 'droplet') machine.finish(id, code, log, tierReceipts);
     else {
       const run = delivered.get(id); assert.ok(run, 'observe worker admission before completion');
       await writeFile(run.log, log);
-      receipts.set(id, { state: 'done', code, finished: clock.now().toISOString(), platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'v0.12.5' } });
+      receipts.set(id, { state: 'done', code, ...(tierReceipts ? { tierReceipts } : {}), finished: clock.now().toISOString(), platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'v0.12.5' } });
     }
     await tick();
     if (report) return machine.waits.run(result(id));
@@ -195,6 +196,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   return { root, env, clock, api, machine, acquisitions, candidate, ancestry, logs, notices, shardingNotices, reports, delivered, receipts, when, launch, tick, result, status, finish, reopen, close,
     ownIO(release: () => void) { releases.add(release); },
     hostGate(gate: typeof hostGate) { hostGate = gate; },
+    git(boundary: typeof candidateGit) { candidateGit = boundary; },
     get suites() { return suites; }, get store() { return store; }, get config() { return config; },
     beforeReport(barrier: typeof beforeReport) { beforeReport = barrier; },
     beforeInspect(barrier: () => Promise<void>) { inspectBarrier = barrier; },

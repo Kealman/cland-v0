@@ -22,6 +22,8 @@ import { caseDeadlines } from './case-deadlines.ts';
 import { selectionFromEnv, selectionTransport } from '../src/suite-selection.ts';
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 import { fixtureWork, type FixtureStep } from '../../test-support/fixture-work.ts';
+import { fakeNativeGuard } from './fake-native-guard.ts';
+import { tierReceipt } from '../src/verification-tier-receipts.ts';
 
 /** Enroll before acquisition; even late fixture hooks must join the whole body. */
 function joinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep) => Promise<void>) {
@@ -38,6 +40,47 @@ function joinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureS
 function boundedJoinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep) => Promise<void>) {
   const scope = caseDeadlines(t);
   return scope.wait('fixture setup and receipt assertions', () => joinedCase(scope.fixtures, body));
+}
+
+function guardedMemberCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep, setup: <T>(name: string, run: () => Promise<T>) => Promise<T>) => Promise<void>) {
+  const owner = fixtureWork();
+  let ownerClosing: Promise<void> | undefined, ownerJoined = false;
+  const closeOwner = () => {
+    if (!ownerClosing) {
+      ownerClosing = owner.close(); // Fences admission synchronously, then joins.
+      void ownerClosing.then(() => { ownerJoined = true; }, () => {});
+    }
+    return ownerClosing;
+  };
+  const scope = caseDeadlines(t, { releaseOnClose: () => { void closeOwner(); } });
+  const onAbort = () => { void closeOwner(); };
+  t.signal.addEventListener('abort', onAbort, { once: true });
+  if (t.signal.aborted) onAbort();
+  scope.fixtures.after(() => closeOwner());
+  let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
+  let restore: (() => void) | undefined;
+  let registered = 0, completed = 0, settled = false;
+  const captured = new Proxy(scope.fixtures, { get(target, key) {
+    if (key === 'after') return (close: () => unknown) => {
+      registered++;
+      scope.fixtures.after(async () => { await closeOwner(); await close(); completed++; });
+    };
+    const value = Reflect.get(target, key, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  } });
+  // The abort/release bridge fences the actual callback before scope joins its
+  // pending waits; captured resources drain only after that owner has joined.
+  t.after(() => {
+    assert.ok(ownerJoined && settled && completed === registered, 'callback or cleanup incomplete; retain native guard');
+    t.signal.removeEventListener('abort', onAbort);
+    try { guard?.verify(); } finally { t.mock.restoreAll(); restore?.(); }
+  });
+  const work = owner.run(async step => {
+    guard = await step(() => scope.wait('native guard setup', () => fakeNativeGuard(fn => { restore = fn; })));
+    await body(captured, step, scope.wait);
+  });
+  void work.then(() => { settled = true; }, () => { settled = true; });
+  return scope.wait('member callback', () => work);
 }
 
 test('batch and periodic failing-file selections round-trip to exactly the requested package files', async t => {
@@ -96,6 +139,159 @@ const failureLog = 'suite test failures [{"file":"hub/test/example.test.ts","nam
 const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/example.test.ts","name":"rejects stale input","at":1,"nesting":0,"outcome":"pass","seconds":0.01}\nsuite test failures []\n# tests 1\n# pass 1\n';
 const t0Green = 'tier T0: exit 0; duration 1 s; output tail: static checks passed\n';
 const t0Red = 'tier T0: exit 2; duration 1 s; output tail: error TS2344\n';
+
+// Member verifies and the batch consume explicit producer receipts, never log text.
+async function memberVerifies(state: Awaited<ReturnType<typeof fixture>>, step: FixtureStep, options: { older?: boolean; omitFirst?: boolean; metadata?: boolean; crossSource?: boolean; tiers?: string[]; interactionRun?: boolean } = {}) {
+  const { f, entries } = state;
+  f.configure('[verification]\nexecutor="droplet"\ncheck="true"\ntest_unit="true"\ntest_component="true"\ntest_integration="true"\n[merge]\nqueue=true\nbatch_tiers=' + JSON.stringify(options.tiers ?? ['T1', 'T3']) + (options.interactionRun ? '\nbatch_interaction="run"' : ''));
+  await step(() => writeFile(join(f.root, '.cland/config.toml'), '[verification]\ncheck="true"\ntest_unit="true"\ntest_component="true"\ntest_integration="true"\ntest="true"\n'));
+  const runs: string[] = [];
+  for (const [index, entry] of entries.entries()) {
+    if (options.omitFirst && index === 0) continue;
+    const cross = options.crossSource && index === 2;
+    f.candidate.branch = cross ? 't/99' : entry.branch;
+    f.candidate.head = cross ? 'e'.repeat(40) : options.older && index === 0 ? '0'.repeat(40) : entry.head;
+    f.candidate.tree = 'member-tree-' + index;
+    const run = await step(() => f.launch({ item: cross ? 'T-99' : entry.item, fresh: true }));
+    runs.push(run.id);
+    const metadata = options.metadata === false ? undefined : (['check', 'T1', 'T2'] as const).map(name => tierReceipt({ id: run.id, tree: f.candidate.tree }, { name, command: 'true' }, 0));
+    await step(() => f.finish(run.id, 0, t0Green
+      + 'tier T1: exit 0; duration 1 s; output tail: passed\n'
+      + 'tier T2: exit 0; duration 1 s; output tail: passed\n' + passLog, true, metadata));
+  }
+  return runs;
+}
+
+test('batch skips T1 with complete exact-head member verifies and names every receipt', t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const state = await step(() => setup('fixture setup', () => fixture(fixtures)));
+  const runs = await step(() => setup('member receipt setup', () => memberVerifies(state, step)));
+  await step(() => state.reopen());
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  assert.deepEqual(state.f.status(batch.run!).selection?.tiers, ['T3']);
+  await step(() => state.f.finish(batch.run!, 0, t0Green + 'tier T3: exit 0; duration 1 s; output tail: passed\n' + passLog));
+  assert.deepEqual((await step(() => state.f.suites.receipt(batch.run!))).job.commands?.plan?.map(item => item.name), ['check', 'T3']);
+  await step(() => state.runner.tick());
+  const summary = state.reports.find(text => text.includes('T1 skipped'));
+  assert.ok(summary, 'batch summary records the skip');
+  for (const [index, run] of runs.entries()) {
+    assert.ok(summary.includes(run), run);
+    assert.ok(summary.includes(String(index + 1).repeat(40)));
+  }
+}));
+
+test('batch restores T1 when a green member verify predates its pinned head and explains why', t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const state = await step(() => setup('fixture setup', () => fixture(fixtures)));
+  await step(() => setup('member receipt setup', () => memberVerifies(state, step, { older: true })));
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  assert.deepEqual(state.f.status(batch.run!).selection?.tiers, ['T1', 'T3']);
+  await step(() => state.f.finish(batch.run!, 0, t0Green
+    + 'tier T1: exit 0; duration 1 s; output tail: passed\n'
+    + 'tier T3: exit 0; duration 1 s; output tail: passed\n' + passLog));
+  await step(() => state.runner.tick());
+  assert.ok(state.reports.some(text => text.includes('T1 retained') && text.includes('T-1') && /head|receipt/.test(text)));
+}));
+
+test('missing member verification restores T1 for the whole batch', t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const state = await step(() => setup('fixture setup', () => fixture(fixtures)));
+  await step(() => setup('member receipt setup', () => memberVerifies(state, step, { omitFirst: true })));
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  assert.deepEqual(state.f.status(batch.run!).selection?.tiers, ['T1', 'T3']);
+  await step(() => state.f.finish(batch.run!, 0, t0Green + passLog));
+  assert.match((await step(() => state.f.suites.receipt(batch.run!))).job.batchT1?.reason ?? '', /T-1: missing/);
+}));
+
+for (const sourceAvailable of [true, false]) test('cache hits with ' + (sourceAvailable ? 'available' : 'missing') + ' cross-member source receipts ' + (sourceAvailable ? 'skip' : 'retain') + ' batch T1', t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const state = await step(() => setup('fixture setup', () => fixture(fixtures)));
+  const runs = await step(() => setup('member receipt setup', () => memberVerifies(state, step, { crossSource: true })));
+  const entry = state.entries[2]!;
+  state.f.candidate.head = entry.head; state.f.candidate.branch = entry.branch;
+  const cached = await step(() => state.f.launch({ item: entry.item }));
+  await step(() => state.f.machine.waits.run(state.f.result(cached.id)));
+  assert.equal(state.f.status(cached.id).cached?.run, runs[2]);
+  if (!sourceAvailable) {
+    const source = await step(() => state.f.suites.receipt(runs[2]!));
+    const resolve = state.f.store.resolveArtifact.bind(state.f.store);
+    fixtures.mock.method(state.f.store, 'resolveArtifact', (id: string) => id === source.job.artifact ? null : resolve(id));
+  }
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  assert.deepEqual(state.f.status(batch.run!).selection?.tiers, sourceAvailable ? ['T3'] : ['T1', 'T3']);
+  await step(() => state.f.finish(batch.run!, 0, t0Green + passLog));
+  const receipt = await step(() => state.f.suites.receipt(batch.run!));
+  if (sourceAvailable) assert.deepEqual(receipt.job.batchT1?.members[2], { item: entry.item, head: entry.head, run: cached.id, sourceRun: runs[2] });
+  else assert.match(receipt.job.batchT1?.reason ?? '', /T-3: member verify receipt unavailable/);
+}));
+
+for (const tiers of [['T1'], ['T3']]) for (const metadata of [true, false]) test('batch preserves configured ' + tiers.join(',') + ' with ' + (metadata ? 'present' : 'missing') + ' producer receipts', t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const state = await step(() => setup('fixture setup', () => fixture(fixtures)));
+  await step(() => setup('member receipt setup', () => memberVerifies(state, step, { tiers, metadata })));
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  assert.deepEqual(state.f.status(batch.run!).selection?.tiers, tiers);
+  await step(() => state.f.finish(batch.run!, 0, t0Green + passLog));
+  const receipt = await step(() => state.f.suites.receipt(batch.run!));
+  assert.deepEqual(receipt.job.commands?.plan?.map(item => item.name), ['check', ...tiers]);
+}));
+
+test('legacy member verifies with only printed tier lines retain batch T1', t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const state = await step(() => setup('fixture setup', () => fixture(fixtures)));
+  await step(() => setup('member receipt setup', () => memberVerifies(state, step, { metadata: false })));
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  assert.deepEqual(state.f.status(batch.run!).selection?.tiers, ['T1', 'T3']);
+  await step(() => state.f.finish(batch.run!, 0, t0Green + passLog));
+  assert.match((await step(() => state.f.suites.receipt(batch.run!))).job.batchT1?.reason ?? '', /producer tier receipts|passing step/);
+}));
+
+test('sole configured T1 remains when interaction fallback adds a T2 phase', t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const state = await step(() => setup('fixture setup', () => fixture(fixtures)));
+  await step(() => setup('member receipt setup', () => memberVerifies(state, step, { tiers: ['T1'], interactionRun: true })));
+  state.f.git(async () => { throw new Error('sibling delta unavailable'); });
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  assert.deepEqual(state.f.status(batch.run!).selection?.tiers, ['T1', 'T2']);
+  await step(() => state.f.finish(batch.run!, 0, t0Green + passLog));
+  assert.deepEqual((await step(() => state.f.suites.receipt(batch.run!))).job.commands?.plan?.map(item => item.name), ['check', 'T1', 'T2']);
+}));
+
+for (const mode of ['teardown', 'abort']) test(`member owner fences a held continuation on ${mode} before joining`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const entered = Promise.withResolvers<void>(), held = Promise.withResolvers<void>();
+  const cancellation = new AbortController();
+  const hooks: Array<() => unknown> = [];
+  let work: Promise<void> | undefined, closing: Promise<unknown> | undefined;
+  let admitted = false;
+  // Adopt a late inner guard/callback before either is acquired. This hook also
+  // releases the controlled setup on an assertion failure before draining it.
+  fixtures.after(async () => {
+    held.resolve();
+    await work?.catch(() => {});
+    closing ??= Promise.resolve(hooks[0]?.());
+    await closing;
+    for (const hook of hooks.slice(1)) await hook();
+  });
+  const context = new Proxy(fixtures, { get(target, key) {
+    if (key === 'after') return (hook: () => unknown) => { hooks.push(hook); };
+    if (key === 'signal') return cancellation.signal;
+    const value = Reflect.get(target, key, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  } });
+  work = guardedMemberCase(context, async (_fixtures, innerStep, innerSetup) => {
+    await innerStep(() => innerSetup('held setup', async () => { entered.resolve(); await held.promise; }));
+    await innerStep(async () => { admitted = true; });
+  });
+  const observed = work.then(() => ({ state: 'resolved' as const }), error => ({ state: 'rejected' as const, error }));
+  await step(() => setup('inner setup entered', () => entered.promise));
+  if (mode === 'teardown') closing = Promise.resolve(hooks[0]!());
+  else cancellation.abort();
+  held.resolve();
+  const receipt = await step(() => setup('inner callback completion receipt', () => observed));
+  assert.equal(receipt.state, 'rejected', 'the original callback observes the admission fence');
+  if (receipt.state === 'rejected') assert.match(String(receipt.error), /fixture work admission closed/);
+  assert.equal(admitted, false, 'no continuation was admitted after the fence');
+}));
 
 test('a bound passing retry supersedes an aborted host attempt and keeps its history', t => boundedJoinedCase(t, async (fixtures, step) => {
   const state = await step(() => fixture(fixtures));

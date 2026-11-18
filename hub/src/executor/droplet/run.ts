@@ -1,6 +1,7 @@
 import type { LogFn } from '../../log.ts';
 import { readSuiteCauseBounded, SUITE_CAUSE_BYTES, SUITE_INFRASTRUCTURE_PREFIX } from '../../suite-infrastructure.ts';
 import { verificationSteps, verificationStepCommand } from '../../verification-plan.ts';
+import { parseTierReceipts, readTierReceipts, tierReceiptWriterProgram } from '../../verification-tier-receipts.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
 import type { DropletDependencies, MachineTransport } from './dependencies.ts';
 import { execFile } from 'node:child_process';
@@ -24,7 +25,7 @@ import { selectionTransport } from '../../suite-selection.ts';
 const exec = promisify(execFile);
 /** Hosting-source program; delivered older trees need not contain the reader. */
 export function runStatusProgram(): string {
-  return `const fs=require('fs'),p=process.argv[1];const readCause=(${readSuiteCauseBounded.toString()});const platform=fs.existsSync(p+'/platform')?JSON.parse(fs.readFileSync(p+'/platform','utf8')):undefined;let status={state:'pending',platform};if(fs.existsSync(p+'/done')){const finished=fs.readFileSync(p+'/done','utf8').trim();status=finished?{state:'done',code:Number(fs.readFileSync(p+'/exit','utf8')),cause:readCause(fs,p+'/cause',${SUITE_CAUSE_BYTES},${JSON.stringify(SUITE_INFRASTRUCTURE_PREFIX)}),finished,platform}:{state:'running',platform};}else if(fs.existsSync(p+'/pgid')){let alive=true;try{process.kill(-Number(fs.readFileSync(p+'/pgid','utf8')),0)}catch{alive=false}status=alive?{state:'running',platform}:{state:'done',code:1,cause:'remote runner disappeared without a done marker',finished:new Date().toISOString(),platform};}console.log(JSON.stringify(status));`;
+  return `const fs=require('fs'),p=process.argv[1];const readCause=(${readSuiteCauseBounded.toString()});const platform=fs.existsSync(p+'/platform')?JSON.parse(fs.readFileSync(p+'/platform','utf8')):undefined;let status={state:'pending',platform};if(fs.existsSync(p+'/done')){const finished=fs.readFileSync(p+'/done','utf8').trim();status=finished?{state:'done',code:Number(fs.readFileSync(p+'/exit','utf8')),cause:readCause(fs,p+'/cause',${SUITE_CAUSE_BYTES},${JSON.stringify(SUITE_INFRASTRUCTURE_PREFIX)}),finished,platform}:{state:'running',platform};}else if(fs.existsSync(p+'/pgid')){let alive=true;try{process.kill(-Number(fs.readFileSync(p+'/pgid','utf8')),0)}catch{alive=false}status=alive?{state:'running',platform}:{state:'done',code:1,cause:'remote runner disappeared without a done marker',finished:new Date().toISOString(),platform};}if(fs.existsSync(p+'/tier-receipts.json')){const rows=(${readTierReceipts.toString()})(fs,p+'/tier-receipts.json',(${parseTierReceipts.toString()}));if(rows)status.tierReceipts=rows;}console.log(JSON.stringify(status));`;
 }
 const remoteDir = (lease: DropletLease): string => {
   if (!/^[a-zA-Z0-9-]+$/.test(lease.run)) throw new Error('invalid remote run id');
@@ -132,7 +133,8 @@ export class DropletRun {
     const commands = (!lines.check ? ["echo 'check: not set'"] : []).concat(verificationSteps(lines).map(step => {
       const { name, command: line } = step;
       const commandId = randomUUID();
-      const command = `echo ${quote(`$ ${line}`)}\nprintf '%s\\n' ${quote(`suite command start ${JSON.stringify({ id: commandId, name, line })}`)}\nsuite_command_exit=0\n/bin/sh -c ${quote(verificationStepCommand(step))} || suite_command_exit=$?\nprintf '\\nsuite command end ${commandId} %s\\n' "$suite_command_exit"\nif test "$suite_command_exit" -ne 0; then exit "$suite_command_exit"; fi`;
+      const recordTier = `node -e ${quote(tierReceiptWriterProgram(run, step, run.tierReceipts))} ${dir}/tier-receipts.json "$suite_command_exit" || echo 'tier receipt unavailable'`;
+      const command = `echo ${quote(`$ ${line}`)}\nprintf '%s\\n' ${quote(`suite command start ${JSON.stringify({ id: commandId, name, line })}`)}\nsuite_command_exit=0\n/bin/sh -c ${quote(verificationStepCommand(step))} || suite_command_exit=$?\n${recordTier}\nprintf '\\nsuite command end ${commandId} %s\\n' "$suite_command_exit"\nif test "$suite_command_exit" -ne 0; then exit "$suite_command_exit"; fi`;
       if (name !== 'check') {
         const release = released ? '' : 'rmdir /tmp/cland-suite.lock; trap - EXIT\n';
         released = true;
@@ -153,7 +155,7 @@ git read-tree HEAD || exit 1
 git rm --quiet -r --cached --ignore-unmatch -- ${excludedPaths.map(quote).join(' ')} || exit 1
 git write-tree
 )`;
-      return `if ${tree} && test "$checked_tree" = ${quote(gate.tree)}; then\necho ${quote(`typecheck: host gate at ${gate.tree} (not repeated)`)}\nelse\n${fallback}\nfi`;
+      return `if ${tree} && test "$checked_tree" = ${quote(gate.tree)}; then\necho ${quote(`typecheck: host gate at ${gate.tree} (not repeated)`)}\nsuite_command_exit=0\n${recordTier}\nelse\n${fallback}\nfi`;
     })).join('\n');
     // The typecheck owns the machine compatibility lock; the package runner then
     // takes its own compatibility leases, including cross-package smoke phases.

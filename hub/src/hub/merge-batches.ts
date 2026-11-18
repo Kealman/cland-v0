@@ -1,4 +1,5 @@
 import { TerritoryBusy } from '../territory-lock-context.ts';
+import { batchT1Summary } from '../batch-member-verification.ts';
 // Durable merge-batch policy; Git preparation and landing are owned by the territory boundary.
 import { randomUUID } from 'node:crypto';
 import { stat } from 'node:fs/promises';
@@ -214,6 +215,7 @@ export class MergeBatches {
       const runs = evidence.job.batchBaselineRuns;
       const baselines = runs ? Object.entries(runs).map(([tier, run]) => `${tier}=${run ?? 'none'}`).join(', ') : `legacy=${baseline?.run ?? 'unavailable'}`;
       const repeated = loadGateCompletionSummary(evidence.log);
+      steps.unshift(batchT1Summary(evidence.job.batchT1));
       this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs == null ? 'unavailable' : job.runMs + ' ms'}; exit ${job.outcome.code}; batch interaction ${JSON.stringify(batchInteractionSummary(evidence.job.selection?.batchInteraction))}; load gate baselines ${baselines}; repeated identities ${repeated.unknown ? 'unknown' : repeated.complete} (confirmed complete ${repeated.complete}; completion unknown ${repeated.unknown}); log ${log?.id ?? 'unavailable'}: ${log?.path ?? 'unavailable'}\n${steps.join('\n')}\n${batch.candidate.budgetLines.join('\n')}`);
       if (batch.confirmation) this.boundary.report(batch,
         `Diagnosis confirmation of ${batch.confirmation.original}: skipped files (no execution receipt): ${skippedFilesText(batch.confirmation.skipped)}; covering run ${job.id}; tree ${job.tree}; exit ${job.outcome.code}; ${original.result === 'green' ? 'full plan green' : original.result}\n${failureText(batchFailures(evidence.log, evidence.job))}`, 'confirmation');
