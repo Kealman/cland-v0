@@ -14,5 +14,5 @@ export function waitTimeoutMs(ms:number,loadFactor?:number):number {
   const factor=Number.isFinite(configured)&&configured>=1?configured:1;
   const timeoutMs=ms*factor;
   if(!Number.isFinite(timeoutMs)||timeoutMs<=0)throw new Error('until needs a positive finite deadline');
-  return timeoutMs;
+  return Math.ceil(timeoutMs);
 }

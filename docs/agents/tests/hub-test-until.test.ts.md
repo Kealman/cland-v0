@@ -5,7 +5,9 @@ exact injected-clock and named behaviour bounds, including the diagnostic's
 deadline value and timer disposal. Pure cases cover local/droplet defaults,
 load plus workers, overrides and finite-positive deadline refusal. Environment
 controls are restored in finally. No wall-clock sleep, socket or native child
-is used. The suite-runner propagation regression is T3 and needs the exclusive
+is used. Fractional injected load factors round deadlines upward to integer
+milliseconds, including sub-millisecond budgets; the setup helper's result is
+accepted by `AbortSignal.timeout`. The suite-runner propagation regression is T3 and needs the exclusive
 preservation slot; it remains separate from these unit cases.
 
 The async-check regressions hold a promise past its deadline, then release a

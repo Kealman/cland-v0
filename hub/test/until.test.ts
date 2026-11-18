@@ -1,7 +1,7 @@
 // T1: deadline policy and fake-time waits; no sockets or native children.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { waitTimeoutMs, suiteLoadFactor, until, eventually } from './until.ts';
+import { waitTimeoutMs, testSetupWaitMs, suiteLoadFactor, until, eventually } from './until.ts';
 import { FakeClock } from './fake-clock.ts';
 
 test('eventually keeps its observation cadence and returns a falsy receipt', async () => {
@@ -98,6 +98,24 @@ test('suite setup budgets account for load and phase workers on either executor'
  assert.equal(suiteLoadFactor({ load: 0, workers: 1, parallelism: 8, executor: 'droplet' }), 2);
  assert.equal(suiteLoadFactor({ load: 20, workers: 4, parallelism: 8, override: '1.5' }), 1.5);
  assert.equal(suiteLoadFactor({ load: 20, workers: 4, parallelism: 8, override: 'bad' }), 3);
+});
+
+test('fractional setup factors yield integer deadlines without shortening headroom', () => {
+ for (const [ms, factor, expected] of [[5000, 1.159, 5795], [5000, 1.1591, 5796], [0.1, 1, 1]] as const) {
+  const deadline = waitTimeoutMs(ms, factor);
+  assert.equal(deadline, expected);
+  assert.ok(Number.isInteger(deadline));
+  assert.ok(deadline >= ms * factor);
+  assert.doesNotThrow(() => AbortSignal.timeout(deadline));
+ }
+ const keys = ['CLAND_TEST_LOAD_FACTOR', 'CLAND_TEST_WAIT_MS'] as const;
+ const saved = keys.map(key => process.env[key]);
+ try {
+  process.env.CLAND_TEST_LOAD_FACTOR = '1.1591';
+  process.env.CLAND_TEST_WAIT_MS = '5000';
+  assert.equal(testSetupWaitMs(), 5796);
+  assert.doesNotThrow(() => AbortSignal.timeout(testSetupWaitMs()));
+ } finally { keys.forEach((key, i) => { if (saved[i] === undefined) delete process.env[key]; else process.env[key] = saved[i]; }); }
 });
 
 test('wait deadline policy preserves local, droplet, explicit and invalid scaling',()=>{
