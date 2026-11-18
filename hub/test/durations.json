@@ -8632,7 +8632,6 @@
     "hub/test/git-maintenance.test.ts::idle maintenance prunes aged unreachable objects and retains young and reachable objects": 2.879517,
     "hub/test/git-maintenance.test.ts::maintenance preserves an aged candidate used by a retained batch": 1.810448,
     "hub/test/git-maintenance.test.ts::maintenance recovers stale gc.log and doctor reports it once without repeated Git warnings": 1.954543,
-    "hub/test/git-maintenance.test.ts::scratch Git helper drains a held descendant writer before rejecting cancellation": 0.486826,
     "hub/test/git-maintenance.test.ts::verification admission freshens a reused unreachable snapshot before the background grace can expire it": 1.639349,
     "hub/test/harness-framing.test.ts::connectSocket preserves queued/waiting frames, blank lines, UTF-8 and peer close": 0.002672,
     "hub/test/harness-framing.test.ts::connectSocket receives a 20 MiB frame in 4 KiB writes within 2 seconds": 0.189956,
@@ -12829,6 +12828,13 @@
     "web/test/hosts-view.test.ts::retained cards keep Inbox, Hosts sign-in and remote thread order across delta and inbox publication": 3.00813
   },
   "allow": {
+    "hub/test/git-maintenance.test.ts::scratch Git helper drains a held descendant writer before rejecting cancellation (5100 ms exit)": {
+      "seconds": 8.301,
+      "owner": "C-216",
+      "added": "2026-11-18",
+      "expires": "2026-11-25",
+      "reason": "T-1634: deliberate 5100 ms SIGTERM exit seam crosses fixture cleanup's 5000 ms bound. Coordinator-approved macOS arm64 local sample 5.534 s (Node v24.21.0); 1.5x headroom rounded to milliseconds. Both cases' 20/20 macOS repetitions and native exit receipts: A-21254. Linux measurement pending; renew from that sample if needed. Duration policy remains report-only."
+    },
     "hub/test/telegram-polling-restart.test.ts::Discord fresh history forwards newest 500 of 620 once with one silent overflow line": {
       "seconds": 8.459,
       "owner": "C-216",

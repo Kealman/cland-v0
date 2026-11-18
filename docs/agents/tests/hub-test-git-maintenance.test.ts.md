@@ -9,7 +9,30 @@ warning; final assertions check native receipts and object access.
 `git-maintenance-fixture.ts` registers group cleanup before launch. The private
 exec gate holds the command until the shared fixture owner captures its identity;
 timeout/cancellation drains descendants and close before rejection or removal.
-A held descendant writer reproduces the old direct-parent timeout bug. Cat-file
+A held descendant writer receives SIGTERM through a fixture-scoped replacement
+of cleanup's SIGKILL, then keeps writing for 900 ms and 5100 ms (crossing the
+maintenance owner's 750 ms and fixture cleanup's 5000 ms windows). An explicit
+release also keeps it alive until the test has observed the acknowledgement and
+positive native-live control. Its acknowledgement precedes a
+pending-cancellation assertion. Cancellation errors carry each captured writer's
+native receipt: direct-child close, or independent descendant signal-0 ESRCH,
+with the admitted PID, native birth and group. Group membership is bracketed by
+stable births from the sealed shared asynchronous reader before cleanup. The
+reader's zombie callback has no birth metadata, so this fixture conservatively
+waits for ESRCH. A missing /proc record alone never settles a writer. The helper
+joins those receipts rather than treating PID visibility (which includes zombies)
+as liveness. A cleanup timeout stays in `cleanupDiagnostics`; cancellation keeps
+its original outcome and remains pending until native exit, including after a
+bounded cleanup refusal. A ten-second observation overrun adds an incomplete
+diagnostic while retaining ownership and waiting for exit.
+Listing and unexpected observation errors also retain cancellation and the
+guarded root; controlled live-writer cases cover listing/observation errors and
+missing/replacement identity reads before valid capture. Each receipt's birth
+is compared with the independent native admission reading. The slow and fault
+callbacks enroll the shared normal/signal whole-case owner before acquisition,
+adopt late roots, bound setup independently, and join the command/caller before
+root removal or manual mock restoration. Pure T1 receipt-policy controls cover
+replacement and unknown identities without launching native code. Cat-file
 absence accepts only its native absence outcomes; infrastructure failures escape.
 
 The collector case observes its durable PID/birth/group before command readiness,

@@ -1,5 +1,5 @@
 // T3: native Git's loose/cruft object expiry and gc.log recovery contract; no hub subprocess.
-import test from 'node:test';
+import test, { mock, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { mkdir, mkdtemp, readFile, readdir, realpath, stat, utimes, writeFile } from 'node:fs/promises';
@@ -10,7 +10,7 @@ import { gitMaintenancePath, maintainProjectGit, type GitMaintenance } from '../
 import { checkProject } from '../src/doctor/project.ts';
 import { createHash } from 'node:crypto';
 import { withTerritoryLockAsync } from '../src/territory.ts';
-import { beforeDirectories, ownDirectory, ownProcess } from './process-cleanup.ts';
+import { beforeDirectories, guardDirectoryRemoval, ownDirectory, ownProcess } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
 import { committedTreeOrThrow } from '../src/verification-tree.ts';
 import { FixtureCommandError, fixtureCommand, fixtureCommandOutput } from './git-maintenance-fixture.ts';
@@ -19,15 +19,19 @@ import { syncBuiltinESMExports } from 'node:module';
 import { MaintenanceRecoveryRequired, ownedMaintenanceRunner, readMaintenanceOwner } from '../src/git-maintenance-owner.ts';
 import { recoverMaintenanceOwner, writeMaintenanceOwner } from '../src/git-maintenance-owner.ts';
 import { processStartedAsync } from '../src/hub/lock.ts';
+import { processIdentitiesAsync } from '../src/process-identity.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { testSetupWaitMs } from './until.ts';
 
-async function heldWriter(root: string) {
+async function heldWriter(root: string, slowExitMs = 0, holdParent = true) {
   const capture = join(root, 'fixture-writer-pids.json');
   const script = join(root, 'held-fixture-writer.mjs');
   await writeFile(script, `
     import { spawn } from 'node:child_process';
     import { writeFileSync } from 'node:fs';
     import { fixtureEnvironment } from ${JSON.stringify(new URL('./fixture-environment.ts', import.meta.url).href)};
-    const child = spawn(process.execPath, ['-e', 'process.send("ready"); setInterval(() => require("node:fs").writeFileSync(process.argv[1], "writing"), 10)', ${JSON.stringify(join(root, 'writer-output'))}], {
+    ${slowExitMs && holdParent ? 'process.on("SIGTERM", () => {});' : ''}
+    const child = spawn(process.execPath, ['-e', ${JSON.stringify(`process.on('SIGTERM', () => { const fs = require('node:fs'); fs.writeFileSync(process.argv[1] + '.term', 'received'); setTimeout(() => { const released = setInterval(() => { if (fs.existsSync(process.argv[1] + '.release')) { clearInterval(released); process.exit(0); } }, 10); }, ${slowExitMs}); }); process.send("ready"); setInterval(() => require("node:fs").writeFileSync(process.argv[1], "writing"), 10)`)}, ${JSON.stringify(join(root, 'writer-output'))}], {
       env: fixtureEnvironment(${JSON.stringify(root)}, process.env), stdio: ['ignore', 'ignore', 'ignore', 'ipc']
     });
     child.once('message', () => writeFileSync(${JSON.stringify(capture)}, JSON.stringify([process.pid, child.pid])));
@@ -35,21 +39,141 @@ async function heldWriter(root: string) {
   return { script, capture };
 }
 
-test('scratch Git helper drains a held descendant writer before rejecting cancellation', async t => {
-  const root = await tempProject(t);
-  const { script, capture } = await heldWriter(root);
+async function cancellationCase(t: TestContext, slowExitMs: number, fault?: 'listing' | 'observation' | 'unknown identity' | 'replacement identity') {
+  let root: string | undefined;
+  let outcome: Promise<string> | undefined;
+  let faultActive = false;
+  const abort = new AbortController();
+  const cleanupHandles: Array<() => Promise<void>> = [];
+  let released: Promise<void> | undefined;
+  const injected = Promise.withResolvers<void>();
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => {
+    faultActive = false;
+    abort.abort();
+    released = owner.wait('release writer and join retained command', async () => {
+      const failures: unknown[] = [];
+      try { if (root) await writeFile(join(root, 'writer-output.release'), 'release'); }
+      catch (error) { failures.push(error); }
+      const cleanups = await Promise.allSettled(cleanupHandles.map(close => close()));
+      await outcome?.catch(() => {});
+      failures.push(...cleanups.filter(result => result.status === 'rejected').map(result => result.reason));
+      if (failures.length) throw new AggregateError(failures, 'writer cleanup failed after native command join');
+    });
+    void released.catch(() => {});
+  } });
+  owner.fixtures.after(async () => { await released; });
+  const setup = caseDeadlines(owner.fixtures, { timeoutMs: testSetupWaitMs() });
+  await owner.run(async (admit, signal) => {
+  const step = <T>(name: string, operation: () => Promise<T>) => owner.wait(name, () => admit(async () => { signal.throwIfAborted(); return operation(); }));
+  const start = <T>(name: string, operation: () => Promise<T>) => setup.wait(name, () => step(name, operation));
+  root = await start('acquire root', async () => {
+    const value = await tempProject(owner.fixtures);
+    owner.adoptRoot(value);
+    return value;
+  });
+  const subject = root;
+  const env = fixtureEnvironment(subject, process.env);
+  const { script, capture } = await start('write held writer', () => heldWriter(subject, slowExitMs, fault !== 'observation'));
   const ready = eventually('held fixture publishes both writer identities', async () => {
     try { return JSON.parse(await readFile(capture, 'utf8')) as number[]; } catch { return undefined; }
   }, 3000);
-  const abort = new AbortController();
-  const outcome = fixtureCommand(t, root, process.execPath, [script], undefined, { signal: abort.signal });
-  const rejected = assert.rejects(outcome, /cancel|abort/i);
-  const pids = await ready;
-  for (const pid of pids) ownProcess(t, pid);
+  let identityReads = 0;
+  const options = { signal: AbortSignal.any([abort.signal, signal]), observe: async (...args: Parameters<typeof processIdentitiesAsync>) => {
+    identityReads++;
+    assert.equal(args[1]?.HOME, env.HOME, 'identity reader receives the scratch HOME');
+    assert.deepEqual(args[1], env, 'identity reader receives the final sealed fixture environment');
+    const observed = await processIdentitiesAsync(...args);
+    if (faultActive && fault === 'unknown identity') { injected.resolve(); return new Map<number, string>(); }
+    if (faultActive && fault === 'replacement identity' && identityReads % 2 === 0) {
+      injected.resolve();
+      return new Map([...observed].map(([pid, birth]) => [pid, `${birth}:controlled-replacement`]));
+    }
+    return observed;
+  } };
+  const command = fixtureCommand(owner.fixtures, subject, process.execPath, [script], undefined, options);
+  outcome = command;
+  let settled = false;
+  const rejected = assert.rejects(command, error => {
+    assert.ok(error instanceof FixtureCommandError);
+    assert.match(error.message, /cancel|abort/i);
+    settled = true;
+    return true;
+  });
+  void rejected.catch(() => {});
+  const pids = await start('writer identities', () => ready);
+  const admittedBirths = await start('native admitted lifetimes', () => processIdentitiesAsync(pids, env));
+  for (const pid of pids) assert.ok(admittedBirths.get(pid), 'each writer has a native admission birth');
+  for (const pid of pids) cleanupHandles.push(ownProcess(owner.fixtures, pid));
+  const kill = process.kill.bind(process);
+  // Preserve the cleanup owner's target selection; delay this fixture's native
+  // exit beyond the maintenance/fixture windows instead of killing instantly.
+  const killing = mock.method(process, 'kill', (pid: number, nativeSignal?: NodeJS.Signals | number) => {
+    if (faultActive && fault === 'observation' && pid === pids[1] && nativeSignal === 0) {
+      let parentReaped = false;
+      try { kill(pids[0]!, 0); } catch (error) { parentReaped = (error as NodeJS.ErrnoException).code === 'ESRCH'; }
+      if (parentReaped) {
+        injected.resolve();
+        throw Object.assign(new Error('controlled writer observation failure'), { code: 'EIO' });
+      }
+    }
+    return kill(pid, pid === -pids[0]! && nativeSignal === 'SIGKILL' ? 'SIGTERM' : nativeSignal);
+  });
+  owner.fixtures.after(() => killing.mock.restore());
+  if (fault === 'listing') {
+    const spawn = cp.spawnSync;
+    const listing = mock.method(cp, 'spawnSync', ((bin: string, args: string[], options: cp.SpawnSyncOptions) => {
+      if (faultActive && bin === 'pgrep' && args[0] === '-g' && args[1] === String(pids[0])) {
+        injected.resolve();
+        return { status: 2, stdout: '', stderr: 'controlled group listing failure', signal: null, pid: 0, output: [] };
+      }
+      // cland-allow-child-env: transparent observer forwards the existing sealed/native ownership observation environment
+      return spawn(bin, args, options);
+    }) as typeof cp.spawnSync);
+    syncBuiltinESMExports();
+    owner.fixtures.after(() => { listing.mock.restore(); syncBuiltinESMExports(); });
+  }
+  const terminating = eventually('writer acknowledges the injected slow SIGTERM exit', async () => {
+    try { return await readFile(join(subject, 'writer-output.term'), 'utf8') === 'received'; } catch { return false; }
+  }, 3000);
+  faultActive = !!fault;
   abort.abort();
-  await rejected;
-  for (const pid of pids) assert.equal(pidAlive(pid), false, `writer ${pid} is gone before the command rejects`);
-});
+  try {
+    if (fault) {
+      await start('controlled observation failure', () => injected.promise);
+      const live = await start('native live writer during failed observation', () => processIdentitiesAsync([pids[1]!], env));
+      assert.ok(live.has(pids[1]!), 'positive native live writer while observation fails');
+      assert.equal(settled, false, 'observation failure cannot publish cancellation while writer lives');
+      faultActive = false;
+    }
+    await start('TERM acknowledgement', () => terminating);
+    assert.equal(settled, false, 'cancellation remains pending while the writer is still alive');
+    assert.ok((await start('native live writer', () => processIdentitiesAsync([pids[1]!], env))).has(pids[1]!), 'positive native live-writer control during delayed exit');
+  } finally { faultActive = false; await step('release writer', () => writeFile(join(subject, 'writer-output.release'), 'release')); }
+  await step('cancellation native completion', () => rejected);
+  const failure = await command.then(() => assert.fail('cancelled command resolved'), error => {
+    assert.ok(error instanceof FixtureCommandError);
+    return error;
+  });
+  assert.equal(failure.nativeFailure, false, 'cleanup diagnostics do not replace the cancellation outcome');
+  assert.equal(await readFile(join(subject, 'writer-output.term'), 'utf8'), 'received', 'slow-exit seam received SIGTERM');
+  assert.ok(identityReads > 0, 'sealed shared identity reader exercised');
+  for (const pid of pids) {
+    const receipt = failure.writers.find(writer => writer.pid === pid);
+    assert.ok(receipt, `writer ${pid} has a positive native exit receipt before cancellation rejects`);
+    assert.ok(['close', 'zombie', 'reaped'].includes(receipt.kind));
+    const lifetime = receipt as typeof receipt & { group?: number; birth?: string };
+    assert.equal(lifetime.group, pids[0], 'receipt retains admitted group');
+    assert.equal(typeof lifetime.birth, 'string', 'receipt retains admitted native birth');
+    assert.equal(lifetime.birth, admittedBirths.get(pid), 'receipt is bound to the exact admitted lifetime');
+  }
+  assert.ok(Array.isArray(failure.cleanupDiagnostics));
+  t.diagnostic(JSON.stringify({ writers: failure.writers, code: failure.code, stderr: failure.stderr,
+    nativeFailure: failure.nativeFailure, message: failure.message, cleanupDiagnostics: failure.cleanupDiagnostics }));
+  });
+}
+
+for (const slowExitMs of [900, 5100]) test(`scratch Git helper drains a held descendant writer before rejecting cancellation (${slowExitMs} ms exit)`, t => cancellationCase(t, slowExitMs));
+for (const fault of ['listing', 'observation', 'unknown identity', 'replacement identity'] as const) test(`scratch Git helper retains live writers through ${fault} failure`, t => cancellationCase(t, 900, fault));
 
 for (const sameBirth of [true, false]) test(`first territory mutation ${sameBirth ? 'reaps a surviving owned group' : 'preserves an unrelated reused PID'}`, async t => {
   const root = await tempProject(t);
