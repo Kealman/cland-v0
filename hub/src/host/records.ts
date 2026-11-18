@@ -12,7 +12,11 @@ import { SOCKET_PATH_MAX } from '../project.ts';
 import { hostDirectory } from '../../../shared/fake-host-directory.ts';
 import { enableFixtureHostSockets, fixtureHostSocketDirectory } from '../../../shared/fixture-sockets.ts';
 
-export type HostRecord = { id: string; transport: TransportKind; address: string; user: string; state: 'registered' | 'revoked' };
+export type HostRecord = { id: string; transport: TransportKind; address: string; user: string; state: 'registered' | 'revoked'; revokedAt?: string | null };
+function hostRecord(row: Record<string, unknown>): HostRecord {
+  const { revokedAt, ...fields } = row;
+  return { ...fields, transport: parseTransportKind(row.transport), ...(row.state === 'revoked' ? { revokedAt } : {}) } as HostRecord;
+}
 export type HostRegistration = { id: string; address: string; user: string; clientKeyPath: string; knownHosts: string };
 const digest = (secret: string) => createHash('sha256').update(secret).digest('hex');
 function hostId(id: string): void {
@@ -30,6 +34,7 @@ export class HostRecords {
       id text primary key, transport text not null, address text not null,
       user text not null, state text not null, secret_digest text not null
     )`);
+    if (!db.prepare('pragma table_info(hosts)').all().some(column => column.name === 'revoked_at')) db.exec('alter table hosts add column revoked_at text');
     this.provisions=new ProvisionRecords(db);
     this.leases=new HostLeases(db);
     db.exec(`create trigger if not exists revoke_host_provision after update of state on hosts when new.state='revoked' begin
@@ -37,12 +42,12 @@ export class HostRecords {
     end;`);
   }
   get(id: string): HostRecord | null {
-    const row = this.#db.prepare('select id,transport,address,user,state from hosts where id=?').get(id);
-    return row ? { ...row, transport: parseTransportKind(row.transport) } as HostRecord : null;
+    const row = this.#db.prepare('select id,transport,address,user,state,revoked_at as revokedAt from hosts where id=?').get(id);
+    return row ? hostRecord(row) : null;
   }
-  list(): HostRecord[] { return this.#db.prepare('select id,transport,address,user,state from hosts order by id').all().map(row => ({ ...row, transport: parseTransportKind(row.transport) })) as HostRecord[]; }
+  list(): HostRecord[] { return this.#db.prepare('select id,transport,address,user,state,revoked_at as revokedAt from hosts order by id').all().map(hostRecord); }
   /** Storage primitive; callers own admission and connection revocation. */
-  revoke(id: string): void { const previous=this.provisions.get(id)?.state??null; this.#db.prepare("update hosts set state='revoked' where id=?").run(id); this.provisions.changed(id,previous); }
+  revoke(id: string, at = new Date().toISOString()): void { const previous=this.provisions.get(id)?.state??null; this.#db.prepare("update hosts set state='revoked',revoked_at=? where id=? and state!='revoked'").run(at,id); this.provisions.changed(id,previous); }
   insert(input: HostRegistration, secret: string): HostRecord {
     hostId(input.id);
     this.#db.prepare("insert into hosts (id,transport,address,user,state,secret_digest) values (?,'ssh',?,?,'registered',?)").run(input.id, input.address, input.user, digest(secret));

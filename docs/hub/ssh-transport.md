@@ -54,8 +54,13 @@ agent.sock every 30 seconds. A failed probe closes the owned master and retries.
 the project registry slot. Host-side supervisors and harnesses survive tunnel stop.
 
 `hub.status` adds optional `hosts`: `{name,state,since,lastProbe,reconnects}`.
-State is `up`, `connecting` or `down`; since is an ISO timestamp or null;
-lastProbe is `{at,ok}` or null; optional `reason` is a short failure fact with no
+State is `up`, `connecting`, `down` or `revoked`; since is an ISO timestamp or null.
+Revoked rows add `revokedAt`, the persisted first revocation time, and use it
+for `since`. Both are null for legacy revocations whose time was not recorded;
+the CLI prints `revoked since unknown`. Durable revocation overrides stale carrier
+liveness. Registered rows keep their existing shape and states. The host registry
+never opens a carrier for a revoked record, including after hub restart.
+`lastProbe` is `{at,ok}` or null; optional `reason` is a short failure fact with no
 paths or key material. The CLI prints all these facts; it tolerates older
 hubs omitting hosts. Web and Neovim retain their existing selected-field readers.
 Binary overrides require both fake-host environment controls, as defined by

@@ -5,7 +5,8 @@ import type { TransportKind } from '../host/transport-kind.ts';
 export { parseTransportKind } from '../host/transport-kind.ts';
 export type { TransportKind } from '../host/transport-kind.ts';
 export type HostTunnelStatus = {
-  name: string; state: 'up' | 'connecting' | 'down'; since: string | null;
+  name: string; state: 'up' | 'connecting' | 'down' | 'revoked'; since: string | null;
+  revokedAt?: string | null;
   reason?: string;
   watches?: Array<{path:string;branch:string;state:string;cause?:string}>;
   lastProbe: { at: string; ok: boolean } | null; reconnects: number;
@@ -75,7 +76,7 @@ export async function dropHostForwardsLocal(root: string, host: string, forwards
 export function tunnelStatuses(root: string, hosts: HostRecord[]): HostTunnelStatus[] {
   return hosts.map(host => ({...(projects.get(root)?.get(host.id)?.transport.status() ?? {
     name: host.id, state: 'down', since: null, lastProbe: null, reconnects: 0,
-  }),...(watches.get(root)?.get(host.id)?{watches:watches.get(root)!.get(host.id)!}:{})}));
+  }),...(host.state === 'revoked' ? {state:'revoked' as const,since:host.revokedAt ?? null,revokedAt:host.revokedAt ?? null} : {}),...(watches.get(root)?.get(host.id)?{watches:watches.get(root)!.get(host.id)!}:{})}));
 }
 /** Pure backoff policy: +/-20% jitter, hard 30s cap; uptime uses the same clock. */
 export class ReconnectPolicy {

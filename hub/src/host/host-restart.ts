@@ -20,7 +20,7 @@ export async function reconcileHostLeases(o:Recovery):Promise<void> {
   try {
    const provider=providers.resolve(record);
    if((await provider.status(record.machine)).state!=='gone')continue;
-   await destroyHost({...o,id:record.id,provider,owner:{remove:async(id:string)=>{o.records.revoke(id);}} as Parameters<typeof destroyHost>[0]['owner']});
+   await destroyHost({...o,id:record.id,provider,owner:{remove:async(id:string)=>{o.records.revoke(id,o.clock.now().toISOString());}} as Parameters<typeof destroyHost>[0]['owner']});
   }catch(error){o.log({event:'host-restart-pending',host:lease.id,error:String(error)});}
  }
 }

@@ -253,7 +253,7 @@ export class Dispatcher {
     let cutDone = false;
     const cut = () => {
       if (cutDone) return; cutDone = true;
-      this.core.store.hosts.revoke(id);
+      this.core.store.hosts.revoke(id, this.core.clock.now().toISOString());
       for (const close of this.#hostPeers.get(id) ?? []) close();
     };
     if (this.core.store.hosts.get(id)?.state === 'revoked') return;

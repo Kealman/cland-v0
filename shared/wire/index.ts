@@ -1144,7 +1144,7 @@ export type HubStatus = {
   /** Opt-in local executable lookup, never auth or network. Absent on older hubs. */
   releaseTools?: { gh: boolean };
   hostSnapshotLeftovers?: Array<{path:string;cause:string}> | null;
-  hosts?: Array<{ watches?: Array<{path:string;branch:string;state:string;cause?:string}>; name: string; state: 'up' | 'connecting' | 'down'; since: string | null; reason?: string; lastProbe: { at: string; ok: boolean } | null; reconnects: number }>;
+  hosts?: Array<{ watches?: Array<{path:string;branch:string;state:string;cause?:string}>; name: string; state: 'up' | 'connecting' | 'down' | 'revoked'; since: string | null; revokedAt?: string | null; reason?: string; lastProbe: { at: string; ok: boolean } | null; reconnects: number }>;
   /** Actual spoke listener address; absent on older or stdio-only hubs. */
   spokeBind?: string;
   /** The independent browser listener; absent on older or stdio-only hubs. */
