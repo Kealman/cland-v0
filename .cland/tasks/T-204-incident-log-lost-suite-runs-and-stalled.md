@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-18T17:06:12.539Z
+updated: 2026-11-18T19:17:05.544Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -650,3 +650,7 @@ Hub restart #84 and an unplanned hub exit three minutes later. Restart #84 (stan
 ### coord · 2026-11-18T17:06:12.539Z
 
 2026-11-18 17:04Z: T-1672's landing follow-up failed with "stop sessions: cannot inspect the OS process table: ps failed or timed out" while the local macOS stage cover 172654e2 ran (load 6.7, swap 835 MB). Ten seconds later `ps -A` answered in 0.05 s. `cland merge T-1672` repaired it: worktree removed, then impl-1672 archived. No work lost. The hub's ps probe timeout may be too tight under cover load.
+
+### human · 2026-11-18T19:17:05.544Z
+
+Restarts #85 and #86, 2026-11-18 (cland-impl). #85 on coord's GO at d7050e7e2: stop 18:34:57Z, serving 18:37:51Z as pid 62039, gap 175 s; 'binding web listener' took 148,145 ms (T-1952). The hub then ran at 96-127% CPU for 33 minutes and did not answer verify queue or task view (15 s and 10 s timeouts); six tracker-storage-stalled events 18:38-18:41Z, no fatal; hub.log written 13-22 minutes late; RSS passed 3 GB at 19:06:07Z (peak 3.79 GB); coord got inject-uncertain at 18:41:02Z and no bridge-connected. Profile: 74% in freshness #work -> settled (tracker.ts:486-487, added by T-1973 da95b9681) -> #announceBatch -> #refreshExplorer: every freshness answer re-announced all stage-cover dependents. #86 on coord's GO as a rollback: hub code from a detached checkout at a343e305a (/Users/evgeniyivanov/.claude/jobs/92748b6f/tmp/hub-a343e305a), root and dev untouched at d7050e7e2; stop 19:10:48Z, serving 19:11:11Z as pid 71467, gap 23 s, web listener bind 615 ms; job cland-hub-r86, nice 0, env check 2, homebrew on PATH; coord bridge-connected 19:11:11Z, injected 19:11:22Z; tracker answers in 0-1 s with pauses up to 15 s in the first 5 minutes. Remote runs 5b247a17 and 1e764299 were still listed after #86.

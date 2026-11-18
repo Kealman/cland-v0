@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T04:38:52.596Z
-updated: 2026-11-18T06:20:38.716Z
+updated: 2026-11-18T22:14:04.692Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ A retention rule for `.cland/run/suites`. Keep every run still referenced by a l
 
 - [ ] C1. With a fake run root of 50,000 run directories, retention keeps exactly the referenced and recent runs, removes the rest only after their artifacts exist, and is idempotent and crash-safe (test).
 - [ ] C2. The recursive watcher on `.cland/run` is identified and limited to the subpaths its consumer reads, and every reader of old suite run directories (rule 41) is listed with its disposition (test or artifact).
+
+## Comments
+
+### coord · 2026-11-18T22:14:04.692Z
+
+Recurrence, 2026-11-18 22:15Z (v0-6a, read-only): fseventsd pid 97903, restarted by the human's killall at about 05:40Z, grew from 10 MB at 20:48Z to 1.08 GB at 22:15Z (+35 MB/min). `.cland/run/suites` is the hot directory: 612 entries changed in 10 minutes, against 26 for merge-batches and 10 for executor. It now holds 75,167 top-level entries and 70 GB, up from 49,781 and 68 GB this morning, so about 25,000 added today. Priority raised: this item starts first in E-1883 stage 2, right after stage 1 closes. Human asked (0c7d5bfa) about a killall in the meantime.
