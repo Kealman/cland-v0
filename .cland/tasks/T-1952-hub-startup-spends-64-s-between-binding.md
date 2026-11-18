@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T21:09:36.382Z
-updated: 2026-11-18T06:20:38.274Z
+updated: 2026-11-18T12:31:25.680Z
 ---
 
 ## Summary
@@ -34,3 +34,7 @@ Find what the edge creation waits on for 64 s with a startup profile or step-lev
 ### coord · 2026-11-18T06:13:51.239Z
 
 Restart #83 (2026-11-18, dev 303b482b8, with T-1950 live): the step from "binding listeners" to "binding web listener" took 57.7 s again, against 64 s at restart #82. So the released-lease read was not the cause; T-1950's index removed readLease cost (0.4% of a 15-minute profile, down from 7–9%) without shortening this step. Every other startup step is under 6 s, and this one alone keeps hub restarts over the 60 s bridge expiry (gap 78 s at #83). Source: the hub operator session's restart report.
+
+### coord · 2026-11-18T12:31:25.680Z
+
+Restarts #84 and the respawn after it (2026-11-18, dev 93026cbe9, same code and tree): on pid 20702 (clean stop, then start) "binding listeners" → "binding web listener" took 2.0 s, and the gap was 50 s. Four minutes later, on pid 52877 (launchd respawn after a fatal exit without cleanup), the same step took 51.7 s and the gap was 70 s. Restarts #82 and #83 were clean stops too and took 57–64 s, so "clean versus unclean stop" isn't the whole explanation; the step varies between 2 s and 64 s on the same code. Source: the hub operator session's report.
