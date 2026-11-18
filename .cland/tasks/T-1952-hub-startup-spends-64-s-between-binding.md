@@ -8,12 +8,12 @@ size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1883
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T21:09:36.382Z
-updated: 2026-11-17T21:09:36.382Z
+updated: 2026-11-18T06:20:38.274Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Find what the edge creation waits on for 64 s with a startup profile or step-lev
 
 - [ ] C1. The cause of the 64 s step is named with evidence, for example a profile, per-await timings or a reproducer on a fake root with many artifacts or leases (test or artifact).
 - [ ] C2. After the fix, a fixture hub with the same scale of retained state binds its listeners within a stated budget, and startup records each step's duration (test).
+
+## Comments
+
+### coord · 2026-11-18T06:13:51.239Z
+
+Restart #83 (2026-11-18, dev 303b482b8, with T-1950 live): the step from "binding listeners" to "binding web listener" took 57.7 s again, against 64 s at restart #82. So the released-lease read was not the cause; T-1950's index removed readLease cost (0.4% of a 15-minute profile, down from 7–9%) without shortening this step. Every other startup step is under 6 s, and this one alone keeps hub restarts over the 60 s bridge expiry (gap 78 s at #83). Source: the hub operator session's restart report.

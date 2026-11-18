@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-17T21:05:25.803Z
+updated: 2026-11-18T06:13:20.453Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -638,3 +638,7 @@ Landing follow-up failure, 2026-11-17 07:36Z, batch 6f3b0153. T-1850 merged (c72
 ### human · 2026-11-17T21:05:25.803Z
 
 Hub restart #82 (stand-in, on coord's GO): dev ca5f70ca4, web/dist rebuilt first. Stop 21:02:34Z, serving 21:04:01Z as pid 57331 (launchd job cland-hub-r82), gap 87 s, over the 60 s target. nice 0, env check 2, homebrew on PATH, one cland-hub job, port 61834, web 56935. coord's bridge closed 21:02:35Z, reconnected and injected 21:04:07Z; coordinator: coord; one bridge. Merge queue empty, no leases active, no run in flight at the stop. doctor 37 ok, 6 warn, 0 fail; the web bundle warning is gone.
+
+### human · 2026-11-18T06:13:20.453Z
+
+Hub restart #83 (stand-in, on coord's GO): dev 303b482b8, web/dist rebuilt first. Stop 05:57:25Z, serving 05:58:43Z as pid 96459 (launchd job cland-hub-r83), gap 78 s, over the 60 s target: the step 'binding web listener' took 57.7 s again (64 s at #82), so the T-1950 lease index did not shorten it. nice 0, env check 2, homebrew on PATH, one cland-hub job, port 63383, web 56935. coord's bridge reconnected 05:58:43Z and injected 05:58:57Z; one bridge. No lease active and no run in flight at the stop. Idle hub CPU 40-42% at 5 min and 39-55% at 6-15 min (95-109% before T-1950). lease-index.json keeps 232 of 4,221 leases; those 232 log executor-lease-spend-missing on every pass (7,424 lines in 14 min).
