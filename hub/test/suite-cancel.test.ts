@@ -19,23 +19,194 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
+import { systemProcessProbe } from './system-process-probe.ts';
+import { waitTimeoutMs } from './until.ts';
+import { processAlive } from '../src/adapters/processes.ts';
+import { processIdentityAsync } from '../src/process-identity.ts';
+import { fixtureEnvironment, scratchGitEnvironment } from './fixture-environment.ts';
+
+for (const unreadableFirst of [false, true]) test(`cancel retry retains verified partial validation with unreadable sibling ${unreadableFirst ? 'first' : 'last'} before reparenting`, async () => {
+  await systemProcessProbe(`
+const { LocalExecutor } = await import(${JSON.stringify(new URL('../src/executor/local.ts', import.meta.url).href)});
+rows = [row(420100, 1, 420100), row(420101, 420100, 420101), { ...row(420102, 420100, 420102), micros: null }];
+if (${unreadableFirst}) [rows[1], rows[2]] = [rows[2], rows[1]];
+const executor = new LocalExecutor([], () => {}, () => {});
+const run = { id: 'partial-cancel', cwd: process.cwd(), head: 'a'.repeat(40), mode: 'auto', log: 'suite.log', result: 'result.json', gate: 'gate' };
+const lease = executor.restore(run, { pid: 420100, started: start, identity: nativeBirth(rows[0]), outcome: null });
+await assert.rejects(executor.cancel(lease, 'SIGTERM'), /suite cancellation could not verify the worker tree/);
+assert.deepEqual(signals, [], 'incomplete validation grants no signal before the owner retains verified proof');
+rows = rows.filter(r => r.pid !== 420100).map(r => ({ ...r, parent: 1 }));
+await executor.cancel(lease, 'SIGTERM');
+assert.deepEqual(rows.map(r => r.pid), [420102], 'verified partial capture drains after reparenting; unknown sibling stays untouched');
+assert.ok(signals.some(s => s.pid === 420101 && s.signal === 'SIGTERM'));
+assert.ok(signals.every(s => s.pid !== 420102), 'missing native identity never acquires signal authority');
+`);
+});
+
+for (const unreadableFirst of [false, true]) test(`cancel retry retains grace discoveries with unreadable sibling ${unreadableFirst ? 'first' : 'last'} before reparenting`, async () => {
+  await systemProcessProbe(`
+const { LocalExecutor } = await import(${JSON.stringify(new URL('../src/executor/local.ts', import.meta.url).href)});
+rows = [row(420100, 1, 420100)];
+const executor = new LocalExecutor([], () => {}, () => {});
+const run = { id: 'partial-grace', cwd: process.cwd(), head: 'a'.repeat(40), mode: 'auto', log: 'suite.log', result: 'result.json', gate: 'gate' };
+const lease = executor.restore(run, { pid: 420100, started: start, identity: nativeBirth(rows[0]), outcome: null });
+onSignal = (pid, signal) => {
+  if (pid === 420100 && signal === 'SIGTERM') {
+    const children = [row(420101, 420100, 420101), { ...row(420102, 420100, 420102), micros: null }];
+    if (${unreadableFirst}) children.reverse();
+    rows.push(...children);
+    return false;
+  }
+};
+await assert.rejects(executor.cancel(lease, 'SIGTERM'));
+rows = rows.filter(r => r.pid !== 420100).map(r => ({ ...r, parent: 1 }));
+onSignal = () => {};
+await executor.cancel(lease, 'SIGTERM');
+assert.deepEqual(rows.map(r => r.pid), [420102], 'verified grace discovery survives partial failure and reparenting');
+assert.ok(signals.every(s => s.pid !== 420102), 'unreadable grace sibling never gains authority');
+`);
+});
+
+test('cancel retry retains a detached native identity reparented before the next tree walk', async () => {
+  await systemProcessProbe(`
+const { LocalExecutor } = await import(${JSON.stringify(new URL('../src/executor/local.ts', import.meta.url).href)});
+rows = [row(420100, 1, 420100), row(420101, 420100, 420101)];
+const executor = new LocalExecutor([], () => {}, () => {});
+const run = { id: 'reparented-cancel', cwd: process.cwd(), head: 'a'.repeat(40), mode: 'auto', log: 'suite.log', result: 'result.json', gate: 'gate' };
+const lease = executor.restore(run, { pid: 420100, started: start, identity: nativeBirth(rows[0]), outcome: null });
+onSignal = (pid, signal) => {
+  if (pid === 420100 && signal === 'SIGTERM') nativeFailure = true;
+};
+await assert.rejects(executor.cancel(lease, 'SIGTERM'), /suite cancellation could not verify the worker tree/);
+assert.deepEqual(rows.map(r => [r.pid, r.parent, r.group]), [[420101, 1, 420101]], 'the captured detached child reparents before retry');
+nativeFailure = false;
+onSignal = () => {};
+await executor.cancel(lease, 'SIGTERM');
+assert.deepEqual(rows, [], 'cancellation retry confirms death of the previously captured detached identity');
+assert.ok(signals.some(s => s.pid === 420101 && s.signal !== 'SIGSTOP' && s.signal !== 'SIGCONT'), 'the detached survivor receives its own verified termination signal');
+`);
+});
+
+for (const outcome of ['reused', 'zombie', 'unlisted', 'unreadable']) test(`cancel retained descendant requires a positive ${outcome} native receipt`, async () => {
+  await systemProcessProbe(`
+const { LocalExecutor } = await import(${JSON.stringify(new URL('../src/executor/local.ts', import.meta.url).href)});
+rows = [row(420100, 1, 420100), row(420101, 420100, 420101)];
+const executor = new LocalExecutor([], () => {}, () => {});
+const run = { id: 'retained-proof', cwd: process.cwd(), head: 'a'.repeat(40), mode: 'auto', log: 'suite.log', result: 'result.json', gate: 'gate' };
+const lease = executor.restore(run, { pid: 420100, started: start, identity: nativeBirth(rows[0]), outcome: null });
+onSignal = (pid, signal) => { if (pid === 420100 && signal === 'SIGTERM') nativeFailure = true; };
+await assert.rejects(executor.cancel(lease, 'SIGTERM'));
+nativeFailure = false; onSignal = () => {}; signals.length = 0;
+${outcome === 'reused' ? `rows[0].micros = 200002;
+await executor.cancel(lease, 'SIGTERM');
+assert.equal(rows.length, 1, 'replacement survives');
+assert.deepEqual(signals, [], 'old capture grants no authority over the replacement birth');` : outcome === 'zombie' ? `rows[0].nativeState = 'Z';
+await executor.cancel(lease, 'SIGTERM');
+assert.equal(rows.length, 1, 'native-confirmed dead PID can await kernel retirement');
+assert.deepEqual(signals, [], 'confirmed native exit requires no further signal');` : `tableOutput = process.pid + ' 1 ' + process.pid + ' ' + start + ' S node fixture';
+const kill = process.kill;
+${outcome === 'unreadable' ? `nativeFailure = true;
+process.kill = (pid, signal) => {
+  if (pid === 420101 && signal === 0) throw Object.assign(new Error('unreadable liveness'), { code: 'EIO' });
+  return kill(pid, signal);
+};` : ''}
+await assert.rejects(executor.cancel(lease, 'SIGTERM'), /captured descendant exit receipt/);
+assert.equal(rows.length, 1, 'missing ps row is not a death receipt');
+nativeFailure = false; process.kill = kill;
+tableOutput = undefined;
+await executor.cancel(lease, 'SIGTERM');
+assert.deepEqual(rows, [], 'the retained original birth is drained when observation recovers');`}
+`);
+});
+
+test('copied cancellation metadata cannot inherit a live owner retained tree', async () => {
+  await systemProcessProbe(`
+const { LocalExecutor } = await import(${JSON.stringify(new URL('../src/executor/local.ts', import.meta.url).href)});
+rows = [row(420100, 1, 420100), row(420101, 420100, 420101)];
+const executor = new LocalExecutor([], () => {}, () => {});
+const run = { id: 'copied-cancel', cwd: process.cwd(), head: 'a'.repeat(40), mode: 'auto', log: 'suite.log', result: 'result.json', gate: 'gate' };
+const worker = { pid: 420100, started: start, identity: nativeBirth(rows[0]), outcome: null };
+const lease = executor.restore(run, worker);
+onSignal = (pid, signal) => { if (pid === 420100 && signal === 'SIGTERM') nativeFailure = true; };
+await assert.rejects(executor.cancel(lease, 'SIGTERM'));
+nativeFailure = false; onSignal = () => {}; signals.length = 0;
+const copy = JSON.parse(JSON.stringify(lease));
+copy.resource.captured = [{ pid: 420101, pidStarted: start, pidIdentity: nativeBirth(rows[0]) }];
+const recovered = new LocalExecutor([], () => {}, () => {});
+await recovered.cancel(recovered.restore(run, worker, copy), 'SIGTERM');
+assert.equal(rows.length, 1, 'copied capture metadata supplies no live launch authority');
+assert.deepEqual(signals, []);
+await executor.cancel(lease, 'SIGTERM');
+assert.deepEqual(rows, [], 'the original live owner still drains its captured identity');
+`);
+});
+
+test('detached descendant native death precedes delayed kernel PID retirement', async () => {
+  await systemProcessProbe(`
+rows = [row(420100, 1, 420100), row(420101, 420100, 420101)];
+const { processAlive } = await import(${JSON.stringify(new URL('../src/adapters/processes.ts', import.meta.url).href)});
+const detached = { pid: 420101, pidStarted: start, pidIdentity: nativeBirth(rows[1]) };
+assert.equal(await processAlive(detached), true, 'removal observer detects the live detached writer');
+onSignal = (pid, signal) => {
+  if (pid === 420101 && signal === 'SIGKILL') {
+    rows.find(r => r.pid === pid).nativeState = 'Z';
+    return false; // Native death is confirmed, but the kernel has not retired the PID.
+  }
+};
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0), true);
+assert.ok(signals.some(s => s.pid === 420101 && s.signal === 'SIGKILL'));
+const { pidAlive } = await import(${JSON.stringify(new URL('../src/project.ts', import.meta.url).href)});
+assert.equal(pidAlive(420101), true, 'confirmed native death can precede kernel PID retirement');
+assert.equal(await processAlive(detached), false, 'removal observer accepts structured native death while PID remains');
+const { eventually } = await import(${JSON.stringify(new URL('./until.ts', import.meta.url).href)});
+const observed = Promise.withResolvers();
+let settled = false;
+let reapReceipt = false;
+const retirement = eventually('detached descendant kernel PID retirement', () => {
+  const alive = pidAlive(420101);
+  observed.resolve();
+  return alive ? undefined : true;
+}, { timeoutMs: 5000, behaviour: 'kernel retires the confirmed-dead detached descendant' }).then(() => {
+  assert.equal(reapReceipt, true, 'observer settlement follows the independent reap receipt');
+  settled = true;
+});
+const outcome = retirement.then(() => ({ ok: true }), error => ({ ok: false, error }));
+let result;
+try {
+  await observed.promise;
+  // Drain the first observation's complete async chain before injecting reap.
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(settled, false, 'the observer cannot treat a zombie PID as retired');
+} finally {
+  rows = []; // Explicit injected reap receipt, independent of elapsed time.
+  reapReceipt = true;
+  result = await outcome;
+}
+if (!result.ok) throw result.error;
+assert.equal(settled, true);
+assert.equal(pidAlive(420101), false, 'detached descendant is reaped after the retirement receipt');
+`);
+});
 
 for (const recreate of [true, false]) test(`verify cancel reaps a detached fake child ${recreate ? 'that recreates the root after runner death' : 'before removing the phase root'}, then admits the next run`, async t => {
   const f = await fixture(t, 'node detached.mjs');
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
   const environment = fileURLToPath(new URL('./fixture-environment.ts', import.meta.url));
+  const processes = new URL('../src/adapters/processes.ts', import.meta.url).href;
+  const identities = new URL('../src/process-identity.ts', import.meta.url).href;
   const locks = [join(f.root, 'suite.lock'), join(f.root, 'suite.lock-nvim')];
   const marker = join(f.root, 'fake-child.json');
   const recreated = join(f.root, 'fake-recreated.json');
   const earlyRemoval = join(f.root, 'removed-with-live-child');
   await writeFile(join(f.root, 'detached.mjs'), `import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
+const { processAlive } = await import(${JSON.stringify(processes)});
 const remove = fs.rm;
 fs.rm = async (path, options) => {
   const fake = await fs.readFile(${JSON.stringify(marker)}, 'utf8').then(JSON.parse, () => null);
   if (fake && (path === fake.root || path === fake.raw)) {
-    try { process.kill(fake.pid, 0); await fs.writeFile(${JSON.stringify(earlyRemoval)}, 'root removal while descendant is alive'); }
-    catch (error) { if (error.code !== 'ESRCH') throw error; }
+    if (await processAlive({ pid: fake.pid, pidStarted: null, pidIdentity: fake.identity }))
+      await fs.writeFile(${JSON.stringify(earlyRemoval)}, 'root removal while descendant is alive');
   }
   return remove(path, options);
 };
@@ -56,12 +227,15 @@ test('detached fake harness', async () => {
   await new Promise(resolve => setTimeout(resolve, 30000)); // Artificial hold, ended by cancellation.
 });`);
   await writeFile(join(f.root, 'fake.mjs'), `import { existsSync, readFileSync, renameSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
+const { processIdentityAsync } = await import(${JSON.stringify(identities)});
 const parent = Number(process.argv[2]), root = process.argv[3], raw = process.argv[4];
 const owner = JSON.parse(readFileSync(${JSON.stringify(`${locks[0]}.owner`)}, 'utf8'));
 process.on('SIGTERM', () => {});
+const identity = await processIdentityAsync(process.pid);
+if (!identity) throw new Error('detached fake native birth unavailable');
 mkdirSync(raw, { recursive: true });
 writeFileSync(raw + '/detached-writer', 'live');
-writeFileSync(${JSON.stringify(marker)}, JSON.stringify({ pid: process.pid, root, raw, device: owner.device, inode: owner.inode }));
+writeFileSync(${JSON.stringify(marker)}, JSON.stringify({ pid: process.pid, parent: process.ppid, runner: parent, identity, root, raw, device: owner.device, inode: owner.inode }));
 const poll = setInterval(() => {
   mkdirSync(raw, { recursive: true }); writeFileSync(raw + '/detached-writer', 'live');
   try { process.kill(parent, 0); return; } catch (error) { if (error.code !== 'ESRCH') throw error; }
@@ -76,6 +250,36 @@ const poll = setInterval(() => {
 }, 10);`);
   const job = await f.launch();
   const fake = await eventually('detached fake child ready', async () => readFile(marker, 'utf8').then(JSON.parse, () => undefined), testWaitMs(45_000));
+  const diagnostics = process.env.CLAND_TEST_PID_DIAGNOSTICS === '1';
+  const samples: Array<Record<string, unknown>> = [];
+  let cancelledReceipt: string | null = null;
+  const diagnosticEnv = scratchGitEnvironment(f.root, fixtureEnvironment(f.root, process.env), { excludesFile: join(f.root, 'diagnostic-gitignore') });
+  let diagnosticTail = Promise.resolve();
+  const sample = (phase: string, final = false) => {
+    if (!diagnostics || samples.length >= (final ? 33 : 32)) return diagnosticTail;
+    diagnosticTail = diagnosticTail.then(async () => {
+      const started = Date.now();
+      try {
+        let nativeExited = false;
+        const identity = await processIdentityAsync(fake.pid, diagnosticEnv, undefined, () => { nativeExited = true; });
+        const alive = await processAlive({ pid: fake.pid, pidStarted: null, pidIdentity: fake.identity }, undefined, diagnosticEnv);
+        // cland-allow-child-env: PID-only ps uses fixtureEnvironment then scratchGitEnvironment; no account, provider or Git operation
+        const listing = await promisify(execFile)('ps', ['-p', String(fake.pid), '-o', 'pid=,ppid=,stat='],
+          { cwd: f.root, env: scratchGitEnvironment(f.root, fixtureEnvironment(f.root, process.env), { excludesFile: join(f.root, 'diagnostic-gitignore') }), timeout: 1500, maxBuffer: 4096 }).then(result => ({ code: 0 as number | string | null, signal: null as string | null, text: result.stdout }),
+          (error: NodeJS.ErrnoException & { signal?: string; stdout?: string }) => ({ code: error.code ?? null, signal: error.signal ?? null, text: error.stdout ?? '' }));
+        const row = /^\s*(\d+)\s+(\d+)\s+(\S+)\s*$/.exec(listing.text);
+        samples.push({ phase, started, finished: Date.now(), pid: fake.pid, capturedIdentity: fake.identity,
+          initialParent: fake.parent, initialRunner: fake.runner, observer: process.pid, cancelledReceipt,
+          kill0Alive: pidAlive(fake.pid), nativeExited, identity, processAlive: alive,
+          parent: row ? Number(row[2]) : null, state: row?.[3] ?? null,
+          psCode: listing.code, psSignal: listing.signal });
+      } catch (error) {
+        samples.push({ phase, started, finished: Date.now(), pid: fake.pid, incomplete: true,
+          code: (error as NodeJS.ErrnoException).code ?? null });
+      }
+    });
+    return diagnosticTail;
+  };
   const stopFake = ownProcess(t, fake.pid);
   onCleanup(t, async () => {
     await stopFake();
@@ -84,10 +288,26 @@ const poll = setInterval(() => {
     const after = await readFile(recreated, 'utf8').then(JSON.parse, () => null);
     if (after) await rm(`${fake.root}.quarantine-${after.device}-${after.inode}`, { recursive: true, force: true });
   });
-  const cancelled = await clandWithEnv(f.root, f.env, 'verify', 'cancel', job.id);
-  assert.equal(cancelled.code, 0, cancelled.stderr);
-  await eventually('cancelled result after complete tree cleanup', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
-  assert.equal(pidAlive(fake.pid), false, 'detached descendant is reaped before cancellation is reported');
+  await sample('before-cancel');
+  try {
+    const cancelled = await clandWithEnv(f.root, f.env, 'verify', 'cancel', job.id);
+    assert.equal(cancelled.code, 0, cancelled.stderr);
+    const report = await eventually('cancelled result after complete tree cleanup', async () => {
+      await sample('cancel-result-wait');
+      return (await f.results()).find(m => m.id === `suite:${job.id}`);
+    });
+    cancelledReceipt = report.id;
+    // Cancellation confirms native death; the kernel may still expose a zombie PID.
+    await eventually('detached descendant kernel PID retirement after cancellation', async () => {
+      await sample('retirement-wait');
+      return !pidAlive(fake.pid) ? true : undefined;
+    }, { timeoutMs: waitTimeoutMs(testWaitMs(5_000)), loadFactor: 1 });
+  } finally {
+    await diagnosticTail;
+    await sample('cancel-or-retirement-final', true);
+    if (diagnostics) t.diagnostic(JSON.stringify({ kind: 'detached-pid-receipts', samples }));
+  }
+  assert.equal(pidAlive(fake.pid), false, 'detached descendant PID is retired after cancellation');
   await assert.rejects(stat(fake.raw), { code: 'ENOENT' }, 'raw deletion follows delegated detached-writer cleanup');
   await assert.rejects(stat(earlyRemoval), { code: 'ENOENT' }, 'suite root is never removed with a live detached descendant');
   if (recreate) {

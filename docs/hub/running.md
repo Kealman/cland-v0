@@ -1433,7 +1433,15 @@ The hub persists cancellation before sending SIGTERM to the identity-verified
 worker, when one exists. The worker forwards it to npm and the lock runner: a legacy queued runner removes
 its FIFO ticket without disturbing the holder, and a running runner cleans its
 children, temporary root and leases. Cleanup finishes before one `cancelled`
-result (exit 143) is posted with its log. Restart and reporting retries retain
+result (exit 143) is posted with its log. The live local executor retains each
+verified descendant's native identity across incomplete cleanup attempts. A
+detached child that reparents or changes group remains owned by that same run;
+cleanup retries drain retained identities before removing roots or reporting.
+Dropping a capture requires confirmed native exit, PID absence or a different
+native birth. Missing process-table rows alone do not release ownership.
+These live captures are not serialized or inherited by copied/restored leases;
+restart recovery retains its existing independent identity and cwd checks.
+Restart and reporting retries retain
 cancellation even when the worker receipt says interrupted; repeating an explicit
 cancel is harmless. A finished run cannot be newly cancelled. If cleanup or
 reporting cannot proceed, `cland hub status --json` shows the retained error and

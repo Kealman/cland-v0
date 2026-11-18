@@ -854,7 +854,15 @@ for (const authority of ['fresh', 'restored', 'restored-owned', 'replaced', 'rep
     } else await assert.rejects(within(cancelled, 5000), /could not verify/);
   } else if (authority === 'replaced') {
     const replaced = executor.restore(run, worker, persisted);
-    for (const candidate of [lease, replaced]) await assert.rejects(within(lifetime.observe(() => executor.cancel(candidate, 'SIGTERM')), 5000), /could not verify/);
+    for (const candidate of [lease, replaced]) await assert.rejects(within(lifetime.observe(() => executor.cancel(candidate, 'SIGTERM')), 5000), (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /could not verify/);
+      if (candidate === lease) {
+        assert.match(error.message, /^suite cancellation could not verify the worker tree; secondary diagnostic:/);
+        assert.match(error.message, /suite capture owner changed during cleanup/);
+      }
+      return true;
+    });
   } else if (authority === 'replaced-during-cancel') {
     await assert.rejects(within(lifetime.observe(() => executor.cancel(lease, 'SIGTERM')), 5000), /could not verify/);
     assert.equal(replacedDuringCancel, true, 'lease replacement occurred during the native scope proof');

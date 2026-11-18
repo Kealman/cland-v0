@@ -227,6 +227,10 @@ Lease binding is rechecked after awaited scope proof and at the native signal
 boundary. No generic temporary-directory grant is added. The original cancellation and
 setup-failure cleanup controls and native no-inherited-authority cases must pass
 alongside outside-group refusal and ordinary restart recovery.
+The replaced-lease control keeps the caller's existing `could not verify`
+refusal as the primary outcome and checks owner change as a secondary diagnostic.
+The original stale lease and its restored replacement both refuse without a
+foreign signal attempt; an ownership detail never replaces the refusal class.
 
 Probe instrumentation uses owner-restored wrappers without node:test call
 recording. Recurring Store, notice and fake-executor calls must not retain

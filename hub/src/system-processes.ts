@@ -12,7 +12,7 @@ import { parseProcessTable, processTableArgs, retainProcessAncestry, type System
 export type { SystemProcess } from './process-table.ts';
 
 const untimed: Resumed = work => work();
-function branchAbsenceFailure(pid: number, rows: SystemProcess[]): string | null {
+export function branchAbsenceFailure(pid: number, rows: SystemProcess[]): string | null {
   const pending = [pid], seen = new Set<number>();
   for (const current of pending) {
     if (seen.has(current)) continue;
@@ -27,6 +27,8 @@ function branchAbsenceFailure(pid: number, rows: SystemProcess[]): string | null
   return null;
 }
 export type ProcessEndOptions = {
+  /** Synchronous owner receipt: initial tree, then newly verified descendants. */
+  onCaptured?: (tree: readonly HostCapturedProcess[]) => void;
   env?: NodeJS.ProcessEnv;
   resumed?: Resumed;
   /** Recheck the caller's live authority immediately before destructive actions. */
@@ -105,6 +107,13 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
   const rows = await systemProcesses(resumed, options.deadline, undefined, undefined, env);
   const owned = new Map<number, SystemProcess>();
   const capturedStopTree = (): HostCapturedProcess[] => [...owned.values()].map(row => ({ pid: row.pid, pidStarted: row.started, pidIdentity: row.identity! }));
+  const publishCaptured = () => {
+    // A partial validation has the same self/ancestor fence as a complete tree.
+    for (let row = rows.find(row => row.pid === process.pid); row; row = rows.find(next => next.pid === row!.parent)) {
+      if (owned.has(row.pid)) throw new Error('refusing to end this process or its ancestor');
+    }
+    options.onCaptured?.(capturedStopTree());
+  };
   const leader = resumed(() => {
     const leader = rows.find(row => row.pid === p.pid);
     if (!leader) return undefined;
@@ -118,6 +127,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
     }
     if (options.claim && !options.claim(leader)) return null;
     owned.set(leader.pid, leader);
+    let incomplete = false;
     for (let changed = true; changed;) {
       changed = false;
       for (const row of rows) if (owned.has(row.parent) && !owned.has(row.pid)) {
@@ -128,15 +138,18 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
           // an ESRCH receipt for every listed member before dropping it.
           const absenceFailure = branchAbsenceFailure(row.pid, rows);
           if (absenceFailure === null) continue;
-          observe({ event: 'signal-refused', pid: row.pid, reason: `descendant native identity cannot be verified: ${row.identityError ?? 'native birth unavailable'}; ${absenceFailure}` }); return null;
+          observe({ event: 'signal-refused', pid: row.pid, reason: `descendant native identity cannot be verified: ${row.identityError ?? 'native birth unavailable'}; ${absenceFailure}` });
+          incomplete = true;
+          continue;
         }
         if (!options.claim || options.claim(row)) { owned.set(row.pid, row); changed = true; }
       }
     }
-    // Protect the hub and its ancestors even if a corrupt row names one of them.
-    for (let row = rows.find(row => row.pid === process.pid); row; row = rows.find(next => next.pid === row!.parent)) {
-      if (owned.has(row.pid)) throw new Error('refusing to end this process or its ancestor');
+    if (incomplete) {
+      if (options.onCaptured) publishCaptured();
+      return null;
     }
+    publishCaptured();
     return leader;
   });
   if (leader === undefined) return true;
@@ -154,6 +167,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
     let latest = rows;
     let freezeDeadline: number | undefined;
     const extend = async (current: SystemProcess[], deadline?: number) => {
+      let incomplete: Error | undefined;
       for (let changed = true; changed;) {
         changed = false;
         const children = resumed(() => {
@@ -167,14 +181,19 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
           if (!row.identity) {
             const absenceFailure = branchAbsenceFailure(row.pid, current);
             if (absenceFailure === null) continue;
-            throw new Error(`descendant native identity cannot be verified: ${row.identityError ?? 'native birth unavailable'}; ${absenceFailure}`);
+            incomplete ??= new Error(`descendant native identity cannot be verified: ${row.identityError ?? 'native birth unavailable'}; ${absenceFailure}`);
+            continue;
           }
           await owner.capture(row.pid, deadline);
           resumed(() => {
-            if (!options.claim || options.claim(row)) { owned.set(row.pid, row); changed = true; }
+            if (!options.claim || options.claim(row)) {
+              owned.set(row.pid, row); changed = true;
+              options.onCaptured?.([{ pid: row.pid, pidStarted: row.started, pidIdentity: row.identity! }]);
+            }
           });
         }
       }
+      if (incomplete) throw incomplete;
     };
     const inspect = async (deadline = options.deadline) => {
       const current = await systemProcesses(resumed, deadline, undefined, undefined, env, pid => exited.add(pid));
