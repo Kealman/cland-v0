@@ -170,7 +170,9 @@ export async function compactLeaseIndex(root: string, settled: ReadonlySet<strin
         if (lease.state === 'released') missing(lease.lease, 'spend');
       }
       await ownDirectory(leaseRoot(root));
-      await durableJson(indexPath(root), { version: 1, leases: keep });
+      if (index ? keep.length !== index.leases.length || keep.some((id, i) => id !== index.leases[i]) : ids.length > 0) {
+        await durableJson(indexPath(root), { version: 1, leases: keep });
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       // An unrelated missing record is not evidence that the owner vanished.
@@ -201,7 +203,10 @@ export async function writeLease(root: string, lease: DropletLease): Promise<voi
     await runDirectory(root, dir);
     const index = await readIndex(root);
     // Admit before writing: a crash can add a missing-file read, never hide a lease.
-    if (index && !index.leases.includes(lease.lease)) await durableJson(indexPath(root), { ...index, leases: [...index.leases, lease.lease] });
+    if (!index || !index.leases.includes(lease.lease)) {
+      const ids = index?.leases ?? await directoryIds(root);
+      await durableJson(indexPath(root), { version: 1, leases: [...new Set([...ids, lease.lease])] });
+    }
     let current: DropletLease | undefined;
     try { current = await readLease(dir); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }

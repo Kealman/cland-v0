@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { basename, dirname, join } from 'node:path';
-import { readDemoLeases, readLeases, writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { compactLeaseIndex, readDemoLeases, readLeases, writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { compactLeaseHistory, spendPath } from '../src/executor/droplet/spend.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { fakeOnlyFixture } from './fake-only-fixture.ts';
@@ -24,6 +24,7 @@ test('compaction stops on a missing run directory without recreating it', async 
 
 test('an unrelated missing publication file remains a maintenance failure', async t => fakeOnlyFixture(t, async root => {
   await fs.mkdir(join(root, '.cland/run'), { recursive: true });
+  await seedLeases(root, [row('live', 'active')]);
   const rename = fs.rename;
   let work: ReturnType<typeof compactLeaseHistory> | undefined;
   fs.rename = async (...args: Parameters<typeof fs.rename>) => {
@@ -49,6 +50,7 @@ test('publication seam survives fixture cancellation until its original writer j
   const order: string[] = [];
   running = fakeOnlyFixture(context, async root => {
     await fs.mkdir(join(root, '.cland/run'), { recursive: true });
+    await seedLeases(root, [row('live', 'active')]);
     const rename = fs.rename;
     const held: typeof fs.rename = async (...args) => {
       entered.resolve(); await release.promise;
@@ -86,6 +88,87 @@ async function publishSpend(env: NodeJS.ProcessEnv, entries: ReturnType<typeof s
   await fs.mkdir(dirname(spendPath(env)), { recursive: true });
   await fs.writeFile(spendPath(env), JSON.stringify({ version: 1, legacyRetired: true, entries }));
 }
+
+test('unchanged compaction creates no temporary file while changed membership is durably published', async t => fakeOnlyFixture(t, async root => {
+  await seedLeases(root, [row('live', 'active'), row('settled', 'released')]);
+  const index = join(root, '.cland/run/executor/lease-index.json');
+  const events: string[] = [];
+  const open = fs.open, rename = fs.rename;
+  fs.open = async (...args: Parameters<typeof fs.open>) => {
+    const file = await open(...args);
+    if (String(args[0]).startsWith(`${index}.`)) {
+      events.push('temporary open');
+      const write = file.writeFile.bind(file), sync = file.sync.bind(file);
+      file.writeFile = async (...values: Parameters<typeof file.writeFile>) => { events.push('write'); return write(...values); };
+      file.sync = async () => { events.push('file sync'); return sync(); };
+    } else if (String(args[0]) === dirname(index)) {
+      const sync = file.sync.bind(file);
+      file.sync = async () => { events.push('directory sync'); return sync(); };
+    }
+    return file;
+  };
+  fs.rename = async (...args: Parameters<typeof fs.rename>) => {
+    if (String(args[1]) === index) events.push('rename');
+    return rename(...args);
+  };
+  syncBuiltinESMExports();
+  try {
+    const durable = ['temporary open', 'write', 'file sync', 'rename', 'directory sync'];
+    await compactLeaseIndex(root, new Set(), () => {}, true);
+    assert.deepEqual(events, durable, 'migration publishes the initial index durably');
+    events.length = 0;
+    await compactLeaseIndex(root, new Set(), () => {});
+    await compactLeaseIndex(root, new Set(), () => {}, true);
+    assert.deepEqual(events, [], 'unchanged periodic and rebuild passes open no temporary file');
+    await compactLeaseIndex(root, new Set(['settled']), () => {});
+    assert.deepEqual(events, durable, 'changed membership still uses the durable publication boundary');
+    assert.deepEqual(JSON.parse(await fs.readFile(index, 'utf8')), { version: 1, leases: ['live'] });
+    events.length = 0;
+    await compactLeaseIndex(root, new Set(['settled']), () => {});
+    assert.deepEqual(events, []);
+  } finally {
+    fs.open = open; fs.rename = rename; syncBuiltinESMExports();
+  }
+}));
+
+test('fresh empty compaction leaves the index absent without a temporary file', async t => fakeOnlyFixture(t, async root => {
+  await fs.mkdir(join(root, '.cland/run'), { recursive: true });
+  const open = fs.open;
+  let writes = 0;
+  fs.open = async (...args: Parameters<typeof fs.open>) => {
+    if (args[1] === 'wx') writes++;
+    return open(...args);
+  };
+  syncBuiltinESMExports();
+  try {
+    await compactLeaseIndex(root, new Set(), () => {}, true);
+    await compactLeaseIndex(root, new Set(), () => {});
+    assert.equal(writes, 0, 'an absent empty index needs no durable publication');
+    await assert.rejects(fs.stat(join(root, '.cland/run/executor/lease-index.json')), { code: 'ENOENT' });
+    assert.deepEqual(await readLeases(root), []);
+    assert.deepEqual(await readDemoLeases(root), []);
+  } finally { fs.open = open; syncBuiltinESMExports(); }
+}));
+
+test('first append preserves legacy leases discovered without an index', async t => fakeOnlyFixture(t, async root => {
+  await seedLeases(root, [row('legacy', 'active')]);
+  assert.deepEqual((await readLeases(root)).map(l => l.lease), ['legacy']);
+  await writeLease(root, row('new', 'active'));
+  assert.deepEqual(JSON.parse(await fs.readFile(join(root, '.cland/run/executor/lease-index.json'), 'utf8')).leases.sort(), ['legacy', 'new']);
+}));
+
+test('settled legacy history publishes an empty index that ends directory fallback', async t => fakeOnlyFixture(t, async root => {
+  await seedLeases(root, [row('legacy', 'released')]);
+  await compactLeaseIndex(root, new Set(['legacy']), () => {}, true);
+  assert.deepEqual(JSON.parse(await fs.readFile(join(root, '.cland/run/executor/lease-index.json'), 'utf8')), { version: 1, leases: [] });
+  const readdir = fs.readdir;
+  fs.readdir = async () => { throw new Error('settled history must not be enumerated'); };
+  syncBuiltinESMExports();
+  try {
+    assert.deepEqual(await readLeases(root), []);
+    assert.deepEqual(await readDemoLeases(root), []);
+  } finally { fs.readdir = readdir; syncBuiltinESMExports(); }
+}));
 
 async function demoHistory(t: TestContext, root: string, count: number) {
   const env = environment(root);
@@ -200,6 +283,8 @@ test('missing spend and interrupted repair retain recoverable lease membership',
   assert.equal((await readLeases(root)).length, 4);
   // Fail publication after scanning; the earlier checkpoint remains usable.
   const before = await fs.readFile(join(root, '.cland/run/executor/lease-index.json'), 'utf8');
+  entries[0]!.cost = 0;
+  await publishSpend(env, entries);
   const renameAfterColdMock = fs.rename;
   const fault = t.mock.method(fs, 'rename', async (...args: Parameters<typeof fs.rename>) => {
     if (String(args[1]).endsWith('lease-index.json')) throw new Error('fixture index publication interrupted');
@@ -210,7 +295,7 @@ test('missing spend and interrupted repair retain recoverable lease membership',
   assert.equal(await fs.readFile(join(root, '.cland/run/executor/lease-index.json'), 'utf8'), before);
   fault.mock.restore(); syncBuiltinESMExports();
   await compactLeaseHistory(root, env, () => {}, true);
-  assert.equal(await fs.readFile(join(root, '.cland/run/executor/lease-index.json'), 'utf8'), before, 'retry is idempotent');
+  assert.deepEqual((await readLeases(root)).map(l => l.lease).sort(), ['live-a', 'live-b', 'old-0'], 'retry publishes the changed membership');
   // A startup repair recovers a file missed by an interrupted/older writer.
   const extra = row('interrupted', 'active');
   await seedLeases(root, [extra]);

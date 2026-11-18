@@ -678,6 +678,12 @@ releases active leases with no run, and re-arms dead watchdogs for live leases.
 Routine lease reads use `.cland/run/executor/lease-index.json`. Hub recovery
 repairs this index from the retained directories once at startup, then removes
 released entries only after observing their settled, published spend entries.
+Unchanged compaction skips durable publication. A fresh project with no leases
+keeps the index absent; readers scan retained lease directories when it is absent.
+The first lease append includes those legacy directories in its durable index
+before writing the new lease record.
+Migration with only settled legacy directories publishes an empty index to end
+the retained-directory fallback.
 Missing or pending spend retains the lease in the hot index and reports
 `executor-lease-spend-missing`. A missing lease file retains its uncertain id and
 reports `executor-lease-record-missing`; repair cannot establish idleness from it.

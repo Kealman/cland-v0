@@ -181,17 +181,17 @@ for (const deleted of [false, true]) test(`hub stop joins held lease compaction 
     const owner = [...owners].find(owner => owner.root === f.root);
     assert.ok(owner, 'startup admitted the hub-owned executor');
     await step(() => scope.wait('initial executor reconciliation', () => drive(f, owner.reconcile(false))));
-    const rename = files.rename;
-    const restoreHeld = scope.patch(files, 'rename', async (...args: Parameters<typeof files.rename>) => {
-      if (String(args[1]) === join(owner.root, '.cland/run/executor/lease-index.json')) { entered.resolve(); await release.promise; }
-      return rename(...args);
+    const mkdir = files.mkdir;
+    const restoreHeld = scope.patch(files, 'mkdir', async (...args: Parameters<typeof files.mkdir>) => {
+      if (String(args[0]) === join(owner.root, '.cland/run/executor/demo-leases')) { entered.resolve(); await release.promise; }
+      return mkdir(...args);
     });
     syncBuiltinESMExports();
     const order: string[] = [];
     let work: Promise<void> | undefined, stopping: Promise<void> | undefined;
     try {
       work = owner.reconcile(false).then(() => { order.push('compacted'); });
-      await step(() => scope.wait('held index publication receipt', () => Promise.race([entered.promise, work!.then(() => { throw new Error('compaction completed without held publication'); })])));
+      await step(() => scope.wait('held compaction directory receipt', () => Promise.race([entered.promise, work!.then(() => { throw new Error('compaction completed without held directory boundary'); })])));
       stopping = f.stop().then(() => { order.push('stopped'); });
       if (deleted) await step(() => files.rm(f.root, { recursive: true, force: true, maxRetries: 3, retryDelay: 1 })); // Deliberate live-root deletion; bounded retries cover native removal contention.
       release.resolve();
@@ -199,7 +199,7 @@ for (const deleted of [false, true]) test(`hub stop joins held lease compaction 
       assert.deepEqual(order, ['compacted', 'stopped']);
       await step(() => f.stop());
       if (deleted) await assert.rejects(() => stat(f.root), { code: 'ENOENT' });
-      else assert.deepEqual(JSON.parse(await step(() => readFile(join(f.root, '.cland/run/executor/lease-index.json'), 'utf8'))), { version: 1, leases: [] });
+      else await assert.rejects(() => step(() => stat(join(f.root, '.cland/run/executor/lease-index.json'))), { code: 'ENOENT' });
     } finally {
       release.resolve(); await Promise.allSettled([work, stopping]);
       restoreHeld();

@@ -16,6 +16,17 @@ cleanup hook while the writer is held, then requires the native rename receipt,
 writer join and restoration in that order. Cleanup always releases and joins
 the original producer before fixture removal or guard restoration.
 
+The unchanged-membership control counts temporary opens, writes, file syncs,
+renames and directory syncs through filesystem seams. Initial migration and a
+settled lease removal must publish durably; unchanged periodic and rebuild
+passes must perform none of those operations. The interrupted-publication case
+settles a previously pending spend entry so its fault targets a changed index.
+An absent index with no lease directories creates no temporary file on either
+startup or periodic compaction. Absent-index readers still find legacy leases;
+the first append durably indexes all legacy ids plus the newly admitted lease.
+All-settled legacy history must publish an empty index; its subsequent lease
+and demo reads are checked with directory enumeration refused.
+
 The 5,000-record historical root is built and repaired once per file. The scale
 case then shares that root between read-only lease and released-demo status
 checks. Lease seeds use one batched helper. Report acknowledgement uses a

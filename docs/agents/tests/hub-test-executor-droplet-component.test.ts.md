@@ -19,7 +19,7 @@ then require reconciliation completion before close permits storage disposal.
 The deletion cases deliberately remove the root beneath that held writer with
 three bounded native removal retries (1 ms retry delay), release it, join close,
 call close again, and require `stat(root)` ENOENT plus the structured
-`run-directory-missing` diagnostic. Retained controls require the durable index.
+`run-directory-missing` diagnostic. Retained empty projects require an absent index.
 Whole-case ownership and the native launch
 guard remain active through the original work and cleanup.
 

@@ -272,7 +272,7 @@ for (const deleted of [false, true]) for (const restart of [true, false]) test(`
       if (deleted) {
         await assert.rejects(() => fs.stat(f.root), { code: 'ENOENT' });
         assert.ok(f.events.some(event => event.event === 'executor-lease-maintenance-stopped' && event.reason === 'run-directory-missing'));
-      } else assert.deepEqual(JSON.parse(await step(() => fs.readFile(join(f.root, '.cland/run/executor/lease-index.json'), 'utf8'))), { version: 1, leases: [] });
+      } else await assert.rejects(() => step(() => fs.stat(join(f.root, '.cland/run/executor/lease-index.json'))), { code: 'ENOENT' });
     } finally {
       release.resolve();
       await Promise.allSettled([recovery, closing]);

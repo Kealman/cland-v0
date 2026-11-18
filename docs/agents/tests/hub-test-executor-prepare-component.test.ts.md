@@ -38,9 +38,9 @@ native-launch guard remains active through setup, body and teardown. Prototype
 and filesystem observers use fixture-owned manual patches, restored after the
 original work joins, independently of TestContext mock cancellation.
 
-The two hub-stop cases capture the actual startup executor, hold index rename,
-starts hub stop and releases the writer. The ordered compaction and hub-stop
-completion receipts must precede a second no-op stop and the durable index
+The two hub-stop cases capture the actual startup executor, hold demo-directory
+mkdir, start hub stop and release the writer. The ordered compaction and hub-stop
+completion receipts must precede a second no-op stop and the absent empty index
 assertion, or stat(root) ENOENT when the root is deliberately deleted beneath
 the held writer. Removal uses three bounded retries with 1 ms retry delay.
 Bound setup and completion separately; always release/join the held
