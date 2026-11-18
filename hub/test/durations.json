@@ -12829,139 +12829,104 @@
     "web/test/hosts-view.test.ts::retained cards keep Inbox, Hosts sign-in and remote thread order across delta and inbox publication": 3.00813
   },
   "allow": {
-    "hub/test/executor-run.test.ts::an older remote runner exiting 0 cannot turn test output into an infrastructure receipt": {
-      "seconds": 12.6,
-      "owner": "C-216",
-      "added": "2026-11-17",
-      "expires": "2026-11-24",
-      "reason": "T-1935: fake transport delivery and durable collection cost; 1.5x worst passing Darwin sample 8.3948775 s rounded up, preserving exit/cause/report/release assertions."
-    },
-    "hub/test/executor-run.test.ts::an older remote runner exiting 75 cannot turn test output into an infrastructure receipt": {
-      "seconds": 12.7,
-      "owner": "C-216",
-      "added": "2026-11-17",
-      "expires": "2026-11-24",
-      "reason": "T-1935: fake transport delivery and durable collection cost; 1.5x worst passing Darwin sample 8.410832959 s rounded up, preserving exit/cause/report/release assertions."
-    },
-    "hub/test/executor-run.test.ts::remote ticket loss retains its infrastructure cause through collection": {
-      "seconds": 10.353,
-      "owner": "C-216",
-      "added": "2026-11-17",
-      "expires": "2026-11-24",
-      "reason": "T-1576: native uploaded finish/status and durable collection require a real fake-machine lifecycle; cap is 1.5x the worst passing reduced-fixture Darwin sample (6.901849875 s) at 85313c599, with all result/cause/release assertions retained."
-    },
-    "hub/test/login-resignin-native.test.ts::native sign-in of unbound Claude, Codex and OpenCode disks reuses and detaches each volume": {
-      "seconds": 16.129,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 10.75262186 s in A-19077-suite-5ea7c215-9b42-4bb5-b64f-c4bd901db3fe-all-at-88e9f95.log, head 88e9f95968bb206c3578519eec5fdcf329ea4f1f, receipt bb0e847f-2929-4c31-8306-480d4cc74a2e:481. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
-    },
     "hub/test/login-capacity.test.ts::capacity index bounds visits across same-region rejected rows and agrees with pending fences": {
-      "seconds": 19.005,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 12.669601330999999 s in A-18948-suite-4f4ecd58-c4ae-4605-ae3e-28df49466f9c-all-at-e2eb555.log, head e2eb555d48e87313a5d3734fcd0b9960646b1bc7, receipt d84eedaa-e397-4e3a-83c7-bd965a9b4dfb:1019. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T2 default 2 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 12.427,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 8.284526275000001 s in A-20923, receipt 3e77bc5a-f847-4f09-b104-84516c0c3a44:1117; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T2 budget 2 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/login-add.test.ts::terminal disk logins create a host, reuse it and retain only public metadata": {
-      "seconds": 24.248,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 16.165233585 s in A-18945-suite-45ede42d-81ac-4953-8b33-1fa0d9759c30-all-at-9935663.log, head 99356638a9319380a3e4695d04ccbd7c6dcc2854, receipt 38ec0ded-3a10-45be-b639-421eee5410d7:892. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 21.203,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 14.134774473 s in A-20961, receipt 77675f0f-675c-4144-a4b0-b683fa3b0847:921; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-restart.test.ts::restart keeps the live host and exits the deleted host, settles spend, and restores watchdog ownership": {
-      "seconds": 23.251,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 15.500145745 s in A-18945-suite-45ede42d-81ac-4953-8b33-1fa0d9759c30-all-at-9935663.log, head 99356638a9319380a3e4695d04ccbd7c6dcc2854, receipt 38ec0ded-3a10-45be-b639-421eee5410d7:739. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 20.979,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 13.985479909 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:408; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/login-snapshots.test.ts::one login save has bounded scheduling work across ten thousand retained logins": {
-      "seconds": 14.354,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 9.568907305 s in A-18792-suite-95ecfec4-2695-4a64-977e-347f8c9e3146-auto-at-efaba34.log, head efaba34f89faa875019921b2a203e1fd8e9a74a4, receipt 8e9443c8-1603-44d4-9d4a-70daef261092:2163. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T2 default 2 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 8.926,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 5.9500428229999995 s in A-20961, receipt b0264356-269b-4833-b025-3b5561cbeef8:2378; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T2 budget 2 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-watchdog.test.ts::detached watchdog outlives the lease database owner and confirms deletion at a 30 second deadline": {
-      "seconds": 45.242,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 30.160940070000002 s in A-18615-suite-ec15a35d-a90a-4f55-a470-56e558605c89-all-at-1ce8020.log, head 1ce802084617888c740eb6607623ab6c1ee2a4ef, receipt ea9233b0-4e31-4f81-8357-828b5f954ce7:791. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 45.206,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 30.137126685 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:416; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-watchdog.test.ts::host create arms a watchdog which deletes its machine after the hub stops": {
-      "seconds": 48.33,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 32.219676446 s in A-19799-suite-d5150de3-66a9-478a-9cf3-63e9aeca55c6-all-at-92dd61b.log, head 92dd61bcf8b0d8679de8c5d21846c33d96ef8804, receipt 6418eae8-371e-41d8-9ff9-ed764d08221d:829. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 47.621,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 31.747021466 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:431; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/claude-code-remote.test.ts::T-1730 C2 upgraded runtime launches Claude with connected mod bridge": {
-      "seconds": 20.201,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 13.466669549 s in A-19749-suite-ed6d0724-0b89-4ee6-9f07-5a0251b530c7-all-at-c9c4fff.log, head c9c4fffe885507d6e5388bf7f5ddfaf3d66fdef1, receipt c5e3c6af-1ba1-4727-8a59-7a24309accf8:91. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 17.533,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 11.688292238 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:95; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-agent-restart.test.ts::C1-C3 version delivery reconnect reads retained table without signalling harness": {
-      "seconds": 32.063,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 21.374714771 s in A-19799-suite-d5150de3-66a9-478a-9cf3-63e9aeca55c6-all-at-92dd61b.log, head 92dd61bcf8b0d8679de8c5d21846c33d96ef8804, receipt 6418eae8-371e-41d8-9ff9-ed764d08221d:574. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 28.925,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 19.283258831999998 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:321; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-revoke-native.test.ts::revoke settles live Claude Codex OpenCode and an already released Claude generation on the fake host": {
-      "seconds": 27.082,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 18.054316365 s in A-19785-suite-1e4d8909-ec41-483f-84a8-04baedf0955e-all-at-1f22ad4.log, head 1f22ad4a727127ea7335f1e4f7a6666bd1e5728d, receipt aebc244a-6c76-4f6e-8bab-e77c3b8cc2f0:352. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 23.183,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 15.454766789999999 s in A-20923, receipt 852b898b-4026-4438-ae4b-df18f48a52d4:357; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-push-on-ref-move.test.ts::C1-C4 socket pushes follow commits, amend, reset, rebase, refusal and downtime without hooks": {
-      "seconds": 24.131,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 16.086835722 s in A-19785-suite-1e4d8909-ec41-483f-84a8-04baedf0955e-all-at-1f22ad4.log, head 1f22ad4a727127ea7335f1e4f7a6666bd1e5728d, receipt c8c40e1b-6ab5-4b1b-b49e-1d80817a391a:382. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 22.854,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 15.235859875000001 s in A-20929, receipt 95091241-5553-4ffe-a774-d3c847eeb22d:745; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-survival-native.test.ts::three remote harnesses retain births, forwards and welcomed spokes across 20s hub downtime and master loss": {
-      "seconds": 67.303,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 44.868493765 s in A-18948-suite-4f4ecd58-c4ae-4605-ae3e-28df49466f9c-all-at-e2eb555.log, head e2eb555d48e87313a5d3734fcd0b9960646b1bc7, receipt d916bc91-255e-4a47-95d7-3f4ce9b6d703:335. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
-    },
-    "hub/test/host-agent-restart.test.ts::C3 adopted Claude worker survives version replacement with receipt authority and no signal": {
-      "seconds": 15.818,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 10.544990462 s in A-19749-suite-ed6d0724-0b89-4ee6-9f07-5a0251b530c7-all-at-c9c4fff.log, head c9c4fffe885507d6e5388bf7f5ddfaf3d66fdef1, receipt c5e3c6af-1ba1-4727-8a59-7a24309accf8:351. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 64.671,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 43.113387645 s in A-20923, receipt 852b898b-4026-4438-ae4b-df18f48a52d4:398; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/claude-code-remote.test.ts::Claude TERM-resistant SessionEnd hook is captured and killed by native birth": {
-      "seconds": 16.641,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 11.093566709000001 s in A-19622-suite-64fef6d2-b61d-46d9-8c30-1798d0dd99ca-all-at-5906a1e.log, head 5906a1e144b85cb1d4799aa74b12333e8e29569a, receipt 89253c0c-e62d-4a8f-9bc9-210b01d03ad7:74. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 15.69,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 10.459897753 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:103; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/claude-code-remote.test.ts": {
       "file": true,
-      "seconds": 324.93,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 216.61935365200006 s in A-18945-suite-45ede42d-81ac-4953-8b33-1fa0d9759c30-all-at-9935663.log, head 99356638a9319380a3e4695d04ccbd7c6dcc2854, receipt 38ec0ded-3a10-45be-b639-421eee5410d7:166. Sum of top-level passing test seconds in a completed ordinary file execution; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 120 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 293.811,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 195.87377935299997 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:62; cap rounds 1.5x upward to milliseconds. Sum of top-level passing test time in completed ordinary file executions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 120 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/state-paths-lint.test.ts::hub source conforms to the named state path inventory": {
-      "seconds": 14.732,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 9.820938301 s in A-18945-suite-45ede42d-81ac-4953-8b33-1fa0d9759c30-all-at-9935663.log, head 99356638a9319380a3e4695d04ccbd7c6dcc2854, receipt e6136974-48b1-4fa4-b317-59a425de0bd7:1391. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T1 default 0.5 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 12.994,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 8.662268802 s in A-20923, receipt 0df78f7d-07c0-4e6d-93bc-1a59207a68d4:762; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T1 budget 0.5 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/inbox-query.test.ts": {
       "seconds": 88.651,
@@ -12992,26 +12957,12 @@
       "expires": "2026-12-17",
       "reason": "T-1879: slowest passing linux sample 4.240147798 s in A-19577-suite-355897bc-edf7-4754-b7e2-0c7df38f037b-auto-at-6c6506a.log, head 6c6506a38661be0ab72c8c3bafd7b59537fcbc69, receipt 9f487ec3-9ba3-4bd8-958f-4863f610215f:1849. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T2 default 2 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
     },
-    "hub/test/claude-code-sessions-lifecycle.test.ts::Claude relaunch stops the previous native job after its PID has exited": {
-      "seconds": 9.272,
-      "owner": "E-880",
-      "added": "2026-11-03",
-      "expires": "2026-12-03",
-      "reason": "T-1471 keeps two real native launches, observed old-PID reap, explicit previous-job stop and exactly one live native job. A-14603 at 3bc380c2e on Linux x64 c-8 lon1 Node24.21.0: ordinary 5.182492985 s; five passing load samples 5.558342759, 5.977673096, 5.953064235, 5.298225241 and 4.793166403 s. Cap rounds 1.5x the worst passing sample upward to milliseconds. Coordinator decision a4d16807 approves E-880 ownership and seven-day expiry. No assertions, timeouts, file-level or blanket budgets change. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 6.180917375 s; A-15983 4.635773696 s; A-15991 2.921245833 s; A-15995 2.563065958 s. Cap 9.272 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
-    },
-    "web/test/uploads.test.ts::composer sends one PNG with its caption and refuses oversized files while retaining native keys and artifact chips": {
-      "seconds": 4.98,
-      "owner": "E-880",
-      "added": "2026-11-02",
-      "expires": "2026-12-02",
-      "reason": "T-1391: real isolated Headless Shell plus authenticated HTTP upload, mixed artifact/file send and failed-send recovery. Linux x64 c-8 lon1 run a8b9d85e-30c7-454c-af67-3e1882bb0612 at d4bd66a4e (A-13154) passed this case in 3.210781057 s; corrected-head run 507e5264-c874-49a0-b376-b01eca9e863b at 7402e9c6c (A-13166) passed it in 3.319656720 s. The first run failed the phone row; the second failed shared Items defect T-1419 while the phone row passed. 4.98 s rounds 1.5 times the worst Linux sample upward. Coordinator approved E-1311 ownership and a seven-day expiry; assertions and timeouts are unchanged."
-    },
     "hub/test/config-set.test.ts::config set and hub reload start and stop configured messengers only with a token": {
-      "seconds": 4.626,
+      "seconds": 5.012,
       "owner": "E-880",
-      "added": "2026-10-26",
-      "expires": "2026-11-25",
-      "reason": "T-1331 retains the real CLI enable/disable and explicit reload walk for both messengers, token-absent inactivity, welcome/status receipts, unchanged reload retention and completed stop receipts. Linux x64 c-8 lon1 droplet run 8aa40cc7 at 5790b51bc (A-12382) passed the ordinary sample at 3.035164865 s and all five load repetitions, worst 3.083795257 s; local macOS source2 A-12375 passed at 1.012606083 s. The 4.626 s cap rounds 1.5x the worst of these passing samples upward to milliseconds. Assertions and bounded waits are unchanged. Coordinator decision 864cd392 authorizes this allowance with E-880 ownership and 2026-11-25 expiry."
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 3.34072282 s in A-20923, receipt 2b1a8314-3117-4f96-8801-cd81665c958f:309; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T2 budget 2 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/approval-restart.test.ts::hub restarts retain three pending approval ids, deliver a replayed answer and archive off-stream outcomes": {
       "seconds": 33.099,
@@ -13510,19 +13461,12 @@
       "expires": "2026-12-17",
       "reason": "T-1879: slowest passing linux sample 27.119502346 s in A-19746-suite-6ca132ad-de0c-47c7-82b4-52cc29fa900b-all-at-562f835.log, head 562f8359f3715752ffcee6de13cbc7c5841dae26, receipt 4f923992-630f-4e1a-b048-45f23d2a389b:1390. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
     },
-    "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (claude-code, keep_context=false)": {
-      "seconds": 17.965,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 11.976545801 s in A-19742-suite-47201382-2a95-48ae-ab92-d62e19b292c4-all-at-f4582a1.log, head f4582a11c7d4ed651da68e02e56657436230c064, receipt bb11d8a5-ff70-4d59-935b-a3d61d1dd2c1:1398. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
-    },
     "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (claude-code, keep_context=true)": {
-      "seconds": 22.868,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 15.245177638 s in A-18948-suite-4f4ecd58-c4ae-4605-ae3e-28df49466f9c-all-at-e2eb555.log, head e2eb555d48e87313a5d3734fcd0b9960646b1bc7, receipt d916bc91-255e-4a47-95d7-3f4ce9b6d703:611. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 19.142,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 12.760829911999998 s in A-20923, receipt 852b898b-4026-4438-ae4b-df18f48a52d4:718; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/session-resume-lifecycle.test.ts::restart retains undiscoverable harness PIDs and session stop reaps their spokes and descendants": {
       "seconds": 34.231,
@@ -13750,18 +13694,18 @@
       "reason": "T-1879: slowest passing linux sample 13.8484847 s in A-18031-suite-939223e6-6c21-4080-bdd0-a41c0cce118a-all-at-94f4a8c.log, head 94f4a8c6ac5d26091bde98477e744356d45748bb, receipt 0106998f-5655-43b0-9733-ae0e4c8e5f9d:757. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
     },
     "hub/test/suite-timeouts.test.ts::verify reaps fast-exit inherited-pipe writers and preserves unrelated processes": {
-      "seconds": 22.792,
+      "seconds": 15.888,
       "owner": "E-880",
-      "added": "2026-11-03",
-      "expires": "2026-12-03",
-      "reason": "T-410 fast-exit inherited-pipe writer census: 3 s silence watchdog plus TERM/KILL/native receipts; A-14101 measured 9.727 s on Linux c-8 with 2 workers, rounded 1.5x headroom. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 15.194117459 s; A-15983 12.129831572 s; A-15991 10.91273525 s; A-15995 10.828477958 s. Cap 22.792 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 10.59186141 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:1042; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/suite-timeouts.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": {
-      "seconds": 23.288,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 15.524945567000001 s in A-18031-suite-939223e6-6c21-4080-bdd0-a41c0cce118a-all-at-94f4a8c.log, head 94f4a8c6ac5d26091bde98477e744356d45748bb, receipt 0106998f-5655-43b0-9733-ae0e4c8e5f9d:786. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 15.648,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 10.431844698 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:1054; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/suite.test.ts::hub restart recovers a worker that outlives it, without replaying the result": {
       "seconds": 16.437,
@@ -13890,25 +13834,18 @@
       "reason": "T-1879: growth-ratchet cap, not a test or file allowance. A-19794 reports T3 ratchet unavailable (no base manifest), so no current projection exists to size it from. Original samples A-6845 and A-6830; retain 2115 s by Coordinator decision 12ad0b5a. E-880 dates renewed within 31 days; rebasing belongs to T-931."
     },
     "web/test/pairing.test.ts::pairing rows give local approval instructions without an approve control (desktop)": {
-      "seconds": 10.2,
+      "seconds": 12.429,
       "owner": "E-880",
-      "added": "2026-11-01",
-      "expires": "2026-12-02",
-      "reason": "T-1364: real Headless Shell, sealed hub and both fake messengers prove read-only local pairing instructions with actual keys on rows and nested command fields. Linux x64 droplet run 1f987d26 at fa4a4856 (A-12630), Web workers 4, measured 6.076820519 s with all assertions passing; Coordinator requested 9.2 s, about 1.5x the sample, for approximately 40% Linux browser timing variance. Assertions and fixture isolation remain intact. Renewed 2026-11-01 by coord under D72 from the 0.3.2 release covers (Linux A-15091: desktop 6.76 s, phone 5.38 s, Neovim card 2.85 s; macOS A-15096: 2.59, 2.27 and 1.28 s); E-1536 T-1572 reworks pairing and revisits these tests."
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 8.285467124999998 s in A-20929, receipt bbbf5ac8-cf5d-4a1b-8f61-81a958750af7:194; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier Web budget 4 s. D72 owner E-880; report-only policy unchanged."
     },
     "web/test/pairing.test.ts::pairing rows give local approval instructions without an approve control (phone)": {
-      "seconds": 8.2,
+      "seconds": 10.931,
       "owner": "E-880",
-      "added": "2026-11-01",
-      "expires": "2026-12-02",
-      "reason": "T-1364: phone-width Headless Shell, sealed hub and both fake messengers prove read-only local pairing instructions with actual keys on rows and nested command fields. Linux x64 droplet run 1f987d26 at fa4a4856 (A-12630), Web workers 4, measured 5.462975472 s with all assertions passing; Coordinator requested 8.2 s, about 1.5x the sample, for approximately 40% Linux browser timing variance. Assertions and fixture isolation remain intact. Renewed 2026-11-01 by coord under D72 from the 0.3.2 release covers (Linux A-15091: desktop 6.76 s, phone 5.38 s, Neovim card 2.85 s; macOS A-15096: 2.59, 2.27 and 1.28 s); E-1536 T-1572 reworks pairing and revisits these tests."
-    },
-    "web/test/pairing.test.ts::Neovim pairing card grants the fake messenger and both inboxes remove approved and expired codes": {
-      "seconds": 4.7,
-      "owner": "E-880",
-      "added": "2026-11-01",
-      "expires": "2026-12-02",
-      "reason": "T-1364: the actual Neovim card and Headless Shell share a sealed fake-messenger hub to prove the local grant and expiry across both clients. Linux x64 droplet run 1f987d26 at fa4a4856 (A-12630), Web workers 4, measured 3.106363024 s with all assertions passing; 4.7 s rounds up 1.5x that sample and records the launch brief's >=3 s allowance boundary. The teardown correction reaps Neovim before closing the shared hub and asserts no autostarted hub survives. Renewed 2026-11-01 by coord under D72 from the 0.3.2 release covers (Linux A-15091: desktop 6.76 s, phone 5.38 s, Neovim card 2.85 s; macOS A-15096: 2.59, 2.27 and 1.28 s); E-1536 T-1572 reworks pairing and revisits these tests."
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 7.286850792 s in A-20929, receipt bbbf5ac8-cf5d-4a1b-8f61-81a958750af7:201; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier Web budget 4 s. D72 owner E-880; report-only policy unchanged."
     },
     "web/test/palette.test.ts::the palette and area keys help": {
       "seconds": 16.548,
@@ -13974,195 +13911,110 @@
       "reason": "T-1879: slowest passing linux sample 15.264313666 s in A-19574-suite-059150dd-4833-4e08-92f0-c9de8529b4d9-auto-at-a15551d.log, head a15551d77475e7332f28e2edc57a92e9c76b1dff, receipt fa48ed34-45ed-4b67-849b-d0c1737bb30a:299. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier Web default 4 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
     },
     "hub/test/qa-lint-build.test.ts::committed brief corpus has no false absent file or title reports against the compiler source oracle": {
-      "seconds": 16.395,
+      "seconds": 53.082,
       "owner": "E-880",
-      "added": "2026-10-26",
-      "expires": "2026-11-25",
-      "reason": "T-1201 lints all 85 committed qa/briefs against an independent compiler-source oracle; this real-repo corpus control was the agreed bar for its bounded lexer (review-loop cap, 2026-10-24). Samples: macOS/local stage cover 7a8445c1 (A-11552) 4.078 s; Linux c-8 lon1 item verify 8d8e04c9 (A-11526) 4.071 s; Linux c-8 lon1 stage cover e70d2393 shard-1 (A-11549) 12.466 s under shard load. The 18.7 s cap rounds 1.5x the worst sample upward. Assertions unchanged. Owned by E-880 (D72 legacy owner) so E-1196 can close. Renewed 2026-10-26 (T-1338): recent passing samples A-12333 10.929478443 s, A-12360 4.148720988 s, A-12338 5.0689815 s, A-12224 3.719521292 s; A-12333/A-12360 Linux droplet, A-12338/A-12224 macOS local (duration budgets report-only). The 16.395 s cap rounds 1.5x the worst recent passing sample (10.929478443 s) upward to milliseconds; E-880 retains ownership within its 31-day span limit."
-    },
-    "hub/test/telegram-polling-restart.test.ts::Discord fresh history forwards newest 500 of 620 once with one silent overflow line": {
-      "seconds": 14.317,
-      "owner": "E-880",
-      "added": "2026-11-03",
-      "expires": "2026-12-03",
-      "reason": "T-1436 bounds synchronous ordinary-text commits and indexes outbox source, last-row and depth reads; its exact-source completion observer avoids full-ledger decoding. Linux x64 c-8 lon1 run f770284e at c4dfe028 (A-14104), two workers, measured this 620-to-500 production-frame case at 5.165974280 s, with all assertions passing and 16,545 decoded rows below the 50,000 work guard; overall exit 1 was the separate new rollback-kill duration gate and Web was unrun. Eight seconds rounds 1.5 times that full-case sample upward, shrinking the former 45 s allowance. Loaded macOS evidence A-14086 at executable-equivalent 9f9528b3 passed all ten samples at 1.603-1.705 s. E-880 owns this allowance through the existing expiry. Native reaction I/O, semantic assertions and the absolute 10 s completion wait remain. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 6.701301459 s; A-15983 9.544623969 s; A-15991 3.93371775 s; A-15995 3.063100125 s. Cap 14.317 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged. T-1641 tracks the separate flaky history completion failure; A-15966 failed at 11.116819722 s (500 inputs and overflow settlement: not within 10000 ms), excluded from passing-sample sizing; this allowance does not fix that failure."
-    },
-    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history preserves the committed input and finishes the batch once": {
-      "seconds": 11.145,
-      "owner": "E-880",
-      "added": "2026-11-03",
-      "expires": "2026-12-03",
-      "reason": "real hub process start, admission, SIGKILL, owned-writer drain and exactly-once recovery in Discord history catch-up (T-1413). Coordinator decision 3a147fbb approves 10 s based on the passing Linux x64 c-8 lon1 run ab55068b at dec9e7713 (A-13594), 6.355606305 s, and local macOS 5.73 s. These are thin samples; 1.5 times the worst is rounded upward to 10 s, matching the native Telegram kill headroom. The Linux overall run remained red solely for this missing measured allowance and Web was unrun. Protocol, Identify spacing, kill/identity/recovery/drain assertions and timeouts are unchanged; the separate R-1278 45 s full-history allowance remains unchanged. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15980 7.429344296 s; A-15982 6.994221084 s; A-15983 7.398685366 s; A-15991 6.237307708 s; A-15995 6.391545916 s. Cap 11.145 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged. T-1641 tracks the separate flaky history completion failure; A-15966 failed at 11.116819722 s (500 inputs and overflow settlement: not within 10000 ms), excluded from passing-sample sizing; this allowance does not fix that failure."
-    },
-    "hub/test/telegram-polling-restart.test.ts::SIGKILL mid Discord history page commit rolls back and finishes the batch once": {
-      "seconds": 11.227,
-      "owner": "E-880",
-      "added": "2026-11-03",
-      "expires": "2026-12-03",
-      "reason": "T-1436 proves native hub SIGKILL mid-page-commit rolls back the interrupted group and restart replays every selected input exactly once. Linux x64 c-8 lon1 run f770284e at c4dfe028 (A-14104), two workers, measured this assertion-passing identity at 6.396172347 s; its enforced new-identity 5 s duration gate caused exit 1 and Web was unrun. Ten seconds rounds 1.5 times that measured sample (9.594 s) upward. E-880 owns the seven-day allowance approved by the Coordinator. Native Identify spacing, captured-process exit/drain, rollback and exactly-once assertions remain unchanged. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15980 7.484488998 s; A-15982 7.013315209 s; A-15983 7.325735516 s; A-15991 6.503396375 s; A-15995 6.217914459 s. Cap 11.227 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged. T-1641 tracks the separate flaky history completion failure; A-15966 failed at 11.116819722 s (500 inputs and overflow settlement: not within 10000 ms), excluded from passing-sample sizing; this allowance does not fix that failure."
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 35.38755565 s in A-20961, receipt 77675f0f-675c-4144-a4b0-b683fa3b0847:1254; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "web/test/items.test.ts::the Items tree reads the pinned tracker snapshot": {
-      "seconds": 18.018,
+      "seconds": 15.592,
       "owner": "E-880",
-      "added": "2026-11-03",
-      "expires": "2026-12-03",
-      "reason": "T-1421: Pinned 24-item shape corpus replaces the full live copy (previous Linux under-load samples 44–57 s). Linux x64 c-8 sfo2 run b2015b9d at c312b8961 (A-13809) measured 9.404423108 s with all assertions passing, but the suite exited 1 on this enforced 5 s new-identity duration gate. Local Darwin arm64 targeted parent 2.831899667 s. 15 s rounds up approximately 1.5x Linux for about 40% Web timing variation. Coordinator decision da798b54 approves R-1278 ownership; the validator caps this allowance at seven days, through 2026-11-05. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15980 12.011479875 s; A-15983 9.616526808 s; A-15995 3.991946166 s. Cap 18.018 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 10.394457351 s in A-20923, receipt 1a5807c9-a0b5-4159-850c-593b5b5686d7:150; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier Web budget 4 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/startup-replies-scale.test.ts::eight startup replies fit per-frame and total budgets on a thousand-item durable fixture": {
-      "seconds": 22.197,
+      "seconds": 18.481,
       "owner": "E-880",
-      "added": "2026-11-03",
-      "expires": "2026-12-03",
-      "reason": "T-1421: The unchanged generated 1,004-item startup scale case stays beside the bounded 24-item corpus that replaces the full copy (previous Linux under-load full copies 44–57 s). Linux x64 c-8 sfo2 run b2015b9d at c312b8961 (A-13809) measured 10.100 s with all assertions passing; local Darwin arm64 targeted case 4.429718667 s. 15.2 s rounds up approximately 1.5x Linux. Byte caps, durable checkpoint and file/read-count assertions remain unchanged. Coordinator decision da798b54 approves R-1278 ownership; the validator caps this allowance at seven days, through 2026-11-05. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15980 14.797888094 s; A-15982 9.067386625 s; A-15983 11.059680232 s; A-15991 7.882723125 s; A-15995 5.328371541 s. Cap 22.197 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
-    },
-    "hub/test/startup-task-pages-soak.test.ts::five thousand open items cross byte-bounded startup pages without losing rows": {
-      "seconds": 120.574,
-      "owner": "E-880",
-      "added": "2026-11-03",
-      "expires": "2026-12-03",
-      "reason": "T-1248: 5,000-row byte-bounded startup-page proof required by C1; A-13990 measured 52.622 s on Linux c-8 with 2 workers. The 12-row injected-byte T1 and 3-row frame T2 cases retain byte-boundary, ordered complete unique membership and legacy-shape assertions at small scale. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15983 80.382282538 s; A-15995 27.399580792 s. Cap 120.574 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
-    },
-    "hub/test/measure-memory.test.ts::offline analyzer reads a real V8 snapshot and finds an owned large array": {
-      "seconds": 11.068,
-      "owner": "E-880",
-      "added": "2026-11-03",
-      "expires": "2026-12-03",
-      "reason": "T-1491: real V8 snapshot creation and native Python strong-edge dominator analysis prove MemoryProbeHolder owns at least 800000 bytes. Linux x64 c-8 lon1 assertion-passing samples A-14575 (5.133541762 s) and A-14539 (5.283094746 s); those integrated runs exited 1 on this 5 s identity gate. Periodic dev T3 A-14582 at db4bb9a passed the identity in 4.762 s, showing borderline 4.8-5.3 s variation. 7.925 s is 1.5x the worst sample rounded upward to milliseconds. E-880 owns this seven-day exception (re-owned from E-1466 at its close, 2026-10-31). Native snapshot and ownership assertions remain intact; no baseline is replaced. Renewal T-1647 (2026-11-03): supersedes the earlier cap and expiry under E-880 legacy-owner policy (30 days). Passing cover/batch samples: A-15982 7.378123208 s; A-15983 5.407016151 s; A-15991 3.775349667 s; A-15995 3.572024167 s. Cap 11.068 s rounds 1.5x the worst passing sample upward to milliseconds; A-16052 records source heads and platforms. Native assertions and timeouts unchanged."
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 12.320529951000001 s in A-20961, receipt 77675f0f-675c-4144-a4b0-b683fa3b0847:1471; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-relaunch-native.test.ts::C2 production Codex relaunch crosses owned carriers and consumes a fresh native first input": {
-      "seconds": 22.232,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 14.821255591 s in A-19749-suite-ed6d0724-0b89-4ee6-9f07-5a0251b530c7-all-at-c9c4fff.log, head c9c4fffe885507d6e5388bf7f5ddfaf3d66fdef1, receipt c5e3c6af-1ba1-4727-8a59-7a24309accf8:385. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 20.038,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 13.358543083 s in A-20929, receipt 95091241-5553-4ffe-a774-d3c847eeb22d:752; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-relaunch.test.ts::C2/C3 admitted host relaunch running keeps durable native and checkout ownership": {
-      "seconds": 17.286,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 11.523548891 s in A-18948-suite-4f4ecd58-c4ae-4605-ae3e-28df49466f9c-all-at-e2eb555.log, head e2eb555d48e87313a5d3734fcd0b9960646b1bc7, receipt d916bc91-255e-4a47-95d7-3f4ce9b6d703:318. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 19.754,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 13.169053042 s in A-20929, receipt 95091241-5553-4ffe-a774-d3c847eeb22d:759; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f2 preserves prepared ownership": {
-      "seconds": 22.27,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 14.846054835 s in A-19785-suite-1e4d8909-ec41-483f-84a8-04baedf0955e-all-at-1f22ad4.log, head 1f22ad4a727127ea7335f1e4f7a6666bd1e5728d, receipt c8c40e1b-6ab5-4b1b-b49e-1d80817a391a:388. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 18.202,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 12.134429875 s in A-20929, receipt 95091241-5553-4ffe-a774-d3c847eeb22d:754; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f3 preserves prepared ownership": {
-      "seconds": 17.463,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 11.641417695 s in A-18945-suite-45ede42d-81ac-4953-8b33-1fa0d9759c30-all-at-9935663.log, head 99356638a9319380a3e4695d04ccbd7c6dcc2854, receipt 38ec0ded-3a10-45be-b639-421eee5410d7:734. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 20.891,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 13.926878166 s in A-20929, receipt 95091241-5553-4ffe-a774-d3c847eeb22d:755; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/host-relaunch-retry.test.ts::retry native refusal onto f4 preserves prepared ownership": {
-      "seconds": 23.577,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 15.717608844 s in A-19543-suite-d2c22f2c-990f-4858-85ea-15128878d8fe-all-at-5aaca59.log, head 5aaca59df9f12590f496e4970782288856f8aaa7, receipt dfac0f51-27ca-4603-b013-4d81002daf31:736. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
-    },
-    "hub/test/host-destroy-native.test.ts::C1/C2/C3 destroy settles native session after confirming deletion; tunnel down=false": {
-      "seconds": 15.526,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 10.350091893 s in A-18948-suite-4f4ecd58-c4ae-4605-ae3e-28df49466f9c-all-at-e2eb555.log, head e2eb555d48e87313a5d3734fcd0b9960646b1bc7, receipt d916bc91-255e-4a47-95d7-3f4ce9b6d703:257. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 29.027,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 19.351016666 s in A-20929, receipt 95091241-5553-4ffe-a774-d3c847eeb22d:756; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/login-signed-out-native.test.ts::native opencode provider.auth signs out without stopping existing sessions": {
-      "seconds": 23.537,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 15.690750092 s in A-19077-suite-5ea7c215-9b42-4bb5-b64f-c4bd901db3fe-all-at-88e9f95.log, head 88e9f95968bb206c3578519eec5fdcf329ea4f1f, receipt bb0e847f-2929-4c31-8306-480d4cc74a2e:483. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
-    },
-    "hub/test/login-resignin-native.test.ts::native opencode sign-in renews the mounted writer with relaunch true": {
-      "seconds": 17.127,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 11.417950038999999 s in A-19077-suite-5ea7c215-9b42-4bb5-b64f-c4bd901db3fe-all-at-88e9f95.log, head 88e9f95968bb206c3578519eec5fdcf329ea4f1f, receipt bb0e847f-2929-4c31-8306-480d4cc74a2e:485. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
-    },
-    "hub/test/login-card-signin.test.ts::native Claude card creates and renews one disk across both remotes with deletion": {
-      "seconds": 16.43,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 10.952738894 s in A-18948-suite-4f4ecd58-c4ae-4605-ae3e-28df49466f9c-all-at-e2eb555.log, head e2eb555d48e87313a5d3734fcd0b9960646b1bc7, receipt d916bc91-255e-4a47-95d7-3f4ce9b6d703:360. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 18.125,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 12.083027345 s in A-20961, receipt 77675f0f-675c-4144-a4b0-b683fa3b0847:938; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/login-signed-out-native.test.ts::native codex refresh_token_reused signs out without stopping existing sessions": {
-      "seconds": 22.987,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 15.324103014 s in A-19077-suite-5ea7c215-9b42-4bb5-b64f-c4bd901db3fe-all-at-88e9f95.log, head 88e9f95968bb206c3578519eec5fdcf329ea4f1f, receipt bb0e847f-2929-4c31-8306-480d4cc74a2e:486. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 19.065,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 12.70967432 s in A-20923, receipt 852b898b-4026-4438-ae4b-df18f48a52d4:469; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/login-signed-out-native.test.ts::native claude-code authentication_failed signs out without stopping existing sessions": {
-      "seconds": 27.225,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 18.149846345999997 s in A-19077-suite-5ea7c215-9b42-4bb5-b64f-c4bd901db3fe-all-at-88e9f95.log, head 88e9f95968bb206c3578519eec5fdcf329ea4f1f, receipt bb0e847f-2929-4c31-8306-480d4cc74a2e:488. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
-    },
-    "hub/test/login-resignin-native.test.ts::native codex sign-in renews the mounted writer with relaunch false": {
-      "seconds": 18.022,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 12.0145062 s in A-19009-suite-11b7d490-9d16-462e-8c78-97f485652f5f-all-at-b3ca996.log, head b3ca996b9d7cb47551f81c94a24eab60642754bf, receipt 1a3d28ce-9514-4ee6-8f1c-43fa01d35c0e:2. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
-    },
-    "hub/test/login-resignin-native.test.ts::native claude-code sign-in renews the mounted writer with relaunch false": {
-      "seconds": 18.565,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 12.376070186000002 s in A-19077-suite-5ea7c215-9b42-4bb5-b64f-c4bd901db3fe-all-at-88e9f95.log, head 88e9f95968bb206c3578519eec5fdcf329ea4f1f, receipt 276c4817-87e2-467e-9a7e-1ca04e361aec:2. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
-    },
-    "hub/test/host-tunnel-outage-native.test.ts::native tunnel outage pushes host alert and CLI scratch control restores it": {
-      "seconds": 16.626,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 11.083643507000001 s in A-19364-suite-05bb1d70-caa0-4a0c-b86a-a17a9cc70f23-all-at-a7bcf30.log, head a7bcf30023924dab8d0fa3fc5dcbb778f43f420b, receipt 30e9da27-e6c1-48f0-8329-d952d914b973:413. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 20.795,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 13.862857336 s in A-20923, receipt 852b898b-4026-4438-ae4b-df18f48a52d4:471; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
     "web/test/hosts-view.test.ts::Hosts native codex Add completes the fake harness disk sign-in": {
-      "seconds": 23.263,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 15.508544065 s in A-19615-suite-064b9526-d2cd-413c-98c9-f753467f9e63-auto-at-fa6cb7c.log, head fa6cb7c65d1151a11e26514216d651095eebb3ac, receipt a50e4483-1415-4ee0-9ad0-5ef02cfa2b9a:157. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier Web default 4 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 21.394,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 14.262295386 s in A-20961, receipt a07bfbbb-c259-4992-a036-47ac3beae522:159; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier Web budget 4 s. D72 owner E-880; report-only policy unchanged."
     },
     "web/test/hosts-view.test.ts::Hosts native claude-code Add completes the fake harness disk sign-in": {
-      "seconds": 19.15,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 12.766257533 s in A-19180-suite-8d8a6cf7-435a-4227-8e25-aea71220eb2d-all-at-f143bc8.log, head f143bc8be70edbb47c5d92bdb5f83bc35c9a3b7c, receipt 602f671a-f33c-40df-b019-7a8e900cb388:177. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier Web default 4 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "seconds": 17.813,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 11.875120055 s in A-20961, receipt a07bfbbb-c259-4992-a036-47ac3beae522:178; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier Web budget 4 s. D72 owner E-880; report-only policy unchanged."
     },
     "web/test/hosts-view.test.ts": {
       "file": true,
-      "seconds": 120.905,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: slowest passing linux sample 80.60299024800001 s in A-19478-suite-79affb72-ca93-4396-b56d-aeff389631b9-all-at-881114b.log, head 881114bfdc1e75e1ec4fc5df8109e99b96357a81, receipt de6788e4-cbdc-48db-aa42-fd66c92c9b07:76. Sum of top-level passing test seconds in a completed ordinary file execution; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier Web default 40 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
-    },
-    "hub/test/scenarios/integrated-v04.test.ts": {
-      "file": true,
-      "seconds": 49,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: original 469-row renewal input retained in accounting. Coordinator decision 92ff24e2 preserves 49 s file cap unless broader passing samples require more. Broader census peak 29.426291424 s in A-19749-suite-ed6d0724-0b89-4ee6-9f07-5a0251b530c7-all-at-c9c4fff.log, head c9c4fffe885507d6e5388bf7f5ddfaf3d66fdef1, linux, receipt c5e3c6af-1ba1-4727-8a59-7a24309accf8:666; 1.5x rounds to 44.14 s. Existing dates and owner preserved. Duration policy remains report-only."
+      "seconds": 112.821,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 75.213911184 s in A-20961, receipt a07bfbbb-c259-4992-a036-47ac3beae522:76; cap rounds 1.5x upward to milliseconds. Sum of top-level passing test time in completed ordinary file executions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier Web budget 40 s. D72 owner E-880; report-only policy unchanged."
     },
     "hub/test/scenarios/integrated-v04.test.ts::v0.4 integrated: remote login, live renewal, two users, busy restart and host sub-cap": {
-      "seconds": 46,
-      "owner": "C-216",
-      "added": "2026-11-16",
-      "expires": "2026-11-23",
-      "reason": "T-1879: original 469-row renewal input retained in accounting. Coordinator decision 92ff24e2 preserves 46 s test cap unless broader passing samples require more. Broader census peak 30.659327257 s in A-19742-suite-47201382-2a95-48ae-ab92-d62e19b292c4-all-at-f4582a1.log, head f4582a11c7d4ed651da68e02e56657436230c064, linux, receipt db47a4fe-05e2-47d8-bb3f-3c087869b667:2; 1.5x rounds to 45.989 s. Existing dates and owner preserved. Duration policy remains report-only."
+      "seconds": 29.092,
+      "owner": "E-880",
+      "added": "2026-11-18",
+      "expires": "2026-12-18",
+      "reason": "T-1954: worst passing 19.394106719 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:686; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     }
   }
 }
