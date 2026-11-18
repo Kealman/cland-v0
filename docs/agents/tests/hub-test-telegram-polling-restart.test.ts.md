@@ -101,9 +101,19 @@ separate; no observation is left running against a removed root.
 This existing T3 remote lifecycle file also owns the full-scale Discord C2
 620→500 production-frame case. It retains every durable history, overflow,
 nonce/silence and independent active-history request assertion from the original
-T2 case. Its completion wait is an absolute 10 seconds (loadFactor 1). The
-8-second case allowance is owned by E-880 through 2026-11-05. T-1436's
-Linux c-8 two-worker receipt A-14104 measured the full case at 5.166 seconds
+T2 case. Completion observes both 500 forwarded inputs and the captured source's
+durable sent-overflow receipt. Its bounded observation backstop uses the shared
+`testWaitMs(500 * 100)` budget and real-clock suite load scaling; it is not a
+product latency assertion. Active catch-up setup uses `testWaitMs()` separately.
+The independent `topic.send` request keeps its exact named 500 ms bound.
+Pure fake-clock regression controls live in `discord-history-settlement.test.ts`.
+T-1641's normal-load macOS sample A-21089 measured 4.360645209 seconds;
+Linux droplet run b2fd5616 at cc3aa5cde (A-21115, c-8 ams3, two workers)
+measured 5.6388497939999995 seconds. Its C-216 allowance is 8.459 seconds
+(1.5× the suite sample rounded upward), added 2026-11-18 and expiring
+2026-11-25. Stress durations are excluded from this allowance; duration policy
+remains report-only.
+T-1436's historical Linux c-8 two-worker receipt A-14104 measured the full case at 5.166 seconds
 and its restart-to-completion interval at 4.9214 seconds, before final assertions
 and cleanup. This replaces the former 45-second allowance; all native reaction
 I/O and final semantic assertions remain. The decoded-row guard passed at

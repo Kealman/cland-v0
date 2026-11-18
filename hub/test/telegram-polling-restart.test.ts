@@ -1,6 +1,7 @@
 // T3: a real hub process is SIGKILLed with an unconfirmed Telegram update or mid Discord history catch-up; restart recovers it.
 import { testWaitMs, testSetupWaitMs } from './until.ts';
 import { discordHistoryProfile } from './discord-history-profile.ts';
+import { waitForDiscordHistorySettlement } from './discord-history-settlement.ts';
 import { discordCardsFixture as fixture, discordHistorySeed as historySeed } from './discord-cards-fixture.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -22,6 +23,7 @@ import { recordedProcess } from './process-cleanup.ts';
 import { abortable, within } from '../src/executor/droplet/deadline.ts';
 
 const SETUP_RECEIPT_DEADLINE_MS = 1_000; // Exact FakeClock fault boundary.
+const HISTORY_RESPONSIVENESS_MS = 500; // Exact independent request latency assertion.
 
 test('SIGKILL mid-update leaves the Telegram offset unconfirmed and restart handles it once', async t => {
   const owner = pacingOwner(t, { lockIdentity: lockHostIdentity() });
@@ -351,6 +353,7 @@ test('Discord fresh history forwards newest 500 of 620 once with one silent over
   const f = await fixture(t);
   const seed = await historySeed(f);
   await f.fake.control('configure', { reactionWindow: 0 });
+  const forwardedInputs = () => f.frames.filter(r => r.frame.type === 'topic.send' && String(r.frame.text).startsWith('Outage ')).length;
   profile.reset();
   const started = performance.now();
   const hub = await f.restart(180000, async () => {
@@ -358,16 +361,17 @@ test('Discord fresh history forwards newest 500 of 620 once with one silent over
     await f.fake.control('say', { contents: Array.from({ length: 620 }, (_, n) => `Outage ${n}`) });
   });
   const ui = await connectUi(t, hub.discovery, 'nvim');
-  await until(() => f.frames.filter(r => r.frame.type === 'topic.send').length >= 20, { what: 'active history catch-up', timeoutMs: 3000 });
+  await until(() => f.frames.filter(r => r.frame.type === 'topic.send').length >= 20, { what: 'active history catch-up', timeoutMs: testWaitMs() });
   assert.ok(f.state.get('discord.history'));
   const responsive = performance.now();
-  assert.equal((await within(ui.request({ type: 'topic.send', topic: 'general', kind: 'message', text: 'Responsive during history' }), 500)).ok, true);
+  assert.equal((await within(ui.request({ type: 'topic.send', topic: 'general', kind: 'message', text: 'Responsive during history' }), HISTORY_RESPONSIVENESS_MS)).ok, true);
   t.diagnostic(`topic.send during catch-up: ${(performance.now() - responsive).toFixed(1)} ms`);
   assert.ok(f.state.get('discord.history'), 'responsiveness measured before history completion');
   const overflowKey = (JSON.parse(f.state.get('discord.history')!) as { key: string }).key;
-  await until(async () => {
-    return f.state.outboxForSource(overflowKey).some(j => j.state === 'sent');
-  }, { what: '500 inputs and overflow settlement', timeoutMs: 10000, loadFactor: 1 }).catch(error => { t.diagnostic(JSON.stringify({ inputCount: f.frames.filter(r => r.frame.type === 'topic.send').length, jobs: f.state.outbox().reduce((a, j) => { a[j.state] = (a[j.state] ?? 0) + 1; return a; }, {} as Record<string, number>) })); throw error; });
+  await waitForDiscordHistorySettlement(() => ({
+    inputs: forwardedInputs(),
+    overflowSent: f.state.outboxForSource(overflowKey).some(j => j.state === 'sent'),
+  }), 500).catch(error => { t.diagnostic(JSON.stringify({ inputCount: f.frames.filter(r => r.frame.type === 'topic.send').length, jobs: f.state.outbox().reduce((a, j) => { a[j.state] = (a[j.state] ?? 0) + 1; return a; }, {} as Record<string, number>) })); throw error; });
   const elapsed = performance.now() - started;
   t.diagnostic(`history phases (overlapping; includes instrumentation): ${JSON.stringify(profile.snapshot())}`);
   assert.ok((profile.snapshot().outboxRead?.rows ?? 0) <= 500 * 100, 'outbox decoding stays bounded per input at full scale');

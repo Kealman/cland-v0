@@ -172,6 +172,7 @@
     "hub/test/discord-artifacts.test.ts": "T2",
     "hub/test/discord-cards.test.ts": "T2",
     "hub/test/discord-commands.test.ts": "T2",
+    "hub/test/discord-history-settlement.test.ts": "T1",
     "hub/test/discord-inbound-media.test.ts": "T2",
     "hub/test/discord-messages.test.ts": "T2",
     "hub/test/discord-messenger.test.ts": "T2",

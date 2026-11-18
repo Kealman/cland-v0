@@ -12829,6 +12829,13 @@
     "web/test/hosts-view.test.ts::retained cards keep Inbox, Hosts sign-in and remote thread order across delta and inbox publication": 3.00813
   },
   "allow": {
+    "hub/test/telegram-polling-restart.test.ts::Discord fresh history forwards newest 500 of 620 once with one silent overflow line": {
+      "seconds": 8.459,
+      "owner": "C-216",
+      "added": "2026-11-18",
+      "expires": "2026-11-25",
+      "reason": "T-1641 C2: suite b2fd5616 at cc3aa5cde, A-21115, measured 5.6388497939999995 s on Linux c-8 ams3 droplet with two workers; cap is 1.5x rounded upward to milliseconds. Normal-load local macOS baseline A-21089 measured 4.360645209 s. Stress samples are excluded. All semantic assertions and the exact 500 ms responsiveness bound remain; duration policy stays report-only."
+    },
     "hub/test/login-capacity.test.ts::capacity index bounds visits across same-region rejected rows and agrees with pending fences": {
       "seconds": 12.427,
       "owner": "E-880",
