@@ -35,6 +35,7 @@ import { projectSshHosts } from '../src/host/registry.ts';
 import { settleRetainedMergeStop } from '../src/hub/merge.ts';
 import { Journal } from '../src/hub/journal.ts';
 import { hubResources } from './hub-resources.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
@@ -407,6 +408,8 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  /** Test-only cleanup observation; expiry must not abandon the owned late stop. */
+  startupCleanup?: { clock?: Clock; timeoutMs?: number };
   createHostRegistry?: NonNullable<NonNullable<Parameters<typeof serveProject>[1]>['createHostRegistry']>;
   runLoginSignIn?: NonNullable<Parameters<typeof serveProject>[1]>['runLoginSignIn'];
   prepareLogin?: NonNullable<Parameters<typeof serveProject>[1]>['prepareLogin'];
@@ -472,6 +475,25 @@ export const fixtureLockIdentity = (env: NodeJS.ProcessEnv, native = false): Ret
 /** Default project fixture: fake harnesses and probes, with production discovery and socket edges.
  * Explicit adapters and facts take precedence. Hub process lifecycle assertions use startDaemon. */
 export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; hostOwner: Dispatcher['hostOwner']; hostEnvironment: NodeJS.ProcessEnv; stopped: Promise<void>; stop: () => Promise<void>; dispose: () => Promise<void>; verificationSettled: () => Promise<void> }> {
+  // Register ownership before acquisition: a caller timeout can run after hooks
+  // while serveProject is still opening watchers and edges. Join that startup
+  // before stopping its late hub and before the fixture root can be removed.
+  const startup = Promise.withResolvers<void>();
+  let started = false;
+  let checkResources: () => Promise<void> = async () => {};
+  let stopFixtureHub: () => Promise<void> = async () => {};
+  let stopping: Promise<void> | undefined;
+  const stopAfterStartup = () => {
+    // Ready fixtures keep the existing direct stop/retry path.
+    if (started && !stopping) return stopFixtureHub();
+    // The producer survives an expired observer, including the cached after hook.
+    stopping ??= startup.promise.then(() => stopFixtureHub());
+    return started ? stopping : within(stopping, options.startupCleanup?.timeoutMs ?? testWaitMs(), options.startupCleanup?.clock, () => new Error('projectHub startup join incomplete; fixture root retained'));
+  };
+  guardDirectoryRemoval(root, stopAfterStartup);
+  beforeDirectories(t, stopAfterStartup);
+  afterCleanup(t, async () => { await stopping; await checkResources(); });
+  try {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
   let sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_ORPHAN_ROOT: root, ...extra }, root);
@@ -490,6 +512,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     XAI_API_KEY: options.syntheticRemoteSecrets['speech.xai_key'],
   } : providerEnv;
   const resources = hubResources();
+  checkResources = () => resources.check();
   // The CLI redirects startup stderr into this file. Embedded hubs use the same
   // asynchronous sink explicitly, including its flush barrier for hub.status.
   await mkdir(join(root, '.cland/log'), { recursive: true });
@@ -504,7 +527,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   // callers can override individual facts without restoring the other native probes.
   const gatewayProcesses = fakePollerProcesses();
   gatewayProcesses.rows.set(process.pid, { alive: true, started: 'fixture-hub-start', identity: 'fixture-hub-birth' });
-  const { processes: requestedProcesses, ...hubOptions } = options;
+  const { processes: requestedProcesses, startupCleanup: _startupCleanup, ...hubOptions } = options;
   // Unknown start identity keeps a live native holder conservative too; an
   // invented stamp could make another reader mistake this fixture for PID reuse.
   const lockProcesses = requestedProcesses ?? { alive: pidAlive, started: () => null };
@@ -544,10 +567,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   options.registerHubCards?.(daemon.hub.core.cards);
   assert.ok(daemon.discovery, 'projectHub must bind both real edges');
   assert.ok(runtimeEnvironment, 'projectHub must capture the host owner runtime environment');
-  const stopFixtureHub = async () => { await settleRetainedMergeStop(() => daemon.stop()); await processLog.close(); };
-  guardDirectoryRemoval(root, stopFixtureHub);
-  beforeDirectories(t, stopFixtureHub);
-  afterCleanup(t, () => resources.check());
+  stopFixtureHub = async () => { await settleRetainedMergeStop(() => daemon.stop()); await processLog.close(); };
   const dispatcher: Pick<Dispatcher, 'open'> = {
     open: (peer, transport) => resources.run(() => {
       const conversation = daemon.hub.dispatcher.open(peer, transport);
@@ -559,6 +579,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     }),
   };
   return { fakes, hostEnvironment: runtimeEnvironment, discovery: daemon.discovery, dispatcher, hostOwner: daemon.hub.dispatcher.hostOwner, stopped: daemon.stopped, stop: () => daemon.stop(), dispose: stopFixtureHub, verificationSettled: () => resources.run(() => daemon.hub.dispatcher.verificationSettled()) };
+  } finally { started = true; startup.resolve(); }
 }
 
 /** T3 native contracts/lifecycle: explicitly retain production adapters and Git/ps probes.

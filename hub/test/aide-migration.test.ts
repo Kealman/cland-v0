@@ -5,10 +5,141 @@ import fs from 'node:fs/promises';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
-import test from 'node:test';
+import test, { mock, type TestContext } from 'node:test';
 import { parseRoles } from '../src/roles/config.ts';
+import { testWaitMs } from './until.ts';
 import { FakeClock } from './fake-clock.ts';
 import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { onCleanup, beforeDirectories, afterCleanup, ownDirectory, guardDirectoryRemoval } from './process-cleanup.ts';
+import { caseDeadlines, drainFixtureWork } from './case-deadlines.ts';
+import { fakeNativeGuard } from './fake-native-guard.ts';
+import { setImmediate as yieldIO } from 'node:timers/promises';
+
+type ControlStep = <T>(name: string, run: () => Promise<T>) => Promise<T>;
+
+/** Own the full callback before guard installation or root acquisition. */
+function migrationControl(t: TestContext, body: (root: string, fixtures: TestContext, step: ControlStep, releaseOnClose: (release: () => void) => void) => Promise<void>) {
+  let release = () => {};
+  const owner = caseDeadlines(t, {
+    timeoutMs: testWaitMs(5000),
+    ownership: { beforeDirectories, guardDirectoryRemoval },
+    releaseOnClose: () => release(),
+  });
+  let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
+  let restoreGuard: (() => void) | undefined;
+  afterCleanup(t, async () => {
+    // An expired observer is not permission to restore patches under live work.
+    await drainFixtureWork();
+    try { guard?.verify(); }
+    finally { mock.restoreAll(); syncBuiltinESMExports(); restoreGuard?.(); }
+  });
+  return owner.run(async (admit, signal) => {
+    const step: ControlStep = (name, run) => owner.wait(name, () => admit(async () => {
+      signal.throwIfAborted();
+      const value = await run();
+      signal.throwIfAborted();
+      return value;
+    }));
+    await step('native guard setup', async () => { guard = await fakeNativeGuard(restore => { restoreGuard = restore; }); });
+    const root = await owner.wait('migration root setup', () => admit(async () => {
+      const root = await tempProject(owner.fixtures);
+      // Adoption belongs to the acquisition even if its observer has expired.
+      owner.adoptRoot(root);
+      return root;
+    }));
+    signal.throwIfAborted();
+    await body(root, owner.fixtures, step, next => { release = next; });
+  });
+}
+
+for (const expired of [false, true]) test(expired
+  ? 'fixture root stays retained when startup cleanup observation expires'
+  : 'fixture cleanup joins startup still loading the roles file', t => migrationControl(t, async (root, fixtures, step, releaseOnClose) => {
+  const subject = join(root, 'subject');
+  const path = join(subject, '.cland/roles.toml');
+  const entered = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const hooks: Array<() => Promise<void>> = [];
+  const context = { after: (hook: () => Promise<void>) => hooks.push(hook) } as unknown as TestContext;
+  let cursor = 0;
+  const drain = async () => { while (cursor < hooks.length) await hooks[cursor++]!(); };
+  let starting: ReturnType<typeof projectHub> | undefined;
+  let fallbackStop: Promise<void> | undefined;
+  releaseOnClose(() => {
+    release.resolve();
+    // Release retained observations before the whole-case join, including red controls.
+    fallbackStop = starting?.then(hub => hub.dispose(), () => {});
+    void fallbackStop?.catch(() => {});
+  });
+  let closing: Promise<void> | undefined;
+  let expectedIncomplete = false;
+  onCleanup(fixtures, async () => {
+    release.resolve();
+    await fallbackStop;
+    await (await starting?.catch(() => undefined))?.dispose();
+    try { await closing; } catch (error) { if (!expectedIncomplete) throw error; }
+    await drain();
+  });
+  await step('roles directory setup', () => mkdir(join(subject, '.cland'), { recursive: true }));
+  await step('roles file setup', () => writeFile(path, '[aide.permissions]\ntools = ["who"]\n'));
+  const removeSubject = ownDirectory(undefined, subject);
+  onCleanup(fixtures, removeSubject);
+  const clock = new FakeClock();
+  const read = fs.readFile;
+  mock.method(fs, 'readFile', async (...args: Parameters<typeof fs.readFile>) => {
+    if (args[0] === path) { entered.resolve(); await release.promise; }
+    return read(...args);
+  });
+  syncBuiltinESMExports();
+  const setup = step('held hub setup', () => starting = projectHub(context, subject, {}, {
+    clock, ...(expired ? { startupCleanup: { clock, timeoutMs: 1 } } : {}),
+  }));
+  void setup.catch(() => {});
+  await step('held roles receipt', () => entered.promise);
+  let closed = false;
+  closing = drain().finally(() => { closed = true; });
+  void closing.catch(() => {});
+  await step('cleanup fence observation', () => yieldIO());
+  assert.equal(closed, false, 'cleanup retains the pending startup');
+  if (expired) {
+    const refused = assert.rejects(removeSubject(), /startup join incomplete/);
+    void refused.catch(() => {});
+    await step('cleanup observation expiry', () => clock.advance(1));
+    await step('guarded removal refusal', () => refused);
+    await step('retained subject receipt', () => stat(subject));
+  }
+  release.resolve();
+  const hub = await setup;
+  await step('independent late stop receipt', () => hub.stopped);
+  if (expired) {
+    await step('incomplete cleanup receipt', () => assert.rejects(closing!, /startup join incomplete/));
+    expectedIncomplete = true;
+  } else await step('cleanup completion', () => closing!);
+  await step('removed discovery receipt', () => assert.rejects(stat(join(subject, '.cland/hub.json')), { code: 'ENOENT' }));
+  assert.equal(clock.pending, 0, 'all owned scheduling stopped');
+  await step('subject removal after stop', removeSubject);
+  await step('removed subject receipt', () => assert.rejects(stat(subject), { code: 'ENOENT' }));
+}));
+
+test('ready fixture cleanup closes clients then hub before removing its root', t => migrationControl(t, async (root, fixtures, step) => {
+  const clock = new FakeClock();
+  const hub = await step('ready hub setup', () => projectHub(fixtures, root, {}, { clock }));
+  await step('ready client setup', () => connectUi(fixtures, hub.discovery));
+  const order: string[] = [];
+  onCleanup(fixtures, () => { order.push('clients'); });
+  beforeDirectories(fixtures, async () => {
+    await hub.stopped;
+    await stat(root);
+    await assert.rejects(stat(join(root, '.cland/hub.json')), { code: 'ENOENT' });
+    order.push('hub');
+  });
+  afterCleanup(fixtures, async () => {
+    await assert.rejects(stat(root), { code: 'ENOENT' });
+    assert.equal(clock.pending, 0);
+    order.push('directory');
+    assert.deepEqual(order, ['clients', 'hub', 'directory']);
+  });
+}));
 
 const oldRestriction = '- You cannot ask the human, resolve a topic\'s wait, launch, stop or resume sessions, merge, hand over a role, release, sync or `cland push`: the Coordinator owns those operations.';
 const oldTools = ['rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status'];
@@ -16,7 +147,7 @@ const addedTools = ['session.launch', 'session.stop', 'session.resume', 'task.im
 const mark = '# cland: aide-tools-0.1.4 migrated';
 const before = `# human settings\n[aide]\nclause = '''\nMy introduction.\n${oldRestriction}\nMy closing line.\n'''\n[aide.launch]\nharness = "claude-code"\nmodel = "my-model" # keep\n[aide.permissions] # grants\ntools = ${JSON.stringify(oldTools)} # keep tools comment\n[qa.launch]\nharness = "codex"\n`;
 
-test('startup migrates the shipped Aide restriction with one Agents notice', { timeout: 2000 }, async t => {
+test('startup migrates the shipped Aide restriction with one Agents notice', { timeout: testWaitMs() }, async t => {
   const root = await tempProject(t);
   const path = join(root, '.cland/roles.toml');
   await mkdir(join(root, '.cland'), { recursive: true });
@@ -45,7 +176,7 @@ test('startup migrates the shipped Aide restriction with one Agents notice', { t
   assert.match(notices[0]!.text, /next launch/);
 });
 
-test('later starts leave the marked file untouched after a human removes a grant', { timeout: 2000 }, async t => {
+test('later starts leave the marked file untouched after a human removes a grant', { timeout: testWaitMs() }, async t => {
   const root = await tempProject(t);
   const path = join(root, '.cland/roles.toml');
   await mkdir(join(root, '.cland'), { recursive: true });
@@ -69,7 +200,7 @@ test('later starts leave the marked file untouched after a human removes a grant
   }
 });
 
-test('startup leaves inherited, complete and invalid permissions files unchanged', { timeout: 2000 }, async t => {
+test('startup leaves inherited, complete and invalid permissions files unchanged', { timeout: testWaitMs() }, async t => {
   const root = await tempProject(t);
   const path = join(root, '.cland/roles.toml');
   await mkdir(join(root, '.cland'), { recursive: true });
@@ -96,7 +227,7 @@ test('startup leaves inherited, complete and invalid permissions files unchanged
   }
 });
 
-test('the migrated Aide can launch a session through its shell frame', { timeout: 2000 }, async t => {
+test('the migrated Aide can launch a session through its shell frame', { timeout: testWaitMs() }, async t => {
   const root = await tempProject(t);
   const path = join(root, '.cland/roles.toml');
   await mkdir(join(root, '.cland'), { recursive: true });
@@ -115,7 +246,7 @@ test('the migrated Aide can launch a session through its shell frame', { timeout
   assert.equal(fakes['claude-code']!.spawns.at(-1)?.role, 'implementer');
 });
 
-test('startup names a customized Aide clause for human review', { timeout: 2000 }, async t => {
+test('startup names a customized Aide clause for human review', { timeout: testWaitMs() }, async t => {
   const root = await tempProject(t);
   const path = join(root, '.cland/roles.toml');
   const custom = before.replace(oldRestriction, 'My custom staffing policy.');
@@ -130,7 +261,7 @@ test('startup names a customized Aide clause for human review', { timeout: 2000 
   assert.match(notices[0]!.text, /custom Aide clause was kept; review it/);
 });
 
-test('a denied migration publication cannot start a hub with default role policy', { timeout: 2000 }, async t => {
+test('a denied migration publication cannot start a hub with default role policy', { timeout: testWaitMs() }, async t => {
   const root = await tempProject(t);
   const path = join(root, '.cland/roles.toml');
   const restricted = '[aide.launch]\nharness = "codex"\nmodel = "human-model"\n[aide.permissions]\ntools = ["who"]\n';
@@ -155,7 +286,7 @@ test('a denied migration publication cannot start a hub with default role policy
   } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
 });
 
-test('a concurrent roles edit stops startup without replacing the human policy', { timeout: 2000 }, async t => {
+test('a concurrent roles edit stops startup without replacing the human policy', { timeout: testWaitMs() }, async t => {
   const root = await tempProject(t);
   const path = join(root, '.cland/roles.toml');
   const restricted = '[aide.launch]\nharness = "codex"\nmodel = "human-model"\n[aide.permissions]\ntools = ["who"]\n';
