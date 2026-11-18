@@ -16,6 +16,11 @@ import { ProcessTable } from '../src/adapters/processes.ts';
 import { layout } from '../src/project.ts';
 import { runSpoke } from '../src/spoke/spoke.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { testWaitMs, waitTimeoutMs } from './until.ts';
+
+// Fixture setup, observations and teardown share this outer safety budget;
+// it must leave room for the load-scaled observation waits below.
+const fixtureTimeout = () => waitTimeoutMs(testWaitMs(60_000));
 
 async function discoveryFixture(t: TestContext) {
  const f = await sshHostFixture(t, {startTransport:false});
@@ -33,7 +38,8 @@ async function discoveryFixture(t: TestContext) {
  const open = () => projectSshHosts({root:f.root,records:f.records,hubSocket:layout(f.root).socket,spokeSocket:layout(f.root).spokeSocket,env:f.env,log:()=>{},configurations:{f1:{home:f.fake.home,layout:remote,supervisor:f.supervisor}},gitDaemon:async()=>({close:async()=>{}}),createTransport:o=>new SshTransport({...o,reconnectDelayMs:()=>10,readinessPollMs:5,readinessTimeoutMs:3000,beforeReadyTimeoutMs:3000})});
  let owner = await open();
  f.addCleanup(()=>owner.close());
- const ready = () => eventually('published discovery and carrier ready',async()=>{try{return await owner.hosts[0]!.fileType(remote.discoveryFile)==='file'||undefined;}catch{return undefined;}},3000);
+ // Setup: observe the published file, not a publication latency guarantee.
+ const ready = () => eventually('published discovery and carrier ready',async()=>{try{return await owner.hosts[0]!.fileType(remote.discoveryFile)==='file'||undefined;}catch{return undefined;}});
  await ready();
  const bytes = await readFile(remote.discoveryFile,'utf8');
  assert.equal((await stat(remote.discoveryFile)).mode & 0o777,0o600);
@@ -59,24 +65,27 @@ async function discoveryFixture(t: TestContext) {
   const runtime = await runSpoke(fixtureEnvironment(f.root,f.env,{CLAND_HUB_FILE:override,CLAND_SESSION_NAME:row.name,CLAND_SESSION_ID:row.sessionId,CLAND_LAUNCH_TOKEN:token,CLAND_HUB_RECONNECT_MS:'10'}),{transport:serverTransport,cwd:f.fake.home,exit:()=>{},log:line=>{log+=line+'\n';}});
   f.addCleanup(async()=>{await runtime.hub?.stop();await client.close();await runtime.server.close();});
   await client.connect(clientTransport);
-  await eventually('role holding remote spoke welcome',()=>runtime.hub?.state.kind==='connected'||undefined,2000);
+  // Setup: the spoke welcome must arrive before exercising reconnect/revocation.
+  await eventually('role holding remote spoke welcome',()=>runtime.hub?.state.kind==='connected'||undefined);
   assert.ok(await runtime.hub!.request({type:'session.list'}));
   return {runtime,override,log:()=>log};
  };
  return {f,hub,store,remote,bytes,discovery,ready,startSpoke,restartCarrier,closeCarrier:()=>owner.close()};
 }
 
-test('C2 remote spoke rereads discovery before reconnect', {timeout:10000}, async t=>{
+test('C2 remote spoke rereads discovery before reconnect', {timeout:fixtureTimeout()}, async t=>{
  const d=await discoveryFixture(t);const spoke=await d.startSpoke();
  await writeFile(spoke.override,JSON.stringify({...d.discovery,secret:'synthetic-invalid-host-secret'}));
  await d.restartCarrier();
- await eventually('changed discovery secret refused on reconnect',()=>spoke.runtime.hub?.lastRefusal?.includes('401')||undefined,2000);
+ // Observation: await the refusal receipt; this case asserts rereading, not latency.
+ await eventually('changed discovery secret refused on reconnect',()=>spoke.runtime.hub?.lastRefusal?.includes('401')||undefined);
  await writeFile(spoke.override,d.bytes);
- await eventually('spoke restored after carrier restart',()=>spoke.runtime.hub?.state.kind==='connected'||undefined,3000);
+ // Setup: observe restored connectivity before checking the discovery bytes.
+ await eventually('spoke restored after carrier restart',()=>spoke.runtime.hub?.state.kind==='connected'||undefined);
  assert.equal(await readFile(d.remote.discoveryFile,'utf8'),d.bytes);
 });
 
-test('C4 remote discovery stays private and byte-stable across hub restart', {timeout:10000},async t=>{
+test('C4 remote discovery stays private and byte-stable across hub restart', {timeout:fixtureTimeout()},async t=>{
  const d=await discoveryFixture(t);
  await d.closeCarrier();await d.hub.stop();
  const restarted=await projectHub(t,d.f.root,{}, {hosts:[d.f.host]});
@@ -86,17 +95,18 @@ test('C4 remote discovery stays private and byte-stable across hub restart', {ti
  assert.equal((await stat(d.remote.discoveryFile)).mode & 0o777,0o600);
 });
 
-test('C5 credentialed remote spoke next hello is refused after host revoke', {timeout:10000},async t=>{
+test('C5 credentialed remote spoke next hello is refused after host revoke', {timeout:fixtureTimeout()},async t=>{
  const d=await discoveryFixture(t);const spoke=await d.startSpoke();
  const revoked=await clandWithEnv(d.f.root,{},'host','revoke','f1');
  assert.equal(revoked.code,0,revoked.stderr);
- await eventually('revoked next hello refusal',()=>/revok|401|403/.test(spoke.log()+' '+spoke.runtime.hub?.lastRefusal)||undefined,2000);
+ // Observation: next-hello refusal has no product latency bound in this test.
+ await eventually('revoked next hello refusal',()=>/revok|401|403/.test(spoke.log()+' '+spoke.runtime.hub?.lastRefusal)||undefined);
  assert.notEqual(spoke.runtime.hub?.state.kind,'connected',spoke.log());
  assert.match(spoke.runtime.hub?.lastRefusal ?? spoke.log(),/revok|401|403/);
  assert.equal(d.store.hosts.get('f1')?.state,'revoked');
 });
 
-test('readiness timeout aborts and drains before autonomous retry', {timeout:10000}, async t=>{
+test('readiness timeout aborts and drains before autonomous retry', {timeout:fixtureTimeout()}, async t=>{
  const f=await sshHostFixture(t);await f.transport.stop();
  let calls=0;let writerJoined=false;
  const carrier=new SshTransport({root:f.root,record:f.records.get('f1')!,secrets:f.secrets,hubSocket:layout(f.root).socket,spokeSocket:layout(f.root).spokeSocket,remoteRun:f.fake.run,supervisor:f.supervisor,agentCommand:['stub'],env:f.env,beforeReadyTimeoutMs:10,beforeReadyDrainMs:50,reconnectDelayMs:()=>10,beforeReady:async signal=>{
@@ -105,12 +115,13 @@ test('readiness timeout aborts and drains before autonomous retry', {timeout:100
   else assert.equal(writerJoined,true,'retry follows positive writer drain');
  }});
  f.addCleanup(()=>carrier.stop());await carrier.start();
- await eventually('autonomous retry publishes up',()=>carrier.status().state==='up'||undefined,3000);
+ // Observation: retry completion follows drain; the injected timeout stays exact.
+ await eventually('autonomous retry publishes up',()=>carrier.status().state==='up'||undefined);
  assert.equal(calls,2);assert.equal(writerJoined,true);assert.equal(carrier.status().reconnects,1);
  await carrier.stop();assert.equal(carrier.status().state,'down');
 });
 
-test('undrained readiness fences ownership and stop reports cleanup incomplete', {timeout:10000}, async t=>{
+test('undrained readiness fences ownership and stop reports cleanup incomplete', {timeout:fixtureTimeout()}, async t=>{
  const f=await sshHostFixture(t);await f.transport.stop();
  let release!:()=>void;let calls=0;let aborted=false;let writerJoined=false;
  const gate=new Promise<void>(resolve=>{release=resolve;});
@@ -118,7 +129,9 @@ test('undrained readiness fences ownership and stop reports cleanup incomplete',
  // Only fixture disposal releases this noncooperating writer, after assertions.
  f.addCleanup(async()=>{release();await carrier.stop();assert.equal(writerJoined,true);});
  await carrier.start();
- await eventually('explicit incomplete cleanup receipt',()=>carrier.status().reason==='host readiness cleanup incomplete'||undefined,2000);
+ // Observation: await the cleanup receipt, not a deadline for scheduling it.
+ // The injected readiness and drain behaviour bounds remain exact.
+ await eventually('explicit incomplete cleanup receipt',()=>carrier.status().reason==='host readiness cleanup incomplete'||undefined);
  assert.equal(aborted,true);assert.equal(writerJoined,false);assert.equal(calls,1);
  assert.equal(carrier.status().state,'connecting');assert.equal(carrier.status().reconnects,0);
  await assert.rejects(carrier.stop(),/cleanup incomplete/);
@@ -136,7 +149,8 @@ test('publication RPC timeout retains writer until a positive same-stream drain 
   barrierEntered=true;await gate;return Buffer.from('written').toString('base64');
  }},'/unused',remoteDiscovery('/tmp/run','synthetic-host'));
  const outcome=assert.rejects(publication,/outcome unknown/);
- await eventually('same-stream drain requested',()=>barrierEntered||undefined,1000);
+ // Setup: enter the held drain before asserting the exact drained(..., 10) bound.
+ await eventually('same-stream drain requested',()=>barrierEntered||undefined);
  assert.equal(await drained(publication,10),false,'timeout is not writer completion');
  release();await outcome;
  assert.equal(await drained(publication,10),true);
@@ -144,7 +158,7 @@ test('publication RPC timeout retains writer until a positive same-stream drain 
 
 import { AgentClient } from '../src/host/agent-client.ts';
 import { tunnelStatuses } from '../src/transport/transport.ts';
-test('changed host secret atomically replaces prior discovery and reaches up', {timeout:10000},async t=>{
+test('changed host secret atomically replaces prior discovery and reaches up', {timeout:fixtureTimeout()},async t=>{
  const f=await sshHostFixture(t);await f.transport.stop();
  const candidate=remoteDiscovery(f.fake.run,f.secrets.readSecret('f1'));
  const file=join(f.fake.run,'hub.json');
@@ -155,7 +169,8 @@ test('changed host secret atomically replaces prior discovery and reaches up', {
   try {await publishRemoteDiscovery(client,file,candidate,signal);} finally {await client.close();}
  }});
  f.addCleanup(()=>carrier.stop());await carrier.start();
- await eventually('changed publication completed before up',()=>carrier.status().state==='up'||undefined,2000);
+ // Observation: up acknowledges completed publication; no latency SLA is asserted.
+ await eventually('changed publication completed before up',()=>carrier.status().state==='up'||undefined);
  assert.equal(await readFile(file,'utf8'),JSON.stringify(candidate,null,2)+'\n');
  assert.equal((await stat(file)).mode&0o777,0o600);
 });
