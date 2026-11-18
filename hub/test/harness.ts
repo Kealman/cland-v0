@@ -65,7 +65,30 @@ export function assertFirstLaunchClause(log: string, session: string): void {
 
 export async function startHub(options: Partial<HubOptions> = {}): Promise<Hub> {
   await ensureAccountFixture();
-  return createHub({ port: 0, host: '127.0.0.1', secret: TEST_SECRET, ...options });
+  const resources = hubResources();
+  let hub: Hub;
+  try { hub = await resources.run(() => createHub({ port: 0, host: '127.0.0.1', secret: TEST_SECRET, ...options })); }
+  catch (error) { resources.cancel(); throw error; }
+  const close = hub.close;
+  let closing: Promise<void> | undefined;
+  let ownerClosed = false;
+  let completed = false;
+  hub.close = () => closing ??= resources.run(async () => {
+    const errors: unknown[] = [];
+    if (!ownerClosed) {
+      try { await close(); ownerClosed = true; } catch (error) { errors.push(error); }
+    }
+    // A diagnostic cannot grant root removal after the owner rejected. Retain
+    // observation through failure, including work created by the next attempt.
+    try { await resources.check({ retain: true }); } catch (error) { errors.push(error); }
+    if (errors.length === 1) throw errors[0];
+    if (errors.length) throw new AggregateError(errors, 'hub cleanup failed');
+    completed = true;
+    resources.cancel();
+  }).finally(() => { if (!completed) closing = undefined; });
+  const root = options.control?.status().root ?? options.root;
+  if (root) guardDirectoryRemoval(root, hub.close);
+  return hub;
 }
 
 export type SpokeOptions = {

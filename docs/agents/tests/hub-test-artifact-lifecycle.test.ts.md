@@ -6,6 +6,22 @@ or human directory is involved. The existing no-project `startHub` seam supplies
 the explicit Store and filesystem faults; no separate hub process is launched.
 Run the file alone with `node --test hub/test/artifact-lifecycle.test.ts`.
 
+Register the fixture's hub, socket edge and second SQLite connection with
+`onCleanup`, before directory removal. `startHub` also registers its joined close
+as a removal guard for `control.status().root` (or `root`), and checks owned
+timers, watchers, sockets and pending filesystem requests after stop. A failing
+cleanup step must not skip the other owners. Background lease-index compaction
+can otherwise race recursive removal: an `ENOTEMPTY` after-hook failure skips
+later native hooks and leaves listening servers alive. The observed macOS/Linux
+difference is timing, not a platform-specific shutdown path.
+
+`startHub.close` shares an in-flight attempt and successful completion. Failed
+attempts remain retryable; a successful native close is retained while leaked
+resource disposal is retried. The resource observer remains active after a
+failed check. Only successful owner closure plus a passing resource check releases
+the root. The fake-harness regressions cover actual guarded removal refusal,
+retained roots, sibling cleanup, recovered closure and fresh resource observation.
+
 `artifact subscriptions publish only after the existing artifact/post transaction
 commits` and `a refused folder publication rolls back its directory and id
 reservation` use `failPostWrite`: a SQLite trigger refuses the human post's

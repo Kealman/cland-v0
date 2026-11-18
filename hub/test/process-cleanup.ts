@@ -251,7 +251,12 @@ export function guardDirectoryRemoval(path: string, guard: CleanupStep): void {
   guards.add(guard);
 }
 async function guardRemoval(root: string): Promise<void> {
-  for (const guard of removalGuards.get(root) ?? []) await guard();
+  const errors: unknown[] = [];
+  for (const guard of removalGuards.get(root) ?? []) {
+    try { await guard(); } catch (error) { errors.push(error); }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length) throw new AggregateError(errors, 'directory writer cleanup failed');
 }
 let self: ProcessRow | undefined;
 let inspectedSelf = false;

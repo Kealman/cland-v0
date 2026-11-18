@@ -6,6 +6,11 @@ import { serveProject } from '../src/hub/daemon.ts';
 import { layout } from '../src/project.ts';
 import { hubResources } from './hub-resources.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { realClock } from '../src/hub/clock.ts';
+import { createHub } from '../src/hub/server.ts';
+import { Store } from '../src/hub/store.ts';
+import { ownDirectory, guardDirectoryRemoval, beforeDirectories } from './process-cleanup.ts';
+import { caseDeadlines } from './case-deadlines.ts';
 import { join } from 'node:path';
 import { setImmediate as yieldIO } from 'node:timers/promises';
 import { FakeClock } from './fake-clock.ts';
@@ -13,6 +18,118 @@ import { fixedRoles } from '../src/roles/config.ts';
 import { fakeHarness, FAKE_FLAVOURS } from './fakes/harness.ts';
 import { connectSocket, connectUi, dispatcherUi, inProcessSpoke, isolateVerification, projectHub, startHub, tempProject } from './harness.ts';
 import type { HarnessProcessView, Message } from '../src/protocol.ts';
+
+test('scratch removal stops its hub and joins lease index writes before removing the root', async t => {
+  const run = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return run.run(async step => {
+  let hub: Awaited<ReturnType<typeof startHub>> | undefined;
+  const stopHub = async () => { await hub?.close(); };
+  run.fixtures.after(stopHub);
+  const root = await step(() => run.wait('root setup', async () => {
+    const parent = await tempProject(run.fixtures, 'cland-harness-parent-');
+    run.adoptRoot(parent);
+    guardDirectoryRemoval(parent, stopHub);
+    return tempProject(run.fixtures, 'cland-harness-subject-', parent);
+  }));
+  const remove = ownDirectory(undefined, root);
+  await step(() => run.wait('hub setup', async () => { hub = await startHub({ control: { status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: '', uptimeMs: 0 }), stop() {} } }); }));
+  await step(() => run.wait('guarded removal', remove));
+  assert.equal(existsSync(root), false);
+  await step(() => run.wait('joined stop', () => hub!.close()));
+  assert.throws(() => hub!.core.store.meta('executor-leases'), /closed|not open/i);
+  });
+});
+
+test('a failed directory guard still joins every other writer and preserves its error', async t => {
+  const run = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return run.run(async step => {
+  const failure = new Error('controlled writer failure');
+  let fail = true, joined = false;
+  run.fixtures.after(() => { fail = false; });
+  const root = await step(() => run.wait('root setup', async () => {
+    const parent = await tempProject(run.fixtures, 'cland-harness-parent-');
+    run.adoptRoot(parent);
+    return tempProject(run.fixtures, 'cland-harness-subject-', parent);
+  }));
+  const remove = ownDirectory(undefined, root);
+  guardDirectoryRemoval(root, () => { if (fail) throw failure; });
+  guardDirectoryRemoval(root, async () => { await yieldIO(); joined = true; });
+  await step(() => run.wait('refused removal', () => assert.rejects(remove(), error => error === failure)));
+  assert.equal(joined, true);
+  assert.equal(existsSync(root), true, 'unconfirmed writer retains its root');
+  fail = false;
+  await step(() => run.wait('recovered removal', remove));
+  });
+});
+
+test('hub stop guard rejects a live timer from hub startup and observes recovery', async t => {
+  let timer: ReturnType<typeof setInterval> | undefined;
+  const run = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => clearInterval(timer) });
+  return run.run(async step => {
+  let hub: Awaited<ReturnType<typeof startHub>> | undefined;
+  run.fixtures.after(async () => { clearInterval(timer); await hub?.close(); });
+  await step(() => run.wait('timer hub setup', async () => { hub = await startHub({ clock: { ...realClock, setInterval: (callback, ms) => {
+    timer ??= setInterval(() => {}, 60000);
+    return realClock.setInterval(callback, ms);
+  } } }); }));
+    assert.ok(timer, 'startup created the positive-control leak');
+    await step(() => run.wait('leak refusal', () => assert.rejects(hub!.close(), /leaked resources.*|Timeout/s)));
+    clearInterval(timer);
+    await step(() => run.wait('positive stop recovery', () => hub!.close()));
+  });
+});
+
+test('resource observation survives failure and records new work before positive drain', async t => {
+  const timers: Array<ReturnType<typeof setInterval>> = [];
+  const run = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => timers.forEach(clearInterval) });
+  return run.run(async step => {
+    const resources = hubResources();
+    run.fixtures.after(() => { timers.forEach(clearInterval); resources.cancel(); });
+    const first = resources.run(() => setInterval(() => {}, 60000));
+    timers.push(first);
+    await step(() => run.wait('first resource refusal', () => assert.rejects(resources.check(), /Timeout/)));
+    clearInterval(first);
+    const second = resources.run(() => setInterval(() => {}, 60000));
+    timers.push(second);
+    await step(() => run.wait('new resource refusal', () => assert.rejects(resources.check(), /Timeout/)));
+    clearInterval(second);
+    await step(() => run.wait('positive resource drain', () => resources.check()));
+  });
+});
+
+test('failed hub close retains its guarded root until the owner positively recovers', async t => {
+  const run = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return run.run(async step => {
+    let hub: Awaited<ReturnType<typeof startHub>> | undefined;
+    let refuse = true;
+    const stopHub = async () => { await hub?.close(); };
+    run.fixtures.after(async () => { refuse = false; await stopHub(); });
+    const root = await step(() => run.wait('root setup', async () => {
+      const parent = await tempProject(run.fixtures, 'cland-harness-parent-');
+      run.adoptRoot(parent);
+      guardDirectoryRemoval(parent, stopHub);
+      return tempProject(run.fixtures, 'cland-harness-subject-', parent);
+    }));
+    const remove = ownDirectory(undefined, root);
+    await step(() => run.wait('hub setup', async () => { hub = await startHub({ root }); }));
+    const failure = new Error('controlled incomplete close');
+    const close = hub!.core.store.close.bind(hub!.core.store);
+    let attempts = 0, sibling = 0;
+    t.mock.method(hub!.core.store, 'close', () => { attempts++; if (refuse) throw failure; close(); });
+    guardDirectoryRemoval(root, async () => { await yieldIO(); sibling++; });
+    await step(() => run.wait('first failed close', () => assert.rejects(hub!.close(), error => error === failure)));
+    await step(() => run.wait('refused guarded removal', () => assert.rejects(remove(), error => error === failure)));
+    assert.equal(existsSync(root), true, 'the actual guarded cleanup retained its root');
+    assert.equal(attempts, 2, 'removal retried the failed owner');
+    assert.equal(sibling, 1, 'the sibling guard was joined despite close rejection');
+    refuse = false;
+    await step(() => run.wait('recovered guarded removal', remove));
+    assert.equal(attempts, 3);
+    assert.equal(sibling, 2);
+    assert.equal(existsSync(root), false);
+    assert.throws(() => hub!.core.store.meta('executor-leases'), /closed|not open/i);
+  });
+});
 
 test('projectHub drives fake harness lifecycle and delivery outcomes across flavours', async t => {
   const roles = ['implementer', 'reviewer', 'qa'];
@@ -209,17 +326,20 @@ test('hub close discards injection outcomes arriving after storage closes', asyn
 });
 
 test('adapter construction rolls back resources on factory failure or duplicate harness', async t => {
-  const root = await tempProject(t);
+  const run = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return run.run(async step => {
+  const root = await step(() => run.wait('root setup', async () => { const root = await tempProject(t); run.adoptRoot(root); return root; }));
   for (const failure of ['factory', 'duplicate', 'registered'] as const) {
     const clock = new FakeClock();
     const closed: string[] = [];
+    const closeFailure = new Error('cleanup fixture failure');
     const timerAdapter = (label: string) => (host: import('../src/adapters/contract.ts').AdapterHost) => {
       const fake = fakeHarness(label === 'second' ? 'opencode' : 'codex', { host, clock });
       const timer = clock.setInterval(() => {}, 1000);
       fake.close = () => {
         clock.clearInterval(timer);
         closed.push(label);
-        if (label === 'first') throw new Error('cleanup fixture failure');
+        if (label === 'first') throw closeFailure;
       };
       return fake;
     };
@@ -227,14 +347,35 @@ test('adapter construction rolls back resources on factory failure or duplicate 
       ? () => { throw new Error('factory fixture failure'); }
       : timerAdapter(failure === 'duplicate' ? 'duplicate' : 'second')];
     if (failure === 'registered') {
-      const hub = await startHub({ root, clock, adapters });
-      await assert.rejects(hub.close(), /adapter cleanup failed/);
+      // This negative production seam has a known post-disposal diagnostic,
+      // not a retryable fixture stop. Own its native completion separately.
+      const resources = hubResources();
+      const store = new Store();
+      const nativeClose = store.close.bind(store);
+      let storeClosed = false;
+      store.close = () => { nativeClose(); storeClosed = true; };
+      let hub: Awaited<ReturnType<typeof createHub>> | undefined;
+      let disposal: Promise<void> | undefined;
+      const expected = (error: unknown): boolean => error === closeFailure || (error instanceof AggregateError && error.errors.length > 0 && error.errors.every(expected));
+      const dispose = () => disposal ??= (async () => {
+        if (hub) {
+          await assert.rejects(hub.close(), error => expected(error));
+          assert.equal(storeClosed, true, 'base storage native close completed despite the adapter diagnostic');
+          assert.deepEqual(closed, ['second', 'first'], 'both fixture adapter disposal receipts arrived');
+        } else if (!storeClosed) store.close();
+        await resources.check();
+      })();
+      run.fixtures.after(dispose);
+      guardDirectoryRemoval(root, dispose);
+      await step(() => run.wait('direct hub setup', async () => { hub = await resources.run(() => createHub({ port: 0, host: '127.0.0.1', secret: 'test', root, clock, adapters, store })); }));
+      await step(() => run.wait('direct failed-close receipts', dispose));
     } else {
-      await assert.rejects(startHub({ root, clock, adapters }), /adapter construction and cleanup failed/);
+      await step(() => run.wait('failed construction cleanup', () => assert.rejects(startHub({ root, clock, adapters }), /adapter construction and cleanup failed/)));
     }
     assert.deepEqual(closed, failure === 'factory' ? ['first'] : failure === 'duplicate' ? ['first', 'duplicate'] : ['second', 'first'], 'one failed close cannot strand another constructed adapter');
     assert.equal(clock.pending, 0, 'factory and hub timers are all disposed');
   }
+  });
 });
 
 test('serveProject releases its listeners and lock after adapter startup or cleanup failure', async t => {

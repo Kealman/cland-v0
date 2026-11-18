@@ -14,6 +14,7 @@ import { ArtifactLifecycle, type ArtifactFiles } from '../src/hub/artifact-lifec
 import { PROTOCOL_VERSION, type Message, type Artifact } from '../src/protocol.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { connectSocket, eventually, inProcessSpoke, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { onCleanup } from './process-cleanup.ts';
 
 function deferred() {
   let resolve!: () => void;
@@ -34,17 +35,17 @@ async function fixture(t: TestContext, files: ArtifactFiles = fs, retentionDays 
     log: r => { records.push(r); if (eventLogFails && r.event === 'event-delivery') throw new Error('event journal failed'); if (postLogFails && r.event === 'human-send') throw new Error('human-send diagnostic failed after commit'); if (publicationLogFails && r.event === 'listener-failed') throw new Error('publication error logger failed'); },
     control: { status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: new Date().toISOString(), uptimeMs: 0 }), stop() {} },
   });
-  t.after(() => hub.close());
+  onCleanup(t, () => hub.close());
   const socket = fixtureSocketPath(root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
-  t.after(() => edge.close());
+  onCleanup(t, () => edge.close());
   const ui = await connectUi(t, { socket, secret: TEST_SECRET, root }, 'cli');
   const topic = ((await ui.request({ type: 'topic.create', title: 'Design' })).value as { topic: { id: string } }).topic.id;
   await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
   const a = ((await ui.request({ type: 'artifact.create', as: { name: 'coord' }, kind: 'note', title: 'Design', content: 'original bytes', topic, ...(folder ? { folder: true } : {}) })).value as { artifact: Artifact }).artifact;
   const entries = async () => ((await ui.request({ type: 'artifact.list' })).value as { artifacts: Artifact[] }).artifacts;
   const db = new DatabaseSync(dbPath);
-  t.after(() => db.close());
+  onCleanup(t, () => db.close());
   const failPostWrite = (fail: boolean) => {
     if (fail) db.exec(`create trigger refuse_human_artifact_post before insert on messages
       when new.from_kind = 'human'

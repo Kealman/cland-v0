@@ -13,7 +13,7 @@ export function hubResources(captureStacks = false) {
       // Its next tick drains cleared HTTP deadlines; it is runtime-owned, not project-owned.
       // Keep all request deadlines and project timers in the table, including unref'ed ones.
       if (type === 'Timeout' && '_onTimeout' in resource && typeof resource._onTimeout === 'function' && resource._onTimeout.name === 'onTick' && new Error().stack?.includes('node:internal/deps/undici')) return;
-      if (scope.getStore() && ['Timeout', 'Immediate', 'TCPSERVERWRAP', 'TCPWRAP', 'PIPESERVERWRAP', 'PIPEWRAP', 'PROCESSWRAP', 'FSEVENTWRAP', 'STATWATCHER'].includes(type)) {
+      if (scope.getStore() && ['Timeout', 'Immediate', 'TCPSERVERWRAP', 'TCPWRAP', 'PIPESERVERWRAP', 'PIPEWRAP', 'PROCESSWRAP', 'FSEVENTWRAP', 'STATWATCHER', 'FSREQPROMISE', 'FSREQCALLBACK'].includes(type)) {
         resources.set(id, { type, resource, ...(captureStacks ? { stack: new Error().stack } : {}) });
       }
     },
@@ -22,15 +22,16 @@ export function hubResources(captureStacks = false) {
   hook.enable();
   return {
     run: <T>(work: () => T): T => scope.run(true, work),
-    async check() {
-      // Native close and async-hook destroy receipts follow stop's final await.
-      for (let i = 0; i < 4; i++) await new Promise<void>(resolve => setImmediate(resolve));
-      hook.disable();
-      scope.disable();
-      const addedListeners = process.eventNames().flatMap(event => process.rawListeners(event).filter(listener => !listeners.get(event)?.includes(listener)).map(() => String(event)));
-      const remaining = [...resources.values()].map(entry => entry.type);
-      const creationStacks = captureStacks ? [...resources.values()].map(entry => `${entry.type}: ${entry.stack}`).join('\n') : '';
-      assert.deepEqual({ resources: remaining, listeners: addedListeners }, { resources: [], listeners: [] }, `projectHub leaked resources; active before=${before.join(',')} after=${process.getActiveResourcesInfo().join(',')}${creationStacks ? `\n${creationStacks}` : ''}`);
+    async check(options: { retain?: boolean } = {}) {
+      return scope.exit(async () => {
+        // Native close and async-hook destroy receipts follow stop's final await.
+        for (let i = 0; i < 4; i++) await new Promise<void>(resolve => setImmediate(resolve));
+        const addedListeners = process.eventNames().flatMap(event => process.rawListeners(event).filter(listener => !listeners.get(event)?.includes(listener)).map(() => String(event)));
+        const remaining = [...resources.values()].map(entry => entry.type);
+        const creationStacks = captureStacks ? [...resources.values()].map(entry => `${entry.type}: ${entry.stack}`).join('\n') : '';
+        assert.deepEqual({ resources: remaining, listeners: addedListeners }, { resources: [], listeners: [] }, `projectHub leaked resources; active before=${before.join(',')} after=${process.getActiveResourcesInfo().join(',')}${creationStacks ? `\n${creationStacks}` : ''}`);
+        if (!options.retain) { hook.disable(); scope.disable(); }
+      });
     },
     cancel() { hook.disable(); scope.disable(); },
   };
