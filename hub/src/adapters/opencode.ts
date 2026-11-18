@@ -30,7 +30,6 @@ import { accountEnvironment, accountPrefix, clandOpenCodeDatabase, openCodeDatab
 import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, renameSync } from 'node:fs';
 import { FailedLaunches, LaunchFiles } from './launch-files.ts';
 import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 import type { ApprovalChoice, ApprovalOutcome, Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
@@ -103,6 +102,7 @@ type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: Session
 type WatchTicket = { process: HarnessProcess; pending: boolean; warned: boolean };
 
 type PrivateDirectoryOwner = { path: string; canonical: string; identity: { dev: number; ino: number } };
+type RenameState = { from: string; to: string; phase: 'moving' | 'incomplete'; cause: string; code?: string };
 
 export class OpenCodeAdapter implements HarnessAdapter {
   declare releaseUnreachableGeneration: NonNullable<HarnessAdapter['releaseUnreachableGeneration']>;
@@ -128,6 +128,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #watching = new Map<string, WatchTicket>();
   readonly #usage = new Map<string, SessionUsage>();
   readonly #privateDirectories: Map<string, PrivateDirectoryOwner>;
+  readonly #renames = new Map<string, Promise<void>>();
+  readonly #renameStates = new Map<string, RenameState>();
   #timer: ClockTimer | null = null;
   #closed = false;
   #pidCheck: Promise<void> | null = null;
@@ -426,15 +428,62 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */
-  renamed(p: HarnessProcess, from: string): void {
-    const ticket = this.#watching.get(p.sessionId);
-    if (ticket) ticket.process = { ...ticket.process, name: p.name };
-    const source = this.#files(from, this.#processHost(p)).dir;
-    const target = this.#files(p.name, this.#processHost(p)).dir;
-    if (!existsSync(source) || existsSync(target)) return;
-    renameSync(source, target);
-    const w = this.#watched.get(p.sessionId);
-    if (w) w.process = { ...w.process, name: p.name };
+  renamed(p: HarnessProcess, from: string): Promise<void> {
+    const previous = this.#renames.get(p.sessionId);
+    const work = this.#track(Promise.resolve(previous).then(async () => {
+      this.#assertRenameComplete(p);
+      try {
+        this.#saveRenameState(p, { from, to: p.name, phase: 'moving', cause: 'host move pending' });
+        const host = this.#processHost(p);
+        const source = this.#files(from, host).dir, target = this.#files(p.name, host).dir;
+        if (host.name !== 'local' || await host.fileType(source) !== 'missing') {
+          if (!host.moveDirectory) throw Object.assign(new Error('host agent lacks moveDirectory'), { code: 'CLAND_HOST_CAPABILITY_MISSING' });
+          const key = 'opencode.privateDirectory:' + hostGenerationKey(p);
+          const saved = this.#host.adapterState?.read(key);
+          const owner = this.#privateDirectories.get(key) ?? (saved ? JSON.parse(saved) as PrivateDirectoryOwner : undefined);
+          const canonical = await host.realpath(source), directory = await host.statDirectory(source);
+          if (await host.fileType(source) !== 'directory' || !directory.identity || directory.refusal || owner && (owner.path !== source || owner.canonical !== canonical || !owner.identity || owner.identity.dev !== directory.identity.dev || owner.identity.ino !== directory.identity.ino)) throw new Error('OpenCode private directory identity changed');
+          await host.moveDirectory(source, target, {sourceIdentity:directory.identity});
+          const updated = { path: target, canonical: resolve(dirname(canonical), p.name), identity: directory.identity };
+          if (this.#host.adapterState) this.#host.adapterState.write(key, JSON.stringify(updated));
+          else this.#privateDirectories.set(key, updated);
+        }
+        const ticket = this.#watching.get(p.sessionId);
+        if (ticket) ticket.process = { ...ticket.process, name: p.name };
+        const w = this.#watched.get(p.sessionId);
+        if (w) w.process = { ...w.process, name: p.name };
+        this.#saveRenameState(p, null);
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        try {
+          this.#saveRenameState(p, { from, to: p.name, phase: 'incomplete', cause: error instanceof Error ? error.message : String(error), ...(typeof code === 'string' ? { code } : {}) });
+        } catch (checkpoint) {
+          this.#host.log({ event: 'opencode-rename-checkpoint-failed', session: p.name, error: String(checkpoint) });
+        }
+        throw error;
+      }
+    }));
+    this.#renames.set(p.sessionId, work);
+    // A failed or unknown move fences subsequent reads from the newly named path.
+    void work.then(() => { if (this.#renames.get(p.sessionId) === work) this.#renames.delete(p.sessionId); }, () => {});
+    return work;
+  }
+
+  #saveRenameState(p: HarnessProcess, state: RenameState | null): void {
+    const key = 'opencode.rename:' + hostGenerationKey(p);
+    if (state) this.#renameStates.set(key, state); else this.#renameStates.delete(key);
+    this.#host.adapterState?.write(key, state ? JSON.stringify(state) : '');
+  }
+
+  stateReason(p: HarnessProcess): string | null {
+    const key = 'opencode.rename:' + hostGenerationKey(p), saved = this.#host.adapterState?.read(key);
+    const state = this.#renameStates.get(key) ?? (saved ? JSON.parse(saved) as RenameState : undefined);
+    return state ? `rename incomplete on host: ${state.cause}` : null;
+  }
+
+  #assertRenameComplete(p: HarnessProcess): void {
+    const reason = this.stateReason(p);
+    if (reason) throw Object.assign(new Error(reason), { code: 'CLAND_HOST_RENAME_INCOMPLETE' });
   }
 
   attachCommand(p: HarnessProcess, terminal = false): string {
@@ -448,6 +497,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
   // ---------------------------------------------------------------- inject
 
   async #client(p: HarnessProcess): Promise<OpenCodeClient> {
+    await this.#renames.get(p.sessionId);
+    this.#assertRenameComplete(p);
     const watched = this.#watched.get(p.sessionId);
     if (watched && watched.client.url === p.harnessId) return watched.client;
     const password = await readPassword(this.#files(p.name, this.#processHost(p)), untimed, this.#processHost(p));
@@ -572,6 +623,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   async #watch(ticket: WatchTicket): Promise<void> {
     const p = ticket.process;
+    await this.#renames.get(p.sessionId);
+    this.#assertRenameComplete(p);
     if (ticket.pending || this.#closed || this.#watching.get(p.sessionId) !== ticket || this.#watched.has(p.sessionId)) return;
     if (!p.harnessId || !p.harnessSessionId) return;
     ticket.pending = true;
@@ -902,6 +955,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
   /** Revocation owns private config removal only after Sessions observed native stop. */
   releaseHostGeneration(p: HarnessProcess, authorize: () => void): Promise<void> {
     return this.#track((async () => {
+      await this.#renames.get(p.sessionId);
+      this.#assertRenameComplete(p);
       const host = this.#processHost(p), files = this.#files(p.name, host);
       authorize();
       const type = await host.fileType(files.dir); authorize();
@@ -964,6 +1019,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   async resume(p: HarnessProcess, options: { launchToken?: string; relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
+    await this.#renames.get(p.sessionId);
+    this.#assertRenameComplete(p);
     return this.#operation(scope => this.#resume(p, options, scope));
   }
 

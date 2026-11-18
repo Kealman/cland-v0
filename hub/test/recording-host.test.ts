@@ -45,6 +45,26 @@ test('recording Host shares scratch files and completes the synthetic exit when 
   await assert.rejects(host.run({command: 'never-native', args: [], cwd: '/remote', env: {}}), /refuses run/);
 }));
 
+test('recording Host moves both mapped directory paths and forwards source identity', async t => fakeOnlyFixture(t, async root => {
+  const storage = join(root, 'storage'); await mkdir(storage);
+  const host = recordingHost(storage, {sourceRoot: '/remote'});
+  await host.makeDirectory('/remote/source');
+  await host.writeFile('/remote/source/password', Buffer.from('synthetic'));
+  const {identity} = await host.statDirectory('/remote/source'); assert.ok(identity);
+  await assert.rejects(host.moveDirectory!('/remote/source', '/remote/target', {sourceIdentity: {...identity, ino: identity.ino + 1}}), /source directory identity changed/);
+  assert.equal(await host.fileType('/remote/target'), 'missing');
+  await host.moveDirectory!('/remote/source', '/remote/target', {sourceIdentity: identity});
+  assert.equal(await host.fileType('/remote/source'), 'missing');
+  assert.deepEqual((await host.statDirectory('/remote/target')).identity, identity);
+  assert.equal(Buffer.from(await host.readFile('/remote/target/password')).toString(), 'synthetic');
+  await host.makeDirectory('/remote/source');
+  await assert.rejects(host.moveDirectory!('/remote/source', '/remote/target'), {code: 'EEXIST'});
+  await assert.rejects(host.moveDirectory!('/outside', '/remote/unused'), /outside recording Host/);
+  await assert.rejects(host.moveDirectory!('/remote/source', '/outside'), /outside recording Host/);
+  assert.equal(await host.fileType('/remote/source'), 'directory');
+  assert.equal(Buffer.from(await host.readFile('/remote/target/password')).toString(), 'synthetic');
+}));
+
 test('a scoped recording Host fault preserves unrelated scratch file operations', async t => fakeOnlyFixture(t, async root => {
   const files = recordingHost(root, {sourceRoot: '/remote'});
   const host = recordingHost(root, {sourceRoot: '/remote', overrides: {

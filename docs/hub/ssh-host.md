@@ -84,6 +84,58 @@ through the launch Host, preserving existing contents and appending a missing wi
 
 ## Atomic files and metadata
 
+OpenCode rename uses the session Host's `moveDirectory(source, target)`. One
+serialized directory owner covers Host-managed writes, publication, append,
+directory creation/removal, move and spawn-log entry acquisition. Overlapping
+directories share admission; disjoint session directories progress independently.
+Lexical and canonical paths participate so aliases and ancestor mutations cannot
+bypass the lane. Following file writes, truncate, append and local/agent/prepared
+log opens use one shared file-owner policy: it owns the file's entry directory
+and its resolved referent, including a dangling symlink's target. Publication
+and removal own the directory entry instead. Symlink traversal is bounded;
+unresolvable loops refuse before mutation. Arbitrary out-of-band mutations by another same-user process
+are outside this supported model; pathname checks do not make mutations
+inode-bound against such writers.
+
+Renames use an exclusive destination reservation and an atomic rename of the
+complete source over it.
+Existing destinations refuse under the serialized owner. Failed moves remove
+only a reservation whose captured identity still matches. After rename, the
+destination's directory type, device and inode must match the admitted source.
+A mismatch or unobservable destination produces `CLAND_DIRECTORY_MOVE_UNKNOWN`;
+the directory owner stays fenced. SSH retains the unresolved committing record
+across agent restarts without replay. The adapter migrates its watcher
+name and private-directory ownership path only after that positive receipt.
+Recommitting the same unknown move token refuses before the file operation;
+settlement keeps the original committing plan rather than manufacturing failure.
+
+The injected no-replace seam accepts `moved` or positive `unsupported` receipts;
+the former skips reservation/fallback and both paths check the final identity.
+No native bridge is shipped: Node's [rename interface](https://nodejs.org/download/release/v24.22.2/docs/api/fs.html#fspromisesrenameoldpath-newpath)
+has no no-replace flag. T-1974 tracks native Host-agent no-replace bindings,
+which require runtime/dependency approval. No compiler, Python or FFI dependency is
+introduced here.
+The SSH operation uses prepare/commit receipts; an interrupted commit without a
+durable result stays fenced and is never replayed. There is no hub filesystem
+fallback. Agent builds shipped with v0.4.1 advertise `move-directory-v1`; older
+agents receive `CLAND_HOST_CAPABILITY_MISSING` (`host agent lacks moveDirectory`).
+Paired hosts obtain the operation through the existing versioned agent update;
+new prepared images include that agent build. The hub loads the new adapter
+after the restart following its integrated cover.
+The core/socket identity still changes synchronously. A refused, failed or
+unknown Host move persists its source, destination, phase and cause; session
+status in the CLI and live web rows shows `rename incomplete on host: <cause>`. Delivery,
+resume and private-file retirement stay fenced across hub restarts. A core
+rename response does not confirm the asynchronous Host move.
+Before moving, the adapter checks its captured private-directory canonical path
+and inode. The optional `sourceIdentity` move argument carries that proof to the
+Host, which revalidates source and reservation inodes immediately before rename
+and revalidates the reservation before failed-move cleanup. Observed replaced
+or unobservable reservations remain untouched and the adapter remains fenced.
+Stopped and exited session projections and the CLI retain the persisted rename
+cause. Non-live web rows still show their terminal status; T-1969 tracks that
+separate rendering update.
+
 `publishFile(path, bytes, {mode?, replace?})` writes and syncs a unique sibling
 staging file, then links it without clobbering (false means a path already exists)
 or renames it when `replace:true`. It cleans staging before returning. Concurrent

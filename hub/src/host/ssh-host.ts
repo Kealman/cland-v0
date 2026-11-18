@@ -1,5 +1,6 @@
 import { memoryFloorDetails, type MemoryFloorDetails } from './agent/memory.ts';
 import { REF_FLUSH_CAPABILITY } from './agent/watch.ts';
+import { MOVE_DIRECTORY_CAPABILITY } from './agent/files.ts';
 import { MissingClaudeGeneration } from './host.ts';
 import { CLAUDE_LAUNCH_CAPABILITY } from './agent/claude.ts';
 import { randomUUID } from 'node:crypto';
@@ -215,6 +216,12 @@ export function sshHost(o: Options): Host & { close(): Promise<void>; quiesce():
     stat: path => rpc('stat',{path}),
     makeDirectory: async (path,mode) => {mutation();await rpc('makeDirectory',{path,mode});},
     removePath: async (path,options) => {mutation();await rpc('removePath',{path,options});},
+    moveDirectory: async (source,target,options) => {
+      mutation();
+      const connection = await connected();
+      if (!connection.hello.capabilities?.includes(MOVE_DIRECTORY_CAPABILITY)) throw Object.assign(new Error('host agent lacks moveDirectory'), {code: 'CLAND_HOST_CAPABILITY_MISSING', capability: MOVE_DIRECTORY_CAPABILITY});
+      await prepared<null>('moveDirectory', {source,target,options});
+    },
     freePort: () => rpc('freePort'),
     forward: async (session,endpoint) => {check(); return o.transport.forward(session,endpoint);},
     unforward: async session => {check(); await o.transport.unforward(session);},

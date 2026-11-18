@@ -4,6 +4,7 @@ import { folderFiles } from '../hub/artifact-folder.ts';
 import { occupants } from './occupants.ts';
 import { open } from 'node:fs/promises';
 import { fileOperations } from './agent/files.ts';
+import { directoryOwners } from './agent/directory-owner.ts';
 import { worktreeOperations } from './agent/worktrees.ts';
 import { spawn } from 'node:child_process';
 import { processIdentityAsync } from '../process-identity.ts';
@@ -27,7 +28,8 @@ export function localHost(env: NodeJS.ProcessEnv = process.env, log: (entry: Rec
     occupants,
     run: command => run(command.command, command.args, command.env, command.timeoutMs, false, command.signal, 'utf8', command.cwd),
     spawn: async (command, options) => {
-      const output = command.logFile ? await open(command.logFile, 'a') : undefined;
+      const logFile = command.logFile;
+      const output = logFile ? await directoryOwners.runFile(logFile, () => open(logFile, 'a')) : undefined;
       let accepted: Awaited<ReturnType<Host['spawn']>> | undefined;
       try {
         options?.authorize?.();

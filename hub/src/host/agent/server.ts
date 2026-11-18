@@ -8,6 +8,7 @@ import { claudeLaunches, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY } f
 import { processUsage } from './process-usage.ts';
 import { remoteCommandEnvironment, loginExecutionEnvironment } from './command-environment.ts';
 import { PreparedOperations } from './prepared.ts';
+import { MOVE_DIRECTORY_CAPABILITY } from './files.ts';
 import { createConnection, createServer } from 'node:net';
 import type { Socket } from 'node:net';
 import { mkdir, chmod, unlink } from 'node:fs/promises';
@@ -136,7 +137,7 @@ export async function serveAgent(options: AgentOptions) {
               const valid = typeof secret === 'string' && Buffer.byteLength(secret) === Buffer.byteLength(options.secret) && timingSafeEqual(Buffer.from(secret), Buffer.from(options.secret));
               if (!valid || request.args.protocol !== AGENT_PROTOCOL) throw new Error('hello secret or protocol refused');
               authenticated = true; authenticatedConnections.add(connection);
-              connection.write(JSON.stringify({ id, ok: true, result: { protocol: AGENT_PROTOCOL, version: options.version, pid: process.pid, bootId, capabilities: [SIGNIN_CAPABILITY, PREPARED_HOST_CAPABILITY, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY, REF_FLUSH_CAPABILITY] } }) + '\n');
+              connection.write(JSON.stringify({ id, ok: true, result: { protocol: AGENT_PROTOCOL, version: options.version, pid: process.pid, bootId, capabilities: [MOVE_DIRECTORY_CAPABILITY, SIGNIN_CAPABILITY, PREPARED_HOST_CAPABILITY, CLAUDE_LAUNCH_CAPABILITY, CLAUDE_RESTORE_CAPABILITY, REF_WATCH_CAPABILITY, REF_WATCH_STATUS_CAPABILITY, REF_FLUSH_CAPABILITY] } }) + '\n');
             } else {
               if (!authenticated) throw new Error('hello required');
               let result: unknown;
@@ -182,6 +183,7 @@ export async function serveAgent(options: AgentOptions) {
                 }
                 case 'prepare-publishFile': result = await prepared.prepare('publishFile', request.args); break;
                 case 'prepare-appendFile': result = await prepared.prepare('appendFile', request.args); break;
+                case 'prepare-moveDirectory': result = await prepared.prepare('moveDirectory', request.args); break;
                 case 'prepare-spawn': result = await prepared.prepare('spawn', request.args); break;
                 case 'prepare-stop': result = await prepared.prepare('stop', request.args); break;
                 case 'prepare-worktree': result = await prepared.prepare('worktree', request.args); break;
@@ -201,7 +203,7 @@ export async function serveAgent(options: AgentOptions) {
                 }
               }
               } finally {releaseMutation();}
-              if (request.op.startsWith('prepare-') && result && typeof result === 'object' && Object.hasOwn(result, 'token') && typeof (result as {token?:unknown}).token === 'string') { const token = (result as {token:string}).token; owned.add(token); if (request.op === 'prepare-publishFile' || request.op === 'prepare-appendFile') fileOwners.add(token); }
+              if (request.op.startsWith('prepare-') && result && typeof result === 'object' && Object.hasOwn(result, 'token') && typeof (result as {token?:unknown}).token === 'string') { const token = (result as {token:string}).token; owned.add(token); if (request.op === 'prepare-publishFile' || request.op === 'prepare-appendFile' || request.op === 'prepare-moveDirectory') fileOwners.add(token); }
               options.afterOperation?.(request.op,connection);
               const reply = JSON.stringify({ id, ok: true, result });
               if (Buffer.byteLength(reply) > MAX_LINE_BYTES) throw new Error('agent result exceeds frame cap');

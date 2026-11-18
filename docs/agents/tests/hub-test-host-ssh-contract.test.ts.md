@@ -1,5 +1,14 @@
 # hub/test/host-ssh-contract.test.ts
 
+The shared directory-move row receives its original test context and uses
+renameCase with native guarding disabled for this native wrapper. It enrolls
+the original callback and bounded root setup before acquisition, adopts late
+roots, and joins every Host operation before root removal. It proves source
+absence plus destination inode/bytes after the move and refusal of an occupied
+destination. The local wrapper runs the same row. Fake-only replacement and
+old/new capability controls live in opencode-host.test.ts; they do not borrow
+this wrapper's native evidence.
+
 T3: `node --test hub/test/host-ssh-contract.test.ts` uses a real SSH carrier with
 the fake stand-in and an in-process real agent. Every shared Host behavioral row
 runs unchanged. The local-specific forwarding/layout row supplies scratch
@@ -34,7 +43,7 @@ truncation error, then require a subsequent
 command to succeed. A deadline bounds waiting for the actual result; it is not a
 sleep or a claim about command latency.
 
-The aggregate contract wrapper retains one fixture and all 14 rows. Its dated
+The aggregate contract wrapper retains one fixture and all registered rows. Its dated
 exact-identity allowance in durations.json is 11.001 seconds, owned by E-880 from
 2026-11-03 through 2026-11-10. A-16263 records a source-equivalent local macOS
 passing sample of 7.099404042 seconds; A-16269 records a Linux droplet passing

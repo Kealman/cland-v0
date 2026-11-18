@@ -62,6 +62,9 @@ export interface Host {
   makeDirectory(path: string, mode?: number): Promise<void>;
   /** Never recursive. directory removes an empty directory only; otherwise unlink the path itself. */
   removePath(path: string, options?: { directory?: boolean }): Promise<void>;
+  /** Move a directory by atomic rename after exclusively reserving an absent target.
+   * Existing targets refuse. Older Hosts lacking this operation refuse at the caller. */
+  moveDirectory?(source: string, target: string, options?: import('./agent/files.ts').DirectoryMoveOptions): Promise<void>;
   /** Probe and release an IPv4 loopback port, not a reservation through child bind. */
   freePort(): Promise<number>;
   forward(sessionId: string, endpoint: HostEndpoint): Promise<HostEndpoint>;

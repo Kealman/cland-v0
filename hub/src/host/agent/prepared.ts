@@ -1,11 +1,12 @@
 import { MemoryFloorRefusal, memoryFloorDetails, type MemoryFloorDetails } from './memory.ts';
 import { parseAgentFile } from './operations.ts';
 import { loginFilePath } from './fake-login-mount.ts';
-import { fileOperations } from './files.ts';
+import { fileOperations, parseDirectoryMove } from './files.ts';
+import { directoryOwners, DirectoryMoveUnknown } from './directory-owner.ts';
 import { randomUUID } from 'node:crypto';
 import { open, lstat, opendir, mkdir, unlink, readFile, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
-import { isAbsolute, resolve, join } from 'node:path';
+import { isAbsolute, resolve, join, dirname } from 'node:path';
 import type { FileHandle } from 'node:fs/promises';
 import { boundedCommandResult, nativeCommandIncomplete, type run as runCheckoutCommand, type RunResult } from './command.ts';
 import { checkpoint } from './storage.ts';
@@ -17,7 +18,7 @@ import { reserveCheckout, observeCheckout, validateCheckout, cleanupCheckout, pa
 import type { CheckoutOwnership, FileBirth } from './prepared-checkout.ts';
 
 type Phase = 'preparing' | 'git-running' | 'prepared' | 'committing';
-type Plan = { kind: 'spawn' | 'worktree' | 'stop' | 'run' | 'publishFile' | 'appendFile'; phase: Phase; args: Record<string, unknown>; recoveryKey?: string; cleanup?: FileBirth & {path:string}; checkout?: CheckoutOwnership; targets?: ProcessTarget[] };
+type Plan = { kind: 'spawn' | 'worktree' | 'stop' | 'run' | 'publishFile' | 'appendFile' | 'moveDirectory'; phase: Phase; args: Record<string, unknown>; recoveryKey?: string; cleanup?: FileBirth & {path:string}; checkout?: CheckoutOwnership; targets?: ProcessTarget[] };
 export type PreparedOutcome = {state:'accepted';result:unknown} | ({state:'failed';error:string} & Partial<MemoryFloorDetails>) | {state:'pending';reason:string};
 type Pending = { deadline: number; plan: Plan; secretEnv?: NodeJS.ProcessEnv; log?: FileHandle; timer?: NodeJS.Timeout };
 const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
@@ -89,9 +90,12 @@ export class PreparedOperations {
   }
   async #cleanup(token:string,plan:Plan) {
     if(plan.phase==='git-running') throw new Error('prepared Git writer completion unknown; cleanup incomplete');
-    if(plan.cleanup) {
-      const info=await lstat(plan.cleanup.path).catch(error=>{if(!missing(error))throw error;return null;});
-      if(info&&info.dev===plan.cleanup.dev&&info.ino===plan.cleanup.ino&&info.size===0) await unlink(plan.cleanup.path);
+    const cleanup = plan.cleanup;
+    if(cleanup) {
+      await directoryOwners.run([dirname(cleanup.path)], async () => {
+        const info=await lstat(cleanup.path).catch(error=>{if(!missing(error))throw error;return null;});
+        if(info&&info.dev===cleanup.dev&&info.ino===cleanup.ino&&info.size===0) await unlink(cleanup.path);
+      });
     }
     if(plan.checkout) {const completed=plan.phase==='prepared'||plan.phase==='committing';await this.#gitBoundary(token,plan,()=>cleanupCheckout(this.#env,plan.checkout!,completed,this.#hooks.checkoutRun));}
   }
@@ -111,6 +115,7 @@ export class PreparedOperations {
     try {
       await checkpoint(this.#path(token),plan);
     if(kind==='publishFile'||kind==='appendFile') parseAgentFile(args,kind);
+    if(kind==='moveDirectory') parseDirectoryMove(args);
     if(kind==='spawn') {
       args={...args,env:remoteCommandEnvironment(args.env as NodeJS.ProcessEnv)};
       const env=remoteCommandEnvironment({...this.#env,...args.env as NodeJS.ProcessEnv});
@@ -121,8 +126,11 @@ export class PreparedOperations {
     }
       if(kind==='spawn'&&args.logFile!==undefined) {
         if(typeof args.logFile!=='string') throw new Error('invalid logFile');
-        try{log=await open(args.logFile,'ax',0o600);const info=await log.stat();plan.cleanup={path:args.logFile,dev:info.dev,ino:info.ino};}
-        catch(error){if((error as NodeJS.ErrnoException).code!=='EEXIST')throw error;log=await open(args.logFile,'a');}
+        const logFile = args.logFile;
+        await directoryOwners.runFile(logFile, async () => {
+        try{log=await open(logFile,'ax',0o600);const info=await log.stat();plan.cleanup={path:logFile,dev:info.dev,ino:info.ino};}
+        catch(error){if((error as NodeJS.ErrnoException).code!=='EEXIST')throw error;log=await open(logFile,'a');}
+        });
       }
       if(log)pending.log=log;
       if(kind==='stop') {
@@ -146,7 +154,7 @@ export class PreparedOperations {
     }
   });}
   async #recoverCommit(token:string,plan:Plan):Promise<PreparedOutcome> {
-    if(plan.kind==='publishFile'||plan.kind==='appendFile')return {state:'pending',reason:'file commit completion unknown; never replay'};
+    if(plan.kind==='publishFile'||plan.kind==='appendFile'||plan.kind==='moveDirectory')return {state:'pending',reason:'file commit completion unknown; never replay'};
     if(plan.kind==='run')return {state:'pending',reason:'native command completion unknown'};
     if(plan.kind==='spawn') {
       const native=await this.#processes.operationReceipt(token);
@@ -165,12 +173,17 @@ export class PreparedOperations {
   }
   commit(token:string,install=true) {return this.#serial(async()=>{
     const pending=this.#pending.get(token);if(!pending)throw new Error('prepared operation expired or unavailable');
+    if(pending.plan.kind==='moveDirectory'&&pending.plan.phase==='committing')throw new Error('commit outcome unknown; reconcile before replay');
     if(Date.now()>=pending.deadline) {await this.#abort(token);throw new Error('prepared operation expired');}
     clearTimeout(pending.timer);const {plan}=pending;if(plan.phase==='git-running')throw new Error('prepared Git writer completion unknown; cleanup incomplete');plan.phase='committing';await checkpoint(this.#path(token),plan);
     let fileCompleted = false;
     try {
       let result:unknown;
-      if(plan.kind==='publishFile'||plan.kind==='appendFile') {
+      if(plan.kind==='moveDirectory') {
+        const {source,target,options}=parseDirectoryMove(plan.args);
+        await fileOperations.moveDirectory(await loginFilePath(source,this.#env),await loginFilePath(target,this.#env),options);
+        result=null;fileCompleted=true;
+      } else if(plan.kind==='publishFile'||plan.kind==='appendFile') {
         const parsed=parseAgentFile(plan.args,plan.kind);
         const {bytes,options}=parsed, path=await loginFilePath(parsed.path,this.#env);
         if(plan.kind==='publishFile') result=await fileOperations.publishFile(path,bytes,options);
@@ -194,6 +207,9 @@ export class PreparedOperations {
     } catch(error) {
       const saved=await this.#outcome(token);
       if(saved?.outcome.state==='accepted') {await this.#removePlan(token);return saved.outcome.result;}
+      if (error instanceof DirectoryMoveUnknown) {
+        this.#fenced.add(token); this.#failures.set(token,error); throw error;
+      }
       if (fileCompleted) {
         this.#fenced.add(token);this.#failures.set(token,error instanceof Error?error:new Error(String(error)));throw error;
       }

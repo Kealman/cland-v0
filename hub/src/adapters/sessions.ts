@@ -1042,7 +1042,14 @@ export class Sessions {
       this.#log({ event: 'process-renamed', from: before.name, to, sessionId });
       const after = this.#table.get(to);
       try {
-        if (after) this.#adapters.get(after.harness)?.renamed?.(after, before.name);
+        if (after) {
+          const work = this.#adapters.get(after.harness)?.renamed?.(after, before.name);
+          if (work) void work.catch(err => this.#log({ event: 'process-rename-failed', session: to, error: err instanceof Error ? err.message : String(err) })).finally(() => {
+            if (this.#closed) return;
+            const current = this.#table.bySessionId(sessionId);
+            if (current) this.#core.publishProcess(this.view(current));
+          });
+        }
       } catch (err) {
         this.#log({ event: 'process-rename-failed', session: to, error: err instanceof Error ? err.message : String(err) });
       }
@@ -1195,7 +1202,8 @@ export class Sessions {
     const unknownHost = !this.#hosts.has(p.host ?? 'local');
     const handoff = this.#relaunchIntent(p);
     const relaunchWarning = this.#core.store.meta(hostRelaunchWarningKey(hostGenerationKey(p))) ?? (handoff ? `relaunch to ${handoff.targetHost} ${handoff.phase}${handoff.failure ? ': '+handoff.failure : ''}; destination remains fenced` : null);
-    const stateReason = handoff ? 'host relaunch pending' : unknownHost ? 'unknown host' : deaf ? 'deaf' : p.status === 'running' ? adapter?.stateReason?.(p) : null;
+    const renameReason = p.harness === 'opencode' ? adapter?.stateReason?.(p) : null;
+    const stateReason = handoff ? 'host relaunch pending' : renameReason ?? (unknownHost ? 'unknown host' : deaf ? 'deaf' : p.status === 'running' ? adapter?.stateReason?.(p) : null);
     const pending = p.status === 'running' ? this.#core.sessionPending(p) : undefined;
     const approvalCommand = p.status === 'running' ? this.#core.sessionApprovalCommand(p.sessionId) : undefined;
     let attach: string | null = null;

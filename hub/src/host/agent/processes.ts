@@ -13,6 +13,7 @@ import { join, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { observeProcesses, isCapturedOrExited } from './native.ts';
 import { checkpoint } from './storage.ts';
+import { directoryOwners } from './directory-owner.ts';
 import type { AgentEvent } from './protocol.ts';
 const exec = promisify(execFile);
 export type ProcessTarget = { pid: number; identity: string };
@@ -205,7 +206,8 @@ export class AgentProcesses {
     await checkpoint(join(directory, 'plan.json'), { launchId, command, args: args.args, cwd: args.cwd });
     await checkpoint(join(directory, 'admission.json'), { launchId }); this.#admissions.add(launchId);
     let log;
-    try { log = preparedLog ?? (typeof args.logFile === 'string' ? await open(args.logFile, 'a', 0o600) : undefined); }
+    const logFile = typeof args.logFile === 'string' ? args.logFile : undefined;
+    try { log = preparedLog ?? (logFile ? await directoryOwners.runFile(logFile, () => open(logFile, 'a', 0o600)) : undefined); }
     catch (error) { this.#inflight.delete(launchId); await this.#removeAdmission(launchId); throw error; }
     let child;
     try { await this.#hooks.beforeBootstrap?.(directory); child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', fileURLToPath(new URL('./bootstrap.ts', import.meta.url)), directory], { cwd: args.cwd, env: { ...env, ...fakeEnv }, detached: true, stdio: interactive ? ['pipe','pipe','pipe'] : ['ignore', log?.fd ?? 'ignore', log?.fd ?? 'ignore'] }); if(child.pid!==undefined)interactive?.admitted();child.once('spawn',()=>interactive?.admitted());interactive?.connected(child); }

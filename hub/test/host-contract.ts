@@ -10,6 +10,8 @@ import { eventually } from './harness.ts';
 import type { Host } from '../src/host/host.ts';
 import { existsSync } from 'node:fs';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import type { TestContext } from 'node:test';
+import { renameCase } from './rename-case.ts';
 
 async function hostCompletion(child: Awaited<ReturnType<Host['spawn']>>) {
   let receipt: { code: number | null; signal: string | null } | undefined;
@@ -17,7 +19,7 @@ async function hostCompletion(child: Awaited<ReturnType<Host['spawn']>>) {
   return eventually('native Host completion receipt', () => receipt);
 }
 
-export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register: (name: string, run: () => Promise<void>) => unknown, expected?: { name: string; limitPolls: boolean; endpoints?: Parameters<Host['forward']>[1][]; forward?: (endpoint: Awaited<ReturnType<Host['forward']>>) => void; layout?: ReturnType<Host['layout']> }, faults?: { failLogClose(path: string): () => Promise<void>; diagnostics: Record<string, unknown>[] }): void {
+export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register: (name: string, run: (t?: TestContext) => Promise<void>) => unknown, expected?: { name: string; limitPolls: boolean; endpoints?: Parameters<Host['forward']>[1][]; forward?: (endpoint: Awaited<ReturnType<Host['forward']>>) => void; layout?: ReturnType<Host['layout']> }, faults?: { failLogClose(path: string): () => Promise<void>; diagnostics: Record<string, unknown>[] }): void {
   register('Host login disks preserve optional absence and refuse invalid paths', async()=>{
     const root=await mkdtemp(join(tmpdir(),'host-login-contract-'));
     try {
@@ -69,6 +71,27 @@ export function hostContract(factory: (env: NodeJS.ProcessEnv) => Host, register
       await host.removePath(dir, { directory: true });
       assert.equal(existsSync(dir), false);
     } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
+  register('Host directory moves preserve bytes and identity and refuse an occupied destination', async t => {
+    assert.ok(t, 'the shared move case requires its original test context');
+    return renameCase(t, async ({step, root: acquireRoot}) => {
+      const root = await acquireRoot();
+      const host = factory(fixtureEnvironment(root, process.env));
+      assert.ok(host.moveDirectory, 'current local/SSH Hosts implement directory moves');
+      const source = join(root, 'source'), target = join(root, 'target');
+      await step(() => host.makeDirectory(source, 0o700));
+      await step(() => host.writeFile(join(source, 'password'), Buffer.from('synthetic'), { mode: 0o600 }));
+      const identity = (await step(() => host.statDirectory(source))).identity;
+      await step(() => host.moveDirectory!(source, target));
+      assert.equal(await step(() => host.fileType(source)), 'missing');
+      assert.deepEqual((await step(() => host.statDirectory(target))).identity, identity);
+      assert.equal(Buffer.from(await step(() => host.readFile(join(target, 'password')))).toString(), 'synthetic');
+      await step(() => host.makeDirectory(source));
+      await step(() => assert.rejects(host.moveDirectory!(source, target)));
+      assert.equal(await step(() => host.fileType(source)), 'directory');
+      assert.equal(Buffer.from(await step(() => host.readFile(join(target, 'password')))).toString(), 'synthetic');
+    }, false);
   });
 
   register('Host freePort releases a bindable IPv4 loopback port', async () => {

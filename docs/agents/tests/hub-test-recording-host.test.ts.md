@@ -29,3 +29,8 @@ to the helper and exercise its boundary here. The file/process test runs under
 the shared fake-only launch guard, including its positive controls and cleanup
 check. It proves scratch publication, appending, metadata, path resolution,
 listing, removal and stop/exit behavior without a native child.
+
+The directory-move control maps both source and destination into storage and
+forwards the captured source identity. It refuses a wrong identity before target
+creation, confirms moved bytes/inode and missing source, preserves an occupied
+target, and rejects an outside path on either side of the move.

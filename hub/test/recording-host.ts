@@ -38,6 +38,7 @@ export function recordingHost(storageRoot: string, options: {
     writeFile: async (path, bytes, opts) => fileOperations.writeFile(mapped(path), bytes, opts),
     publishFile: async (path, bytes, opts) => fileOperations.publishFile(mapped(path), bytes, opts),
     appendFile: async (path, bytes) => fileOperations.appendFile(mapped(path), bytes),
+    moveDirectory: async (source, target, opts) => fileOperations.moveDirectory(mapped(source), mapped(target), opts),
     stat: async path => fileOperations.stat(mapped(path)),
     makeDirectory: async (path, mode) => fileOperations.makeDirectory(mapped(path), mode),
     removePath: async (path, opts) => fileOperations.removePath(mapped(path), opts),

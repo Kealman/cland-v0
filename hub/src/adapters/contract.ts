@@ -312,7 +312,7 @@ export interface HarnessAdapter {
   /** Prune archived totals/supervision; opted-in failed-launch owners also acknowledge settled unpublished cleanup. */
   forget?(sessionId: string): void;
   /** The session was renamed (`process` is its row under the new name): files the adapter keeps by name follow it. */
-  renamed?(process: HarnessProcess, from: string): void;
+  renamed?(process: HarnessProcess, from: string): void | Promise<void>;
   /** Start watching a process (after spawn or resume): the polled fallback and the liveness check. */
   watch(process: HarnessProcess): void;
   /** Dispose identity-owned supervision after verified exit, without signalling any process. */
