@@ -18,6 +18,7 @@ import { readRecoveries, recoverSnapshots, claimSnapshotStorage, recoverPoolSnap
 import { prepareBase, prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
 import { compactLeaseHistory, hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend, sweepProjects } from './spend.ts';
 import { DropletRun } from './run.ts';
+import { recordReadinessCleanupFailure } from './readiness-deadline.ts';
 import type { Executor, PrepareOptions, ReapOptions, Released, RunRef } from '../executor.ts';
 
 type Reaped = { deleted: number[]; deletedKeys: number[]; summary: string; unconfirmed?: { droplets: number[]; keys: number[] } };
@@ -238,7 +239,11 @@ export class DropletExecutor implements Executor {
       await waitForMachine(this.root, lease, snapshot.key, undefined, this.#abort.signal, this.#env, { ...this.dependencies, wait: ms => this.#wait(ms) });
       return lease;
     }
-    catch (error) { await this.release(lease); throw error; }
+    catch (error) {
+      try { await this.release(lease); }
+      catch (cleanupError) { if (!recordReadinessCleanupFailure(error, 'release', cleanupError)) throw cleanupError; }
+      throw error;
+    }
   }
 
   async #acquire(run: Pick<RunRef, 'id'> & Partial<Pick<RunRef, 'log'>>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string; demo?: DropletLease['demo'] }, config: ProjectConfig, admitted?: (lease: DropletLease) => void): Promise<DropletLease> {

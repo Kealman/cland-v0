@@ -14,6 +14,7 @@ import { DigitalOceanApi, DigitalOceanError, type Action, type SnapshotImage } f
 import { durableJson, leaseDir, type DropletLease } from './lease.ts';
 import { Machine, machineEnv, shellQuote } from './machine.ts';
 import { pause, testTiming } from './watchdog.ts';
+import { ReadinessDeadlineError, recordReadinessCleanupFailure } from './readiness-deadline.ts';
 import { saveRecovery, recoverSnapshot, type SnapshotRecovery } from './snapshot-recovery.ts';
 import type { Released } from '../executor.ts';
 
@@ -81,7 +82,7 @@ export async function waitForMachine(root: string, lease: DropletLease, key?: Pr
   const machine = dependencies.machine ?? new Machine(root, env);
   for (;;) {
     signal?.throwIfAborted();
-    if (clock.now().getTime() >= limit) throw new Error('machine readiness deadline reached');
+    if (clock.now().getTime() >= limit) throw new ReadinessDeadlineError('boot-readiness', limit, clock.now().getTime());
     let marker: string;
     try { marker = await machine.exec(lease, key ? 'true && cat "$HOME/.cland-image.json"' : 'test -f /var/lib/cland-ready && true', { timeoutMs: Math.min(10000, limit - clock.now().getTime()), signal }); }
     catch { await wait(Math.min(testTiming('CLAND_TEST_DROPLET_POLL_MS', 2000, env), Math.max(0, limit - clock.now().getTime()))); continue; }
@@ -230,16 +231,35 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     log({ event: 'executor-prepared', key, image: image.id, regions: snapshot.regions, durationMs: result.durationMs, ...released });
     return result;
   } catch (error) {
-    if (builder) released = await options.release(builder);
-    if (!committed) {
+    let cleanupReady = true;
+    if (builder) {
+      try { released = await options.release(builder); }
+      catch (cleanupError) {
+        if (!recordReadinessCleanupFailure(error, 'release', cleanupError)) throw cleanupError;
+        cleanupReady = false;
+      }
+    }
+    if (!committed && cleanupReady) {
       // Retiring uncertainty must be resolved before restoring either pointer.
       // Every other failure becomes durable cleanup of this builder's image.
-      if (recovery.phase !== 'retire') { recovery.phase = 'cleanup'; await saveRecovery(root, recovery, options.storage); }
-      try { await recoverSnapshot(root, recovery, options.store, env, dependencies.api, options.storage); } catch { /* retained for restart/timer retries */ }
+      if (recovery.phase !== 'retire') {
+        recovery.phase = 'cleanup';
+        try { await saveRecovery(root, recovery, options.storage); }
+        catch (cleanupError) {
+          if (!recordReadinessCleanupFailure(error, 'recovery-checkpoint', cleanupError)) throw cleanupError;
+          cleanupReady = false;
+        }
+      }
+      // A failed release or checkpoint retains ownership for its existing retry
+      // owner; do not admit image cleanup across an incomplete boundary.
+      if (cleanupReady) {
+        try { await recoverSnapshot(root, recovery, options.store, env, dependencies.api, options.storage); }
+        catch (cleanupError) { recordReadinessCleanupFailure(error, 'recovery', cleanupError); /* retained for restart/timer retries */ }
+      }
     }
     const cause = `${stage}: ${error instanceof Error ? error.message : 'snapshot preparation failed'}`;
     log({ event: 'executor-prepare-failed', key, image: image?.id ?? null, regions: options.regions, durationMs: clock.now().getTime() - started, ...released, cause });
-    throw new Error(`${cause}; image ${image?.id ?? 'none'}; regions ${options.regions.join(', ')}; duration ${clock.now().getTime() - started}ms; builder lifetime ${released.lifetimeMs ?? 'unconfirmed'}ms, cost $${released.costUsd ?? 'unconfirmed'}`);
+    throw new Error(`${cause}; image ${image?.id ?? 'none'}; regions ${options.regions.join(', ')}; duration ${clock.now().getTime() - started}ms; builder lifetime ${released.lifetimeMs ?? 'unconfirmed'}ms, cost $${released.costUsd ?? 'unconfirmed'}`, { cause: error });
   }
 }
 async function ensureRegions(api: Provider, id: number, known: string[], requested: string[], limit: number, signal: AbortSignal | undefined, env: NodeJS.ProcessEnv, clock: Clock, wait: (ms: number) => Promise<void>, tags: string[] = []): Promise<SnapshotImage> {

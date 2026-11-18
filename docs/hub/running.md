@@ -546,6 +546,23 @@ infrastructure failures without a test receipt, so merge batches hold as
 inconclusive. `delivery.log` keeps the remote fetch/prepare output consumed by
 the runner; attempt diagnostics live in the run log. Local verification has no
 droplet transfer policy.
+
+Readiness deadline errors retain a typed producer phase, deadline milliseconds
+and observed clock milliseconds. `boot-readiness` identifies the image/boot
+probe; `delivery-lease-expiry` identifies a lease already expired before
+directory delivery. `delivery-budget-expiry` identifies the ten-minute delivery
+cap instead; `delivery-directory-readiness` identifies the directory setup cap
+if a clock jump crosses it before the initial probe. Delivery wrappers retain
+that error as `Error.cause`.
+The phase suffix in the diagnostic is for human readers only and must never be
+parsed. Persisted suite outcomes keep their existing shape and human-readable
+cause; they do not expose the typed phase as a separate field. These diagnostics
+change no readiness, retry or lease deadline.
+Preparation wrappers also preserve the typed error as `Error.cause`. Subsequent
+release, recovery-checkpoint or recovery failures stay secondary in its
+`cleanupFailures` receipts and human-readable cleanup notice. A failed builder
+release or recovery checkpoint retains recovery ownership and skips subsequent
+image cleanup. Other error classes retain their existing cleanup policy.
 The delivered lease checkpoints the local log prefix as `execution.deliveryLogEnd`
 before the hub starts collection. Restart uses that durable byte boundary even
 when the suite-job checkpoint still carries the pre-delivery offset. Already

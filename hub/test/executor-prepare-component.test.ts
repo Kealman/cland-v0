@@ -18,10 +18,12 @@ import { drive } from './remote-clock.ts';
 import { onCleanup, beforeDirectories } from './process-cleanup.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { keyHash, readSnapshot, snapshotPath, type Snapshot } from '../src/executor/droplet/prepare.ts';
-import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
+import { readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { Machine } from '../src/executor/droplet/machine.ts';
 import { diagnosticResult } from '../src/hub/merge-batches.ts';
 import { defaultConfig } from '../src/init/config.ts';
+import { ReadinessDeadlineError } from '../src/executor/droplet/readiness-deadline.ts';
+import { readRecoveries } from '../src/executor/droplet/snapshot-recovery.ts';
 
 async function fixture(t: TestContext, overrides: Record<string, string> = {}, adoptRoot?: (root: string) => void) {
   const root = await tempProject(t);
@@ -71,6 +73,83 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}, a
     reopen: async () => { const served = await projectHub(t, root, env, options); hubs.push(served); return served; },
   };
 }
+
+test('boot readiness metadata survives acquisition cleanup rejection', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('readiness cleanup fixture', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    await step(() => f.stop());
+    const snapshot: Snapshot = { image: 900, name: 'ready', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'], sizeGb: 1, minDiskSize: 10, created: f.clock.now().toISOString() };
+    await step(() => mkdir(join(f.root, '.cland/run/executor'), { recursive: true }));
+    await step(() => writeFile(snapshotPath(f.root), JSON.stringify(snapshot)));
+    f.setFailure('unready');
+    const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, f.dependencies);
+    const cleanupError = new Error('scripted lease release rejected');
+    let captured: DropletLease | undefined;
+    const restore = scope.patch(executor, 'release', async (lease: DropletLease) => { captured = lease; throw cleanupError; });
+    try {
+      await step(() => assert.rejects(drive(f, executor.acquire({ id: 'readiness-cleanup' }, new Date(f.clock.now().getTime() + 60000).toISOString())), error => {
+        assert.ok(error instanceof ReadinessDeadlineError);
+        assert.equal(error.phase, 'boot-readiness');
+        assert.equal(error.observedMs, error.deadlineMs);
+        assert.deepEqual(error.cleanupFailures, [{ step: 'release', error: cleanupError }]);
+        return true;
+      }));
+    } finally {
+      restore();
+      if (captured) await step(() => drive(f, executor.release(captured!)));
+    }
+    assert.deepEqual(f.api.droplets, []);
+    assert.deepEqual(f.api.keys, []);
+  });
+});
+
+for (const cleanupFailure of ['none', 'release', 'recovery-checkpoint', 'recovery'] as const) test(`snapshot preparation preserves boot readiness metadata (cleanup failure: ${cleanupFailure})`, async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('builder readiness fixture', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    await step(() => f.stop());
+    f.setFailure('unready');
+    const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, f.dependencies);
+    const cleanupError = new Error('scripted builder cleanup rejected');
+    let captured: DropletLease | undefined;
+    const release = executor.release;
+    const rename = files.rename;
+    const restore = scope.patch(executor, 'release', async (lease: DropletLease) => {
+      captured = lease;
+      if (cleanupFailure === 'release') throw cleanupError;
+      const result = await release.call(executor, lease);
+      if (cleanupFailure === 'recovery-checkpoint') scope.patch(files, 'rename', async (...args: Parameters<typeof rename>) => {
+        if (String(args[1]).includes('/snapshot-recovery/')) throw cleanupError;
+        return rename(...args);
+      });
+      if (cleanupFailure === 'recovery') scope.patch(f.dependencies.api, 'snapshots', async () => { throw cleanupError; });
+      return result;
+    });
+    try {
+      await step(() => assert.rejects(drive(f, executor.prepare()), error => {
+        assert.ok(error instanceof Error);
+        assert.ok(error.cause instanceof ReadinessDeadlineError);
+        assert.equal(error.cause.phase, 'boot-readiness');
+        assert.equal(error.cause.observedMs, error.cause.deadlineMs);
+        assert.deepEqual(error.cause.cleanupFailures, cleanupFailure === 'none' ? [] : [{ step: cleanupFailure, error: cleanupError }]);
+        assert.match(error.message, /builder: machine readiness deadline reached/);
+        return true;
+      }));
+      const retained = await step(() => readRecoveries(f.root));
+      assert.equal(retained.length, cleanupFailure === 'none' ? 0 : 1);
+      if (cleanupFailure !== 'none') {
+        assert.equal(retained[0]!.builder, captured!.resource);
+        assert.equal(retained[0]!.phase, cleanupFailure === 'recovery' ? 'cleanup' : 'build');
+      }
+    } finally {
+      restore();
+      if (captured) await step(() => drive(f, executor.release(captured!)));
+    }
+    assert.deepEqual(f.api.droplets, []);
+    assert.deepEqual(f.api.keys, []);
+  });
+});
 
 test('fresh hub owns its run anchor before the first executor lease is written', async t => {
   const scope = guardedLeaseCase(t);
@@ -412,7 +491,16 @@ test('acquire needs a prepared image, uses its regions without user data and ref
   await assert.rejects(drive(f, executor.acquire({ id: 'bad-marker' }, deadline())), /image marker mismatch/);
   assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
   f.setFailure('unready');
-  await assert.rejects(drive(f, executor.acquire({ id: 'timeout' }, deadline())), /readiness deadline/);
+  const bootStarted = f.clock.now().getTime();
+  await assert.rejects(drive(f, executor.acquire({ id: 'timeout' }, deadline())), error => {
+    assert.ok(error instanceof ReadinessDeadlineError);
+    assert.equal(error.phase, 'boot-readiness');
+    assert.ok(error.deadlineMs >= bootStarted + 200, 'readiness starts after acquisition');
+    assert.equal(error.observedMs, error.deadlineMs);
+    assert.equal(error.observedMs, f.clock.now().getTime());
+    assert.match(error.message, /machine readiness deadline reached/);
+    return true;
+  });
   assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
 });
 
@@ -515,11 +603,12 @@ test('delivery retries initial SSH setup within its bound and names failed trans
   const setupTimeouts: number[] = [];
   let uploads = 0;
   let prepares = 0;
+  let bundleElapsed = 0;
   const transportFailure = new Error('machine command failed (exit 255): ssh: connection reset');
   const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, {
     ...dependencies,
     wait: ms => f.clock.advance(ms),
-    runBundle: async (_run, path) => { await writeFile(path, 'scripted bundle'); },
+    runBundle: async (_run, path) => { await writeFile(path, 'scripted bundle'); f.clock.block(bundleElapsed); },
     machine: { ...f.dependencies.machine,
       exec: async (_lease, command, options) => {
         if (command.startsWith('mkdir')) {
@@ -546,6 +635,8 @@ test('delivery retries initial SSH setup within its bound and names failed trans
     assert.equal(setupTimeouts.length, 2, 'retry only the idempotent mkdir after a transient SSH failure');
     assert.equal(prepares, 1);
     for (const row of [
+      { step: 'setup', error: /delivery directory readiness: machine readiness deadline reached/, remaining: 0, elapsed: 0, phase: 'delivery-lease-expiry' },
+      { step: 'setup', error: /delivery directory readiness: machine readiness deadline reached/, remaining: 900000, elapsed: 600000, phase: 'delivery-budget-expiry', bundleElapsed: 600000 },
       { step: 'setup', error: /delivery directory readiness.*exit 255.*connection reset/, remaining: 600000, elapsed: 30000 },
       { step: 'setup', error: /delivery directory readiness.*exit 255/, remaining: 600000, elapsed: 30000, consumeTimeout: true },
       { step: 'setup', error: /delivery directory readiness.*exit 255/, remaining: 1500, elapsed: 1500 },
@@ -558,9 +649,21 @@ test('delivery retries initial SSH setup within its bound and names failed trans
       uploads = 0; prepares = 0; setupTimeouts.length = 0; delete lease.execution;
       const started = f.clock.now().getTime();
       lease.deadline = new Date(started + row.remaining).toISOString();
-      await assert.rejects(executor.deliver(lease, run), row.error);
+      bundleElapsed = 'bundleElapsed' in row ? row.bundleElapsed : 0;
+      await assert.rejects(executor.deliver(lease, run), error => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, row.error);
+        if ('phase' in row) {
+          assert.ok(error.cause instanceof ReadinessDeadlineError);
+          assert.equal(error.cause.phase, row.phase);
+          assert.equal(error.cause.deadlineMs, started + row.elapsed);
+          assert.equal(error.cause.observedMs, started + row.elapsed);
+        }
+        return true;
+      });
       assert.equal(lease.execution, undefined);
       assert.equal(f.clock.now().getTime() - started, row.elapsed);
+      if ('phase' in row) assert.deepEqual(setupTimeouts, [], 'expired readiness never starts a machine command');
       assert.ok(setupTimeouts.every(ms => ms > 0 && ms <= Math.min(10000, row.remaining)));
       if (consumeTimeout) assert.deepEqual(setupTimeouts, [10000, 10000, 6000]);
       if (step === 'setup') assert.equal(uploads, 0, 'failed setup never reaches upload');

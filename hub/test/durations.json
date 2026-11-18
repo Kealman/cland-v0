@@ -13681,9 +13681,9 @@
     },
     "hub/test/suite-stage-cover.test.ts::after-stage gates require Mac and sharded Linux at one tree, retain history and advance the next stage": {
       "seconds": 37.654,
-      "owner": "E-880",
-      "added": "2026-11-16",
-      "expires": "2026-12-17",
+      "owner": "C-216",
+      "added": "2026-11-18",
+      "expires": "2026-11-25",
       "reason": "T-1879: slowest passing linux sample 25.102328251 s in A-18031-suite-939223e6-6c21-4080-bdd0-a41c0cce118a-all-at-94f4a8c.log, head 94f4a8c6ac5d26091bde98477e744356d45748bb, receipt 0106998f-5655-43b0-9733-ae0e4c8e5f9d:720. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
     },
     "hub/test/suite-timeouts.test.ts::verify kills a silent test tree and spoke, names the last started test and frees admission": {

@@ -19,6 +19,7 @@ import { DigitalOceanApi, DigitalOceanError } from './api.ts';
 import { readSnapshot } from './prepare.ts';
 import { writeLease, type DropletLease } from './lease.ts';
 import { pause, testTiming } from './watchdog.ts';
+import { ReadinessDeadlineError } from './readiness-deadline.ts';
 import { candidatePathspec, candidateTree, excludedPaths } from '../../verification-tree.ts';
 import { selectionTransport } from '../../suite-selection.ts';
 
@@ -68,7 +69,7 @@ export class DropletRun {
   constructor(root: string, env: NodeJS.ProcessEnv = process.env, dependencies: DropletDependencies = {}, logger: LogFn = () => {}) { this.#logger = logger; this.#dependencies = dependencies; this.#clock = dependencies.clock ?? realClock; this.#root = root; this.#env = env; this.#machine = dependencies.machine ?? new Machine(root, env); }
   async #step<T>(name: string, work: () => Promise<T>): Promise<T> {
     try { return await work(); }
-    catch (error) { throw new Error(`delivery ${name}: ${error instanceof Error ? error.message : 'machine request failed'}`); }
+    catch (error) { throw new Error(`delivery ${name}: ${error instanceof Error ? error.message : 'machine request failed'}`, { cause: error }); }
   }
   async #upload(lease: DropletLease, run: RunRef, local: string, remote: string, name: string, deadline: number): Promise<void> {
     const bytes = (await stat(local)).size;
@@ -95,7 +96,12 @@ export class DropletRun {
   }
   async #directory(lease: DropletLease, dir: string, run: RunRef, deadline: number): Promise<void> {
     const limit = Math.min(deadline, this.#clock.now().getTime() + 30000);
-    if (this.#clock.now().getTime() >= limit) throw new Error('machine readiness deadline reached');
+    const observed = this.#clock.now().getTime();
+    if (observed >= limit) {
+      const phase = limit === Date.parse(lease.deadline) ? 'delivery-lease-expiry'
+        : limit === deadline ? 'delivery-budget-expiry' : 'delivery-directory-readiness';
+      throw new ReadinessDeadlineError(phase, limit, observed);
+    }
     let attempt = 0;
     for (;;) {
       const started = this.#clock.now().getTime();

@@ -1,5 +1,25 @@
 # hub/test/executor-prepare-component.test.ts
 
+Readiness expiry cases assert `ReadinessDeadlineError.phase`, `deadlineMs` and
+`observedMs` using the fixture clock. The boot probe reports `boot-readiness`;
+an expired delivery lease reports `delivery-lease-expiry` through the wrapper's
+`Error.cause` and starts no machine command. Keep the human-readable diagnostic
+assertion too; never classify expiry by parsing that diagnostic. Neither case
+uses wall-clock delay or changes a production deadline.
+The bundle writer can consume 600000 simulated milliseconds while the lease
+still has 300000 milliseconds left. That case must report
+`delivery-budget-expiry`, with no directory command started.
+
+Guarded propagation cases reject acquisition release and builder release,
+recovery checkpoint and catalogue recovery. The original typed readiness error
+keeps its phase and clock fields; `cleanupFailures` records the ancillary step
+and error. Preparation and delivery wrappers preserve it as `Error.cause`.
+Builder release/checkpoint rejection retains the persisted recovery record and
+does not admit later image cleanup. Each test restores its seam and positively
+releases the captured fake lease before fixture disposal. The native launch
+guard spans fixture setup, acquisition and cleanup; it includes its own positive
+controls. No real provider or native process participates.
+
 Use the existing sealed `projectHub` fixture with scripted provider and machine
 I/O and `FakeClock`. No real provider, SSH, native harness or browser is involved.
 Keep builder release, snapshot and accounting assertions on their existing
