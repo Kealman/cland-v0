@@ -2,6 +2,12 @@
 
 Copy to `qa/briefs/T-<n>.md`. Everything the run needs is in this file or in the files it names: whoever runs it cannot ask.
 
+The following helper link is relative to the copied brief in `qa/briefs/`.
+Publish evidence with `publishSessionEvidence` through the shared
+[scan-and-publish helper](../../.agents/skills/qa/EVIDENCE.md).
+Name the publishing session and item topic; keep only declared outputs in the
+evidence folder. A scan refusal stops publication. Redact and retry the helper.
+
 ## Item
 
 T-<n>: what it builds, in two sentences, and where its acceptance criteria are (`task.view T-<n>`, or the paragraph below).

@@ -13,3 +13,6 @@ export const legacySpendPath = (env: NodeJS.ProcessEnv = process.env): string | 
 
 /** Transient source-only bundle; mkdtemp owns and removes its private directory. */
 export const agentDeliveryStagingPrefix=():string=>join(tmpdir(),'cland-agent-code-');
+
+/** Private evidence snapshot; the publication owner removes it after a known outcome. */
+export const evidenceSnapshotStagingPrefix = (): string => join(tmpdir(), 'cland-evidence-');

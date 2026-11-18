@@ -5,7 +5,12 @@ description: Write an item or stage QA brief, request QA as the lead, or run the
 
 A QA run has one file at its centre: the brief, `qa/briefs/T-<n>.md`, committed with the work and self-contained, because a rescue run cannot ask. Headless-grid cases are Lua files, `qa/cases/<ID>.lua`, run with `cland --headless --qa`; other surfaces use the brief’s commands or computer-use steps and `qa-record.sh note`. Every case ends as one line of `.cland/qa/runs.jsonl`; the run ends as one verdict on the item.
 
-The publication scanner rejects Bearer values in Authorization headers, including short values, and standalone Bearer values with at least 16 token characters (excluding `=` padding). Ordinary short words after “bearer” remain publishable; short standalone credentials still need manual redaction. See the demo recording policy for token characters and scan limits.
+Publish evidence through `publishSessionEvidence`, the shared
+[scan-and-publish helper](EVIDENCE.md), inside
+the publishing session. It combines both repository scanners and a generated
+positive control before artifact.create. A refusal stops publication; redact
+the source export and invoke the helper again. The recorder's pre-copy scan
+below remains an additional capture check.
 
 Before running or recording QA, check `node --version` against cland's shipped `node-engines.json` beside this skill's recorder. This file
 travels with `cland init`/`update` and release packaging; the host project's

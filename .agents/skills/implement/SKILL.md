@@ -16,6 +16,12 @@ error-only older-hub replies when changing request diagnostics. See
 For provider credential work, read docs/hub/provider-credential-migration.md for
 the human's startup-export migration, store command and shell evidence limits.
 
+For evidence publication, use `publishSessionEvidence` from the shared
+[scan-and-publish helper](../qa/EVIDENCE.md).
+It scans the exact private snapshot and calls artifact.create only after a clean
+receipt with a generated positive control. A refusal stops publication; redact
+false positives in the export and invoke the helper again.
+
 Artifact inline content is limited to 65536 UTF-8 bytes. Publish larger material
 with `path`. After a lost reply, reuse the same `retryKey` and identical arguments
 (`cland artifact new --retry-key <key>`); a new key requests a new artifact.
