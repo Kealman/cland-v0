@@ -14,7 +14,7 @@ regression_of: T-1878
 topic: topic-1584
 branch: t/T-1931-nightly-soak-skipped-one-repetition
 created: 2026-11-17T03:01:41.324Z
-updated: 2026-11-17T09:12:54.466Z
+updated: 2026-11-18T03:25:04.273Z
 closed: 2026-11-17T09:12:54.466Z
 ---
 
@@ -211,3 +211,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-11-17T09:12:54.466Z
 
 Merged 66bca5453d8c0fbd66b5f3fd725256221a4a08f1 onto dev.
+
+### coord · 2026-11-18T03:25:04.273Z
+
+Post-landing check, 2026-11-18: the first nightly soak after landing and hub restart #82, b86c1867 at 54e153e (A-21044), ran instead of skipping. Its deadline plan trimmed to fit (projected 3538.7 s against 3540 s, rotating base, 0/85 identities repeated, base calibration at the 2.17 floor). The log carries the runner-start marker "suite runner started 2026-11-18T03:04:11Z". T0, T1, T2, T3 and T4 all exited 0. Calibration came from the A-19799 floor this time because no completion with a marker existed yet; this completion is the first calibration source for the next soak.
