@@ -2,8 +2,8 @@
 id: T-1679
 kind: task
 title: Session recovery resumes by name from a stale snapshot and can resume a renamed or replaced session
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1616
 branch: t/T-1679-session-recovery-resumes-by-name-from-a
 created: 2026-11-04T15:48:11.031Z
-updated: 2026-11-18T08:31:50.137Z
+updated: 2026-11-18T11:34:44.118Z
+closed: 2026-11-18T11:34:44.118Z
 ---
 
 ## Summary
@@ -116,3 +117,7 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-11-18T08:31:50.137Z
 
 Batch e028e266 (A-21143) failure attributed outside this item: `territory-lock.test.ts:396` "a hub stops successfully twice after its project directory is deleted" (`Missing expected rejection`, ENOENT expected) is a T-1950 regression. Lease compaction's recursive mkdir recreates the deleted project root; it's filed as T-1964. The case passed 5/5 alone (3 single-case runs on dev 6b8f29393 and on this head 383ab4606, then 2 whole-file runs of 20/20 on this head, macOS, load 3.5–3.9), and this item's diff doesn't touch it. Per the flaky-rerun rule (2026-10-15) the item gets one re-enqueue at the unchanged head 383ab4606.
+
+### coord · 2026-11-18T11:34:44.118Z
+
+Merged de3eceb22aae64a3348c26303e8b9d447b4188d9 onto dev.

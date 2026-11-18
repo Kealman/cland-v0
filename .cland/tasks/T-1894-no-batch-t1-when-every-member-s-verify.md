@@ -2,8 +2,8 @@
 id: T-1894
 kind: task
 title: No batch T1 when every member's verify is current
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1617
 branch: t/T-1894-no-batch-t1-when-every-member-s-verify
 created: 2026-11-16T07:29:45.714Z
-updated: 2026-11-18T08:37:14.257Z
+updated: 2026-11-18T11:35:19.532Z
+closed: 2026-11-18T11:35:19.532Z
 ---
 
 ## Summary
@@ -136,3 +137,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head settlement A-21147, source basis rev-36-1894-source-3/A-21139 clear. Task-view owner records b2ef4f6b-b91b-499d-ab6f-25e5ae292a56/A-21145 finished/passed; durable owner exit0 at39758 and provenance39801 pin53ed3f37b, normalized runtime tree68a9ab6bff8f05c8bd1dda8cc343ccfa90c148fc,cached:null. Clean committed Git tree96d7bc05cb9b27bd3beddad78fb05b610d0ab3ca unchanged. Independently streamed227/227T1,430/430T2(incl44nvim),55/55Web positive base file envelopes;6735basepasses incl145nested,380loadpasses counted separately; zero typed nonpass. All34 task identities have one positive base/timing plus five distinct load pass frames and exact named5/5proof:13controller/owner,15policy,4producer,1worker publication,1uploaded-status. Complete files103/15/4/8/18 pass. C1 skip/identity summaries/cache/config boundaries and C2 stale/missing/invalid fallback positively tested through sealed fake executor/component/pure/VM seams. This is not deployed-hosting-runner/native merge-batch omission or speedup proof. T0/T1/T2/Web exit0; T3/T4 unexecuted, merge/occasion deferral retained. Linuxx64 droplet Node24.21.0/nvim0.12.5, actual HeadlessShell1248/ChromeTesting156.0.8078.4. Budget/lint/ratchet advisories report-only, including controller file wall advisory; no retry/allowance. Prior failed/local epochs remain separate; no Reviewer runtime/source changes. Standards0/Spec0; verify C1,C2 and release hold. Hub/lead owns ready/landing; approved rule6 amendment remains Coordinator-owned after landing, T-1962/T-1963 separate.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-18T11:35:19.532Z
+
+Merged 6031921da5d7be6ba32f8d5757ebaa43fa7874e0 onto dev.

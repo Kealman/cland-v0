@@ -3,18 +3,19 @@ id: T-1642
 kind: task
 title: A sharded close test waits 30 s of wall clock for its remote group and times out on a slow droplet
 state: open
-status: planned
+status: in progress
 size: XS
+criterion_seq: 2
 labels:
   - flaky
 assignee: null
 parent: E-1881
 blocked_by:
   - T-1889
-topic: null
-branch: null
+topic: topic-1620
+branch: t/T-1642-a-sharded-close-test-waits-30-s-of-wall
 created: 2026-11-02T20:18:54.422Z
-updated: 2026-11-17T23:14:12.995Z
+updated: 2026-11-18T11:19:40.881Z
 ---
 
 ## Summary
@@ -28,4 +29,10 @@ Replace the fixed 30 s wall-clock wait on the remote group start with an event o
 ## Acceptance criteria
 
 - [ ] C1. The test waits on the group-start event or the injected clock instead of wall time, and passes 20/20 under a load gate at 10 (test).
-- [ ] C2. Its duration is within the T3 per-test budget in three droplet samples.
+- [ ] C2. Its duration is within the T3 per-test budget in the item's own mode-free droplet verify (evidence); later batch and cover samples are recorded at stage close, not required before merge.
+
+## Comments
+
+### impl-1642 · 2026-11-18T11:19:40.881Z
+
+Consumer/scope map: changing only cancellation case in hub/test/suite-close-recovery.test.ts; same title and T3 classification retained for budget history. Native lost/restart cases unchanged. Shared integrated, remote-fixture, scripted-machine.started, remote-clock drive, fakeNativeGuard and readLeaseHistory already provide needed seams and will not change. Searched group-start wait and remote callers; no production/wire/config contract change. Matching per-file guide updated. Coordinator confirmed scripted cancellation seam and revised C2 to own mode-free verify sample; additional samples tracked at stage close.
