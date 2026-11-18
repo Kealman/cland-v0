@@ -8,7 +8,7 @@ import { mkdir, readFile, realpath, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { userHome, userStateDirectory, legacySpendPath as legacyPath } from '../../state-paths.ts';
 import { acquireLockAsync, acquireLockWithRetry, type LockProcessTable, type LockRetryTiming } from '../../hub/lock.ts';
-import { durableJson, readLeases, type DropletLease } from './lease.ts';
+import { compactLeaseIndex, durableJson, readLeases, type DropletLease } from './lease.ts';
 import { registeredHubSpendStatus, type SpendHubStatus } from './spend-hubs.ts';
 
 type Entry = { category?: 'verify' | 'hosts'; pool?: string; priceHourly?: number; billingMinimumMs?: number; project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
@@ -176,6 +176,21 @@ export async function settleSpend(input: DropletLease | DropletLease[], env: Nod
       if (lease && category(entry) === 'verify' && entry.cost === null) { entry.cost = lease.costUsd!; entry.released = lease.released!; }
     }
   }, env, processes ? { processes } : undefined, 1000);
+}
+/** Observe only published spend. Missing/pending entries retain recovery files
+ * in the hot index; the ledger remains the accounting authority. */
+const compactions = new Map<string, Promise<void>>();
+export function compactLeaseHistory(root: string, env: NodeJS.ProcessEnv, log: (event: Record<string, unknown>) => void, rebuild = false): Promise<void> {
+  const key = JSON.stringify([resolve(root), spendPath(env), rebuild]);
+  const current = compactions.get(key);
+  if (current) return current;
+  const work = (async () => {
+    const ledger = await observe(env);
+    const settled = new Set(ledger.entries.filter(e => e.project === root && category(e) === 'verify' && e.cost !== null && Boolean(e.released)).map(e => e.lease));
+    await compactLeaseIndex(root, settled, (lease, reason) => log({ event: reason === 'record' ? 'executor-lease-record-missing' : 'executor-lease-spend-missing', lease }), rebuild);
+  })().finally(() => { if (compactions.get(key) === work) compactions.delete(key); });
+  compactions.set(key, work);
+  return work;
 }
 export async function inspectSpend(cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, processes?: LockProcessTable, readOnly = false) {
   // Status observes atomically published files. Conservative merging is safe

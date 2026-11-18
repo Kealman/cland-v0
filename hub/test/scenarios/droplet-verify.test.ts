@@ -13,7 +13,7 @@ import { nativeProjectHub as projectHub, cland, clandWithEnv, flushProjectLogs, 
 import { ownProcess } from '../process-cleanup.ts';
 import type { HubStatus } from '../../src/protocol.ts';
 import { fixture, remoteEventually as eventually, remoteWaitMs } from '../remote-fixture.ts';
-import { readLeases } from '../../src/executor/droplet/lease.ts';
+import { readLeaseHistory } from '../../src/executor/droplet/lease.ts';
 import { candidateTree } from '../../src/verification-tree.ts';
 
 const exec = promisify(execFile);
@@ -105,7 +105,7 @@ test('remote start reconciles executed-but-lost replies and marker-only interrup
     const job = await f.launch('--fresh'); const remote = await f.remote(job.id);
     await eventually('suite remains running', async () => (await readFile(join(remote.run, 'suite.log'), 'utf8').catch(() => '')).includes('\nINCREMENTAL 😀\n') ? true : undefined);
     assert.equal((await f.messages(job.id)).length, 0);
-    const lease = (await readLeases(f.root)).find(lease => lease.run === job.id)!;
+    const lease = (await readLeaseHistory(f.root)).find(lease => lease.run === job.id)!;
     const watchdog = lease.watchdog!.pid;
     ownProcess(t, watchdog);
     // A stopped watchdog cannot acknowledge SIGTERM. Release must bound its wait,

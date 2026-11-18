@@ -16,7 +16,7 @@ import { testTiming, type WatchdogOptions } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots, claimSnapshotStorage, recoverPoolSnapshots } from './snapshot-recovery.ts';
 import { prepareBase, prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
-import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend, sweepProjects } from './spend.ts';
+import { compactLeaseHistory, hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend, sweepProjects } from './spend.ts';
 import { DropletRun } from './run.ts';
 import type { Executor, PrepareOptions, ReapOptions, Released, RunRef } from '../executor.ts';
 
@@ -43,6 +43,7 @@ export class DropletExecutor implements Executor {
   readonly #poolWork = new Set<Promise<Prepared>>();
   #prepareAbort: AbortController | null = null;
   #closing = false;
+  #indexRepairNeeded = true;
   readonly #abort = new AbortController();
   #sweepState: 'idle' | 'reconciling' | 'sweeping' | 'deferred' = 'idle';
   #taggedDroplets: number | null = null;
@@ -51,6 +52,7 @@ export class DropletExecutor implements Executor {
   readonly #baseReads = new Set<Promise<string>>();
   readonly #reaps = new Set<Promise<Reaped>>();
   readonly #sweeps = new Set<Promise<void>>();
+  readonly #reconciles = new Set<Promise<void>>();
   readonly #releases = new Map<string, Promise<Released>>();
   readonly #leaseChanges = new Map<string, Promise<unknown>>();
   readonly #env: NodeJS.ProcessEnv;
@@ -85,7 +87,27 @@ export class DropletExecutor implements Executor {
 
   async #save(lease: DropletLease): Promise<void> {
     await writeLease(this.root, lease);
-    this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));
+    await this.#publishLeases();
+  }
+
+  async #publishLeases(): Promise<void> {
+    this.store?.setMeta('executor-leases', JSON.stringify((await readLeases(this.root)).filter(l => l.state !== 'released')));
+  }
+
+  async #compact(rebuild = false): Promise<void> {
+    await compactLeaseHistory(this.root, this.#env, this.logger, rebuild);
+    await this.#publishLeases();
+  }
+
+  /** Index maintenance cannot replace an already confirmed provider receipt. */
+  async #compactAfterRelease(lease: DropletLease): Promise<void> {
+    try { await this.#compact(); }
+    catch (error) {
+      // Keep the previous conservative index for recovery. Even a diagnostic
+      // sink failure is ancillary to the durable Released outcome.
+      try { this.logger({ event: 'executor-lease-maintenance-deferred', lease: lease.lease, operation: 'compact', error: String(error) }); }
+      catch { /* the confirmed lease/accounting receipt remains authoritative */ }
+    }
   }
 
   // Revalidation and the following write must be indivisible with respect to
@@ -101,7 +123,7 @@ export class DropletExecutor implements Executor {
   #watchdogOptions(lease: DropletLease): WatchdogOptions {
     return { checkpoint: watchdog => this.#changeLease(lease, async () => {
       await upgradeWatchdog(this.root, lease, watchdog);
-      this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));
+      await this.#publishLeases();
     }) };
   }
 
@@ -196,7 +218,7 @@ export class DropletExecutor implements Executor {
     if (spent + reserved + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
   }
 
-  async acquire(run: Pick<RunRef, 'id' | 'size'> & Partial<Pick<RunRef, 'log'>>, deadline: string, demo?: DropletLease['demo'], snapshotConfig?: ProjectConfig): Promise<DropletLease> {
+  async acquire(run: Pick<RunRef, 'id' | 'size'> & Partial<Pick<RunRef, 'log'>>, deadline: string, demo?: DropletLease['demo'], snapshotConfig?: ProjectConfig, admitted?: (lease: DropletLease) => void): Promise<DropletLease> {
     this.#abort.signal.throwIfAborted();
     const config = snapshotConfig ?? await this.#config();
     const runDeadline = Date.parse(deadline);
@@ -204,7 +226,7 @@ export class DropletExecutor implements Executor {
     if (!this.#env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
     const snapshot = await readSnapshot(this.root);
     if (!snapshot) throw new Error('no prepared snapshot; run cland executor prepare');
-    const lease = await this.#acquire(run, deadline, { size: run.size ?? config.verification.droplet.size, regions: config.verification.droplet.regions.filter(region => snapshot.regions.includes(region)), image: snapshot.image, minDiskSize: snapshot.minDiskSize, ...(demo ? { demo } : {}) }, config);
+    const lease = await this.#acquire(run, deadline, { size: run.size ?? config.verification.droplet.size, regions: config.verification.droplet.regions.filter(region => snapshot.regions.includes(region)), image: snapshot.image, minDiskSize: snapshot.minDiskSize, ...(demo ? { demo } : {}) }, config, admitted);
     try {
       lease.snapshot = snapshot;
       await this.#save(lease);
@@ -214,7 +236,7 @@ export class DropletExecutor implements Executor {
     catch (error) { await this.release(lease); throw error; }
   }
 
-  async #acquire(run: Pick<RunRef, 'id'> & Partial<Pick<RunRef, 'log'>>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string; demo?: DropletLease['demo'] }, config: ProjectConfig): Promise<DropletLease> {
+  async #acquire(run: Pick<RunRef, 'id'> & Partial<Pick<RunRef, 'log'>>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string; demo?: DropletLease['demo'] }, config: ProjectConfig, admitted?: (lease: DropletLease) => void): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);
     const api = (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock));
     const { size, regions, image } = input;
@@ -237,6 +259,7 @@ export class DropletExecutor implements Executor {
     try {
       await (this.dependencies.host ?? processHost).createKey(dir, name, this.#env);
       await this.#reserve(lease, config.verification.remoteBudget, runDeadline);
+      admitted?.(lease); // Durable lease identity reaches the caller before provider resource creation.
       await reserveSpend(this.root, lease, config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.wait, this.dependencies.processes, this.#abort.signal);
       this.#abort.signal.throwIfAborted();
       lease.watchdog = await (this.dependencies.host ?? processHost).armWatchdog(dir, this.#env);
@@ -435,6 +458,7 @@ export class DropletExecutor implements Executor {
     await Promise.allSettled(this.#baseReads);
     await Promise.allSettled(this.#reaps);
     await Promise.allSettled(this.#sweeps);
+    await Promise.allSettled(this.#reconciles);
   }
 
   async release(lease: DropletLease, deadline?: number): Promise<Released> {
@@ -457,7 +481,7 @@ export class DropletExecutor implements Executor {
       lease.state = 'releasing';
       await this.#save(lease);
     });
-    if (lease.state === 'released') { await settleSpend(lease, this.#env, this.dependencies.processes); return { lifetimeMs: lease.lifetimeMs ?? 0, costUsd: lease.costUsd ?? 0 }; }
+    if (lease.state === 'released') { await settleSpend(lease, this.#env, this.dependencies.processes); await this.#compactAfterRelease(lease); return { lifetimeMs: lease.lifetimeMs ?? 0, costUsd: lease.costUsd ?? 0 }; }
     if (this.#closing) return { lifetimeMs: null, costUsd: null };
     const limit = Math.min(deadline, this.clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_RELEASE_MS', 15000, this.#env));
     if (limit <= this.clock.now().getTime()) return { lifetimeMs: null, costUsd: null };
@@ -474,6 +498,7 @@ export class DropletExecutor implements Executor {
           await (this.dependencies.host ?? processHost).stopWatchdog(lease, this.#env, this.#watchdogOptions(lease));
           await rm(join(leaseDir(this.root, lease), 'key'), { force: true });
           await rm(join(leaseDir(this.root, lease), 'key.pub'), { force: true });
+          await this.#compactAfterRelease(lease);
           this.logger({ event: 'executor-lease-released', lease: lease.lease, id: lease.resource, lifetimeMs: lease.lifetimeMs, costUsd: lease.costUsd });
           return { lifetimeMs: lease.lifetimeMs!, costUsd: lease.costUsd! };
         }
@@ -530,7 +555,17 @@ export class DropletExecutor implements Executor {
   }
 
   /** Restart repair and releasing-only retries. General orphan sweeping belongs to the safety stage. */
-  async reconcile(restart = true): Promise<void> {
+  reconcile(restart = true): Promise<void> {
+    if (this.#closing) return Promise.resolve();
+    const work = this.#reconcile(restart).finally(() => { this.#reconciles.delete(work); });
+    this.#reconciles.add(work);
+    return work;
+  }
+
+  async #reconcile(restart: boolean): Promise<void> {
+    if (restart) this.#indexRepairNeeded = true;
+    await this.#compact(this.#indexRepairNeeded);
+    this.#indexRepairNeeded = false;
     await this.#retryShardReleases();
     if (this.#env.DIGITALOCEAN_TOKEN) await rememberProject(this.root, this.#env, this.dependencies.processes, this.clock, this.dependencies.wait, this.#abort.signal);
     type OwnedJob = { id: string; reported: boolean; state?: string; outcome: unknown; shards?: OwnedJob[] };
@@ -586,7 +621,7 @@ export class DropletExecutor implements Executor {
     }
     if (!this.#closing && this.#prepareJob?.state !== 'running') await recoverSnapshots(this.root, this.store, this.logger, this.#env, boundedProvider(this.dependencies.api!, this.clock, 15000, deadline));
     if (!this.#closing) await recoverPoolSnapshots(this.root, this.logger, this.#env, boundedProvider(this.dependencies.api!, this.clock, 15000, deadline));
-    this.store?.setMeta('executor-leases', JSON.stringify(await readLeases(this.root)));
+    await this.#compact();
   }
   sweep(restart = false): Promise<void> {
     if (this.#closing) return Promise.resolve();

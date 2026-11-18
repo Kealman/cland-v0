@@ -17,6 +17,12 @@ Project disposal must drain an outstanding writer before closing the session tab
 belongs in a diagnostic. Two-second receipt bounds cover native fixture I/O;
 they are not scheduler sleeps or latency measurements.
 
+Disposal stops core publications before closing the separately owned project
+session table, matching the production ordering in hub/src/hub/daemon.ts. The
+shared no-sync-filesystem trap keeps the same synchronous-export coverage in
+this file and the executor recovery loader control. Credential receipt, serving,
+skill/clause, private-file and empty trap-call assertions remain in place.
+
 Admit a Coordinator's relaunch frame with its own synthetic credential, hold the
 exact credential rename, revoke its role, and retain the forbidden/zero-native-
 resume assertions after release. Fault the owned rename separately; inspect

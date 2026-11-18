@@ -9,7 +9,7 @@ import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
-import { readLeases, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { readLeases, readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { machineAccounting, releaseT3Cover, type SuiteJob } from '../src/hub/suites.ts';
 import { machineHealthSummary } from '../src/executor/droplet/health.ts';
@@ -28,6 +28,27 @@ async function running(f: Fixture, id: string) {
   await f.suites.settled();
 }
 const remote = (f: Fixture, require = true) => f.launch(require ? { executor: 'droplet', fresh: true } : { fresh: true });
+
+test('failed acquisition retains the admitted released lease after confirmed cleanup', async t => {
+  const run = caseDeadlines(t, { timeoutMs: 5000, ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return run.run(async step => {
+    const f = await step(() => run.wait('fixture setup', async () => {
+      const f = await suiteUnit(run.fixtures, { executor: 'droplet', remoteBudget: 1 }, '', true);
+      run.adoptRoot(f.root); return f;
+    }));
+    t.mock.method(f.machine.dependencies.machine, 'exec', async () => { throw new Error('scripted readiness failure'); });
+    const job = await step(() => run.wait('remote admission', () => remote(f)));
+    await step(() => run.wait('acquisition cleanup', () => f.machine.waits.run(f.suites.settled())));
+    await step(() => run.wait('accounting tick', () => f.tick()));
+    await step(() => run.wait('accounting completion', () => f.machine.waits.run(f.suites.settled())));
+    const saved = (await step(() => f.jobs())).find(row => row.id === job.id)!;
+    assert.equal((saved.lease as DropletLease | undefined)?.state, 'released', 'Suites keeps the owner receipt after the hot list prunes it');
+    assert.equal((saved.lease as DropletLease).run, job.id);
+    assert.equal(typeof (saved.lease as DropletLease).costUsd, 'number');
+    assert.equal((await step(() => readLeases(f.root))).some(lease => lease.run === job.id), false);
+    assert.deepEqual(f.api.droplets, []);
+  });
+});
 
 for (const missingLog of [false, true]) for (const inventory of ['absent', 'present', 'unknown'] as const) test(`restored green remote receipt with unfinished coverage collection reconciles provider inventory (${inventory}, missingLog=${missingLog})`, { timeout: 10000 }, async t => {
   const run = caseDeadlines(t, { timeoutMs: 5000, ownership: { beforeDirectories, guardDirectoryRemoval } });
@@ -190,7 +211,7 @@ for (const scenario of ['live', 'restart', 'failed notice restart']) test(`a loc
   assert.equal(f.status(explicitLocal.id).executor, 'local');
   const admitted = f.when(() => f.status(waiting.id).state === 'running' ? true : undefined);
   await f.machine.waits.run(executor.release(lease));
-  assert.equal((await readLeases(f.root)).find(saved => saved.lease === lease.lease)!.state, 'released');
+  assert.equal((await readLeaseHistory(f.root)).find(saved => saved.lease === lease.lease)!.state, 'released');
   // Start the admission bound only after the durable capacity-release receipt.
   const admissionDeadline = until(() => f.status(waiting.id).state === 'running', { what: 'earlier local fallback admitted remotely', timeoutMs: 2000 });
   await f.tick();
@@ -303,7 +324,7 @@ test('a finished run waits for confirmed lease accounting before publishing its 
   await f.tick();
   await f.machine.waits.run(f.result(job.id));
   const report = f.reports.find(report => report.id === job.id)!;
-  const lease = (await readLeases(f.root)).find(lease => lease.run === job.id)!;
+  const lease = (await readLeaseHistory(f.root)).find(lease => lease.run === job.id)!;
   const ledger = JSON.parse(await readFile(join(f.root, '.cland/executor-state/spend.json'), 'utf8'));
   assert.equal(lease.state, 'released');
   assert.equal(report.machine!.lifetimeMs, lease.lifetimeMs);
@@ -342,7 +363,7 @@ test('past-window accounting publishes pending confirmation then corrects once f
   await f.machine.waits.run(executor.sweep());
   await f.tick(); await f.suites.settled();
   assert.equal(corrections.length, 1);
-  const lease = (await readLeases(f.root)).find(lease => lease.run === job.id)!;
+  const lease = (await readLeaseHistory(f.root)).find(lease => lease.run === job.id)!;
   assert.equal(corrections[0]!.machine!.lifetimeMs, lease.lifetimeMs);
   assert.equal(corrections[0]!.machine!.costUsd, lease.costUsd);
   assert.doesNotMatch(machineAccounting(corrections[0]!.machine!), /unknown|pending/);
@@ -363,7 +384,7 @@ for (const budget of [1, 2]) test(`explicit droplet refuses an uncovered reserva
 test('reload preserves an active verification and lease, and new admissions use the new lifetime and spend cap', async t => {
   const f = await suiteUnit(t, { remoteBudget: 1 }, 'lifetime="15m"\nrun_timeout="5m"\nload_gate_workers=1\ndaily_spend_usd=5', true);
   const first = await remote(f); await running(f, first.id);
-  const old = (await readLeases(f.root))[0]!;
+  const old = (await readLeaseHistory(f.root))[0]!;
   const waiting = await remote(f);
   assert.ok(f.suites.snapshot().waiters.some(w => w.id === waiting.id));
   const source = '[verification]\ncheck="true"\ntest="true"\nremote_budget=2\nlifetime="11m"\nrun_timeout="1m"\nload_gate_workers=3\ndaily_spend_usd=0';
@@ -373,11 +394,11 @@ test('reload preserves an active verification and lease, and new admissions use 
   await f.machine.waits.run(f.when(() => f.status(waiting.id).outcome ?? undefined)); await f.suites.settled(); await f.tick();
   assert.match((await f.result(waiting.id)).outcome!.cause, /daily spend cap \$0/);
   await assert.rejects(remote(f), /daily spend cap \$0/); assert.equal(f.api.droplets.length, 1);
-  assert.equal((await readLeases(f.root)).find(l => l.name === old.name)!.deadline, old.deadline);
+  assert.equal((await readLeaseHistory(f.root)).find(l => l.name === old.name)!.deadline, old.deadline);
   f.configure(source.replace('daily_spend_usd=0', 'daily_spend_usd=5').replace('remote_budget=2', 'remote_budget=1'));
   const second = await remote(f); assert.ok(f.suites.snapshot().waiters.some(w => w.id === second.id));
   f.configure(source.replace('daily_spend_usd=0', 'daily_spend_usd=5').replace('load_gate_workers=3', 'load_gate_workers=4')); await f.tick(); await running(f, second.id);
-  const next = (await readLeases(f.root)).find(l => l.name !== old.name)!;
+  const next = (await readLeaseHistory(f.root)).find(l => l.name !== old.name)!;
   assert.ok(Date.parse(old.deadline) - Date.parse(next.deadline) > 180000);
   const oldRun = (await f.jobs()).find(j => j.id === first.id)!; const newRun = (await f.jobs()).find(j => j.id === second.id)!;
   assert.equal(oldRun.config!.verification.runTimeoutMs, 300000); assert.equal(newRun.config!.verification.runTimeoutMs, 60000);
@@ -460,7 +481,7 @@ test('50 parallel acquirers refuse the spend cap after a stalled budget publicat
     if (outcome.status === 'rejected') assert.equal(outcome.reason.message, 'daily spend cap $0.1 reached');
   }
   assert.equal(f.api.droplets.length, 1, 'cap refusals create no provider machines');
-  assert.equal((await readLeases(f.root)).filter(lease => lease.state !== 'released').length, 1);
+  assert.equal((await readLeaseHistory(f.root)).filter(lease => lease.state !== 'released').length, 1);
   await f.finish(first.id);
 });
 

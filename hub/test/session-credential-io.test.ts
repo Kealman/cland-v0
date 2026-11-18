@@ -2,7 +2,6 @@
 import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import files from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
@@ -20,6 +19,7 @@ import { FakeClock } from './fake-clock.ts';
 import { sessionCredentialFile, sessionRunDirectory } from '../../shared/session-credential.ts';
 import { value } from './validation-support.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
+import { noSyncFilesystem as noSync } from './no-sync-filesystem.ts';
 
 // The production role source: a real `ProjectConfiguration` with a real `.agents/skills` inventory, so the
 // role-bearing hello is guarded with no fixed-role substitution (T-1230 closed T-1220's exemption).
@@ -44,20 +44,13 @@ async function credentialHub(t: import('node:test').TestContext, root: string) {
   hub.dispatcher.useSessions(project.sessions);
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   let closingProject: Promise<void> | undefined;
-  const closeProject = () => closingProject ??= Promise.resolve(project.close());
+  const closeProject = () => closingProject ??= (async () => {
+    // Match daemon.ts: stop deferred core publications before the adapters' table.
+    hub.core.close();
+    await project.close();
+  })();
   onCleanup(t, async () => { await edge.close(); await closeProject(); await hub.close(); });
   return { discovery: { root, socket, secret: TEST_SECRET }, fakes, closeProject };
-}
-
-function noSync(t: import('node:test').TestContext) {
-  const originals = Object.fromEntries(Object.entries(fs).filter(([name, fn]) => name.endsWith('Sync') && typeof fn === 'function'));
-  const calls: string[] = [];
-  for (const name of Object.keys(originals)) Object.assign(fs, { [name]: () => { calls.push(`${name}: ${new Error().stack}`); throw new Error(`synchronous ${name} on serving path`); } });
-  syncBuiltinESMExports();
-  let restored = false;
-  const restore = () => { if (restored) return; restored = true; Object.assign(fs, originals); syncBuiltinESMExports(); };
-  t.after(restore);
-  return { calls, restore };
 }
 
 async function receipt<T>(work: Promise<T>, label: string): Promise<T> {

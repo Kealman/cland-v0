@@ -6,7 +6,7 @@ import { fixture } from './remote-fixture.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { join } from 'node:path';
 import type { Message } from '../src/protocol.ts';
-import { readLeases } from '../src/executor/droplet/lease.ts';
+import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
 import { appendFile, readFile } from 'node:fs/promises';
 
 for (const cap of [12000, 768, 384]) test(`selection fallback is visible before summaries at the ${cap}-byte result cap`, async t => {
@@ -56,7 +56,7 @@ test('scripted remote verification acquires, delivers, starts, collects and rele
   assert.ok(steps.indexOf('log') < steps.indexOf('release'));
   assert.deepEqual(f.api.droplets, []);
   assert.deepEqual(f.api.keys, []);
-  const [lease] = await readLeases(f.root);
+  const [lease] = await readLeaseHistory(f.root);
   assert.equal(lease?.state, 'released');
   assert.equal(lease?.watchdog?.pid, 0, 'the host fake never armed a detached child');
   assert.equal(f.spoke.pid, 0);

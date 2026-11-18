@@ -109,14 +109,15 @@ export function claimSnapshotStorage(storage: SnapshotStorage): (() => void) | u
   return () => { activeStorage.delete(storage.recordPath); };
 }
 export async function recoverPoolSnapshots(root: string, log: LogFn, env: NodeJS.ProcessEnv, provider: Provider): Promise<void> {
-  const { poolSnapshotStorage } = await import('../../host/provider/pool-image.ts');
   let names: string[];
   try { names = await readdir(join(root, '.cland/run/hosts')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
+  let poolSnapshotStorage: typeof import('../../host/provider/pool-image.ts').poolSnapshotStorage | undefined;
   for (const name of names) {
     if (!name.endsWith('-recovery')) continue;
     let pool: string;
     try { pool = parsePoolName(name.slice(0, -9)); } catch { continue; }
+    poolSnapshotStorage ??= (await import('../../host/provider/pool-image.ts')).poolSnapshotStorage;
     const storage = poolSnapshotStorage(root, pool);
     const release = claimSnapshotStorage(storage);
     if (!release) continue;

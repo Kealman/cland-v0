@@ -15,7 +15,7 @@ import { drive } from './remote-clock.ts';
 import { onCleanup, beforeDirectories } from './process-cleanup.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { keyHash, readSnapshot, snapshotPath, type Snapshot } from '../src/executor/droplet/prepare.ts';
-import { readLeases } from '../src/executor/droplet/lease.ts';
+import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
 import { Machine } from '../src/executor/droplet/machine.ts';
 import { diagnosticResult } from '../src/hub/merge-batches.ts';
 import { defaultConfig } from '../src/init/config.ts';
@@ -281,7 +281,7 @@ test('failed replacement releases its builder, deletes a partial image and keeps
     assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
     assert.match(failed.prepare!.error, /failed|deadline|time bound/);
     if (failure === 'install') assert.match(failed.prepare!.error, /install: prepare failed \(exit 8\)\ninstall-output/);
-    for (const lease of await readLeases(root)) {
+    for (const lease of await readLeaseHistory(root)) {
       assert.equal(await f.dependencies.host.watchdogAlive(lease), false, `${failure}: released builder watchdog has exited`);
     }
   }
@@ -537,7 +537,7 @@ test('delivery retries a failed bundle with timed attempts and keeps exhausted d
     assert.equal(lease.execution?.delivered, true);
     assert.deepEqual(bounds, [318000, 318000]);
     let log = await readFile(run.log, 'utf8');
-    assert.equal((await readLeases(f.root)).find(row => row.run === run.id)!.execution?.deliveryLogEnd, Buffer.byteLength(log));
+    assert.equal((await readLeaseHistory(f.root)).find(row => row.run === run.id)!.execution?.deliveryLogEnd, Buffer.byteLength(log));
     assert.match(log, /delivery upload tree.bundle attempt 1: failed; elapsed 125000 ms; timeout 318000 ms/);
     assert.match(log, /delivery upload tree.bundle attempt 2: succeeded; elapsed 250 ms; timeout 318000 ms/);
     failAll = true; bounds.length = 0; delete lease.execution;

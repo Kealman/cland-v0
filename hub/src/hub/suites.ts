@@ -996,7 +996,10 @@ export class Suites {
             if (!committedOnly && await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
             if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
             job.remoteAcquireAttempted = true; this.#save(job);
-            try { job.lease = await this.#droplet.acquire(run, new Date(this.#clock.now().getTime() + (job.config?.verification.lifetimeMs ?? this.#options.lifetimeMs ?? 6600000)).toISOString(), undefined, job.config); }
+            try { job.lease = await this.#droplet.acquire(run, new Date(this.#clock.now().getTime() + (job.config?.verification.lifetimeMs ?? this.#options.lifetimeMs ?? 6600000)).toISOString(), undefined, job.config, lease => {
+              if (lease.run !== job.id) throw new Error('acquired lease run identity mismatch');
+              job.lease = lease; this.#save(job);
+            }); }
             catch (error) {
               if (this.#closed) return; // The durable creating lease belongs to restart reconciliation.
               if (job.cancelled) throw error;

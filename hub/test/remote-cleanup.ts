@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { fixture } from './remote-fixture.ts';
 import { drive } from './remote-clock.ts';
-import { readLeases } from '../src/executor/droplet/lease.ts';
+import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
 import { eventually } from './harness.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
@@ -25,7 +25,7 @@ export async function cancelAndDrain(runs: OwnedRemoteRun[], release: () => void
     await drive(f, eventually('cancelled acquisition completed and released', async () => {
       const status = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
       if (status.suites?.find(job => job.id === id)?.state !== 'finished') return;
-      return (await readLeases(f.root)).filter(lease => lease.run === id).every(lease => lease.state === 'released') ? true : undefined;
+      return (await readLeaseHistory(f.root)).filter(lease => lease.run === id).every(lease => lease.state === 'released') ? true : undefined;
     }));
     // Completion/release and downstream reporting have separate bounded receipts.
     reports.push(await f.result(id));
@@ -34,7 +34,7 @@ export async function cancelAndDrain(runs: OwnedRemoteRun[], release: () => void
     await attempt(async () => {
       await drive(f, f.stop().then(() => {}));
       assert.equal(f.waits.pending.length, 0, 'no product wait survives hub shutdown');
-      assert.ok((await readLeases(f.root)).every(lease => lease.state === 'released'), 'all owned acquisitions released');
+      assert.ok((await readLeaseHistory(f.root)).every(lease => lease.state === 'released'), 'all owned acquisitions released');
     });
   }
   if (errors.length) throw new AggregateError(errors, 'remote fixture cleanup failed');

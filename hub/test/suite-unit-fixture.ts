@@ -85,13 +85,13 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     // Suites policy gets semantic executor receipts. OS lock/spend integration
     // uses the real backend only in suite-accounting.test.ts (T2).
     t.mock.method(DropletExecutor.prototype, 'checkSpend', async () => {});
-    t.mock.method(DropletExecutor.prototype, 'acquire', async (run: RunRef, deadline: string): Promise<DropletLease> => {
+    t.mock.method(DropletExecutor.prototype, 'acquire', async (run: RunRef, deadline: string, _demo?: DropletLease['demo'], _config?: unknown, admitted?: (lease: DropletLease) => void): Promise<DropletLease> => {
       const created = clock.now().toISOString(), size = run.size ?? 'c-8';
       acquisitions.push(run.id);
       // Pure scheduler rules consume executor receipts without creating provider resources.
       const machine = options.machineReceiptsOnly ? { id: acquisitions.length, name: `cland-${run.id}`, tags: ['cland'] } : await api.provider.create({ name: `cland-${run.id}`, tags: ['cland'], size, region: 'lon1', image: 900, ssh_keys: [] });
       const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', run: run.id, lease: run.id, name: machine.name, tags: machine.tags, size, region: 'lon1', priceHourly: 0.25, keyName: run.id, created, deadline, state: 'active', resource: machine.id, keyId: null };
-      await writeLease(root, lease); return lease;
+      await writeLease(root, lease); admitted?.(lease); return lease;
     });
     t.mock.method(DropletExecutor.prototype, 'release', async (lease: DropletLease) => {
       if (!options.machineReceiptsOnly && lease.resource !== null) { await api.provider.deleteDroplet(lease.resource); await api.provider.droplet(lease.resource).catch(() => {}); }

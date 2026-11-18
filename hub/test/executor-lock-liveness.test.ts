@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { acquireLockAsync, acquireLockWithRetry } from '../src/hub/lock.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { DigitalOceanApi, DigitalOceanError } from '../src/executor/droplet/api.ts';
-import { writeLease, readLeases, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { writeLease, readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { rememberProject, reserveShardSpend, spendPath } from '../src/executor/droplet/spend.ts';
 import { scratchMachine, legacyLedger } from './init-machine.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -137,7 +137,7 @@ test('settled legacy lease history cannot repeatedly defer a later release', asy
     await executor.sweep();
     await executor.sweep();
     assert.deepEqual(events.filter(event => event.event === 'executor-reconcile-failed'), []);
-    assert.equal((await readLeases(machine.root)).find(lease => lease.lease === 'z-pending')!.state, 'released');
+    assert.equal((await readLeaseHistory(machine.root)).find(lease => lease.lease === 'z-pending')!.state, 'released');
     const ledger = JSON.parse(await fs.readFile(spendPath(env), 'utf8'));
     assert.equal(ledger.entries.filter((entry: { cost: number | null }) => entry.cost === null).length, 0);
     assert.equal(ledger.entries.filter((entry: { cost: number }) => entry.cost === 0.5).length, 16);

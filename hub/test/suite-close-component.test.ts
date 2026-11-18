@@ -8,7 +8,7 @@ import { drive } from './remote-clock.ts';
 import { beforeDirectories, guardDirectoryRemoval, onCleanup } from './process-cleanup.ts';
 import { eventually, projectHub, connectUi, inProcessSpoke, until } from './harness.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
-import { readLeases } from '../src/executor/droplet/lease.ts';
+import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { DropletExecutor, ProviderCapacityUnavailable } from '../src/executor/droplet/droplet.ts';
 import { Suites } from '../src/hub/suites.ts';
@@ -115,7 +115,7 @@ test('two-shard close reports despite a corrupt spend ledger and the executor sw
     assert.equal((await f.messages(job.id)).length, 1);
     const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
     assert.deepEqual(queue.remote, [], 'both scheduler reservations are free while accounting is broken');
-    const leases = (await readLeases(f.root)).filter(lease => runs.includes(lease.run));
+    const leases = (await readLeaseHistory(f.root)).filter(lease => runs.includes(lease.run));
     assert.equal(leases.length, 2);
     assert.ok(leases.every(lease => lease.state === 'released'), 'provider deletion is durably confirmed');
     assert.deepEqual(f.api.droplets, []);
@@ -134,7 +134,7 @@ test('two-shard close reports despite a corrupt spend ledger and the executor sw
     return runs.every(run => ledger.entries.some(entry => entry.run === run && entry.cost !== null)) ? true : undefined;
   });
   const ledger = JSON.parse(await readFile(path, 'utf8')) as { entries: { run: string; cost: number | null }[] };
-  for (const lease of (await readLeases(f.root)).filter(lease => runs.includes(lease.run))) {
+  for (const lease of (await readLeaseHistory(f.root)).filter(lease => runs.includes(lease.run))) {
     assert.equal(ledger.entries.find(entry => entry.run === lease.run)!.cost, lease.costUsd);
   }
   await eventually('successful accounting retry recorded', async () => (await log()).findLast(entry => entry.event === 'executor-sweep')?.failures === 0 ? true : undefined);
@@ -158,7 +158,7 @@ test('pre-lease shard failures retain reservation release through executor resta
   const job = await drive(f, f.launch('all', '--fresh', '--occasion', 'stage'));
   await setup.wait('both shards reach pre-lease provider lookup', () => entered.promise);
   const saved = await readFile(path, 'utf8');
-  assert.deepEqual(await readLeases(f.root), []);
+  assert.deepEqual(await readLeaseHistory(f.root), []);
   const result = eventually('failed parent receipt with broken ledger', async () => {
     await f.clock.advance(1000);
     await f.verificationSettled();
@@ -173,7 +173,7 @@ test('pre-lease shard failures retain reservation release through executor resta
   assert.match(message.text, /shard-1: droplet size c-8 is unavailable/);
   assert.match(message.text, /shard-2: droplet size c-8 is unavailable/);
   assert.doesNotMatch(message.text, /exit 1|\bred\b|Failures:|shard failure/);
-  assert.deepEqual(await readLeases(f.root), [], 'no real lease can own these synthetic reservations');
+  assert.deepEqual(await readLeaseHistory(f.root), [], 'no real lease can own these synthetic reservations');
   assert.equal((await f.messages(job.id)).length, 1);
   assert.deepEqual(((await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue).remote, []);
   const receiptPath = join(f.root, '.cland/run/suites', job.id, 'result.json');
@@ -215,7 +215,7 @@ for (const mixed of [false, true]) test(`generic pre-execution shard acquisition
   assert.match(message.text, /No tests executed\./);
   assert.doesNotMatch(message.text, /exit 1|\bred\b|Failures:|shard failure/);
   assert.equal(f.machine.calls.some(call => call.step === 'start'), false);
-  assert.deepEqual(await readLeases(f.root), []);
+  assert.deepEqual(await readLeaseHistory(f.root), []);
   assert.equal((await f.messages(job.id)).length, 1);
 });
 

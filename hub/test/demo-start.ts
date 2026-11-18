@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import type { TestContext } from 'node:test';
-import { readLeases, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { until, type FrameClient } from './harness.ts';
 import { remoteWaitMs } from './remote-fixture.ts';
 
@@ -10,7 +10,7 @@ import { remoteWaitMs } from './remote-fixture.ts';
 export async function startDemo(t: TestContext, root: string, ui: FrameClient, frame: {
   epic: string; commit?: string; as?: { name: string; sessionId: string; shell: true };
 }): ReturnType<FrameClient['request']> {
-  const previous = new Set((await readLeases(root)).map(lease => lease.lease));
+  const previous = new Set((await readLeaseHistory(root)).map(lease => lease.lease));
   const id = `demo-start-${randomUUID()}`;
   const wallBegan = Date.now();
   const began = performance.now();
@@ -25,7 +25,7 @@ export async function startDemo(t: TestContext, root: string, ui: FrameClient, f
       observed.reply ??= performance.now() - began;
       if (!reply.ok) return true;
     }
-    lease = (await readLeases(root)).find(l => l.demo?.epic === frame.epic && !previous.has(l.lease));
+    lease = (await readLeaseHistory(root)).find(l => l.demo?.epic === frame.epic && !previous.has(l.lease));
     if (!lease) return false;
     observed.lease ??= performance.now() - began;
     if (lease.resource !== null) observed.provisioned ??= performance.now() - began;
@@ -40,7 +40,7 @@ export async function startDemo(t: TestContext, root: string, ui: FrameClient, f
   } catch (error) {
     // Failure-only, bounded facts from the durable record; never dump credentials
     // or the lease's command plan. Release may already have changed its state.
-    const latest = (await readLeases(root)).find(l => l.demo?.epic === frame.epic && !previous.has(l.lease));
+    const latest = (await readLeaseHistory(root)).find(l => l.demo?.epic === frame.epic && !previous.has(l.lease));
     const stage = latest?.demo?.ready ? 'demo ready' : latest?.execution?.delivered ? 'delivery persisted'
       : latest?.snapshot ? 'snapshot persisted; image readiness unconfirmed'
       : latest?.resource !== null && latest?.resource !== undefined ? 'provider resource persisted'

@@ -9,7 +9,7 @@ import { keyHash } from '../src/executor/droplet/prepare.ts';
 import { FakeClock } from './fake-clock.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
-import { readLeases } from '../src/executor/droplet/lease.ts';
+import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
 import { inspectSpend } from '../src/executor/droplet/spend.ts';
 import { fixtureWork, type FixtureStep } from '../../test-support/fixture-work.ts';
 import { until } from './until.ts';
@@ -114,7 +114,7 @@ for (const scenario of ['fallback', 'exhausted', 'other 422', 'other 400', 'othe
     assert.match(await step(() => readFile(log, 'utf8')), /lon1.*422 unprocessable_entity: Size is not available in this region/);
     await step(() => machine.waits.run(executor.release(lease)));
   }
-  const record = (await step(() => readLeases(root)))[0];
+  const record = (await step(() => readLeaseHistory(root)))[0];
   assert.equal(record?.state, scenario === 'other 500' || scenario === 'malformed success' ? 'releasing' : 'released');
   if (scenario === 'malformed success') {
     assert.equal(record?.createFinished, undefined);

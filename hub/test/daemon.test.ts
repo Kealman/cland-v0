@@ -19,7 +19,7 @@ import { askHubFrame } from '../src/cli/socket-client.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { preparedDropletFixture } from './droplet-fixture.ts';
 import { syntheticProviderEnvironment } from './synthetic-provider.ts';
-import { readLeases } from '../src/executor/droplet/lease.ts';
+import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 
 for (const action of ['hub stop', 'SIGTERM', 'SIGTERM with stalled socket close'] as const) test(`${action} during an in-flight droplet create retains ownership and reaps the hub within three seconds`, async t => {
@@ -66,7 +66,7 @@ for (const action of ['hub stop', 'SIGTERM', 'SIGTERM with stalled socket close'
   await askHubFrame(discovery, { type: 'suite.start', mode: 'auto', cwd: root, report: 'general', executor: 'droplet' }, 5000, env);
   await eventually('fake provider create entered', () => api.requests.some(r => r.method === 'POST' && r.path === '/v2/droplets') ? true : undefined, 10000);
   await entered.promise;
-  const [lease] = await readLeases(root);
+  const [lease] = await readLeaseHistory(root);
   assert.ok(lease?.createStarted);
   assert.equal(lease.resource, null);
   assert.deepEqual(lease.tags.slice(0, 1), ['cland']);
@@ -86,7 +86,7 @@ for (const action of ['hub stop', 'SIGTERM', 'SIGTERM with stalled socket close'
     if (stalled) assert.match(output, /signal shutdown deadline expired/);
   } finally { clearTimeout(timer); }
   assert.equal(pidAlive(child.pid!), false);
-  const [retained] = await readLeases(root);
+  const [retained] = await readLeaseHistory(root);
   assert.equal(retained?.lease, lease.lease);
   assert.notEqual(retained?.state, 'released', 'an unanswered create remains owned for reconciliation');
   assert.equal(retained?.createFinished, undefined);
@@ -103,7 +103,7 @@ for (const action of ['hub stop', 'SIGTERM', 'SIGTERM with stalled socket close'
   finally { await recovery.close(); }
   assert.deepEqual(api.droplets, [foreign]);
   assert.deepEqual(api.keys, []);
-  assert.equal((await readLeases(root))[0]?.state, 'released');
+  assert.equal((await readLeaseHistory(root))[0]?.state, 'released');
   assert.ok(!api.requests.some(r => r.method === 'DELETE' && r.path === '/v2/droplets/9000'));
 });
 

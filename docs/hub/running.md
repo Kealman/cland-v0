@@ -648,7 +648,7 @@ digits derived from the project root path and name. Reap leaves droplets without
 
 Before create, cland writes and fsyncs a lease in
 `.cland/run/executor/leases/<lease>/lease.json` (mode 0600), mirrors it in `hub.db`
-under `executor-leases`, generates its own ed25519 SSH key there, and arms a
+under `executor-leases` while unreleased, generates its own ed25519 SSH key there, and arms a
 detached watchdog on the hub host. The token stays in the inherited environment;
 the watchdog command line holds only its entry file and the lease directory.
 On macOS it runs `caffeinate -i -w <pid>` while live to inhibit idle sleep.
@@ -657,6 +657,37 @@ droplet and key, retries until both are absent, and writes `watchdog.json`.
 It survives a stopped or crashed hub. Restart consumes that receipt into the
 `executor-watchdog-fired` journal event, recovers interrupted creates by name,
 releases active leases with no run, and re-arms dead watchdogs for live leases.
+
+Routine lease reads use `.cland/run/executor/lease-index.json`. Hub recovery
+repairs this index from the retained directories once at startup, then removes
+released entries only after observing their settled, published spend entries.
+Missing or pending spend retains the lease in the hot index and reports
+`executor-lease-spend-missing`. A missing lease file retains its uncertain id and
+reports `executor-lease-record-missing`; repair cannot establish idleness from it.
+Periodic recovery retries settlement and index compaction. Executor close joins
+direct startup and periodic reconciliation before storage disposal. Pool
+recovery loads its image module only after discovering a valid recovery
+directory. A settled released lease leaves hot membership only after both local
+key removals complete. Lease
+index maintenance cannot replace confirmed provider lifetime/cost: a compaction
+failure preserves the `Released` result and reports
+`executor-lease-maintenance-deferred` for later recovery. That report does not
+claim unfinished index maintenance or key cleanup succeeded. Lease files and
+directories remain available at their original paths. Latest demo
+pointers live in separate per-epic files under `demo-leases/`, outside the hot
+index; status/stop read only the requested epic's pointer. Recovery drains at
+most 32 pending files from `demo-reports/` per pass, checkpointing each durable
+tracker report in the retained lease directory before removing its queue entry.
+An interrupted report retries idempotently. Doctor, executor status, budget
+checks, heartbeat and Git maintenance
+use the hot index or its unreleased `executor-leases` mirror.
+Git maintenance retains its conservative no-prune policy when an indexed lease
+file is missing. Writers publish
+index membership before a lease file, so an interrupted write cannot hide a
+new resource. Atomic index replacement leaves the previous checkpoint usable
+on interruption; startup repair also recovers files written by older hubs.
+Suites checkpoints the admitted lease identity before provider resource creation,
+retaining that same lease through failed acquisition and confirmed cleanup.
 
 New watchdog records retain `pid` and UTC `startedUtc` and add `pidIdentity`,
 using Linux boot-id/start ticks or macOS native microsecond birth. Arming retries

@@ -1,6 +1,6 @@
 import { realClock, type Clock } from '../../hub/clock.ts';
-import { randomUUID } from 'node:crypto';
-import { open, mkdir, readFile, readdir, rename, rm } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { open, mkdir, opendir, readFile, readdir, rename, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import type { Droplet } from './api.ts';
 import type { Lease } from '../executor.ts';
@@ -44,6 +44,118 @@ export async function durableJson(path: string, value: unknown): Promise<void> {
 }
 export const leaseRoot = (root: string): string => join(root, '.cland/run/executor/leases');
 export const leaseDir = (root: string, lease: DropletLease): string => join(leaseRoot(root), lease.lease);
+const indexPath = (root: string) => join(leaseRoot(root), '..', 'lease-index.json');
+type LeaseIndex = { version: 1; leases: string[] };
+const validLeaseId = (id: unknown): id is string => typeof id === 'string' && Boolean(id) && id !== '.' && id !== '..' && !/[\\/]/.test(id);
+async function readIndex(root: string): Promise<LeaseIndex | null> {
+  try {
+    const value = JSON.parse(await readFile(indexPath(root), 'utf8'));
+    if (!value || value.version !== 1 || !Array.isArray(value.leases) || !value.leases.every(validLeaseId)) throw new Error('invalid executor lease index');
+    return { version: 1, leases: value.leases };
+  } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
+}
+async function directoryIds(root: string): Promise<string[]> {
+  try { return (await readdir(leaseRoot(root), { withFileTypes: true })).filter(e => e.isDirectory()).map(e => e.name); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []; throw error; }
+}
+/** History is retained for explicit audit and direct recovery lookups only. */
+export async function readLeaseHistory(root: string): Promise<DropletLease[]> {
+  return readIds(root, await directoryIds(root));
+}
+const demoRoot = (root: string) => join(leaseRoot(root), '..', 'demo-leases');
+const reportRoot = (root: string) => join(leaseRoot(root), '..', 'demo-reports');
+const demoPath = (root: string, epic: string) => join(demoRoot(root), `${createHash('sha256').update(epic).digest('hex')}.json`);
+async function pointer(path: string): Promise<{ lease: string; epic?: string; created: string } | null> {
+  try {
+    const value = JSON.parse(await readFile(path, 'utf8'));
+    if (!validLeaseId(value.lease) || !Number.isFinite(Date.parse(value.created))) throw new Error('invalid cold demo pointer');
+    return value;
+  } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
+}
+async function archiveDemo(root: string, lease: DropletLease): Promise<void> {
+  if (!lease.demo) return;
+  const path = demoPath(root, lease.demo.epic), old = await pointer(path);
+  if (!old || `${lease.created}/${lease.lease}` > `${old.created}/${old.lease}`) await durableJson(path, { lease: lease.lease, created: lease.created, epic: lease.demo.epic });
+  try {
+    const reported = JSON.parse(await readFile(join(leaseDir(root, lease), 'demo-reported.json'), 'utf8'));
+    if (reported.lease !== lease.lease) throw new Error('demo report receipt identity mismatch');
+  }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    const pendingPath = join(reportRoot(root), `${lease.lease}.json`), pending = await pointer(pendingPath);
+    if (pending && (pending.lease !== lease.lease || pending.created !== lease.created)) throw new Error('demo report identity mismatch');
+    if (!pending) await durableJson(pendingPath, { lease: lease.lease, created: lease.created });
+  }
+}
+/** Positive tracker reporting precedes this checkpoint and queue removal. */
+export async function acknowledgeDemoReport(root: string, lease: DropletLease): Promise<void> {
+  await durableJson(join(leaseDir(root, lease), 'demo-reported.json'), { lease: lease.lease });
+  await rm(join(reportRoot(root), `${lease.lease}.json`), { force: true });
+}
+/** Status reads one cold epic pointer. Background recovery drains at most 32
+ * pending report receipts per call, never enumerating historical epics. */
+export async function readDemoLeases(root: string, epic?: string): Promise<DropletLease[]> {
+  const index = await readIndex(root);
+  if (!index) return (await readLeaseHistory(root)).filter(l => l.demo && (epic === undefined || l.demo.epic === epic));
+  const latest: string[] = [];
+  if (epic !== undefined) {
+    const value = await pointer(demoPath(root, epic));
+    if (value && value.epic !== epic) throw new Error('cold demo identity mismatch');
+    if (value) latest.push(value.lease);
+  } else {
+    try {
+      let visited = 0;
+      for await (const entry of await opendir(reportRoot(root))) {
+        if (!entry.isFile()) throw new Error('invalid demo report queue entry');
+        const value = await pointer(join(reportRoot(root), entry.name));
+        if (value && entry.name !== `${value.lease}.json`) throw new Error('demo report queue identity mismatch');
+        if (value) latest.push(value.lease);
+        if (++visited >= 32) break;
+      }
+    } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  }
+  return (await readIds(root, [...new Set([...index.leases, ...latest])])).filter(l => l.demo && (epic === undefined || l.demo.epic === epic));
+}
+async function readIds(root: string, ids: string[], requireFiles = false): Promise<DropletLease[]> {
+  const leases: DropletLease[] = [];
+  for (const id of ids) {
+    try { leases.push(await readLease(join(leaseRoot(root), id))); }
+    catch (error) { if (requireFiles || (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  }
+  return leases;
+}
+/** Serialized with writers. A crash before publication leaves the old,
+ * conservative index. Startup repair includes files from older writers. */
+export async function compactLeaseIndex(root: string, settled: ReadonlySet<string>, missing: (lease: string, reason: 'spend' | 'record') => void, rebuild = false): Promise<void> {
+  await leaseWrite(leaseRoot(root), async () => {
+    const index = await readIndex(root);
+    const ids = rebuild ? [...new Set([...(index?.leases ?? []), ...await directoryIds(root)])] : index?.leases ?? await directoryIds(root);
+    await mkdir(demoRoot(root), { recursive: true, mode: 0o700 });
+    await mkdir(reportRoot(root), { recursive: true, mode: 0o700 });
+    const keep: string[] = [];
+    for (const id of ids) {
+      let lease: DropletLease;
+      try { lease = await readLease(join(leaseRoot(root), id)); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        keep.push(id); missing(id, 'record'); continue;
+      }
+      if (lease.lease !== id) throw new Error('lease directory identity mismatch');
+      if (lease.state === 'released' && settled.has(lease.lease)) {
+        // Settlement is not local cleanup. Preserve membership until both key
+        // removals have completed, including recovery after a partial removal.
+        await rm(join(leaseDir(root, lease), 'key'), { force: true });
+        await rm(join(leaseDir(root, lease), 'key.pub'), { force: true });
+        await archiveDemo(root, lease);
+        continue;
+      }
+      keep.push(id);
+      if (lease.state === 'released') missing(lease.lease, 'spend');
+    }
+    await mkdir(leaseRoot(root), { recursive: true, mode: 0o700 });
+    await durableJson(indexPath(root), { version: 1, leases: keep });
+  });
+}
 const writes = new Map<string, Promise<void>>();
 async function leaseWrite(dir: string, work: () => Promise<void>): Promise<void> {
   const key = resolve(dir);
@@ -56,8 +168,11 @@ async function leaseWrite(dir: string, work: () => Promise<void>): Promise<void>
 const sameWatchdog = (left: DropletLease['watchdog'], right: DropletLease['watchdog']): boolean => Boolean(left && right && left.pid === right.pid && left.startedUtc === right.startedUtc);
 export async function writeLease(root: string, lease: DropletLease): Promise<void> {
   const dir = leaseDir(root, lease);
-  await leaseWrite(dir, async () => {
+  await leaseWrite(leaseRoot(root), async () => {
     await mkdir(dir, { recursive: true, mode: 0o700 });
+    const index = await readIndex(root);
+    // Admit before writing: a crash can add a missing-file read, never hide a lease.
+    if (index && !index.leases.includes(lease.lease)) await durableJson(indexPath(root), { ...index, leases: [...index.leases, lease.lease] });
     let current: DropletLease | undefined;
     try { current = await readLease(dir); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
@@ -72,7 +187,7 @@ export async function writeLease(root: string, lease: DropletLease): Promise<voi
 /** Patch only ownership, using the same queue as every full lease writer. */
 export async function upgradeWatchdog(root: string, lease: DropletLease, watchdog: NonNullable<DropletLease['watchdog']>): Promise<void> {
   const dir = leaseDir(root, lease);
-  await leaseWrite(dir, async () => {
+  await leaseWrite(leaseRoot(root), async () => {
     const current = await readLease(dir);
     const recorded = current.watchdog;
     if (!sameWatchdog(recorded, watchdog) || recorded?.pidIdentity && recorded.pidIdentity !== watchdog.pidIdentity) throw new Error('watchdog changed while upgrading its legacy process identity');
@@ -85,16 +200,8 @@ export async function readLease(dir: string): Promise<DropletLease> {
   if (lease.provider !== 'digitalocean' || !lease.name || !lease.tags.includes('cland') || !Number.isFinite(Date.parse(lease.deadline))) throw new Error('invalid droplet lease');
   return lease;
 }
-export async function readLeases(root: string): Promise<DropletLease[]> {
-  let entries;
-  try { entries = await readdir(leaseRoot(root), { withFileTypes: true }); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []; throw error; }
-  const leases: DropletLease[] = [];
-  for (const entry of entries) if (entry.isDirectory()) {
-    try { leases.push(await readLease(join(leaseRoot(root), entry.name))); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-  }
-  return leases;
+export async function readLeases(root: string, options: { requireFiles?: boolean } = {}): Promise<DropletLease[]> {
+  return readIds(root, (await readIndex(root))?.leases ?? await directoryIds(root), options.requireFiles);
 }
 export const matchesLease = (droplet: Droplet, lease: DropletLease): boolean => droplet.name === lease.name && lease.tags.every(tag => droplet.tags.includes(tag));
 export const liveLease = (lease: DropletLease, clock: Clock = realClock): boolean => lease.state !== 'released' && Date.parse(lease.deadline) > clock.now().getTime();

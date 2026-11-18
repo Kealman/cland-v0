@@ -2,7 +2,7 @@
 import { territoryPath, withTerritoryLockAsync } from './territory.ts';
 import { lstat, mkdir, readdir, readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { durableJson, leaseRoot, readLease } from './executor/droplet/lease.ts';
+import { durableJson, readLeases } from './executor/droplet/lease.ts';
 import { run } from './doctor/report.ts';
 import { MaintenanceRecoveryRequired, ownedMaintenanceRunner, readMaintenanceOwner } from './git-maintenance-owner.ts';
 
@@ -55,12 +55,7 @@ async function mayPrune(root: string, meta: (key: string) => string | null): Pro
     if (!Array.isArray(jobs) || jobs.length || JSON.parse(meta('merge-batch') ?? 'null') !== null) return false;
     const leases: unknown = JSON.parse(meta('executor-leases') ?? '[]');
     if (!Array.isArray(leases) || leases.some(lease => !lease || lease.state !== 'released')) return false;
-    let entries;
-    try { entries = await readdir(leaseRoot(root), { withFileTypes: true }); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return true; throw error; }
-    for (const entry of entries) {
-      if (!entry.isDirectory() || (await readLease(join(leaseRoot(root), entry.name))).state !== 'released') return false;
-    }
+    if ((await readLeases(root, { requireFiles: true })).some(lease => lease.state !== 'released')) return false;
     return true;
   } catch { return false; }
 }

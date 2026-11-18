@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fixture } from './remote-fixture.ts';
 import { eventually, tempProject } from './harness.ts';
 import { drive } from './remote-clock.ts';
-import { readLeases, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
 
 export async function lease(root: string): Promise<{ value: DropletLease; path: string }> {
   const dir = join(root, '.cland/run/executor/leases');
@@ -28,7 +28,7 @@ export async function finish(f: Awaited<ReturnType<typeof fixture>>, id: string)
   // Complete the scripted worker explicitly, then observe its done receipt.
   // A scheduler tick is permission to collect that receipt, not worker completion.
   f.machine.finish(id);
-  const record = (await readLeases(f.root)).find(lease => lease.run === id)!;
+  const record = (await readLeaseHistory(f.root)).find(lease => lease.run === id)!;
   const completed = await receipt('remote worker completion', f.dependencies.run!.status(record));
   assert.equal(completed.state, 'done');
   // Join each admitted operation before another scheduler step; a retry can

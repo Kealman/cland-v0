@@ -16,6 +16,10 @@ receipt as well as the invoked command. A separate incomplete/unreadable-receipt
 control rejects and stops before any second repository. One real retained-batch
 object control remains in T3; repeated policy rows do not need repeated native GC.
 
+The repair-to-maintenance controls live in the T2
+`hub/test/executor-droplet-component.test.ts`, with whole-case ownership and a
+positive native-launch guard. No T1 proof is claimed for those moved controls.
+
 The native counterpart and the synchronous/asynchronous territory gate live in
 `hub/src/git-maintenance-owner.ts`; native alive/reuse/held-close checks are in
 `hub/test/git-maintenance.test.ts`. T-543 owns the finer identity helper; this

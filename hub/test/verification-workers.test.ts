@@ -9,7 +9,7 @@ import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts'
 import { fixture } from './remote-fixture.ts';
 import { clandWithEnv, connectUi, eventually, nativeProjectHub as projectHub } from './harness.ts';
 import { DropletRun } from '../src/executor/droplet/run.ts';
-import { readLeases } from '../src/executor/droplet/lease.ts';
+import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
@@ -71,7 +71,7 @@ test('verify persists overrides, delivers remote workers, prices requested size 
   const status = (await f.ui.request({ type: 'hub.status', history: true, flushLogs: true })).value as HubStatus;
   const job = status.suites!.find(job => job.id === measured.id)!;
   assert.equal(job.workers, 6); assert.equal(job.size, 'c-16');
-  const leases = (await import('../src/executor/droplet/lease.ts')).readLeases;
+  const leases = (await import('../src/executor/droplet/lease.ts')).readLeaseHistory;
   const lease = (await leases(f.root)).find(lease => lease.run === measured.id)!;
   assert.equal(lease.size, 'c-16'); assert.equal(lease.priceHourly, 0.50);
   assert.equal(lease.costUsd, Math.max(60000, lease.lifetimeMs!) / 3600000 * 0.50);
@@ -129,7 +129,7 @@ const timer=setInterval(()=>{
   const marker = join(remote.run, 'done');
   try {
     await eventually('date reaches the completion boundary', () => readFile(entered, 'utf8').catch(() => undefined), 20000);
-    const lease = (await readLeases(f.root)).find(lease => lease.run === run.id)!;
+    const lease = (await readLeaseHistory(f.root)).find(lease => lease.run === run.id)!;
     const observer = new DropletRun(f.root, f.env);
     assert.equal((await observer.status(lease)).state, 'running');
     assert.deepEqual(await f.messages(run.id), [], 'no final report while date is held');
@@ -153,7 +153,7 @@ const timer=setInterval(()=>{
   assert.equal(job.finished, finished);
   assert.equal(job.reported, true);
   assert.equal(job.outcome?.code, 0);
-  const lease = (await readLeases(f.root)).find(lease => lease.run === run.id)!;
+  const lease = (await readLeaseHistory(f.root)).find(lease => lease.run === run.id)!;
   assert.equal(lease.state, 'released');
   assert.ok(Number.isFinite(lease.lifetimeMs) && lease.lifetimeMs! > 0);
   assert.ok(Number.isFinite(lease.costUsd) && lease.costUsd! > 0);

@@ -19,7 +19,7 @@ import { scratchMachine, legacyLedger, ledger } from './init-machine.ts';
 import { rememberProject, reserveShardSpend, spendPath } from '../src/executor/droplet/spend.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import type { HubStatus } from '../src/protocol.ts';
-import { readLeases } from '../src/executor/droplet/lease.ts';
+import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
 import { integrated } from './close-run-fixture.ts';
 
 const processes: LockProcessTable = { alive: pid => pid === process.pid, started: () => null };
@@ -131,7 +131,7 @@ for (const kind of ['spend', 'executor'] as const) test(`hub stop cancels the he
   const next = await projectHub(t, f.root, f.env, { clock: f.clock, droplet: f.dependencies, harnesses: 'fake', probes: 'fake', syntheticProvider: { token: f.syntheticProvider.token, api: f.api.provider } });
   const ui = await sessionUi(t, next.discovery);
   await eventually('next hub reconciles the interrupted acquisition', async () => {
-    const leases = await readLeases(f.root);
+    const leases = await readLeaseHistory(f.root);
     return leases.some(lease => lease.run === job.id && lease.state === 'released') ? true : undefined;
   });
   const status = await ui.request({ type: 'executor.status' });

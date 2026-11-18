@@ -6,7 +6,7 @@ import { basename, join } from 'node:path';
 import { defaultConfig, parseConfig } from '../init/config.ts';
 import { territoryGitAsync } from '../territory.ts';
 import { DropletExecutor } from '../executor/droplet/droplet.ts';
-import { leaseDir, readLeases, writeLease, type DropletLease } from '../executor/droplet/lease.ts';
+import { acknowledgeDemoReport, leaseDir, readDemoLeases, writeLease, type DropletLease } from '../executor/droplet/lease.ts';
 import { Machine, shellQuote } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
 import type { Git } from '../tracker/verdict-git.ts';
@@ -40,7 +40,7 @@ export class Demos {
     if (!this.tracker.isPlanContainer(epic.kind)) throw new Error('demo needs an epic');
     return epic;
   }
-  async #leases(epic: string) { return (await readLeases(this.root)).filter(l => l.demo?.epic === epic).sort((a, b) => a.created.localeCompare(b.created) || a.lease.localeCompare(b.lease)); }
+  async #leases(epic: string) { return (await readDemoLeases(this.root, epic)).sort((a, b) => a.created.localeCompare(b.created) || a.lease.localeCompare(b.lease)); }
   #provisioning(lease: DropletLease) { return (lease.state === 'creating' || lease.state === 'active') && !lease.demo?.ready; }
   #value(lease: DropletLease) {
     const state = this.#provisioning(lease) ? 'provisioning' : lease.state;
@@ -54,7 +54,10 @@ export class Demos {
   }
   async #report(lease: DropletLease) {
     if (lease.resource !== null) await this.#comment(lease, `demo ${lease.lease} created: droplet ${lease.name}, commit ${lease.demo!.commit}, deadline ${lease.deadline}.`);
-    if (lease.state === 'released') await this.#comment(lease, `demo ${lease.lease} destroyed: lifetime ${lease.lifetimeMs ?? 0} ms; cost $${(lease.costUsd ?? 0).toFixed(4)}.`);
+    if (lease.state === 'released') {
+      await this.#comment(lease, `demo ${lease.lease} destroyed: lifetime ${lease.lifetimeMs ?? 0} ms; cost $${(lease.costUsd ?? 0).toFixed(4)}.`);
+      await acknowledgeDemoReport(this.root, lease);
+    }
     if (lease.attention) {
       const text = `demo ${lease.demo!.epic} lease ${lease.lease} droplet ${lease.resource}: operator attention required; ${lease.attention.reason === 'deletion-unconfirmed' ? 'deletion not confirmed' : lease.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out; accepted DELETE remains unconfirmed' : 'identity mismatch; deletion refused'}. ${JSON.stringify(lease.attention)}`;
       await this.#comment(lease, text);
@@ -121,7 +124,7 @@ export class Demos {
   async close() { await this.#queue; }
   reconcile() {
     return this.#serial(async () => {
-      for (const lease of await readLeases(this.root)) if (lease.demo) {
+      for (const lease of await readDemoLeases(this.root)) if (lease.demo) {
         const epic = this.tracker.view(lease.demo.epic);
         const verdict = epic.verdicts.some(v => v.source === 'hub' && v.verdict === 'qa' && v.stage === undefined && Date.parse(v.at) >= Date.parse(lease.created));
         if (lease.state !== 'released' && (verdict || epic.state === 'closed' || Date.parse(lease.deadline) <= this.executor.clock.now().getTime())) await this.executor.release(lease);

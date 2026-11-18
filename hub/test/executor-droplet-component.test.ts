@@ -1,21 +1,200 @@
 // T2: executor permissions through the dispatcher, with no hub or spoke process.
 import { sessionDispatcherUi as dispatcherUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
 import { frameClient, projectHub, tempProject } from './harness.ts';
-import { onCleanup, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { afterCleanup, onCleanup, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
 
 import { Machine } from '../src/executor/droplet/machine.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
-import { caseDeadlines } from './case-deadlines.ts';
+import { caseDeadlines, drainFixtureWork } from './case-deadlines.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
 import type { LogEntry } from '../src/log.ts';
 import { DigitalOceanApi, DigitalOceanError } from '../src/executor/droplet/api.ts';
-import { readLease, leaseDir, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { readLease, readLeases, writeLease, leaseDir, type DropletLease } from '../src/executor/droplet/lease.ts';
+import fs from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { registerHooks, syncBuiltinESMExports } from 'node:module';
+import { compactLeaseHistory, spendPath } from '../src/executor/droplet/spend.ts';
+import { maintainProjectGit, gitMaintenancePath } from '../src/git-maintenance.ts';
+import type { Provider } from '../src/executor/droplet/dependencies.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { fakeNativeGuard } from './fake-native-guard.ts';
 import { runInNewContext } from 'node:vm';
+import { noSyncFilesystem } from './no-sync-filesystem.ts';
+import { recoverPoolSnapshots } from '../src/executor/droplet/snapshot-recovery.ts';
+
+/** Whole caller and fixture teardown finish before the positive guard restores. */
+function guardedLeaseCase(t: TestContext) {
+  const scope = caseDeadlines(t, { timeoutMs: 5000, ownership: { beforeDirectories, guardDirectoryRemoval } });
+  let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
+  let restore: (() => void) | undefined;
+  afterCleanup(t, async () => {
+    await drainFixtureWork();
+    try { guard?.verify(); } finally { restore?.(); }
+  });
+  return { ...scope, run: (body: (step: FixtureStep) => Promise<void>) => scope.run(async step => {
+    guard = await step(() => scope.wait('native guard setup', () => fakeNativeGuard(fn => { restore = fn; })));
+    await body(step);
+  }) };
+}
+
+test('absent pool recovery requests no lazy module inside the synchronous filesystem trap', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const root = await step(() => scope.wait('empty recovery fixture setup', async () => {
+      const root = await fs.mkdtemp(join(tmpdir(), 'cland-empty-pool-'));
+      scope.adoptRoot(root);
+      scope.fixtures.after(() => fs.rm(root, { recursive: true, force: true }));
+      return root;
+    }));
+    const requests: string[] = [];
+    const hooks = registerHooks({ resolve(specifier, context, nextResolve) {
+      if (specifier.endsWith('/pool-image.ts')) requests.push(`${context.parentURL} -> ${specifier}`);
+      return nextResolve(specifier, context);
+    } });
+    let guard: ReturnType<typeof noSyncFilesystem> | undefined, work: Promise<void> | undefined;
+    try {
+      await step(() => scope.wait('loader observer positive control', () => import('../src/host/provider/pool-image.ts')));
+      assert.equal(requests.length, 1, 'observer sees an explicit pool-image import');
+      requests.length = 0;
+      const api = new Proxy({} as Provider, { get: () => () => assert.fail('provider call without a recovery record') });
+      guard = noSyncFilesystem(t);
+      work = recoverPoolSnapshots(root, () => {}, fixtureEnvironment(root, process.env), api);
+      await step(() => scope.wait('absent pool recovery completion', () => work!));
+      assert.deepEqual(requests, [], 'no import is requested before positive recovery discovery');
+      assert.deepEqual(guard.calls, []);
+    } finally {
+      await work?.catch(() => {});
+      guard?.restore(); hooks.deregister();
+    }
+  });
+});
+
+for (const restart of [true, false]) test(`executor close joins held index publication (startup: ${restart})`, async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('held index fixture setup', async () => {
+      const root = await fs.mkdtemp(join(tmpdir(), 'cland-index-close-'));
+      scope.adoptRoot(root);
+      let executor: DropletExecutor | undefined;
+      scope.fixtures.after(async () => { await executor?.close(); await fs.rm(root, { recursive: true, force: true }); });
+      let closed = false;
+      const meta = new Map<string, string>();
+      const store = { meta: (key: string) => meta.get(key) ?? null, setMeta: (key: string, value: string) => {
+        assert.equal(closed, false, 'index publication precedes storage close'); meta.set(key, value);
+      } } as unknown as ConstructorParameters<typeof DropletExecutor>[1];
+      const api = new Proxy({} as Provider, { get: () => () => assert.fail('provider call in empty index recovery') });
+      executor = new DropletExecutor(root, store, () => {}, fixtureEnvironment(root, process.env), undefined, { api, clock: new FakeClock() });
+      if (!restart) await executor.reconcile(true);
+      return { root, executor, closeStorage: () => { closed = true; } };
+    }));
+    const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+    const nativeRename = fs.rename;
+    const fault = t.mock.method(fs, 'rename', async (...args: Parameters<typeof fs.rename>) => {
+      if (String(args[1]) === join(f.executor.root, '.cland/run/executor/lease-index.json')) { entered.resolve(); await release.promise; }
+      return nativeRename(...args);
+    });
+    syncBuiltinESMExports();
+    let recovery: Promise<void> | undefined, closing: Promise<void> | undefined;
+    const order: string[] = [];
+    try {
+      await step(() => scope.wait('held recovery and close receipts', async () => {
+        recovery = f.executor.reconcile(restart).then(() => { order.push('reconciled'); });
+        await Promise.race([entered.promise, recovery.then(() => { throw new Error('recovery completed without held index publication'); })]);
+        closing = f.executor.close().then(() => { order.push('closed'); f.closeStorage(); });
+        release.resolve();
+        await Promise.all([recovery, closing]);
+      }));
+      assert.deepEqual(order, ['reconciled', 'closed']);
+      assert.deepEqual(JSON.parse(await step(() => fs.readFile(join(f.root, '.cland/run/executor/lease-index.json'), 'utf8'))), { version: 1, leases: [] });
+    } finally {
+      release.resolve();
+      await Promise.allSettled([recovery, closing]);
+      fault.mock.restore(); syncBuiltinESMExports();
+    }
+  });
+});
+
+for (const disk of ['incomplete', 'absent'] as const) test(`maintenance grace after repair retains ${disk} lease records`, async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const root = await step(() => scope.wait('policy fixture setup', async () => {
+      const root = await fs.mkdtemp(join(tmpdir(), 'cland-repair-policy-'));
+      scope.adoptRoot(root);
+      scope.fixtures.after(() => fs.rm(root, { recursive: true, force: true }));
+      await fs.mkdir(join(root, '.git'));
+      await fs.mkdir(join(root, '.cland/run/executor/leases', ...(disk === 'incomplete' ? ['held'] : [])), { recursive: true });
+      if (disk === 'absent') await fs.writeFile(join(root, '.cland/run/executor/lease-index.json'), '{"version":1,"leases":["held"]}');
+      return root;
+    }));
+    const events: Record<string, unknown>[] = [], commands: string[][] = [];
+    const env = fixtureEnvironment(root, process.env);
+    await step(() => scope.wait('index repair', () => compactLeaseHistory(root, env, event => events.push(event), true)));
+    assert.ok(events.some(event => event.event === 'executor-lease-record-missing' && event.lease === 'held'));
+    await step(() => scope.wait('maintenance decision', () => maintainProjectGit(root, () => null, env, {
+      lock: async (_root, operation) => operation(),
+      run: async (_bin, args) => { commands.push([...args]); return { code: 0, stdout: '', stderr: '' }; },
+    })));
+    const gc = commands.filter(args => args.includes('gc'));
+    assert.equal(gc.length, 1, 'maintenance reached its injected command boundary');
+    assert.ok(gc[0]!.includes('--cruft')); assert.ok(gc[0]!.includes('--prune=never'));
+    assert.equal(JSON.parse(await step(() => fs.readFile(gitMaintenancePath(root), 'utf8'))).expire, 'never');
+  });
+});
+
+for (const alreadyReleased of [false, true]) test(`confirmed release accounting survives compaction failure (already released: ${alreadyReleased})`, async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('release fixture setup', async () => {
+      const root = await fs.mkdtemp(join(process.platform === 'darwin' ? '/private/tmp' : tmpdir(), 'cland-release-receipt-'));
+      let executor: DropletExecutor | undefined;
+      scope.adoptRoot(root); scope.fixtures.after(async () => { await executor?.close(); await fs.rm(root, { recursive: true, force: true }); });
+      const env = fixtureEnvironment(root, process.env), clock = new FakeClock();
+      const created = clock.now().toISOString(), expected = { lifetimeMs: alreadyReleased ? 1234 : 0, costUsd: alreadyReleased ? 0.5 : 1 / 60 };
+      const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: 'owned', run: 'run', name: 'owned', tags: ['cland'], size: 'fixture', region: 'fixture', priceHourly: 1, keyName: 'owned', state: alreadyReleased ? 'released' : 'active', resource: 42, keyId: null, created, createStarted: created, deadline: new Date(clock.now().getTime() + 60000).toISOString(), ...(alreadyReleased ? { released: created, ...expected } : {}) };
+      await writeLease(root, lease);
+      await fs.writeFile(join(root, '.cland/run/executor/lease-index.json'), '{"version":1,"leases":["owned"]}');
+      await fs.mkdir(dirname(spendPath(env)), { recursive: true });
+      await fs.writeFile(spendPath(env), JSON.stringify({ version: 1, legacyRetired: true, entries: [{ project: root, lease: lease.lease, run: lease.run, size: lease.size, reservation: 1, cost: alreadyReleased ? expected.costUsd : null, created, deadline: lease.deadline, ...(alreadyReleased ? { released: created } : {}) }] }));
+      let absenceReads = 0;
+      const api = { droplets: async () => [], keys: async () => [], droplet: async (id: number) => { assert.equal(id, 42); absenceReads++; throw new DigitalOceanError(404, 'not_found', 'fixture absent'); } } as unknown as Provider;
+      const events: Record<string, unknown>[] = [];
+      executor = new DropletExecutor(root, undefined, event => events.push(event), env, undefined, { clock, api,
+        processes: { alive: () => true, started: () => null },
+        host: { createKey: async () => assert.fail('unexpected key creation'), armWatchdog: async () => { throw new Error('unexpected watchdog'); }, stopWatchdog: async () => {}, watchdogAlive: async () => false },
+      });
+      return { root, env, lease, executor, expected, events, absenceReads: () => absenceReads };
+    }));
+    const rename = fs.rename;
+    const fault = t.mock.method(fs, 'rename', async (...args: Parameters<typeof fs.rename>) => {
+      if (String(args[1]).endsWith('/lease-index.json')) throw new Error('fixture compaction publication failed');
+      return rename(...args);
+    });
+    syncBuiltinESMExports();
+    let releaseWork: ReturnType<DropletExecutor['release']> | undefined;
+    try {
+      const result = await step(() => scope.wait('confirmed release', () => {
+        releaseWork = f.executor.release(f.lease); return releaseWork;
+      }));
+      assert.deepEqual(result, f.expected);
+      const durable = await step(() => readLease(leaseDir(f.root, f.lease)));
+      assert.equal(durable.state, 'released'); assert.equal(durable.costUsd, f.expected.costUsd);
+      const ledger = JSON.parse(await step(() => fs.readFile(spendPath(f.env), 'utf8')));
+      assert.equal(ledger.entries.find((entry: { lease: string }) => entry.lease === f.lease.lease).cost, f.expected.costUsd);
+      assert.ok((await step(() => readLeases(f.root))).some(lease => lease.lease === f.lease.lease), 'failed maintenance retains hot recovery membership');
+      assert.ok(f.events.some(event => event.event === 'executor-lease-maintenance-deferred' && event.lease === f.lease.lease));
+      assert.equal(f.events.some(event => event.event === 'executor-release-unconfirmed'), false);
+      assert.equal(f.absenceReads() > 0, !alreadyReleased);
+    } finally {
+      // A bounded wait may reject before its original owner has settled.
+      await releaseWork?.catch(() => {});
+      fault.mock.restore(); syncBuiltinESMExports();
+    }
+  });
+});
 
 test('uploaded status bounds cause ingestion and keeps the recorded exit through receipt failures', async t => {
   let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;

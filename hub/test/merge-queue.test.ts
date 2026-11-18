@@ -147,6 +147,10 @@ for (const fault of ['lease', 'history-unavailable', 'history-malformed', 'histo
     const damaged = join(root, '.cland/run/executor/leases/damaged');
     await mkdir(damaged, { recursive: true });
     await writeFile(join(damaged, 'lease.json'), '{}');
+    // Corrupt an indexed live record: cold directories are no longer enumerated.
+    const indexPath = join(root, '.cland/run/executor/lease-index.json');
+    const index = JSON.parse(await readFile(indexPath, 'utf8').catch(() => '{"version":1,"leases":[]}'));
+    await writeFile(indexPath, JSON.stringify({ ...index, leases: [...index.leases, 'damaged'] }));
   } else history.read = () => {
     if (fault === 'history-throw') throw new Error('fixture Git read failed');
     return fault === 'history-unavailable' ? null : 'malformed history';

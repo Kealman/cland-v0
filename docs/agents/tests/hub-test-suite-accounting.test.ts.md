@@ -1,5 +1,12 @@
 # hub/test/suite-accounting.test.ts
 
+The failed-acquisition control rejects scripted readiness after durable admission
+and completes provider cleanup. Suites retains the same released lease identity
+and cost even though the hot index has removed it; no historical scan supplies
+that handoff. Both provider absence and the persisted job lease are asserted.
+Its caseDeadlines owner is enrolled before acquisition, separately bounds fixture
+setup, adopts the root, fences later caller steps and joins them before cleanup.
+
 The unfinished-coverage matrix reproduces a persisted running/outcome-null job
 with a green native result, surviving log, partial temporary coverage map and
 no final map. A failed fake collection triggers a provider read by captured id.
