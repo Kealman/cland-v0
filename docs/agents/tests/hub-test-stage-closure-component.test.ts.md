@@ -51,3 +51,32 @@ and retain its recorded closure. A separate open-stage differential compares
 16 settled histories with the previous full selection algorithm, including
 rejected newer covers, different trees and missing platform pairs. Unknown
 newer candidates remain pending before older history is considered.
+
+T-1984: a synthetic tracker settles 1,500 unrelated branch verdict wants with
+active stage covers. The `task-freshness-settled` log receipt counts the ids
+actually submitted for announcement and their stage-cover dependent subset.
+The pre-fix control submitted the dependent 1,500 times; the bound is at most
+one. Git and trees are injected and fixture item files live in a disposable root.
+The count-control callback enters the existing `stageCase` owner before acquiring the
+root. Its counted native-launch guard covers setup, body and cleanup. Exact
+Tracker close ownership is registered before acquisition, and late results
+are captured inside their original producers. Cleanup fences
+the whole callback, joins original work, observes writer closure, then removes
+the root and restores the native guard.
+The existing 5,000-job work bound and 16-history equality oracle are unchanged.
+
+Coordinator decision 6aa3dd7b grants only the new unrelated-answer case a
+16-second C-216 duration allowance, added 2026-11-18 and expiring 2026-11-25.
+Run 6a6430c0 at d61c64aa6 (A-21412/A-21413) passed its assertions but failed the
+enforcing new-case duration gate at 10.381 seconds against 5 seconds; that round
+remains failed/partial. The allowance covers 1,500-file fixture setup, with
+about 1.5 times the Linux droplet sample as headroom. It changes neither the
+at-most-once count assertion nor the semantic controls, and grants no startup
+latency claim. Fixture setup optimization is separate follow-up work.
+
+The startup-response variant moved to T-1987 by Coordinator decision after
+run 8c6a55b1 at d2ca5ba8b failed. A-21401 and A-21405 retain both failure classes:
+four load repetitions lacked a validated startup outcome; the fifth armed the
+2,000 ms first-answer-to-validated-reply observer and timed out. The original
+source remains at that head. These failures are not passing timing evidence;
+T-1987 covers the combined T-1984/T-1646 responsiveness question.

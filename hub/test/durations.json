@@ -12828,6 +12828,13 @@
     "web/test/hosts-view.test.ts::retained cards keep Inbox, Hosts sign-in and remote thread order across delta and inbox publication": 3.00813
   },
   "allow": {
+    "hub/test/stage-closure-component.test.ts::unrelated freshness answers do not fan out to stage-cover dependents": {
+      "seconds": 16,
+      "owner": "C-216",
+      "added": "2026-11-18",
+      "expires": "2026-11-25",
+      "reason": "1,500-file fixture setup; work-count bound unchanged"
+    },
     "hub/test/git-maintenance.test.ts::scratch Git helper drains a held descendant writer before rejecting cancellation (5100 ms exit)": {
       "seconds": 8.301,
       "owner": "C-216",

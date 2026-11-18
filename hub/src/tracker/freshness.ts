@@ -55,6 +55,7 @@ export type FreshnessOptions = {
   intervalMs?: number;
   scheduleTips?: TipSchedule;
   /** Answers are known for these items now: announce them again. */
+  /** Unique waiting item ids, published once per completed foreground or demo drain. */
   settled: (ids: string[]) => void;
   recordDelta?: (ids: string[], delta: MergeDelta) => Promise<void>;
   /** A branch tip or the base moved (or the first read is done): every item's freshness may have changed. */
@@ -333,6 +334,7 @@ export class Freshness {
   /** Demo history never holds up stage ancestry or task merge-gate verdicts. */
   async #work(worker: Worker): Promise<void> {
     worker.working = true;
+    const settled = new Set<string>();
     try {
       for (;;) {
         if (this.#stopped) return;
@@ -355,11 +357,13 @@ export class Freshness {
         this.#results.set(key, value);
         if (want.ancestry && !want.settledOnly) this.#ancestryChanged?.(want.commit, want.tip, value);
         if (failed && (want.ancestry || want.demoTasks)) this.#retries.set(key, { want, after: performance.now() + this.#intervalMs });
-        this.#settled([...want.ids]);
+        for (const id of want.ids) settled.add(id);
         if (!failed) this.#queueDelta(key, want, value);
       }
     } finally {
       worker.working = false;
+      // Publish one batch per drain, after every cached result is visible.
+      if (!this.#stopped && settled.size) this.#settled([...settled]);
     }
   }
 

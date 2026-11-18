@@ -1,9 +1,10 @@
 // T2: plan reads and stage advancement through an in-process hub; Git facts are injected.
 // Reopening the tracker proves persistence without a hub process lifecycle.
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { serializeItem } from '../src/tracker/item.ts';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import type { StageCover } from '../src/hub/suites.ts';
 import { connectWsUi, eventually, startHub, tempProject } from './harness.ts';
@@ -13,6 +14,65 @@ import { connectUi, inProcessSpoke } from './harness.ts';
 import { Store } from '../src/hub/store.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
 import { stageCase } from './stage-case-fixture.ts';
+
+test('unrelated freshness answers do not fan out to stage-cover dependents', t => freshnessBatch(t));
+
+function freshnessBatch(t: TestContext) {
+  const owner = stageCase(t);
+  return owner.run(async step => {
+  const root = await owner.wait('root setup', () => step(async () => {
+    const root = await tempProject(owner.fixtures); owner.adoptRoot(root); return root;
+  }));
+  const head = 'a'.repeat(40), tree = 'b'.repeat(40);
+  let branchCount = 0, answers = 0, dependents = 0;
+  const git: NonNullable<ConstructorParameters<typeof Tracker>[0]['git']> = async args => {
+    return args[0] === 'for-each-ref'
+      ? [`${head} refs/heads/dev`, ...Array.from({ length: branchCount }, (_, n) => `${head} refs/heads/t/${n}`)].join('\n')
+      : args[0] === 'rev-parse' ? args.at(-1)!.replace(/\^\{commit\}$/, '') : '';
+  };
+  const build = () => step(async () => {
+    let acquired: Tracker | undefined;
+    owner.requireClose(async () => { await acquired?.stop(); });
+    acquired = new Tracker({ root, db: ':memory:',
+    git,
+    readBase: async () => null, stageTree: async () => tree,
+    scheduleTips: () => ({ poke() {}, stop() {} }),
+    log: entry => { if (entry.event === 'task-freshness-settled') { answers += Number(entry.items); dependents += Number(entry.stageDependents); } },
+    });
+    acquired.start();
+    return acquired;
+  });
+  const tracker = await owner.wait('tracker setup', build);
+  const actor = { id: 'human', name: 'human', role: null };
+  const epic = await step(() => tracker.create(actor, { kind: 'epic', title: 'Active cover' }));
+  const child = await step(() => tracker.create(actor, { title: 'Stage member', size: 'S', parent: epic.id }));
+  await step(() => tracker.setPlan(actor, epic.id, JSON.stringify({ stages: [
+    { name: 'build', qa: { scope: 'none', when: 'after-stage' }, lanes: [[child.id]] },
+  ] })));
+  const covers: StageCover[] = [
+    { id: 'linux', head: 'c'.repeat(40), tree, platform: 'Linux droplet' },
+    { id: 'mac', head, tree, platform: 'macOS' },
+  ];
+  tracker.useVerify(() => null, () => covers);
+  await owner.wait('initial freshness refresh', () => step(() => tracker.refreshFreshness()));
+  await owner.wait('active stage cover settlement', () => step(() => eventually('active stage cover settles', async () => {
+    const stage = (await tracker.viewAsync(epic.id)).stages![0]!;
+    return stage.cover?.linux && !stage.cover.pending?.length ? true : undefined;
+  })));
+  const at = new Date().toISOString();
+  for (let n = 0; n < 1500; n++) await step(() => writeFile(join(root, `.cland/tasks/T-${n + 100}-fixture.md`), serializeItem({
+    fm: { id: `T-${n + 100}`, kind: 'task', title: `Unrelated ${n}`, state: 'closed', status: 'done', size: 'S',
+      labels: [], assignee: null, parent: null, blocked_by: [], topic: null, branch: `t/${n}`, created: at, updated: at },
+    body: '', comments: [{ author: 'reviewer', at, text: '', verdict: { verdict: 'review', result: 'clear', by: 'reviewer', run: `r${n}`, commit: (n + 1).toString(16).padStart(40, '0') } }],
+  })));
+  tracker.rescan();
+  answers = dependents = 0; branchCount = 1500;
+  await owner.wait('unrelated freshness refresh', () => step(() => tracker.refreshFreshness()));
+  await owner.wait('all unrelated answers published', () => step(() => eventually('all 1500 unrelated verdict answers are published', () => answers >= 1500 ? true : undefined)));
+  assert.ok(dependents <= 1, `stage-cover dependent announcements: ${dependents}, expected at most one`);
+  assert.equal(tracker.list().filter(item => item.branch?.startsWith('t/')).length, 1500);
+  });
+}
 
 test('ten three-stage plans share one job scan across planned checks and explorer refresh', t => {
   const owner = stageCase(t);

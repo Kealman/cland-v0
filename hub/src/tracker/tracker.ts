@@ -368,6 +368,7 @@ export class Tracker {
   #stageCovers: () => StageCover[] = () => [];
   #stageAncestors = new Map<string, boolean | undefined>();
   #stageAncestorTip: string | null = null;
+  #stageAncestryChanged = false;
   #coverIndex: { source: StageCover[]; byId: Map<string, StageCover>; mac: Map<string, StageCover>; paired: StageCandidates; unpaired: StageCandidates; byTree: Map<string, StageCandidates>; byHead: Map<string, StageCover[]> } | undefined;
   #indexedCovers() {
     const source = this.#stageCovers();
@@ -461,6 +462,7 @@ export class Tracker {
     this.#fresh = new Freshness({
       ancestryChanged: (head, tip, current) => {
         if (tip !== this.#stageAncestorTip || !this.#stageAncestors.has(head)) return;
+        this.#stageAncestryChanged = true;
         this.#stageAncestors.set(head, current);
         for (const cover of this.#coverIndex?.byHead.get(head) ?? []) {
           if (cover.platform !== 'Linux droplet') continue;
@@ -484,7 +486,9 @@ export class Tracker {
         }
       },
       settled: (ids) => {
-        if (this.#stageAncestors.size) ids = [...new Set([...ids, ...this.#stageCoverDependents])];
+        if (this.#stageAncestryChanged) ids = [...new Set([...ids, ...this.#stageCoverDependents])];
+        this.#stageAncestryChanged = false;
+        this.#log({ event: 'task-freshness-settled', items: ids.length, stageDependents: ids.filter(id => this.#stageCoverDependents.has(id)).length });
         this.#announceBatch(ids);
         for (const id of ids) { this.#scheduleReady(id); this.#schedulePlannedFor(id); }
       },
