@@ -906,7 +906,10 @@
     "hub/test/transport-config.test.ts": "T2",
     "hub/test/transport-fake-contract.test.ts": "T3",
     "hub/test/transport-forwards.test.ts": "T3",
-    "hub/test/transport-kind-types.test.ts": "T2",
+    "hub/test/transport-kind-types.test.ts": {
+      "tier": "T3",
+      "scenario": "Compiler API resolves the full production import graph; loaded T2 runs measured 11.8–18.1 s (T-1939), so this compiler contract belongs beside typecheck.test.ts."
+    },
     "hub/test/transport-kind.test.ts": "T1",
     "hub/test/transport-policy.test.ts": "T1",
     "hub/test/transport-records.test.ts": "T2",

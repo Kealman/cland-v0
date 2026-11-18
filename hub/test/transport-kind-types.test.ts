@@ -1,4 +1,5 @@
-// T2: compiler API checks the public carrier contract without starting processes.
+// T3 compiler contract: compiler API resolves the full production import graph.
+// Loaded T2 runs exceeded its budget; no processes are started (T-1939).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
