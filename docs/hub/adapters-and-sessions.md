@@ -963,6 +963,14 @@ supervision for retry. A zombie-free process snapshot alone does not prove libuv
 has reaped a launched child. Recovered/adopted local servers have no child handle
 and keep the existing identity-verified Host confirmation path.
 
+Startup and host-ready recovery pin each running snapshot row by its cland session
+id. Before admission and after suspended lifecycle work, recovery rechecks the
+current row's id, name, host, running status and pending cleanup. A renamed,
+replaced, moved or stopped row, or one with pending cleanup, is skipped; the
+structured `resume-skipped` log records its captured `sessionId`, `session`,
+`host` and `reason` (`rename`, `replacement`, `host`, `status` or `pending-stop`).
+Recovery never follows a reused display name to its replacement.
+
 
 A positive changed-boot lifecycle boundary records
 `Sessions.retainHostGeneration(process, {cause: 'host-rebooted', bootId})` before

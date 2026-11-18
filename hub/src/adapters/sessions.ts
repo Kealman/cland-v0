@@ -2082,13 +2082,15 @@ export class Sessions {
   /** One-time migration: preserve legacy liveness, then persist matching native
    * ownership before the first stop/resume. Same-second reuse before this first
    * observation retains the old risk; a precise row never re-enters this window. */
-  async #upgradeLegacyIdentity(p: HarnessProcess, resumed: Resumed, checkpoint?: (upgraded: HarnessProcess) => void): Promise<HarnessProcess> {
+  async #upgradeLegacyIdentity(p: HarnessProcess, resumed: Resumed, checkpoint?: (upgraded: HarnessProcess) => void, validate?: () => void): Promise<HarnessProcess> {
     if ((p.host ?? 'local') !== 'local' || p.pid === null || p.pidIdentity || !p.pidStarted) return p;
     let observed;
     try { observed = await this.#hostForProcess(p).identity(p.pid); }
     catch { return p; } // unavailable proof cannot grant ownership
     return resumed(() => {
       if (this.#closed) return p;
+      // Recovery must revalidate before this migration can persist native proof.
+      validate?.();
       const current = this.#table.bySessionId(p.sessionId);
       if (current && (current.pid !== p.pid || current.startedAt !== p.startedAt || current.pidStarted !== p.pidStarted)) throw new Error('session changed while upgrading its legacy process identity; retry');
       if (current?.pidIdentity) return current;
@@ -2200,7 +2202,12 @@ export class Sessions {
   /** Re-find one session (or relaunch it); a session that cannot be re-found is `unknown` and journalled. */
   async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false, host?: string, worktrees?: TaskWorktrees, admit?: (process: HarnessProcess) => void): Promise<SessionResumeAnswer> {
     authorize();
-    const placement = this.#process(name);
+    return this.#resumeProcess(this.#process(name), relaunch, resumed, authorize, fresh, host, worktrees, admit);
+  }
+
+  async #resumeProcess(placement: HarnessProcess, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false, host?: string, worktrees?: TaskWorktrees, admit?: (process: HarnessProcess) => void, settle?: () => void): Promise<SessionResumeAnswer> {
+    authorize();
+    const name = placement.name;
     const handoff = this.#relaunchIntent(placement);
     if (handoff && !(relaunch && host && host!==placement.host && !fresh && handoff.retryable)) throw new Error('cross-host relaunch is fenced; inspect its reported failure before reconciliation');
     if (host !== undefined && (!relaunch || fresh)) throw new Error('host requires relaunch without fresh');
@@ -2210,7 +2217,7 @@ export class Sessions {
     this.#hostForProcess(placement);
     if (relaunch || fresh) checkRoleHost(placement.role, placement.host);
     if (fresh) return this.#freshResume(name, resumed, authorize);
-    const original = this.#process(name);
+    const original = placement;
     const identity = original.sessionId;
     if (this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
     const slot = this.#lifecycleSlot(identity);
@@ -2236,7 +2243,7 @@ export class Sessions {
           if (item?.state === 'open') work.notes.push(`launch a fresh session for ${item.id}: cland session launch <new-name>${current.role ? ` --role ${current.role}` : ''} --item ${item.id}`);
           return { found: false, reason: cwdRefusal, process: this.view(current), ...work };
         }
-        return this.#resume(current.name, relaunch, resumed, authorize);
+        return this.#resume(current.name, relaunch, resumed, authorize, settle);
       });
     } finally { resumed(() => { this.#resuming--; slot.release(); }); }
   }
@@ -2350,8 +2357,8 @@ export class Sessions {
     });
   }
 
-  async #resume(name: string, relaunch: boolean, resumed: Resumed, authorize: () => void): Promise<SessionResumeAnswer> {
-    let p = await this.#upgradeLegacyIdentity(this.#process(name), resumed);
+  async #resume(name: string, relaunch: boolean, resumed: Resumed, authorize: () => void, settle?: () => void): Promise<SessionResumeAnswer> {
+    let p = await this.#upgradeLegacyIdentity(this.#process(name), resumed, undefined, settle);
     const adapter = this.adapter(p.harness);
     if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
     const desiredRole = p.role;
@@ -2459,6 +2466,7 @@ export class Sessions {
     }
     const publish = (found: Extract<ResumeResult, { found: true }>, pidStarted: string | null) => {
       if (this.#closed) throw new Error('the hub is closing');
+      settle?.();
       // Re-read after any identity probe: a rename, item or role change made while awaiting stays in place.
       const current = row();
       if (!relaunch && this.#table.hostGenerationRebooted(current)) throw new Error('host rebooted while resuming');
@@ -2492,6 +2500,9 @@ export class Sessions {
       // A relaunch reservation this fence interrupts is not leaked: releaseInterruptedLaunches
       // rolls it back at the next hub start, as it does for the publish fence above.
       if (this.#closed) throw new Error('the hub is closing');
+      // Recovery alone pins snapshot eligibility through native settlement.
+      // Explicit resume keeps its rename-during-I/O semantics.
+      settle?.();
       if (!r.found) {
         const current = row();
         if (!relaunch && r.alive && current.status === 'running') {
@@ -2605,9 +2616,29 @@ export class Sessions {
     }
     for (const p of this.#table.running()) {
       if (this.#closed) return;
-      if ((p.host ?? 'local') !== host || this.#pendingStops.has(p.sessionId)) continue;
-      try { await this.resume(p.name); }
-      catch (err) { this.#log({ event: 'resume-failed', session: p.name, error: err instanceof Error ? err.message : String(err) }); }
+      if ((p.host ?? 'local') !== host) continue;
+      let skipped = false;
+      const eligible = () => {
+        const current = this.#table.bySessionId(p.sessionId);
+        // bySessionId also accepts harness conversation ids; recovery owns only
+        // the exact cland session captured in this pass.
+        const reason = !current || current.sessionId !== p.sessionId ? 'replacement'
+          : current.name !== p.name ? 'rename'
+          : (current.host ?? 'local') !== host ? 'host'
+          : current.status !== p.status ? 'status'
+          : this.#pendingStops.has(p.sessionId) ? 'pending-stop' : null;
+        if (reason) {
+          if (!skipped) this.#log({event:'resume-skipped', session:p.name, sessionId:p.sessionId, host, reason});
+          skipped = true;
+          throw new Error('session changed since recovery snapshot');
+        }
+      };
+      try {
+        eligible();
+        await this.#resumeProcess(this.#table.bySessionId(p.sessionId)!, false, untimed, eligible, false, undefined, undefined, undefined, eligible);
+      } catch (err) {
+        if (!skipped) this.#log({ event: 'resume-failed', session: p.name, sessionId:p.sessionId, error: err instanceof Error ? err.message : String(err) });
+      }
     }
   }
 

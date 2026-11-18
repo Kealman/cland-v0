@@ -13,6 +13,153 @@ import { tempProject, eventually } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { FakeClock } from './fake-clock.ts';
 import type { HarnessProcess } from '../src/adapters/contract.ts';
+import { LaunchRecoveryPending } from '../src/adapters/launch-files.ts';
+import { caseDeadlines, drainFixtureWork } from './case-deadlines.ts';
+import { beforeDirectories, guardDirectoryRemoval, afterCleanup, onCleanup } from './process-cleanup.ts';
+import { fakeNativeGuard } from './fake-native-guard.ts';
+
+type RecoveryStep = <T>(name: string, run: () => Promise<T>) => Promise<T>;
+type RecoveryFixture = Awaited<ReturnType<typeof recoveryFixture>>;
+
+/** Own setup, body, pending resumes, teardown and guard restoration as one case. */
+function recoveryControl(t: import('node:test').TestContext, body: (f: RecoveryFixture) => Promise<void>) {
+  const releases: Array<() => void> = [];
+  const scope = caseDeadlines(t, {timeoutMs:testWaitMs(5000), ownership:{beforeDirectories, guardDirectoryRemoval}, releaseOnClose:() => releases.forEach(release => release())});
+  let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined, restore: (() => void) | undefined;
+  afterCleanup(t, async () => {
+    await drainFixtureWork();
+    try { guard?.verify(); } finally { restore?.(); }
+  });
+  return scope.run(async (admit, signal) => {
+    const step: RecoveryStep = (name, run) => scope.wait(name, () => admit(async () => {
+      signal.throwIfAborted(); const value = await run(); signal.throwIfAborted(); return value;
+    }));
+    await step('native guard setup', async () => { guard = await fakeNativeGuard(value => { restore = value; }); });
+    const root = await scope.wait('recovery root setup', () => admit(async () => {
+      const root = await tempProject(scope.fixtures); scope.adoptRoot(root); return root;
+    }));
+    signal.throwIfAborted();
+    const fixture = await step('recovery fixture setup', () => recoveryFixture(root, scope.fixtures, step, release => releases.push(release)));
+    await body(fixture);
+  });
+}
+
+async function recoveryFixture(root: string, t: import('node:test').TestContext, step: RecoveryStep, releaseOnClose: (release: () => void) => void) {
+  let core: HubCore | undefined, table: ProcessTable | undefined, sessions: Sessions | undefined;
+  onCleanup(t, async () => {
+    try { await sessions?.close(); }
+    finally { try { table?.close(); } finally { core?.close(); core?.store.close(); } }
+  });
+  const clock = new FakeClock(); core = new HubCore({clock}); table = new ProcessTable(':memory:', clock);
+  const logs: Record<string, unknown>[] = [], attempts: string[] = [];
+  const remote = {...testHost('remote', () => {}), layout:localHost(fixtureEnvironment(root, {})).layout,
+    statDirectory:async () => ({refusal:null, identity:null})};
+  const local = {...remote, name:'local'};
+  sessions = new Sessions({root, core, table, hosts:[remote, {...remote, name:'elsewhere'}, local], recoveryClock:clock, transportClock:clock, log:e => logs.push(e)});
+  const adapter = fakeHarness('codex', {clock}); sessions.register(adapter);
+  return {root, clock, core, table, sessions, adapter, remote, local, logs, attempts, step, releaseOnClose};
+}
+
+for (const change of ['rename', 'replacement', 'host', 'status', 'pending-stop'] as const) {
+  for (const replacementHost of change === 'rename' || change === 'replacement' ? ['remote', 'elsewhere'] : ['remote']) {
+    test(`host recovery skips a snapshot row after ${change} with replacement host ${replacementHost}`, t => recoveryControl(t, async f => {
+      const {root, table, sessions, adapter, logs, attempts, step} = f;
+      const release = Promise.withResolvers<void>(), entered = Promise.withResolvers<void>();
+      f.releaseOnClose(() => release.resolve());
+      const first = {...await step('first fake row setup', () => adapter.spawn({name:'first', cwd:root, role:null, model:null})), host:'remote'};
+      const later = {...await step('later fake row setup', () => adapter.spawn({name:'later', cwd:root, role:null, model:null})), host:'remote'};
+      table.put(first); table.put(later);
+      adapter.resume = async row => {
+        attempts.push(row.sessionId);
+        if (row.sessionId === first.sessionId) { entered.resolve(); await release.promise; }
+        if (row.sessionId === later.sessionId && change === 'pending-stop') {
+          throw new LaunchRecoveryPending(row.sessionId, {undo:[], children:[]}, () => { throw new Error('fixture settlement held'); }, 'fixture pending cleanup');
+        }
+        return {found:true, process:row, state:'idle'};
+      };
+      const recovery = step('host recovery completion', () => sessions.resumeHost('remote'));
+      void recovery.catch(() => {});
+      await step('first adapter resume receipt', () => entered.promise);
+      if (change === 'rename' || change === 'replacement') {
+        if (change === 'rename') assert.equal(table.rename(later.sessionId, 'renamed'), true);
+        else table.removeBatch([later]);
+        table.put({...later, sessionId:'replacement', host:replacementHost});
+      } else if (change === 'host') table.put({...later, host:'elsewhere'});
+      else if (change === 'status') table.update(later.name, {status:'stopped'});
+      else {
+        await assert.rejects(step('pending cleanup admission', () => sessions.resume(later.name)), /cleanup is pending/);
+        assert.equal(table.pendingStops().length, 1, 'pending cleanup was persisted before recovery continues');
+        attempts.length = 1; // Exclude the explicit resume that installed pending cleanup.
+      }
+      release.resolve(); await recovery;
+      assert.deepEqual(attempts, [first.sessionId]);
+      assert.ok(logs.some(e => e.event === 'resume-skipped' && e.sessionId === later.sessionId && e.reason === change));
+    }));
+  }
+}
+
+for (const boundary of ['adapter', 'identity'] as const) for (const change of ['rename', 'replacement', 'host', 'status'] as const) {
+  test(`host recovery preserves a row changed during ${boundary} settlement: ${change}`, t => recoveryControl(t, async f => {
+    const {root, table, sessions, adapter, logs, step} = f;
+    const release = Promise.withResolvers<void>(), entered = Promise.withResolvers<void>();
+    f.releaseOnClose(() => release.resolve());
+    const row = {...await step('settlement fake row setup', () => adapter.spawn({name:'held', cwd:root, role:null, model:null})), host:'remote'};
+    table.put(row);
+    let watches = 0;
+    adapter.watch = () => { watches++; };
+    adapter.resume = async current => {
+      if (boundary === 'adapter') { entered.resolve(); await release.promise; }
+      return {found:true, process:{...current, pid:boundary === 'identity' ? 123 : null, model:'stale-result'}, state:'idle'};
+    };
+    if (boundary === 'identity') f.remote.identity = async pid => { entered.resolve(); await release.promise; return {pid, pidStarted:'fake-birth', pidIdentity:'fake-birth'}; };
+    const recovery = step('settlement recovery completion', () => sessions.resumeHost('remote'));
+    void recovery.catch(() => {});
+    await step(`${boundary} held receipt`, () => entered.promise);
+    if (change === 'rename') assert.equal(table.rename(row.sessionId, 'renamed'), true);
+    else if (change === 'replacement') { table.removeBatch([row]); table.put({...row, sessionId:'replacement'}); }
+    else if (change === 'host') table.put({...row, host:'elsewhere'});
+    else table.update(row.name, {status:'stopped'});
+    const changed = table.all();
+    release.resolve(); await recovery;
+    assert.deepEqual(table.all(), changed, 'stale result never overwrites the committed row');
+    assert.equal(watches, 0, 'stale recovery never restarts supervision');
+    assert.ok(logs.some(e => e.event === 'resume-skipped' && e.sessionId === row.sessionId && e.reason === change));
+    assert.equal(logs.some(e => e.event === 'session-resumed'), false);
+  }));
+}
+
+for (const change of ['rename', 'replacement', 'host', 'status', 'unchanged'] as const) {
+  test(`host recovery revalidates a local row during legacy identity proof: ${change}`, t => recoveryControl(t, async f => {
+    const {root, table, sessions, adapter, local, logs, step} = f;
+    const release = Promise.withResolvers<void>(), entered = Promise.withResolvers<void>();
+    f.releaseOnClose(() => release.resolve());
+    const row = {...await step('legacy local row setup', () => adapter.spawn({name:'legacy', cwd:root, role:null, model:null})), host:'local', pid:123, pidStarted:'legacy-birth', pidIdentity:null};
+    table.put(row);
+    let resumes = 0;
+    adapter.resume = async current => { resumes++; return {found:true, process:current, state:'idle'}; };
+    local.identity = async pid => { entered.resolve(); await release.promise; return {pid, pidStarted:'legacy-birth', pidIdentity:'local-proof'}; };
+    const recovery = step('legacy recovery completion', () => sessions.resumeHost('local'));
+    void recovery.catch(() => {});
+    await step('legacy identity probe entered', () => entered.promise);
+    if (change === 'rename') assert.equal(table.rename(row.sessionId, 'renamed'), true);
+    else if (change === 'replacement') { table.removeBatch([row]); table.put({...row, sessionId:'replacement'}); }
+    else if (change === 'host') table.put({...row, host:'elsewhere'});
+    else if (change === 'status') table.update(row.name, {status:'stopped'});
+    const changed = table.all();
+    release.resolve(); await recovery;
+    if (change === 'unchanged') {
+      assert.equal(table.get(row.name)?.pidIdentity, 'local-proof', 'matching legacy proof is persisted');
+      assert.equal(resumes, 1);
+      assert.ok(logs.some(e => e.event === 'process-identity-upgraded'));
+      assert.equal(logs.some(e => e.event === 'resume-skipped'), false);
+    } else {
+      assert.deepEqual(table.all(), changed, 'stale local identity proof never writes the changed row');
+      assert.equal(resumes, 0, 'changed legacy row never enters adapter resume');
+      assert.ok(logs.some(e => e.event === 'resume-skipped' && e.sessionId === row.sessionId && e.reason === change));
+      assert.equal(logs.some(e => e.event === 'process-identity-upgraded'), false);
+    }
+  }));
+}
 
 // Both fake machines deliberately reuse the hub PID. Only the Host birth proves ownership.
 test('host ready retries unavailable mixed-harness startup without vacating or signalling rows', async t => {
