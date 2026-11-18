@@ -1,5 +1,9 @@
 # hub/test/system-processes.test.ts
 
+The pgrep-stderr inspection probes seed a lease before starting any hub, so they
+create their scratch `.cland/run` anchor explicitly. The production lease writer
+creates only child directories beneath that existing anchor.
+
 `hub/test/system-processes.test.ts` is T3. Its real OS case positively requires a
 non-null native identity agreeing between asynchronous production listing and
 synchronous fixture capture. On Linux that proves boot-id/start ticks; on macOS

@@ -315,6 +315,7 @@ for (const concurrent of ['state change', 'watchdog replacement'] as const) {
       tags: ['cland'], size: 'c-8', region: 'lon1', priceHourly: 1, keyName: 'key', resource: 123, keyId: null,
       state: 'active', created: clock.now().toISOString(), deadline: new Date(clock.now().getTime() + 60000).toISOString(),
     };
+    await fs.mkdir(join(root, '.cland/run'), { recursive: true });
     await writeLease(root, row);
     let checkpoints = 0;
     const executor = new DropletExecutor(root, undefined, () => {}, env, undefined, {
@@ -387,6 +388,7 @@ async function heldWriterFixture(t: TestContext, boundary: 'provider' | 'rename'
     tags: ['cland'], size: 'c-8', region: 'lon1', priceHourly: 1, keyName: 'key', resource: null, keyId: null,
     state: boundary === 'provider' ? 'active' : 'releasing', created: clock.now().toISOString(), deadline: new Date(clock.now().getTime() + 60000).toISOString(),
   };
+  await fs.mkdir(join(root, '.cland/run'), { recursive: true });
   await writeLease(root, row);
   const hold = async () => {
     actualEntered.resolve();

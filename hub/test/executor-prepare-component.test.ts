@@ -3,7 +3,10 @@
 import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
+import files from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
 import { join } from 'node:path';
 import { projectHub, tempProject, inProcessSpoke, eventually, flushProjectLogs } from './harness.ts';
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
@@ -20,17 +23,21 @@ import { Machine } from '../src/executor/droplet/machine.ts';
 import { diagnosticResult } from '../src/hub/merge-batches.ts';
 import { defaultConfig } from '../src/init/config.ts';
 
-async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
+async function fixture(t: TestContext, overrides: Record<string, string> = {}, adoptRoot?: (root: string) => void) {
   const root = await tempProject(t);
+  adoptRoot?.(root);
+  let closeResources = async () => {};
+  beforeDirectories(t, () => closeResources());
   const clock = new FakeClock();
-  const api = await fakeDigitalOcean('cland-test-prepare-component', { machine: 'scripted', clock });
+  const api = await fakeDigitalOcean('cland-test-prepare-component', { machine: 'scripted', clock, testContext: t });
+  closeResources = () => api.close();
   const key = { node: process.version, nvim: { tag: 'v0.12.5', digest: 'a'.repeat(64) }, lock: 'b'.repeat(64), base: 'c'.repeat(40) };
   const machine = scriptedMachine(root, clock, key);
   const hubs: Awaited<ReturnType<typeof projectHub>>[] = [];
-  beforeDirectories(t, async () => {
+  closeResources = async () => {
     for (const served of hubs) await drive({ waits: machine.waits }, served.stop());
     await api.close();
-  });
+  };
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[verification]\nprepare = "npm ci"\n[verification.droplet]\nregions=["lon1", "nyc1", "sfo2"]\n');
   api.sizes[0]!.regions.push('sfo2'); api.regions.push({ slug: 'sfo2', available: true, sizes: ['c-8'] });
@@ -53,6 +60,7 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
   const syntheticProvider = { token: 'cland-test-prepare-component', api: api.provider } as const;
   const env = syntheticProviderEnvironment(await accountFixtureEnvironment(extras), syntheticProvider, api.provider) as Record<string, string>;
   const options = { clock, droplet: dependencies, syntheticProvider };
+  await assert.rejects(() => stat(join(root, '.cland/run')), { code: 'ENOENT' });
   const hub = await projectHub(t, root, env, options);
   hubs.push(hub);
   return { root, api, env, clock, waits: machine.waits, dependencies, options, key,
@@ -63,6 +71,62 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
     reopen: async () => { const served = await projectHub(t, root, env, options); hubs.push(served); return served; },
   };
 }
+
+test('fresh hub owns its run anchor before the first executor lease is written', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('fresh hub setup', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    assert.equal((await step(() => stat(join(f.root, '.cland/run')))).isDirectory(), true);
+    assert.equal((await step(() => prepare(f.ui))).ok, true);
+    await step(() => scope.wait('first prepared snapshot completion', () => drive(f, eventually('first prepared snapshot receipt', async () => {
+      const status = (await f.ui.request({ type: 'executor.status' })).value as { prepare?: { state: string } };
+      return status.prepare?.state === 'done' ? true : undefined;
+    }, 15000))));
+    const leases = await step(() => readLeaseHistory(f.root));
+    assert.equal(leases.length, 1);
+    assert.equal(leases[0]!.state, 'released');
+    assert.ok(leases[0]!.resource !== null, 'first builder acquired a provider identity and wrote its durable lease');
+  });
+});
+
+for (const deleted of [false, true]) test(`hub stop joins held lease compaction and stops twice (project deleted: ${deleted})`, async t => {
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const scope = guardedLeaseCase(t, () => release.resolve());
+  return scope.run(async step => {
+    const owners = new Set<DropletExecutor>();
+    const reconcile = DropletExecutor.prototype.reconcile;
+    scope.patch(DropletExecutor.prototype, 'reconcile', function(this: DropletExecutor, restart?: boolean) {
+      owners.add(this); return reconcile.call(this, restart);
+    });
+    const f = await step(() => scope.wait('held hub setup', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    const owner = [...owners].find(owner => owner.root === f.root);
+    assert.ok(owner, 'startup admitted the hub-owned executor');
+    await step(() => scope.wait('initial executor reconciliation', () => drive(f, owner.reconcile(false))));
+    const rename = files.rename;
+    const restoreHeld = scope.patch(files, 'rename', async (...args: Parameters<typeof files.rename>) => {
+      if (String(args[1]) === join(owner.root, '.cland/run/executor/lease-index.json')) { entered.resolve(); await release.promise; }
+      return rename(...args);
+    });
+    syncBuiltinESMExports();
+    const order: string[] = [];
+    let work: Promise<void> | undefined, stopping: Promise<void> | undefined;
+    try {
+      work = owner.reconcile(false).then(() => { order.push('compacted'); });
+      await step(() => scope.wait('held index publication receipt', () => Promise.race([entered.promise, work!.then(() => { throw new Error('compaction completed without held publication'); })])));
+      stopping = f.stop().then(() => { order.push('stopped'); });
+      if (deleted) await step(() => files.rm(f.root, { recursive: true, force: true, maxRetries: 3, retryDelay: 1 })); // Deliberate live-root deletion; bounded retries cover native removal contention.
+      release.resolve();
+      await step(() => scope.wait('compaction and hub-stop completion', () => Promise.all([work, stopping])));
+      assert.deepEqual(order, ['compacted', 'stopped']);
+      await step(() => f.stop());
+      if (deleted) await assert.rejects(() => stat(f.root), { code: 'ENOENT' });
+      else assert.deepEqual(JSON.parse(await step(() => readFile(join(f.root, '.cland/run/executor/lease-index.json'), 'utf8'))), { version: 1, leases: [] });
+    } finally {
+      release.resolve(); await Promise.allSettled([work, stopping]);
+      restoreHeld();
+    }
+  });
+});
 
 test('executor prepare defaults to Agents and honors an explicit report topic', async t => {
   const f = await fixture(t);

@@ -5,6 +5,28 @@ I/O and `FakeClock`. No real provider, SSH, native harness or browser is involve
 Keep builder release, snapshot and accounting assertions on their existing
 durable status/journal receipts.
 
+The fixture requires stat(`.cland/run`) ENOENT before starting its hub. The fresh
+hub case then requires the run anchor directory after serving, prepares the
+first fake builder and reads its durable released lease with a non-null provider
+identity. `serveProject` creates the anchor during locked setup before recovery;
+executor directory writers only create child levels under it.
+
+The fresh-anchor and two hub-stop callbacks enroll guardedLeaseCase before any
+fixture acquisition. Their original setup producers adopt late project roots;
+resource cleanup is registered before provider acquisition. The shared positive
+native-launch guard remains active through setup, body and teardown. Prototype
+and filesystem observers use fixture-owned manual patches, restored after the
+original work joins, independently of TestContext mock cancellation.
+
+The two hub-stop cases capture the actual startup executor, hold index rename,
+starts hub stop and releases the writer. The ordered compaction and hub-stop
+completion receipts must precede a second no-op stop and the durable index
+assertion, or stat(root) ENOENT when the root is deliberately deleted beneath
+the held writer. Removal uses three bounded retries with 1 ms retry delay.
+Bound setup and completion separately; always release/join the held
+writer before restoring the filesystem seam. Shutdown does not start ledger
+or provider recovery after the held compaction returns.
+
 Delivery upload retries use the real `DropletRun.deliver` policy through the
 injected machine transport and `FakeClock`, with bundle bytes written only in
 the disposable fixture. The 9 MiB sample has a 318000 ms attempt allowance.

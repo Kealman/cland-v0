@@ -1,14 +1,17 @@
 // T2: executor permissions through the dispatcher, with no hub or spoke process.
 import { sessionDispatcherUi as dispatcherUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
+import childProcess from 'node:child_process';
 import { test, type TestContext } from 'node:test';
 import { frameClient, projectHub, tempProject } from './harness.ts';
-import { afterCleanup, onCleanup, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { onCleanup, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
 
 import { Machine } from '../src/executor/droplet/machine.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
-import { caseDeadlines, drainFixtureWork } from './case-deadlines.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
 import type { LogEntry } from '../src/log.ts';
 import { DigitalOceanApi, DigitalOceanError } from '../src/executor/droplet/api.ts';
@@ -24,22 +27,136 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { fakeNativeGuard } from './fake-native-guard.ts';
 import { runInNewContext } from 'node:vm';
 import { noSyncFilesystem } from './no-sync-filesystem.ts';
-import { recoverPoolSnapshots } from '../src/executor/droplet/snapshot-recovery.ts';
+import { recoverPoolSnapshots, saveRecovery } from '../src/executor/droplet/snapshot-recovery.ts';
 
-/** Whole caller and fixture teardown finish before the positive guard restores. */
-function guardedLeaseCase(t: TestContext) {
-  const scope = caseDeadlines(t, { timeoutMs: 5000, ownership: { beforeDirectories, guardDirectoryRemoval } });
-  let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
-  let restore: (() => void) | undefined;
-  afterCleanup(t, async () => {
-    await drainFixtureWork();
-    try { guard?.verify(); } finally { restore?.(); }
+/** The real test owns synthetic disposal even if its observer never starts it. */
+function leaseControlCleanup(t: TestContext, hooks: Array<() => Promise<void>>, release: () => void, producer: () => Promise<void> | undefined) {
+  let closing: Promise<void> | undefined, disposing: Promise<void> | undefined;
+  const begin = () => closing ??= Promise.resolve().then(() => {
+    const hook = hooks[0];
+    if (!hook) throw new Error('synthetic fixture cleanup was not registered; disposal incomplete');
+    return hook();
   });
-  return { ...scope, run: (body: (step: FixtureStep) => Promise<void>) => scope.run(async step => {
-    guard = await step(() => scope.wait('native guard setup', () => fakeNativeGuard(fn => { restore = fn; })));
-    await body(step);
-  }) };
+  const dispose = () => disposing ??= (async () => {
+    let releaseFailure: unknown;
+    try { release(); } catch (error) { releaseFailure = error; }
+    const results = await within(Promise.allSettled([producer(), begin()]), 5000);
+    const cleanup = results[1]!;
+    const failures = [...(releaseFailure ? [releaseFailure] : []), ...(cleanup.status === 'rejected' ? [cleanup.reason] : [])];
+    if (failures.length) throw new AggregateError(failures, 'synthetic fixture disposal failed');
+    // The producer's outcome remains on its original promise for the test's
+    // success/failure assertion; disposal joins it without selecting a result.
+  })();
+  onCleanup(t, dispose);
+  return { begin, dispose };
 }
+
+test('real cleanup disposes a synthetic fixture after setup fails before cancellation starts', async t => {
+  const hooks: Array<() => Promise<void>> = [];
+  const context = { name: t.name, after: (hook: () => Promise<void>) => { hooks.push(hook); } } as TestContext;
+  let running: Promise<void> | undefined;
+  const cleanup = leaseControlCleanup(t, hooks, () => {}, () => running);
+  const scope = guardedLeaseCase(context);
+  const originalRename = fs.rename, originalSpawn = childProcess.spawn;
+  let root = '';
+  const replacement: typeof fs.rename = (...args) => originalRename(...args);
+  running = scope.run(async step => {
+    root = await step(() => scope.wait('failing setup', async () => {
+      const root = await fs.mkdtemp(join(tmpdir(), 'cland-early-lease-'));
+      scope.adoptRoot(root);
+      scope.fixtures.after(() => fs.rm(root, { recursive: true, force: true }));
+      return root;
+    }));
+    scope.patch(fs, 'rename', replacement);
+    throw new Error('controlled setup failure before observer disposal');
+  });
+  await assert.rejects(running, /controlled setup failure before observer disposal/);
+  assert.equal(fs.rename, replacement);
+  assert.equal((await fs.stat(root)).isDirectory(), true);
+  await cleanup.dispose(); // The pre-enrolled real fallback; begin was never called by the body.
+  assert.equal(fs.rename, originalRename);
+  assert.equal(childProcess.spawn, originalSpawn);
+  await assert.rejects(() => fs.stat(root), { code: 'ENOENT' });
+});
+
+test('cancelled lease fixture joins late root acquisition before teardown', async t => {
+  const hooks: Array<() => Promise<void>> = [];
+  const context = { name: t.name, after: (hook: () => Promise<void>) => { hooks.push(hook); } } as TestContext;
+  const entered = Promise.withResolvers<string>(), resume = Promise.withResolvers<void>(), adopted = Promise.withResolvers<void>(), finish = Promise.withResolvers<void>();
+  let running: Promise<void> | undefined, closing: Promise<void> | undefined;
+  const cleanup = leaseControlCleanup(t, hooks, () => { resume.resolve(); finish.resolve(); }, () => running);
+  const scope = guardedLeaseCase(context, () => resume.resolve());
+  const receipts: string[] = [];
+  running = scope.run(async step => {
+    await step(() => scope.wait('late root acquisition', async () => {
+      const root = await fs.mkdtemp(join(tmpdir(), 'cland-late-lease-'));
+      entered.resolve(root); await resume.promise;
+      scope.adoptRoot(root);
+      scope.fixtures.after(async () => { await fs.rm(root, { recursive: true, force: true }); receipts.push('removed'); });
+      adopted.resolve(); await finish.promise;
+      await fs.writeFile(join(root, 'receipt'), 'written');
+      receipts.push(await fs.readFile(join(root, 'receipt'), 'utf8'));
+    }));
+  });
+  void running.catch(() => {});
+  const root = await within(entered.promise, 5000);
+  closing = cleanup.begin();
+  await within(adopted.promise, 5000);
+  assert.equal((await fs.stat(root)).isDirectory(), true);
+  finish.resolve();
+  await assert.rejects(running, /fixture work admission closed/);
+  await within(closing, 5000);
+  assert.deepEqual(receipts, ['written', 'removed']);
+  await assert.rejects(() => fs.stat(root), { code: 'ENOENT' });
+});
+
+for (const method of ['mkdir', 'rename'] as const) test(`cancelled fixture retains its ${method} seam until the held writer joins`, async t => {
+  const hooks: Array<() => Promise<void>> = [];
+  const context = { name: t.name, after: (hook: () => Promise<void>) => { hooks.push(hook); } } as TestContext;
+  const entered = Promise.withResolvers<void>(), released = Promise.withResolvers<void>(), resume = Promise.withResolvers<void>(), finish = Promise.withResolvers<void>();
+  let running: Promise<void> | undefined, closing: Promise<void> | undefined;
+  const cleanup = leaseControlCleanup(t, hooks, () => { resume.resolve(); finish.resolve(); }, () => running);
+  const scope = guardedLeaseCase(context, () => { resume.resolve(); released.resolve(); });
+  const original = fs[method];
+  let root = '';
+  let installed: unknown;
+  const order: string[] = [];
+  running = scope.run(async step => {
+    root = await step(() => scope.wait('control setup', async () => {
+      const root = await fs.mkdtemp(join(tmpdir(), 'cland-seam-control-'));
+      scope.adoptRoot(root); scope.fixtures.after(() => fs.rm(root, { recursive: true, force: true }));
+      await fs.writeFile(join(root, 'source'), 'receipt');
+      return root;
+    }));
+    const hold = async () => {
+      entered.resolve(); await resume.promise;
+      assert.equal(fs[method], installed, 'cancellation retains the wrapper at the resumed boundary');
+      await finish.promise;
+    };
+    installed = method === 'mkdir' ? async (...args: Parameters<typeof fs.mkdir>) => {
+      await hold(); return (original as typeof fs.mkdir)(...args);
+    } : async (...args: Parameters<typeof fs.rename>) => {
+      await hold(); return (original as typeof fs.rename)(...args);
+    };
+    scope.patch(fs, method, installed);
+    await step(() => scope.wait('held native filesystem completion', async () => {
+      if (method === 'mkdir') await fs.mkdir(join(root, 'target'));
+      else await fs.rename(join(root, 'source'), join(root, 'target'));
+      order.push('writer joined');
+    }));
+  });
+  void running.catch(() => {});
+  await within(Promise.race([entered.promise, running]), 5000);
+  closing = cleanup.begin();
+  await within(released.promise, 5000);
+  assert.equal(fs[method], installed, 'registered cleanup has begun while the original writer is still held');
+  finish.resolve();
+  await assert.rejects(running, /fixture work admission closed/);
+  await within(closing, 5000);
+  assert.deepEqual(order, ['writer joined']);
+  assert.equal(fs[method], original, 'restoration follows the original completion');
+  await assert.rejects(() => fs.stat(root), { code: 'ENOENT' });
+});
 
 test('absent pool recovery requests no lazy module inside the synchronous filesystem trap', async t => {
   const scope = guardedLeaseCase(t);
@@ -73,12 +190,52 @@ test('absent pool recovery requests no lazy module inside the synchronous filesy
   });
 });
 
-for (const restart of [true, false]) test(`executor close joins held index publication (startup: ${restart})`, async t => {
-  const scope = guardedLeaseCase(t);
+for (const writer of ['lease', 'snapshot recovery', 'pool recovery'] as const) test(`held ${writer} writer cannot recreate a deleted project`, async t => {
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const scope = guardedLeaseCase(t, () => release.resolve());
+  return scope.run(async step => {
+    const root = await step(() => scope.wait('writer fixture setup', async () => {
+      const root = await fs.mkdtemp(join(tmpdir(), 'cland-writer-'));
+      scope.adoptRoot(root);
+      scope.fixtures.after(() => fs.rm(root, { recursive: true, force: true }));
+      await fs.mkdir(join(root, '.cland/run'), { recursive: true });
+      return root;
+    }));
+    const mkdir = fs.mkdir;
+    const target = join(root, '.cland/run', writer === 'lease' ? 'executor/leases/held' : writer === 'pool recovery' ? 'hosts/fixture-recovery' : 'executor/snapshot-recovery');
+    const restoreFault = scope.patch(fs, 'mkdir', async (...args: Parameters<typeof fs.mkdir>) => {
+      if (String(args[0]) === target) { entered.resolve(); await release.promise; }
+      return mkdir(...args);
+    });
+    syncBuiltinESMExports();
+    let work: Promise<void> | undefined;
+    try {
+      await step(() => scope.wait('held writer deletion and completion', async () => {
+        work = writer === 'lease' ? writeLease(root, { lease: 'held' } as DropletLease) : saveRecovery(root,
+          { id: 'held', name: 'fixture', started: new FakeClock().now().toISOString(), phase: 'cleanup', previous: null, requested: false, seen: [] },
+          writer === 'pool recovery' ? { recordPath: join(root, '.cland/run/hosts/fixture-image.json'), recoveryRoot: target } : undefined);
+        const rejected = assert.rejects(work, { code: 'ENOENT' });
+        await Promise.race([entered.promise, work.then(() => { throw new Error('writer completed without hold'); })]);
+        await fs.rm(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 1 }); // This assertion deliberately deletes the live held writer's root; retries bound native removal contention.
+        release.resolve();
+        await rejected;
+      }));
+      await assert.rejects(() => fs.stat(root), { code: 'ENOENT' });
+    } finally {
+      release.resolve(); await work?.catch(() => {});
+      restoreFault();
+    }
+  });
+});
+
+for (const deleted of [false, true]) for (const restart of [true, false]) test(`executor close joins held index publication (startup: ${restart}, project deleted: ${deleted})`, async t => {
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const scope = guardedLeaseCase(t, () => release.resolve());
   return scope.run(async step => {
     const f = await step(() => scope.wait('held index fixture setup', async () => {
       const root = await fs.mkdtemp(join(tmpdir(), 'cland-index-close-'));
       scope.adoptRoot(root);
+      await fs.mkdir(join(root, '.cland/run'), { recursive: true });
       let executor: DropletExecutor | undefined;
       scope.fixtures.after(async () => { await executor?.close(); await fs.rm(root, { recursive: true, force: true }); });
       let closed = false;
@@ -87,15 +244,15 @@ for (const restart of [true, false]) test(`executor close joins held index publi
         assert.equal(closed, false, 'index publication precedes storage close'); meta.set(key, value);
       } } as unknown as ConstructorParameters<typeof DropletExecutor>[1];
       const api = new Proxy({} as Provider, { get: () => () => assert.fail('provider call in empty index recovery') });
-      executor = new DropletExecutor(root, store, () => {}, fixtureEnvironment(root, process.env), undefined, { api, clock: new FakeClock() });
+      const events: Record<string, unknown>[] = [];
+      executor = new DropletExecutor(root, store, event => events.push(event), fixtureEnvironment(root, process.env), undefined, { api, clock: new FakeClock() });
       if (!restart) await executor.reconcile(true);
-      return { root, executor, closeStorage: () => { closed = true; } };
+      return { root, executor, events, closeStorage: () => { closed = true; } };
     }));
-    const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
-    const nativeRename = fs.rename;
-    const fault = t.mock.method(fs, 'rename', async (...args: Parameters<typeof fs.rename>) => {
-      if (String(args[1]) === join(f.executor.root, '.cland/run/executor/lease-index.json')) { entered.resolve(); await release.promise; }
-      return nativeRename(...args);
+    const nativeMkdir = fs.mkdir;
+    const restoreFault = scope.patch(fs, 'mkdir', async (...args: Parameters<typeof fs.mkdir>) => {
+      if (String(args[0]) === join(f.executor.root, '.cland/run/executor/demo-leases')) { entered.resolve(); await release.promise; }
+      return nativeMkdir(...args);
     });
     syncBuiltinESMExports();
     let recovery: Promise<void> | undefined, closing: Promise<void> | undefined;
@@ -105,15 +262,21 @@ for (const restart of [true, false]) test(`executor close joins held index publi
         recovery = f.executor.reconcile(restart).then(() => { order.push('reconciled'); });
         await Promise.race([entered.promise, recovery.then(() => { throw new Error('recovery completed without held index publication'); })]);
         closing = f.executor.close().then(() => { order.push('closed'); f.closeStorage(); });
+        if (deleted) await fs.rm(f.root, { recursive: true, force: true, maxRetries: 3, retryDelay: 1 }); // Deliberately delete beneath the held writer; bounded retries cover native removal contention.
+        assert.deepEqual(order, [], 'close cannot finish while the writer is held');
         release.resolve();
         await Promise.all([recovery, closing]);
       }));
       assert.deepEqual(order, ['reconciled', 'closed']);
-      assert.deepEqual(JSON.parse(await step(() => fs.readFile(join(f.root, '.cland/run/executor/lease-index.json'), 'utf8'))), { version: 1, leases: [] });
+      await step(() => f.executor.close());
+      if (deleted) {
+        await assert.rejects(() => fs.stat(f.root), { code: 'ENOENT' });
+        assert.ok(f.events.some(event => event.event === 'executor-lease-maintenance-stopped' && event.reason === 'run-directory-missing'));
+      } else assert.deepEqual(JSON.parse(await step(() => fs.readFile(join(f.root, '.cland/run/executor/lease-index.json'), 'utf8'))), { version: 1, leases: [] });
     } finally {
       release.resolve();
       await Promise.allSettled([recovery, closing]);
-      fault.mock.restore(); syncBuiltinESMExports();
+      restoreFault();
     }
   });
 });
@@ -153,6 +316,7 @@ for (const alreadyReleased of [false, true]) test(`confirmed release accounting 
       let executor: DropletExecutor | undefined;
       scope.adoptRoot(root); scope.fixtures.after(async () => { await executor?.close(); await fs.rm(root, { recursive: true, force: true }); });
       const env = fixtureEnvironment(root, process.env), clock = new FakeClock();
+      await fs.mkdir(join(root, '.cland/run'), { recursive: true });
       const created = clock.now().toISOString(), expected = { lifetimeMs: alreadyReleased ? 1234 : 0, costUsd: alreadyReleased ? 0.5 : 1 / 60 };
       const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: 'owned', run: 'run', name: 'owned', tags: ['cland'], size: 'fixture', region: 'fixture', priceHourly: 1, keyName: 'owned', state: alreadyReleased ? 'released' : 'active', resource: 42, keyId: null, created, createStarted: created, deadline: new Date(clock.now().getTime() + 60000).toISOString(), ...(alreadyReleased ? { released: created, ...expected } : {}) };
       await writeLease(root, lease);
@@ -284,6 +448,7 @@ async function statusCase(t: import('node:test').TestContext, work: (root: strin
 }
 
 async function statusFixture(t: import('node:test').TestContext, root: string, stderr: string, code: string | number = 255) {
+  await fs.mkdir(join(root, '.cland/run'), { recursive: true });
   const clock = new FakeClock();
   const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: 'status-fixture',
     run: 'status-fixture', name: 'fixture', tags: ['cland'], size: 'fixture', region: 'fixture',

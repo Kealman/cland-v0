@@ -6,6 +6,16 @@ epics supplied through filesystem fakes. Cold pointers, report queues and their
 checkpoints are in memory. Only the live files, ledger and index use scratch
 storage. No provider, network, process or live project state is needed.
 
+The missing-run control requires the structured result
+`{status: 'stopped', reason: 'run-directory-missing'}` and stat(`.cland`) ENOENT.
+The publication control creates its run anchor first, injects an unrelated
+ENOENT at index rename and requires that failure to propagate. Its manual seam
+is independent of TestContext mock restoration and stays installed until the
+original compaction joins. A held-publication control executes the registered
+cleanup hook while the writer is held, then requires the native rename receipt,
+writer join and restoration in that order. Cleanup always releases and joins
+the original producer before fixture removal or guard restoration.
+
 The 5,000-record historical root is built and repaired once per file. The scale
 case then shares that root between read-only lease and released-demo status
 checks. Lease seeds use one batched helper. Report acknowledgement uses a

@@ -6,11 +6,30 @@ without requesting that module or reaching a provider. The serving-path trap
 is shared with session-credential-io; it is restored only after original work
 settles, and the loader hook is then deregistered.
 
-Two held-index controls cover direct startup and periodic reconciliation.
-Observe the canonical executor root's index rename before closing, release the
-writer, then require both the durable index and reconciliation receipt before
-close permits storage disposal. Whole-case ownership and the native launch
+Four held-index controls cover direct startup and periodic reconciliation with
+the project retained or deleted. Hold the demo-directory mkdir before closing,
+then require reconciliation completion before close permits storage disposal.
+The deletion cases deliberately remove the root beneath that held writer with
+three bounded native removal retries (1 ms retry delay), release it, join close,
+call close again, and require `stat(root)` ENOENT plus the structured
+`run-directory-missing` diagnostic. Retained controls require the durable index.
+Whole-case ownership and the native launch
 guard remain active through the original work and cleanup.
+
+guardedLeaseCase lives in executor-lease-fixture.ts and owns manual filesystem
+patches until the original callback and writers join. Holds register their
+release before admission. Cancellation controls execute the registered cleanup
+hook while root setup, mkdir or rename is held; they require late root adoption,
+native write completion before removal, and seam retention through the resumed
+writer boundary. The guard positively checks callback/custom-promisify/native
+spawn routes and verifies no unexpected launches before restoration.
+
+Each synthetic-context control pre-enrolls its real test's fallback before
+acquisition. The fallback always begins the captured synthetic cleanup, releases
+both holds and bounds the join of original producer plus disposal; cleanup
+failures propagate. Happy-path and fallback calls share one disposal promise.
+The early-setup-failure control skips body-triggered disposal, invokes this same
+fallback and requires root ENOENT plus restored rename and native spawn globals.
 
 The two repair-to-maintenance cases are T2, moved here from the T1 maintenance
 policy matrix. They retain the original no-prune and exact-id report assertions;
@@ -24,6 +43,13 @@ guard and fixture setup, adopt each root and fence every caller continuation.
 The shared fakeNativeGuard positively exercises callback, custom-promisify and
 prototype launch routes. Its verification/restoration waits until fixture-work
 drainage and teardown complete, including executor close before root removal.
+
+Three additional held-directory cases exercise writeLease, executor saveRecovery
+and pool saveRecovery independently. Each starts below an existing run anchor,
+holds its final directory mkdir, deletes its root with the same bounded retries,
+then resumes and joins the writer. Require its native ENOENT rejection and the
+root's ENOENT stat receipt. Restore the filesystem mock only after the writer
+settles. All three fail under their old recursive mkdir implementations.
 
 T2 status regressions inject Machine's native execution callback and provider
 lookup, with a fake clock and disposable lease storage. No SSH binary, droplet,

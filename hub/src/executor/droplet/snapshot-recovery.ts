@@ -1,11 +1,11 @@
 import { parsePoolName } from '../../host/pool-name.ts';
 import type { Provider } from './dependencies.ts';
-import { mkdir, readFile, readdir, rm } from 'node:fs/promises';
+import { readFile, readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Store } from '../../hub/store.ts';
 import type { LogFn } from '../../log.ts';
 import { DigitalOceanApi, type Action, type SnapshotImage } from './api.ts';
-import { durableJson } from './lease.ts';
+import { durableJson, runDirectory } from './lease.ts';
 import { readSnapshot, snapshotPath, type Snapshot, type SnapshotStorage } from './prepare.ts';
 
 export type SnapshotRecovery = {
@@ -17,7 +17,7 @@ export type SnapshotRecovery = {
 const recoveryRoot = (root: string, storage?: SnapshotStorage): string => storage?.recoveryRoot ?? join(root, '.cland/run/executor/snapshot-recovery');
 const recoveryPath = (root: string, record: SnapshotRecovery, storage?: SnapshotStorage): string => join(recoveryRoot(root, storage), `${record.id}.json`);
 export async function saveRecovery(root: string, record: SnapshotRecovery, storage?: SnapshotStorage): Promise<void> {
-  await mkdir(recoveryRoot(root, storage), { recursive: true, mode: 0o700 });
+  await runDirectory(root, recoveryRoot(root, storage));
   await durableJson(recoveryPath(root, record, storage), record);
 }
 export async function forgetRecovery(root: string, record: SnapshotRecovery, storage?: SnapshotStorage): Promise<void> { await rm(recoveryPath(root, record, storage), { force: true }); }

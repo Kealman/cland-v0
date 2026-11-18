@@ -50,6 +50,7 @@ test('startup restores sessions and serves before recovering a lease with a hang
     providerBeforeServing ||= serving === undefined;
     await release.promise;
   });
+  await files.mkdir(join(root, '.cland/run'), { recursive: true });
   await writeLease(root, {
     kind: 'droplet', provider: 'digitalocean', lease: 'orphan', run: 'orphan-run',
     name: 'cland-startup-orphan', tags: ['cland'], size: 'c-8', region: 'lon1', priceHourly: 0.25,

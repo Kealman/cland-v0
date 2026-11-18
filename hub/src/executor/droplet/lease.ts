@@ -1,7 +1,7 @@
 import { realClock, type Clock } from '../../hub/clock.ts';
 import { createHash, randomUUID } from 'node:crypto';
-import { open, mkdir, opendir, readFile, readdir, rename, rm } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { open, mkdir, opendir, readFile, readdir, rename, rm, stat } from 'node:fs/promises';
+import { dirname, join, resolve, relative, sep } from 'node:path';
 import type { Droplet } from './api.ts';
 import type { Lease } from '../executor.ts';
 
@@ -126,35 +126,64 @@ async function readIds(root: string, ids: string[], requireFiles = false): Promi
 }
 /** Serialized with writers. A crash before publication leaves the old,
  * conservative index. Startup repair includes files from older writers. */
-export async function compactLeaseIndex(root: string, settled: ReadonlySet<string>, missing: (lease: string, reason: 'spend' | 'record') => void, rebuild = false): Promise<void> {
+export type LeaseCompaction = { status: 'compacted' } | { status: 'stopped'; reason: 'run-directory-missing' };
+/** Each mkdir owns one level only; no check-then-recursive-mkdir race. */
+async function ownDirectory(path: string): Promise<void> {
+  try { await mkdir(path, { mode: 0o700 }); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+}
+/** Create owned child levels only; the hub owns the existing run anchor. */
+export async function runDirectory(root: string, path: string): Promise<void> {
+  const anchor = resolve(root, '.cland/run');
+  const suffix = relative(anchor, resolve(path));
+  if (!suffix || suffix === '..' || suffix.startsWith(`..${sep}`)) throw new Error('directory must be below .cland/run');
+  let current = anchor;
+  for (const part of suffix.split(sep)) { current = join(current, part); await ownDirectory(current); }
+}
+export async function compactLeaseIndex(root: string, settled: ReadonlySet<string>, missing: (lease: string, reason: 'spend' | 'record') => void, rebuild = false): Promise<LeaseCompaction> {
+  let outcome: LeaseCompaction = { status: 'compacted' };
   await leaseWrite(leaseRoot(root), async () => {
-    const index = await readIndex(root);
-    const ids = rebuild ? [...new Set([...(index?.leases ?? []), ...await directoryIds(root)])] : index?.leases ?? await directoryIds(root);
-    await mkdir(demoRoot(root), { recursive: true, mode: 0o700 });
-    await mkdir(reportRoot(root), { recursive: true, mode: 0o700 });
-    const keep: string[] = [];
-    for (const id of ids) {
-      let lease: DropletLease;
-      try { lease = await readLease(join(leaseRoot(root), id)); }
-      catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-        keep.push(id); missing(id, 'record'); continue;
+    try {
+      await runDirectory(root, join(root, '.cland/run/executor'));
+      const index = await readIndex(root);
+      const ids = rebuild ? [...new Set([...(index?.leases ?? []), ...await directoryIds(root)])] : index?.leases ?? await directoryIds(root);
+      await ownDirectory(demoRoot(root));
+      await ownDirectory(reportRoot(root));
+      const keep: string[] = [];
+      for (const id of ids) {
+        let lease: DropletLease;
+        try { lease = await readLease(join(leaseRoot(root), id)); }
+        catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+          keep.push(id); missing(id, 'record'); continue;
+        }
+        if (lease.lease !== id) throw new Error('lease directory identity mismatch');
+        if (lease.state === 'released' && settled.has(lease.lease)) {
+          // Settlement is not local cleanup. Preserve membership until both key
+          // removals have completed, including recovery after a partial removal.
+          await rm(join(leaseDir(root, lease), 'key'), { force: true });
+          await rm(join(leaseDir(root, lease), 'key.pub'), { force: true });
+          await archiveDemo(root, lease);
+          continue;
+        }
+        keep.push(id);
+        if (lease.state === 'released') missing(lease.lease, 'spend');
       }
-      if (lease.lease !== id) throw new Error('lease directory identity mismatch');
-      if (lease.state === 'released' && settled.has(lease.lease)) {
-        // Settlement is not local cleanup. Preserve membership until both key
-        // removals have completed, including recovery after a partial removal.
-        await rm(join(leaseDir(root, lease), 'key'), { force: true });
-        await rm(join(leaseDir(root, lease), 'key.pub'), { force: true });
-        await archiveDemo(root, lease);
-        continue;
+      await ownDirectory(leaseRoot(root));
+      await durableJson(indexPath(root), { version: 1, leases: keep });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      // An unrelated missing record is not evidence that the owner vanished.
+      try { await stat(join(root, '.cland/run')); }
+      catch (receipt) {
+        if ((receipt as NodeJS.ErrnoException).code !== 'ENOENT') throw receipt;
+        outcome = { status: 'stopped', reason: 'run-directory-missing' };
+        return;
       }
-      keep.push(id);
-      if (lease.state === 'released') missing(lease.lease, 'spend');
+      throw error;
     }
-    await mkdir(leaseRoot(root), { recursive: true, mode: 0o700 });
-    await durableJson(indexPath(root), { version: 1, leases: keep });
   });
+  return outcome;
 }
 const writes = new Map<string, Promise<void>>();
 async function leaseWrite(dir: string, work: () => Promise<void>): Promise<void> {
@@ -169,7 +198,7 @@ const sameWatchdog = (left: DropletLease['watchdog'], right: DropletLease['watch
 export async function writeLease(root: string, lease: DropletLease): Promise<void> {
   const dir = leaseDir(root, lease);
   await leaseWrite(leaseRoot(root), async () => {
-    await mkdir(dir, { recursive: true, mode: 0o700 });
+    await runDirectory(root, dir);
     const index = await readIndex(root);
     // Admit before writing: a crash can add a missing-file read, never hide a lease.
     if (index && !index.leases.includes(lease.lease)) await durableJson(indexPath(root), { ...index, leases: [...index.leases, lease.lease] });

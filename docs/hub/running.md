@@ -664,8 +664,16 @@ released entries only after observing their settled, published spend entries.
 Missing or pending spend retains the lease in the hot index and reports
 `executor-lease-spend-missing`. A missing lease file retains its uncertain id and
 reports `executor-lease-record-missing`; repair cannot establish idleness from it.
-Periodic recovery retries settlement and index compaction. Executor close joins
-direct startup and periodic reconciliation before storage disposal. Pool
+Periodic recovery retries settlement and index compaction. Compaction creates
+only individual executor directories below an existing `.cland/run`; it never
+recreates that directory or its parents. Lease checkpoints and executor/pool
+snapshot recovery writers use the same bounded child-directory helper; their
+run anchor is created once by `serveProject` during its locked startup, before
+background recovery. A filesystem ENOENT plus an independent
+missing-run receipt returns `stopped` with reason `run-directory-missing` and
+reports `executor-lease-maintenance-stopped`. Other I/O failures remain failures.
+Executor close joins direct startup and periodic reconciliation and in-flight
+release maintenance before storage disposal. Pool
 recovery loads its image module only after discovering a valid recovery
 directory. A settled released lease leaves hot membership only after both local
 key removals complete. Lease

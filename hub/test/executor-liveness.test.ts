@@ -23,6 +23,7 @@ for (const phase of ['sweep', 'lease recovery'] as const) test(`status observes 
     if (++calls === 1) sweepEntered.resolve(); else statusEntered.resolve();
     return new Promise(() => {});
   });
+  await mkdir(join(root, '.cland/run'), { recursive: true });
   if (phase === 'lease recovery') await writeLease(root, {
     kind: 'droplet', provider: 'digitalocean', run: 'old-run', lease: 'old-lease', name: 'cland-old', tags: ['cland'],
     size: 'c-8', region: 'lon1', priceHourly: 1, keyName: 'old-key', keyId: null, resource: 123, state: 'releasing',

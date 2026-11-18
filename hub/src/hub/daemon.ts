@@ -136,6 +136,9 @@ export async function serveProject(root: string, options: { createHostRegistry?:
     remoteSecrets = resolveRemoteSecrets();
     await refreshTerritoryHook(root, options.territoryLock);
     secret = ensureSkeleton(l);
+    // The serving owner creates the anchor once, before background recovery.
+    // Executor writers may only create their children beneath it.
+    mkdirSync(join(l.dir, 'run'), { recursive: true, mode: 0o700 });
   } catch (err) {
     lock.release();
     throw err;

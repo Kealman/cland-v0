@@ -94,9 +94,14 @@ export class DropletExecutor implements Executor {
     this.store?.setMeta('executor-leases', JSON.stringify((await readLeases(this.root)).filter(l => l.state !== 'released')));
   }
 
-  async #compact(rebuild = false): Promise<void> {
-    await compactLeaseHistory(this.root, this.#env, this.logger, rebuild);
+  async #compact(rebuild = false): Promise<boolean> {
+    const outcome = await compactLeaseHistory(this.root, this.#env, this.logger, rebuild);
+    if (outcome.status === 'stopped') {
+      this.logger({ event: 'executor-lease-maintenance-stopped', reason: outcome.reason });
+      return false;
+    }
     await this.#publishLeases();
+    return true;
   }
 
   /** Index maintenance cannot replace an already confirmed provider receipt. */
@@ -459,6 +464,7 @@ export class DropletExecutor implements Executor {
     await Promise.allSettled(this.#reaps);
     await Promise.allSettled(this.#sweeps);
     await Promise.allSettled(this.#reconciles);
+    await Promise.allSettled(this.#releases.values());
   }
 
   async release(lease: DropletLease, deadline?: number): Promise<Released> {
@@ -564,7 +570,8 @@ export class DropletExecutor implements Executor {
 
   async #reconcile(restart: boolean): Promise<void> {
     if (restart) this.#indexRepairNeeded = true;
-    await this.#compact(this.#indexRepairNeeded);
+    if (!await this.#compact(this.#indexRepairNeeded)) return;
+    if (this.#closing) return;
     this.#indexRepairNeeded = false;
     await this.#retryShardReleases();
     if (this.#env.DIGITALOCEAN_TOKEN) await rememberProject(this.root, this.#env, this.dependencies.processes, this.clock, this.dependencies.wait, this.#abort.signal);

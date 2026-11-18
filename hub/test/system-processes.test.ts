@@ -874,6 +874,7 @@ const root = process.cwd();
  const { DropletRun } = await import(${JSON.stringify(new URL('../src/executor/droplet/run.ts', import.meta.url).href)});
  const { writeLease, readLease } = await import(${JSON.stringify(new URL('../src/executor/droplet/lease.ts', import.meta.url).href)});
  const lease = { provider: 'digitalocean', tags: ['cland'], run: 'inspection-fixture', name: 'inspection-fixture', lease: 'inspection-fixture', resource: 42, state: 'active', deadline: new Date(Date.now() + 60000).toISOString(), watchdog: { pid: 420100, startedUtc: start, pidIdentity: nativeBirth(rows[0]) }, execution: { started: true, delivered: true } };
+ await nativeFiles.mkdir(root + '/.cland/run', { recursive: true });
  await writeLease(root, lease);
  let stream = 'before inspection\\n';
  const remote = new DropletRun(root, process.env, { api: { droplet: async () => ({ status: 'active' }) }, machine: { exec: async (_lease, command) => command.includes('base64') ? Buffer.from(stream).subarray(Number(command.split('tail -c +')[1].split(' ')[0]) - 1).toString('base64') : JSON.stringify({ state: 'running' }) } });

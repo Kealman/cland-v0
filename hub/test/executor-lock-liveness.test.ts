@@ -100,6 +100,7 @@ test('concurrent releases join one unlink while a successor acquires before its 
 
 test('settled legacy lease history cannot repeatedly defer a later release', async t => {
   const machine = await scratchMachine(t, { identity: false });
+  await fs.mkdir(join(machine.root, '.cland/run'), { recursive: true });
   const clock = new FakeClock();
   const env = { ...machine.env, DIGITALOCEAN_TOKEN: 'fixture' };
   const created = clock.now().toISOString();

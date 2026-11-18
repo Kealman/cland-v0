@@ -15,6 +15,62 @@ import { Demos } from '../src/hub/demos.ts';
 
 const row = (id: string, state: DropletLease['state']): DropletLease => ({ kind: 'droplet', provider: 'digitalocean', lease: id, run: id, name: id, tags: ['cland'], size: 'fixture', region: 'fixture', priceHourly: 1, keyName: id, state, resource: null, keyId: null, created: '2026-11-17T00:00:00Z', deadline: '2026-11-17T01:00:00Z', ...(state === 'released' ? { costUsd: 0, released: '2026-11-17T00:01:00Z' } : {}) });
 const environment = (root: string) => fixtureEnvironment(root, { ...process.env, CLAND_EXECUTOR_STATE: join(root, 'ledger') });
+
+test('compaction stops on a missing run directory without recreating it', async t => fakeOnlyFixture(t, async root => {
+  const outcome = await compactLeaseHistory(root, environment(root), () => {}, true);
+  assert.deepEqual(outcome, { status: 'stopped', reason: 'run-directory-missing' });
+  await assert.rejects(() => fs.stat(join(root, '.cland')), { code: 'ENOENT' });
+}));
+
+test('an unrelated missing publication file remains a maintenance failure', async t => fakeOnlyFixture(t, async root => {
+  await fs.mkdir(join(root, '.cland/run'), { recursive: true });
+  const rename = fs.rename;
+  let work: ReturnType<typeof compactLeaseHistory> | undefined;
+  fs.rename = async (...args: Parameters<typeof fs.rename>) => {
+    if (String(args[1]).endsWith('/lease-index.json')) throw Object.assign(new Error('fixture publication missing'), { code: 'ENOENT' });
+    return rename(...args);
+  };
+  syncBuiltinESMExports();
+  try {
+    work = compactLeaseHistory(root, environment(root), () => {}, true);
+    await assert.rejects(work, /fixture publication missing/);
+  } finally {
+    await work?.catch(() => {});
+    fs.rename = rename; syncBuiltinESMExports();
+  }
+}));
+
+test('publication seam survives fixture cancellation until its original writer joins', { timeout: 5000 }, async t => {
+  const hooks: Array<() => Promise<void>> = [];
+  const context = { after: (hook: () => Promise<void>) => { hooks.push(hook); } } as TestContext;
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  let running: Promise<void> | undefined, closing: Promise<void> | undefined;
+  t.after(async () => { release.resolve(); await Promise.allSettled([running, closing]); });
+  const order: string[] = [];
+  running = fakeOnlyFixture(context, async root => {
+    await fs.mkdir(join(root, '.cland/run'), { recursive: true });
+    const rename = fs.rename;
+    const held: typeof fs.rename = async (...args) => {
+      entered.resolve(); await release.promise;
+      assert.equal(fs.rename, held, 'cleanup keeps the seam installed at the resumed native boundary');
+      await rename(...args); order.push('renamed');
+    };
+    fs.rename = held; syncBuiltinESMExports();
+    let writer: ReturnType<typeof compactLeaseHistory> | undefined;
+    try {
+      writer = compactLeaseHistory(root, environment(root), () => {}, true);
+      await writer; order.push('writer joined');
+    } finally {
+      await writer?.catch(() => {});
+      fs.rename = rename; syncBuiltinESMExports(); order.push('restored');
+    }
+  });
+  await Promise.race([entered.promise, running.then(() => { throw new Error('writer missed the held boundary'); })]);
+  closing = hooks[0]!(); // Execute the registered TestContext cleanup while its producer is held.
+  release.resolve();
+  await Promise.all([running, closing]);
+  assert.deepEqual(order, ['renamed', 'writer joined', 'restored']);
+});
 const spendEntry = (root: string, lease: DropletLease) => ({ project: root, lease: lease.lease, run: lease.run, size: lease.size, reservation: 1, cost: 0 as number | null, created: lease.created, deadline: lease.deadline, released: lease.released });
 async function seedLeases(root: string, leases: DropletLease[]): Promise<void> {
   // One batch, without the durable writer/index protocol under test.
@@ -171,6 +227,7 @@ test('executor recovery publishes only live meta rows and keeps direct released 
   const env = fixtureEnvironment(root, { ...process.env, CLAND_EXECUTOR_STATE: join(root, 'ledger') });
   const released: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: 'released', run: 'run', name: 'fixture', tags: ['cland'], size: 'fixture', region: 'fixture', priceHourly: 1, keyName: 'fixture', state: 'released', resource: null, keyId: null, costUsd: 0, released: '2026-11-17T00:01:00Z', created: '2026-11-17T00:00:00Z', deadline: '2026-11-17T01:00:00Z' };
   const live = { ...released, lease: 'live', state: 'creating' as const };
+  await fs.mkdir(join(root, '.cland/run'), { recursive: true });
   await writeLease(root, released); await writeLease(root, live);
   await fs.mkdir(dirname(spendPath(env)), { recursive: true });
   await fs.writeFile(spendPath(env), JSON.stringify({ version: 1, legacyRetired: true, entries: [{ project: root, lease: released.lease, run: released.run, size: released.size, reservation: 1, cost: 0, created: released.created, deadline: released.deadline, released: released.released }] }));
