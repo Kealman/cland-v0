@@ -2335,6 +2335,8 @@ export class Tracker {
     return explorer.flush().map(id => this.#projected(id));
   }
 
+  retainsSuiteRun(run: string): boolean { return this.#index.retainsSuiteRun(run); }
+
   list(filter: ListFilter = {}): ItemSummary[] {
     if (filter.under !== undefined) filter = { ...filter, under: this.#require(filter.under).id };
     this.#ensureExplorer();

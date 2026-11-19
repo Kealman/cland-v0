@@ -7,6 +7,14 @@ clock corrections. Exit 75 plus a runner-recorded `suite infrastructure:` cause 
 incomplete infrastructure evidence; a matching test-output line supplies no cause.
 See `docs/hub/running.md#waiting-suite-tickets` for older-runner compatibility.
 
+Suite retention ships in report mode: the hosting scheduler logs kept and
+would-retire counts in yielding background batches after serving; it deletes
+no live run directory. The report preserves recent, referenced, young and
+conservative evidence classes. The deletion switch is off by default and used
+only on disposable-root fixtures. Publisher pins and live activation are separate
+items. Use artifact paths for completed evidence; never delete live run directories
+manually. See docs/hub/suite-retention.md.
+
 ## Merge-delta advisory comments
 
 Nightly soak admission calibrates worker projections, including Web, against

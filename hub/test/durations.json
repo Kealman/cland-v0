@@ -13091,6 +13091,21 @@
     "hub/test/verification-tier-receipts.test.ts::uploaded writer atomically publishes ordered native exits": 0.002693
   },
   "allow": {
+    "hub/test/suite-retention-scale.test.ts": {
+      "file": true,
+      "seconds": 113,
+      "owner": "E-880",
+      "added": "2026-11-19",
+      "expires": "2026-11-26",
+      "reason": "T-1957: Coordinator a0bf13c1 approved a separate file allowance for the T4 50,000-root report-mode classification, idempotence and guarded teardown plus the actual-scheduler case. At fd3e107ae524234dbc7af0d9ee992915a009f8a8 local macOS passing identity sum is 73.828748625 + 0.856633333 = 74.685381958 s; cap rounds 1.5x upward to 113 s. Linux droplet A-21515 at 118b172e9bfceb3a802332c5f1a098aa86d41a94 has passing identities 52.757195455 + 0.856111759 = 53.613307214 s, below the separate 60 s new-file cap; that configured run remains failed/partial. Both samples replay through the production checker. The case allowance is separate; fixed 1000 ms reply bounds and retention assertions stay unchanged."
+    },
+    "hub/test/suite-retention-scale.test.ts::report mode classifies fifty thousand runs and keeps every directory while serving task views": {
+      "seconds": 111,
+      "owner": "E-880",
+      "added": "2026-11-19",
+      "expires": "2026-11-26",
+      "reason": "T-1957: Coordinator-approved T4 scale allowance for one-pass creation of 50,000 directory-only roots, two idempotent report classifications and guarded teardown. Linux droplet A-21515 run ab774d6b-c5d4-4a64-84c1-6a52ef60adb3 at 118b172e9bfceb3a802332c5f1a098aa86d41a94 has a passing 52.757195455 s case; its configured run remains failed/partial. Local macOS at merged head fd3e107ae524234dbc7af0d9ee992915a009f8a8 passed at 73.828748625 s (73.83 s). Cap rounds 1.5x the worst passing sample upward to 111 s under Coordinator 1aa49e6d; both platform samples replay through the production checker. The 1000 ms task.view bound and all retention assertions stay unchanged; no allowance for the actual-scheduler case."
+    },
     "hub/test/startup-listener-scale.test.ts::listener binds report each await while retained verdict freshness drains": {
       "seconds": 20,
       "owner": "E-880",

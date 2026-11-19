@@ -1,4 +1,6 @@
 import { suiteCommandOutcome, suiteInfrastructureCauses, type SuiteInfrastructureSource } from '../suite-infrastructure.ts';
+import { SuiteRetention } from '../suite-retention.ts';
+import { withCleanupAsync } from '../cleanup.ts';
 import { hostVerifyWorktree, removeHostVerifyWorktree, validateHostVerifyWorktree, hostVerifyDirectory, type HostVerifySnapshot } from '../territory.ts';
 import { RawCoverageSweep, removeRawCoverage } from '../suite-raw-coverage.ts';
 import { recentCoverGreens } from '../suite-load-rerun.ts';
@@ -116,7 +118,7 @@ export type StageCover = { id: string; head: string; tree: string; platform: Sta
 const verifyResult = (job: SuiteJob): VerifyResult => ({ ...(job.webPhase ? { webPhase: job.webPhase } : {}), executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome?.notRun ? 'unavailable' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 // A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
-export type SuiteSchedulerOptions = { stageJobs?: (jobs: readonly SuiteJob[]) => Iterable<Readonly<SuiteJob>>; onTestSlotAvailable?: (waiter: TestSlotWaiter) => void; taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { runReferenced?: (id: string) => boolean; stageJobs?: (jobs: readonly SuiteJob[]) => Iterable<Readonly<SuiteJob>>; onTestSlotAvailable?: (waiter: TestSlotWaiter) => void; taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
@@ -225,9 +227,15 @@ export class Suites {
   #stagePlatforms = new Map<string, Record<StagePlatform, number>>();
   #stageById = new Map<string, StageCover>();
   readonly #rawCoverage: RawCoverageSweep;
+  readonly #retention: SuiteRetention;
+  readonly #retentionReferences = new Set<string>();
+  readonly #retentionParents = new Map<string, string>();
+  #retentionWork: Promise<void> | undefined;
+  #retentionAdmitted = false;
   readonly #waitMetrics: VerificationWait;
   #waitTimer: ClockTimer | null;
   readonly #latestItems = new Map<number, SuiteJob>();
+  readonly #latestItemRuns = new Set<string>();
   readonly #latestBranches = new Map<string, SuiteJob>();
   readonly #order = new Map<string, number>();
   readonly #cards = new Map<string, string>();
@@ -272,6 +280,7 @@ export class Suites {
   #leaseRefreshing: Promise<void> | null = null;
   constructor(store: Store, root: string, report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>, options: SuiteSchedulerOptions = {}) {
     this.#options = options;
+    this.#retention = new SuiteRetention(root, undefined, {now:() => this.#clock.now().getTime()});
     this.#clock = options.clock ?? realClock;
     this.#env = options.env ?? process.env;
     this.#candidate = options.candidate ?? suiteCandidate(this.#env);
@@ -442,6 +451,13 @@ export class Suites {
     this.#stageJobs.set(job.id, job);
     this.#stageReceipts = undefined;
     this.#rawCoverage.remember(job);
+    if (this.#store.meta(`suite-retired:${job.id}`) !== '1') this.#retention.remember(job);
+    for (const shard of job.shards ?? []) {
+      this.#retentionParents.set(shard.id, job.id);
+      if (this.#store.meta(`suite-retired:${shard.id}`) !== '1') this.#retention.remember({ ...shard, sequence: job.sequence ?? 0, occasion: `${job.occasion ?? 'task'}:${shard.shardName ?? 'shard'}` });
+    }
+    for (const id of [job.cached?.run, job.devT3?.previousGreenRun, ...Object.values(job.batchBaselineRuns ?? {})]) if (id) this.#retentionReferences.add(id);
+    if (job.cover) this.#retentionReferences.add(job.id);
     if (!this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
     // A successful report checkpoints the log artifact across async I/O. Publish its
     // terminal card once with that artifact, or once the blocking error is persisted.
@@ -450,7 +466,11 @@ export class Suites {
     // Task frames can also be built by unrelated tracker updates. Keep their lookup
     // at the last publishable checkpoint while the live job awaits cleanup/reporting.
     const snapshot = { ...(this.#summaries.has(job.id) ? this.#jobs.find(current => current.id === job.id)! : job) };
-    if (job.item && later(this.#latestItems.get(idNumber(job.item)))) this.#latestItems.set(idNumber(job.item), snapshot);
+    if (job.item && later(this.#latestItems.get(idNumber(job.item)))) {
+      const previous = this.#latestItems.get(idNumber(job.item));
+      if (previous) this.#latestItemRuns.delete(previous.id);
+      this.#latestItems.set(idNumber(job.item), snapshot); this.#latestItemRuns.add(snapshot.id);
+    }
     if (job.branch && later(this.#latestBranches.get(job.branch))) this.#latestBranches.set(job.branch, snapshot);
     // Report recovery makes a finished result eligible for stage evidence even
     // when its public result card was already published with a delivery error.
@@ -993,6 +1013,35 @@ export class Suites {
   #queue(): SuiteJob[] {
     return this.#jobs.filter(j => j.state === 'queued' && !j.outcome).sort((a, b) => Number(b.integrated === true) - Number(a.integrated === true) || (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER) || (a.queued ?? '').localeCompare(b.queued ?? ''));
   }
+  /** Called by the serving owner, never during startup recovery. */
+  startRetention(): void {
+    this.#retentionAdmitted = true;
+    if (this.#closed) return;
+    this.#retentionWork ??= this.#retention.drain(id => {
+      const parent = this.#retentionParents.get(id) ?? id;
+      const run = this.#stageJobs.get(parent);
+      return this.#closed || !!(run?.cover || run?.integrated || run?.batch || run?.devT3Probe) || this.#retentionReferences.has(parent)
+        || this.#options.runReferenced?.(parent) === true || this.#options.runReferenced?.(id) === true
+        || this.#latestItemRuns.has(parent);
+    },
+    id => {
+      const parent = this.#stageJobs.get(this.#retentionParents.get(id) ?? id);
+      const run = parent?.id === id ? parent : parent?.shards?.find(shard => shard.id === id);
+      if (parent && run && parent.id !== id) {
+        const log = this.#store.artifactByTitle(parent.topic, `Suite ${parent.id} · ${run.shardName} at ${parent.head.slice(0, 7)}`);
+        const coverage = this.#store.artifactByTitle(parent.topic, `Coverage map ${parent.id} at ${parent.head}`);
+        return log && !log.fileDeleted && log.status !== 'archived' ? [{ id: log.id, path: log.path }, ...(coverage && !coverage.fileDeleted && coverage.status !== 'archived' ? [{ id: coverage.id, path: coverage.path }] : [])] : [];
+      }
+      if (!run?.artifact) return [];
+      const log = this.#store.resolveArtifact(run.artifact);
+      if (!log || log.fileDeleted || log.status === 'archived') return [];
+      const coverage = this.#store.artifactByTitle(run.topic, `Coverage map ${id} at ${run.head}`);
+      return [{ id: log.id, path: log.path }, ...(coverage && !coverage.fileDeleted && coverage.status !== 'archived' ? [{ id: coverage.id, path: coverage.path }] : [])];
+    }, (id, removed, error) => {
+      if (removed) this.#store.setMeta(`suite-retired:${id}`, '1');
+      this.#options.log?.({ event: 'suite-retention', id, removed, ...(error ? { error: String(error) } : {}) });
+    }, () => this.#closed).then(() => this.#options.log?.({event:'suite-retention-report',...this.#retention.snapshot()})).catch(error => this.#options.log?.({ event: 'suite-retention-incomplete', error: String(error) })).finally(() => { this.#retentionWork = undefined; });
+  }
   async #launch(job: SuiteJob): Promise<void> {
     job.state = 'launching'; job.admittedAt ??= this.#clock.now().toISOString(); this.#launching.add(job.id); this.#save(job);
     let remotePreExecution = false;
@@ -1014,6 +1063,7 @@ export class Suites {
         if (job.executor === 'droplet' && job.remoteLogStart !== undefined) this.#options.log?.({ event: 'verification-admission-cleanup', id: job.id, message: line });
         else await appendFile(job.log, line);
       });
+      if (this.#retentionAdmitted) this.startRetention();
       if (job.shards) { await this.#launchShards(job); return; }
       // Once remote collection starts, local bytes would count as remote output.
       // Pending delivery/start receipts can re-enter launch with that boundary set.
@@ -2114,5 +2164,10 @@ export class Suites {
     this.#waitTimer = null;
     if (timer) (this.#options.waitClock ?? this.#clock).clearInterval(timer);
   }
-  async close(): Promise<void> { this.#closed = true; const closingDroplet = this.#droplet.close(); for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); this.stopWaitMetrics(); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await this.#periodic; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await this.#hostSnapshotRecovery; await this.#leaseRefreshing; await Promise.allSettled(this.#inspecting.values()); await closingDroplet; }
+  async close(): Promise<void> {
+    this.#closed = true;
+    await withCleanupAsync(async () => {
+      const closingDroplet = this.#droplet.close(); for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); this.stopWaitMetrics(); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await this.#periodic; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await this.#hostSnapshotRecovery; await this.#leaseRefreshing; await Promise.allSettled(this.#inspecting.values()); await closingDroplet;
+    }, async () => { await this.#retentionWork; });
+  }
 }

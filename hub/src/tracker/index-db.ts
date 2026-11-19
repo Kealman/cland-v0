@@ -71,6 +71,8 @@ create table if not exists tracker_written_verdicts (
   primary key (item_id, comment_key)
 );
 create index if not exists tracker_verification_coverage on tracker_written_verdicts(item_id, role, verdict);
+create index if not exists tracker_verdict_run on tracker_verdicts(run);
+create index if not exists tracker_written_verdict_run on tracker_written_verdicts(run);
 -- Last accepted plans survive an invalid hand save and a hub restart. Valid files replace them.
 create table if not exists tracker_plans (
   item_id text primary key,
@@ -516,6 +518,11 @@ export class TrackerIndex {
     if (follows.length) item.follows = follows;
     this.#criteria.set(item, JSON.parse(r.criteria_summary as string) as CriterionSummary[]);
     return item;
+  }
+
+  /** Indexed durable identities, including stale and historical verdicts. */
+  retainsSuiteRun(run: string): boolean {
+    return Boolean(this.#db.prepare('select 1 from tracker_verdicts where run = ? union all select 1 from tracker_written_verdicts where run = ? limit 1').get(run, run));
   }
 
   /** Every item's verdicts, in file order: what `task.list` shows beside each summary. */

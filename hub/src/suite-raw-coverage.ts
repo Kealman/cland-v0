@@ -1,7 +1,75 @@
-import { lstat, opendir, realpath, rm } from 'node:fs/promises';
+import { lstat, opendir, realpath, rename, rm, mkdir, open } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
+import { checkpoint } from './host/agent/storage.ts';
 
 const rawName = 'coverage-map.json.raw';
+async function ownedDirectories(paths: string[], kind = 'suite-owned'): Promise<boolean> {
+  for (const path of paths) {
+    const info = await lstat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+    if (!info) return false;
+    if (!info.isDirectory() || info.isSymbolicLink()) throw new Error(`refusing ${kind} path: ${path}`);
+  }
+  return true;
+}
+
+/** Settled writers and current references are checked by the scheduler owner.
+ * Rename is the retirement checkpoint: interruption leaves the original whole,
+ * or an unreferenced tombstone whose evidence already has durable artifacts.
+ * A retry validates the same ownership and artifact receipts before draining it. */
+export async function retireSuiteRun(project: string, id: string, artifacts: readonly string[], eligible: () => boolean, options: { remove?: boolean } = {}): Promise<boolean> {
+  if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error('invalid suite run id');
+  const canonical = await realpath(project);
+  const cland = join(canonical, '.cland'), runRoot = join(cland, 'run'), suites = join(runRoot, 'suites');
+  if (!await ownedDirectories([cland, runRoot, suites, join(cland, 'artifacts')])) return false;
+  if (!artifacts.length) return false;
+  for (const artifact of artifacts) {
+    const path = await realpath(artifact).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+    if (!path || !path.startsWith(join(cland, 'artifacts') + '/')) return false;
+    const info = await lstat(path);
+    if (!info.isFile()) return false;
+  }
+  const original = join(suites, id), retired = join(suites, `.retiring-${id}`);
+  const pending = await ownedDirectories([retired]);
+  const source = pending ? retired : original;
+  if (!pending && !await ownedDirectories([original])) return false;
+  const coverage = await lstat(join(source, 'coverage-map.json')).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+  if (coverage && artifacts.length < 2) return false;
+  const receipts = join(runRoot, 'suite-retirement'), receipt = join(receipts, `${id}.json`);
+  let required: string[] | undefined;
+  const receiptDirectoryExists = await ownedDirectories([receipts], 'suite retirement receipt');
+  const receiptInfo = receiptDirectoryExists ? await lstat(receipt).catch(error => { if (error.code === 'ENOENT') return null; throw error; }) : null;
+  if (receiptInfo && (!receiptInfo.isFile() || receiptInfo.isSymbolicLink())) throw new Error(`refusing suite retirement receipt path: ${receipt}`);
+  const file = receiptInfo ? await open(receipt, 'r') : null;
+  if (file) {
+    try {
+      const buffer = Buffer.alloc(65537);
+      const {bytesRead} = await file.read(buffer, 0, buffer.length, 0);
+      if (bytesRead === buffer.length) return false;
+      const record = JSON.parse(buffer.subarray(0,bytesRead).toString('utf8'));
+      if (record.version !== 1 || record.id !== id || !Array.isArray(record.required) || !record.required.every((path: unknown) => typeof path === 'string')) return false;
+      required = record.required;
+    } finally { await file.close(); }
+    if (!required?.length || !required.every(path => artifacts.includes(path))) return false;
+  }
+  if (!eligible()) return false;
+  // Production has no enabling setting. The explicit switch is exercised only
+  // on disposable roots; reference admission fencing lands before activation.
+  if (options.remove !== true) return true;
+  if (!required) {
+    await mkdir(receipts, {recursive:true,mode:0o700});
+    if (!await ownedDirectories([receipts])) return false;
+    await checkpoint(receipt, {version:1,id,required:[...artifacts]});
+  }
+  if (!pending) {
+    if (!await ownedDirectories([original])) return false;
+    if (!eligible()) return false;
+    await rename(original, retired);
+    if (!eligible()) { await rename(retired, original); return false; }
+  }
+  await rm(retired, { recursive: true, force: true });
+  await rm(receipt, {force:true});
+  return true;
+}
 /** Only the literal suite-owned path grants removal authority; never follow links. */
 export async function removeRawCoverage(project: string, id: string, layout: 'project' | 'droplet' = 'project'): Promise<number | null> {
   if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error('invalid suite run id');
@@ -9,11 +77,7 @@ export async function removeRawCoverage(project: string, id: string, layout: 'pr
   const suites = layout === 'droplet' ? join(canonical, 'runs') : join(canonical, '.cland', 'run', 'suites');
   const run = join(suites, id);
   const raw = join(run, rawName);
-  for (const path of [...(layout === 'project' ? [join(canonical, '.cland'), join(canonical, '.cland/run')] : []), suites, run, raw]) {
-    const info = await lstat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
-    if (!info) return null;
-    if (!info.isDirectory() || info.isSymbolicLink()) throw new Error(`refusing raw coverage path: ${path}`);
-  }
+  if (!await ownedDirectories([...(layout === 'project' ? [join(canonical, '.cland'), join(canonical, '.cland/run')] : []), suites, run, raw], 'raw coverage')) return null;
   let bytes = 0;
   async function count(path: string): Promise<void> {
     for await (const entry of await opendir(path)) {

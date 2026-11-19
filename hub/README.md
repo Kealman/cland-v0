@@ -16,6 +16,8 @@ Subsystem reference and implementation guidance live in `docs/hub/`.
 Evidence publication uses the session-aware `publishSessionEvidence` library;
 see [scan and publication](../docs/agents/evidence-publication.md) for snapshot,
 positive-control, scanner and refusal behaviour.
+The [suite retention reference](../docs/hub/suite-retention.md) describes bounded
+background reports, preserved evidence and the fixture-only deletion switch.
 The [remote command reference](../docs/hub/remote-commands.md) describes local
 approval-code validation and known-invalid versus unknown request refusals.
 The [closed-item wording guard](../docs/hub/running.md) covers Markdown docs and

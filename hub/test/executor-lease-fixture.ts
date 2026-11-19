@@ -6,8 +6,8 @@ import { fakeNativeGuard } from './fake-native-guard.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
 
 /** Enroll the whole callback before acquisition; restore seams only after its join. */
-export function guardedLeaseCase(t: TestContext, releaseOnClose?: () => void, options: { canRestore?: () => boolean; deferRestore?: boolean } = {}) {
-  const scope = caseDeadlines(t, { timeoutMs: 5000, ownership: { beforeDirectories, guardDirectoryRemoval }, ...(releaseOnClose ? { releaseOnClose } : {}) });
+export function guardedLeaseCase(t: TestContext, releaseOnClose?: () => void, options: {timeoutMs?: number; canRestore?: () => boolean; deferRestore?: boolean} = {}) {
+  const scope = caseDeadlines(t, { timeoutMs: options.timeoutMs ?? 5000, ownership: { beforeDirectories, guardDirectoryRemoval }, ...(releaseOnClose ? { releaseOnClose } : {}) });
   const restorations: Array<() => void> = [];
   let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
   let restoreGuard: (() => void) | undefined;

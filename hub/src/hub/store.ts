@@ -283,6 +283,7 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
 const LATE_INDEXES = `
 create index if not exists artifacts_topic on artifacts (json_extract(value, '$.topic'), number);
 create index if not exists artifacts_destination on artifacts (json_extract(value, '$.movedTo.folder'), number);
+create index if not exists artifacts_title_topic on artifacts (json_extract(value, '$.title'), json_extract(value, '$.topic'), number);
 create index if not exists messages_topic on messages (topic, created_at);
 create unique index if not exists topics_item on topics (item) where item is not null;
 create index if not exists messages_seq on messages (topic, seq);
@@ -1630,6 +1631,12 @@ export class Store implements HygieneMemory {
   /** Use artifacts_destination without decoding unrelated children or the full index. */
   hasMovedArtifactDeletion(folder: string): boolean {
     return this.#prepare("select 1 from artifacts where json_extract(value, '$.movedTo.folder') = ? and json_extract(value, '$.deletion') is not null limit 1").get(folder) !== undefined;
+  }
+
+  /** One indexed identity, never the retained artifact index. */
+  artifactByTitle(topic: string, title: string): Artifact | null {
+    const row = this.#prepare("select value from artifacts indexed by artifacts_title_topic where json_extract(value, '$.title') = ? and json_extract(value, '$.topic') = ? order by number desc limit 1").get(title,topic) as Row | undefined;
+    return row ? JSON.parse(row.value as string) as Artifact : null;
   }
 
   artifacts(topic?: string): Artifact[] {

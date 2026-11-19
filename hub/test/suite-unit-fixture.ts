@@ -22,7 +22,7 @@ import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 
-export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions & { machineReceiptsOnly?: boolean } = {}, source = '', accounting = false) {
+export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions & { machineReceiptsOnly?: boolean; onRoot?: (root: string) => void } = {}, source = '', accounting = false) {
   // Register partial acquisition cleanup before the first await; whole-case callers
   // collect this hook and join setup/body continuations before invoking it.
   const partial: Array<() => void | Promise<void>> = [];
@@ -33,6 +33,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     for (const close of partial.toReversed()) await close();
   });
   const root = await mkdtemp(join(tmpdir(), 'suite-unit-'));
+  options.onRoot?.(root);
   partial.push(() => rm(root, { recursive: true, force: true }));
   await verificationFixture(root);
   const clock = new FakeClock();
