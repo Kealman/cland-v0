@@ -6,7 +6,7 @@ import { parseCriteria, summarizeCriteria, countCriteria, type CriterionSummary,
 import type { EpicPlan } from './plan.ts';
 import { compareRank, effectiveRank } from './rank.ts';
 import { createHash } from 'node:crypto';
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { openDatabase } from '../database.ts';
 import { parseItemReference, prefixOf } from './prefixes.ts';
 import { parseFindings, countFindings } from './findings.ts';
@@ -181,6 +181,7 @@ const ITEM_COLUMNS = `i.*,
 
 export class TrackerIndex {
   readonly #db: DatabaseSync;
+  readonly #reads = new Map<string, StatementSync>();
   readonly #kinds: readonly string[] | undefined;
   /** Marks already selected with each index row, retained only for that returned object. */
   readonly #criteria = new WeakMap<IndexedItem, CriterionSummary[]>();
@@ -226,14 +227,25 @@ export class TrackerIndex {
   resolve(id: string): string | null {
     const n = parseItemReference(id, this.#kinds)?.n;
     if (n === undefined) return null;
-    const row = this.#db.prepare('select kind from tracker_items where n = ?').get(n) as Row | undefined;
+    const row = this.#read('select kind from tracker_items where n = ?').get(n) as Row | undefined;
     return row ? `${prefixOf(row.kind as string)}-${n}` : null;
   }
 
   #canonical(id: string): string { return this.resolve(id) ?? id; }
 
   close(): void {
+    this.#reads.clear();
+    // DatabaseSync.close finalizes every statement, including retained handles.
     this.#db.close();
+  }
+
+  #read(sql: string): StatementSync {
+    let statement = this.#reads.get(sql);
+    if (!statement) {
+      statement = this.#db.prepare(sql);
+      this.#reads.set(sql, statement);
+    }
+    return statement;
   }
 
   #tx<T>(fn: () => T): T {
@@ -432,15 +444,16 @@ export class TrackerIndex {
       where.push('i.assignee = ?');
       args.push(filter.assignee);
     }
-    for (const l of filter.labels ?? []) {
-      where.push('exists (select 1 from tracker_labels l where l.item_id = i.id and l.label = ?)');
-      args.push(l);
+    if (filter.labels?.length) {
+      // One SQL shape for any label count keeps the connection cache finite.
+      where.push('not exists (select 1 from json_each(?) requested where not exists (select 1 from tracker_labels l where l.item_id = i.id and l.label = requested.value))');
+      args.push(JSON.stringify(filter.labels));
     }
     if (filter.verdict) {
       where.push('(select v.result from tracker_verdicts v where v.item_id = i.id and v.verdict = ? order by v.seq desc limit 1) = ?');
       args.push(filter.verdict.verdict, filter.verdict.result);
     }
-    const rows = this.#db.prepare(`select ${ITEM_COLUMNS} from tracker_items i ${where.length ? `where ${where.join(' and ')}` : ''}`).all(...args) as Row[];
+    const rows = this.#read(`select ${ITEM_COLUMNS} from tracker_items i ${where.length ? `where ${where.join(' and ')}` : ''}`).all(...args) as Row[];
     return rows.map((r) => this.#hydrate(r)).sort(compareRank);
   }
 
@@ -464,13 +477,13 @@ export class TrackerIndex {
   /** Direct children only; hand-edit warnings need no unrelated labels or blockers. */
   children(id: string): IndexedItem[] {
     id = this.#key(id);
-    const rows = this.#db.prepare(`select ${ITEM_COLUMNS} from tracker_items i where parent = ?`).all(id) as Row[];
+    const rows = this.#read(`select ${ITEM_COLUMNS} from tracker_items i where parent = ?`).all(id) as Row[];
     return rows.map(row => this.#hydrate(row)).sort(compareRank);
   }
 
   get(id: string): IndexedItem | null {
     id = this.#key(id);
-    const r = this.#db.prepare(`select ${ITEM_COLUMNS} from tracker_items i where i.id = ?`).get(id) as Row | undefined;
+    const r = this.#read(`select ${ITEM_COLUMNS} from tracker_items i where i.id = ?`).get(id) as Row | undefined;
     return r ? this.#hydrate(r) : null;
   }
 
