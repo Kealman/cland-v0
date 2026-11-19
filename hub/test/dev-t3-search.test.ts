@@ -8,6 +8,7 @@ import { Store } from '../src/hub/store.ts';
 import { DevT3Search, type ProbeReceipt, type SearchReport } from '../src/hub/dev-t3-search.ts';
 import type { DevT3Result } from '../src/hub/dev-t3-result.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
+import { suiteCase } from './suite-case-fixture.ts';
 
 test('search contains a throwing blocked notice and retries its report on the next timer tick', async t => {
   const f = await suiteUnit(t);
@@ -115,6 +116,38 @@ test('a reopened probe observes its admitted worker receipt without another chec
 });
 
 
+test('probe checkpoints a relocated checkout before admission and retains it across restart', t => suiteCase(t, async ({ setup, step }) => {
+  const { DevT3Probes } = await import('../src/hub/dev-t3-probe.ts');
+  const f = await setup(fixtures => suiteUnit(fixtures, { executor: 'droplet', machineReceiptsOnly: true }));
+  const input = redResult(), file = input.failingFiles[0]!;
+  const key = `dev-t3-probe:${input.run}:${input.head}:${file}`;
+  let relocated = '', checkouts = 0;
+  const removed: string[] = [];
+  const repository = {
+    contains: async () => true,
+    identity: async () => f.candidate.tree,
+    checkout: async (candidate: { cwd: string }) => {
+      checkouts++;
+      relocated = candidate.cwd = join(f.root, 'replacement-checkout');
+      f.candidate.head = input.head;
+    },
+    remove: async (candidate: { cwd: string }) => { removed.push(candidate.cwd); },
+  };
+  let probes = new DevT3Probes(f.store, f.suites, f.root, {}, repository);
+  assert.equal(await step('probe admission', () => probes.probe(input, input.head, file)), null);
+  assert.equal(JSON.parse(f.store.meta(key)!).cwd, relocated, 'admitted candidate retains its actual checkout path');
+  const id = f.suites.status()[0]!.id;
+  await step('worker admission receipt', async () => { await f.suites.settled(); await f.machine.waits.run(f.machine.started(id)); });
+  await step('reopen probe owner', () => f.reopen());
+  probes = new DevT3Probes(f.store, f.suites, f.root, {}, repository);
+  await step('worker completion receipt', () => f.finish(id, 1, `suite test failures ${JSON.stringify([{ file, name: 'regression' }])}\n`));
+  const receipt = await step('completed probe receipt', () => probes.probe(input, input.head, file));
+  assert.equal(receipt?.result, 'red');
+  assert.equal(receipt?.run, id);
+  assert.deepEqual(removed, [relocated]);
+  assert.equal(checkouts, 1, 'restart does not replace an admitted worker checkout');
+}));
+
 test('probe proof keeps known Linux exclusions partial and rejects missing or unexplained skip evidence', async () => {
   const { probeResult } = await import('../src/hub/dev-t3-probe.ts');
   const { suiteEvidence } = await import('../src/suite-log.ts');
@@ -136,6 +169,28 @@ test('probe proof keeps known Linux exclusions partial and rejects missing or un
   assert.equal(probeResult({ ...job, platform: { ...platform, os: 'darwin' } }, pass + skip + detail(reason), file).result, 'inconclusive');
   assert.equal(probeResult({ state: job.state, outcome: job.outcome }, pass + skip + detail(reason), file).result, 'inconclusive');
 });
+
+test('search checkpoints and reports secondary diagnostics without changing a green probe result', t => suiteCase(t, async ({ setup, step }) => {
+  const { reportDevT3Search } = await import('../src/hub/dev-t3-report.ts');
+  const f = await setup(fixtures => suiteUnit(fixtures));
+  const input = redResult(), file = input.failingFiles[0]!;
+  input.failingFiles = [file];
+  const reason = 'retained root /fixture/legacy; cleanup diagnostic persistence failed';
+  let notice: { text: string } | undefined;
+  const core = { noticeTo: (_topic: string, value: { text: string }) => { notice = value; return 'notice'; }, boundedText: (text: string) => text } as unknown as import('../src/hub/core.ts').HubCore;
+  const tracker = {} as import('../src/tracker/tracker.ts').Tracker;
+  const search = new DevT3Search(f.store, { currentDev: async () => input.head,
+    probe: async (_input, head, file) => ({ head, file, result: 'green', run: 'completed-probe', artifact: 'A-1', path: '/fixture/log', reason }),
+    report: report => reportDevT3Search(core, tracker, report),
+  });
+  search.accept(input);
+  await step('collect selected probe', () => search.tick());
+  const saved = JSON.parse(f.store.meta('dev-t3-searches')!)[0];
+  assert.equal(saved.files[0].tip.result, 'green');
+  assert.equal(saved.files[0].tip.reason, reason, 'secondary context reaches the durable search checkpoint');
+  await step('publish retained probe evidence', () => search.tick());
+  assert.ok(notice?.text.includes(reason), 'human evidence includes the secondary diagnostic');
+}));
 
 
 test('search refuses identical exclusions observed on different executor architectures', async t => {

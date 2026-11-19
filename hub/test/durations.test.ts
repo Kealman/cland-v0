@@ -3,7 +3,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, mkdtemp, readFile, symlink, copyFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, symlink, copyFile, writeFile, lstat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,8 @@ import test from 'node:test';
 import { ownDirectory } from './process-cleanup.ts';
 import { scratchMachine, commandIn } from './init-machine.ts';
 import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
+import { suiteCase } from './suite-case-fixture.ts';
+import type { BatchCandidate } from '../src/hub/merge-batches.ts';
 
 const exec = promisify(execFile);
 const generator = fileURLToPath(new URL('./durations.ts', import.meta.url));
@@ -354,21 +356,22 @@ test('new allowances cannot adopt the one-time legacy exception at either admiss
   await assert.rejects(lintHubShardTree(cwd, 'HEAD'), /new duration allowance cannot be legacy: hub\/test\/new.test.ts::new/);
 });
 
-for (const preparation of ['legacy worktree', 'interrupted clone', 'interrupted matching clone'] as const) test(`historical probe checks pinned duration owners after the live owner closes (${preparation})`, async t => {
+for (const preparation of ['legacy worktree', 'interrupted clone', 'interrupted matching clone', 'unmarked legacy worktree', 'completed legacy worktree', 'completed legacy diagnostic failure'] as const) test(`historical probe checks pinned duration owners after the live owner closes (${preparation})`, t => suiteCase(t, async ({ setup, step, fixtures }) => {
   const { suiteUnit } = await import('./suite-unit-fixture.ts');
   const { DevT3Probes } = await import('../src/hub/dev-t3-probe.ts');
   const { lintHubShards } = await import('../src/suite-shards.ts');
-  const f = await suiteUnit(t);
-  const git = async (...args: string[]) => {
+  const f = await setup(t => suiteUnit(t, { executor: 'droplet', machineReceiptsOnly: true }));
+  const git = (...args: string[]) => step('historical fixture Git command', async () => {
     const result = await exec('git', ['-c', 'gc.auto=0', ...args], { cwd: f.root, env: fixtureEnvironment(f.root, f.env) });
     return result.stdout.trim();
-  };
+  });
   await git('init', '-qb', 'dev');
   await git('config', 'user.name', 'Probe test'); await git('config', 'user.email', 'probe@example.invalid');
   await mkdir(join(f.root, '.cland/tasks'), { recursive: true });
   const owner = join(f.root, '.cland/tasks/E-677-fixture.md');
   await writeFile(owner, '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: open\n---\n');
   const file = 'hub/test/historical.test.ts';
+  await writeFile(join(f.root, '.gitignore'), 'node_modules\n.cland/run\n');
   await writeFile(join(f.root, file), "test('slow', () => {});\n");
   await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
     budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
@@ -383,22 +386,93 @@ for (const preparation of ['legacy worktree', 'interrupted clone', 'interrupted 
   // directory required by native probe preparation, without running npm.
   await mkdir(join(f.root, 'node_modules'), { recursive: true });
   const probes = new DevT3Probes(f.store, f.suites, f.root, f.env);
-  const candidate = { base: head, head, tree, cwd: join(f.root, '.cland/run/merge-batches/historical-probe'), budgetLines: [] };
-  t.after(() => probes.repository.remove(candidate));
-  if (preparation === 'legacy worktree') await git('worktree', 'add', '--detach', candidate.cwd, head);
+  const candidate: BatchCandidate = { base: head, head, tree, cwd: join(f.root, '.cland/run/merge-batches/historical-probe'), budgetLines: [] };
+  const diagnosticFailure = preparation === 'completed legacy diagnostic failure';
+  const completedLegacy = preparation === 'completed legacy worktree' || diagnosticFailure;
+  const unmarked = preparation === 'unmarked legacy worktree' || completedLegacy;
+  if (!unmarked) fixtures.after(() => probes.repository.remove(candidate));
+  if (preparation === 'legacy worktree') {
+    const { checkoutMergeBatch } = await import('../src/hub/merge-batch-territory.ts');
+    await step('owned legacy checkout creation', () => checkoutMergeBatch(f.root, candidate, f.env));
+    assert.ok(candidate.owner, 'the producer captures cleanup authority at creation');
+  } else if (unmarked) await git('worktree', 'add', '--detach', candidate.cwd, head);
   else {
     await git('clone', '--shared', '--no-checkout', '--', f.root, candidate.cwd);
     if (preparation === 'interrupted matching clone') await git('-C', candidate.cwd, 'update-ref', '--no-deref', 'HEAD', head);
     await assert.rejects(readFile(join(candidate.cwd, file), 'utf8'), { code: 'ENOENT' }, 'clone has not materialized candidate files');
   }
-  await probes.repository.checkout(candidate);
+  if (unmarked) {
+    const { removeMergeBatch } = await import('../src/hub/merge-batch-territory.ts');
+    const retained = candidate.cwd, identity = await lstat(retained);
+    await writeFile(join(retained, 'preserved-receipt'), 'legacy root must stay untouched');
+    await step('unmarked cleanup refusal', () => assert.rejects(removeMergeBatch(f.root, candidate, f.env), /candidate cleanup ownership unavailable; root preserved/));
+    const input = { event: 'verification-dev-t3-result' as const, run: 'legacy-upgrade', head, tree,
+      previousGreenHead: null, previousGreenRun: null, merges: null, result: 'red' as const,
+      failingFiles: [file], artifact: 'A-fixture', path: 'fixture' };
+    const key = `dev-t3-probe:${input.run}:${head}:${file}`;
+    f.store.setMeta(key, JSON.stringify(candidate));
+    f.candidate.head = head; f.candidate.tree = tree;
+    let id: string;
+    if (completedLegacy) {
+      const run = await step('legacy worker admission before upgrade', () => f.suites.start({ mode: 'all', cwd: retained,
+        topic: 'agents', to: ['coordinator'], actor: null, devT3Probe: { key, files: [file] }, executor: 'droplet', priority: 10, fresh: true }, () => {}));
+      assert.ok('id' in run); id = run.id;
+    } else {
+      assert.equal(await step('upgrade probe admission', () => probes.probe(input, head, file)), null);
+      id = f.suites.status()[0]!.id;
+    }
+    const prepared = JSON.parse(f.store.meta(key)!) as BatchCandidate;
+    if (!completedLegacy) {
+      assert.notEqual(prepared.cwd, retained, 'the worker uses a distinct standalone clone');
+      assert.ok((await lstat(join(prepared.cwd, '.git'))).isDirectory());
+      await assert.doesNotReject(lintHubShards(prepared.cwd), 'upgrade probe keeps the historical open owner');
+    }
+    await assert.rejects(lintHubShards(f.root), /closed owner E-677/, 'upgrade does not weaken ordinary live admission');
+    await step('upgrade worker admission receipt', async () => { await f.suites.settled(); await f.machine.waits.run(f.machine.started(id)); });
+    await step('reopen upgrade probe owner', () => f.reopen());
+    const diagnosticLog: Record<string, unknown>[] = [];
+    const reopened = new DevT3Probes(f.store, f.suites, f.root, f.env, undefined, entry => { diagnosticLog.push(entry); });
+    await step('upgrade worker completion receipt', () => f.finish(id, 0, `suite progress ${JSON.stringify({ event: 'finish', id: 'historical', file, name: 'slow', at: 1, nesting: 0, outcome: 'pass', seconds: 0.01 })}\n`));
+    const save = f.store.setMeta.bind(f.store);
+    const fault = diagnosticFailure ? fixtures.mock.method(f.store, 'setMeta', (key: string, value: string) => {
+      if (key.startsWith('dev-t3-preserved-candidate:')) throw new Error('diagnostic persistence refused ' + '\u0000🙂'.repeat(5000));
+      save(key, value);
+    }) : null;
+    const result = await step('upgrade probe completion', () => reopened.probe(input, head, file));
+    assert.equal(result?.result, 'green'); assert.equal(result?.run, id);
+    if (diagnosticFailure) {
+      assert.match(result?.reason ?? '', /candidate cleanup ownership unavailable; root preserved/);
+      assert.match(result?.reason ?? '', /diagnostic persistence refused/);
+      assert.ok(Buffer.byteLength(JSON.stringify(result?.reason)) <= 2048, 'secondary receipt text has an encoded-byte bound');
+      assert.equal(diagnosticLog.length, 1, 'secondary persistence failure emits one structured line');
+      assert.equal(diagnosticLog[0]!.event, 'dev-t3-preservation-diagnostic-failed');
+      assert.equal(diagnosticLog[0]!.cwd, retained);
+      assert.equal(diagnosticLog[0]!.cause, 'ownership-unavailable');
+      assert.ok(Buffer.byteLength(JSON.stringify(diagnosticLog[0]!.error)) <= 2048, 'structured persistence error has an encoded-byte bound');
+      fault!.mock.restore();
+      assert.equal((await step('retry retained diagnostic publication', () => reopened.probe(input, head, file)))?.result, 'green');
+      assert.equal(f.suites.status().length, 1, 'diagnostic retry does not re-admit a worker');
+    }
+    if (!completedLegacy) await assert.rejects(lstat(prepared.cwd), { code: 'ENOENT' }, 'completed probe removes only its replacement clone');
+    const after = await lstat(retained);
+    assert.deepEqual([after.dev, after.ino, after.birthtimeMs], [identity.dev, identity.ino, identity.birthtimeMs]);
+    assert.equal(await readFile(join(retained, 'preserved-receipt'), 'utf8'), 'legacy root must stay untouched');
+    assert.ok((await lstat(join(retained, '.git'))).isFile());
+    assert.deepEqual(JSON.parse(f.store.meta(`dev-t3-preserved-candidate:${retained}`)!), {
+      cwd: retained, head, tree, cause: 'ownership-unavailable',
+      reason: 'candidate cleanup ownership unavailable; root preserved', replacement: completedLegacy ? null : prepared.cwd,
+    });
+    // The rejected root belongs to the enclosing fixture, not the probe cleanup.
+    return;
+  }
+  await step('historical probe preparation', () => probes.repository.checkout(candidate));
   assert.equal(await readFile(join(candidate.cwd, file), 'utf8'), "test('slow', () => {});\n", 'prepared HEAD must include its materialized test file');
   await writeFile(join(candidate.cwd, 'reuse-receipt'), 'preserve complete preparation');
-  await probes.repository.checkout(candidate); // Idle recovery retains the same immutable standalone checkout.
+  await step('historical probe preparation reuse', () => probes.repository.checkout(candidate)); // Idle recovery retains the same immutable standalone checkout.
   assert.equal(await readFile(join(candidate.cwd, 'reuse-receipt'), 'utf8'), 'preserve complete preparation');
   await assert.doesNotReject(lintHubShards(candidate.cwd), 'historical check must use the open owner at its pinned commit');
   await assert.rejects(lintHubShards(f.root), /closed owner E-677/, 'ordinary admission retains live owner validation');
-});
+}, { native: true }));
 
 test('cover-log remote-docs fixture refresh keeps npm test:tiers admitted', async t => {
   const machine = await scratchMachine(t, { identity: false });

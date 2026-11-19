@@ -23,3 +23,14 @@ T-1336 extends tracker-only protection to `docs/`, `qa/briefs/` and
 with `not reproduced (intermittent)` in the human report and both run/log receipts.
 Native Git tests cover each metadata path, source changes and reverted source;
 the production-frame component case checks the Coordinator notice and no Bug.
+
+The relocated-checkout regression uses the guarded `suiteCase` owner and a fake
+repository. Its checkout changes the candidate path; the persisted checkpoint
+must contain that actual path before admission. Reopen with the admitted worker,
+observe its completion receipt and assert removal receives only the replacement
+path without another checkout. The native upgrade/root-preservation control is
+in `durations.test.ts`.
+The secondary-diagnostic control checkpoints a green probe with an existing
+optional `reason`, then publishes its search evidence through the shipped
+reporter. Assert the result stays green and both the checkpoint and human report
+retain that reason. Previous receipts without a reason retain their old format.

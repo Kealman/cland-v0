@@ -1,5 +1,28 @@
 # hub/test/merge-batches.test.ts
 
+Post-landing cleanup failures use fake process-table readers through
+`removeWorktreeWithFixtures`, under the positively controlled native launch guard.
+Completed member receipts stay landed; guarded removal is never invoked while
+the reader fails. The controller retains cleanup across reopen, backs off retries,
+and prepares the next batch while cleanup remains pending. A pre-landing failure
+control retains the pinned heads and existing blocked/re-enqueue advice.
+Independent publication failure controls exercise terminal and unrelated active
+batches. The 33rd failure control checks the 32-record/256-KiB cap, unresolved
+overflow diagnostic and one native inspection per tick. Fake ownership readers
+exercise canonical `/var`/`/private/var` aliases, fresh guarded removal and
+recovered replacement/missing-marker refusals before process discovery.
+The alias control includes a nonempty private writer receipt whose fake owner
+refuses termination, proving removal is withheld through the real fixture guard.
+Near-capacity retry controls use both escaped controls and multibyte errors.
+Overflow publication failure survives reopen after batch clearance; one of three
+item notices settles per tick. A 64-row positive page control proves SQLite clips
+the value bytes before materialization and advances the keyset cursor.
+Refusal transitions within one admitted tick share its retry/notice allowances;
+they cannot multiply history work by repeatedly entering the advancement body.
+The overflow replay control supplies 5000 changed dependency paths, positively
+larger than 64 KiB, then checks minimal records, terminal clearance and later
+publication. Report-sink failure retains its secondary diagnostic and ps cause.
+
 Member-receipt cases use the same fake controller/Suites boundary. Complete
 mode-free exact-head T0–T2 verifies omit batch T1 while retaining T0/T3; the
 summary names each member run/head. An older-head green or missing member receipt

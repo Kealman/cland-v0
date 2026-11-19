@@ -823,6 +823,16 @@ export class Store implements HygieneMemory {
     this.#prepare('insert into meta (key, value) values (?, ?) on conflict (key) do update set value = excluded.value').run(key, value);
   }
 
+  /** Indexed keyset page, with byte clipping inside SQLite before materialization. */
+  metaPage(prefix: string, after: string, limit = 1, maxBytes = 65536): { key: string; value: string; oversized: boolean; readBytes: number }[] {
+    const rows = this.#prepare('select key, substr(cast(value as blob), 1, ?) as value, length(cast(value as blob)) as bytes from meta where key >= ? and key < ? and key > ? order by key limit ?')
+      .all(Math.min(65536, Math.max(1, maxBytes)), prefix, prefix + '\uffff', after, Math.min(32, Math.max(1, limit))) as { key: string; value: Uint8Array; bytes: number }[];
+    return rows.map(row => {
+      const oversized = row.bytes > Math.min(65536, Math.max(1, maxBytes));
+      return { key: row.key, value: oversized ? '' : Buffer.from(row.value).toString('utf8'), oversized, readBytes: row.value.byteLength };
+    });
+  }
+
   /** Legacy archives are projected within SQLite, never returned to V8 in full.
    * Each row is checkpointed; subsequent reads visit only the summary index. */
   suiteJobSummaries(): string[] {

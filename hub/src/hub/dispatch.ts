@@ -80,7 +80,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { readFile, stat, mkdir, writeFile, rename } from 'node:fs/promises';
 import { registerCoverageMap, parseCoverageMap } from '../suite-coverage.ts';
 import { timingSafeEqual } from 'node:crypto';
-import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket, type LaunchIdentityProof } from './core.ts';
+import { AGENTS, COORDINATOR, GENERAL, UNKNOWN_SESSION, type Connection, type HubCore, type SpokeSocket, type LaunchIdentityProof, type TopicNotice } from './core.ts';
 import { summarize, type AuditOutcome, type AuditRecord } from './audit.ts';
 import { decide, toolAvailability, LEAD_ROOT_TOOLS, KNOWN_TOOLS, ToolForbidden, type ToolCall } from '../roles/permissions.ts';
 import { crewSummary, parseIdleFrom, resolveCrewIdle } from '../crew.ts';
@@ -386,8 +386,8 @@ export class Dispatcher {
       }).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
     }, Math.min(sweepMs, 60000)) : null;
     this.#dropletTimer?.unref();
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, runReferenced: id => options.tracker?.retainsSuiteRun(id) ?? true, taskLanding: item => options.tracker?.summary(item)?.state === 'closed' ? options.tracker.landingReceipt(item) : null, clock: options.core.clock, waitClock: options.core.clock, dropletServices: { ...options.droplet, snapshotNotice }, ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onTestSlotAvailable: waiter => this.#reportTestSlot(waiter), onSoakNotice: (id, text) => { options.core.noticeTo(AGENTS.id, { id, kind: 'report', to: ['coordinator'], text }); }, onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onRemoteReclaimed: job => options.core.noticeTo(job.topic, { id: `executor-reclaimed:${job.id}`, kind: 'report', to: job.to, text: `verify ${job.id}: remote capacity available; moving queued local fallback to droplet`, detail: { event: 'verification-executor-reclaimed', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification({ ...queue, batch: this.#batches?.snapshot() ?? null }), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
-    const devT3Probes = root && this.#suites ? new DevT3Probes(options.core.store, this.#suites, root, options.env ?? process.env, options.devT3Repository) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, runReferenced: id => options.tracker?.retainsSuiteRun(id) ?? true, taskLanding: item => options.tracker?.summary(item)?.state === 'closed' ? options.tracker.landingReceipt(item) : null, clock: options.core.clock, waitClock: options.core.clock, dropletServices: { ...options.droplet, snapshotNotice }, ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onTestSlotAvailable: waiter => this.#reportTestSlot(waiter), onSoakNotice: (id, text) => { options.core.noticeTo(AGENTS.id, { id, kind: 'report', to: ['coordinator'], text }); }, onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onRemoteReclaimed: job => options.core.noticeTo(job.topic, { id: `executor-reclaimed:${job.id}`, kind: 'report', to: job.to, text: `verify ${job.id}: remote capacity available; moving queued local fallback to droplet`, detail: { event: 'verification-executor-reclaimed', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification({ ...queue, batch: this.#batches?.snapshot() ?? null, cleanups: this.#batches?.cleanupStatus() ?? [], cleanupOverflow: this.#batches?.cleanupOverflow() ?? { count: 0 } }), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    const devT3Probes = root && this.#suites ? new DevT3Probes(options.core.store, this.#suites, root, options.env ?? process.env, options.devT3Repository, this.#log) : null;
     this.#devT3Search = devT3Probes && options.tracker ? new DevT3Search(options.core.store, {
       log: this.#log,
       currentDev: async () => {
@@ -405,7 +405,7 @@ export class Dispatcher {
       (topic, notice, ids) => options.core.noticeToSessions(topic, notice, ids)) : null;
     this.#batches = root && this.#suites && this.#merges && this.#mergeQueue ? new MergeBatches(options.core.store, this.#suites, options.core.clock, {
       log: this.#log,
-      changed: () => { landingReports?.reconcile(); options.core.publishVerification({ ...this.#suites!.snapshot(), batch: this.#batches?.snapshot() ?? null }); },
+      changed: () => { landingReports?.reconcile(); options.core.publishVerification({ ...this.#suites!.snapshot(), batch: this.#batches?.snapshot() ?? null, cleanups: this.#batches?.cleanupStatus() ?? [], cleanupOverflow: this.#batches?.cleanupOverflow() ?? { count: 0 } }); },
       entries: () => { landingReports?.reconcile(); return this.#mergeQueue!.entries(); },
       build: (id, members, base) => this.#worktrees!.serial(() => prepareMergeBatch(root, id, members, options.env, options.batchRepository, base)),
       rebuildReason: (tested, current) => batchRebuildReason(root, tested, current, options.env, options.batchRepository),
@@ -452,10 +452,18 @@ export class Dispatcher {
         const detail = { event: 'merge-batch-result', batch: batch.id, members: batch.members.map(e => e.item), tree: selected?.tree ?? null,
           ...(batch.diagnosis ? { diagnosis: batch.diagnosis } : {}) };
         for (const entry of batch.members) {
-          const topic = options.tracker!.summary(entry.item)?.topic ?? AGENTS.id;
-          options.core.noticeTo(topic, { id: batchNoticeId(batch, reportPhase, entry.item), kind: 'report', to: [entry.by.name, `lead ${entry.item}`], text, detail });
+          const item = options.tracker!.summary(entry.item);
+          const topic = item?.topic ?? AGENTS.id;
+          const lead = item ? `lead ${entry.item}` : 'coordinator';
+          const cleanup = reportPhase?.startsWith('cleanup:');
+          const notice: TopicNotice = { id: batchNoticeId(batch, reportPhase, entry.item), kind: 'report', to: cleanup ? [lead] : [entry.by.name, lead], text, detail };
+          if (!options.core.noticeTo(topic, notice)) throw new Error('batch item notice topic unavailable');
+          if (cleanup && entry.by.id !== 'human') {
+            const direct = options.core.noticeToSessions(topic, notice, [entry.by.id]);
+            if (!direct || direct.pending.length) throw new Error('cleanup notice awaiting captured requester delivery receipt');
+          }
         }
-        options.core.noticeTo(AGENTS.id, { id: batchNoticeId(batch, reportPhase), kind: 'report', text, detail });
+        if (!options.core.noticeTo(AGENTS.id, { id: batchNoticeId(batch, reportPhase), kind: 'report', text, detail })) throw new Error('batch notice topic unavailable');
       },
     }, () => options.projectConfig?.().merge ?? { queue: false, batch: 3, batchWaitMs: 600_000 }) : null;
     void this.#mergeQueueReady.then(() => { if (!this.#closed) { landingReports?.reconcile(); this.#batches?.start(); } });
@@ -1455,7 +1463,7 @@ export class Dispatcher {
           // No await below: composition, subscription and the transaction occupy one turn.
           const result = snapshotFrames(composeSnapshot({
             core, tracker: this.#options.tracker, sessions: this.#sessions ?? null,
-            verification: this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null } : null,
+            verification: this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null, cleanups: this.#batches?.cleanupStatus() ?? [], cleanupOverflow: this.#batches?.cleanupOverflow() ?? { count: 0 } } : null,
             events, registry,
           }), core.modelCursor().epoch, core.modelCursor().seq);
           if (!peer.isOpen()) return;
@@ -1928,7 +1936,7 @@ export class Dispatcher {
           }
           case 'rule.show': throw new Error('use rule.list to read rules');
           case 'merge.queue':
-            return later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries, batch: this.#batches?.snapshot() ?? null } })));
+            return later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries, batch: this.#batches?.snapshot() ?? null, cleanups: this.#batches?.cleanupStatus() ?? [], cleanupOverflow: this.#batches?.cleanupOverflow() ?? { count: 0 } } })));
           case 'merge':
             return merge(frame, connection);
           case 'artifact.promote':
@@ -2484,13 +2492,13 @@ export class Dispatcher {
             break;
           case 'suite.queue':
             if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('no verification scheduler')));
-            later('suite.queue', this.#suites.queue().then(value => ({ type: 'result', id: frame.id, ok: true, value: { ...value, batch: this.#batches?.snapshot() ?? null } }), error => Dispatcher.#failure(frame.id, error)));
+            later('suite.queue', this.#suites.queue().then(value => ({ type: 'result', id: frame.id, ok: true, value: { ...value, batch: this.#batches?.snapshot() ?? null, cleanups: this.#batches?.cleanupStatus() ?? [], cleanupOverflow: this.#batches?.cleanupOverflow() ?? { count: 0 } } }), error => Dispatcher.#failure(frame.id, error)));
             break;
           case 'hub.subscriptions':
             peer.send({ type: 'result', id: frame.id, ok: true, value: { subscriptions: core.subscriptions().map(s => ({ ...s, subscriber: core.subscriptionOwner(s) })) } });
             break;
           case 'merge.queue':
-            later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries, batch: this.#batches?.snapshot() ?? null } })));
+            later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries, batch: this.#batches?.snapshot() ?? null, cleanups: this.#batches?.cleanupStatus() ?? [], cleanupOverflow: this.#batches?.cleanupOverflow() ?? { count: 0 } } })));
             break;
           case 'artifact.url':
             if (transport.edge !== 'web' || !transport.artifactUrl) throw new Error('artifact.url requires the authenticated web edge');
@@ -2535,7 +2543,7 @@ export class Dispatcher {
             break;
           case 'hub.status': {
             const status = (): HubFrame => {
-              const verification = this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null } : undefined;
+              const verification = this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null, cleanups: this.#batches?.cleanupStatus() ?? [], cleanupOverflow: this.#batches?.cleanupOverflow() ?? { count: 0 } } : undefined;
               const full = control.status();
               const { harnesses: _harnesses, ...compact } = full;
               const base = { ...(frame.history === true ? full : compact), ...(frame.releaseTools === true ? { releaseTools: { gh: which('gh', this.#options.env ?? process.env, full.root) !== null } } : {}) };

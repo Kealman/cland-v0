@@ -959,6 +959,8 @@ export type QueueWaitMetrics = {
 };
 export type MergeBatchStatus = { id: string; members: MergeQueueEntry[]; run?: string; candidate?: { tree: string }; failed?: string };
 export type VerificationQueue = {
+  cleanupOverflow?: { count: number; oldestPath?: string };
+  cleanups?: { candidate: { cwd: string }; error: string; retryAt: string }[];
   batch?: MergeBatchStatus | null;
   /** Failed local compatibility inspection or release recovery, until its successful retry. */
   localBlocked?: { reason: string };

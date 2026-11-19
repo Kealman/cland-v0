@@ -1,8 +1,14 @@
 import { fixtureCommand as cland } from './fixture-command.ts';
 import { beforeEach } from 'node:test';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
+const cleanupProjectionCases = [false, true].map(rejectConstructor => ({ rejectConstructor,
+  name: `queue cleanup projection ${rejectConstructor ? 'joins constructor rejection with captured databases' : 'exposes retained cleanup separately from a blocked batch'}` }));
+const ownedGuardAdmissions = new Set<string>();
 beforeEach(async t => {
   if (!('assert' in t)) throw new Error('native guard requires a test context');
+  // These exact cases retain the same complete guard through their stronger
+  // whole-case positive-close fence; nesting guards would restore out of order.
+  if (cleanupProjectionCases.some(testCase => testCase.name === t.name)) { ownedGuardAdmissions.add(t.name); return; }
   await fixtureNativeGuard(t);
 });
 // T2: durable merge queue admission through projectHub and its public merge/task frames.
@@ -10,7 +16,7 @@ import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, inProcessSpoke, projectHub, tempProject, until, type ProjectHubOptions } from './harness.ts';
 import { manualTips } from './freshness-harness.ts';
@@ -32,6 +38,9 @@ import { caseDeadlines } from './case-deadlines.ts';
 import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { MergeError } from '../src/merge.ts';
 import { TaskMerges } from '../src/hub/merge.ts';
+import { DatabaseSync } from 'node:sqlite';
+import { fakeNativeGuard } from './fake-native-guard.ts';
+import { afterCleanup } from './process-cleanup.ts';
 import { HubCore } from '../src/hub/core.ts';
 import { completeJournalLines } from './journal-lines.ts';
 
@@ -41,8 +50,9 @@ async function checkoutClandFixture(cwd: string) {
   await verificationFixture(cwd);
 }
 
-async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = ['hub/src/parser.ts'], seed?: (tracker: Tracker) => Promise<void>) {
+async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = ['hub/src/parser.ts'], seed?: (tracker: Tracker) => Promise<void>, adoptRoot?: (root: string) => void, captureDispose?: (dispose: () => Promise<void>) => void) {
   const root = await tempProject(t);
+  adoptRoot?.(root);
   await mkdir(join(root, '.cland'), { recursive: true });
   const repository = parseConfig(await readFile(new URL('../../.cland/config.toml', import.meta.url), 'utf8'), 'repository', {});
   await writeFile(join(root, '.cland/config.toml'), `[merge]\nqueue = ${repository.merge.queue}\n[verification]\ntest="true"\n`);
@@ -71,7 +81,8 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = 
     const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), clock, git, stageTree: async () => 'fixture-stage-tree', readBase: async () => 'dev', env: fixtureEnvironment(root, process.env) });
     try { await seed(tracker); } finally { await tracker.stop(); }
   }
-  const { discovery, dispatcher, stop, fakes } = await projectHub(t, root, {}, { clock, stageTree: async () => 'fixture-stage-tree', scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...options });
+  const { discovery, dispatcher, stop, fakes, dispose } = await projectHub(t, root, {}, { clock, stageTree: async () => 'fixture-stage-tree', scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...options });
+  captureDispose?.(dispose);
   await tips.refresh();
   const ui = await connectUi(t, discovery);
   const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', sessionId: 'review-id', role: 'reviewer' });
@@ -80,6 +91,102 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = 
   await until(async () => { await clock.advance(100); return (await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.status === 'ready'; }, { what: 'reviewed task ready', timeoutMs: 1500 });
   return { root, ui, dispatcher, item, clock, heads, surfaces, manifests, history, rev, tips, stop, fakes, enqueuedAt: clock.now().toISOString() };
 }
+
+for (const { rejectConstructor, name } of cleanupProjectionCases) test(name, t => {
+  assert.ok(ownedGuardAdmissions.delete(name), 'file hook must delegate this exact case to its owned native guard');
+  const scope = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  const databases = new Set<DatabaseSync>();
+  let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined, restore: (() => void) | undefined;
+  let bodyClosed = false, ownerReturned = false, ownerClosed = false, restored = false, refuseClose = true;
+  let registered = 0, completed = 0, root = '';
+  let seededNotice = false;
+  let closeReturnedOwner: (() => Promise<void>) | undefined;
+  const captured = new Proxy(scope.fixtures, { get(target, key) {
+    if (key === 'after') return (close: () => unknown) => {
+      registered++;
+      scope.fixtures.after(async () => { await close(); completed++; });
+    };
+    const value = Reflect.get(target, key, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  } });
+  const finalize = () => {
+    assert.ok(bodyClosed, 'original setup/body must join before guard restoration');
+    assert.ok(!ownerReturned || ownerClosed, 'returned hub resource closure incomplete; retain databases and native guard');
+    assert.equal(completed, registered, 'registered cleanup must complete positively before fallback');
+    // Only a rejected constructor with no returned owner permits fallback closure.
+    if (!ownerReturned) for (const db of databases) if (db.isOpen) db.close();
+    assert.ok([...databases].every(db => !db.isOpen), 'all constructor-captured databases closed');
+    try { guard?.verify(); } finally { restore?.(); restored = true; }
+  };
+  afterCleanup(t, finalize);
+  if (!rejectConstructor) captured.after(async () => {
+    assert.ok(closeReturnedOwner);
+    // Registered cleanup observes a rejected owner before its later positive retry.
+    await assert.rejects(closeReturnedOwner!, /owner close rejection/);
+    assert.throws(finalize, /returned hub resource closure incomplete/);
+    assert.ok([...databases].some(db => db.isOpen), 'rejected closure retains live owner databases');
+    assert.equal(restored, false, 'guard remains active across rejected closure');
+    assert.equal((await stat(root)).isDirectory(), true);
+    refuseClose = false;
+  });
+  return scope.run(async step => {
+  try {
+  guard = await step(() => scope.wait('native guard setup', () => fakeNativeGuard(fn => { restore = fn; })));
+  const acquiring = () => fixture(captured, { lockIdentity: { hostname: 'fixture-host', bootId: 'fixture-boot', pidNamespace: null }, openDatabase: path => {
+    const db = new DatabaseSync(path); databases.add(db); // Capture before any wrapper constructor can reject.
+    if (rejectConstructor) throw new Error('injected constructor rejection after capture');
+    db.exec('create table if not exists meta (key text primary key, value text not null)');
+    db.prepare('insert into meta(key,value) values (?,?) on conflict(key) do nothing').run('merge-batch-cleanups', JSON.stringify([{ batch: { id: 'landed', members: [{ item: 'T-8000', branch: '', head: 'a'.repeat(40), verdictBase: '', enqueued: '', by: { id: 'review-id', name: 'old-review-name', role: 'reviewer' } }] }, candidate: { cwd: '/scratch/landed-candidate' }, error: 'ps unavailable', attempts: 2, retryAt: '2099-01-01T00:00:00.000Z' }]));
+    if (!seededNotice) {
+      db.prepare('insert into meta(key,value) values (?,?)').run('merge-cleanup-notice:recorded', JSON.stringify({ batch: { id: 'recorded-overflow', members: [{ item: 'T-8000', branch: '', head: 'a'.repeat(40), verdictBase: '', enqueued: '', by: { id: 'review-id', name: 'old-review-name', role: 'reviewer' } }] }, text: 'UNRESOLVED cleanup overflow: recorded owned candidate', phase: 'cleanup:overflow:recorded:T-8000' }));
+      seededNotice = true;
+    }
+    return db;
+  } }, undefined, undefined, acquiredRoot => { root = acquiredRoot; scope.adoptRoot(root); }, dispose => {
+    ownerReturned = true;
+    closeReturnedOwner = async () => {
+      if (refuseClose) throw new Error('injected owner close rejection');
+      await dispose(); ownerClosed = true;
+    };
+    captured.after(closeReturnedOwner);
+  });
+  if (rejectConstructor) {
+    await step(() => scope.wait('projection constructor rejection', () => assert.rejects(acquiring(), /injected constructor rejection after capture/)));
+    assert.ok(databases.size > 0, 'positive constructor acquisition receipt');
+    return;
+  }
+  const { ui, clock } = await step(() => scope.wait('projection fixture setup', acquiring));
+  const expected = [{ candidate: { cwd: '/scratch/landed-candidate' }, error: 'ps unavailable', retryAt: '2099-01-01T00:00:00.000Z' }];
+  const queue = await step(() => scope.wait('public merge queue', () => value<{ batch: unknown; cleanups: unknown[] }>(ui, { type: 'merge.queue' })));
+  assert.equal(queue.batch, null);
+  assert.deepEqual(queue.cleanups, expected);
+  const status = await step(() => scope.wait('public hub status', () => value<{ verification: { cleanups: unknown[] } }>(ui, { type: 'hub.status' })));
+  assert.deepEqual(status.verification.cleanups, expected);
+  await step(() => scope.wait('old requester name reused', () => inProcessSpoke(captured, { discover: true, cwd: root, name: 'old-review-name', sessionId: 'replacement-id' })));
+  let delivered: { id: string; text: string; to: string[] } | undefined;
+  let ordinary: { id: string; text: string; to: string[] } | undefined;
+  const receiving = scope.wait('captured cleanup requester publication', () => until(async () => {
+    const history = await value<{ messages: { id: string; text: string; to: string[] }[] }>(ui, { type: 'topic.history', topic: 'agents', limit: 100 });
+    delivered = history.messages.find(message => message.text === 'UNRESOLVED cleanup overflow: recorded owned candidate' && message.to.includes('rev'));
+    ordinary = history.messages.find(message => message.text.startsWith('batch landed cleanup follow-up:') && message.to.includes('rev'));
+    return !!delivered && !!ordinary;
+  }, { what: 'overflow notice for captured requester under current name', timeoutMs: 1500 }).catch(async error => {
+    const db = [...databases].find(db => db.isOpen);
+    const diagnostic = db?.prepare("select key,value from meta where key in ('merge-batch-publication-error','merge-cleanup-notice-cursor','merge-cleanup-notice:recorded')").all();
+    const history = await value<{ messages: { text: string; to: string[] }[] }>(ui, { type: 'topic.history', topic: 'agents', limit: 10 });
+    throw new Error(`${String(error)}; retained diagnostic ${JSON.stringify(diagnostic)}; notices ${JSON.stringify(history.messages.map(message => ({ text: message.text, to: message.to })))}`);
+  }));
+  void receiving.catch(() => {});
+  await step(() => clock.advance(1000));
+  await step(() => receiving);
+  assert.ok(delivered?.id);
+  assert.ok(delivered!.to.includes('rev'));
+  assert.ok(!delivered!.to.includes('old-review-name'));
+  assert.ok(ordinary?.id);
+  assert.ok(!ordinary!.to.includes('old-review-name'));
+  } finally { bodyClosed = true; }
+  });
+});
 
 function demoLease(clock: FakeClock, epic: string): DropletLease {
   return {

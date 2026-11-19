@@ -7,7 +7,7 @@ function probeEvidence(receipt: ProbeReceipt): string {
   if (receipt.result === 'absent') return `Absent at head ${receipt.head}; tree ${receipt.tree}; ${receipt.file}; not executed`;
   const exclusions = receipt.result === 'partial'
     ? ` (${receipt.executed} executed subset; ${receipt.platformSkips.length} known platform exclusions; not executed: ${receipt.platformSkips.map(skip => `${skip.name}: ${skip.reason}`).join(', ')}; platform ${receipt.platform.os}/${receipt.platform.arch})` : '';
-  return `Run ${receipt.run}; head ${receipt.head}; ${receipt.result}${exclusions}; log ${receipt.artifact}: ${receipt.path}`;
+  return `Run ${receipt.run}; head ${receipt.head}; ${receipt.result}${exclusions}; log ${receipt.artifact}: ${receipt.path}${receipt.reason ? `; ${receipt.reason}` : ''}`;
 }
 
 /** Tracker writes are serialized by Tracker. Deterministic labels also recover the

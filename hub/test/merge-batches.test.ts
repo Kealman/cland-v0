@@ -25,6 +25,10 @@ import { fixtureWork, type FixtureStep } from '../../test-support/fixture-work.t
 import { fakeNativeGuard } from './fake-native-guard.ts';
 import { tierReceipt } from '../src/verification-tier-receipts.ts';
 import { requireMergeClosedItemWording } from '../src/merge-closed-item-wording.ts';
+import { removeWorktreeWithFixtures, type FixtureProcesses } from '../src/fixture-processes.ts';
+import { captureCandidateOwnership, requireCandidateOwnership, removeOwnedBatchCandidate, type CandidateOwnershipHost } from '../src/batch-candidate-ownership.ts';
+import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
+import { dependencyInstall } from '../src/dependency-install.ts';
 
 /** Enroll before acquisition; even late fixture hooks must join the whole body. */
 function joinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep) => Promise<void>) {
@@ -572,6 +576,272 @@ for (const restart of [false, true]) test(`all-terminal blocked batch clears ${r
   assert.notEqual(state.runner.snapshot()?.run, batch.run);
   assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
 });
+
+for (const noticeFailure of [false, true]) test(`post-landing ps failure retains cleanup and prepares the next batch${noticeFailure ? ' despite notice failure' : ''} without blocking`, t => guardedMemberCase(t, async (t, step) => {
+  const state = await step(() => fixture(t));
+  const { f, boundary, reports, landed, entries } = state;
+  let unavailable = true, removed = 0, probes = 0;
+  let sinkUnavailable = noticeFailure;
+  const report = boundary.report;
+  boundary.report = (batch, text, phase) => {
+    if (phase?.startsWith('cleanup:') && sinkUnavailable) throw new Error('notice unavailable');
+    report(batch, text, phase);
+  };
+  const readers: FixtureProcesses = {
+    rows: async () => { probes++; if (unavailable) throw new Error('cannot inspect the OS process table: ps failed or timed out'); return []; },
+    paths: async () => { throw new Error('unexpected paths'); }, sameUser: async () => { throw new Error('unexpected user'); },
+    missing: () => false, end: async () => { throw new Error('unexpected signal'); },
+  };
+  boundary.cleanup = candidate => removeWorktreeWithFixtures(candidate.cwd, async () => { removed++; }, readers);
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  await step(() => f.finish(batch.run!));
+  await step(() => state.runner.tick());
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+  assert.equal(state.runner.snapshot(), null);
+  assert.equal(removed, 0, 'guard retains root until ps succeeds');
+  assert.equal(state.runner.cleanups()[0]?.candidate.cwd, f.root);
+  assert.match(state.runner.cleanups()[0]!.error, /ps failed or timed out/);
+  assert.deepEqual(state.runner.cleanupStatus(), [{ candidate: { cwd: f.root }, error: 'cannot inspect the OS process table: ps failed or timed out', retryAt: state.runner.cleanups()[0]!.retryAt }]);
+  if (!noticeFailure) assert.ok(reports.some(text => /cleanup[\s\S]*automatic retry/i.test(text)));
+  else {
+    assert.match(f.store.meta('merge-batch-publication-error') ?? '', /notice unavailable/);
+    assert.match(state.runner.cleanups()[0]!.error, /ps failed or timed out/, 'secondary publication error preserves the original cleanup cause');
+  }
+  assert.ok(reports.every(text => !/blocked|--cancel|re-enqueue/.test(text)));
+  const firstProbes = probes;
+  entries.push(...batch.members.map((entry, index) => ({ ...entry, item: `T-${index + 4}` })));
+  await step(() => state.runner.tick());
+  assert.deepEqual(state.runner.snapshot()?.members.map(entry => entry.item), ['T-4', 'T-5', 'T-6']);
+  assert.notEqual(state.runner.snapshot()?.id, batch.id, 'new candidate identity avoids the retained path');
+  assert.equal(probes, firstProbes, 'backoff avoids tight cleanup retries');
+  await step(() => state.reopen());
+  await step(() => f.clock.advance(1000));
+  await step(() => state.runner.tick());
+  assert.equal(state.runner.cleanups()[0]!.attempts, 2);
+  assert.equal(removed, 0);
+  unavailable = false;
+  await step(() => f.clock.advance(60_000));
+  await step(() => state.runner.tick());
+  assert.equal(removed, 1);
+  assert.deepEqual(state.runner.cleanupStatus(), []);
+  sinkUnavailable = false;
+  await step(() => state.runner.tick());
+  assert.deepEqual(state.runner.cleanups(), []);
+  assert.ok(reports.some(text => /cleanup[\s\S]*automatic retry/i.test(text)));
+  assert.equal(removed, 1, 'notice recovery cannot repeat positively completed cleanup');
+}));
+
+test('candidate cleanup accepts the var to private-var alias and preserves replaced or unowned roots after reopen', t => guardedMemberCase(t, async (t, step) => {
+  const candidate: BatchCandidate = { base: 'base', head: 'head', tree: 'tree', cwd: '/var/scratch/candidate', budgetLines: [] };
+  let observation = { root: '/private/var/scratch', cwd: '/private/var/scratch/candidate', gitdir: '/private/var/scratch/.git/worktrees/candidate', rootBirth: 'root-native-birth', birth: 'candidate-native-birth', gitBirth: 'gitdir-native-birth', head: candidate.head, tree: candidate.tree };
+  const markers = new Map<string, string>();
+  const host: CandidateOwnershipHost = { inspect: async () => ({ ...observation }), read: async path => markers.get(path) ?? '', write: async (path, text) => { markers.set(path, text); } };
+  await step(() => captureCandidateOwnership('/scratch', candidate, {}, host));
+  await step(() => requireCandidateOwnership('/scratch', candidate, {}, host));
+  let removed = 0, inspected = 0;
+  const processes: FixtureProcesses = { rows: async () => { inspected++; return []; }, paths: async () => { throw new Error('unexpected paths'); }, sameUser: async () => false, missing: () => false, end: async () => { throw new Error('unexpected signal'); } };
+  const remove = (owned: BatchCandidate) => removeOwnedBatchCandidate('/scratch', owned, {}, async () => { removed++; }, host, processes);
+  await step(() => remove(candidate));
+  assert.equal(removed, 1, 'fresh matching owner reaches guarded removal');
+  const receipt = fixtureOwnership([observation.cwd]);
+  t.after(() => { receipt.close(); receipt.remove(); });
+  receipt.bind(101, 100_000, 100_000);
+  const writer: FixtureProcesses = {
+    rows: async () => [{ pid: 101, parent: 1, group: 101, state: 'S', command: '/fake/nvim --headless', started: new Date(100_000).toUTCString(), identity: 'writer-birth' }],
+    paths: async () => ({ cwd: observation.cwd, files: [receipt.path] }), sameUser: async () => true, missing: () => false, end: async () => false,
+  };
+  await step(() => assert.rejects(removeOwnedBatchCandidate('/var/scratch', candidate, {}, async () => { removed++; }, host, writer), /could not be stopped; worktree kept/));
+  assert.equal(removed, 1, 'canonical owned writer prevents removal through the var alias');
+  const inspectedFresh = inspected;
+  const reopened = JSON.parse(JSON.stringify(candidate)) as BatchCandidate;
+  await step(() => requireCandidateOwnership('/scratch', reopened, {}, host));
+  observation = { ...observation, birth: 'replacement-native-birth' };
+  await step(() => assert.rejects(remove(reopened), /ownership changed/));
+  assert.equal(inspected, inspectedFresh, 'replacement rejected before process discovery or signals');
+  assert.equal(removed, 1);
+  observation = { ...observation, birth: 'candidate-native-birth' };
+  markers.clear();
+  await step(() => assert.rejects(requireCandidateOwnership('/scratch', reopened, {}, host), /ownership changed/));
+  delete reopened.owner;
+  await step(() => assert.rejects(remove(reopened), /ownership unavailable/));
+  assert.equal(removed, 1, 'recovered state grants no new removal authority');
+}));
+
+test('cleanup publication failure cannot block landed or unrelated active batches', t => guardedMemberCase(t, async (t, step) => {
+  const state = await step(() => fixture(t));
+  const { f, boundary, reports, entries } = state;
+  boundary.cleanup = async () => { throw new Error('ps unavailable'); };
+  boundary.changed = () => {
+    if (JSON.parse(f.store.meta('merge-batch-cleanups') ?? '[]').length) throw new Error('publication unavailable');
+  };
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  await step(() => f.finish(batch.run!));
+  await step(() => state.runner.tick());
+  assert.equal(state.runner.snapshot(), null);
+  entries.push(...batch.members.map((entry, index) => ({ ...entry, item: `T-${index + 4}` })));
+  await step(() => state.runner.tick());
+  assert.ok(state.runner.snapshot()?.run);
+  await step(() => f.clock.advance(1000));
+  await step(() => state.runner.tick());
+  assert.equal(state.runner.snapshot()?.failed, undefined);
+  assert.ok(reports.every(text => !text.includes('blocked:')));
+  assert.match(f.store.meta('merge-batch-publication-error')!, /publication unavailable/);
+  let removed = 0;
+  boundary.cleanup = async () => { removed++; };
+  boundary.changed = () => { throw new Error('publication unavailable after positive cleanup'); };
+  await step(() => f.clock.advance(4000));
+  await step(() => state.runner.tick());
+  await step(() => state.runner.tick());
+  assert.equal(removed, 1, 'a later notification failure cannot repeat successful removal');
+  assert.deepEqual(state.runner.cleanups(), []);
+  assert.equal(state.runner.snapshot()?.failed, undefined);
+}));
+
+test('the thirty-third cleanup failure keeps capped retries and unresolved overflow ownership', t => guardedMemberCase(t, async (t, step) => {
+  const state = await step(() => fixture(t));
+  const { f, boundary, reports } = state;
+  let attempts = 0;
+  boundary.cleanup = async () => { attempts++; throw new Error('ps unavailable'); };
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  const pending = Array.from({ length: 32 }, (_, i) => ({ batch: { id: `old-${i}`, members: [] }, candidate: { ...batch.candidate, cwd: `/scratch/old-${i}` }, error: 'old error', attempts: 1, reported: true, retryAt: '2099-01-01T00:00:00Z' }));
+  f.store.setMeta('merge-batch-cleanups', JSON.stringify(pending));
+  await step(() => f.finish(batch.run!));
+  await step(() => state.runner.tick());
+  assert.equal(state.runner.snapshot(), null);
+  assert.equal(state.runner.cleanups().length, 32);
+  assert.equal(state.runner.cleanupOverflow().count, 1);
+  assert.equal(state.runner.cleanupOverflow().oldestPath, batch.candidate!.cwd);
+  assert.equal(attempts, 1);
+  assert.ok(Buffer.byteLength(f.store.meta('merge-batch-cleanups')!) <= 262144);
+  await step(() => state.runner.tick());
+  assert.ok(reports.some(text => text.includes('UNRESOLVED cleanup overflow:') && text.includes(batch.candidate!.cwd) && text.includes('not auto-retried')));
+  f.store.setMeta('merge-batch-cleanups', JSON.stringify(pending.map(job => ({ ...job, retryAt: f.clock.now().toISOString() }))));
+  await step(() => state.runner.tick());
+  assert.equal(attempts, 2, 'only one of 32 due roots is inspected in a tick');
+}));
+
+test('an overflow notice survives a failed delivery and batch clearance until later publication', t => guardedMemberCase(t, async (t, step) => {
+  const state = await step(() => fixture(t));
+  const { f, boundary, reports, entries } = state;
+  const dependencies = dependencyInstall('/scratch', Array.from({ length: 5000 }, (_, i) => `packages/workspace-${i}/package-lock.json`))!;
+  assert.ok(Buffer.byteLength(JSON.stringify(dependencies)) > 65536, 'positive dependency metadata larger than the notice budget');
+  entries[0]!.dependencies = dependencies;
+  let unavailable = true;
+  const report = boundary.report;
+  boundary.report = (batch, text, phase) => {
+    if (text.startsWith('UNRESOLVED cleanup overflow:') && unavailable) throw new Error('overflow publication unavailable');
+    report(batch, text, phase);
+  };
+  boundary.cleanup = async () => { throw new Error('ps unavailable'); };
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  f.store.setMeta('merge-batch-cleanups', JSON.stringify(Array.from({ length: 32 }, (_, i) => ({ batch: { id: `old-${i}`, members: [] }, candidate: { ...batch.candidate, cwd: `/scratch/old-${i}` }, error: 'old', attempts: 1, reported: true, retryAt: '2099-01-01T00:00:00Z' }))));
+  await step(() => f.finish(batch.run!));
+  await step(() => state.runner.tick());
+  assert.ok(state.runner.snapshot() === null, 'terminal batch must clear despite dependency metadata exceeding the notice budget');
+  assert.deepEqual(state.landed, ['T-1', 'T-2', 'T-3']);
+  const retained = f.store.metaPage('merge-cleanup-notice:', '', 32);
+  assert.equal(retained.length, 3);
+  for (const row of retained) {
+    assert.equal(row.oversized, false);
+    const notice = JSON.parse(row.value);
+    assert.equal(Object.hasOwn(notice.batch.members[0], 'dependencies'), false);
+    assert.equal(notice.batch.members[0].by.id, batch.members[0]!.by.id);
+    assert.equal(notice.batch.members[0].by.name, '');
+    assert.equal(notice.batch.members[0].by.role, null);
+  }
+  await step(() => state.reopen());
+  unavailable = false;
+  await step(() => state.runner.tick());
+  assert.ok(reports.some(text => text.startsWith('UNRESOLVED cleanup overflow:') && text.includes(batch.candidate!.cwd)));
+  assert.equal(f.store.metaPage('merge-cleanup-notice:', '', 32).length, 2, 'one of three captured item obligations settles per tick');
+  await step(() => state.runner.tick());
+  await step(() => state.runner.tick());
+  assert.deepEqual(f.store.metaPage('merge-cleanup-notice:', '', 32), []);
+}));
+
+test('encoded multibyte and escaped retry errors stay within near-capacity cleanup reservations', t => guardedMemberCase(t, async (t, step) => {
+  const state = await step(() => fixture(t));
+  const { f, boundary, entries } = state;
+  let error = 'ps unavailable';
+  boundary.cleanup = async () => { throw new Error(error); };
+  await step(() => state.runner.tick());
+  const batch = state.runner.snapshot()!;
+  await step(() => f.finish(batch.run!));
+  await step(() => state.runner.tick());
+  const current = state.runner.cleanups()[0]!;
+  const older = Array.from({ length: 31 }, (_, i) => {
+    const job = structuredClone(current);
+    job.candidate.cwd = `/scratch/old-${i}`;
+    job.retryAt = '2099-01-01T00:00:00Z'; job.error = 'x'.repeat(2048);
+    const bytes = Buffer.byteLength(JSON.stringify(job));
+    job.batch.members[0]!.branch += 'p'.repeat(8100 - bytes);
+    assert.equal(Buffer.byteLength(JSON.stringify(job)), 8100);
+    return job;
+  });
+  f.store.setMeta('merge-batch-cleanups', JSON.stringify([...older, current]));
+  entries.push(...batch.members.map((entry, i) => ({ ...entry, item: `T-${i + 4}` })));
+  await step(() => state.runner.tick());
+  error = '\0'.repeat(2048) + '界'.repeat(2048);
+  await step(() => f.clock.advance(1000));
+  await step(() => state.runner.tick());
+  assert.equal(state.runner.snapshot()?.failed, undefined);
+  assert.ok(Buffer.byteLength(f.store.meta('merge-batch-cleanups')!) <= 262144);
+  error = '界'.repeat(2048);
+  await step(() => f.clock.advance(4000));
+  await step(() => state.runner.tick());
+  assert.equal(state.runner.snapshot()?.failed, undefined);
+  assert.ok(Buffer.byteLength(f.store.meta('merge-batch-cleanups')!) <= 262144);
+}));
+
+test('notice keyset pages bound encoded bytes and visit the next retained key', t => guardedMemberCase(t, async (t, step) => {
+  const { f } = await step(() => fixture(t));
+  for (let i = 0; i < 64; i++) f.store.setMeta(`page-control:${String(i).padStart(3, '0')}`, '界'.repeat(10_000));
+  const first = f.store.metaPage('page-control:', '', 1, 4096);
+  assert.equal(first.length, 1);
+  assert.equal(first[0]!.key, 'page-control:000');
+  assert.equal(first[0]!.oversized, true);
+  assert.equal(first[0]!.readBytes, 4096, 'only the bounded SQLite substring crosses into V8');
+  assert.equal(first[0]!.value, '', 'oversized payload is retained without decoding a truncated UTF-8 sequence');
+  assert.equal(f.store.metaPage('page-control:', first[0]!.key, 1, 4096)[0]!.key, 'page-control:001');
+}));
+
+test('batch refusal transitions share one cleanup and notice budget in an admitted tick', t => guardedMemberCase(t, async (t, step) => {
+  const { f, runner, boundary, dropped } = await step(() => fixture(t));
+  let attempts = 0, notices = 0;
+  const report = boundary.report;
+  boundary.report = (batch, text, phase) => { if (text === 'budget notice') notices++; report(batch, text, phase); };
+  for (let i = 0; i < 3; i++) f.store.setMeta(`merge-cleanup-notice:budget-${i}`, JSON.stringify({ batch: { id: `notice-${i}`, members: [] }, text: 'budget notice', phase: `cleanup:overflow:budget-${i}` }));
+  boundary.cleanup = async () => { attempts++; throw new Error('ps unavailable'); };
+  const candidate = { base: 'base', head: 'head', tree: 'tree', cwd: '/scratch/backlog', budgetLines: [] };
+  f.store.setMeta('merge-batch-cleanups', JSON.stringify(Array.from({ length: 3 }, (_, i) => ({ batch: { id: `old-${i}`, members: [] }, candidate: { ...candidate, cwd: `/scratch/backlog-${i}` }, error: 'old', attempts: 1, reported: true, retryAt: f.clock.now().toISOString() }))));
+  const build = boundary.build;
+  boundary.build = async (id, members, base) => {
+    if (members[0]!.item !== 'T-3') throw new BatchRefusal(members[0]!, 'preparation refusal');
+    return build(id, members, base);
+  };
+  await step(() => runner.tick());
+  assert.equal(dropped.length, 2);
+  assert.equal(attempts, 1, 'internal refusal transitions cannot multiply due native cleanup work');
+  assert.equal(notices, 1, 'internal refusal transitions share the same notice page allowance');
+  assert.equal(f.store.metaPage('merge-cleanup-notice:', '', 32).length, 2);
+  assert.deepEqual(runner.snapshot()?.members.map(entry => entry.item), ['T-3']);
+}));
+
+test('a ps failure before landing blocks and retains the pinned heads', t => guardedMemberCase(t, async (t, step) => {
+  const { runner, boundary, entries, landed, reports } = await step(() => fixture(t));
+  const heads = structuredClone(entries);
+  boundary.build = async () => { throw new Error('cannot inspect the OS process table: ps failed or timed out'); };
+  await step(() => runner.tick());
+  assert.match(runner.snapshot()!.failed!, /ps failed or timed out/);
+  assert.deepEqual(entries, heads);
+  assert.deepEqual(landed, []);
+  assert.match(reports.join('\n'), /blocked:.*ps failed or timed out/);
+  assert.match(reports.join('\n'), /cancel and re-enqueue each retained head/);
+}));
 
 test('all-completed recovery waits for the admitted worker before cleanup', async t => {
   const { f, runner, boundary } = await fixture(t);

@@ -15,9 +15,10 @@ export async function runMerge(args: string[], cwd = process.cwd(), out: (text: 
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
   if (positionals[0] === 'queue') {
     if (values.override !== undefined || values.cancel) throw new Error('merge queue accepts only --json');
-    const result = await askHubFrame(d, { type: 'merge.queue' }) as { entries: MergeQueueEntry[]; batch?: MergeBatchStatus | null };
+    const result = await askHubFrame(d, { type: 'merge.queue' }) as { entries: MergeQueueEntry[]; batch?: MergeBatchStatus | null; cleanups?: import('../protocol.ts').VerificationQueue['cleanups']; cleanupOverflow?: import('../protocol.ts').VerificationQueue['cleanupOverflow'] };
     const batch = result.batch ? `batch ${result.batch.id}: ${result.batch.members.map(entry => entry.item).join(', ')} · tree ${result.batch.candidate?.tree ?? 'preparing'}${result.batch.failed ? ` · blocked: ${result.batch.failed}` : ''}\n` : '';
-    out(values.json ? `${JSON.stringify(result)}\n` : batch + (result.entries.length
+    const cleanups = (result.cleanups ?? []).map(job => `cleanup ${job.candidate.cwd}: ${job.error}; automatic retry ${job.retryAt}\n`).join('') + (result.cleanupOverflow?.count ? `UNRESOLVED cleanup overflow: ${result.cleanupOverflow.count}; oldest ${result.cleanupOverflow.oldestPath}; roots retained, no automatic retry\n` : '');
+    out(values.json ? `${JSON.stringify(result)}\n` : batch + cleanups + (result.entries.length
       ? result.entries.map((entry, index) => `${index + 1} ${entry.item} ${entry.branch} ${entry.head} since ${entry.enqueued} by ${entry.by.name}${entry.dependencies ? `\n  ${dependencyInstallText(entry.dependencies)}` : ''}\n`).join('') : 'merge queue empty\n'));
     return 0;
   }

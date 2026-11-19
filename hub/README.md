@@ -52,6 +52,23 @@ documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merg
 Conditional batch T1 reuse, receipt requirements and per-member summaries are
 documented under [queued batches](../docs/agents/tests.md#queued-merge-batches).
 
+After terminal batch receipts, candidate cleanup failures retain a separate
+guarded obligation, visible with its path, last error and retry time in merge
+queue and hub status. Automatic retries back off from 1 s to at most 60 s;
+they never change landed outcomes or prevent preparation of the next batch.
+Item follow-up repairs still use `cland merge T-n`.
+Historical probe upgrades preserve unmarked legacy roots with durable secondary
+diagnostics and continue through separate clones or already-collected receipts;
+see [Running](../docs/hub/running.md) for the ownership and restart rules.
+The retry list keeps 32 compact records (256 KiB maximum), one due retry per
+tick. Overflow is unresolved, with count and oldest path in status and an item
+diagnostic; its owned roots remain and are not auto-retried. Checkout ownership
+markers and native directory identities fence delayed removal, including after
+restart. Unknown legacy ownership or a replacement checkout preserves the root.
+The canonical owned path scopes process guarding too. Overflow notice obligations
+reuse individual meta records; one bounded keyset page replays per tick, keeping
+captured requester identities until a positive durable publication receipt.
+
 - [Prerequisite and packaging reports](../docs/hub/prerequisite-and-packaging-reports.md)
 - [Start a project with cland](../docs/hub/start-a-project-with-cland.md)
 - [Web workspace](../docs/hub/web-workspace.md)

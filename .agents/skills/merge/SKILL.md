@@ -98,6 +98,20 @@ fix before verification and retry. No additional role permission is needed.
 
 ## Merge-delta advisory comments
 
+Candidate cleanup after terminal batch receipts is separate from item follow-ups.
+Read pending cleanup paths, last errors and retry times in `cland merge queue`
+or hub status. The hub retries guarded removal with backoff capped at 60 seconds;
+resolve process inspection failures without canceling or re-enqueueing landed
+members. `cland merge T-n` repairs item follow-ups only.
+The list retains 32 compact retries and admits one due cleanup per tick. An
+UNRESOLVED overflow count and oldest path name roots outside automatic retry;
+their ownership markers remain, and the item diagnostic records the path.
+Unknown legacy ownership and replacement identities refuse removal. Never treat
+an overflow count or a missing ownership receipt as completed cleanup.
+Overflow item diagnostics survive failed publication and active-batch clearance
+in individual existing-meta obligations. Bounded one-notice replay uses captured
+requester identities and settles only after durable publication succeeds.
+
 Read the report-only assessment on the item as path/dependency evidence, never
 as a Reviewer verdict. The hosting hub preserves patch-id freshness and existing
 gates; the item lead still obtains merge-delta review before verification under

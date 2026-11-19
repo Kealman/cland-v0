@@ -1,8 +1,31 @@
 # hub/test/merge-queue.test.ts
 
+The retained-cleanup projection case seeds only the disposable fixture store,
+then reads `merge.queue` and `hub.status`. It checks that the candidate path,
+last error and next retry are visible independently of a null active batch;
+private batch history and cleanup bookkeeping stay off the wire.
+Both normal setup and an injected constructor rejection run under a whole-case
+pre-acquisition owner with separate setup/behavior bounds. Database handles are
+captured at the injected native open boundary before wrapper construction can
+fail; fallback closure runs after hub work joins. The complete positively
+controlled native-launch guard stays active until closure. Explicit synthetic
+lock identity prevents standalone macOS sysctl discovery.
+Returned hubs require their positive dispose receipt and successful registered
+cleanup before any final database/guard release; only rejected construction with
+no returned owner permits fallback database closure. A registered cleanup control
+rejects the owner close, asserts database/root/guard retention, then permits the
+positive retry. The public overflow case starts with an unavailable captured
+requester and later publishes to its current name, preserving its session id.
+The same public receipt covers ordinary cleanup while another live spoke owns
+the old requester name. Both durable notice targets identify the captured
+requester under its current name, excluding the replacement holder.
 The file remains T2, its tier before T-1932. CLI assertions use production modules
 under the [sealed component boundary](hub-test-suite-protocol.test.ts.md) and a
 positively controlled launch guard through cleanup.
+The two cleanup projection cases retain that same complete guard through their
+whole-case positive-close owner. The shared case-name table selects them for
+that guard instead of nesting the file-wide guard, whose restoration would
+otherwise run before the owned guard. All other cases keep fixtureNativeGuard.
 
 T-1900: The ordinary landing case launches an in-process fake Claude Coordinator,
 waits for accepted role input, and makes it idle. A lead's progress note remains

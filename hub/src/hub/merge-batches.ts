@@ -1,7 +1,7 @@
 import { TerritoryBusy } from '../territory-lock-context.ts';
 import { batchT1Summary } from '../batch-member-verification.ts';
 // Durable merge-batch policy; Git preparation and landing are owned by the territory boundary.
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ShardManifestError } from '../suite-shards.ts';
@@ -30,18 +30,34 @@ export function batchInteractionSummary(report: import('../suite-selection.ts').
     ...(report?.t3 ? { t3: { mode: 'report' as const, selectedFileCount: report.t3.files?.length ?? null, examples: report.t3.files?.slice(0, 10) ?? [] } } : {}) };
 }
 
-export type BatchCandidate = { base: string; head: string; tree: string; cwd: string; budgetLines: string[] };
+export type BatchCandidate = { base: string; head: string; tree: string; cwd: string; budgetLines: string[]; owner?: import('../batch-candidate-ownership.ts').CandidateOwnership };
 type DiagnosticResult = { result: 'green' | 'red' | 'inconclusive'; reason?: string };
 export type FileJob = { key: string; omitted?: string; candidate: BatchCandidate; run?: string; result?: DiagnosticResult['result']; reason?: string; seconds?: number | null; costUsd?: number | null; log?: { artifact: string; path: string } };
 export type BatchDiagnosis = { failure: { run: string; tree: string; log: { artifact: string; path: string } }; failures: string[]; budgetLines?: string[]; files: string[]; steps?: VerificationStep['name'][]; jobs: FileJob[]; selected?: number; excluded?: string[]; reported?: boolean; unresolved?: boolean };
 export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; planFrom?: string; confirmation?: { original: string; skipped: string[] | null }; failed?: string; reportError?: string; retryLanding?: boolean; retryRequested?: boolean; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
 type FollowUpReport = { batch: MergeBatch; item: string; error: string; reportError?: string };
+export type BatchCleanup = { batch: MergeBatch; candidate: BatchCandidate; error: string; attempts: number; retryAt: string; reported?: boolean; cleaned?: boolean };
+const CLEANUP_LIMIT = 32, CLEANUP_RECORD_BYTES = 8192;
+type CleanupNotice = { batch: MergeBatch; text: string; phase: `cleanup:${string}` };
+/** Bound JSON-encoded UTF-8, including escaped controls and surrogate pairs. */
+export function cleanupError(error: unknown): string {
+  const source = error instanceof Error ? error.message : String(error);
+  const raw = source.slice(0, 2048);
+  let result = '', bytes = 2, truncated = source.length > raw.length;
+  for (const point of raw) {
+    const encoded = Buffer.byteLength(JSON.stringify(point)) - 2;
+    if (bytes + encoded > 2034) { truncated = true; break; }
+    bytes += encoded; result += point;
+  }
+  return result + (truncated ? ' [truncated]' : '');
+}
 export function batchNoticeId(batch: MergeBatch, phase?: string, item?: string): string {
   return `merge-batch:${batch.id}:${batch.run ?? 'blocked'}:${phase ?? (batch.failed ? 'blocked' : batch.diagnosis ? 'diagnosis' : 'suite')}${item ? ':' + item : ''}`;
 }
 function skippedFilesText(files: string[] | null): string { return files === null ? 'unknown; full selection rerun' : files.join(', ') || 'none'; }
 function recoveryText(batch: MergeBatch): string {
-  return `Members: ${batch.members.map(entry => `${entry.item} (${entry.head})`).join(', ')}\nCoordinator: diagnose and resolve the cause, then cancel and re-enqueue each retained head:\n${batch.members.map(entry => `cland merge ${entry.item} --cancel\ncland merge ${entry.item}`).join('\n')}`;
+  const retained = batch.members.filter(entry => !batch.completed?.includes(entry.item) && !batch.diagnosis?.excluded?.includes(entry.item));
+  return `Members: ${retained.map(entry => `${entry.item} (${entry.head})`).join(', ')}\nCoordinator: diagnose and resolve the cause, then cancel and re-enqueue each retained head:\n${retained.map(entry => `cland merge ${entry.item} --cancel\ncland merge ${entry.item}`).join('\n')}`;
 }
 export type BatchBoundary = {
   log?: LogFn;
@@ -54,7 +70,8 @@ export type BatchBoundary = {
   cleanup(candidate: BatchCandidate): Promise<void>;
   checkout(candidate: BatchCandidate): Promise<void>;
   isLanded(entry: MergeQueueEntry): boolean;
-  report(batch: MergeBatch, text: string, phase?: 'rebuild' | 'confirmation' | `follow-up:${string}`): void;
+  /** Return only after durable publication to every required target; throw keeps its obligation. */
+  report(batch: MergeBatch, text: string, phase?: 'rebuild' | 'confirmation' | `follow-up:${string}` | `cleanup:${string}`): void;
   notice(notice: TopicNotice): void;
 };
 export class BatchRebuild extends Error {}
@@ -107,18 +124,45 @@ export class MergeBatches {
   #closed = false;
   #timer: ClockTimer | null = null;
   #work: Promise<void> | null = null;
+  #cleanupBudget = 0;
+  #noticeBudget = 0;
   start(): void {
     if (this.#timer || this.#closed) return;
     this.#timer = this.clock.setInterval(() => { void this.tick(); }, 1000);
     this.#timer.unref(); void this.tick();
   }
   snapshot(): MergeBatch | null { return JSON.parse(this.store.meta('merge-batch') ?? 'null') as MergeBatch | null; }
-  #save(batch: MergeBatch | null): void { this.store.setMeta('merge-batch', JSON.stringify(batch)); this.boundary.changed?.(); }
+  cleanups(): BatchCleanup[] { return JSON.parse(this.store.meta('merge-batch-cleanups') ?? '[]') as BatchCleanup[]; }
+  cleanupOverflow(): { count: number; oldestPath?: string } { return JSON.parse(this.store.meta('merge-batch-cleanup-overflow') ?? '{"count":0}'); }
+  cleanupStatus(): NonNullable<import('../protocol.ts').VerificationQueue['cleanups']> {
+    return this.cleanups().filter(job => !job.cleaned).map(job => ({ candidate: { cwd: job.candidate.cwd }, error: job.error, retryAt: job.retryAt }));
+  }
+  #saveCleanups(pending: BatchCleanup[]): void {
+    const encoded = JSON.stringify(pending);
+    if (pending.length > CLEANUP_LIMIT || Buffer.byteLength(encoded) > CLEANUP_LIMIT * CLEANUP_RECORD_BYTES) throw new Error('cleanup record budget exceeded');
+    this.store.setMeta('merge-batch-cleanups', encoded); this.#changed();
+  }
+  #changed(): void {
+    try { this.boundary.changed?.(); }
+    catch (error) {
+      const diagnostic = String(error).slice(0, 2048);
+      this.store.setMeta('merge-batch-publication-error', diagnostic);
+      try { this.boundary.log?.({ event: 'merge-batch-publication-failed', error: diagnostic }); } catch { /* ancillary observer */ }
+    }
+  }
+  #save(batch: MergeBatch | null): void { this.store.setMeta('merge-batch', JSON.stringify(batch)); this.#changed(); }
   tick(): Promise<void> {
     if (this.#closed) return Promise.resolve();
+    if (this.#work) return this.#work;
+    this.#cleanupBudget = 1; this.#noticeBudget = 1;
     return this.#work ??= this.#advance().catch(error => {
       const batch = this.snapshot();
       if (batch) {
+        if (batch.members.every(entry => batch.completed?.includes(entry.item) || batch.diagnosis?.excluded?.includes(entry.item) || this.boundary.isLanded(entry))) {
+          delete batch.failed; delete batch.retryLanding;
+          batch.reportError = cleanupError(error); this.#save(batch);
+          this.#secondary(error); return;
+        }
         batch.failed = error instanceof Error ? error.message : String(error);
         batch.retryLanding = error instanceof RetryLanding || error instanceof TerritoryBusy || error instanceof MergeLintReadError;
         this.#save(batch);
@@ -156,6 +200,8 @@ export class MergeBatches {
     const settings = this.settings();
     if (this.#closed) return;
     this.#reportFollowUps();
+    try { await this.#retryCleanups(); this.#reportOverflowNotices(); }
+    catch (error) { this.#secondary(error); }
     if (!settings.queue) return;
     let batch = this.snapshot();
     if (!batch) {
@@ -322,7 +368,107 @@ export class MergeBatches {
   }
   async #cleanup(batch: MergeBatch): Promise<void> {
     const candidates = [batch.candidate, ...batch.diagnosis?.jobs.map(job => job.candidate) ?? []].filter((candidate): candidate is BatchCandidate => !!candidate);
-    for (const candidate of new Map(candidates.map(c => [c.cwd, c])).values()) await this.boundary.cleanup(candidate);
+    for (const candidate of new Map(candidates.map(c => [c.cwd, c])).values()) {
+      if (this.cleanups().some(job => job.candidate.cwd === candidate.cwd)) continue;
+      try { await this.boundary.cleanup(candidate); }
+      catch (error) {
+        // Only durable terminal receipts let cleanup become ancillary work.
+        if (!batch.members.every(entry => batch.completed?.includes(entry.item) || batch.diagnosis?.excluded?.includes(entry.item) || this.boundary.isLanded(entry))) throw error;
+        const compact = { ...candidate, budgetLines: [] };
+        const job: BatchCleanup = { batch: { id: batch.id, members: batch.members, ...(batch.run ? { run: batch.run } : {}) }, candidate: compact, error: cleanupError(error), attempts: 1,
+          retryAt: new Date(this.clock.now().getTime() + 1000).toISOString() };
+        const worstCase = { ...job, error: 'x'.repeat(2048), attempts: Number.MAX_SAFE_INTEGER, reported: true, cleaned: true };
+        if (this.cleanups().length >= CLEANUP_LIMIT || Buffer.byteLength(JSON.stringify(worstCase)) > CLEANUP_RECORD_BYTES - 2) {
+          // The checkout's durable ownership marker remains at the root; no
+          // unowned deletion or successful cleanup receipt is inferred here.
+          this.#retainOverflowNotices(batch, candidate, job.error);
+          this.#changed();
+          continue;
+        }
+        this.#saveCleanups([...this.cleanups(), job]);
+        this.#reportCleanup(job);
+      }
+    }
+  }
+  #reportCleanup(job: BatchCleanup): void {
+    if (job.reported) return;
+    try {
+      this.boundary.report(job.batch, `batch ${job.batch.id} cleanup follow-up: ${job.candidate.cwd}: ${job.error}\nLanding outcomes are retained. Repair: automatic retry of guarded candidate cleanup on later ticks (backoff capped at 60 s); resolve the process inspection failure. The queue continues.`, `cleanup:${job.candidate.owner?.id ?? job.candidate.cwd}`);
+      job.reported = true;
+    } catch (error) { this.#secondary(error); /* durable obligation retries notice delivery as well */ }
+    this.#saveCleanups(this.cleanups().map(current => current.candidate.cwd === job.candidate.cwd ? job : current));
+  }
+  #secondary(error: unknown): void {
+    const diagnostic = cleanupError(error);
+    try { this.store.setMeta('merge-batch-publication-error', diagnostic); } catch { /* storage outcome remains incomplete */ }
+    try { this.boundary.log?.({ event: 'merge-cleanup-secondary-failure', error: diagnostic }); } catch { /* ancillary observer */ }
+  }
+  #retainOverflowNotices(batch: MergeBatch, candidate: BatchCandidate, error: string): void {
+    const identity = createHash('sha256').update(`${batch.id}\0${candidate.cwd}\0${candidate.head}\0${candidate.tree}`).digest('hex');
+    const text = `UNRESOLVED cleanup overflow: ${candidate.cwd}: ${error}\n${candidate.owner ? 'Ownership marker retained' : 'Ownership receipt unavailable; root preserved'}; automatic retry capacity is full. This root is not cleaned and is not auto-retried. Resolve the inspection failure; inspect the named candidate. The queue continues.`;
+    // One item per record keeps recipients and rendering bounded independently
+    // of batch size; stable keys/notice ids make replay after a crash idempotent.
+    this.store.transaction(() => {
+    const counted = `merge-cleanup-overflow-counted:${identity}`;
+    if (!this.store.meta(counted)) {
+      const overflow = this.cleanupOverflow();
+      overflow.count++; overflow.oldestPath ??= candidate.cwd;
+      this.store.setMeta('merge-batch-cleanup-overflow', JSON.stringify(overflow));
+      this.store.setMeta(counted, '1');
+    }
+    for (const entry of batch.members) {
+      const key = `merge-cleanup-notice:${identity}:${entry.item}`;
+      if (this.store.meta(key)) continue;
+      const member: MergeQueueEntry = { item: entry.item, head: entry.head, branch: '', verdictBase: '', enqueued: '', by: { id: entry.by.id, name: '', role: null } };
+      const notice: CleanupNotice = { batch: { id: batch.id, members: [member], ...(batch.run ? { run: batch.run } : {}) }, text, phase: `cleanup:overflow:${identity}:${entry.item}` };
+      const encoded = JSON.stringify(notice);
+      if (Buffer.byteLength(encoded) > 65536) throw new Error('overflow notice exceeds 64 KiB; terminal batch retained for diagnosis');
+      this.store.setMeta(key, encoded);
+    }
+    });
+  }
+  #reportOverflowNotices(): void {
+    if (!this.#noticeBudget) return;
+    this.#noticeBudget--;
+    const prefix = 'merge-cleanup-notice:';
+    const after = this.store.meta('merge-cleanup-notice-cursor') ?? '';
+    const page = this.store.metaPage(prefix, after, 1, 65536);
+    const row = page[0] ?? this.store.metaPage(prefix, '', 1, 65536)[0];
+    if (!row) return;
+    this.store.setMeta('merge-cleanup-notice-cursor', row.key);
+    if (row.oversized) { this.#secondary('oversized overflow notice retained without decoding'); return; }
+    try {
+      const notice = JSON.parse(row.value) as CleanupNotice;
+      this.boundary.report(notice.batch, notice.text, notice.phase);
+      this.store.clearMeta(row.key); // Successful report means durable publication at the boundary.
+    } catch (error) { this.#secondary(error); }
+  }
+  async #retryCleanups(): Promise<void> {
+    if (!this.#cleanupBudget) return;
+    this.#cleanupBudget--;
+    // At most one native cleanup and one diagnostic delivery per tick. A
+    // failed backlog cannot serially delay the next batch by 32 probes.
+    const pending = this.cleanups();
+    const selected = pending.find(job => job.cleaned || Date.parse(job.retryAt) <= this.clock.now().getTime()) ?? pending.find(job => !job.reported);
+    for (const job of selected ? [selected] : []) {
+      if (this.#closed) return;
+      this.#reportCleanup(job);
+      if (job.cleaned) {
+        if (job.reported) this.#saveCleanups(this.cleanups().filter(current => current.candidate.cwd !== job.candidate.cwd));
+        continue;
+      }
+      if (Date.parse(job.retryAt) > this.clock.now().getTime()) continue;
+      try {
+        await this.boundary.cleanup(job.candidate);
+        job.cleaned = true;
+        this.#saveCleanups(this.cleanups().flatMap(current => current.candidate.cwd !== job.candidate.cwd ? [current] : job.reported ? [] : [job]));
+      } catch (error) {
+        job.error = cleanupError(error);
+        job.attempts++;
+        job.retryAt = new Date(this.clock.now().getTime() + Math.min(60_000, 1000 * 2 ** Math.min(job.attempts - 1, 6))).toISOString();
+        this.#saveCleanups(this.cleanups().map(current => current.candidate.cwd === job.candidate.cwd ? job : current));
+      }
+    }
   }
   async #diagnose(batch: MergeBatch): Promise<BatchCandidate | undefined> {
     if (!batch.diagnosis) {

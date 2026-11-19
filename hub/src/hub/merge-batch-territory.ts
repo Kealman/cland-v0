@@ -1,6 +1,5 @@
 import { revokeBranchLeasesLocked } from '../host/branch-leases.ts';
 import { withTerritoryLockAsync } from '../territory.ts';
-import { removeWorktreeWithFixtures } from '../fixture-processes.ts';
 // Build squash objects in FIFO order; a detached worktree is only the executor's input.
 import { join } from 'node:path';
 import { mkdir, stat } from 'node:fs/promises';
@@ -13,6 +12,7 @@ import { checkQueuedMerge } from './merge-queue-preflight.ts';
 import { refusedOverridePaths } from '../merge-override.ts';
 import { worktreeInstall } from '../host/agent/worktree-install.ts';
 import { requireMergeClosedItemWording } from '../merge-closed-item-wording.ts';
+import { captureCandidateOwnership, requireCandidateOwnership, removeOwnedBatchCandidate } from '../batch-candidate-ownership.ts';
 
 /** Share the root install before suite admission; never run an installer. */
 export async function prepareBatchDependencies(root: string, cwd: string): Promise<void> {
@@ -114,12 +114,14 @@ export async function checkoutMergeBatch(root: string, candidate: BatchCandidate
     throw error;
   });
   if (exists) {
+    await requireCandidateOwnership(root, candidate, env);
     const head = await territoryGitAsync(candidate.cwd, ['rev-parse', 'HEAD'], false, undefined, env);
     if (head !== candidate.head) throw new Error('existing batch checkout differs from its durable head');
     await prepareBatchDependencies(root, candidate.cwd);
     return;
   }
   await territoryGitAsync(root, ['worktree', 'add', '--detach', candidate.cwd, candidate.head], false, undefined, env);
+  await captureCandidateOwnership(root, candidate, env);
   await prepareBatchDependencies(root, candidate.cwd);
 }
 
@@ -129,5 +131,7 @@ export async function removeMergeBatch(root: string, candidate: BatchCandidate, 
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
     throw error;
   });
-  if (exists) await removeWorktreeWithFixtures(candidate.cwd, () => territoryGitAsync(root, ['worktree', 'remove', candidate.cwd], false, undefined, env));
+  if (exists) {
+    await removeOwnedBatchCandidate(root, candidate, env, () => territoryGitAsync(root, ['worktree', 'remove', candidate.cwd], false, undefined, env));
+  }
 }

@@ -29,7 +29,7 @@ for (const kind of ['batch', 'periodic probe'] as const) test(`${kind} checkout 
   await writeFile(join(root, 'node_modules/.package-lock.json'), JSON.stringify({ packages }));
   await git(['init', '-b', 'dev']); await git(['add', '.']); await git(['commit', '-qm', 'fixture']);
   const head = await git(['rev-parse', 'HEAD']);
-  const candidate = { base: head, head, tree: 'fixture', cwd: join(root, '.cland/run/merge-batches', 'dev-t3-fixture'), budgetLines: [] };
+  const candidate = { base: head, head, tree: await git(['rev-parse', 'HEAD^{tree}']), cwd: join(root, '.cland/run/merge-batches', 'dev-t3-fixture'), budgetLines: [] };
   const f = kind === 'periodic probe' ? await suiteUnit(t) : null;
   const repository = f ? new DevT3Probes(f.store, f.suites, root, env).repository : null;
   const checkout = () => repository ? repository.checkout(candidate) : checkoutMergeBatch(root, candidate, env);

@@ -651,6 +651,39 @@ green evidence across restart. The notice names the cause and automatic retry;
 later ticks recheck the candidate and retry without cancelling a member.
 Other held failures name the required human or Coordinator action.
 When the item is closed with a durable merge receipt, a failed follow-up is reported for that item and the batch continues. Repair the named step with `cland merge T-n`; the landing is not repeated. A retained blocked batch whose members are all landed or completed clears on the next tick, including startup, after admitted workers finish. Follow-up notices have a durable delivery obligation separate from the batch. A failed notice retains the original follow-up reason and separate report error; later ticks retry it even after candidate cleanup or hub restart, without holding remaining landings or the next batch.
+
+Candidate cleanup after terminal member receipts has its own durable obligation.
+A process-table failure preserves the guarded candidate root and the landed
+outcomes. Merge queue, verify queue and hub status expose its path, last error
+and retry time separately from the active batch. The hub retries guarded cleanup
+with exponential backoff from 1 second to a maximum of 60 seconds across restarts;
+resolve the inspection failure and let that automatic repair finish. The next
+batch uses its own candidate path. Before landing, inspection failures retain
+the existing blocked outcome and retained-head recovery advice.
+
+Cleanup retries retain at most 32 compact records, with an 8 KiB reservation per
+record and a 256 KiB serialized-list ceiling. One due cleanup runs per tick.
+Capacity overflow never holds batch admission: the candidate's durable ownership
+marker remains, an item diagnostic names its path, and status reports an
+UNRESOLVED overflow count and oldest path. Overflow roots are not auto-retried
+or counted as cleaned. Status publication failures stay secondary diagnostics.
+Checkouts capture canonical repository/worktree paths, native directory identity
+and a private ownership marker before worker admission. Cleanup revalidates
+these before process inspection and before removal; an old checkpoint without
+this receipt, or a replacement at the same path, is preserved for diagnosis.
+The validated canonical worktree path also scopes fixture-process guarding.
+Errors reserve their actual JSON-encoded UTF-8 bytes, including escaped control
+characters; oversized diagnostic excerpts are explicitly marked truncated.
+Overflow item notices use individual existing-meta obligations, with captured
+requester identities and stable publication ids. One notice replays per tick
+from a keyset page (one record, at most 64 KiB of value bytes clipped in SQLite);
+successful durable publication settles it. Report failure or restart retains
+its text/recipients independently of the cleared active batch. No table is added.
+Notice records project only required item/head/requester fields, excluding
+dependency path lists. Ordinary retained cleanup notices share the same captured
+requester-id publication policy; unavailable or reused old names cannot settle
+them. A failed notice keeps its bounded secondary diagnostic and original cleanup
+cause separately.
 Blocked-report fault injection must throw at the report boundary, independently
 of closed-item lead routing. Assert the tick resolves, the original reason and
 separate report error survive reopen, and public queue/status reads still reply.

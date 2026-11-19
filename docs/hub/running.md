@@ -1728,7 +1728,20 @@ before reporting and probes a moved tip. Bugs retain the tip's red receipt.
 No stage/integrated receipt cache is reused. Historical probes use standalone
 detached repositories sharing objects, so their candidate checks read pinned
 allowance owners even after the live tracker closes them. Legacy linked
-checkpoints convert at idle admission; incomplete standalone clones are recreated
+checkpoints with captured ownership convert at idle admission. An unmarked
+legacy root stays untouched: the probe records its path and missing-ownership
+cause in durable `dev-t3-preserved-candidate:<path>` metadata and prepares a
+different standalone clone. It checkpoints the actual candidate path before
+worker admission, so restarted completion cleans up that clone while retaining
+the legacy root. If an admitted legacy worker completes after an upgrade, its
+collected probe receipt remains valid: missing cleanup authority preserves the
+root and records the same secondary diagnostic, without failing that result.
+If that completed-path diagnostic write fails, a bounded structured hub log
+entry records it and the existing receipt's `reason` carries the secondary
+context into the search checkpoint and evidence report. The selected test
+result remains unchanged. Required diagnostic/checkpoint writes before new
+worker admission still stop preparation on failure.
+Changed checkout identities still refuse cleanup. Incomplete standalone clones are recreated
 there after checking HEAD and tracked-file status. Complete checkouts are reused;
 active workers finish before cleanup.
 Red files search candidate merges with detached diagnostic probes; Web test
