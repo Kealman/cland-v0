@@ -9,6 +9,8 @@ import { parseTierReceipts, tierReceipt, type TierReceipt } from '../verificatio
 import { suiteRecoveryState, isolatedUnavailableReport, isolatedSuiteProcessOwned, isolatedSuiteEvidencePath, outsideSuitePath, sealSuiteJob } from './suite-isolation.ts';
 import { batchInteractionSelection } from '../suite-interactions.ts';
 import { appendSuiteProvenance } from '../suite-provenance.ts';
+import { machineAccounting } from '../suite-accounting.ts';
+export { machineAccounting } from '../suite-accounting.ts';
 import { suiteAuthor } from './suite-author.ts';
 import { missingDependencyHint } from '../dependency-install.ts';
 import { pinVerificationPlan, verificationSteps, verificationInterrupted } from '../verification-plan.ts';
@@ -124,9 +126,6 @@ const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion' | 'devT3Probe'>) 
 const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion' | 'devT3Probe'>, head: string): string => createHash('sha256').update(JSON.stringify([suiteOwner(input), input.cwd, head, input.mode])).digest('hex');
 const METRICS_WINDOW = 20;
 const runRef = (job: SuiteJob): RunRef => ({ ...(job.tierReceipts ? { tierReceipts: job.tierReceipts } : {}), ...(job.commands ? { commands: job.commands } : {}), ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
-export function machineAccounting(machine: NonNullable<SuiteJob['machine']>): string {
-  return `lifetime ${machine.lifetimeMs === null ? 'pending confirmation' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost ${machine.costUsd === null ? 'pending confirmation' : '$' + machine.costUsd.toFixed(4)}`;
-}
 function elapsed(since: string | undefined | null, now: number): number | null {
   const start = Date.parse(since ?? '');
   return Number.isFinite(start) ? Math.max(0, now - start) : null;

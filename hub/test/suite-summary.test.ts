@@ -4,6 +4,14 @@ import assert from 'node:assert/strict';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { suiteEvidence } from '../src/suite-log.ts';
 import { soakExecutionSeconds } from '../src/suite-load-gate-plan.ts';
+import { suiteAccounting } from '../src/suite-accounting.ts';
+
+test('accounting distinguishes confirmed spend from pending confirmation', () => {
+  assert.equal(suiteAccounting({ executor: 'droplet', machine: { name: 'cland-run', size: 'c-8', region: 'ams3', lifetimeMs: 123000, costUsd: 0.0123 }, workers: 8 }),
+    'Executor droplet · c-8 ams3 · cland-run · lifetime 123 s · cost $0.0123 · workers 8');
+  assert.equal(suiteAccounting({ executor: 'droplet', machine: { lifetimeMs: null, costUsd: null } }),
+    'Executor droplet · unknown unknown · unavailable · lifetime pending confirmation · cost pending confirmation');
+});
 
 function commandLog(line: string, output: string[], code: number, id = 'command-1') {
   return [`$ ${line}`, `suite command start ${JSON.stringify({ id, name: 'test', line })}`, ...output,

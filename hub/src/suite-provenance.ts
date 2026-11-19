@@ -4,8 +4,10 @@ import { createReadStream, createWriteStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { suiteTextLines } from './suite-log.ts';
 import type { Platform, ExecutorKind } from './executor/executor.ts';
+import { suiteAccounting } from './suite-accounting.ts';
+import type { SuiteJob } from './hub/suites.ts';
 
-type Provenance = { head: string; tree?: string | null; executor: ExecutorKind; platform?: Platform; occasion?: string; cached?: unknown };
+type Provenance = { head: string; tree?: string | null; executor: ExecutorKind; platform?: Platform; occasion?: string; cached?: unknown } & Pick<SuiteJob, 'machine' | 'workers' | 'size'>;
 export function suiteProvenance(input: Provenance, lines: Iterable<string>) {
   let browser: { binary: string | null; version: string | null } = { binary: null, version: null };
   const skips: Array<{ file?: string; name?: string; reason: string | null }> = [];
@@ -22,7 +24,7 @@ export function suiteProvenance(input: Provenance, lines: Iterable<string>) {
       }
     } catch { /* An unusable diagnostic is not proof of browser execution. */ }
   }
-  return `suite provenance ${JSON.stringify({ head: input.head, tree: input.tree ?? null, executor: input.executor, platform: input.platform ?? null, occasion: input.occasion ?? null, cached: input.cached ?? null, browser, skips, skipReasonCheck: { mode: 'report', missing: skips.filter(row => !row.reason).length } })}\n`;
+  return `${input.machine ? 'suite accounting ' + suiteAccounting(input) + '\n' : ''}suite provenance ${JSON.stringify({ head: input.head, tree: input.tree ?? null, executor: input.executor, platform: input.platform ?? null, occasion: input.occasion ?? null, cached: input.cached ?? null, machine: input.machine ?? null, browser, skips, skipReasonCheck: { mode: 'report', missing: skips.filter(row => !row.reason).length } })}\n`;
 }
 
 const finalizations = new Map<string, Promise<void>>();
@@ -50,20 +52,20 @@ async function finalizeSuiteProvenance(path: string, input: Provenance, evidence
         while ((end = text.indexOf('\n', start)) !== -1) {
           const part = text.slice(start, end);
           if (streaming) { if (!dropping) yield part + '\n'; }
-          else { pending += part; if (!pending.startsWith('suite provenance ')) yield pending + '\n'; }
+          else { pending += part; if (!pending.startsWith('suite provenance ') && !pending.startsWith('suite accounting ')) yield pending + '\n'; }
           pending = ''; streaming = false; dropping = false; start = end + 1;
         }
         if (streaming) { if (!dropping) yield text.slice(start); }
         else {
           pending += text.slice(start);
           if (pending.length >= 65536) {
-            dropping = pending.startsWith('suite provenance ');
+            dropping = pending.startsWith('suite provenance ') || pending.startsWith('suite accounting ');
             if (!dropping) yield pending;
             pending = ''; streaming = true;
           }
         }
       }
-      if (pending && !pending.startsWith('suite provenance ')) yield pending;
+      if (pending && !pending.startsWith('suite provenance ') && !pending.startsWith('suite accounting ')) yield pending;
       yield '\n' + suiteProvenance(input, suiteTextLines(evidence));
     } finally { inputStream.destroy(); }
   }

@@ -5,12 +5,13 @@ import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
 import { verificationFixture } from './verification-fixture.ts';
 import assert from 'node:assert/strict';
+import cp from 'node:child_process';
 import { lstat, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { cland, inProcessSpoke, nativeIdentityProjectHub as projectHub, tempProject } from './harness.ts';
+import { cland, inProcessSpoke, nativeIdentityProjectHub as projectHub, projectHub as fakeProjectHub, tempProject } from './harness.ts';
 import { compatibilityHolder, sweep } from '../src/suite-lock.ts';
-import { ownDirectory, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { ownDirectory, beforeDirectories, guardDirectoryRemoval, afterCleanup } from './process-cleanup.ts';
 import { Store } from '../src/hub/store.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
@@ -20,6 +21,9 @@ import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts'
 import { testLintReport, type TestLintFile } from '../src/test-lint.ts';
 import { tierReport, type TierPlan, type SuiteDryRun } from '../src/suite-tier-report.ts';
 import { caseDeadlines } from './case-deadlines.ts';
+import { billingCase } from './suite-billing-fixture.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { reserveSpend, settleSpend, spendPath } from '../src/executor/droplet/spend.ts';
 
 test('root recovery preserves a changed path outside the run token and never follows a symlink', async t => {
   const root = await tempProject(t);
@@ -48,8 +52,8 @@ test('root recovery preserves a recreated token path while its holder lives or r
   assert.equal(await readFile(join(root, 'preserved'), 'utf8'), 'still owned');
 });
 
-async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob) => SuiteJob[], verification = '', logText = 'ℹ tests 1\nℹ fail 1\ntest at /home/runner/cland/hub/test/planned-stage.test.ts:208:1\n✖ stage landing query budget (6746ms)\n', previewSelection?: SuiteSelection) {
-  const root = await tempProject(t); const clock = new FakeClock();
+async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob, clock: FakeClock) => SuiteJob[] | Promise<SuiteJob[]>, verification = '', logText = 'ℹ tests 1\nℹ fail 1\ntest at /home/runner/cland/hub/test/planned-stage.test.ts:208:1\n✖ stage landing query budget (6746ms)\n', previewSelection?: SuiteSelection, options: { fakeOnly?: boolean; onRoot?: (root: string) => void } = {}) {
+  const root = await tempProject(t); options.onRoot?.(root); const clock = new FakeClock();
   await verificationFixture(root);
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland/config.toml'), `[verification]\ntest="true"\nlock_path=${JSON.stringify(join(root, 'held-lock'))}\n${verification}`);
@@ -60,7 +64,8 @@ async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob)
   const base: SuiteJob = { id: 'cover-0', mode: 'all', cwd: root, topic: 'general', to: [], actor: null, head: 'a'.repeat(40), branch: 'dev', log, result: join(root, 'result.json'), gate: join(root, 'ready'), pid: null, started: null,
     outcome: { code: 1, cause: '' }, artifact: null, reported: true, error: null, state: 'finished', cleaned: true, integrated: true, executor: 'local', platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'none' },
     cover: { status: 'red', cause: 'test-failure', tests: ['hub/test/planned-stage.test.ts::stage landing query budget'] } };
-  const store = new Store(join(root, '.cland/hub.db')); store.setMeta('suite-jobs', JSON.stringify(make(base))); store.close();
+  const jobs = await make(base, clock);
+  const store = new Store(join(root, '.cland/hub.db')); store.setMeta('suite-jobs', JSON.stringify(jobs)); store.close();
   const processes = { alive: (pid: number) => pid === process.pid, started: () => started };
   const holder = () => compatibilityHolder([join(root, 'held-lock')], {}, processes);
   const compatibility = { holder, occupied: async () => (await holder()) !== null };
@@ -71,7 +76,7 @@ async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob)
       throw new Error('seeded receipts must not admit an executor');
     },
   };
-  const hub = await projectHub(t, root, {}, { clock, compatibility, candidate, durationContext: null }); const ui = await connectUi(t, hub.discovery);
+  const hub = await (options.fakeOnly ? fakeProjectHub : projectHub)(t, root, {}, { clock, compatibility, candidate, durationContext: null }); const ui = await connectUi(t, hub.discovery);
   return { root, clock, hub, ui, compatibility };
 }
 
@@ -196,6 +201,85 @@ test('repository-sized lint detail leaves the delivered integrated summary compl
   assert.match(message.text, new RegExp(`test lint detail: ${files.length} tier lines; 12 finding lines; log ${artifact.id}`));
   const retained = await readFile(artifact.path, 'utf8');
   for (const line of lint) assert.ok(retained.includes(line), `artifact lost ${line}`);
+});
+
+test('billing cleanup rejection retains native isolation until successful closure and repair join', t => {
+  const original = cp.spawn;
+  let guarded: typeof cp.spawn, rejectCleanup = true, closed = false;
+  const owner = billingCase(t, { onIncomplete: async repair => {
+    assert.equal(closed, false);
+    assert.equal(cp.spawn, guarded);
+    assert.throws(repair.releaseSeams, /resource closure unconfirmed/);
+    rejectCleanup = false;
+    await repair.finishCleanup();
+    assert.equal(closed, true);
+    assert.equal(cp.spawn, guarded);
+    assert.throws(repair.releaseSeams, /resource closure unconfirmed/, 'repair continuation must also join');
+  } });
+  afterCleanup(t, () => { assert.equal(closed, true); assert.equal(cp.spawn, original); });
+  return owner.run(async () => {
+    guarded = cp.spawn;
+    owner.fixtures.after(async () => {
+      if (rejectCleanup) throw new Error('controlled billing resource-close rejection');
+      closed = true;
+    });
+  });
+});
+
+test('long fallback results retain confirmed billing and health in delivery, history and log', async t => {
+  const owner = billingCase(t);
+  return owner.run(async step => {
+  const files = Array.from({ length: 250 }, (_, n) => `hub/test/coverage-fallback-${n}.test.ts`);
+  const fallback = `coverage files without covering tests: ${files.join(', ')}`;
+  let machine: NonNullable<SuiteJob['machine']>;
+  const f = await step(() => owner.wait('settled-ledger fixture setup', async () => {
+    const fixture = await seed(owner.fixtures, async (base, clock) => {
+      const released = clock.now().toISOString();
+      const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: 'billing-lease', run: base.id,
+        name: 'cland-confirmed-run', tags: ['cland'], size: 'c-8', region: 'ams3', priceHourly: 0.36,
+        keyName: 'billing-key', keyId: null, resource: 123, state: 'active',
+        created: new Date(clock.now().getTime() - 123000).toISOString(), deadline: new Date(clock.now().getTime() + 60000).toISOString() };
+      const env = fixtureEnvironment(base.cwd, process.env);
+      const processes = { alive: (pid: number) => pid === process.pid, started: () => 'billing-fixture-birth' };
+      await reserveSpend(base.cwd, lease, 10, env, clock, undefined, processes);
+      Object.assign(lease, { state: 'released', released, lifetimeMs: 123000, costUsd: 0.0123 });
+      await mkdir(join(base.cwd, '.cland/run'), { recursive: true });
+      await writeLease(base.cwd, lease);
+      await settleSpend(lease, env, processes);
+      const ledger = JSON.parse(await readFile(spendPath(env), 'utf8'));
+      const entry = ledger.entries.find((entry: { project: string; lease: string; run: string }) =>
+        entry.project === base.cwd && entry.lease === lease.lease && entry.run === base.id);
+      assert.ok(entry, 'exact run and lease have a durable spend receipt');
+      assert.equal(entry.cost, 0.0123);
+      assert.equal(Date.parse(entry.released) - Date.parse(entry.created), 123000);
+      machine = { name: lease.name, size: entry.size, region: lease.region,
+        lifetimeMs: Date.parse(entry.released) - Date.parse(entry.created), costUsd: entry.cost };
+      return [{ ...base, executor: 'droplet', reported: false, outcome: { code: 0, cause: '' }, workers: 8, machine,
+        selection: { mode: 'full', files, reason: fallback, fallback } }];
+    }, '', `selection ${JSON.stringify({ files, fallback })}\n# tests 1\n# pass 1\n`, undefined, { fakeOnly: true, onRoot: owner.adoptRoot });
+    return fixture;
+  }));
+  await step(() => f.ui.request({ type: 'subscribe' }));
+  const delivered = step(() => f.ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).id === 'suite:cover-0', 5000));
+  void delivered.catch(() => {});
+  try {
+  await step(() => f.clock.advance(1000));
+  const frame = await step(() => owner.wait('exact delivered billing receipt', () => delivered));
+  const message = frame.message as TopicMessage;
+  const billing = 'lifetime 123 s · cost $0.0123 · workers 8';
+  assert.ok(Buffer.byteLength(message.text) <= 8192);
+  assert.ok(message.text.includes(billing), message.text);
+  assert.match(message.text, /Executor droplet · c-8 ams3 · cland-confirmed-run/);
+  assert.match(message.text, /Machine health: unavailable/);
+  const history = await step(() => f.ui.request({ type: 'topic.history', topic: 'general' }));
+  assert.equal((history.value as { messages: TopicMessage[] }).messages.find(m => m.id === message.id)!.text, message.text);
+  const retained = await step(() => readFile(message.artifacts![0]!.path, 'utf8'));
+  assert.ok(retained.includes(billing), retained);
+  assert.ok(retained.includes(fallback), 'complete fallback remains available in the log');
+  const footer = JSON.parse(retained.slice(retained.lastIndexOf('\nsuite provenance ') + '\nsuite provenance '.length));
+  assert.deepEqual(footer.machine, machine!);
+  } finally { await Promise.allSettled([delivered]); }
+  });
 });
 
 test('oversized results keep priority summaries for fresh and cached receipts', async t => {

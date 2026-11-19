@@ -6,17 +6,23 @@ import { fakeNativeGuard } from './fake-native-guard.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
 
 /** Enroll the whole callback before acquisition; restore seams only after its join. */
-export function guardedLeaseCase(t: TestContext, releaseOnClose?: () => void) {
+export function guardedLeaseCase(t: TestContext, releaseOnClose?: () => void, options: { canRestore?: () => boolean; deferRestore?: boolean } = {}) {
   const scope = caseDeadlines(t, { timeoutMs: 5000, ownership: { beforeDirectories, guardDirectoryRemoval }, ...(releaseOnClose ? { releaseOnClose } : {}) });
   const restorations: Array<() => void> = [];
   let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
   let restoreGuard: (() => void) | undefined;
+  let restored = false;
+  const releaseSeams = () => {
+    if (restored) return;
+    if (options.canRestore && !options.canRestore()) throw new Error('resource closure unconfirmed; fixture seams and native guard retained');
+    for (const restore of restorations.reverse()) restore();
+    try { guard?.verify(); } finally { restoreGuard?.(); restored = true; }
+  };
   afterCleanup(t, async () => {
     await drainFixtureWork();
-    for (const restore of restorations.reverse()) restore();
-    try { guard?.verify(); } finally { restoreGuard?.(); }
+    if (!options.deferRestore) releaseSeams();
   });
-  return { ...scope,
+  return { ...scope, releaseSeams,
     patch(target: object, key: PropertyKey, replacement: unknown) {
       const original = Reflect.get(target, key);
       let restored = false;

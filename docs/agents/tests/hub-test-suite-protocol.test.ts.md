@@ -1,5 +1,24 @@
 # hub/test/suite-protocol.test.ts
 
+The long fallback regression seeds a completed droplet receipt with 250 deciding
+paths and a fallback larger than the default message cap. It checks the complete
+billing and health facts in the delivered message and durable topic history,
+plus the readable accounting line and structured machine in the log tail.
+No provider or worker runs. The shared spend writer reserves and settles the
+exact run and lease in the scratch ledger using an injected process table.
+The persisted ledger's cost and timestamps supply the actual published machine
+receipt; delivery, history and the log are compared with those confirmed values.
+The billingCase opt-in uses guardedLeaseCase before acquisition and defers
+restoration until its original body joined, every registered resource-cleanup
+callback positively completed, and each acquired root is observed removed.
+A rejected callback stays unconfirmed even after it leaves the pending set.
+The controlled cleanup-rejection case proves the native guard stays installed
+through failed closure and the complete repair continuation. The main billing
+case proves successful hub/resource/root cleanup before restoration.
+Only this synthetic case selects fake projectHub identity; existing
+native CLI contract cases retain their original fixture.
+The final provenance JSON remains the last log line for older readers.
+
 The incomplete-collection result case seeds the existing nonzero scheduler
 outcome with its original test-exit-zero cause. It arms the exact suite-message
 observer before ticking the in-process hub, then checks the posted cause

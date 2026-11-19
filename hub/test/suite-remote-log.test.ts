@@ -28,7 +28,10 @@ test('pending remote start retains the entire collected receipt log', async t =>
   assert.equal(attempts, 2);
   const footerStart = log.lastIndexOf('\nsuite provenance ');
   assert.ok(footerStart >= 0, 'final provenance record observed');
-  assert.ok(log.slice(0, footerStart).endsWith(remoteLog), 'pending-start retry must not skip any remote log bytes');
+  const accountingStart = log.lastIndexOf('\nsuite accounting ');
+  assert.ok(accountingStart >= 0 && accountingStart < footerStart, 'accounting immediately precedes provenance');
+  assert.ok(log.slice(0, accountingStart).endsWith(remoteLog), 'pending-start retry must not skip any remote log bytes');
+  assert.match(log.slice(accountingStart, footerStart), /lifetime 0 s · cost \$0\.0000/);
   assert.equal(log.split('suite provenance ').length - 1, 1, 'one terminal footer');
   const footer = JSON.parse(log.slice(footerStart + '\nsuite provenance '.length));
   assert.equal(footer.head, f.candidate.head);

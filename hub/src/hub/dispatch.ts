@@ -1179,7 +1179,7 @@ export class Dispatcher {
     const outcome = job.outcome!;
     const interrupted = interruptionLines(log, { timeout: outcome.code === 124 });
     const selectionFallback = job.selection?.fallback ?? (job.selection?.reason.startsWith('fetch/diff unavailable:') ? `selection fallback: full; ${job.selection.reason}` : undefined);
-    const fallback = selectionFallback ? `\n${selectionFallback}` : '';
+    const fallback = selectionFallback ? `\n${Buffer.byteLength(selectionFallback) > 512 ? `Selection fallback: full details in log ${artifact.id}` : selectionFallback}` : '';
     const deferred = taskTierEvidence(job.selection, { enabled: this.#options.projectConfig?.().merge.queue ?? false, batchTiers: this.#options.projectConfig?.().merge.batchTiers, entries: this.#mergeQueue?.entries() ?? [], batch: this.#batches?.snapshot() ?? null }, job.item ?? null);
     const progress = `${interrupted.length ? `\n${interrupted.join('\n')}` : ''}${fallback}${deferred ? `\n${deferred}` : ''}`;
     const originalExecution = job.cached ? `Original occasion ${job.cached.occasion === undefined ? 'unknown' : job.cached.occasion ?? 'none'} · executor ${job.cached.executor ?? job.executor}` : '';
@@ -1199,11 +1199,11 @@ export class Dispatcher {
       if (!core.textFits(text)) {
         const priority = suiteSummary(log, [], { logArtifact: artifact.id, priorityOnly: true, outcome, shards: job.shards ?? [] });
         const header = `suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cached ? '; cached' : job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}${progress}\nLog ${artifact.id}`;
-        const required = `${header}\n${priority}${job.cached ? `\nhead ${job.head}${provenance}\n${execution}` : ''}`;
+        const required = `${header}\n${execution}\n${priority}${job.cached ? `\nhead ${job.head}${provenance}` : ''}`;
         // Reserve interruption identities, cache provenance and executor facts with the decision summary;
         // optional diagnostics and metadata cannot displace those required facts.
         if (core.textFits(required)) {
-          text = core.boundedText(`${required}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${job.cached ? '' : execution}${stageCover}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${outcome.cause}\nLog ${artifact.id}: ${artifact.path}`);
+          text = core.boundedText(`${required}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${stageCover}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${outcome.cause}\nLog ${artifact.id}: ${artifact.path}`);
         } else {
           // If the summary and cache provenance cannot fit (for example, a tiny
           // configured cap), retain the result/mode/log and execution facts.

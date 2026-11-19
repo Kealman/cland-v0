@@ -309,6 +309,7 @@ test('distinct shard storage receipts retain their machine identities through ag
 
 test('a finished run waits for confirmed lease accounting before publishing its receipt', async t => {
   const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 1 }, '', true);
+  f.candidate.selection.fallback = 'coverage files without covering tests: ' + Array.from({ length: 250 }, (_, n) => `hub/test/coverage-fallback-${n}.test.ts`).join(', ');
   const log = '# tests 1\n# pass 1\nshard duration Neovim smoke 1s\n';
   f.machine.script({ outcome: 'slow', log });
   const job = await remote(f); await running(f, job.id);
@@ -329,6 +330,9 @@ test('a finished run waits for confirmed lease accounting before publishing its 
   assert.equal(lease.state, 'released');
   assert.equal(report.machine!.lifetimeMs, lease.lifetimeMs);
   assert.equal(report.machine!.costUsd, ledger.entries.find((entry: { run: string }) => entry.run === job.id).cost);
+  const retained = await readFile(report.log, 'utf8');
+  assert.ok(retained.includes(machineAccounting(report.machine!)), 'log billing agrees with the settled spend ledger');
+  assert.equal(retained.split('\nsuite accounting ').length - 1, 1, 'recovery retains one final accounting line');
   assert.equal(typeof report.machine!.lifetimeMs, 'number');
   assert.equal(typeof report.machine!.costUsd, 'number');
   assert.match(await f.log(job.id), /shard duration Neovim smoke 1s/);

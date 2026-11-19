@@ -187,6 +187,12 @@ asks. Both executors share admission order, the tree/mode cache and the
 artifact-backed result. Review source first, then verify the exact reviewed head
 (D25), whichever executor runs it.
 
+Result messages retain executor accounting and machine health before optional
+diagnostics when the text cap requires a shorter summary. Long fallback and
+deciding-file lists remain in the log artifact. Confirmed lifetime and cost also
+appear in a readable accounting line immediately before the final provenance
+JSON footer; pending accounting stays explicitly unconfirmed.
+
 #### Close runs
 
 `cland verify all --occasion stage|epic|release --report <topic>` shards remote
