@@ -1,8 +1,7 @@
 // Execution-order progress is written as it arrives; skip details retain their
 // historical exit summary. Ordered pass/fail events can wait behind a hung file.
-import { fileEnvelope, reporterFile } from './reporter-file.ts';
+import { fileEnvelope, reporterCaseFile, reporterEntryFile } from './reporter-file.ts';
 import type { TestEvent } from 'node:test/reporters';
-import { relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { realClock, type Clock } from '../src/hub/clock.ts';
 import type { TestProgress } from '../src/suite-progress.ts';
@@ -22,9 +21,9 @@ export default async function* skipReporter(source: AsyncIterable<TestEvent>, op
   for await (const event of source) {
     if (event.type === 'test:dequeue' || event.type === 'test:complete') {
       const data = event.data as typeof event.data & Execution;
-      if (event.type === 'test:dequeue') yield `suite start ${JSON.stringify({ file: data.file, name: data.name })}\n`;
+      if (event.type === 'test:dequeue') yield `suite start ${JSON.stringify({ file: reporterEntryFile(data), name: data.name })}\n`;
       if (data.file) {
-        const file = reporterFile(data.file, cwd);
+        const file = reporterCaseFile(data, cwd);
         // Recent Nodes carry per-worker IDs. Location queues also support the
         // minimum Node release, whose execution events predate those IDs.
         const key = JSON.stringify([file, data.testId, data.line, data.column, data.nesting, data.name]);
@@ -60,7 +59,7 @@ export default async function* skipReporter(source: AsyncIterable<TestEvent>, op
     }
     if (event.type !== 'test:pass' || !event.data.skip) continue;
     skips.push({
-      file: event.data.file ? relative(cwd, event.data.file) : '(unknown file)',
+      file: event.data.file ? reporterCaseFile(event.data, cwd) : '(unknown file)',
       name: event.data.name,
       reason: typeof event.data.skip === 'string' ? event.data.skip : 'test marked skip without a reason',
     });

@@ -1,7 +1,7 @@
 // The parent reads this file before sweeping the phase root. Raw spec diagnostics
 // remain in the log; only complete, accounted test failures can be excused.
 import type { TestEvent } from 'node:test/reporters';
-import { relative } from 'node:path';
+import { reporterCaseFile } from './reporter-file.ts';
 import { Transform, type TransformCallback } from 'node:stream';
 import type { QuarantineManifest, QuarantineReceipt } from '../src/suite-quarantine.ts';
 import { admissionTimeoutMessage } from '../src/test-admission-outcome.ts';
@@ -27,7 +27,7 @@ export default class QuarantineReporter extends Transform {
     }
     if ((event.type === 'test:pass' || event.type === 'test:fail') && event.data.file) {
       const data = event.data;
-      const file = relative(process.env.TEST_SUITE_CWD ?? process.cwd(), data.file!);
+      const file = reporterCaseFile(data, process.env.TEST_SUITE_CWD ?? process.cwd());
       const admission = event.type === 'test:fail' ? admissionTimeoutMessage(event.data.details.error) : null;
       // Classify only this event: an explicit admission call or a nested hook
       // must never suppress an ordinary assertion elsewhere in the same file.

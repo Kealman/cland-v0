@@ -1918,6 +1918,11 @@ baseline seconds.
 Keep artifact ids and the source head in `source` so timings remain traceable.
 
 Task-branch verifies have a **load gate** for each admitted T1/T2 top-level `file::test` identity
+where `file` is the test entry file launched by Node, including when an imported
+contract helper registers the case. Load repetitions, duration/budget and tier
+accounting use that same entry file; diagnostic stacks retain source locations.
+Reporter events from older Nodes without `entryFile` retain the source-file fallback.
+The gate selects each identity
 missing from both the duration manifest's `tests` baseline and the hub's durable
 landed-task proof set. The hub retains exact identities with completed `5/5 passed`
 load-gate receipts on reported green task runs. A proof becomes known only when

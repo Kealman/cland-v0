@@ -1,7 +1,7 @@
 // A separate file stream lets the runner discover names while the phase is busy.
 import { loadDiagnostic, redactLoadDiagnostic, type LoadDiagnostic } from '../src/suite-load-diagnostics.ts';
 import type { TestEvent } from 'node:test/reporters';
-import { relative } from 'node:path';
+import { reporterCaseFile } from './reporter-file.ts';
 import { Transform, type TransformCallback } from 'node:stream';
 
 export type LoadGateEvent = { file: string; name: string; passed?: boolean; skipReason?: string; diagnostic?: LoadDiagnostic };
@@ -13,7 +13,7 @@ export default class LoadGateReporter extends Transform {
     if (!event.data.file) return callback();
     const topLevel = event.data.nesting === 0 && event.data.line !== undefined && event.data.name !== event.data.file;
     if (!topLevel && event.type !== 'test:fail') return callback();
-    const record: LoadGateEvent = { file: relative(process.env.TEST_SUITE_CWD ?? process.cwd(), event.data.file), name: event.data.name };
+    const record: LoadGateEvent = { file: reporterCaseFile(event.data, process.env.TEST_SUITE_CWD ?? process.cwd()), name: event.data.name };
     if (event.type === 'test:fail') record.diagnostic = loadDiagnostic(event.data.details.error);
     if (topLevel && event.type !== 'test:enqueue') {
       record.passed = event.type === 'test:pass' && !event.data.skip && !event.data.todo;

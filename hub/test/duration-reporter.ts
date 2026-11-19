@@ -1,5 +1,5 @@
 // Side-file timings are retained by the parent before phase cleanup.
-import { fileEnvelope, reporterFile } from './reporter-file.ts';
+import { fileEnvelope, reporterCaseFile } from './reporter-file.ts';
 import type { TestEvent } from 'node:test/reporters';
 import { EventEmitter } from 'node:events';
 import { Transform, type TransformCallback } from 'node:stream';
@@ -20,7 +20,7 @@ export default class DurationReporter extends Transform {
     const started = performance.now();
     let record: string | undefined;
     if (event.type === 'test:complete' && event.data.nesting === 0 && event.data.file && event.data.line !== undefined) {
-      const file = reporterFile(event.data.file, process.env.TEST_SUITE_CWD ?? process.cwd());
+      const file = reporterCaseFile(event.data, process.env.TEST_SUITE_CWD ?? process.cwd());
       // test:complete also includes the file envelope that ordered pass/fail
       // suppresses when the file contains tests. Do not double its duration.
       if (!fileEnvelope(event.data, process.env.TEST_SUITE_CWD ?? process.cwd())) record = JSON.stringify({ file, name: event.data.name, seconds: event.data.details.duration_ms / 1000, outcome: event.data.skip ? 'skip' : event.data.todo ? 'todo' : event.data.details.passed ? 'pass' : 'fail' }) + '\n';

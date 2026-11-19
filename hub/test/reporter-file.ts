@@ -15,6 +15,16 @@ export function reporterFile(file: string, cwd: string): string {
   return relative(canonical(cwd), canonical(file)).replaceAll('\\', '/');
 }
 
+/** The runner's entry owns cases registered by imported contract helpers.
+ * Older Node event shapes carry only the source location. */
+export function reporterEntryFile(data: { file?: string | undefined; entryFile?: string | undefined }): string | undefined {
+  return data.entryFile ?? data.file;
+}
+
+export function reporterCaseFile(data: Parameters<typeof reporterEntryFile>[0], cwd: string): string {
+  return reporterFile(reporterEntryFile(data)!, cwd);
+}
+
 /** Node emits a completion for the outer file as well as its test bodies.
  * The invocation path can be an alias of the worker's canonical source path. */
 export function fileEnvelope(data: { file?: string | undefined; name: string; line?: number | undefined }, cwd: string): boolean {

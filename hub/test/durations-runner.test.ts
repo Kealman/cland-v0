@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test, { type TestContext } from 'node:test';
 import { ownDirectory, ownProcess, pause } from './process-cleanup.ts';
+import { suiteCase } from './suite-case-fixture.ts';
 
 const exec = promisify(execFile);
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
@@ -82,6 +83,30 @@ test('task duration check runs changed T3/T4 identities once and retains commit-
   assert.ok(suiteSummary(result.output).includes(rows[0]!), 'ready report retains the complete JSON stanza');
   assert.equal(await readFile(path, 'utf8'), contents);
 });
+
+test('shared contract cases use the launched wrapper for load, timing, budget and tier receipts', t => suiteCase(t, async ({ setup, step }) => {
+  const { run } = await setup(async fixtures => {
+    const f = await fixture(fixtures, true);
+    await writeFile(f.file, `import { register } from './contract.ts'; register();`);
+    await writeFile(join(f.cwd, 'hub/test/contract.ts'), `import test from 'node:test';
+export function register() { test('shared contract', () => {}); }`);
+    await writeFile(join(f.cwd, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
+      'hub/test/fixture.test.ts': 'T1', 'nvim/test/scenarios/workbench.test.ts': 'T3',
+    } }));
+    await writeFile(f.path, JSON.stringify({ ...f.manifest, budget: { testSeconds: 5, fileSeconds: 60,
+      T1: { testSeconds: 0.000000001, fileSeconds: 60, wallSeconds: 120 } } }));
+    return { ...f, root: f.cwd };
+  });
+  const result = await step('wrapper load gate completion', () => run(true));
+  assert.equal(result.code, 0, result.output);
+  assert.match(result.output, /load gate: hub\/test\/fixture.test.ts::shared contract 5\/5 passed/);
+  assert.deepEqual(timingReceipts(result.output).map(row => [row.file, row.name]), [['hub/test/fixture.test.ts', 'shared contract']]);
+  assert.match(result.output, /budget \(report only\): would fail hub\/test\/fixture.test.ts::shared contract .*\(T1\)/);
+  assert.match(result.output, /tier T1: files 1; tests 1;/);
+  assert.doesNotMatch(result.output, /contract.ts::shared contract/);
+  const progress = suiteProgress(result.output, 0)!;
+  assert.equal(progress.completed.filter(row => row.scope === 'load-gate' && row.file === 'hub/test/fixture.test.ts' && row.name === 'shared contract' && row.outcome === 'pass').length, 5);
+}, { native: true }));
 
 test('task load gate catches a one-in-three flake and repeats a stable new name five times alongside the phase', async t => {
   const { run, manifest, path, cwd, file } = await fixture(t, true);

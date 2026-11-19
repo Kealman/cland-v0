@@ -167,6 +167,11 @@ candidate lint, reports duplicate `files`, `tests` and `allow` keys with both
 values. Duplicate notices remain report-only regardless of budget mode, leave
 exit status and refusal counts unchanged, and retain JSON's last value.
 
+Test case identities use Node's launched entry file for load repetitions,
+duration budgets, tier accounting and quarantine, including cases registered by
+imported helpers. Source locations remain in diagnostics. Older reporter events
+without `entryFile` keep source-file attribution.
+
 `npm run test:tiers` and the Coordinator heartbeat report dated duration
 allowances expiring within five days, including the UTC expiry and owner.
 The warning is report-only; the existing expired-manifest refusal still applies.

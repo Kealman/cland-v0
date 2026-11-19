@@ -5,6 +5,54 @@ import { loadDiagnostic, redactLoadDiagnostic } from '../src/suite-load-diagnost
 import LoadGateReporter from './load-gate-reporter.ts';
 import cleanupReporter from './hub-cleanup-reporter.ts';
 
+test('load receipts attribute shared cases to their runner entry and retain older event locations', async () => {
+  const reporter = new LoadGateReporter({});
+  for (const entryFile of [import.meta.filename, undefined]) reporter.write({ type: 'test:pass', data: {
+    nesting: 0, file: import.meta.filename.replace('suite-load-diagnostics.test.ts', 'contract.ts'),
+    entryFile, line: 5, name: 'shared case', details: {},
+  } });
+  reporter.end();
+  let output = '';
+  for await (const chunk of reporter) output += String(chunk);
+  assert.deepEqual(output.trim().split('\n').map(row => JSON.parse(row).file), [
+    'hub/test/suite-load-diagnostics.test.ts', 'hub/test/contract.ts',
+  ]);
+});
+
+test('concurrent wrappers sharing a source keep distinct timing, progress and failure identities', async () => {
+  const { default: DurationReporter } = await import('./duration-reporter.ts');
+  const { default: skipReporter } = await import('./skip-reporter.ts');
+  const { default: QuarantineReporter } = await import('./quarantine-reporter.ts');
+  const { suiteProgress } = await import('../src/suite-progress.ts');
+  const cwd = process.env.TEST_SUITE_CWD ?? process.cwd();
+  const rows = ['first', 'second'].map(name => ({ file: `${cwd}/hub/test/contract.ts`,
+    entryFile: `${cwd}/hub/test/${name}.test.ts`, name: 'shared', line: 5, column: 1,
+    nesting: 0, testNumber: 1, type: 'test' as const, details: { passed: false, duration_ms: 250,
+      error: Object.assign(new Error('assertion'), { failureType: 'testCodeFailure', code: 'ERR_TEST_FAILURE', cause: new Error('assertion') }) } }));
+  const durations = new DurationReporter();
+  const quarantine = new QuarantineReporter();
+  for (const data of rows) {
+    durations.write({ type: 'test:complete', data });
+    quarantine.write({ type: 'test:fail', data });
+  }
+  durations.end(); quarantine.end();
+  let timing = '', failures = '', progress = '';
+  for await (const chunk of durations) timing += String(chunk);
+  for await (const chunk of quarantine) failures += String(chunk);
+  async function* events() {
+    for (const data of rows) {
+      yield { type: 'test:dequeue' as const, data };
+      yield { type: 'test:complete' as const, data };
+    }
+  }
+  for await (const chunk of skipReporter(events(), { cwd })) progress += chunk;
+  const expected = ['hub/test/first.test.ts', 'hub/test/second.test.ts'];
+  assert.deepEqual(progress.split('\n').filter(line => line.startsWith('suite start ')).map(line => JSON.parse(line.slice('suite start '.length)).file), rows.map(row => row.entryFile));
+  assert.deepEqual(timing.trim().split('\n').map(row => JSON.parse(row)).filter(row => row.file).map(row => row.file), expected);
+  assert.deepEqual(JSON.parse(failures).failures.map((row: { file: string }) => row.file), expected);
+  assert.deepEqual(suiteProgress(progress, 0)!.completed.map(row => row.file), expected);
+});
+
 test('cleanup reporter waits for a held failure receipt and retains the assertion outcome', async () => {
   const held = Promise.withResolvers<void>();
   const entered = Promise.withResolvers<void>();
