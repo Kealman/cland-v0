@@ -12,8 +12,10 @@ import { ScriptedCodex, deferred } from './fakes/scripted-codex.ts';
 import { projectHub, connectUi, tempProject, eventually, inProcessSpoke } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { fixtureSocketPath } from '../../test-support/socket-path.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
 
 test('remote Codex frame launch uses a session forward and host sandbox paths', async t => {
+  await fixtureNativeGuard(t, { fenced: true });
   const root = await tempProject(t);
   const remote = await tempProject(t, 'cx-', '/tmp');
   const hostTemp = join(remote, 'temp-root');
@@ -56,7 +58,8 @@ test('remote Codex frame launch uses a session forward and host sandbox paths', 
   roles = setRoleKey(roles, 'implementer', 'launch', 'writable_roots', ['.']);
   roles = setRoleKey(roles, 'implementer', 'launch', 'network', 'local');
   await writeFile(rolesFile, roles);
-  const ui = await connectUi(t, discovery);
+  // Scripted remote PIDs have no native cleanup ownership.
+  const ui = await connectUi(t, discovery, 'ui', () => {});
   await ui.request({type: 'subscribe'});
   const launched = await ui.request({type: 'session.launch', name: 'remote', harness: 'codex', host: 'f1', cwd: remote, role: 'implementer', sandbox: {mode: 'workspace-write', writableRoots: [remote], network: 'local'}});
   assert.equal(launched.ok, true, launched.error);

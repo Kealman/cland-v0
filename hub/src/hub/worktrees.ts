@@ -61,6 +61,7 @@ export type WorktreeGit = Pick<typeof import('../territory.ts'),
 const nativeGit: WorktreeGit = { ensureTaskWorktree, taskBase, listTaskWorktrees, commitsAhead, removeTaskWorktree };
 
 export class TaskWorktrees {
+  readonly #checkpoint: typeof withHostWorktreeCheckpoint;
   readonly #git: WorktreeGit;
   readonly #store: Store | undefined;
   readonly #resolveHost: ((name:string)=>Host) | undefined;
@@ -76,7 +77,8 @@ export class TaskWorktrees {
    *  leaves their worktrees alone, a second launch is refused, and only the launch that reserved an item releases it. */
   readonly #launching = new Map<string, symbol>();
 
-  constructor(options: { store?: Store; resolveHost?: (name:string)=>Host; host?: Host; git?: WorktreeGit; hasTerritory?: typeof hasTerritory; env?: NodeJS.ProcessEnv; tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
+  constructor(options: { checkpoint?: typeof withHostWorktreeCheckpoint | undefined; store?: Store; resolveHost?: (name:string)=>Host; host?: Host; git?: WorktreeGit; hasTerritory?: typeof hasTerritory; env?: NodeJS.ProcessEnv; tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
+    this.#checkpoint = options.checkpoint ?? withHostWorktreeCheckpoint;
     this.#store=options.store;this.#resolveHost=options.resolveHost;
     this.#env = options.env ?? process.env;
     this.#host = options.host ?? localHost(this.#env);
@@ -134,7 +136,7 @@ export class TaskWorktrees {
   async admitRelaunch(item: string, from: string, host: Host, admit: () => void, retry?: import('../host/task-worktrees.ts').HostWorktreeRecord) {
     requireUnlockedCaller(this.root);
     const destination=host.name;
-    return this.serial(() => withHostWorktreeCheckpoint(this.root, async () => {
+    return this.serial(() => this.#checkpoint(this.root, async () => {
       if (this.#store?.hosts.get(destination)?.state !== 'registered') throw new Error('cross-host relaunch requires a registered destination host');
       const view = await this.#tracker.viewAsync(item);
       const ineligible=await this.#ineligible(view);

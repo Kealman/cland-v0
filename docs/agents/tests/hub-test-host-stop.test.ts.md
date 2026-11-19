@@ -1,5 +1,9 @@
 # hub/test/host-stop.test.ts
 
+Lease creation, renewal and the destroy owner's lease release use the fake
+lock process table. The positively controlled launch guard spans setup and
+cleanup in all stop cases. CLI-only help coverage is separate. This stays T2.
+
 T2, in-process projectHub, fake clock, provided Hosts and scripted fake provider
 release receipts. The settled disk uses an allocated/attached directory-provider
 volume and a recording loginDisk Host, so stop proves unmount and detach before

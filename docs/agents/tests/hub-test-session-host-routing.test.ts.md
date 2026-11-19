@@ -1,5 +1,11 @@
 # hub/test/session-host-routing.test.ts
 
+Every case keeps the positive native launch guard through cleanup. The local
+PID collision case checks the sweep's local-only `orphanSessions` input
+directly. Native sweeping remains covered by T3 `host-orphans.test.ts`, whose
+case "remote rows neither protect nor authorize sweeping local matching PIDs"
+checks actual removal and preservation. This component file remains T2.
+
 `hub/test/session-host-routing.test.ts` is T2. Use projectHub with real adapters
 and recording Hosts; no real harness, provider, login, browser or SSH is needed.
 The remote PID deliberately equals the test worker PID. The local spy must see

@@ -1,5 +1,9 @@
 # hub/test/host-status.test.ts
 
+Direct spend mutations pass the fake lock process table. The guarded status
+case permits only the shared T2 scoped CLI callback launch; custom promisifiers
+and other native APIs remain denied. No file tier changes.
+
 T2, in-process projectHub, fake clock and provided test Hosts; CLI subprocesses
 only exercise the status command. Run `node --test hub/test/host-status.test.ts`
 under supported Node after targeted admission. No provider network or browser.

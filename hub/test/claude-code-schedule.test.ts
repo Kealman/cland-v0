@@ -5,9 +5,10 @@ import { completeJournalLines } from './journal-lines.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
+import { promisify } from 'node:util';
 import { syncBuiltinESMExports } from 'node:module';
 import { setImmediate as yieldIO } from 'node:timers/promises';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -15,13 +16,21 @@ import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost, HarnessProcess, InjectFrame } from '../src/adapters/contract.ts';
 import type { Inbox, Message } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
-import { onCleanup } from './process-cleanup.ts';
+import { onCleanup, ownDirectory, drainFixtureCleanup, fenceFixtureCleanup, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import type { FixtureStep } from '../../test-support/fixture-work.ts';
 import { pacingOwner } from './telegram-pacing-fixture.ts';
 import { cardWebOwner } from './telegram-card-web-fixture.ts';
 import { connectUi, inProcessSpoke, projectHub, tempProject, until, frameClient, type FrameClient } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { claudeComponentOwner } from './claude-component-fixture.ts';
 import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
+import { recordingHost } from './recording-host.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+
+test.beforeEach(t => fixtureNativeGuard(t as TestContext, { fenced: true }));
+const originalExecFile = cp.execFile;
+const originalSpawn = cp.spawn;
 
 function cli(t: TestContext) {
   const calls: Array<{ args: string[]; configDir: string | undefined; env: NodeJS.ProcessEnv }> = [];
@@ -33,7 +42,11 @@ function cli(t: TestContext) {
   let pid = process.pid;
   const pending: Array<() => void> = [];
   const killed: string[] = [];
-  t.mock.method(cp, 'execFile', (bin: string, args: string[], options: cp.ExecFileOptions, callback: (error: { code: number } | null, stdout: string, stderr: string) => void) => {
+  const original = cp.execFile;
+  const cleanup = fenceFixtureCleanup(t);
+  // This manual seam is owned by positive cleanup, not node:test's automatic mock restoration.
+  cleanup.release(() => { cp.execFile = original; t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const scripted = (bin: string, args: string[], options: cp.ExecFileOptions, callback: (error: { code: number } | null, stdout: string, stderr: string) => void) => {
     assert.equal(bin, 'fixture-claude', 'no native command escapes the scripted edge');
     calls.push({ args, configDir: options.env?.CLAUDE_CONFIG_DIR, env: { ...options.env } });
     const listing = JSON.stringify(sessions); // Native output can describe the query's earlier snapshot.
@@ -50,9 +63,12 @@ function cli(t: TestContext) {
     if (hold && args[0] === 'agents') pending.push(finish);
     else queueMicrotask(finish);
     return { kill: (signal: string) => { killed.push(signal); return true; } };
-  });
+  };
+  Object.defineProperty(scripted, promisify.custom, { value: (bin: string, args: string[], options: cp.ExecFileOptions) => new Promise((resolve, reject) => {
+    scripted(bin, args, options, (error, stdout, stderr) => error ? reject(error) : resolve({ stdout, stderr }));
+  }) });
+  Reflect.set(cp, 'execFile', scripted);
   syncBuiltinESMExports();
-  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
   return { calls, sessions, pending, killed, set failure(value: boolean) { failure = value; }, set loggedOut(value: boolean) { loggedOut = value; }, set hold(value: boolean) { hold = value; }, set knownPid(value: boolean) { knownPid = value; }, set pid(value: number) { pid = value; }, agents: () => calls.filter(c => c.args[0] === 'agents') };
 }
 
@@ -66,20 +82,159 @@ async function receipt<T>(work: Promise<T>): Promise<T> {
   } finally { clearTimeout(timer); }
 }
 
-async function memoryHost(t: TestContext): Promise<AdapterHost> {
-  const root = await mkdtemp(join(tmpdir(), 'cland-claude-schedule-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
+async function memoryHost(t: TestContext, parent = tmpdir()): Promise<AdapterHost> {
+  const root = await mkdtemp(join(parent, 'cland-claude-schedule-'));
+  ownDirectory(t, root);
   const state = new Map<string, string>();
   return { root, discoveryFile: join(root, 'hub.json'), node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {}, adapterState: { read: key => state.get(key) ?? null, write: (key, value) => { state.set(key, value); } } };
 }
 const request = (name: string) => ({ name, cwd: '/fixture', role: null, model: null });
 const options = (clock: FakeClock) => ({ clock, processStarted: async () => 'fixture-start', bin: 'fixture-claude', env: { HOME: '/fixture/home', CLAUDE_CONFIG_DIR: '/fixture/claude' } });
 
+function cleanupProof(t: TestContext, clock?: FakeClock) {
+  const closing = Promise.withResolvers<void>();
+  const releases: Array<() => void> = [];
+  let admissionClosed = false;
+  const scope = caseDeadlines(t, { ...(clock ? { clock } : {}), timeoutMs: 5000, ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => {
+    admissionClosed = true; closing.resolve();
+    for (const release of releases) release();
+  } });
+  return { ...scope, closing: closing.promise,
+    releaseOnClose(release: () => void) { if (admissionClosed) release(); else releases.push(release); },
+    run: (body: (step: FixtureStep, signal: AbortSignal) => Promise<void>) => scope.run(body),
+    setup: <T>(body: () => Promise<T>) => scope.wait('cleanup proof setup', body),
+  };
+}
+
+test('Claude cleanup joins held original setup before removing its root or restoring seams', async t => {
+  const setupClock = new FakeClock();
+  const proof = cleanupProof(t, setupClock);
+  const entered = Promise.withResolvers<{ root: string; scripted: typeof cp.execFile }>();
+  const release = Promise.withResolvers<void>();
+  const late = Promise.withResolvers<void>();
+  let original: Promise<void> | undefined, closing: Promise<void> | undefined;
+  try {
+    original = proof.run(async step => proof.setup(async () => {
+      await fixtureNativeGuard(proof.fixtures, { fenced: true });
+      cli(proof.fixtures);
+      const root = await step(() => mkdtemp(join(tmpdir(), 'cland-claude-setup-')));
+      ownDirectory(t, root); proof.adoptRoot(root);
+      await step(() => writeFile(join(root, 'owner'), 'original setup'));
+      entered.resolve({ root, scripted: cp.execFile });
+      await step(async () => {
+        await release.promise;
+        await writeFile(join(root, 'late'), 'original continuation joined');
+        late.resolve();
+        throw new Error('setup stopped after retained continuation');
+      });
+    }));
+    void original.catch(() => {});
+    const { root, scripted } = await receipt(entered.promise);
+    await setupClock.advance(5000);
+    await assert.rejects(receipt(original), /cleanup proof setup: deadline exceeded after 5000 ms/);
+    closing = drainFixtureCleanup(t);
+    void closing.catch(() => {});
+    await receipt(proof.closing);
+    assert.equal(cp.execFile, scripted, 'original setup still owns its scripted edge');
+    assert.equal(await readFile(join(root, 'owner'), 'utf8'), 'original setup');
+    release.resolve();
+    await receipt(late.promise);
+    await receipt(closing);
+    await assert.rejects(readFile(join(root, 'owner')), { code: 'ENOENT' });
+    await assert.rejects(stat(root), { code: 'ENOENT' });
+    assert.equal(cp.execFile, originalExecFile);
+    assert.equal(cp.spawn, originalSpawn);
+  } finally {
+    release.resolve();
+    if (original) await receipt(original.catch(() => {}));
+    if (closing) await receipt(closing.catch(() => {}));
+    await receipt(drainFixtureCleanup(t));
+  }
+});
+
+for (const rejected of [false, true]) test(`Claude cleanup retains its scripted seam and root until held close is repaired: rejected=${rejected}`, async t => {
+  // Outer original-work ownership precedes all acquisitions. Inner cleanup may
+  // run explicitly without joining the callback that is testing it.
+  const proof = cleanupProof(t);
+  const inner = proof.fixtures;
+  try {
+    await proof.run(async (step, signal) => {
+      let native: ReturnType<typeof cli> | undefined;
+      let rejectClose = rejected, closed = false, closing: Promise<void> | undefined;
+      const release = () => { rejectClose = false; for (const finish of native?.pending.splice(0) ?? []) finish(); };
+      proof.releaseOnClose(release);
+      try {
+        const f = await proof.setup(async () => {
+          const outerExecFile = cp.execFile, outerSpawn = cp.spawn;
+          await step(() => fixtureNativeGuard(inner, { fenced: true }));
+          signal.throwIfAborted();
+          native = cli(inner);
+          const scripted = cp.execFile, guardedSpawn = cp.spawn;
+          const parent = await step(() => mkdtemp(join(tmpdir(), 'cland-claude-proof-')));
+          ownDirectory(t, parent); proof.adoptRoot(parent);
+          const root = await step(() => mkdtemp(join(parent, 'close-')));
+          const remove = ownDirectory(inner, root);
+          await step(() => writeFile(join(root, 'owner'), 'admitted fixture'));
+          const clock = new FakeClock();
+          const adapter = new ClaudeCodeAdapter(await step(() => memoryHost(inner, parent)), options(clock));
+          const entered = Promise.withResolvers<void>();
+          onCleanup(inner, async () => {
+            entered.resolve();
+            await adapter.close();
+            if (rejectClose) throw new Error('fixture close rejected before positive receipt');
+            closed = true;
+          });
+          // cland-allow-child-env: callback/custom controls reach only the installed scripted edge
+          assert.deepEqual(await step(() => promisify(cp.execFile)('fixture-claude', ['agents'], {})), { stdout: '[]', stderr: '' });
+          await step(() => adapter.spawn(request('cleanup-owner')));
+          native.hold = true;
+          await step(() => clock.advance(30_000));
+          assert.equal(native.pending.length, 1);
+          return { root, remove, scripted, guardedSpawn, entered, outerExecFile, outerSpawn };
+        });
+        await proof.wait('cleanup proof behavior', async () => {
+          closing = drainFixtureCleanup(inner);
+          void closing.catch(() => {});
+          await receipt(f.entered.promise);
+          assert.equal(cp.execFile, f.scripted, 'script remains installed while its original callback is held');
+          assert.equal(cp.spawn, f.guardedSpawn, 'launch guard remains installed');
+          assert.equal(await readFile(join(f.root, 'owner'), 'utf8'), 'admitted fixture');
+          native!.pending.shift()!();
+          if (rejected) {
+            await assert.rejects(receipt(closing), /fixture close rejected/);
+            assert.equal(closed, false, 'a rejected owner is not a positive close receipt');
+            assert.equal(cp.execFile, f.scripted);
+            assert.equal(cp.spawn, f.guardedSpawn);
+            await assert.rejects(f.remove(), /fixture close rejected/, 'real directory cleanup retains the owner root');
+            assert.equal(await readFile(join(f.root, 'owner'), 'utf8'), 'admitted fixture');
+            rejectClose = false;
+            await receipt(drainFixtureCleanup(inner));
+          } else await receipt(closing);
+          assert.equal(closed, true);
+          await assert.rejects(readFile(join(f.root, 'owner')), { code: 'ENOENT' });
+          await assert.rejects(stat(f.root), { code: 'ENOENT' });
+          assert.equal(cp.execFile, f.outerExecFile, 'inner script/guard restore after successful close');
+          assert.equal(cp.spawn, f.outerSpawn, 'outer guard remains until original work joins');
+        });
+      } finally {
+        release();
+        if (closing) await receipt(closing.catch(() => {}));
+        // The outer owner drains late setup/behavior first, then the inner hooks.
+      }
+    });
+    await receipt(drainFixtureCleanup(t));
+    assert.equal(cp.execFile, originalExecFile, 'script and guard restore only after successful close');
+    assert.equal(cp.spawn, originalSpawn);
+  } finally {
+    await receipt(drainFixtureCleanup(t));
+  }
+});
+
 test('Claude close cancels a held native query and drains its callback before releasing ownership', async t => {
   const native = cli(t);
   const clock = new FakeClock();
   const adapter = new ClaudeCodeAdapter(await memoryHost(t), options(clock));
-  t.after(() => adapter.close());
+  onCleanup(t, () => adapter.close());
   try {
     await adapter.spawn(request('held-query'));
     native.hold = true;
@@ -109,7 +264,7 @@ test('Claude close cancels a held native query and drains its callback before re
 test('Claude discovery misses retain liveness without accepting a conflicting native or process identity', async t => {
   const spawns = t.mock.method(cp, 'spawn', () => { throw new Error('unexpected native spawn'); });
   syncBuiltinESMExports();
-  t.after(() => { spawns.mock.restore(); syncBuiltinESMExports(); });
+  fenceFixtureCleanup(t).release(() => { spawns.mock.restore(); syncBuiltinESMExports(); });
   // cland-allow-child-env: positive control throws at the installed spawn guard before any native execution
   assert.throws(() => cp.spawn('fixture-positive-control'), /unexpected native spawn/);
   spawns.mock.resetCalls();
@@ -122,7 +277,7 @@ test('Claude discovery misses retain liveness without accepting a conflicting na
     ...options(clock), agentsMs: 1, processStarted: async () => started,
     processIdentity: async pid => { identities.push(pid); return null; },
   });
-  t.after(() => adapter.close());
+  onCleanup(t, () => adapter.close());
   const p = await adapter.spawn(request('recover'));
   assert.equal(p.pid, process.pid, 'only observe the test process; never signal it');
   assert.equal(p.pidStarted, 'fixture-start');
@@ -163,7 +318,7 @@ test('Claude discovery and watch share the default schedule across adapter resta
   const events: Array<Record<string, unknown>> = [];
   const host = { ...await memoryHost(t), log: (event: Record<string, unknown>) => { events.push(event); } };
   let adapter = new ClaudeCodeAdapter(host, options(clock));
-  t.after(() => adapter.close());
+  onCleanup(t, () => adapter.close());
   assert.ok(events.some(e => e.event === 'claude-schedule' && e.agentsMs === 30_000));
   await clock.advance(30_000);
   assert.equal(native.calls.length, 0, 'an idle directory runs no CLI');
@@ -207,7 +362,11 @@ async function component(t: TestContext, pidAlive?: (pid: number) => boolean, pr
   let polls = 0;
   const owner = ownedTransport ? pacingOwner(t) : undefined;
   const open = async (ownedSetup = false) => {
-    const hubOptions = { clock, ...(ownedTransport ? { transportClock: clock } : {}), probes: 'fake', adapters: [(host) => {
+    const local = recordingHost(root, { overrides: {
+      identity: async pid => ({ pid, pidStarted: await processStarted(pid), pidIdentity: null }),
+      alive: async p => p.pid !== null && (pidAlive?.(p.pid) ?? true),
+    } });
+    const hubOptions = { clock, hosts: [local], ...(ownedTransport ? { transportClock: clock } : {}), probes: 'fake', adapters: [(host) => {
       const adapterHost: AdapterHost = { ...host,
         signal: (id, signal) => { if (signal.source === 'poll') polls++; host.signal(id, signal); },
         adapterState: { read: key => host.adapterState!.read(key), write: (key, value) => {
@@ -779,7 +938,7 @@ test('Claude retirement ignores failed and cached snapshots and late launch disc
   const exits: string[] = [];
   const host = { ...await memoryHost(t), exited: (id: string) => { exits.push(id); } };
   const adapter = new ClaudeCodeAdapter(host, options(clock));
-  t.after(() => adapter.close());
+  onCleanup(t, () => adapter.close());
   const first = await adapter.spawn(request('first'));
   const second = await adapter.spawn(request('second'));
   native.sessions.length = 0;
@@ -804,7 +963,7 @@ for (const order of ['other-first', 'own-first'] as const) for (const outcome of
   const exits: string[] = [];
   const host = { ...await memoryHost(t), exited: (id: string) => { exits.push(id); } };
   const adapter = new ClaudeCodeAdapter(host, options(clock));
-  t.after(() => adapter.close());
+  onCleanup(t, () => adapter.close());
   const p = await adapter.spawn(request('own'));
   let observed!: () => void;
   const observation = new Promise<void>(resolve => { observed = resolve; });
@@ -872,7 +1031,7 @@ for (const outcome of ['done', 'missing'] as const) test(`legacy Claude row with
   const observation = new Promise<void>(resolve => { observed = resolve; });
   const host = { ...await memoryHost(t), exited: (id: string) => { exits.push(id); observed(); } };
   const adapter = new ClaudeCodeAdapter(host, options(clock));
-  t.after(() => adapter.close());
+  onCleanup(t, () => adapter.close());
   const p = await adapter.spawn(request('legacy'));
   p.harnessId = null;
   if (outcome === 'missing') native.sessions.length = 0;
@@ -896,7 +1055,7 @@ for (const replacementMode of ['object', 'job-id'] as const) test(`held Claude d
     write: (key, value) => { state.set(key, value); if (++writes >= 2) completed?.(); },
   } };
   const adapter = new ClaudeCodeAdapter(host, options(clock));
-  t.after(() => adapter.close());
+  onCleanup(t, () => adapter.close());
   native.knownPid = true;
   const original = await adapter.spawn(request('replacement'));
   assert.ok(original.harnessSessionId, 'the captured native conversation is known');
@@ -944,7 +1103,7 @@ test('an absent Claude directory row cannot retire a known live PID', async t =>
     },
   } };
   const adapter = new ClaudeCodeAdapter(host, options(clock));
-  t.after(() => adapter.close());
+  onCleanup(t, () => adapter.close());
   const p = await adapter.spawn(request('temporarily-hidden'));
   const listing = native.sessions[0]!;
   native.sessions.length = 0;
@@ -969,7 +1128,7 @@ test('a newer Claude hook fences terminal status without blocking late PID disco
   const publication = new Promise<number>(resolve => { discovered = resolve; });
   const host: AdapterHost = { ...base, recordPid: (_id, pid) => discovered(pid) };
   const adapter = new ClaudeCodeAdapter(host, options(clock));
-  t.after(() => adapter.close());
+  onCleanup(t, () => adapter.close());
   const p = await adapter.spawn(request('late-live'));
   native.sessions[0]!.pid = process.pid;
   native.hold = true;
@@ -1003,7 +1162,7 @@ for (const probe of ['birth', 'identity'] as const) test(`a replaced Claude job 
     processStarted: async () => { if (probe === 'birth') { entered(); await held; } return 'fixture-start'; },
     processIdentity: async () => { if (probe === 'identity') { entered(); await held; } return 'fixture-identity'; },
   });
-  t.after(() => adapter.close());
+  onCleanup(t, () => adapter.close());
   const p = await adapter.spawn(request('replaced-during-probe'));
   adapter.interpret('session-start', { session_id: native.sessions[0]!.sessionId }, p);
   native.sessions[0]!.pid = 91001;

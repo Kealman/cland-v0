@@ -16,8 +16,11 @@ import type { HostRecords } from '../src/host/records.ts';
 import type { Machine, ReleaseObserver } from '../src/host/provider/provider.ts';
 import { FakeClock } from './fake-clock.ts';
 import { FakeHostProvider } from '../src/host/provider/fake.ts';
+import { fakeLockProcesses } from './fakes/lock-processes.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
 
 for(const web of [false,true])for(const confirmed of [true,false])test(`C3 ${web?'web stop':'stop'} joins lease renewal and requires confirmed destroy: ${confirmed}`,async t=>{
+ await fixtureNativeGuard(t, { fenced: true });
  const root=await tempProject(t),clock=new FakeClock(Date.now());
  await mkdir(join(root,'.cland'),{recursive:true});
  await writeFile(join(root,'.cland/config.toml'),'[hosts.agents]\nprovider="fake"\nslots=4\nmin_hosts=0\n');
@@ -34,6 +37,9 @@ for(const web of [false,true])for(const confirmed of [true,false])test(`C3 ${web
  hub.hostOwner!.hosts.push(...hosts);
  const ui=await connectUi(t,hub.discovery,'cli');
  assert.equal((await ui.request({type:'host.create',pool:'agents'})).ok,true);
+ // Keep the destroy owner's spend settlement in the same synthetic namespace.
+ const releaseLease=records.leases.release.bind(records.leases);
+ t.mock.method(records.leases,'release',(...[id,options,confirmedAt]:Parameters<typeof releaseLease>)=>releaseLease(id,{...options,processes:fakeLockProcesses().processes},confirmedAt));
  const env=hub.hostEnvironment;
  Object.assign(hub.fakes.codex!,{releaseUnreachableGeneration:async(p:HarnessProcess)=>({generation:hostGenerationKey(p),released:true,dropped:[],forwardIds:[]})});
  records.provisions.save({id,pool:'agents',provider:'fake',size:'fake',region:'fake',created,state:'booting',machine});
@@ -43,7 +49,7 @@ for(const web of [false,true])for(const confirmed of [true,false])test(`C3 ${web
  assert.equal((await provider.attachVolume(createdVolume.volume,machine)).state,'attached');
  await settledLogin(records.logins,id,'codex',{provider:'fake',region:'fake',volumeId:createdVolume.volume.id});
  const launched=await ui.request({type:'session.launch',name:'stop-worker',harness:'codex',host:id,cwd:root});assert.equal(launched.ok,true,launched.error);
- const lease={root,env,clock,leaseMs:30000,caps:{shared:10,hosts:10},pool:'agents',size:'fake',priceHourly:0,billingMinimumMs:0};
+ const lease={root,env,clock,processes:fakeLockProcesses().processes,leaseMs:30000,caps:{shared:10,hosts:10},pool:'agents',size:'fake',priceHourly:0,billingMinimumMs:0};
  await records.leases.create(id,lease);
  records.leases.arm(id,lease,()=>true);
  const initialDeadline=records.leases.get(id)!.deadline;

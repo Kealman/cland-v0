@@ -6,3 +6,8 @@ relaunch keeps host and cwd. Remote-to-local relaunch is refused explicitly. Mis
 negative release receipts refuse before destination effects. Existing resume
 tests remain previous-wire coverage.
 Run `node --test hub/test/host-relaunch-component.test.ts`.
+
+The relaunch checkpoint inherits the fixture's territory lock. A positively
+controlled native launch guard covers each case through cleanup; generation
+refusal assertions still check that the destination receives no operations.
+This file remains T2; native worktree lifecycle proof belongs to T3.

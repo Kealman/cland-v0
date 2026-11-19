@@ -1,5 +1,9 @@
 # hub/test/codex-remote.test.ts
 
+Scripted remote PIDs are observed through a no-op frame cleanup observer;
+they never grant local native process ownership. A positively controlled
+launch guard covers setup through disposal. This file remains T2.
+
 Run `node --test hub/test/codex-remote.test.ts` for T2 frame launch,
 delivery, persisted idle state, relative host policy and absolute-root refusal.
 The recording Host has no native processes. RPC connects only to the returned

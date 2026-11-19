@@ -17,6 +17,31 @@ import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
+import { clandCliLaunch } from './tier-cli.ts';
+
+test('native guard permits only the scoped CLI callback launch and fences other entry points', async t => {
+  let calls = 0;
+  t.mock.method(cp, 'execFile', () => { calls++; return {}; });
+  let restore = () => {};
+  t.after(() => { restore(); t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const guard = await fakeNativeGuard(value => { restore = value; }, { allowCli: true });
+  const cli = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
+  // cland-allow-child-env: the guard delegates only to the installed in-memory callback fake
+  clandCliLaunch(() => cp.execFile(process.execPath, [cli]));
+  assert.equal(calls, 1);
+  guard.verify();
+  // cland-allow-child-env: every negative control reaches the throwing guard, never a native child
+  assert.throws(() => cp.execFile(process.execPath, [cli]), /native launch forbidden/);
+  // cland-allow-child-env: altered entry is refused by the scoped guard
+  assert.throws(() => clandCliLaunch(() => cp.execFile(process.execPath, ['other'])), /native launch forbidden/);
+  // cland-allow-child-env: custom promisification has no CLI exemption
+  await assert.rejects(clandCliLaunch(() => promisify(cp.execFile)(process.execPath, [cli])), /native launch forbidden/);
+  // cland-allow-child-env: the CLI scope grants no spawn permission
+  assert.throws(() => clandCliLaunch(() => cp.spawn(process.execPath, [cli])), /native launch forbidden/);
+  assert.equal(calls, 1, 'negative controls never reach the underlying launch');
+  assert.throws(guard.verify, /unexpected native launch/, 'caught violations remain a failed guard receipt');
+});
 
 // Keep the setup deadline live while behaviour time uses mock timers.
 const setupTimeout = globalThis.setTimeout;

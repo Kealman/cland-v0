@@ -296,7 +296,7 @@ export class Dispatcher {
     this.#options = options;
     this.#log = options.log ?? (() => {});
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
-    this.#worktrees = options.tracker ? new TaskWorktrees({ store:options.core.store, resolveHost:name=>{if(!this.#sessions)throw new Error("sessions unavailable");return this.#sessions.validateLaunchHost({name:'',role:'implementer',host:name} as never);}, ...(options.hasTerritory ? { hasTerritory: options.hasTerritory } : {}), ...(options.env ? { env: options.env } : {}), tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
+    this.#worktrees = options.tracker ? new TaskWorktrees({ checkpoint: options.territoryLock, store:options.core.store, resolveHost:name=>{if(!this.#sessions)throw new Error("sessions unavailable");return this.#sessions.validateLaunchHost({name:'',role:'implementer',host:name} as never);}, ...(options.hasTerritory ? { hasTerritory: options.hasTerritory } : {}), ...(options.env ? { env: options.env } : {}), tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
     this.#mergeQueue = options.tracker ? new MergeQueue(options.core.store, options.tracker, options.core.clock, () => options.projectConfig?.().merge.queue ?? false, options.git, options.env, (entry, reason) => {
       const item = options.tracker?.summary(entry.item);
       const requester = options.core.store.nameOfSession(options.core.sessionIdentity(entry.by.id)) ?? entry.by.name;

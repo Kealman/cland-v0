@@ -1,5 +1,34 @@
 # hub/test/claude-code-schedule.test.ts
 
+The component fixture supplies a recording local Host for legacy-row identity
+upgrades, using the same scripted birth/liveness readers as the adapter. The
+native guard and manual scripted callback/custom-promisifier edge stay installed
+until the opt-in cleanup owner has positive resource, hub, directory and check
+receipts. A rejected close retains the seam, guard and fixture roots; a repair
+retries only uncompleted steps before restoring seams and then the guard.
+This file remains T2.
+
+`Claude cleanup retains its scripted seam and root until held close is repaired`
+runs held and rejected-close controls with the real adapter and scripted query.
+Each control enrolls its whole producer with `caseDeadlines.run` before
+acquisition, bounds setup separately from behavior, and uses a separate inner
+cleanup context. Its outer parent root is guarded by the original-work join;
+the explicitly tested inner remover therefore cannot join its own test callback.
+The outer owner also retains timed-out setup/behavior producers until their
+original promises settle, before running inner cleanup hooks or restoring guards.
+It observes close entry separately, releases the original held callback, checks
+that rejection is not closure, exercises the actual directory removal guard,
+then repairs the owner and verifies removal and exact export restoration. All
+joins have bounds; no native child or lifecycle probe is used. Earlier normal
+cleanup receipts alone did not prove these failure paths (review A-21700).
+
+`Claude cleanup joins held original setup before removing its root or restoring
+seams` holds an admitted setup write, expires the separate setup observer with a
+FakeClock, starts outer cleanup and checks the retained script/root. Releasing
+that write must produce its late-file receipt before cleanup removes the root
+and restores exports. Native timers stay real. This covers the original-work
+enrollment gap identified in A-21708; the earlier normal controls did not prove it.
+
 `Claude re-exec bridge acknowledgement without a model turn remains unconfirmed`
 uses the production adapter with the scripted native CLI, real frame/spoke edges
 and FakeClock. Replace the spoke and bridge under the same launch id, acknowledge

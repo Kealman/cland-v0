@@ -112,31 +112,72 @@ const directoryProcesses = new Map<string, Set<ProcessIdentity>>();
 const contextProcesses = new WeakMap<TestContext, Set<ProcessIdentity>>();
 type CleanupStep = () => unknown | Promise<unknown>;
 const signalDirectoryCleanup = new Set<CleanupStep>();
-const contextCleanup = new WeakMap<TestContext, { resources: CleanupStep[]; directories: CleanupStep[]; hubs: CleanupStep[]; checks: CleanupStep[] }>();
+type CleanupOwner = { resources: CleanupStep[]; directories: CleanupStep[]; hubs: CleanupStep[]; checks: CleanupStep[]; releases: CleanupStep[]; fenced: boolean; completed: Set<CleanupStep>; inFlight: Map<CleanupStep, Promise<void>>; running?: Promise<void> };
+const contextCleanup = new WeakMap<TestContext, CleanupOwner>();
 function cleanupSteps(t: TestContext) {
   let steps = contextCleanup.get(t);
   if (!steps) {
-    steps = { resources: [], directories: [], hubs: [], checks: [] };
+    steps = { resources: [], directories: [], hubs: [], checks: [], releases: [], fenced: false, completed: new Set(), inFlight: new Map() };
     contextCleanup.set(t, steps);
-    const owned = steps;
-    t.after(async () => {
-      const errors: unknown[] = [];
-      // Native after hooks stop at their first failure. One ownership hook keeps
-      // every resource disposal running, and removes directories only afterwards.
-      for (const step of [...owned.resources, ...owned.hubs, ...owned.directories, ...owned.checks]) {
-        try { await step(); } catch (error) { errors.push(error); }
-      }
-      if (errors.length === 1) throw errors[0];
-      if (errors.length) throw new AggregateError(errors, 'test fixture cleanup failed');
-    });
+    t.after(() => drainFixtureCleanup(t));
   }
   return steps;
+}
+/** Opt-in fixture ownership: retain seams/roots on incomplete close; retry failed steps. */
+export function fenceFixtureCleanup(t: TestContext) {
+  const owned = cleanupSteps(t);
+  owned.fenced = true;
+  return { release: (step: CleanupStep) => { owned.releases.push(step); } };
+}
+async function completedStep(owned: CleanupOwner, step: CleanupStep): Promise<void> {
+  if (owned.completed.has(step)) return;
+  let work = owned.inFlight.get(step);
+  if (!work) {
+    work = Promise.resolve().then(step).then(() => { owned.completed.add(step); });
+    owned.inFlight.set(step, work);
+  }
+  try { await work; }
+  finally { if (owned.inFlight.get(step) === work) owned.inFlight.delete(step); }
+}
+async function drainWriters(owned: CleanupOwner): Promise<void> {
+  do {
+    for (const step of owned.resources) await completedStep(owned, step);
+    for (const step of owned.hubs) await completedStep(owned, step);
+  } while ([...owned.resources, ...owned.hubs].some(step => !owned.completed.has(step)));
+}
+/** Exercise the same cleanup owner as the test hook, including explicit repair. */
+export async function drainFixtureCleanup(t: TestContext): Promise<void> {
+  const owned = cleanupSteps(t);
+  if (owned.fenced) {
+    if (!owned.running) {
+      const running = (async () => {
+        await drainWriters(owned);
+        for (const step of owned.directories) await completedStep(owned, step);
+        for (const step of owned.checks) await completedStep(owned, step);
+        // Restore scripted edges first, then the outer launch guard, only on success.
+        for (const step of [...owned.releases].reverse()) await completedStep(owned, step);
+      })();
+      owned.running = running;
+      void running.finally(() => { if (owned.running === running) delete owned.running; }).catch(() => {});
+    }
+    return owned.running;
+  }
+  const errors: unknown[] = [];
+  for (const step of [...owned.resources, ...owned.hubs, ...owned.directories, ...owned.checks]) {
+    try { await step(); } catch (error) { errors.push(error); }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length) throw new AggregateError(errors, 'test fixture cleanup failed');
 }
 /** Stop writers before directory removal, including when signals bypass after hooks. */
 export function beforeDirectories(t: TestContext, step: CleanupStep): void {
   const steps = cleanupSteps(t);
   let running: Promise<unknown> | undefined;
-  const run = () => running ??= Promise.resolve().then(step);
+  const run = () => {
+    const work = running ??= Promise.resolve().then(step);
+    if (steps.fenced) void work.catch(() => { if (running === work) running = undefined; });
+    return work;
+  };
   steps.hubs.push(run);
   signalDirectoryCleanup.add(run);
   steps.checks.push(() => { signalDirectoryCleanup.delete(run); });
@@ -576,7 +617,10 @@ export function ownDirectory(t: TestContext | undefined, path: string, options: 
   const info = statSync(root);
   const identity = { device: info.dev, inode: info.ino, ...options };
   directories.set(root, identity); directoryProcesses.set(root, new Set()); installSignals();
+  if (t && cleanupSteps(t).fenced) guardDirectoryRemoval(root, () => drainWriters(cleanupSteps(t)));
   const cleanup = async () => {
+    // The same positive writer receipt guards direct directory cleanup.
+    if (t && cleanupSteps(t).fenced) await drainWriters(cleanupSteps(t));
     if (directoryStillOwned(root, identity)) {
       await guardRemoval(root);
       await options.beforeRemove?.();

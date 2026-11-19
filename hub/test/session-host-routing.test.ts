@@ -14,7 +14,11 @@ import { fakeHarness } from './fakes/harness.ts';
 import { tempProject, projectHub, connectUi, eventually, flushProjectLogs } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { sweepOrphans } from '../src/orphans.ts';
+import { orphanSessions } from '../src/orphans.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+import { onCleanup } from './process-cleanup.ts';
+
+test.beforeEach(t => fixtureNativeGuard(t as test.TestContext, { fenced: true }));
 
 function observingHost(root: string, name: string, record: (operation: string) => void) {
   return recordingHost(root, {record, overrides: {name, limitPolls: false,
@@ -41,7 +45,7 @@ test('startup, poll, resume and stop reach only the named Host despite a live lo
   const sessions = new Sessions({ root, core, table, hosts: [record('local'), remote] });
   const adapter = new OpenCodeAdapter(sessions.host({ node: '', cli: '', spoke: '', discoveryFile: '' }), { env: fixtureEnvironment(root, process.env), pollMs: 10 });
   sessions.register(adapter);
-  t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
+  onCleanup(t, async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   await sessions.resumeAll();
   assert.equal(table.get('remote')?.status, 'running');
   const beforePoll = calls.filter(c => c === 't1:alive').length;
@@ -50,7 +54,9 @@ test('startup, poll, resume and stop reach only the named Host despite a live lo
   await sessions.stop('remote');
   assert.equal(table.get('remote')?.status, 'stopped');
   assert.equal(calls.filter(c => c === 't1:stop').length, 1);
-  await sweepOrphans(root, () => {});
+  // Prove the sweep's project-row input excludes remote ownership, without
+  // invoking its unrelated native machine census and lock lifecycle in T2.
+  assert.deepEqual(orphanSessions(root), []);
   assert.ok(calls.includes('t1:identity'));
   assert.equal(calls.some(c => c.startsWith('local:')), false, JSON.stringify(calls));
   assert.doesNotThrow(() => process.kill(process.pid, 0));
@@ -70,7 +76,7 @@ test('remote pending-stop recovery completes with Linux birth and no legacy time
   table.pendingStop({ process: row, error: 'interrupted', stopIntent: true, stages: { stopped: false, rowRemoved: false, roleRolledBack: false } });
   const sessions = new Sessions({ root, core, table, hosts: [remote] });
   sessions.register(new OpenCodeAdapter(sessions.host({ node: '', cli: '', spoke: '', discoveryFile: '' }), { env: fixtureEnvironment(root, process.env) }));
-  t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
+  onCleanup(t, async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   await sessions.resumeAll();
   assert.deepEqual(table.pendingStops(), []);
   assert.equal(table.get('remote'), null);
@@ -107,7 +113,7 @@ test('remote Claude without a recorded PID cannot stop by native harness id alon
   table.put(row);
   const sessions = new Sessions({ root, core, table, hosts: [remote] });
   sessions.register(new ClaudeCodeAdapter(sessions.host({ node: '', cli: '', spoke: '', discoveryFile: '' }), { env: fixtureEnvironment(root, process.env) }));
-  t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
+  onCleanup(t, async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   await assert.rejects(sessions.stop(row.name), /identity cannot be verified/);
   assert.equal(calls.includes('run'), false);
   assert.equal(calls.includes('stop'), false);
@@ -131,7 +137,7 @@ for (const harness of ['codex', 'claude-code'] as const) test(`${harness} stop r
   const sessions = new Sessions({ root, core, table, hosts: [testHost('local', e => calls.push(`local:${e.operation}`)), remote] });
   const host = sessions.host({ node: '', cli: '', spoke: '', discoveryFile: '' });
   sessions.register(harness === 'codex' ? new CodexAdapter(host, { env: fixtureEnvironment(root, process.env) }) : new ClaudeCodeAdapter(host, { env: fixtureEnvironment(root, process.env) }));
-  t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
+  onCleanup(t, async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   await sessions.stop(row.name);
   assert.equal(table.get(row.name)?.status, 'stopped');
   assert.deepEqual(calls.filter(c => c !== 't1:limitPolls'), harness === 'claude-code' ? ['t1:identity', 't1:stop', 't1:run'] : ['t1:identity', 't1:stop']);
@@ -161,7 +167,7 @@ for (const mode of ['poll', 'resume'] as const) for (const pending of [false, tr
   const sessions = new Sessions({ root, core, table, hosts: [remote] });
   const adapter = new ClaudeCodeAdapter(sessions.host({ node: '', cli: '', spoke: '', discoveryFile: '' }), { ...(mode === 'poll' ? { clock } : {}), env: fixtureEnvironment(root, process.env), agentsMs: 0, pollMs: mode === 'poll' ? 10 : 600_000 });
   sessions.register(adapter);
-  t.after(async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
+  onCleanup(t, async () => { await sessions.close(); table.close(); core.close(); core.store.close(); });
   if (mode === 'poll') {
     adapter.watch(row);
     await clock.advance(100);
@@ -221,7 +227,7 @@ for (const control of ['different-job', 'different-conversation', 'changed-birth
   host.recordPid = (_id, pid) => { publications.push(pid); };
   const adapter = new ClaudeCodeAdapter(host, { env: fixtureEnvironment(root, process.env), agentsMs: 0, pollMs: 600_000 });
   sessions.register(adapter);
-  t.after(async () => { release.resolve(); await sessions.close(); table.close(); core.close(); core.store.close(); });
+  onCleanup(t, async () => { release.resolve(); await sessions.close(); table.close(); core.close(); core.store.close(); });
   const flight = adapter.resume(row);
   const outcome = flight.then(value => ({ value }), error => ({ error: String(error) }));
   if (control.startsWith('stale') || control === 'closed') {

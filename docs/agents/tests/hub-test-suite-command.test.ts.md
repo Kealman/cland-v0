@@ -1,5 +1,10 @@
 # hub/test/suite-command.test.ts
 
+The scoped CLI guard regression uses an in-memory callback fake as its
+underlying launch. It proves the exact scoped callback is delegated once,
+while unscoped/altered entries, custom promisification and spawn are refused;
+caught violations remain a failed guard verification receipt.
+
 T2 uses fake child streams, native process operations and timers. No process,
 socket, network request or real-time stall is needed. Run with
 `node --test hub/test/suite-command.test.ts` after targeted admission.

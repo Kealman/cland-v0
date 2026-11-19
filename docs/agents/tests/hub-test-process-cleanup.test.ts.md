@@ -1,5 +1,14 @@
 # hub/test/process-cleanup.test.ts
 
+`fenceFixtureCleanup` is opt-in; the legacy cleanup owner still aggregates
+errors and attempts every phase. Fenced contexts record only fulfilled steps,
+share each in-flight close, retain failed steps for repair, and do not remove
+directories or release scripted/native guards after a rejected writer close.
+The per-root removal guard consults the same writer receipts. Releases run in
+reverse registration order only after resources, hubs, directories and checks
+succeed. The fake-only held/rejected-close and repair proof lives in T2
+`claude-code-schedule.test.ts`; this T3 file retains the native cleanup contracts.
+
 `hub/test/process-cleanup.test.ts` is T3. Its synthetic native boundary retains
 equal lstart timestamps while changing birth microseconds, preserves the reused
 PID, and positively signals a separate original identity. With a live writer and

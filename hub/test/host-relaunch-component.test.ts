@@ -6,6 +6,9 @@ import { sessionUi } from './session-credential-fixture.ts';
 import { testHost } from '../src/host/test-host.ts';
 import { localHost } from '../src/host/local.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+
+test.beforeEach(t => fixtureNativeGuard(t as test.TestContext, { fenced: true }));
 
 test('C1 live host relaunch reuses placement and refuses a different requested host', async t => {
   const root = await tempProject(t);

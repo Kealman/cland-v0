@@ -1,5 +1,9 @@
 # hub/test/pool-scale.test.ts
 
+Injected creators pass a fake lock process table to lease create/renew calls.
+Every case installs the positive native launch guard through cleanup. This
+file remains T2, including the lease renewal cases.
+
 The injected creator seeds a settled Codex disk binding through `settledLogin`
 before publishing each ready fake host, matching its provider and region. This
 keeps scaling and lease assertions independent of native login acquisition;

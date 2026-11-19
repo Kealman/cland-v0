@@ -7,6 +7,7 @@ import { projectHub, tempProject, connectUi, cland } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import {fakeLockProcesses} from './fakes/lock-processes.ts';
 import { settledLogin } from './settled-login-fixture.ts';
+import { fixtureCliNativeGuard } from './fake-native-guard.ts';
 
 test('C1 status includes configured empty pools and zero settled spend',async t=>{
  const root=await tempProject(t);
@@ -22,6 +23,7 @@ test('C1 status includes configured empty pools and zero settled spend',async t=
 });
 
 test('C1/C2 status weights sessions and clips live accrual to UTC day/month, excluding reservations',async t=>{
+ await fixtureCliNativeGuard(t);
  const { HostSecretStore }=await import('../src/host/records.ts');
  const { testHost }=await import('../src/host/test-host.ts');
  const { localHost }=await import('../src/host/local.ts');
@@ -52,10 +54,11 @@ test('C1/C2 status weights sessions and clips live accrual to UTC day/month, exc
  assert.equal(waitingPool.slotsUsed,0.5);assert.equal(waitingPool.slotsPromised,0.5);assert.deepEqual(waitingPool.hosts.flatMap(h=>h.sessions),[]);
  gate.resolve();const launch=await launching;assert.equal(launch.ok,true,launch.error);
  const lease={project:root,lease:'settled',pool:'agents',size:'fake',priceHourly:2,billingMinimumMs:0,created:'2026-11-02T00:00:00Z',deadline:'2026-11-02T01:00:00Z'};
- await reserveHostSpend(lease,{shared:1000,hosts:1000},hub.hostEnvironment,{clock});
- await settleHostSpend(root,'settled',lease.deadline,hub.hostEnvironment,{clock});
- await reserveHostSpend({...lease,lease:'reservation-only'},{shared:1000,hosts:1000},hub.hostEnvironment,{clock});
- for(const id of ['z-host','a-host'])await reserveHostSpend({...lease,lease:id,created,deadline:'2026-11-03T00:00:00Z'},{shared:1000,hosts:1000},hub.hostEnvironment,{clock});
+ const timing={clock,processes:fakeLockProcesses().processes};
+ await reserveHostSpend(lease,{shared:1000,hosts:1000},hub.hostEnvironment,timing);
+ await settleHostSpend(root,'settled',lease.deadline,hub.hostEnvironment,timing);
+ await reserveHostSpend({...lease,lease:'reservation-only'},{shared:1000,hosts:1000},hub.hostEnvironment,timing);
+ for(const id of ['z-host','a-host'])await reserveHostSpend({...lease,lease:id,created,deadline:'2026-11-03T00:00:00Z'},{shared:1000,hosts:1000},hub.hostEnvironment,timing);
  const result=await ui.request({type:'host.status'});assert.equal(result.ok,true,result.error);
  const pool=(result.value as {pools:Array<{hostCount:number;slotsUsed:number;slotsTotal:number;spend:unknown;hosts:Array<{id:string;sessions:string[];uptime:number;priceHourly:number;state:string;size:string;region:string}>}>}).pools[0]!;
  assert.equal(pool.hostCount,2);assert.equal(pool.slotsUsed,0.5);assert.equal(pool.slotsTotal,8);

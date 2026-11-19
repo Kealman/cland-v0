@@ -15,6 +15,10 @@ import { readHostLeaseFile } from '../src/host/host-leases.ts';
 import { HostSecretStore } from '../src/host/records.ts';
 import { Store } from '../src/hub/store.ts';
 import { settledLogin } from './settled-login-fixture.ts';
+import { fakeLockProcesses } from './fakes/lock-processes.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+
+test.beforeEach(t => fixtureNativeGuard(t as test.TestContext, { fenced: true }));
 
 async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof Promise.withResolvers<void>>, lease=false) {
  const root=await tempProject(t);
@@ -39,7 +43,7 @@ async function fixture(t:test.TestContext,min=0,max=1,prepare?:ReturnType<typeof
   options.admit?.('agents',readHostPools({agents:{provider:'fake',region:'fake',slots:1,min_hosts:min,max_hosts:max}}).pools.agents!);
   options.records.provisions.save(row);
   if(lease){
-   const o={root,env,clock,leaseMs:30000,caps:{shared:10,hosts:10},pool:'agents',size:'fake',priceHourly:0,billingMinimumMs:60000};
+   const o={root,env,clock,processes:fakeLockProcesses().processes,leaseMs:30000,caps:{shared:10,hosts:10},pool:'agents',size:'fake',priceHourly:0,billingMinimumMs:60000};
    await records.leases.create(id,o);
    records.leases.arm(id,o,()=>records.provisions.get(id)?.state==='ready'&&(options.inUse?.(id)??records.provisions.heldByMinimum(id,'agents',min)),error=>{throw error;},async()=>{expired.push(id);});
   }
