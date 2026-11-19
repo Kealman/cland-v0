@@ -2,6 +2,64 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { lintQaBrief } from '../src/qa-lint.ts';
+import { lintQaRunCopy } from '../src/qa-lint-references.ts';
+import { withCleanupAsync } from '../src/cleanup.ts';
+
+test('QA fixture settlement preserves the selected deadline and reports secondary cleanup failure', async () => {
+  const primary = Object.assign(new Error('lint CLI behaviour incomplete'), { code: 'fixture-deadline' });
+  const entered = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const settled = withCleanupAsync(async () => { throw primary; }, async () => {
+    entered.resolve();
+    await release.promise;
+    throw new Error('native close incomplete; root retained');
+  });
+  let outcomeSettled = false;
+  void settled.then(() => { outcomeSettled = true; }, () => { outcomeSettled = true; });
+  const assertion = assert.rejects(settled, error => {
+    assert.equal(error, primary);
+    assert.equal(primary.code, 'fixture-deadline');
+    assert.match(primary.message, /^lint CLI behaviour incomplete; cleanup failed: native close incomplete; root retained$/);
+    return true;
+  });
+  await entered.promise;
+  assert.equal(outcomeSettled, false, 'cleanup must join before the failure is reported');
+  release.resolve();
+  await assertion;
+  assert.equal(outcomeSettled, true);
+  const cleanupOnly = new Error('root retained');
+  await assert.rejects(withCleanupAsync(async () => 'success', async () => { throw cleanupOnly; }), error => error === cleanupOnly);
+});
+
+test('run-copy seal advice detects a scratch launch without the shared builders', () => {
+  const source = 'Scratch launch:\nspawn(bin, args, { env: process.env });';
+  assert.deepEqual(lintQaRunCopy(source).map(f => f.message.split(':')[0]), ['seal']);
+  assert.deepEqual(lintQaRunCopy(source + '\nfixtureEnvironment then scratchGitEnvironment after final overlays; nothing added afterwards.'), []);
+});
+
+test('run-copy advice flags unpinned reused kits and accepts a full kit commit', () => {
+  const source = 'Reuse the QA kit from the previous run.';
+  assert.deepEqual(lintQaRunCopy(source).map(f => f.message.split(':')[0]), ['kit-pin']);
+  assert.deepEqual(lintQaRunCopy(source + '\nKit commit: 0123456789abcdef0123456789abcdef01234567'), []);
+});
+
+test('run-copy advice calls for a build when a browser bundle is used', () => {
+  const source = 'Open web/dist/index.html in Chrome Headless Shell.';
+  assert.deepEqual(lintQaRunCopy(source).map(f => f.message.split(':')[0]), ['build']);
+  assert.deepEqual(lintQaRunCopy(source + '\nRun `npm run build` before launching.'), []);
+});
+
+test('run-copy census advice requires observer exclusion by pid', () => {
+  const source = 'Process census: ps -Ao pid=,command= | grep scratch';
+  assert.deepEqual(lintQaRunCopy(source).map(f => f.message.split(':')[0]), ['census-filter']);
+  assert.deepEqual(lintQaRunCopy(source + '\nExclude the observer pid exactly; keep the unfiltered capture.'), []);
+});
+
+test('run-copy exact list advice rejects subset expectations for generated registrations', () => {
+  const source = 'const expected = { exact: false, names: ["selected case"] };';
+  assert.deepEqual(lintQaRunCopy(source).map(f => f.message.split(':')[0]), ['exact-list']);
+  assert.deepEqual(lintQaRunCopy(source + '\nRequired cases: every generated registration, expanded at the build.'), []);
+});
 
 // Use a reserved invalid fixture name: the real command surface grows between task and merge builds.
 test('brief command findings name the source line and offending command', () => {

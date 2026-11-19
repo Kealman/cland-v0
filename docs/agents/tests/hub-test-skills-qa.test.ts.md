@@ -1,5 +1,12 @@
 # hub/test/skills-qa.test.ts
 
+The corrected-run guidance regression provisions the actual shipped skill tree
+under a disposable fixtureWork-owned root. It reads RUN-COPY.md from that copy,
+checks all five advisory classes and the latest-corrected-copy instruction, and
+checks the skill and copied-brief links resolve to that shipped file. The planted
+pre-fix control failed ENOENT for RUN-COPY.md. No CLI, browser or hub is launched
+by this installed-copy check.
+
 `hub/test/skills-qa.test.ts` is T2: `qa-record.sh` is the CLI subject and the scripted headless fixture supplies native output. Demo regressions return envelopes from scratch files, preserving fake credentials outside argv. They read the exact durable runs.jsonl receipt and copied files, and observe the cleanup acknowledgement after successful publication. Unsafe second captures must leave no partial local files or cleanup acknowledgement. Legacy no-manifest and complete false/zero facts retain PASS.
 
 All shell children run from disposable roots through `fixtureEnvironment` after the last overlay. The build-stamp regression seeds only repository directories and a known ref through filesystem writes; the recorder CLI reads that ref through Git. No native Git setup runs in T2. No real hub process, provider or browser is needed for these demo-policy checks; the existing T3 demo contract retains those responsibilities.

@@ -2,7 +2,12 @@
 
 Run `cland qa lint <brief>` from the build under test before requesting item or stage QA. In this repository use `node hub/bin/cland.ts qa lint qa/briefs/T-957.md`. Drafting ends when **qa lint passes at the build**. The command reads the brief and this executable’s help and built-in permissions. Source references read Git blobs from HEAD of the current repository, or `--commit <sha>` (also `--commit=<sha>`); run from the build’s repository root. It ignores uncommitted source. Keep the executable on the build being tested so its help and roles also match. It never executes a command from the brief, needs no running hub and runs in production installs with development dependencies pruned. Its verification checks use the same dependency-free policy as runtime admission.
 
-Exit codes: 0 has no findings; 1 prints one `file:line: finding: command` per finding (the command is omitted for record metadata); 2 is a usage, file-read or build-source read error. A clean source check prints the resolved full SHA. A brief without source references needs no Git repository unless `--commit` is supplied. `cland qa --help` prints the synopsis.
+Exit codes: 0 has no blocking findings; 1 prints one `file:line: finding: command` per blocking finding (the command is omitted for record metadata); 2 is a usage, file-read or build-source read error. A clean source check prints the resolved full SHA. A brief without source references needs no Git repository unless `--commit` is supplied. `cland qa --help` prints the synopsis.
+
+## Corrected run copies
+
+Use the shipped QA kit's [corrected run-copy guidance](../../.agents/skills/qa/RUN-COPY.md).
+It is the single preparation/advisory reference and travels with installed skills.
 
 Use a Markdown check table with `id` or `case`, plus `command` and `expected` columns. `check` and `check id` also identify check IDs. IDs are unique across these tables, including case and manual tables. A `surface` column accepts `headless-grid`, `tmux`, `web-terminal`, `hub-api` or `real-browser`; executor names such as `droplet` belong in a separate `where` column. Record real-browser computer-use cases with `qa-record.sh note` and screenshot evidence; acceptance by lint grants no browser access. The qa skill’s “Web briefs” section defines the QA-only launch, normal HOME/keychain with a dedicated cland profile, page/permission scope, Cancel-only system dialog handling and tab cleanup. Commands may also appear in `command and expected outcome`, `method`, `action` or `note` columns. Wrap commands in backticks; a plain command cell works too. Escape a shell pipe as `\|` in Markdown.
 

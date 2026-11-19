@@ -11,3 +11,16 @@ Title scanning is dependency-free and lexical. Quoted, escaped and static-templa
 M4 preserves the difference between a closing control condition (a following regex starts a statement) and an ordinary call’s closing parenthesis (a following slash can be division). Keep arrow/if/while/for/else/return regex decoys, literal/static-title positives, and division/interpolation positives. A nonterminated slash must not swallow a later declaration.
 
 The agreed drift-detector bar excludes adversarial project sources. The for-await/postfix/object/function-division matrix is a pre-fix false-absence control: it initially returned lines [2,3,4,5] instead of [1]. For-await and postfix tokens preserve known contexts; brace/slash ambiguity remains fail-closed with unresolved findings, preserving real names already identified without claiming hidden names are absent. Keep the original table, static/escaped-title, division and interpolation assertions.
+
+T-1903 adds pure T1 run-copy advisory controls through `lintQaRunCopy`.
+Each correction class has a planted missing-guidance positive and a completed
+guidance negative. These test lexical presence only; they do not claim execution
+of helpers, exact case expansion or pin freshness. Blocking `lintQaBrief`
+regressions remain unchanged. The separate T2 `qa-lint-cli.test.ts` control
+proves all five file/line report-only messages leave exit 0 and coexist with an
+existing blocking command finding returning exit 1. Neither test opens a browser.
+
+The pure settlement control exercises the shared withCleanupAsync contract used
+by the CLI fixture: the selected error object and code survive cleanup failure,
+cleanup is joined before reporting, its diagnostic stays secondary, and a
+cleanup-only failure still fails. This control does not launch native work.

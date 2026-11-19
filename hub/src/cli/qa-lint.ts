@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { treeSources } from '../git-tree-sources.ts';
-import { qaBriefNeedsBuild, qaBuildSourceFile } from '../qa-lint-references.ts';
+import { lintQaRunCopy, qaBriefNeedsBuild, qaBuildSourceFile } from '../qa-lint-references.ts';
 import { lintQaBrief } from '../qa-lint.ts';
 import { QA_LINT_USAGE } from './usage.ts';
 
@@ -36,6 +36,7 @@ export async function runQaLint(args: string[], cwd = process.cwd(), io: Output 
   }
   const findings = lintQaBrief(source, build);
   for (const finding of findings) io.err(`${path}:${finding.line}: ${finding.message}${finding.command ? `: ${finding.command}` : ''}\n`);
+  for (const finding of lintQaRunCopy(source)) io.err(`${path}:${finding.line}: report-only ${finding.message}\n`);
   if (!findings.length) io.out(`${path}: qa lint passes at the build${sha ? ` ${sha}` : ''}\n`);
   return findings.length ? 1 : 0;
 }

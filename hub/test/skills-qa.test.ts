@@ -13,6 +13,23 @@ import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { clandCliLaunch } from './tier-cli.ts';
 import { cland, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { fixtureWork } from './fixture-work.ts';
+
+test('installed QA skill and copied brief resolve the shared corrected-run guidance', async t => {
+  await fixtureWork(t).run(async owned => {
+    const root = await owned.root(() => tempProject(t));
+    await owned.step(() => provisionSkills(new Report(root), root));
+    const skillRoot = join(root, '.agents/skills/qa');
+    const guidance = await owned.step(() => readFile(join(skillRoot, 'RUN-COPY.md'), 'utf8'));
+    assert.match(guidance, /latest corrected run copy/);
+    for (const kind of ['seal', 'kit-pin', 'build', 'census-filter', 'exact-list']) assert.ok(guidance.includes(kind));
+    const skill = await owned.step(() => readFile(join(skillRoot, 'SKILL.md'), 'utf8'));
+    assert.ok(skill.includes('(RUN-COPY.md)'));
+    const brief = await owned.step(() => readFile(join(skillRoot, 'BRIEF.md'), 'utf8'));
+    assert.ok(brief.includes('(../../.agents/skills/qa/RUN-COPY.md)'));
+    assert.equal(resolve(root, 'qa/briefs', '../../.agents/skills/qa/RUN-COPY.md'), join(skillRoot, 'RUN-COPY.md'));
+  });
+});
 
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const SKILL = join(REPO, '.agents', 'skills', 'qa');

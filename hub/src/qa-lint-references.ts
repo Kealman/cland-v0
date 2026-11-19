@@ -1,6 +1,32 @@
 // Read source syntax only: a brief must never execute tests to discover their names.
 import type { QaLintFinding } from './qa-lint.ts';
 
+/** Advisory presence checks only; these never participate in brief admission. */
+export function lintQaRunCopy(source: string): QaLintFinding[] {
+  const findings: QaLintFinding[] = [];
+  const lines = source.split(/\r?\n/);
+  const advise = (trigger: RegExp, satisfied: boolean, message: string) => {
+    const index = lines.findIndex(line => trigger.test(line));
+    if (index >= 0 && !satisfied) findings.push({ line: index + 1, message });
+  };
+  advise(/\b(?:spawn|execFile|exec)\s*\(/,
+    source.includes('fixtureEnvironment') && source.includes('scratchGitEnvironment'),
+    'seal: describe fixtureEnvironment and scratchGitEnvironment after final overlays, with no additions afterwards');
+  advise(/\bQA kit\b|\.agents\/skills\/qa\/|\b(?:reuse|reused|copy|copied)\b.*\bkit\b/i,
+    /^\s*Kit commit:\s*`?[a-f\d]{40}`?\s*$/im.test(source),
+    'kit-pin: record Kit commit: <full SHA> for the reused helpers, separately from the tested build');
+  advise(/web\/dist|Chrome Headless Shell|Chrome for Testing|playwright/i,
+    /\bnpm run build\b/.test(source),
+    'build: include npm run build before browser or bundle checks');
+  advise(/\bps\s+-|\bpgrep\b/,
+    /\bexclud\w*\b[^\n]*\b(?:own|observer)\b[^\n]*\bpid\b/i.test(source),
+    'census-filter: exclude the observer by its exact pid and retain the unfiltered capture; name filters alone miss framework Python');
+  advise(/\bexact\s*:\s*false\b|--test-name-pattern|\b(?:all|every)\s+(?:required\s+)?tests\b/i,
+    /^\s*Required cases:\s*\S/im.test(source),
+    'exact-list: record Required cases: with the complete generated registrations at the build, including exact: false files');
+  return findings;
+}
+
 const guidePath = /(?<![\w/.-])docs\/agents\/tests\/[\w.-]+\.md\b/g;
 const guideFiles = (text: string): string[] => [...text.matchAll(guidePath)].map(m => m[0]);
 const testFiles = (text: string): string[] => [...text.replace(guidePath, ' ').matchAll(/(?<![\w/.-])((?:[\w.-]+\/)*[\w.-]+\.(?:test|spec)\.[cm]?[jt]sx?)\b/g)].map(m => m[1]!);

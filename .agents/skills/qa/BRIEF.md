@@ -2,6 +2,11 @@
 
 Copy to `qa/briefs/T-<n>.md`. Everything the run needs is in this file or in the files it names: whoever runs it cannot ask.
 
+For a repeated or reused run, start from the latest corrected run copy and follow
+[corrected run copies](../../.agents/skills/qa/RUN-COPY.md),
+the shared preparation and advisory reference. Record its source brief and
+correction commit here, then reconcile and pin the reused helpers.
+
 The following helper link is relative to the copied brief in `qa/briefs/`.
 Publish evidence with `publishSessionEvidence` through the shared
 [scan-and-publish helper](../../.agents/skills/qa/EVIDENCE.md).
