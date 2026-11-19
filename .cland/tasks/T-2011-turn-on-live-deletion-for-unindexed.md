@@ -2,8 +2,8 @@
 id: T-2011
 kind: task
 title: Turn on live deletion for unindexed suite-run directories after a replay of T-1992's report-mode classification
-state: open
-status: planned
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T17:35:06.748Z
-updated: 2026-11-19T17:50:03.470Z
+updated: 2026-11-19T18:37:12.466Z
+closed: 2026-11-19T18:37:12.466Z
 ---
 
 ## Summary
@@ -30,3 +31,9 @@ After T-1992 has landed and a hub restart has run its unindexed report mode for 
 - [ ] C1. The replay artifact lists the live unindexed would-retire counts by class from T-1992's report lines, and the first live sweep retires no unindexed run that is referenced, has any file newer than the floor, or has a tree beyond the inventory bound (artifact plus test).
 - [ ] C2. A live pass over unindexed runs on a 50,000-root fake fixture keeps `task.view` within its bound and records pass IO time (test, native slot).
 - [ ] C3. Before removal, the guarded owner rechecks the newest descendant mtime, not just the root's (`retireSuiteRun` checks only root mtime at suite-raw-coverage.ts:87), or fences writers by identity. A deterministic control rewrites a nested file between inventory and removal and shows the run kept (test).
+
+## Comments
+
+### coord · 2026-11-19T18:37:12.466Z
+
+Superseded by the human's one-off rule 27 exception (General, 2026-11-19 18:36Z, answer to ask 2da0c7c7): T-1992 deletes unindexed run directories directly. This item's C3 (removal-time descendant recheck) moved to T-1992 as C6.

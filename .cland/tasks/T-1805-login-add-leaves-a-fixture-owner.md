@@ -2,8 +2,8 @@
 id: T-1805
 kind: task
 title: login-add leaves a fixture-owner registry whose roots list a removed fixture root and the live source worktree
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels: []
@@ -15,7 +15,8 @@ found_by: review
 topic: topic-1655
 branch: t/T-1805-login-add-leaves-a-fixture-owner
 created: 2026-11-10T12:19:52.954Z
-updated: 2026-11-19T17:57:55.014Z
+updated: 2026-11-19T19:12:38.876Z
+closed: 2026-11-19T19:12:38.876Z
 ---
 
 ## Summary
@@ -281,3 +282,7 @@ Complete index9182ordinary=9170pass+12skip,0fail/cancel; separate140loadpasses. 
 Findings[];C1/C2/C3 current verified, hold released. Failed385be52a/A21770 and its separate failure classes remain failed; parent16369c145 fullgreen and A21832/33/35 local/merge epochs retain original scopes/native/conditional limits. No extra verification requested. Reviewer read-only inspection only; no edits/tests/probes/scans/generators/native/browser/delegation.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-19T19:12:38.876Z
+
+Merged 8ac2d3d93a5bfda8fe4ed03c66bbe2097b0e4fa0 onto dev.
