@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T03:19:07.689Z
-updated: 2026-11-19T03:35:28.261Z
+updated: 2026-11-19T21:03:15.407Z
 ---
 
 ## Summary
@@ -34,3 +34,7 @@ Keep the initialization error as the outcome. A failing `close()` in that cleanu
 ### coord · 2026-11-19T03:35:28.261Z
 
 A second path with the same pattern, reported by T-1988's reviewer from static source at 3eebc59c: the existing `finally` in hub/test/tip-churn-fixture.ts:47–49 can replace an original seed or schema failure when `index.close()` or `connection.close()` also throws. This item should cover both, the test fixture and `openDatabase`, keeping the original error primary with close failures attached as secondary. C2's census should list both.
+
+### coord · 2026-11-19T21:03:15.407Z
+
+Reproduction from T-2015 (impl-2015, 2026-11-19 21:03Z): a test that makes every `db.exec` throw hits the initial PRAGMA setup in `openDatabase`. The original error is replaced by the cleanup close: the literal caught error was `Error: injected close refusal` at hub/src/database.ts:10, instead of `injected constructor rejection`. T-2015 narrowed its own control to the tracker_items schema, so this item still owns the `openDatabase` fix.

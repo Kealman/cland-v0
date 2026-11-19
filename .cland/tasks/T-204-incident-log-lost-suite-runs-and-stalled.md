@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-19T12:50:37.003Z
+updated: 2026-11-19T20:39:18.506Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -670,3 +670,11 @@ Restart #87 (2026-11-19, on coord's GO): hub r86 pid 49256 (rollback code a343e3
 ### human · 2026-11-19T12:50:37.003Z
 
 Restart #88 (2026-11-19, on coord's GO after the human's answer to ask 7e4ea70b): hub r87 pid 72462 (db53a0cb9) stopped 12:48:18Z; job cland-hub-r88 pid 38295 started from the root at 5e3a2005c (dev = origin/dev), serving 12:48:33.350Z, gap 15 s. Binding listeners 5 ms, web listener 407 ms. Port 49800, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 12:48:33.518Z, injected 12:48:36.960Z. task view 0.12-0.47 s, no tracker-storage-stalled lines. Batch eb9e7cad (T-1729, T-1669) survived with droplet run 32669467 still running. T-1957 retention ran in report mode: total 5,266, kept 5,242, wouldRetire 24, removed 0; .cland/run/suites stayed at 96,758 entries. Before the restart the human ran sudo killall fseventsd (old pid 97903 at 4.1 GB, new pid 12267 at 7 MB, about 12:44Z). Rollback worktree prepared at db53a0cb9 (jobs/92748b6f/tmp/hub-db53a0cb9); the a343e305a one is kept.
+
+### human · 2026-11-19T20:29:02.350Z
+
+Restart #89 (2026-11-19, on coord's GO after the human's answer to ask 6ac5abf4): hub r88 pid 38295 (5e3a2005c) stopped 20:27:14Z; job cland-hub-r89 pid 34235 started from the root at a8fc01d32 (dev = origin/dev, T-1992 landed), serving 20:27:30.759Z, gap 16 s. Binding listeners 5 ms, web listener 1,428 ms. Port 59380, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail; web/dist rebuilt before the stop. Coord bridge-connected 20:27:31.694Z, injected 20:27:48.093Z. task view 0.33 s, no tracker-storage-stalled lines. Batch 16ac6f59 (T-1890, T-1903) and impl-1695's droplet run survived. First live retention pass: 38,853 ms, removed 24 indexed runs, unindexed scanned 4,096 and removed 0 (age-floor 3,891, indexed 205); .cland/run/suites stayed at about 110,430 entries. Rollback worktree prepared at 5e3a2005c (jobs/92748b6f/tmp/hub-5e3a2005c).
+
+### human · 2026-11-19T20:39:18.506Z
+
+Restart #90, rollback (2026-11-19, on coord's GO after the human's answer to ask 23379f12): on a8fc01d32 every merge batch blocked (T-1956's batch ownership capture; fix in T-2015). Hub r89 pid 34235 stopped 20:37:00Z; job cland-hub-r90 pid 73080 runs code from the worktree jobs/92748b6f/tmp/hub-5e3a2005c with the root as cwd, serving 20:37:15.995Z, gap 16 s. Binding listeners 6 ms, web listener 434 ms. Port 60228, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 20:37:16.153Z, injected 20:37:36.006Z. No tracker-storage-stalled lines. Batch 63c81cf8 (T-1890, T-1903) was not restored; coord re-enqueued both at 20:38Z. Live suite retention (T-1992) is off again on this build; on a8fc01d32 it ran one pass in 9.5 minutes (removed 24, unindexed removed 0). The worktree must stay while this hub runs.

@@ -2,8 +2,8 @@
 id: T-1992
 kind: task
 title: Turn on live deletion for suite-run retention once run-reference pins exist, with the configurable age floor and its help and fixture migration
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1658
 branch: t/T-1992-turn-on-live-deletion-for-suite-run
 created: 2026-11-19T01:26:36.765Z
-updated: 2026-11-19T19:08:33.683Z
+updated: 2026-11-19T20:26:30.207Z
+closed: 2026-11-19T20:26:30.207Z
 ---
 
 ## Summary
@@ -31,16 +32,22 @@ Enable deletion through T-1957's guarded deletion owner, respecting pins, the re
 
 - [x] C1. The report-mode replay artifact lists the would-retire counts and classes from the live logs, and the first live sweep retires no run that is pinned or younger than the floor (artifact plus test).
   - done: impl-1992 · 2026-11-19T18:56:45.791Z
+  - verified: rev-35 [reviewer] · run rev-35-1992-evidence-1 · 2026-11-19T19:37:14.416Z · commit 667f0d783ee07a0fa4b704720f91707c13ac3e85
 - [x] C2. The age-floor key parses, is documented in help, and its frozen fixtures are migrated (test).
   - done: impl-1992 · 2026-11-19T17:30:46.999Z
+  - verified: rev-35 [reviewer] · run rev-35-1992-evidence-1 · 2026-11-19T19:37:14.416Z · commit 667f0d783ee07a0fa4b704720f91707c13ac3e85
 - [x] C3. A live sweep on a fake root of 50,000 runs keeps `task.view` answering within a named bound (test, native slot).
   - done: impl-1992 · 2026-11-19T19:06:49.939Z
+  - verified: rev-35 [reviewer] · run rev-35-1992-evidence-1 · 2026-11-19T19:37:14.416Z · commit 667f0d783ee07a0fa4b704720f91707c13ac3e85
 - [x] C4. Retention also retires run directories under `.cland/run/suites` that the hub's run index doesn't know (about 91,000 of 96,758 on 2026-11-19), live from the start under the human's one-off rule 27 exception (General, 2026-11-19 18:36Z, answer to ask 2da0c7c7), with per-pass counts by class logged. A run qualifies only on a positive absence receipt from the index, no reference, pin or pointer, and the newest mtime across its bounded inventory past the age floor. Trees beyond the inventory bound are retained. A fake root with indexed and unindexed runs, including an unindexed referenced run and an unindexed run with one new file inside an old root, shows the outcome (test).
   - done: impl-1992 · 2026-11-19T18:56:46.061Z
+  - verified: rev-35 [reviewer] · run rev-35-1992-evidence-1 · 2026-11-19T19:37:14.416Z · commit 667f0d783ee07a0fa4b704720f91707c13ac3e85
 - [x] C5. Before the first live sweep, runs referenced only by pre-existing criterion verification marks (which `retainsSuiteRun` in tracker/index-db.ts doesn't query today) are backfilled into pins or indexed keep protection. A fixture with a criterion-only reference shows that run kept (test).
   - done: impl-1992 · 2026-11-19T17:48:00.627Z
+  - verified: rev-35 [reviewer] · run rev-35-1992-evidence-1 · 2026-11-19T19:37:14.416Z · commit 667f0d783ee07a0fa4b704720f91707c13ac3e85
 - [x] C6. Before removal, the guarded owner rechecks the newest descendant mtime, not just the root's (`retireSuiteRun` checked only root mtime at suite-raw-coverage.ts:87), or fences writers by identity. A deterministic control rewrites a nested file between inventory and removal and shows the run kept (test).
   - done: impl-1992 · 2026-11-19T18:56:46.255Z
+  - verified: rev-35 [reviewer] · run rev-35-1992-evidence-1 · 2026-11-19T19:37:14.416Z · commit 667f0d783ee07a0fa4b704720f91707c13ac3e85
 
 ## Comments
 
@@ -141,3 +148,30 @@ Source4 clear at667f0d783ee07a0fa4b704720f91707c13ac3e85/tree555c0cf1d94d335ef24
 A-21860 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21860-t-1992-source4-clear-separate-owned-setup-bound-and-joined-seed-chunks.md). Production C6/default-on authority/allowances are unchanged from reviewed source3; no additional source finding. Human exception and conservative C6 scope remain as authorized.
 
 No criterion marks added: C1–C6 remain runtime-unverified pending current-head configured receipts. A-21859's5 helper controls/lint/typecheck are correction-epoch evidence, not an executed current T4 case. Prior26ea38da/A-21857 at cdeea1ca0 excludes T4 and remains separate. Primary Coordinator43779508 plans mode-free task verification including changed T3/T4, with full integrated T3 in the merge batch. No Reviewer runtime/edit performed. Any head/default change requires fresh source review.
+
+### rev-35 · 2026-11-19T19:37:14.416Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1992-evidence-1
+commit: 667f0d783ee07a0fa4b704720f91707c13ac3e85
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear at667f0d783ee07a0fa4b704720f91707c13ac3e85/tree555c0cf1d94d335ef242bf2c096b3ba4f28b3f8d. Source4 clearance current; worktree clean/unchanged. Producing17d5e176/A-21877 passed at this head. Full audit A-21881 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21881-t-1992-final-clear-exact-head-indexed-and-live-unindexed-runtime-evidence.md).
+
+Independently streamed ordinary7023passed/0failed/0skipped/0cancelled (6878top-level+145nested),729passing files; all starts/finishes match, no duplicate identities. Separate70passing load tests/70envelopes:14authored T1/T2 cases each5distinct current-run passes; current IDs do not reuse prior26ea38da. Exact manifest completion:232T1,441T2(including44Neovim/385tests),55Web and changed T4 scale file. T3 deferred to integrated merge batch; other T4 unexecuted. Changed T4's3cases each run once, no repetitions claimed.
+
+C1 indexed replay accepted by Coordinator plus current pin/age keep controls; C2 age/cap parser, frozen compatibility and help receipts; C3 all3T4 scales; C4 exact default/report/deletion class/retained-byte controls; C5 historical criterion-only protection, constructor-failure close and positively controlled10k-row production-query plans; C6 actual-owner equal-length nested rewrite with retained new bytes/restored root. Each required case's producer pass and unchanged final source assertions checked beyond exit0.
+
+Live-unindexed T4:4096scanned/4093removed, pass39.706441176s, task.view4.815299ms<1000ms; case50.417482972s. Indexed4091removed/task.view4.916656ms; actual callback108lookups/task.view3.83862ms. Empty removed directories/filesRemoved0 remain a floor for populated live IO, with the reloadable cap as throttle. C6 is conservative revalidation, not atomic writer fencing or native exit proof.
+
+Uncached canonical verification snapshot fcd1fb9c933d0f15577d7ad21ca89748862b5408; Linuxx64droplet6.8.0-149/Node24.21/Neovim0.12.5,c-8ams3/workers2,lifetime1370.781s/$0.095193125. Actual Chrome Headless Shell1248/Google Chrome for Testing156.0.8078.4. T0/T1/T2/T4/Web exit0; lint/duration advisories report-only, T4 has no tier budget. Prior-head/working-tree/incomplete epochs remain separate. No Reviewer runtime/edit. Marks: verified C1,C2,C3,C4,C5,C6. Findings=[]; integrated fullT3 remains merge-batch evidence.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-11-19T20:26:30.207Z
+
+Merged a8fc01d327616a3800b388a5c1ac1170a410edb0 onto dev.

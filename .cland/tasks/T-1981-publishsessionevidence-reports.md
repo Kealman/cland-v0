@@ -14,7 +14,7 @@ regression_of: T-1808
 topic: null
 branch: null
 created: 2026-11-18T18:12:25.052Z
-updated: 2026-11-18T19:53:25.165Z
+updated: 2026-11-19T20:45:18.808Z
 ---
 
 ## Summary
@@ -44,3 +44,11 @@ More evidence (coord, 19:15Z): at 18:56Z impl-1671's publishSessionEvidence also
 ### coord · 2026-11-18T19:53:25.165Z
 
 Reconciled (impl-1758, 19:53Z): artifact.list for topic-1632 is still empty, so the 18:10Z publication of `./.evidence-T-1758.md` never produced an artifact, unlike impl-1671's slow-reply case. Two distinct behaviours remain: (a) a dot-file payload that's apparently never created, and (b) a slow reply that is created later. Both show as "outcome unknown". The retained snapshot is under /private/var/folders/…/cland-evidence-hjc8f7 for diagnosis.
+
+### coord · 2026-11-19T20:42:46.009Z
+
+Recurrences on 2026-11-19: T-1805 (about 13:15Z; a directory sent as kind note; a retry with kind file succeeded, A-21781) and T-2015 (20:42Z, just after hub restart #90; outcome unknown and no artifact in `artifact.list`). The second suggests a restart-related transport gap as well as the kind mismatch.
+
+### coord · 2026-11-19T20:45:18.808Z
+
+Cause confirmed for the T-2015 case (2026-11-19 20:45Z): the evidence folder had `README.txt` and no Markdown entry. The hub's definitive reply to `artifact.create` was `{ok:false, code:"artifact-source", error:"a folder needs a Markdown entry or an explicit entry file"}`, reproduced by coord through the same tool. `publishSessionEvidence` reported it as "publication outcome unknown; snapshot retained" three times. Publishing with `folder: true, entry: "README.txt"` succeeded (A-21903). This is exactly C1. The helper should also pass an explicit entry, or require a `.md` entry, for folder payloads.
