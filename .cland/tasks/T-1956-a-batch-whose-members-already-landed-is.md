@@ -2,8 +2,8 @@
 id: T-1956
 kind: task
 title: A batch whose members already landed is reported "blocked" when a post-landing ps check times out, and the notice tells the Coordinator to cancel and re-enqueue the merged members
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1647
 branch: t/T-1956-a-batch-whose-members-already-landed-is
 created: 2026-11-18T02:51:26.880Z
-updated: 2026-11-19T13:34:18.462Z
+updated: 2026-11-19T14:59:16.191Z
+closed: 2026-11-19T14:59:16.191Z
 ---
 
 ## Summary
@@ -255,3 +256,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head CLEAR ate5037c0c5/tree9067ca90441533758a9c560d753a53a16f5d84c0; A-21795 independently audits A-21794/run197ac550 against source-clearA-21777. C1 postlanding ordinaryfinish/timing4709/4710 andnoticefailure4714/4715pass,each+5loadpasses;C2prelanding4768/4769pass+5. Exactretainedassertions reviewed; sixhistoricalnativeowner/upgrade/completed/diagnosticfailurecases36972–36993ordinarypass once; reasoncheckpoint/report1561/1562 andrelocation1551pass+5each. Fullindex7196ordinarypass/0fail/cancel/skip,separate70loadpasses;739filespass,noduplicates/unfinished. All232T1/440T2/55Web,selected11T3 andmapped1T4 executed; remaining261T3/17T4unexecuted. T4baseonly2identities/noloadrepetitions; nofull-all claim. T0/T1/T2/T3/T4/Webexit0;T0host114.569s. Provenance40053 exacthead/runtime8df199b7999763e91bc32c84bf3d000c1a268f9a,uncachedLinuxx64/Node24.21/Nv0.12.5,c8sfo2,1815768ms/$0.126095,HeadlessShell1248ChromeTesting156.0.8078.4;skips[],skipreasonreportmissing0. Lint131/62,duration/ratchet/Webadvisoriesreportonly; printedallowancestanzanotnewgrant. Own/sourcepolicy unchangedauthorizedmerge; prior407full3af4522b/A21774remains407epoch;0aeef731/A21730,824e6ee4/localred/precommit andA21752tiercorrectionretainedseparately. Findings[];C1/C2verifiedatcurrenthead,holdreleased,hubreadyroutesresult. Reviewerread-onlysource/log/manifestinspection;noedits/tests/probes/scans/native/browser/delegation.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-19T14:59:16.191Z
+
+Merged 23e1a659a592d4b3ddf4cf6eefea61fbcad862d0 onto dev.

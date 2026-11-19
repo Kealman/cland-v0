@@ -3,7 +3,7 @@ id: T-1991
 kind: task
 title: "Durable run-reference pins for suite runs: verdict, criterion, coverage and duration publishers pin a raw run before referencing it, with an exclusive retirement claim"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-1657
 branch: t/T-1991-durable-run-reference-pins-for-suite
 created: 2026-11-19T01:26:31.956Z
-updated: 2026-11-19T13:41:13.953Z
+updated: 2026-11-19T14:48:47.937Z
 ---
 
 ## Summary
@@ -28,8 +28,8 @@ Before a publisher's final check and write, it creates a durable per-run pin. Re
 
 ## Acceptance criteria
 
-- [x] C1. For each publisher class, a deterministic overlap regression shows a pin taken before the claim retains the run, and a publish attempted after retirement is refused (test).
-  - done: impl-1991 · 2026-11-19T13:38:13.650Z
+- [ ] C1. For each publisher class, a deterministic overlap regression shows a pin taken before the claim retains the run, and a publish attempted after retirement is refused (test).
+  - failed: rev-35 [reviewer] · 2026-11-19T14:48:47.937Z · note Retry bf7a2441 failed in delivery fetch before tests; counts are unavailable and final verification awaits Coordinator-authorized rule-35 run 29e3e474.
 - [x] C2. A crash between pin and write leaves the run retained, and recovery never ages an unknown pin out (test).
   - done: impl-1991 · 2026-11-19T13:38:14.868Z
 - [x] C3. Every publisher and reader of raw-run references is listed with its disposition (rules 20 and 41).
@@ -102,3 +102,33 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Full source3 CLEAR at cleanb35d36e30dba2b9b460bd04b62e804bf61a8d355/tree931d630c, parent reviewed5a63d3fa/base5e3a2005; no dev merge. A-21802 records zeroStandards/Spec findings. M3resolved: tracker-owned positive-only SuiteReferencePins shares wholependingpromise, checkpoints only afterdurableadmission succeeds, removespendingonrejection, nevercachesunknown/retired/failed; newownerempty/lazywrite revalidation,no startupscan/globalcache. Copied real-world snapshot96238cb9a body/parsed reference corpus>=16: positivecoldadmission, fourrewriteszero matchingrealpath/mkdir/lstat/openentries, newrefpositive<=16; prior988!==0redretained. CounterexplicitlynotallfilesystemIO/timingspeedup. Separatepending/success/failure/unknown/coldowneropen-count controls meaningfullyretainrefusal. M1exactparsedsharedwriter/bodyadmission andM2capturedcanonicaldurationconsumptionremaincorrect; authorizations/concurrent source checks unchanged. C3correctedpublisher/reader/ownerinventory sourceverified; primary7d9603be/T1992C5oldmarkmigration only, deletionoff,legacywire/recordshapes unchanged. A21801 stagedtreematchesreviewedtree; selectedlocalprecommitmacOSarm64Node24.21 145T1/1482+29T2/13pins,fullcompiler/lintstatic0/zero refusals remain authored scopedobservations, not independentper-invocationtree/raw/native/scanproof. No configured/T3/T4/Web/provider/browser receipt. Setupfailures,988redandearlierM1/M2/source1/source2NCepochsretained. C3verified,C1/C2doneunverifiedpendingexactheadconfiguredfacts. Holdreleased forCoordinatorwindow. Static Reviewer reads only.
 
 Criteria: C3 verified.
+
+### rev-35 · 2026-11-19T14:44:22.115Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1991-evidence-1
+commit: b35d36e30dba2b9b460bd04b62e804bf61a8d355
+scope: evidence
+findings: [{"severity":"medium","text":"Verification E1: exact-head all-mode run 56cc3b92 exited 1 at 'replacement started during teardown is joined' (expected empty census, actual one live host-serve row). Own pin controls passed, but the original failed/partial run cannot supply final clearance. Coordinator 8a85ede1 attributes it to unrelated T-2009 and authorizes one same-head retry bf7a2441 after five isolated passes; preserve the original red and await that retry's producing receipt.","file":"hub/test/host-supervisor.test.ts","line":216}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence1 NOT CLEAR at unchanged clean b35d36e30dba2b9b460bd04b62e804bf61a8d355/Git931d630c. A-21815 audits failed56cc3b92/A21814 ownerexit1; A-21817 adds later Coordinator8a85ede1 attribution to unrelatedT2009 and exactlyone retrybf7a2441 after five isolatedpasses/A21816. Originalred remainsred; no new pin-source defect inferred, source3A21802/C3currentverification retained. Literal log47342 failure: AssertionError [ERR_ASSERTION]: replacement started during teardown is joined; expected[], actual one live host-serve row after awaitedclose; case40164fail2.477070765s at host-supervisor216. Own13pin cases28833–28897 allpass +5distinct each/65loadpasses; extra5durationwrapperloads yield70total. Ordinary8649=8639pass/1fail/9skip, separate70loadpass; combinedcompleted8719isnotordinarypasscount. No duplicate/unmatchedstarts/finishes. Returnedfiles917pass/1fail; T0/all232T1/all441T2 inclNVM44/385 complete. T3failed:272selected but only245returnedfileenvelopes, no completioninferred forothers. Web/T4unexecuted/browsernull;9skips carry platform/binaryreasons. UncachedLinuxx646.8.0-149Node24.21/Nv0.12.5,c8nyc1workers2,3328s/$0.2311accounting;104.803sT0hoststep distinct;advisoriesremainreport-only. C1failed only on originalverificationgate,C2doneunverified,C3sourcecurrent;nothingnewverified. Holdreleased; authorizedretryresultwillreceivefreshsameheadevidenceaudit, no furtherexperimentor sourcechange requested. Static Reviewer reads only.
+
+Criteria: C1 failed (The required configured all-mode run 56cc3b92 failed in host-supervisor; pin assertions passed, but final verification awaits the single authorized same-head retry (unrelated T-2009 attribution).).
+
+### rev-35 · 2026-11-19T14:48:47.937Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1991-evidence-2
+commit: b35d36e30dba2b9b460bd04b62e804bf61a8d355
+scope: evidence
+findings: [{"severity":"medium","text":"Verification E2: the producing hub result records retry bf7a2441 exit 1 during delivery fetch, SSH exit 255 with 'Operation timed out'. The retained log binds this head but contains no test progress records; counts and remote platform/browser are unavailable. This failed pre-test attempt supplies no final clearance. Keep it separate from 56cc3b92 and await the Coordinator-authorized rule-35 run 29e3e474.","file":".cland/artifacts/A-21818-suite-bf7a2441-3368-4375-af97-9d717085e59e-all-at-b35d36e.log","line":124}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence2 NOT CLEAR at unchanged clean b35d36e30dba2b9b460bd04b62e804bf61a8d355/Git931d630c. A-21819 retains bf7a2441/A21818 as a separate failed pre-test attempt: producing hub result reports delivery fetch, SSH exit255 and Operation timed out; retained log itself lacks that failure payload. No new pin-source defect inferred. Log124 binds same head/snapshotdea94c39; no suite-progress records, counts unavailable rather than zero/passing. T0 exit0/80.246s and successful delivery uploads do not imply tests ran; all runtime/Web/T4 phases unexecuted or without completion, planned counts/projections not passes. Remote platform/browser null, c8sfo2 lifetime123s/$0.0085 accounting only. Source3 clearance/C3 current verification retained; C1 final gate failed, C2 done/unverified, nothing new verified. Original56cc3b92 host-supervisor red, own13base+5 passes, CoordinatorT2009 attribution/A21816isolatedpasses remain distinct/A21815+A21817. Primarya7a60a60 authorizes rule35 resubmission1of2, pending29e3e474 at samehead; it is not current proof. Hold released; no source change/additional experiment or retry requested by Reviewer. Static reads only.
+
+Criteria: C1 failed (Retry bf7a2441 failed in delivery fetch before tests; counts are unavailable and final verification awaits Coordinator-authorized rule-35 run 29e3e474.).

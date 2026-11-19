@@ -3,7 +3,7 @@ id: T-2004
 kind: task
 title: A status-changing comment on a planned-stage item blocked the hub loop for about 19 s after a 1,627-item explorer refresh
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1656
 branch: t/T-2004-a-status-changing-comment-on-a-planned
 created: 2026-11-19T10:54:30.279Z
-updated: 2026-11-19T13:50:29.629Z
+updated: 2026-11-19T14:58:14.662Z
 ---
 
 ## Summary
@@ -29,8 +29,8 @@ Name the owner of the 19 s synchronous block with a CPU profile or per-step timi
 
 - [x] C1. The blocking owner is named with evidence: a profile or per-step timing on a fixture that changes a planned-stage item's status with a status-and-verdict comment at about 1,650 items (evidence).
   - done: impl-2004 · 2026-11-19T11:28:32.246Z
-- [x] C2. On that fixture, a `task.view` request issued during the status change answers within 2 s, red on the current code (test).
-  - done: impl-2004 · 2026-11-19T13:46:16.652Z
+- [ ] C2. On that fixture, a `task.view` request issued during the status change answers within 2 s, red on the current code (test).
+  - failed: rev-36 [reviewer] · 2026-11-19T14:58:14.662Z · note Required configured round failed on an attributed startup explorer work-bound compatibility control; same-fixture row measurements and correction or justified migration remain required, although the own two-second latency assertion passed.
 
 ## Comments
 
@@ -115,3 +115,22 @@ A-21790's 200 retained events confirm A's five chunks/end precede B's start; the
 Controls keep exact two whole producers / zero completed on stop, prohibit producer return/interleave, retain first-65 refresh boundary, 2–65 row budget, source uniqueness, ancestor notification and final T-65 currency; independently require zero after-stop refresh/chunk/item events and positive joined close. Original producer observations are owned, immediately rejection-observed and joined; existing whole-case/guard/setup/root/stop ownership remains. Original 1650 latency/durable-comment/second-write/tail and accepted 1000–2100 startup-budget/source-once assertions are unchanged. Three matching docs updated. A-21804 tier labels checked against pinned manifest supersede inaccurate earlier comment labels; no T1 proof borrowed for T3 consumers.
 
 A-21804 local macOS arm64 Node24.21 summaries: 112 T1 files/1192 passes, two T2 files 16/16, full typecheck/lint exit0, zero refusals/129 report-only findings. Precommit correction-worktree association and unavailable independent invocation/tree/native facts remain qualified, not exact-head configured proof. Reported reply132.474ms excludes setup and differs from case/publication/CPU scopes; no exclusive historical19s attribution. C1/C2 remain unverified by source. A-21779/bf8162a2 stays failed/partial; earlier A-21783/A-21754/A-21761 epochs retained. Hold released for Coordinator-owned new verify all at this fixed head; any further head change needs review. Reviewer read-only source/trace/docs/manifest inspection only, no edits/tests/probes/scans/native/browser/delegation.
+
+### rev-36 · 2026-11-19T14:58:14.662Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-2004-evidence-2
+commit: 362da9e20965a507f20f3fde3d70060d4926d033
+scope: evidence
+findings: [{"severity":"medium","text":"S1: required T3 startup control fails with literal 'startup recomputed explorer 65 times; bound 4 batches' (A-21820:46822–46835). This missed raw explorer-recomputed consumer leaves startup work-bound compatibility unresolved. The count proves neither 65 full passes nor an acceptable row budget. Coordinator 39397d11 requires unchanged-head and pre-change same-fixture row-count series before production coalescing or an at-least-as-strict row-bound migration; retain byte, latency and durable-state assertions.","file":"hub/test/startup-replies-scale.test.ts","line":142}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence NOT CLEAR at unchanged 362da9e20; A-21821 consolidates failed/partial run74401041/A-21820. Literal startup-replies-scale failure at line142; ordinary finish42937/timing42938 fail10.661004831s. Per-recompute rows absent; do not infer full-pass regression or simply widen four to65. Later byte/remaining-seven-reply/snapshot assertions are unexecuted after this assertion. Producer diagnostics43129/43131 separately report first hub.status8221.9ms wall/9479.8ms CPU and65 batches/1004files/1008reads/max2; these scopes are not suite wall time.
+
+Audit: 8621 ordinary=8611pass+1fail+9skip, separate15load passes;918 file envelopes finished917pass/1fail, no duplicates/unfinished. All233T1/440T2 completed;245T3 completed,27T3/18T4/55Web unexecuted. T0/T1/T2exit0, T3exit1;T0host74.136s. Own1650 ordinary21039/21040 pass31.055643574s whole-case+5load passes; corrected producer/stop controls27702/27703 and27706/27707 pass once. No criteria pass from failed round. Provenance46932 exacthead/runtimee6d75ea1130a4fd68b57906bde61e607b962863d,uncached Linuxx64 6.8.0-149/Node24.21/Nv0.12.5,c8sfo2,3743607ms/$0.25997270833333336;browsernull,nine known platform skips,skipreasonreportmissing0. Lint/duration/ratchet advisories are report-only, not failure causes.
+
+Coordinator39397d11 attributes missed consumer to T-2004: post unchanged362 row series and same-fixture pre-change baseline first; full passes require coalescing and retained<=4, partial rows allow at-least-as-strict row budget only with before/after numbers. Preserve all byte/latency/final-state assertions and update raw-field/all-tier census with miss reason. Coordinator7e7a8f58 controls native slot. C2failed,C1unverified,nothingverified. Hold released for authorized measurement and bounded correction; fresh source review before Coordinator's new verify all. Priorbf8162a2/A21779 remains separately failed; local/trace/source epochs retain scopes. Reviewer read-only inspection only, no edits/tests/probes/scans/native/browser/delegation.
+
+Criteria: C2 failed (Required configured round failed on an attributed startup explorer work-bound compatibility control; same-fixture row measurements and correction or justified migration remain required, although the own two-second latency assertion passed.).

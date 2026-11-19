@@ -2,8 +2,8 @@
 id: T-1669
 kind: task
 title: A scripted fake-Claude __session from a fixture outlived its test for nine days, reparented to launchd with its spoke
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1649
 branch: t/T-1669-a-scripted-fake-claude-session-from-a
 created: 2026-11-04T00:16:33.070Z
-updated: 2026-11-19T14:10:34.838Z
+updated: 2026-11-19T14:59:51.667Z
+closed: 2026-11-19T14:59:51.667Z
 ---
 
 ## Summary
@@ -162,3 +163,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence2 CLEAR at unchanged clean9a037a9d2c73648c9888bb932e1392ebaa01f624/Gita398e736, source4A21800 retained. A-21810 independently auditsf70f8c71/A21808 finished/passed ownerexit0; provenance39832samehead, snapshot248df981 distinctfromGit.7230ordinarypasses=7083top+147nested/741files;25separateT2loadpasses, no nonpass/duplicate/unmatchedstarts/finishes. C1corrected808a00be red/mechanism retained(notunknownhistoricaltestidentity); currentLinuxworkerSIGKILL36813pass3.698673506s observes actualclose/surviving session/spoke/ownership andboth exits beforeguardedrootremoval. C2fivefinalnativefilecensuses36200/36263/36383/36725/36857pass, droppedcleanup36786/failingbody36790pass expectednestedfailure-vs-censuscontrols;Linuxbirth/PIDstop36331pass/no skip. Fakeauthority16638+4receipt rejectioncontrols16643/16648/16653/16658base+5distincteach, nativeT3once. T0/all232T1/all440T2 incl44NVM/385tests/selected13T3(263top+2nested)/mapped1T4two tests/Web55completed;remainingT3batchdeferred/otherT4unexecuted. UncachedLinuxx646.8.0-149Node24.21/Nv0.12.5, actualisolatedHeadless1248/ChromeTesting156.0.8078.4,c8nyc1workers2;1708s/$0.1186accounting,104.228sT0hoststep distinct. Exact9.5allowanceunchanged; currentcasewithinbound,notcontrolledspeedcomparison. Failed32669467/A21788 andpriorheadgreen/rerun/replay/sourceepochsremainseparate; no failed batch promoted. No findings;C1/C2verified,holdreleased. Static Reviewer audit only.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-19T14:59:51.667Z
+
+Merged a158ec3c1e3681077c887ee57dd3ee41bff5fd9f onto dev.
