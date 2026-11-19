@@ -1,5 +1,9 @@
 # hub/test/merge-queue.test.ts
 
+The file remains T2, its tier before T-1932. CLI assertions use production modules
+under the [sealed component boundary](hub-test-suite-protocol.test.ts.md) and a
+positively controlled launch guard through cleanup.
+
 T-1900: The ordinary landing case launches an in-process fake Claude Coordinator,
 waits for accepted role input, and makes it idle. A lead's progress note remains
 queued without channel delivery or native input; the following ready report

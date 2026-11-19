@@ -1,3 +1,10 @@
+import { fixtureCommand as cland } from './fixture-command.ts';
+import { beforeEach } from 'node:test';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+beforeEach(async t => {
+  if (!('assert' in t)) throw new Error('native guard requires a test context');
+  await fixtureNativeGuard(t);
+});
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
@@ -11,7 +18,7 @@ import assert from 'node:assert/strict';
 import { mkdir, open, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defaultConfig, renderConfig, parseConfig } from '../src/init/config.ts';
-import { cland, nativeIdentityProjectHub as projectHub, tempProject, connectUi } from './harness.ts';
+import { projectHub, tempProject, connectUi } from './harness.ts';
 
 test('switch creates one first admin, reload preserves it, and reset retains it behind single-mode refusal', async t => {
   const root = await tempProject(t);

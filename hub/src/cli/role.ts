@@ -28,11 +28,11 @@ function describe(v: RoleList): string {
   return lines.join('\n');
 }
 
-export async function runRole(args: string[], cwd: string = process.cwd()): Promise<number> {
+export async function runRole(args: string[], cwd: string = process.cwd(), io = { out: (text: string) => { process.stdout.write(text); }, err: (text: string) => { process.stderr.write(text); } }): Promise<number> {
   const [sub, ...rest] = args;
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) {
-    process.stderr.write('cland: no hub runs for this project — run `cland hub start`\n');
+    io.err('cland: no hub runs for this project — run `cland hub start`\n');
     return 1;
   }
   const json = rest.includes('--json');
@@ -43,7 +43,7 @@ export async function runRole(args: string[], cwd: string = process.cwd()): Prom
   const item = itemAt >= 0 ? rest[itemAt + 1] : undefined;
   if (itemAt >= 0 && (!item || item.startsWith('--'))) throw new Error('--item needs an item id');
   const [first, second] = rest.filter((a, i) => !a.startsWith('--') && !(noteAt >= 0 && i === noteAt + 1) && !(itemAt >= 0 && i === itemAt + 1));
-  const out = (value: unknown, text: string) => process.stdout.write(json ? `${JSON.stringify(value)}\n` : `${text}\n`);
+  const out = (value: unknown, text: string) => io.out(json ? `${JSON.stringify(value)}\n` : `${text}\n`);
   switch (sub) {
     case 'launch': {
       const [role, ...flags] = rest;
@@ -87,7 +87,7 @@ export async function runRole(args: string[], cwd: string = process.cwd()): Prom
       return 0;
     }
     default:
-      process.stderr.write(`cland: unknown role command "${sub ?? ''}"\n\nusage: cland role <command>\n\n${ROLE_USAGE}`);
+      io.err(`cland: unknown role command "${sub ?? ''}"\n\nusage: cland role <command>\n\n${ROLE_USAGE}`);
       return 2;
   }
 }

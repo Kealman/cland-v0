@@ -1,3 +1,10 @@
+import { fixtureCommand as cland } from './fixture-command.ts';
+import { beforeEach } from 'node:test';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+beforeEach(async t => {
+  if (!('assert' in t)) throw new Error('native guard requires a test context');
+  await fixtureNativeGuard(t);
+});
 // T2: durable merge queue admission through projectHub and its public merge/task frames.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -5,7 +12,7 @@ import cp from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, inProcessSpoke, nativeIdentityProjectHub as projectHub, tempProject, until, type ProjectHubOptions } from './harness.ts';
+import { connectUi, inProcessSpoke, projectHub, tempProject, until, type ProjectHubOptions } from './harness.ts';
 import { manualTips } from './freshness-harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { dispatcherSpoke, value } from './validation-support.ts';
@@ -61,10 +68,10 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = 
   };
   if (seed) {
     // Seed durable landed history through the tracker before the serving hub opens it.
-    const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), clock, git, readBase: async () => 'dev', env: fixtureEnvironment(root, process.env) });
+    const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), clock, git, stageTree: async () => 'fixture-stage-tree', readBase: async () => 'dev', env: fixtureEnvironment(root, process.env) });
     try { await seed(tracker); } finally { await tracker.stop(); }
   }
-  const { discovery, dispatcher, stop, fakes } = await projectHub(t, root, {}, { clock, scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...options });
+  const { discovery, dispatcher, stop, fakes } = await projectHub(t, root, {}, { clock, stageTree: async () => 'fixture-stage-tree', scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...options });
   await tips.refresh();
   const ui = await connectUi(t, discovery);
   const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', sessionId: 'review-id', role: 'reviewer' });

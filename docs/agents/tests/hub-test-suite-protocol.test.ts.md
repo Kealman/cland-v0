@@ -1,5 +1,22 @@
 # hub/test/suite-protocol.test.ts
 
+The file remains T2, its tier before T-1932. CLI assertions use production modules
+under the sealed component boundary described below and a
+positively controlled launch guard through cleanup.
+
+`fixture-command.ts` invokes production command parsers and renderers over a
+disposable hub's real socket. Output sinks preserve stdout/stderr assertions.
+`withFixtureCli` in `fixture-hub-cli.ts` serializes calls and captures the original
+environment and synthetic identity before sealing, including overlapping cold
+starts. roles-component, suite-protocol, suite-wait-metrics, merge-queue and
+auth-mode retain their previous T2 tier; no T3 evidence is reused.
+
+Both billing cases have one guard owner, billingCase, through successful cleanup
+or rejected cleanup and repair join. Other cases install fixtureNativeGuard
+explicitly before acquiring fixtures. The missing-command case does not advertise a cland runner:
+candidate lint is a separate subject. Merge-queue injects stageTree for its seed
+tracker and serving hub so stage-only history never invokes native Git.
+
 The long fallback regression seeds a completed droplet receipt with 250 deciding
 paths and a fallback larger than the default message cap. It checks the complete
 billing and health facts in the delivered message and durable topic history,
@@ -15,8 +32,11 @@ A rejected callback stays unconfirmed even after it leaves the pending set.
 The controlled cleanup-rejection case proves the native guard stays installed
 through failed closure and the complete repair continuation. The main billing
 case proves successful hub/resource/root cleanup before restoration.
-Only this synthetic case selects fake projectHub identity; existing
-native CLI contract cases retain their original fixture.
+Every case in this file uses synthetic projectHub identity and sealed production
+CLI modules. The normal billing case compares all seven child-process launch
+functions and ChildProcess.prototype.spawn with references captured before any
+test installs a guard, after its billing cleanup owner releases its seams.
+The rejection/repair case retains its guard-preservation and restoration assertions.
 The final provenance JSON remains the last log line for older readers.
 
 The incomplete-collection result case seeds the existing nonzero scheduler

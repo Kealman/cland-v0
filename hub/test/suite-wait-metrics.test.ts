@@ -1,3 +1,10 @@
+import { fixtureCommand as cland } from './fixture-command.ts';
+import { beforeEach } from 'node:test';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+beforeEach(async t => {
+  if (!('assert' in t)) throw new Error('native guard requires a test context');
+  await fixtureNativeGuard(t);
+});
 // T2: queue metrics through one CLI rendering proof; reload permutations use the socket edge.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -5,7 +12,7 @@ import { queueWaitMetrics } from '../src/hub/verification-wait.ts';
 import { Suites, type SuiteJob } from '../src/hub/suites.ts';
 import { Store } from '../src/hub/store.ts';
 import { join } from 'node:path';
-import { tempProject, nativeIdentityProjectHub as projectHub, cland, connectUi } from './harness.ts';
+import { tempProject, projectHub, connectUi } from './harness.ts';
 import type { LogEntry } from '../src/log.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { parseConfig, renderConfig } from '../src/init/config.ts';

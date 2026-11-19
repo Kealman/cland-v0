@@ -1,6 +1,10 @@
-// T2: one real CLI/socket frame proof for cover permissions, queue/status rendering
+import { fixtureCommandWithEnv } from './fixture-command.ts';
+const clandWithEnv: typeof fixtureCommandWithEnv = (root, env, ...args) => fixtureCommandWithEnv(root, sessionShell(root, env), ...args);
+import { fixtureCommand as cland } from './fixture-command.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+// T2: production CLI modules/socket frames for cover permissions, queue/status rendering
 // and reload. Seeded suite receipts avoid workers; class permutations live in T1.
-import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
+import { sessionUi as connectUi, sessionShell } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import test from 'node:test';
 import { verificationFixture } from './verification-fixture.ts';
@@ -9,7 +13,7 @@ import cp from 'node:child_process';
 import { lstat, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { cland, inProcessSpoke, nativeIdentityProjectHub as projectHub, projectHub as fakeProjectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { compatibilityHolder, sweep } from '../src/suite-lock.ts';
 import { ownDirectory, beforeDirectories, guardDirectoryRemoval, afterCleanup } from './process-cleanup.ts';
 import { Store } from '../src/hub/store.ts';
@@ -25,7 +29,13 @@ import { billingCase } from './suite-billing-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { reserveSpend, settleSpend, spendPath } from '../src/executor/droplet/spend.ts';
 
+const launchMethods = ['spawn', 'spawnSync', 'exec', 'execSync', 'execFile', 'execFileSync', 'fork'] as const;
+const launchBoundary = () => [...launchMethods.map(method => cp[method]), Reflect.get(cp.ChildProcess.prototype, 'spawn')];
+// Capture before any test installs a guard, rather than capturing a nested guard.
+const originalLaunchBoundary = launchBoundary();
+
 test('root recovery preserves a changed path outside the run token and never follows a symlink', async t => {
+  await fixtureNativeGuard(t);
   const root = await tempProject(t);
   const target = join(root, 'evidence');
   await mkdir(target);
@@ -40,6 +50,7 @@ test('root recovery preserves a changed path outside the run token and never fol
 });
 
 test('root recovery preserves a recreated token path while its holder lives or runner group is unknown', async t => {
+  await fixtureNativeGuard(t);
   const token = randomUUID();
   const root = join(await realpath('/tmp'), `cland-suite-${token}`);
   await mkdir(root, { mode: 0o700 });
@@ -76,11 +87,12 @@ async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob,
       throw new Error('seeded receipts must not admit an executor');
     },
   };
-  const hub = await (options.fakeOnly ? fakeProjectHub : projectHub)(t, root, {}, { clock, compatibility, candidate, durationContext: null }); const ui = await connectUi(t, hub.discovery);
+  const hub = await projectHub(t, root, {}, { clock, compatibility, candidate, durationContext: null }); const ui = await connectUi(t, hub.discovery);
   return { root, clock, hub, ui, compatibility };
 }
 
 test('posted incomplete collection preserves the original test exit in its cause', async t => {
+  await fixtureNativeGuard(t);
   const run = caseDeadlines(t, { timeoutMs: 10000, ownership: { beforeDirectories, guardDirectoryRemoval } });
   return run.run(async step => {
     const cause = 'incomplete: machine cland-retired gone; coverage map missing; tests exited 0 (original result.json retained)';
@@ -102,6 +114,7 @@ test('posted incomplete collection preserves the original test exit in its cause
 });
 
 test('each lead can attach the batch log named in its member topic', async t => {
+  await fixtureNativeGuard(t);
   const log = '# tests 2\n# pass 2\n';
   const f = await seed(t, base => {
     const { cover: _cover, ...job } = base;
@@ -152,6 +165,7 @@ test('each lead can attach the batch log named in its member topic', async t => 
 });
 
 test('task result and preview identify T3 as pending in the enabled merge queue', async t => {
+  await fixtureNativeGuard(t);
   const selection: SuiteSelection = { mode: 'full', files: [], reason: 'task fallback', tiers: ['T1', 'T2'], loadGate: true };
   const tiers: TierPlan = ['T1', 'T2'].map(tier => ({ tier: tier as 'T1' | 'T2', files: ['fixture'], tests: 1, seconds: 1, projectedWall: 1, workers: 1, missing: 0 }));
   const log = ['# tests 2', '# pass 2', ...tierReport(tiers)].join('\n');
@@ -172,6 +186,7 @@ test('task result and preview identify T3 as pending in the enabled merge queue'
 });
 
 test('repository-sized lint detail leaves the delivered integrated summary complete', async t => {
+  await fixtureNativeGuard(t);
   const manifest = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
   const files: TestLintFile[] = Object.keys(manifest.tests).map(file => ({ file, tier: 'T2', qualifies: 'T2',
     findings: [{ file, line: 12, rule: 'wall-clock-wait', message: 'existing numeric wall-clock wait' }] }));
@@ -228,6 +243,7 @@ test('billing cleanup rejection retains native isolation until successful closur
 
 test('long fallback results retain confirmed billing and health in delivery, history and log', async t => {
   const owner = billingCase(t);
+  afterCleanup(t, () => assert.deepEqual(launchBoundary(), originalLaunchBoundary, 'successful billing cleanup restores every original native launch boundary'));
   return owner.run(async step => {
   const files = Array.from({ length: 250 }, (_, n) => `hub/test/coverage-fallback-${n}.test.ts`);
   const fallback = `coverage files without covering tests: ${files.join(', ')}`;
@@ -283,6 +299,7 @@ test('long fallback results retain confirmed billing and health in delivery, his
 });
 
 test('oversized results keep priority summaries for fresh and cached receipts', async t => {
+  await fixtureNativeGuard(t);
   const missing = Array.from({ length: 400 }, (_, n) => `budget (report only): missing duration baseline hub/test/component-${n}.test.ts; observed 1 s (T2)`);
   const priority = ['tests 4; pass 4',
     ...tierReport((['T1', 'T2', 'T3', 'T4'] as const).map(tier => ({ tier, files: ['fixture'], tests: 1, seconds: 100, projectedWall: 100, workers: 1, missing: 0 }))),
@@ -328,6 +345,7 @@ test('oversized results keep priority summaries for fresh and cached receipts', 
 });
 
 test('cover CLI enforces role permissions, journals classifications and renders persisted incident status', async t => {
+  await fixtureNativeGuard(t);
   const f = await seed(t, base => Array.from({ length: 12 }, (_, i) => ({ ...base, id: `cover-${i}`, completedAt: new Date(Date.UTC(2026, 9, 16, 0, i)).toISOString(),
     ...(i < 11 ? { outcome: { code: 0, cause: '' }, cover: { status: 'green', cause: null, tests: [] } } : {}) })));
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
@@ -365,6 +383,7 @@ test('cover CLI enforces role permissions, journals classifications and renders 
 });
 
 test('queue CLI and subscription expose ordered hand-held waiters; reload reports changed policy', async t => {
+  await fixtureNativeGuard(t);
   const f = await seed(t, base => { const { cover: _cover, ...withoutCover } = base; return ['impl', 'other'].map((name, i) => ({ ...withoutCover, id: name, state: 'queued', reported: false, cleaned: false, outcome: null, integrated: false,
     queued: new Date(Date.UTC(2026, 9, 16, 11, i)).toISOString(), actor: { name, sessionId: name, shell: true } } as SuiteJob)); });
   assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);
@@ -393,6 +412,7 @@ test('queue CLI and subscription expose ordered hand-held waiters; reload report
 });
 
 test('a recovered integrated receipt posts the derived cover to the domain journal', async t => {
+  await fixtureNativeGuard(t);
   const f = await seed(t, base => { const { cover: _cover, ...job } = base; return [{ ...job, reported: false }]; });
   await f.ui.request({ type: 'subscribe' });
   await f.clock.advance(1000);
@@ -405,6 +425,7 @@ test('a recovered integrated receipt posts the derived cover to the domain journ
 });
 
 test('late lease confirmation posts one accounting correction in the original report topic', async t => {
+  await fixtureNativeGuard(t);
   const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: 'settled', run: 'cover-0', name: 'cland-settled', tags: ['cland'],
     size: 'c-8', region: 'lon1', priceHourly: 0.25, keyName: 'settled', keyId: null, resource: 123,
     created: '2026-10-16T11:00:00Z', deadline: '2026-10-16T13:00:00Z', state: 'released', lifetimeMs: 60000, costUsd: 0.0042 };
@@ -423,6 +444,7 @@ test('late lease confirmation posts one accounting correction in the original re
 });
 
 test('scratch hub defaults to fixture leases without a project verification override', async t => {
+  await fixtureNativeGuard(t);
   const root = await tempProject(t, 'cland-scratch-lease-');
   const { discovery } = await projectHub(t, root, { TZ: 'Pacific/Honolulu' }, { durationContext: null });
   const lock = join(root, 'suite.lock'); await mkdir(lock);
@@ -433,6 +455,7 @@ test('scratch hub defaults to fixture leases without a project verification over
 
 
 test('remote queue CLI renders machines, fallback policy and remote-only waiter state', async t => {
+  await fixtureNativeGuard(t);
   const f = await seed(t, base => {
     const { cover: _cover, ...job } = base;
     return [
@@ -452,6 +475,7 @@ test('remote queue CLI renders machines, fallback policy and remote-only waiter 
 });
 
 test('recovered fallback notice keeps its warning severity and exact budget explanation', async t => {
+  await fixtureNativeGuard(t);
   const f = await seed(t, base => { const { cover: _cover, ...job } = base; return [{ ...job, id: 'fallback', state: 'queued', outcome: null, reported: false, cleaned: false, fallback: 'remote budget full', requestedExecutor: 'droplet' }]; });
   await f.ui.request({ type: 'subscribe' }); await f.clock.advance(1000);
   const frame = await f.ui.waitFor(frame => frame.type === 'message' && (frame.message as { id: string }).id === 'executor-fallback:fallback');
@@ -459,6 +483,7 @@ test('recovered fallback notice keeps its warning severity and exact budget expl
 });
 
 test('dead-requester reports stay hub-authored once across role vacancy and store reopen', async t => {
+  await fixtureNativeGuard(t);
   const f = await seed(t, base => { const { cover: _cover, ...job } = base; return [{ ...job, id: 'dead', state: 'queued', requesterDied: true, reported: false, outcome: { code: 130, cause: 'cancelled: requester died before admission' }, actor: { name: 'doomed', sessionId: 'gone', shell: true }, to: ['rev'] }]; });
   await f.ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' });
   const reviewer = await inProcessSpoke(t, { discover: true, assignRole: false, cwd: f.root, name: 'rev', sessionId: 'reviewer-id', role: 'reviewer' }); await reviewer.waitForPresence(['rev']);
@@ -470,11 +495,15 @@ test('dead-requester reports stay hub-authored once across role vacancy and stor
   assert.equal(history.messages.filter(m => m.text.startsWith('suite result dead')).length, 1);
 });
 
-// T2: the CLI refusal itself is the process boundary; no executor is admitted.
+// T2: the CLI module refuses the command; no executor is admitted.
 test('verify refuses missing test before queueing a worker', async t => {
+  await fixtureNativeGuard(t);
   const f = await seed(t, () => []);
   const path = join(f.root, '.cland/config.toml');
   await writeFile(path, '[verification]\n');
+  // This refusal concerns a project without a configured command, not cland's
+  // committed-candidate lint. Do not advertise a cland runner in this fixture.
+  await rm(join(f.root, 'hub/test/run-suite.ts'));
   const result = await cland(f.root, 'verify', '--report', 'general', '--json');
   assert.equal(result.code, 1);
   assert.match(result.stderr, /no \[verification\] test for this project; set it: cland config set verification.test '<command>'/);

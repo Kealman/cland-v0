@@ -1,11 +1,18 @@
+import { fixtureCommand as cland } from './fixture-command.ts';
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import { test } from 'node:test';
+import { beforeEach } from 'node:test';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+beforeEach(async t => {
+  if (!('assert' in t)) throw new Error('native guard requires a test context');
+  await fixtureNativeGuard(t);
+});
 import assert from 'node:assert/strict';
 import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
-import { cland, connectSocket, connectUi, eventually, flushProjectLogs, inProcessSpoke, nativeIdentityProjectHub as projectHub, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
+import { connectSocket, connectUi, eventually, flushProjectLogs, inProcessSpoke, projectHub, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; role: string | null; label?: string };
 

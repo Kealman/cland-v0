@@ -1,5 +1,9 @@
 # hub/test/suite-wait-metrics.test.ts
 
+The file remains T2, its tier before T-1932. CLI assertions use production modules
+under the [sealed component boundary](hub-test-suite-protocol.test.ts.md) and a
+positively controlled launch guard through cleanup.
+
 Queue wait tests use `Suites`, its public snapshot and durable journal with the
 T-685 `FakeClock`. Startup performs no metrics snapshot; the first tick records
 the current UTC hour. Further ticks and a same-hour store reopen must not duplicate

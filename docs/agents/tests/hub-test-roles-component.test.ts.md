@@ -1,5 +1,9 @@
 # hub/test/roles-component.test.ts
 
+The file remains T2, its tier before T-1932. CLI assertions use production modules
+under the [sealed component boundary](hub-test-suite-protocol.test.ts.md) and a
+positively controlled launch guard through cleanup.
+
 T2 retains public role assignment, exclusivity, clause delivery and CLI display
 checks. T-1222 updates the inherited Codex sandbox and narrow Implementer roots;
 keep the explicit empty writable-root replacement and empty sandbox overrides.
