@@ -3,7 +3,7 @@ id: T-1857
 kind: task
 title: A long verify result truncates its executor, lifetime and cost line in delivery and history
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-14T16:41:38.895Z
-updated: 2026-11-16T07:29:05.053Z
+updated: 2026-11-19T00:37:34.780Z
 ---
 
 ## Summary

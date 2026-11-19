@@ -3,7 +3,7 @@ id: T-1958
 kind: task
 title: 232 released leases with no spend entry log executor-lease-spend-missing on every compaction pass (about 760,000 lines a day), and the lease-index migration leaves no log line
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
@@ -14,7 +14,7 @@ regression_of: T-1950
 topic: null
 branch: null
 created: 2026-11-18T06:13:57.102Z
-updated: 2026-11-18T06:20:37.787Z
+updated: 2026-11-19T00:37:35.909Z
 ---
 
 ## Summary

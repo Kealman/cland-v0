@@ -3,7 +3,7 @@ id: T-1729
 kind: task
 title: "Droplet delivery: scp of tree.bundle fails with exit 1 and only the known-hosts warning on stderr (2 of 3 runs on snapshot cland-v0-35e1dc609f89)"
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-06T19:37:35.448Z
-updated: 2026-11-16T07:29:05.579Z
+updated: 2026-11-19T00:37:35.004Z
 ---
 
 ## Summary

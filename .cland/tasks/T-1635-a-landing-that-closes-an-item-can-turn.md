@@ -3,7 +3,7 @@ id: T-1635
 kind: task
 title: A landing that closes an item can turn the closed-item wording lint red on dev
 state: open
-status: backlog
+status: planned
 size: S
 labels: []
 assignee: null
@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-02T15:55:22.884Z
-updated: 2026-11-16T07:29:03.407Z
+updated: 2026-11-19T00:37:33.824Z
 ---
 
 ## Summary

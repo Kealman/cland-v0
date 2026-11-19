@@ -3,7 +3,7 @@ id: T-1975
 kind: task
 title: "inbox.list takes 17–19% of the hub's main thread on an idle hub (5% after restart #83)"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T12:37:47.082Z
-updated: 2026-11-18T19:14:32.939Z
+updated: 2026-11-19T00:37:37.535Z
 ---
 
 ## Summary

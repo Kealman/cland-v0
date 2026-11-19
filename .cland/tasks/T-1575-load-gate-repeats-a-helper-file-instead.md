@@ -3,7 +3,7 @@ id: T-1575
 kind: task
 title: Load gate repeats a helper file instead of the test file that registered a shared contract case
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-01T00:09:14.452Z
-updated: 2026-11-16T07:29:06.632Z
+updated: 2026-11-19T00:37:35.553Z
 ---
 
 ## Summary

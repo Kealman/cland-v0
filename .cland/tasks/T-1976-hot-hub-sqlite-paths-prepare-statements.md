@@ -3,7 +3,7 @@ id: T-1976
 kind: task
 title: Hot hub SQLite paths prepare statements per call (prepare at 6–8% of main-thread self time)
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T12:37:50.486Z
-updated: 2026-11-18T19:14:33.501Z
+updated: 2026-11-19T00:37:36.990Z
 ---
 
 ## Summary

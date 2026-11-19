@@ -3,7 +3,7 @@ id: T-1646
 kind: task
 title: Branch tip moves recompute explorer summaries and demo freshness for the whole tracker
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 3
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1630
 branch: t/T-1646-branch-tip-moves-recompute-explorer
 created: 2026-11-02T23:57:57.064Z
-updated: 2026-11-18T21:17:03.356Z
+updated: 2026-11-18T23:33:13.137Z
 ---
 
 ## Summary
@@ -229,3 +229,20 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; Standards0/Spec0 findings. Owner363b9788/A-21424 finished/passed at unchanged source-cleared67ac97a5, clean/pushed, exact provenance checked. C1 records1650items/10movers,30summaries/80hydrated/original oracle and complete-list/demo/criteria assertions; ordinary+5/5 loads pass under8.5s allowance. C2 now positively collects40task.view+40queue replies: ordinary p95s53.002/52.983ms, both<1000ms, ordinary+5/5 test/file passes; whole-case16.29692227s fits19s allowance, separately scoped from reply latency. Additional invalidation/membership/exact-tip criteria identities all base+5/5; both owned files23/23 and4/4 pass. Verify C1/C2/C3. All716 selected files/6854ordinary tests pass, no bad/incomplete structured outcomes;235load tests/files separate. T0/T1/all T2 including Neovim44files/385tests/Web complete; T3 merge-batch deferred,T4unexecuted. Linuxx64 Node24.21/nvim0.12.5,c-8blr1, isolated Headless Shell1248 Chrome156.0.8078.4. Snapshotc1e8e72d distinct from Gittree1b05127c; advisories report-only. Both C-216 allowances expire00:00UTC2026-11-25. All three prior configured failures remain failed/partial; local/projected timings not relabelled as prior droplet proof. Hold released. Full receipts, coverage and limits: A-21425, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21425-t-1646-final-same-head-work-oracle-and-p95-evidence-at-67ac97a5.md.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1646 · 2026-11-18T23:28:58.802Z
+
+Coordinator-authorized dev merge f4c0d84ab68559c2dfc24acba90a9528a5208444 pushed after positive T-1984 landinge9b6b6d95. Sole manual durations.json conflict resolved retaining all three allowance entries unchanged: T-1646 8.5s/19s and T-1984 16s, C-216/EXPIRES2026-11-25. Tracker/freshness auto-merge combines both CPU fixes. Full lint/typecheck passed; narrow review requested. Cover quiet active, no tests/verify submitted. Per Coordinator399b7887, 11 requested T1/T2 files wait until quiet over before new window (duration policy, tracker,C2,stage-closure and five dev_t3_every matches); inherited8h config already covered by upstream T-1895 rule33 runs. Prior green363b9788 applies only to67ac97a58; merged-head runtime and p95 proof pending.
+
+### rev-35 · 2026-11-18T23:33:13.137Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1646-source-3
+commit: f4c0d84ab68559c2dfc24acba90a9528a5208444
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Coordinator-directed merge delta source clear; Standards0/Spec0 findings. Parents67ac97a5/e9b6b6d95, clean/pushed f4c0d84a, Git tree307b8cda. Primary3b18aedc/399b7887 read directly. All three duration entries8.5s/19s/16s are byte-identical to their producing parents; manifest equals parent2 plus precisely T-1646's two entries, no duplicate/budget/baseline loss. C-216 open, expiry2026-11-25 unchanged. Tracker/Freshness auto-merge retains exact moved-branch/null shared invalidation and demo membership caching alongside worker-drain unique-id batching and relevant ancestry-change-only stage-dependent fanout. Own tests/fixture/guard byte-identical to parent1; incoming stage-closure/config/tiers byte-identical to parent2. Other landed upstream paths unchanged relative parent2 outside the11 T-1646 paths. No new spec/standards regression found. Reported full lint/typecheck0 remain local static-check support; Reviewer ran no tests/probes. No new-head criteria verified: old green363b9788/A-21425 is valid only at67ac97a5, marks now stale, all prior failed rounds retained. Quiet gate stays active; after quiet over, complete Coordinator's11 T1/T2 files then obtain new same-head verify window and runtime/C2 settlement. Hold released. Full scope and pending-proof boundaries: A-21449, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21449-t-1646-merged-freshness-and-allowance-delta-source-clearance-at-f4c0d84a.md.

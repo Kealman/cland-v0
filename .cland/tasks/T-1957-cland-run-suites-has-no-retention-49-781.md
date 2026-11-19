@@ -3,7 +3,7 @@ id: T-1957
 kind: task
 title: ".cland/run/suites has no retention: 49,781 entries and 68 GB, constantly rewritten, feeding fseventsd's growth on macOS"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - needs-triage
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T04:38:52.596Z
-updated: 2026-11-18T22:14:04.692Z
+updated: 2026-11-19T00:37:36.632Z
 ---
 
 ## Summary

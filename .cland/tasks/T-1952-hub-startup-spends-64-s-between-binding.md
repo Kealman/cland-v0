@@ -3,7 +3,7 @@ id: T-1952
 kind: task
 title: Hub startup spends 64 s between "binding listeners" and "binding web listener", so a restart gap exceeds the 60 s bridge expiry
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T21:09:36.382Z
-updated: 2026-11-18T19:17:07.579Z
+updated: 2026-11-19T00:37:36.108Z
 ---
 
 ## Summary
