@@ -1,4 +1,5 @@
-import { lstat, mkdir, open, realpath } from 'node:fs/promises';
+import { lstat, mkdir, open, realpath, link } from 'node:fs/promises';
+import { SUITE_RETENTION_BATCH_SIZE } from './suite-retention-policy.ts';
 import { constants } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -102,4 +103,31 @@ export async function pinSuiteLog(path: string): Promise<string> {
  * a delayed publisher cannot resurrect a reference to a removed raw run. */
 export async function claimSuiteRetirement(root: string, id: string): Promise<boolean> {
   return await fence(root, id, 'R') === 'R';
+}
+
+/** One synced immutable R inode can fence an entire bounded batch. Each link
+ * competes atomically with P creation. No deletion starts before the directory
+ * sync makes every successful link durable; a crash earlier only retains runs. */
+export async function claimSuiteRetirements(root:string, ids:readonly string[]):Promise<Set<string>> {
+  if(ids.length>SUITE_RETENTION_BATCH_SIZE)throw new Error('retirement claim batch exceeds 32');
+  const canonical=await realpath(root),directory=join(canonical,'.cland/run/suite-references');
+  const claimed=new Set<string>();
+  let anchor:string|undefined;
+  for(const id of ids) {
+    if(!/^[A-Za-z0-9_-]+$/.test(id))throw new Error('invalid suite run id');
+    if(!anchor) {
+      if(await claimSuiteRetirement(canonical,id)){anchor=id;claimed.add(id);}
+      continue;
+    }
+    try {await link(join(directory,anchor),join(directory,id));claimed.add(id);}
+    catch(error) {
+      if((error as NodeJS.ErrnoException).code!=='EEXIST')throw error;
+      if(await claimSuiteRetirement(canonical,id))claimed.add(id);
+    }
+  }
+  if(anchor) {
+    const parent=await open(directory,'r');
+    try {await parent.sync();} finally {await parent.close();}
+  }
+  return claimed;
 }

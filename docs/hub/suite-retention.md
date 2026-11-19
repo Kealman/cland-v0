@@ -1,62 +1,92 @@
-# Suite run retention reports
+# Suite run retention
 
-The hosting scheduler computes retention in **report mode**. It never deletes a
-live suite directory. No config key, CLI flag or environment variable enables
-deletion. Durable publisher pins and retirement admission are implemented;
-activation and the age-floor setting belong to T-1992.
+The hosting scheduler deletes eligible indexed and unindexed suite directories
+in yielding background passes after serving. Unindexed deletion is enabled by
+the human's one-off rule 27 exception (General, 2026-11-19 18:36Z, answer to ask
+2da0c7c7). The effective `[verification]` settings are
+`suite_retention_min_age_days = 7` and `suite_retention_pass_limit = 4096`.
+Both parse as positive integer values; the pass limit is capped at 4096 and may
+be lowered with `cland config set`, then `cland hub reload`. The next pass
+uses the reloaded values. Missing settings inherit these defaults. Executors,
+authentication and network availability do not change retention policy.
 
-A serving-owner hook starts one shared background pass after the hub publishes
-serving. The pass examines at most 32 pending identities per batch and yields
-with setImmediate before each batch. Its final batch uses the exact remaining
-pass budget, so retained candidates are not revisited to fill a rounded batch.
-The existing scheduler checkpoint walk feeds the index; no suite-directory
-startup census or startup log scan is added.
+Each pass visits at most the configured number of indexed pending identities
+and the same number of directory entries, yielding every 32 entries. Thus the
+default upper bound is 4096 indexed retirement candidates and 4096 discovered
+classification entries per pass, with eligible unindexed entries also removed.
+At the observed 4.5 passes/hour, eligible directory capacity is 18,432/hour,
+net 16,932 after 1,500 new directories/hour. The 5.4-hour projection for 91,000
+entries assumes this full capacity; it excludes actual IO and protected/young
+entries and is not a measured clearance time. Lower the existing pass limit
+and reload to throttle subsequent passes on the live machine.
 
-The report retains the newest 20 runs per occasion, unsettled jobs, unknown
-completion ages and runs settled less than seven days ago. The seven-day floor
-is classification policy here, not a configurable deletion setting. Existing
-verdicts, latest item results, coverage pointer ids and duration source artifacts
-retain their runs. Cover, integrated, batch and dev-T3 evidence classes are
-preserved conservatively, as are cached/baseline ancestry identities. Demo
-execution is lease-owned outside suite run directories. Arbitrary-age reference
-publishers are listed below and in the [exact consumer census](suite-run-references.md).
-Durable pins fence their future writes independently of report snapshots.
+Indexed runs retain the newest 20 per occasion, unsettled/unknown-age jobs,
+references, pins, coverage pointers, duration sources and conservative cover,
+integrated, batch, cached/baseline and dev-T3 evidence classes. Indexed deletion
+requires durable log/map artifacts. Consumers use artifact paths for completed
+evidence. Cleanup diagnostics do not change verification exit status.
 
-The structured suite-retention-report log records total, classified, pending,
-kept, wouldRetire, removed and reason counts. Production mode is report and
-removed stays zero. A stopped/incomplete pass leaves pending counts explicit.
-These are observed classification facts, not permission for later deletion.
-Missing artifacts or metadata retain candidates. Cleanup diagnostics affect no
-verification exit status. The policy requires the updated hosting scheduler;
-it is independent of executor, authentication and network availability.
+Directory discovery uses a bounded streaming cursor after serving, never a
+startup directory census or log scan. An unindexed run requires a positive
+absence lookup in the scheduler's durable run index (including shard ownership),
+the newest mtime across the root and its bounded inventory older than the floor,
+and no tracker, ancestry, latest-result,
+pin or pointer reference. Names supply neither age nor absence. Unknown or
+linked roots stay. A per-directory inventory stops at 4096 entries or depth 16;
+oversized trees stay. Contents are not copied: a capped durable per-pass ledger
+under artifacts records id, root/newest mtime, root device/inode, bytes, file count and the passed absence/keep
+checks before retirement. Inventories count non-directory entries and their
+lstat byte sizes, including links themselves; directory inode/allocation bytes
+are excluded. The same guarded retirement owner validates the
+inventory, claims exclusive retirement against publishers, checkpoints
+requirements and re-reads bounded metadata before rename and immediately before
+removal of the renamed root. The same exported inventory reader serves both
+discovery and removal. It requires unchanged root device/inode, root/newest
+mtime and byte/entry counts. A changed or unusable inventory keeps the run;
+a newly renamed root is restored on refusal. This is conservative revalidation,
+not a claim that native writers have closed. Pins and unknown admission
+records retain their roots. Interrupted indexed removals revalidate their full
+artifact requirements, including tombstone maps. Linked receipt roots refuse.
 
-Actual scheduler callbacks use direct artifact identities and the
-artifacts_title_topic index, selecting at most one row per coverage/shard
-lookup. Latest-item identities are checkpointed in a Set. All batch evidence is
-conservatively preserved, so callbacks do not parse batch history or scan
-latest-item arrays. Shutdown stops and positively joins retention even if an
-earlier cleanup operation rejects; the primary failure remains reported.
+The indexed report retains its existing fields and reason counts; mode is now
+live and removed is a positive native-removal count. Its total describes indexed
+runs, not all directories. Its additive unindexed report records the pass mode,
+scanned entries, would-retire and removed counts, and classes: indexed,
+reference, pin, pointer, age-floor, inventory-bound, eligible, ignored and
+unknown. Report mode makes no retirement claim and keeps every directory.
+SUITE_UNINDEXED_RETENTION_REMOVE is the independent activation default; its
+enabled value cites the human's exception beside the declaration. Disposable
+tests explicitly exercise production default, report and deletion settings.
+The serving owner emits suite-retention-start and durationMs on its complete
+or incomplete pass receipt. Duration covers admitted background work and its
+IO, excluding startup, queue wait, fixture setup and teardown.
+Shutdown stops and joins
+both work and the directory cursor even after another cleanup failure.
 
-## Guarded deletion fixture switch
-
-The suite removal owner defaults to inspection only. Disposable-root tests pass
-the explicit remove:true option; the scheduler has no enabling path. The owner
-validates literal run ids, directory ancestors and durable artifact containment.
-It refuses linked ownership roots and requires map artifacts when a map exists
-in either the original run or its renamed tombstone.
-Every retry validates the receipt directory and final regular file before
-opening it; linked receipt directories and files refuse without removing the
-run or external evidence.
-
-Before fixture deletion, the shared atomic checkpoint writer persists the full
-required artifact path set outside the directory being removed, under
-.cland/run/suite-retirement/<id>.json. A bounded read revalidates those
-requirements on retry, even after partial removal. Missing requirements retain
-the tombstone. Rename is followed by guarded removal; the receipt is removed
-only after native removal completes. Production activation requires its separate
-report-log replay and configured age floor.
+Before serving on an older tracker index, one schema migration invalidates item
+hashes so the existing bootstrap walk indexes parsed verified criterion run
+identities. Indexed keep protection is ready before the first live pass, even
+when those old marks have no publisher pin. New tracker writes continue to pin
+references before publication.
+An indexed invalid hash left by incomplete migration fences all run absence
+checks until a positive reindex receipt replaces it; the lookup uses a partial
+index rather than scanning item history per retirement candidate.
 
 ## Durable reference admission
+
+Live retirement batches contain at most 32 candidates. One synced immutable R
+inode is hard-linked into their reference records, competing atomically with
+pin publication; the reference directory is synced before any deletion. One
+synced version-2 requirements checkpoint is hard-linked into each per-run
+retirement receipt, followed by one receipt-directory sync. Only a positive
+in-process batch token skips repeated claim/checkpoint fsyncs. A crash leaves
+runs retained or covered by durable native claims and requirements. Recovery
+accepts both version-1 individual receipts and version-2 batch receipts, checks
+the requested run's complete paths, and revalidates its claim. Per-run outcomes
+survive later failures; cleanup errors remain secondary diagnostics.
+
+Unindexed inventories checkpoint at each batch boundary, before claiming or
+removing those runs; the full per-pass inventory remains bounded to 2 MiB.
 
 Before its temporary write and final authorization/rename, the shared tracker
 write owner pins run ids in the exact parsed item that readers will index. It

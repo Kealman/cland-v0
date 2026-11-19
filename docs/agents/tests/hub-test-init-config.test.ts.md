@@ -18,3 +18,8 @@ Run `node --test hub/test/init-config.test.ts` on supported Node with inherited
 
 
 T-1738: managed init and update add daily_spend_usd 3 and lease 12h without a pool, retaining existing qa provider and harness pin on update. Preservation fixtures carry explicit slots for custom sizes.
+
+Retention settings use the same parser for generated config and settings writes:
+suite_retention_min_age_days defaults to 7 positive integer days;
+suite_retention_pass_limit defaults to 4096 and accepts integers 1 through 4096.
+The frozen CONFIG_USAGE fixture names both keys and reload behaviour.

@@ -13100,18 +13100,25 @@
     },
     "hub/test/suite-retention-scale.test.ts": {
       "file": true,
-      "seconds": 113,
+      "seconds": 89,
       "owner": "E-880",
       "added": "2026-11-19",
       "expires": "2026-11-26",
-      "reason": "T-1957: Coordinator a0bf13c1 approved a separate file allowance for the T4 50,000-root report-mode classification, idempotence and guarded teardown plus the actual-scheduler case. At fd3e107ae524234dbc7af0d9ee992915a009f8a8 local macOS passing identity sum is 73.828748625 + 0.856633333 = 74.685381958 s; cap rounds 1.5x upward to 113 s. Linux droplet A-21515 at 118b172e9bfceb3a802332c5f1a098aa86d41a94 has passing identities 52.757195455 + 0.856111759 = 53.613307214 s, below the separate 60 s new-file cap; that configured run remains failed/partial. Both samples replay through the production checker. The case allowance is separate; fixed 1000 ms reply bounds and retention assertions stay unchanged."
+      "reason": "T-1992: Coordinator53ffcc5e approves89s file allowance, E-880/2026-11-26. Current unindexed-case file sample35.074643666s plus retained prior-head separate indexed22.295835959s and scheduler1.310210750s sum58.680690375s; ceil(1.5x)=89s. This is a conservative sum of separate invocations/epochs, not current same-file timing. Linux pending. Actual pass24.207531375s removed4093 empty directories, so it is a floor for real populated runs; reloadable cap throttles later passes."
     },
-    "hub/test/suite-retention-scale.test.ts::report mode classifies fifty thousand runs and keeps every directory while serving task views": {
-      "seconds": 111,
+    "hub/test/suite-retention-scale.test.ts::live unindexed scheduler pass stays responsive across fifty thousand directories": {
+      "seconds": 52,
       "owner": "E-880",
       "added": "2026-11-19",
       "expires": "2026-11-26",
-      "reason": "T-1957: Coordinator-approved T4 scale allowance for one-pass creation of 50,000 directory-only roots, two idempotent report classifications and guarded teardown. Linux droplet A-21515 run ab774d6b-c5d4-4a64-84c1-6a52ef60adb3 at 118b172e9bfceb3a802332c5f1a098aa86d41a94 has a passing 52.757195455 s case; its configured run remains failed/partial. Local macOS at merged head fd3e107ae524234dbc7af0d9ee992915a009f8a8 passed at 73.828748625 s (73.83 s). Cap rounds 1.5x the worst passing sample upward to 111 s under Coordinator 1aa49e6d; both platform samples replay through the production checker. The 1000 ms task.view bound and all retention assertions stay unchanged; no allowance for the actual-scheduler case."
+      "reason": "T-1992: Coordinator53ffcc5e approves52s from local macOS arm64 Node24.21.0 case34.602201125s, ceil(1.5x)=52s. File35.074643666s includes setup/cleanup; actual serving-owner pass24.207531375s excludes them,4096 scanned/4093 empty directories removed, filesRemoved0, task.view4.667625ms<1000ms. Empty-directory timing is a floor for populated live runs; use reloadable pass cap. Linux sample pending."
+    },
+    "hub/test/suite-retention-scale.test.ts::live mode retires eligible runs in bounded passes over fifty thousand directories while serving task views": {
+      "seconds": 35,
+      "owner": "E-880",
+      "added": "2026-11-19",
+      "expires": "2026-11-26",
+      "reason": "T-1992: Coordinator 542d4cee authorizes tightening the migrated E-880 allowance. Local macOS arm64 Node24.21.0 bounded-live file sample 22.295835959 s includes setup and cleanup; 1.5x with headroom is 35 s. Pass wall 10.982167834 s, 4091 empty directories removed, visited controls kept, task.view 1.720291 ms below unchanged 1000 ms bound. Incomplete unbatched sample remains separate. Linux pending; owner E-880 and expiry2026-11-26 unchanged."
     },
     "hub/test/startup-listener-scale.test.ts::listener binds report each await while retained verdict freshness drains": {
       "seconds": 20,

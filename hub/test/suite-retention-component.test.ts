@@ -1,13 +1,113 @@
 // T2: disposable filesystem only; no native executor or provider boundary.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { retireSuiteRun } from '../src/suite-raw-coverage.ts';
+import { retireSuiteRun, retireSuiteRuns } from '../src/suite-raw-coverage.ts';
 import { SuiteRetention } from '../src/suite-retention.ts';
 import { retentionCase } from './suite-retention-fixture.ts';
 import fs from 'node:fs/promises';
+
+test('guarded unindexed removal keeps a nested file rewritten after its inventory and rename', t=>{
+  const scope=retentionCase(t);
+  return scope.run(async step=>{
+    const root=await step(async()=>{const root=await mkdtemp(join(tmpdir(),'cland-late-inventory-'));scope.adoptRoot(root);return root;});
+    const run=join(root,'.cland/run/suites/old'),nested=join(run,'nested');
+    await mkdir(nested,{recursive:true});
+    await writeFile(join(nested,'receipt'),'old bytes');
+    const old=new Date(Date.now()-8*86400000);
+    for(const path of [join(nested,'receipt'),nested,run])await utimes(path,old,old);
+    const originalRootMtime=(await fs.stat(run)).mtimeMs;
+    const rename=fs.rename;
+    let rewritten=false;
+    scope.patch(fs,'rename',async(...args:Parameters<typeof rename>)=>{
+      const result=await Reflect.apply(rename,fs,args);
+      if(String(args[0]).endsWith('/suites/old')&&String(args[1]).endsWith('/.retiring-old')){
+        await writeFile(join(String(args[1]),'nested/receipt'),'new bytes');
+        rewritten=true;
+        assert.equal((await fs.stat(String(args[1]))).mtimeMs,originalRootMtime,'nested rewrite leaves the root mtime unchanged');
+      }
+      return result;
+    });
+    const sweep=new SuiteRetention(root,1,{remove:true,removeUnindexed:true,indexAbsent:()=>true});
+    scope.cleanup(()=>sweep.close());
+    await sweep.drain(()=>false,()=>[],()=>{},()=>false);
+    assert.equal(rewritten,true,'the real guarded owner reached rename after durable inventory admission');
+    assert.equal(await readFile(join(run,'nested/receipt'),'utf8'),'new bytes');
+    assert.deepEqual(await readdir(join(root,'.cland/run/suites')),['old']);
+    assert.equal(sweep.snapshot().unindexed.removed,0);
+  });
+});
+
+test('batch retirement preserves completed outcomes and recovers a mid-batch interruption from durable requirements', t => {
+  const scope=retentionCase(t);
+  return scope.run(async step=>{
+    const root=await step(async()=>{const root=await mkdtemp(join(tmpdir(),'cland-batch-retirement-'));scope.adoptRoot(root);return root;});
+    await mkdir(join(root,'.cland/artifacts'),{recursive:true});
+    const artifact=join(root,'.cland/artifacts/log');await writeFile(artifact,'durable');
+    for(const id of ['first','second'])await mkdir(join(root,'.cland/run/suites',id),{recursive:true});
+    const remove=fs.rm;let interrupt=true;
+    scope.patch(fs,'rm',async(...args:Parameters<typeof remove>)=>{
+      if(String(args[0]).endsWith('/.retiring-second')&&interrupt){interrupt=false;throw new Error('planted mid-batch interruption');}
+      return Reflect.apply(remove,fs,args);
+    });
+    const result=await retireSuiteRuns(root,['first','second'].map(id=>({id,artifacts:[artifact],eligible:()=>true})));
+    assert.equal(result.get('first')?.removed,true);
+    assert.equal(result.get('second')?.removed,false);
+    assert.match(String(result.get('second')?.error),/planted mid-batch interruption/);
+    assert.equal(await readFile(join(root,'.cland/run/suite-references/first'),'utf8'),'R');
+    assert.equal(await readFile(join(root,'.cland/run/suite-references/second'),'utf8'),'R');
+    const receipt=JSON.parse(await readFile(join(root,'.cland/run/suite-retirement/second.json'),'utf8'));
+    assert.equal(receipt.version,2);
+    assert.deepEqual(receipt.runs.map((row:{id:string})=>row.id),['first','second']);
+    assert.equal(await retireSuiteRun(root,'second',[artifact],()=>true,{remove:true}),true);
+    assert.deepEqual(await readdir(join(root,'.cland/run/suites')),[]);
+  });
+});
+
+for(const removeUnindexed of [undefined,false,true])test(`unindexed ${removeUnindexed===undefined?'production default':removeUnindexed?'fixture deletion':'reporting'} uses newest inventory age and preserves keep controls`, t => {
+  const scope = retentionCase(t);
+  return scope.run(async step => {
+    const root = await step(async () => {
+      const root = await mkdtemp(join(tmpdir(),'cland-unindexed-retention-'));
+      scope.adoptRoot(root); return root;
+    });
+    const { pinSuiteRun } = await import('../src/suite-reference-pins.ts');
+    const suites = join(root,'.cland/run/suites');
+    await mkdir(join(root,'.cland/artifacts'),{recursive:true});
+    const old = new Date(Date.now()-8*86400000);
+    for (const id of ['absent','indexed','referenced','pinned','young','new-file','oversized']) {
+      await mkdir(join(suites,id),{recursive:true});
+      await writeFile(join(suites,id,'receipt'),'original bytes');
+      if(id!=='new-file'&&id!=='young')await utimes(join(suites,id,'receipt'),old,old);
+      if (id !== 'young') await utimes(join(suites,id),old,old);
+    }
+    const deep=[join(suites,'oversized')];
+    for(let depth=0;depth<17;depth++){const path=join(deep.at(-1)!,'child');await mkdir(path);deep.push(path);}
+    for(const path of deep.reverse())await utimes(path,old,old);
+    await pinSuiteRun(root,'pinned');
+    const live=removeUnindexed!==false;
+    const sweep = new SuiteRetention(root,1,{remove:true,...(removeUnindexed===undefined?{}:{removeUnindexed}),indexAbsent:id=>id!=='indexed'});
+    scope.cleanup(()=>sweep.close());
+    await sweep.drain(id=>id==='referenced',()=>[],()=>{},()=>false);
+    const kept=['indexed','new-file','oversized','pinned','referenced','young',...(live?[]:['absent'])].sort();
+    assert.deepEqual((await readdir(suites)).sort(),kept);
+    for (const id of kept) assert.equal(await readFile(join(suites,id,'receipt'),'utf8'),'original bytes');
+    assert.equal(sweep.snapshot().unindexed.mode,live?'live':'report');
+    assert.equal(sweep.snapshot().unindexed.wouldRetire,1);
+    assert.equal(sweep.snapshot().unindexed.removed,live?1:0);
+    assert.deepEqual(sweep.snapshot().unindexed.reasons,{indexed:1,reference:1,pin:1,'age-floor':2,'inventory-bound':1,eligible:1});
+    assert.deepEqual((await readdir(join(root,'.cland/run/suite-references'))).sort(),live?['absent','pinned']:['pinned'],'report mode creates no retirement claim');
+    const inventories = (await readdir(join(root,'.cland/artifacts'))).filter(name=>name.startsWith('suite-retention-'));
+    assert.equal(inventories.length,1);
+    const inventory = JSON.parse(await readFile(join(root,'.cland/artifacts',inventories[0]!), 'utf8'));
+    assert.deepEqual(inventory.runs.map((run:{id:string})=>run.id),['absent']);
+    assert.equal(inventory.runs[0].files,1);
+    assert.equal(inventory.runs[0].bytes,14);
+    assert.equal(inventory.runs[0].indexAbsent,true);
+  });
+});
 
 test('retirement uses durable artifacts and preserves an already referenced run through guarded removal', t => {
   const scope = retentionCase(t);

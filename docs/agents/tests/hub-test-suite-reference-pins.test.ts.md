@@ -1,5 +1,13 @@
 # hub/test/suite-reference-pins.test.ts
 
+The legacy criterion-only test injects ownedDatabases before each constructor.
+A planted migration failure proves its native connection stays captured until
+the pre-enrolled resource owner closes it before root/guard release. A separate
+10,000-item fixture captures the exact production migration query's EXPLAIN
+plan for 1024 lookups. Dropping the partial index first positively detects a
+full table scan; restoring the production DDL requires covering-index searches
+on every lookup. This is plan/work-shape evidence, not a timing claim.
+
 T2 disposable filesystem tests exercise tracker create/edit body references,
 verdict and criterion publishers,
 coverage pointer publication and duration refresh through their public APIs.

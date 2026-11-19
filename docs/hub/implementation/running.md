@@ -7,13 +7,16 @@ clock corrections. Exit 75 plus a runner-recorded `suite infrastructure:` cause 
 incomplete infrastructure evidence; a matching test-output line supplies no cause.
 See `docs/hub/running.md#waiting-suite-tickets` for older-runner compatibility.
 
-Suite retention ships in report mode: the hosting scheduler logs kept and
-would-retire counts in yielding background batches after serving; it deletes
-no live run directory. The report preserves recent, referenced, young and
-conservative evidence classes. The deletion switch is off by default and used
-only on disposable-root fixtures. Publisher pins and live activation are separate
-items. Use artifact paths for completed evidence; never delete live run directories
-manually. See docs/hub/suite-retention.md.
+Suite retention deletes eligible indexed and unindexed runs in
+yielding background passes after serving. The seven-day floor and 4096-entry
+per-pass cap are configurable; reload applies lower throttle values to the next
+pass. References, pins, young runs and conservative evidence classes stay.
+Unindexed contents are counted in bounded durable inventory ledgers, not copied;
+their newest mtime must pass the floor and is revalidated through the shared
+bounded reader before removal. Their enabled independent deletion switch cites
+the human's one-off rule-27 exception. Per-pass durationMs measures admitted IO
+without startup or fixture setup/cleanup.
+Use artifact paths for completed evidence. See docs/hub/suite-retention.md.
 
 ## Merge-delta advisory comments
 

@@ -18,23 +18,59 @@ and tier assignments. Searches used raw path and format strings (`run/suites`,
 | hub/test/durations.ts refreshDurations | pinSuiteLog pins lexical and canonical raw owners and returns the admitted canonical path. The sole caller reads that captured path, never reopens the mutable alias. Renamed inputs and durable artifact logs retain support. A deterministic alias swap proves the consumed timing belongs to the pinned run. |
 | hub/dispatch.ts #reportSuite / coverage publication | Raw artifact copy remains under unsettled scheduler ownership until publication; pointer registration additionally pins. No separate arbitrary-age raw publisher. |
 | hub/suites.ts and executor/droplet/run.ts/run.sh | Launch/output/shard/cache metadata belongs to the scheduler. Unsettled, ancestry, batch, cover and integrated evidence stays retained independently. |
-| Tracker create/edit/import bodies | Recognized structured marks and verdict comments go through the shared #write admission above. Ordinary prose is not a reference. Offline frontmatter migration preserves existing body/comment bytes without introducing references; old criterion-only protection is T-1992 C5. External filesystem writers are outside admitted publisher APIs. |
+| Tracker create/edit/import bodies | Recognized structured marks and verdict comments go through the shared #write admission above. Ordinary prose is not a reference. Offline frontmatter migration preserves existing body/comment bytes without introducing references; old criterion-only marks are indexed before live retention starts. External filesystem writers are outside admitted publisher APIs. |
 
 ## Reader dispositions
 
 | Readers | Disposition |
 | --- | --- |
-| tracker/item.ts, criteria.ts, index-db.ts, gate-verdicts.ts, explorer-fields.ts, tracker.ts | Persisted run strings and criterion marks retain their existing shape. New writes pin; old verdict references remain in retention's indexed keep set. Old criterion-only marks are not in that index: handled by T-1992 C5 before activation. |
+| tracker/item.ts, criteria.ts, index-db.ts, gate-verdicts.ts, explorer-fields.ts, tracker.ts | Persisted run strings and criterion marks retain their existing shape. New writes pin; old verdict references remain in retention's indexed keep set. Old criterion-only marks are indexed during the schema migration before serving. |
 | hub/suite-history.ts, hub/merge-batches.ts, dev-T3 search, cache and cover selection | Indexed metadata, baselines and artifact identities; existing conservative ancestry/evidence classes retained. |
 | suite-log.ts, suite-provenance.ts, suite-load-diagnostics.ts, hub/suites.ts, executor/droplet collection | Raw log reads occur under unsettled owner or retained evidence classes; durable log artifacts survive retirement. |
 | suite-coverage.ts coverageMaps/coverageSelection, suite-selection.ts, selection-replay.ts | Read durable artifact map paths through unchanged pointer grammar. Pointer run ids remain protected; older hub pointer shape stays supported. |
-| suite-retention.ts, suite-raw-coverage.ts | Inspect bounded per-run admission state, retain unknown/pinned records; only explicit disposable-root switch claims retirement. |
+| suite-retention.ts, suite-raw-coverage.ts | Inspect bounded per-run admission state, retain unknown/pinned records; live retirement uses the exclusive claim with durable artifacts or bounded unindexed inventories. |
 | CLI verification/history, web sessions/verification and verification panels, Neovim verification/QA/item panels | Read hub metadata and durable artifact links, no raw directory reads and no protocol additions or removals. |
-| QA briefs, shipped QA templates, startup/cover fixtures | Explicit artifact or test-owned raw paths; no changed grammar. Production deletion off; fixtures retain ownership of their roots. |
-| Frozen CLI usage and tracker snapshot fixtures | No help bytes or persisted item schema changes; no migration. |
+| QA briefs, shipped QA templates, startup/cover fixtures | Explicit artifact or test-owned raw paths; no changed grammar. Production deletion respects the floor and pins; fixtures retain ownership of their roots. |
+| Frozen CLI usage and tracker snapshot fixtures | CONFIG_USAGE and frozen commands.json migrate both retention settings. Persisted item wire shapes are unchanged. |
 | All tiered tests in the search inventory below | Existing consumers keep prior wire/record shape. New admission cases are T2; no tier moves or borrowed T1 proof. |
 
 ## Exact search inventory
+
+The corrected T-1992 unindexed snapshot adds mode, scanned, wouldRetire,
+removed and reason-class counts to the existing structured retention report.
+The consumers of suite-retention-report are scheduler/scale tests, this
+subsystem reference and report-log replay artifacts; the original indexed
+fields remain unchanged and old report lines remain supported. Production
+unindexed deletion is independently enabled under the human's 18:36Z exception
+to ask 2da0c7c7; fixtures explicitly exercise both settings. Inventory age uses
+the newest root/descendant mtime and the shared bounded removal-time reader.
+
+C6 adds suite-retirement-inventory.ts as the shared discovery/removal reader;
+RetirementInventory remains re-exported at its former module path. The raw
+owner, unindexed owner, their component tests, scale tests and these references
+are the consumers of newestMtimeMs, device/inode and the reader functions.
+Inventory row fields are additive. suite-retention-start and durationMs are
+consumed by scheduler/scale tests and report evidence; prior report lines
+without durationMs remain valid for the accepted indexed aggregate replay.
+
+T-1992 also searches suite-retirement, required, claimSuiteRetirement,
+retireSuiteRun and their importers for batch durability. The sole persisted
+receipt reader/writer is suite-raw-coverage.ts; it keeps version-1 reading while
+adding version-2 batch membership. Existing interrupted-removal, linked-receipt
+and map-requirement regressions retain old-byte coverage. New mid-batch recovery
+proves the version-2 path and preservation of earlier successful outcomes.
+
+T-1992 repeats the inventory search across hub/src, hub/test, nvim/test,
+web/src, docs, qa and shipped skills using raw run/suites paths, retireSuiteRun,
+suiteLogPath, retainsSuiteRun, pinSuiteLog, coverageMapPath and both new config
+keys and camel-case fields. Added consumers are suite-unindexed-retention.ts,
+init/config.ts (default/parser/template), init/config-set.ts (consumer-parser
+validation), hub/configuration.ts (reload declaration), hub/daemon.ts and
+hub/suites.ts (effective settings), cli/usage/config.ts and frozen
+hub/test/fixtures/cli-usage/commands.json. init-config, config-set, config-reload,
+cli-help and cli-usage-compatibility tests exercise these paths. Existing raw
+readers listed below retain their artifacts/reference protection; no protocol
+shape or supported older-client wire grammar changes. No tier moves occur.
 
 Each path below has the disposition in its corresponding publisher/reader row.
 Test fixtures are disposable; prose/briefs retain their existing input paths.

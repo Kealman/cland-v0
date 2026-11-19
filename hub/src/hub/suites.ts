@@ -1,5 +1,6 @@
 import { suiteCommandOutcome, suiteInfrastructureCauses, type SuiteInfrastructureSource } from '../suite-infrastructure.ts';
 import { SuiteRetention } from '../suite-retention.ts';
+import { SUITE_RETENTION_PASS_LIMIT } from '../suite-retention-policy.ts';
 import { withCleanupAsync } from '../cleanup.ts';
 import { hostVerifyWorktree, removeHostVerifyWorktree, validateHostVerifyWorktree, hostVerifyDirectory, type HostVerifySnapshot } from '../territory.ts';
 import { RawCoverageSweep, removeRawCoverage } from '../suite-raw-coverage.ts';
@@ -118,7 +119,7 @@ export type StageCover = { id: string; head: string; tree: string; platform: Sta
 const verifyResult = (job: SuiteJob): VerifyResult => ({ ...(job.webPhase ? { webPhase: job.webPhase } : {}), executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome?.notRun ? 'unavailable' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 // A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
-export type SuiteSchedulerOptions = { runReferenced?: (id: string) => boolean; stageJobs?: (jobs: readonly SuiteJob[]) => Iterable<Readonly<SuiteJob>>; onTestSlotAvailable?: (waiter: TestSlotWaiter) => void; taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { suiteRetentionMinAgeDays?:number; suiteRetentionPassLimit?:number; runReferenced?: (id: string) => boolean; stageJobs?: (jobs: readonly SuiteJob[]) => Iterable<Readonly<SuiteJob>>; onTestSlotAvailable?: (waiter: TestSlotWaiter) => void; taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
@@ -280,7 +281,7 @@ export class Suites {
   #leaseRefreshing: Promise<void> | null = null;
   constructor(store: Store, root: string, report: (job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void) => Promise<void>, options: SuiteSchedulerOptions = {}) {
     this.#options = options;
-    this.#retention = new SuiteRetention(root, undefined, {now:() => this.#clock.now().getTime()});
+    this.#retention = new SuiteRetention(root, undefined, {remove:true,passLimit:()=>this.#options.suiteRetentionPassLimit??SUITE_RETENTION_PASS_LIMIT,now:() => this.#clock.now().getTime(),minimumAgeMs:()=> (this.#options.suiteRetentionMinAgeDays??7)*86400000,indexAbsent:id=>!this.#stageJobs.has(id)&&!this.#retentionParents.has(id)&&store.suiteJob(id)===null});
     this.#clock = options.clock ?? realClock;
     this.#env = options.env ?? process.env;
     this.#candidate = options.candidate ?? suiteCandidate(this.#env);
@@ -1016,8 +1017,10 @@ export class Suites {
   /** Called by the serving owner, never during startup recovery. */
   startRetention(): void {
     this.#retentionAdmitted = true;
-    if (this.#closed) return;
-    this.#retentionWork ??= this.#retention.drain(id => {
+    if (this.#closed || this.#retentionWork) return;
+    const started=performance.now();
+    this.#options.log?.({event:'suite-retention-start'});
+    this.#retentionWork = this.#retention.drain(id => {
       const parent = this.#retentionParents.get(id) ?? id;
       const run = this.#stageJobs.get(parent);
       return this.#closed || !!(run?.cover || run?.integrated || run?.batch || run?.devT3Probe) || this.#retentionReferences.has(parent)
@@ -1040,7 +1043,7 @@ export class Suites {
     }, (id, removed, error) => {
       if (removed) this.#store.setMeta(`suite-retired:${id}`, '1');
       this.#options.log?.({ event: 'suite-retention', id, removed, ...(error ? { error: String(error) } : {}) });
-    }, () => this.#closed).then(() => this.#options.log?.({event:'suite-retention-report',...this.#retention.snapshot()})).catch(error => this.#options.log?.({ event: 'suite-retention-incomplete', error: String(error) })).finally(() => { this.#retentionWork = undefined; });
+    }, () => this.#closed).then(() => this.#options.log?.({event:'suite-retention-report',durationMs:performance.now()-started,...this.#retention.snapshot()})).catch(error => this.#options.log?.({ event: 'suite-retention-incomplete',durationMs:performance.now()-started,...this.#retention.snapshot(),error: String(error) })).finally(() => { this.#retentionWork = undefined; });
   }
   async #launch(job: SuiteJob): Promise<void> {
     job.state = 'launching'; job.admittedAt ??= this.#clock.now().toISOString(); this.#launching.add(job.id); this.#save(job);
@@ -2168,6 +2171,6 @@ export class Suites {
     this.#closed = true;
     await withCleanupAsync(async () => {
       const closingDroplet = this.#droplet.close(); for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); this.stopWaitMetrics(); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await this.#periodic; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await this.#hostSnapshotRecovery; await this.#leaseRefreshing; await Promise.allSettled(this.#inspecting.values()); await closingDroplet;
-    }, async () => { await this.#retentionWork; });
+    }, async () => { await this.#retentionWork; await this.#retention.close(); });
   }
 }

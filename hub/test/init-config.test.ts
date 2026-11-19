@@ -5,6 +5,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+
+test('suite retention age floor defaults to seven days and validates explicit days', () => {
+  assert.equal(parseConfig('', 'test', {}).verification.suiteRetentionMinAgeDays, 7);
+  assert.equal(parseConfig('[verification]\nsuite_retention_min_age_days = 14', 'test', {}).verification.suiteRetentionMinAgeDays, 14);
+  for (const value of ['0', '-1', '1.5', '"7"']) assert.throws(() => parseConfig(`[verification]\nsuite_retention_min_age_days = ${value}`, 'test', {}), /suite_retention_min_age_days/);
+});
+
+test('suite retention pass cap can be lowered with the consumer parser', () => {
+  assert.equal(parseConfig('', 'test', {}).verification.suiteRetentionPassLimit,4096);
+  assert.equal(parseConfig('[verification]\nsuite_retention_pass_limit = 32','test',{}).verification.suiteRetentionPassLimit,32);
+  for(const value of ['0','-1','1.5','4097','"32"'])assert.throws(()=>parseConfig(`[verification]\nsuite_retention_pass_limit = ${value}`,'test',{}),/suite_retention_pass_limit/);
+});
 import { configuredLevels, Ladder } from '../src/tracker/kinds.ts';
 import { defaultConfig, parseConfig, provisionConfig, renderConfig } from '../src/init/config.ts';
 import { prepareAuthMode, setConfigValue } from '../src/init/config-set.ts';

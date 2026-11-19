@@ -6,6 +6,7 @@ import { isIP } from 'node:net';
 // `cland init` writes it with the defaults; `cland update` rewrites it to the current template, keeping the values
 // it finds (so a threshold the human changed survives an update). A file without the mark is the human's and left
 // alone. The hub reads the thresholds at start; a missing or unreadable file means the built-in defaults.
+import { SUITE_RETENTION_PASS_LIMIT } from '../suite-retention-policy.ts';
 import { qaPolicy, type QaPolicy } from '../tracker/plan.ts';
 import { visibilityOverrides, type VisibilityOverrides } from '../hub/visibility.ts';
 import { DEFAULT_LEVELS, configuredLevels, Ladder, type Levels } from '../tracker/kinds.ts';
@@ -26,7 +27,7 @@ export type ProjectConfig = {
   release: { webBundle: boolean; homebrew: { tap: string } };
   setup: { declinedInstalls: HarnessId[]; declinedAccounts: string[] };
   merge: { batchInteraction: 'report' | 'run'; queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
-  verification: { provision: string; prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; coordinatorSuites: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { provision: string; prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; coordinatorSuites: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; suiteRetentionMinAgeDays: number; suiteRetentionPassLimit:number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -49,7 +50,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   release: { webBundle: false, homebrew: { tap: '' } },
   setup: { declinedInstalls: [], declinedAccounts: [] },
   merge: { batchInteraction: 'report', queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] },
-  verification: { provision: '', prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, coordinatorSuites: 1, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, coverageMapRetention: 10, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { provision: '', prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, coordinatorSuites: 1, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, coverageMapRetention: 10, suiteRetentionMinAgeDays: 7, suiteRetentionPassLimit:SUITE_RETENTION_PASS_LIMIT, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -158,6 +159,10 @@ wait_p90_target = "${c.verification.waitP90TargetMs % MINUTE === 0 ? `${minutes(
 coverage_max_age = "${c.verification.coverageMaxAgeMs / 1000}s"
 # Newest coverage pointers to keep; artifact retention is independent.
 coverage_map_retention = ${c.verification.coverageMapRetention}
+# Minimum age in days before background suite retirement (positive integer).
+suite_retention_min_age_days = ${c.verification.suiteRetentionMinAgeDays}
+# Bound candidates and discovered entries per pass; may be lowered live.
+suite_retention_pass_limit = ${c.verification.suiteRetentionPassLimit}
 # Named tests fail at this deadline; silent commands are stopped with their process tree.
 test_timeout = "${c.verification.testTimeoutMs / 1000}s"
 stall_timeout = "${c.verification.stallTimeoutMs / 1000}s"
@@ -406,6 +411,14 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
       if (typeof verification[key] !== 'string') throw new Error('not a duration');
       c.verification[field] = durationMs(verification[key]);
     } catch { throw new Error(`verification.${key} must be a positive duration (s, m, h or d)`); }
+  }
+  if (verification.suite_retention_pass_limit !== undefined) {
+    if (!Number.isSafeInteger(verification.suite_retention_pass_limit) || (verification.suite_retention_pass_limit as number) < 1 || (verification.suite_retention_pass_limit as number) > SUITE_RETENTION_PASS_LIMIT) throw new Error(`verification.suite_retention_pass_limit must be an integer from 1 to ${SUITE_RETENTION_PASS_LIMIT}`);
+    c.verification.suiteRetentionPassLimit = verification.suite_retention_pass_limit as number;
+  }
+  if (verification.suite_retention_min_age_days !== undefined) {
+    if (!Number.isSafeInteger(verification.suite_retention_min_age_days) || (verification.suite_retention_min_age_days as number) < 1) throw new Error('verification.suite_retention_min_age_days must be a positive integer');
+    c.verification.suiteRetentionMinAgeDays = verification.suite_retention_min_age_days as number;
   }
   if (verification.coverage_map_retention !== undefined) {
     if (!Number.isSafeInteger(verification.coverage_map_retention) || (verification.coverage_map_retention as number) < 1) throw new Error('verification.coverage_map_retention must be a positive integer');

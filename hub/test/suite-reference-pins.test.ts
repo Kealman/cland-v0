@@ -9,9 +9,85 @@ import { pinSuiteRun, suiteRunPinned, SuiteReferencePins } from '../src/suite-re
 import { retireSuiteRun } from '../src/suite-raw-coverage.ts';
 import { registerCoverageMap } from '../src/suite-coverage.ts';
 import { refreshDurations } from './durations.ts';
-import { ownedTracker } from './owned-tracker.ts';
+import { ownedTracker, ownedDatabases } from './owned-tracker.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { parseItem } from '../src/tracker/item.ts';
+import { TrackerIndex } from '../src/tracker/index-db.ts';
+import { DatabaseSync } from 'node:sqlite';
+
+test('historical keep lookups use the partial index across ten thousand retained items', t => {
+  const scope=retentionCase(t);
+  return scope.run(async()=>{
+    const open=ownedDatabases({requireClose:close=>scope.cleanup(close)});
+    let database:DatabaseSync|undefined;
+    const index=new TrackerIndex(':memory:',undefined,path=>{database=open(path);return database;});
+    scope.cleanup(async()=>index.close());
+    const db=database!;
+    db.exec(`with recursive retained(n) as (values(1) union all select n+1 from retained where n<10000)
+      insert into tracker_items(id,n,file,kind,title,state,assignee,parent,topic,branch,created,updated,hash,source,indexed_at)
+      select 'T-'||n,n,'T-'||n||'.md','task','Retained evidence','open',null,null,null,null,'2026-11-19T00:00:00Z','2026-11-19T00:00:00Z','indexed','hand',0 from retained`);
+    const prepare=db.prepare.bind(db);
+    const definition=prepare("select sql from sqlite_master where name='tracker_pending_criterion_migration'").get() as {sql:string};
+    const plans:string[][]=[];
+    scope.patch(db,'prepare',(sql:string)=>{
+      if(sql.includes('tracker_items')&&sql.includes("hash = ''"))plans.push((prepare(`explain query plan ${sql}`).all() as Array<{detail:string}>).map(row=>row.detail));
+      return prepare(sql);
+    });
+    db.exec('drop index tracker_pending_criterion_migration');
+    assert.equal(index.retainsSuiteRun('positive-control'),false);
+    assert.ok(plans[0]!.some(detail=>detail==='SCAN tracker_items'),'the control detects a full retained-history scan when the index is absent');
+    db.exec(definition.sql);plans.length=0;
+    for(let candidate=0;candidate<1024;candidate++)assert.equal(index.retainsSuiteRun(`absent-${candidate}`),false);
+    assert.equal(plans.length,1024);
+    assert.ok(plans.every(plan=>plan.some(detail=>detail.includes('USING COVERING INDEX tracker_pending_criterion_migration'))),'every production migration query uses the covering partial index');
+  });
+});
+
+test('criterion-only historical verification protects its raw run through indexed retirement', t => {
+  const scope = retentionCase(t);
+  return scope.run(async step => {
+    const root = await step(async () => {
+      const root = await mkdtemp(join(tmpdir(), 'cland-historical-mark-'));
+      scope.adoptRoot(root); return root;
+    });
+    await mkdir(join(root,'.cland/run/suites/criterion-only'), {recursive:true});
+    await mkdir(join(root,'.cland/artifacts'), {recursive:true});
+    const artifact = join(root,'.cland/artifacts/log');
+    await writeFile(artifact,'durable');
+    const snapshot = JSON.parse(await readFile(new URL('./fixtures/tracker-snapshot/items.json', import.meta.url), 'utf8')) as {items:Array<{name:string;text:string}>};
+    const source = snapshot.items.find(item => item.name.startsWith('T-1000-'))!;
+    const item = parseItem(source.text, source.name);
+    item.comments = [];
+    item.body = '## Acceptance criteria\n- [x] C1. Preserved\n  - verified: reviewer [reviewer] · run criterion-only · 2026-11-18T00:00:00Z';
+    const open=ownedDatabases({requireClose:close=>scope.cleanup(close)});
+    let index: TrackerIndex | undefined;
+    scope.cleanup(async () => { index?.close(); });
+    index = new TrackerIndex(join(root,'index.db'),undefined,open);
+    index.put(item,{file:source.name,hash:'old',source:'hand',indexedAt:1});
+    index.close(); index=undefined;
+    const legacy=open(join(root,'index.db'));
+    try {legacy.exec('drop table tracker_criterion_runs');} finally {legacy.close();}
+    index=new TrackerIndex(join(root,'index.db'),undefined,open);
+    assert.equal(index.metaOf(item.fm.id)?.hash,'','older index requests bootstrap reindex before serving');
+    assert.equal(index.retainsSuiteRun('not-yet-indexed'),true,'incomplete migration fences every absence');
+    index.put(item,{file:source.name,hash:'old',source:'hand',indexedAt:2});
+    assert.equal(index.retainsSuiteRun('not-yet-indexed'),false,'positive bootstrap receipt releases unrelated absence');
+    assert.equal(index.retainsSuiteRun('criterion-only'),true);
+    assert.equal(await retireSuiteRun(root,'criterion-only',[artifact],()=>!index!.retainsSuiteRun('criterion-only'),{remove:true}),false);
+    assert.equal(await suiteRunPinned(root,'criterion-only'),false,'keep protection works without a newly written pin');
+    assert.equal((await fs.stat(join(root,'.cland/run/suites/criterion-only'))).isDirectory(),true);
+    let failed:DatabaseSync|undefined;
+    assert.throws(()=>new TrackerIndex(join(root,'failed.db'),undefined,path=>{
+      failed=open(path);
+      const exec=failed.exec.bind(failed);
+      scope.patch(failed,'exec',(sql:string)=>{if(sql.includes('create table tracker_criterion_runs'))throw new Error('planted migration failure');return exec(sql);});
+      return failed;
+    }),/planted migration failure/);
+    assert.equal(failed!.isOpen,true,'constructor failure leaves a captured native connection for the pre-enrolled owner');
+    await scope.settleResources();
+    assert.equal(failed!.isOpen,false,'resource close receipt precedes root/guard release');
+  });
+});
 
 test('admission owner shares pending work, checkpoints only success and revalidates after recovery', t => {
   const scope = retentionCase(t);

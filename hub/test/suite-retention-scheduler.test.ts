@@ -28,32 +28,37 @@ async function seeded(scope: ReturnType<typeof retentionCase>, step: <T>(work:()
   return {f,log};
 }
 
-test('scheduler retention uses bounded indexed lookups and reports without deleting', t => {
+test('scheduler live retention uses bounded indexed lookups and guarded deletion', t => {
   const scope=retentionCase(t);
   return scope.run(async step=>{
     const {f}=await seeded(scope,step);
     scope.patch(f.store,'artifactIndex',()=>assert.fail('retention decoded global artifact history'));
     const lookup=f.store.artifactByTitle.bind(f.store);
     let lookups=0;
+    const link=fs.link;
+    let batchLinks=0;
+    scope.patch(fs,'link',async(...args:Parameters<typeof link>)=>{batchLinks++;return Reflect.apply(link,fs,args);});
     scope.patch(f.store,'artifactByTitle',(...args:Parameters<typeof lookup>)=>{lookups++;return lookup(...args);});
     const observed=f.when(()=>f.logs.find(row=>row.event==='suite-retention-report'));
     f.suites.startRetention();
     const report=await scope.wait('scheduler report receipt',()=>observed);
     await f.suites.settled();
-    assert.equal(report.mode,'report');
+    assert.equal(report.mode,'live');
+    assert.equal(typeof report.durationMs,'number','the serving owner reports the full admitted pass wall time');
     assert.equal(report.total,22);
     assert.equal(report.wouldRetire,2);
     assert.equal(report.kept,20);
-    assert.equal(report.removed,0);
+    assert.equal(report.removed,2);
+    assert.equal(batchLinks,3,'one shared durable claim link and two requirement links for two retirements');
     assert.equal(lookups,2,'two candidates visit one indexed coverage row each, independent of 2048 unrelated artifacts');
-    assert.equal((await fs.readdir(join(f.root,'.cland/run/suites'))).filter(id=>id.startsWith('retention-')).length,22);
+    assert.equal((await fs.readdir(join(f.root,'.cland/run/suites'))).filter(id=>id.startsWith('retention-')).length,20);
   });
 });
 
 for(const [kind,evidence] of Object.entries({
   integrated:{integrated:true}, batch:{batch:{id:'preserved-batch',members:[]}},
   cover:{cover:{status:'green',cause:null,tests:[]}}, probe:{devT3Probe:{key:'preserved-probe',files:[]}},
-} satisfies Record<string,Partial<SuiteJob>>)) test(`scheduler report conservatively preserves old ${kind} evidence`,t=>{
+} satisfies Record<string,Partial<SuiteJob>>)) test(`scheduler live retention conservatively preserves old ${kind} evidence`,t=>{
   const scope=retentionCase(t);
   return scope.run(async step=>{
     const {f}=await seeded(scope,step,evidence);
@@ -62,8 +67,9 @@ for(const [kind,evidence] of Object.entries({
     const report=await scope.wait('conservative evidence classification receipt',()=>observed);
     assert.equal(report.wouldRetire,1);
     assert.equal(report.kept,21);
-    assert.equal(report.removed,0);
-    assert.equal((await fs.readdir(join(f.root,'.cland/run/suites'))).filter(id=>id.startsWith('retention-')).length,22);
+    assert.equal(report.removed,1);
+    assert.equal((await fs.readdir(join(f.root,'.cland/run/suites'))).filter(id=>id.startsWith('retention-')).length,21);
+    assert.equal((await fs.stat(join(f.root,'.cland/run/suites/retention-0'))).isDirectory(),true);
   });
 });
 

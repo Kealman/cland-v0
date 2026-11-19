@@ -193,6 +193,12 @@ export class TrackerIndex {
     this.#db = openDatabase(path, open);
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on;');
     this.#db.exec(SCHEMA);
+    // Older indexes did not retain criterion run identities. Invalidate their
+    // source hashes once so the existing bootstrap walk fills protection before
+    // the serving owner can start retirement. A crash repeats unfinished rows.
+    const criterionRuns = this.#db.prepare("select 1 from sqlite_master where type = 'table' and name = 'tracker_criterion_runs'").get();
+    this.#db.exec("create index if not exists tracker_pending_criterion_migration on tracker_items(hash) where hash = ''");
+    if (!criterionRuns) this.#tx(() => this.#db.exec("create table tracker_criterion_runs (run text not null, item_id text not null references tracker_items(id) on delete cascade, primary key(run,item_id)); update tracker_items set hash = ''"));
     this.#db.exec('create index if not exists tracker_items_number on tracker_items (n); create index if not exists tracker_items_parent on tracker_items (parent); create index if not exists tracker_items_file on tracker_items (file); create index if not exists tracker_items_branch on tracker_items (branch)');
     // Additive columns for databases created by earlier hub versions.
     const itemColumns = new Set((this.#db.prepare('pragma table_info(tracker_items)').all() as Row[]).map(r => r.name));
@@ -279,6 +285,8 @@ export class TrackerIndex {
         )
         .run(fm.id, idNumber(fm.id), meta.file, fm.kind, fm.version ?? null, fm.title, fm.state, fm.status ?? null, fm.size ?? null, fm.regression_of ? this.#referenceKey(fm.regression_of) : null, fm.found_by ?? null, fm.rank ?? null, fm.assignee, fm.parent, fm.topic, fm.branch, fm.created, fm.updated, fm.closed ?? null, meta.hash, meta.source, meta.indexedAt);
       const criteria = parseCriteria(item.body, !['task', 'question', 'spec', 'map'].includes(fm.kind)).criteria;
+      const retain = this.#db.prepare('insert or ignore into tracker_criterion_runs (run,item_id) values (?,?)');
+      for (const criterion of criteria) for (const mark of criterion.marks) if (mark.kind === 'verified') retain.run(mark.run, fm.id);
       this.#db.prepare('update tracker_items set criteria_ids = ?, criteria_summary = ? where id = ?').run(JSON.stringify(criteria.flatMap(c => c.id ? [c.id] : [])), JSON.stringify(summarizeCriteria(criteria)), fm.id);
       const label = this.#db.prepare('insert or ignore into tracker_labels (item_id, label) values (?, ?)');
       for (const l of fm.labels) label.run(fm.id, l);
@@ -522,7 +530,10 @@ export class TrackerIndex {
 
   /** Indexed durable identities, including stale and historical verdicts. */
   retainsSuiteRun(run: string): boolean {
-    return Boolean(this.#db.prepare('select 1 from tracker_verdicts where run = ? union all select 1 from tracker_written_verdicts where run = ? limit 1').get(run, run));
+    // A failed bootstrap row leaves its migration hash invalid. Until all old
+    // rows have a positive reindex receipt no absence can authorize deletion.
+    if (this.#db.prepare("select 1 from tracker_items where hash = '' limit 1").get()) return true;
+    return Boolean(this.#db.prepare('select 1 from tracker_verdicts where run = ? union all select 1 from tracker_written_verdicts where run = ? union all select 1 from tracker_criterion_runs where run = ? limit 1').get(run, run, run));
   }
 
   /** Every item's verdicts, in file order: what `task.list` shows beside each summary. */
