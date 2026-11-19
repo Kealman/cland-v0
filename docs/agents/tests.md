@@ -61,6 +61,13 @@ in [skill maintenance](../../skills/README.md). The T1 lint fixture rejects miss
 or empty records; `skill-provenance-merge.test.ts` proves native Git merge,
 `merge-tree` and one-parent squash preservation after copying the shipped skills.
 
+The same static command checks implement-skill paragraph placement with
+`hub/test/lint-implement-workflow.ts`. Deliberate workflow edits carry an item and
+reason marker for each paragraph; subsystem guidance belongs in indexed
+references. See [documentation placement](documentation.md) for the marker grammar.
+The wired guard ships in report mode, printing findings without changing exit
+status; `--enforce` selects refusal explicitly.
+
 The closed-item wording guard (`hub/test/lint-closed-item-wording.ts`) checks
 repository `README*.md` files, `docs/**/*.md` and `site/src/content/docs/**/*.{md,mdx}`
 against `.cland/tasks/*.md`,

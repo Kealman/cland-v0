@@ -1,5 +1,17 @@
 # Hub documentation
 
+Implementation notes (read with the matching subsystem reference):
+
+- [Remote commands and credentials](../docs/hub/implementation/remote.md)
+- [Artifacts](../docs/hub/implementation/artifacts.md)
+- [Doctor](../docs/hub/implementation/doctor.md)
+- [Setup](../docs/hub/implementation/setup.md)
+- [Verification and merge accounting](../docs/hub/implementation/running.md)
+- [Adapters and native launch](../docs/hub/implementation/adapters.md)
+- [Hosts, worktrees and placement](../docs/hub/implementation/hosts.md)
+- [Logins](../docs/hub/implementation/logins.md)
+- [Voice echo](../docs/hub/implementation/voice.md)
+
 Subsystem reference and implementation guidance live in `docs/hub/`.
 Evidence publication uses the session-aware `publishSessionEvidence` library;
 see [scan and publication](../docs/agents/evidence-publication.md) for snapshot,

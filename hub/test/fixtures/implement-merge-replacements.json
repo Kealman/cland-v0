@@ -1,0 +1,18 @@
+{
+  "sourceHead": "fb513e13f5991e1e05210e2005e7b04b09b2ee45",
+  "sourcePath": ".agents/skills/implement/SKILL.md",
+  "replacements": [
+    {
+      "position": 27,
+      "destination": "running",
+      "previous": "Run typechecking and targeted single test files while implementing. Merge batches run T0 before configured tiers, skip T1 only with complete structured mode-free exact-head member receipts and another configured runtime tier, and add Web after T1 (after configured tiers without T1) for web/ diffs; use the receipt/bisection seams in `docs/agents/tests.md#queued-merge-batches` for changes there. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.",
+      "text": "Run typechecking and targeted single test files while implementing. Merge batches run T0 before configured tiers, skip T1 only with complete structured mode-free exact-head member receipts and another configured runtime tier, and add Web after T1 (after configured tiers without T1) for web/ diffs; use the receipt/bisection seams in `docs/agents/tests.md#queued-merge-batches` for changes there. A green same-tree batch with structured T0/T3 and executed or member-verified T1 suppresses periodic dev admission; changed-tree batch-only suppression has a durable 24h full-periodic backstop, while unchanged trees retain their skip. See `docs/hub/running.md` for cadence and executor availability. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end."
+    },
+    {
+      "position": 69,
+      "destination": "adapters",
+      "previous": "OpenCode remote readiness, HTTP and SSE use the same per-session Unix forward.\nKeep its host-local URL in the process record for native attach, and cancel the\nforward after identity-verified stop or failed-launch rollback using LaunchSettled.\nThe callback covers the current hub lifetime; post-restart forward settlement is\ntracked by T-1671. Preserve the OpenCode adapter/native tests unchanged when\nchanging this path; the remote lifecycle and cleanup guides name its evidence.\nNormal remote exits retain supervision until identity cleanup, client socket and\nwatch work drain, and forward cancellation settle; failed cancellation retries\nbefore the exit notice.",
+      "text": "OpenCode remote readiness, HTTP and SSE use the same per-session Unix forward.\nKeep its host-local URL in the process record for native attach, and cancel the\nforward after identity-verified stop or failed-launch rollback using LaunchSettled.\nThe callback covers the current hub lifetime; post-restart Codex/OpenCode settlement\nuses the exact forward receipt persisted with pending files. Preserve it through\nrollback checkpoints; missing or mismatched state retains the row and role with\ncleanup-incomplete. Preserve the OpenCode adapter/native tests unchanged when\nchanging this path; the remote lifecycle and cleanup guides name its evidence.\nNormal remote exits retain supervision until identity cleanup, client socket and\nwatch work drain, and forward cancellation settle; failed cancellation retries\nbefore the exit notice."
+    }
+  ]
+}

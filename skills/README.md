@@ -1,5 +1,9 @@
 # skills
 
+For implement-skill maintenance, follow [documentation placement](../docs/agents/documentation.md):
+subsystem guidance goes to its indexed reference, item provenance to `CHANGES/`,
+and deliberate workflow edits carry an item/reason marker for each paragraph.
+
 The curated skill set lives in [`.agents/skills/`](../.agents/skills/), edited in place. These are the live copies this repository's sessions use and the source `cland init` copies into projects. `.claude/skills` links to that directory. A skill added here ships with the next `cland update`.
 
 The set keeps 15 upstream skills from `mattpocock/skills`: code-review, codebase-design, diagnosing-bugs, domain-modeling, grilling, implement, prototype, research, retro, tdd, to-spec, to-tickets, triage, wayfinder and writing-for-agents. cland's own skills are handover, merge, onboarding, plan-epic, qa and release.
