@@ -1,10 +1,26 @@
 import { fixtureOwnedRoots } from '../../shared/fixture-roots.ts';
+import { qaCaseEnvironment } from '../../test-support/fixture-environment.ts';
 // T1: pure child-environment construction, no processes or machine state.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fixtureEnvironment, scratchAccountEnvironment, runnerFixtureEnvironment, scratchGitEnvironment } from './fixture-environment.ts';
 import { syntheticProviderEnvironment, type SyntheticProvider } from './synthetic-provider.ts';
 import type { Provider } from '../src/executor/droplet/dependencies.ts';
+
+test('QA case environments keep QA inputs without fixture or caller authority', () => {
+  const env = qaCaseEnvironment('/scratch/qa', {
+    CLAND_QA_TMP: '/scratch/qa', CLAND_QA_CASE: '/scratch/case.lua', CLAND_NODE: '/scratch/qa/node',
+    CLAND_SESSION_NAME: 'caller', CLAND_TEST_OWNED_ROOT: '/caller', CLAND_TEST_HOST_SOCKET_ROOT: '/caller',
+    CLAND_EXECUTOR_STATE: '/caller/state', OPENAI_API_KEY: 'synthetic-caller-key', GIT_DIR: '/caller/git',
+  });
+  assert.deepEqual(Object.keys(env).filter(key => key.startsWith('CLAND_')).sort(), ['CLAND_NODE', 'CLAND_QA_CASE', 'CLAND_QA_TMP']);
+  assert.equal(env.CLAND_NODE, '/scratch/qa/node');
+  assert.equal(env.CLAND_QA_TMP, '/scratch/qa');
+  assert.equal(env.HOME, '/scratch/qa/home');
+  assert.equal(env.GIT_CONFIG_GLOBAL, '/scratch/qa/home/.gitconfig');
+  assert.equal(env.OPENAI_API_KEY, undefined);
+  assert.equal(env.GIT_DIR, undefined);
+});
 
 test('shared fixture environments seal poisoned parent and overlay credentials and Git config', () => {
   // As in setup-machine's poisoned-HOME self-test, every poison is synthetic.

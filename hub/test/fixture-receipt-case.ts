@@ -8,7 +8,7 @@ import { stageCase } from './stage-case-fixture.ts';
 type Receipt = ReturnType<typeof fixtureOwnership>;
 type Opened = { path: string; fd?: number; closed: boolean; removed: boolean; receipt: boolean; saves: number; owner?: Receipt };
 
-export function fixtureReceiptCase(t: TestContext, projectRoot: string) {
+export function fixtureReceiptCase(t: TestContext, sourceCheckout: string) {
   const sequence = stageCase(t);
   const opened: Opened[] = [], byFd = new Map<number, Opened>();
   const acquisitionErrors: unknown[] = [];
@@ -79,12 +79,14 @@ export function fixtureReceiptCase(t: TestContext, projectRoot: string) {
       });
       sequence.patch(fs, 'unlinkSync', (path: fs.PathLike) => {
         if (faults.remove?.path === String(path)) throw faults.remove.error;
-        return unlink(path);
+        unlink(path);
+        const entry = opened.find(entry => entry.path === String(path));
+        if (entry) entry.removed = true;
       });
       await body({ root, step, receipt: (pid, birth) => {
         acquiring = true;
         try {
-          const receipt = fixtureOwnership([root, projectRoot]);
+          const receipt = fixtureOwnership([root], sourceCheckout);
           const entry = byFd.get(receipt.fd);
           if (!entry) throw new Error('receipt native open was not captured');
           entry.owner = receipt; entry.receipt = true;

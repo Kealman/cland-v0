@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
+import { fixtureOwnership, registerFixtureOwnership } from '../../shared/fixture-ownership.ts';
 import { fileURLToPath } from 'node:url';
 // A stub hub for the shell's tests: it speaks the UI's frames (docs/hub/the-projects-hub.md, "The UI's frames" and the
 // `session.*` frames) as JSON lines on stdin and stdout, the way `cland hub serve --stdio` does, from a
@@ -41,11 +41,9 @@ import { STUB_NOW } from './fixtures/clock.ts';
 // Read-only QA uses an inline scenario and needs no files. An unavailable
 // receipt leaves this stub unowned for orphan sweeping, without blocking frames.
 let fixtureOwner: ReturnType<typeof fixtureOwnership> | undefined;
-try {
-  fixtureOwner = fixtureOwnership([process.cwd(), fileURLToPath(new URL('../../', import.meta.url))]);
-} catch (error) {
-  if (!['EACCES', 'EPERM', 'EROFS'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
-}
+const registration = registerFixtureOwnership([process.cwd()], fileURLToPath(new URL('../../', import.meta.url)));
+if (registration.outcome === 'registered') fixtureOwner = registration.owner;
+else process.stderr.write(JSON.stringify(registration.diagnostic) + '\n');
 process.once('exit', () => { fixtureOwner?.close(); fixtureOwner?.remove(); });
 
 export type Scenario = {

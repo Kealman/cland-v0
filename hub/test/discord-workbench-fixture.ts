@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { enableFixtureHostSockets } from '../../shared/fixture-sockets.ts';
 import type { TestContext } from 'node:test';
 import { mkdir, writeFile, mkdtemp, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -27,7 +28,9 @@ export async function discordWorkbench(t: TestContext) {
   let hub: Awaited<ReturnType<typeof projectHub>> | undefined;
   const project = async () => {
     const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-discord-workbench-')));
-    return { root, remove: ownDirectory(t, root, { beforeRemove: startup.dispose }) };
+    const remove = ownDirectory(t, root, { beforeRemove: startup.dispose });
+    enableFixtureHostSockets(root);
+    return { root, remove };
   };
   const wait = (predicate: () => boolean | Promise<boolean>, what: string) => startup.observe(async signal => {
     await until(async () => signal.aborted || await predicate(), { what, timeoutMs: 2000 });

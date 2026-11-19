@@ -80,6 +80,8 @@ test('final fake Claude census', assertFakeClaudeCensus);
 
 test('orphan sweep joins a fake Claude session after its fixture worker is killed', { timeout: 30_000 }, t => residueControl(t, { native: true }).run(async c => {
   const { root, drain } = await nativeControlRoot(c);
+  const project = join(root, 'project');
+  await c.step('separate project setup', () => fs.mkdir(project));
   const marker = join(root, 'launched.json');
   const script = join(root, 'worker.mjs');
   const harness = new URL('./harness.ts', import.meta.url).href;
@@ -98,7 +100,7 @@ await until(async () => (await fake.log(session.id)).includes('session ready'), 
 await writeFile(${JSON.stringify(marker)}, JSON.stringify({ ...session, home: fake.home }));
 setInterval(() => {}, 1000);
 `));
-  const worker = await residueChild(c, 'SIGKILL worker acquisition', () => spawn(process.execPath, [script], { cwd: root, detached: true, env: fixtureEnvironment(root, process.env, { TMPDIR: root }), stdio: ['ignore', 'pipe', 'pipe'] }));
+  const worker = await residueChild(c, 'SIGKILL worker acquisition', () => spawn(process.execPath, [script], { cwd: project, detached: true, env: fixtureEnvironment(root, process.env, { TMPDIR: root }), stdio: ['ignore', 'pipe', 'pipe'] }));
   await worker.observe('worker session receipt setup', () => until(async () => !!await fs.stat(marker).catch(() => null), { what: 'worker session receipt' }));
   const session = JSON.parse(await worker.observe('session receipt read', () => fs.readFile(marker, 'utf8'))) as { pid: number; home: string };
   await c.acquire('live session ownership', async () => ownProcess(undefined, session.pid), stop => stop());
@@ -110,13 +112,15 @@ setInterval(() => {}, 1000);
   const [, signal] = await worker.observe('killed fixture worker native close', () => worker.closed);
   assert.equal(signal, 'SIGKILL', 'worker close confirms the injected signal');
   assert.ok(captureProcess(session.pid), 'positive control: worker SIGKILL leaves the session alive');
-  const orphans = await c.step('private receipt orphan discovery', () => findFixtureOrphans(root, undefined, undefined, root));
+  assert.equal(session.home.startsWith(project + '/'), false, 'the fake home is separate from its project cwd');
+  const orphans = await c.step('private receipt orphan discovery', () => findFixtureOrphans(root, undefined, undefined, project));
   assert.ok(orphans.some(orphan => orphan.process.pid === session.pid && orphan.owned), 'orphan sweep recognizes the session through its private ownership receipt');
-  await c.step('guarded worktree removal', () => removeWorktreeWithFixtures(root, async () => {
+  assert.equal(orphans.find(orphan => orphan.process.pid === session.pid)?.root, session.home, 'only the allocated fake home is disposable');
+  await c.step('guarded worktree removal', () => removeWorktreeWithFixtures(project, async () => {
     assert.equal(captureProcess(session.pid), null, 'session exited before root removal');
     assert.equal(captureProcess(spoke.pid), null, 'spoke exited before root removal');
     await drain(); // Settle fallback discovery while its original root still exists.
-    await fs.rm(root, { recursive: true, force: true });
+    await fs.rm(project, { recursive: true, force: true });
   }));
   assert.equal(captureProcess(session.pid), null, 'empty session census after sweep');
   assert.equal(captureProcess(spoke.pid), null, 'empty spoke census after sweep');

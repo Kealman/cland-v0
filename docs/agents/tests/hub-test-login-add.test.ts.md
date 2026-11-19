@@ -22,3 +22,18 @@ verification evidence; local native checks name macOS separately; complete T3
 belongs to the merge batch and T4 to stage/epic occasions.
 
 The terminal disconnect segment asserts the durable `sign-in interrupted` episode and captured host, the exact volume attachment and its mounted symlink. It does not infer SSH closure from socket loss. Native success and failure remain owned by the CLI post-close frame.
+
+The terminal disk login test uses only disposable fake hosts and credentials.
+CLI-started fixture hubs register the allocated project root, never their source
+worktree. The final named test `fixture file outputs are removed` runs after
+fixture cleanup joins, checking every allocated root and recorded alias absent.
+Run the entire file to include that census; a filtered body is not census proof.
+Failures retain roots when writer closure cannot be proved. The shared
+fixture-socket lifecycle tests also exercise census after planted test failure.
+
+`receiptFixtureCase` owns the entire changed acceptance callback before setup.
+Each asynchronous step is admitted and bounded separately; fixture and daemon
+setup have named bounds. Fixture helper hooks use the owner's proxy context and
+run after original work joins on normal or signal cleanup. The daemon producer
+captures its stop before returning, and closing releases registered login children
+before joining their continuations. Admission fencing is not used for teardown.

@@ -12,8 +12,9 @@ type Line = { case: string; result: string; duration_ms: number; build: string; 
 type Run = { code: number | null; stdout: string; stderr: string; line: Line };
 
 /** Run `cland --headless --qa …`, optionally under a command prefix (a sandbox); the one JSON line parsed. */
-export async function qa(t: TestContext, args: string[], options: { prefix?: string[]; env?: Record<string, string>; cwd?: string; started?: (child: ChildProcess) => void } = {}): Promise<Run> {
+export async function qa(t: TestContext, args: string[], options: { prefix?: string[]; env?: Record<string, string>; cwd?: string; rootAllocated?: (root: string) => void; started?: (child: ChildProcess) => void } = {}): Promise<Run> {
   const root = await tempProject(t, 'cland-qa-cli-');
+  options.rootAllocated?.(root);
   const env: Record<string, string> = {};
   if (process.env.CLAND_NVIM) env.CLAND_NVIM = process.env.CLAND_NVIM;
   Object.assign(env, options.env);

@@ -2038,7 +2038,36 @@ the complete ownership proof.
 New receipts for an existing fixture root live in its private
 `.fixture-sockets/owners/` directory. Guarded directory disposal removes them
 after all writers have joined, including owners killed before exit callbacks.
-The reader keeps accepting legacy global receipts. Orphan discovery reads the
+Registration requires an allocation grant from the fixture socket owner or the
+sealed child environment's owned account or project root. Every registered root must resolve inside
+the first scratch root; source checkouts are never registration roots. Readers
+reject escaped or symlinked roots and legacy global receipts, which lack a safe
+scratch boundary. Version-1 root-local receipts keep the existing required fields.
+The optional `sourceCheckout` association stays outside `roots`: only authorized
+worktree-removal process selection reads it, with fresh PID/birth revalidation.
+Directory cleanup never follows it. Previous local receipts lacking it remain
+readable with scratch-only selection.
+Receipt-bound fake-Claude sessions also use fresh OS cwd evidence for authorized
+project removal; cwd never becomes a disposable receipt root. fakeClaude grants
+only its actual allocated home through a private fixed-root Node preload, sharing
+QA's root-identity policy. Its NODE_OPTIONS bootstrap skips an already removed
+home and preserves existing closed-writer admission. Instrumented fake launches
+append imports rather than replacing that allocation channel.
+Grant raw fixture roots where they are allocated, before a client receives them;
+never opt an arbitrary caller path in inside a receipt consumer. The headless QA
+runner projects a sealed environment with no fixture/caller CLAND variables into
+the case. Its existing CLAND_NODE names an allocator-owned exec shim and preload
+inside the run directory. A descriptor passed as a Neovim argument pins their
+bytes and file identities; QA validates before each Node/stdio-hub launch.
+Missing or changed files refuse that launch with structured metadata. The
+preload grants only its fixed, identity-checked allocated root. Its read-only
+fallback uses the real Node and grants no root. ENV-001's contract is unchanged.
+Optional hub/stub registration fails closed for the refused root, emits the
+structured `fixture-ownership-refused` stderr diagnostic, and continues serving.
+Native and cleanup codes come from the producer; unknown causes stay unknown.
+An initial write failure closes the receipt descriptor and removes its partial
+file before returning refusal. Required client registration still throws.
+Orphan discovery reads the
 receipt paths held open by each candidate process, so root-local placement needs
 no global pointer or directory census. Symlinked storage and receipts fail closed.
 

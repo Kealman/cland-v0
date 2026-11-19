@@ -1,5 +1,12 @@
 # hub/test/fixture-socket-lifecycle.test.ts
 
+The nonfatal serving control launches an isolated hub with account authority
+outside its project root. It observes the producer's structured unowned-root
+refusal, persisted discovery naming that exact PID and a successful hub.status
+reply after refusal. No owner receipt is persisted. An acknowledged hub.stop
+and native close with exit 0 precede directory removal. This is a process
+lifecycle assertion and requires the native slot.
+
 The native Git/copy control allocates a live receipt and reciprocal alias before
 repository initialization. It requires ordinary source to remain visible while
 runtime metadata is absent from status, `git add .`/commit and a real clone.
@@ -79,3 +86,9 @@ the reader on the same path. Final cleanup asserts removal of the exact alias.
 Setup/close have separate bounds and incomplete messages retain native exit,
 signal and a bounded diagnostic tail. No provider, real SSH or credential is
 involved. Run this T3 file serially in the native preservation slot.
+
+The killed-worker orphan case records a separate synthetic source checkout in
+optional receipt metadata. Its live stub has an external scratch root relative
+to that checkout. Authorized source-worktree removal discovers and joins the
+PID/birth-bound stub before its callback runs, removes the joined receipt and
+leaves the source sentinel intact. Directory authority remains with scratch roots.

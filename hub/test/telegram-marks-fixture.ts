@@ -1,4 +1,5 @@
 import { within } from '../src/executor/droplet/deadline.ts';
+import { enableFixtureHostSockets } from '../../shared/fixture-sockets.ts';
 import assert from 'node:assert/strict';
 import type { TestContext } from 'node:test';
 import { mkdir, writeFile, mkdtemp, realpath } from 'node:fs/promises';
@@ -24,7 +25,9 @@ export async function telegramMarks(t: TestContext, options: { drainClock?: impo
   beforeDirectories(t, drain);
   const project = async () => {
     const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-telegram-marks-')));
-    return { root, remove: ownDirectory(t, root, { beforeRemove: drain }) };
+    const remove = ownDirectory(t, root, { beforeRemove: drain });
+    enableFixtureHostSockets(root);
+    return { root, remove };
   };
   let store: Store | undefined;
   const clock = new FakeClock(Date.now());

@@ -54,6 +54,15 @@ export function fixtureEnvironment(root: string, base: NodeJS.ProcessEnv, extra:
   return withoutExecutorCredentials({ ...env, [FIXTURE_OWNED_ROOT]: resolve(root), [FIXTURE_HOST_SOCKET_ROOT]: resolve(projectRoot), HOME: join(root, 'home'), GIT_CONFIG_GLOBAL: join(root, 'home', '.gitconfig'), GIT_CONFIG_NOSYSTEM: '1' });
 }
 
+/** A user-authored QA case has no fixture or caller CLAND authority. */
+export function qaCaseEnvironment(root: string, extra: NodeJS.ProcessEnv): Record<string, string> {
+  const env = fixtureEnvironment(root, {}, extra);
+  for (const key of Object.keys(env)) {
+    if (key.startsWith('CLAND_') && !key.startsWith('CLAND_QA_') && key !== 'CLAND_NODE') delete env[key];
+  }
+  return env;
+}
+
 /** Deliberate product path inputs, distinct from inherited environment extras. */
 export type ScratchAccountPaths = { home?: string; openCodeDatabase?: string; openCodeConfig?: string; openCodeConfigContent?: string };
 

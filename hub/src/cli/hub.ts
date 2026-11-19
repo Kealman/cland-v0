@@ -1,4 +1,4 @@
-import { fixtureOwnership } from '../../../shared/fixture-ownership.ts';
+import { registerFixtureOwnership } from '../../../shared/fixture-ownership.ts';
 // `cland hub start | status | stop | serve`: the project's hub daemon, run from the project's root (or
 // anywhere inside it).
 import { AutostartDeferred, autostartDeferred, markHubStop, type Starter } from '../hub/startup.ts';
@@ -326,8 +326,11 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
 async function serve(root: string, stdio: boolean, listen: boolean, io: Io, starter: Starter, autostart: boolean): Promise<number> {
   // Explicit fixture launch only; ordinary human hubs never carry this ownership receipt.
   if (process.env.CLAND_TEST_FIXTURE_ROOT === root) {
-    const owner = fixtureOwnership([root, fileURLToPath(new URL('../../../', import.meta.url))]);
-    process.once('exit', () => { owner.close(); owner.remove(); });
+    const registration = registerFixtureOwnership([root], fileURLToPath(new URL('../../../', import.meta.url)));
+    if (registration.outcome === 'registered') {
+      const owner = registration.owner;
+      process.once('exit', () => { owner.close(); owner.remove(); });
+    } else io.err(JSON.stringify(registration.diagnostic) + '\n');
   }
   if (!listen && !stdio) {
     io.err('cland: --no-listen needs --stdio: a hub with neither could not be reached\n');

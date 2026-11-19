@@ -25,7 +25,7 @@ export function registerWriter(home: string, session: boolean): boolean {
     // A test worker can die without running its directory hooks. Keep a private
     // PID/birth receipt open in the native session so guarded worktree removal
     // can recover this detached writer and join its captured spoke descendants.
-    const owner = fixtureOwnership([home, process.cwd(), fileURLToPath(new URL('../../../../', import.meta.url))]);
+    const owner = fixtureOwnership([home], fileURLToPath(new URL('../../../../', import.meta.url)));
     process.once('exit', () => { owner.close(); owner.remove(); });
   }
   return true;

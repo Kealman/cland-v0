@@ -4,9 +4,23 @@ import { dirname, isAbsolute, join } from 'node:path';
 import { opendir } from 'node:fs/promises';
 
 import { fakeStorageDirectory as socketDirectory, ignoreFixtureStorage } from './fake-layout.ts';
-import { FIXTURE_HOST_SOCKET_ROOT } from './fixture-roots.ts';
+import { FIXTURE_HOST_SOCKET_ROOT, FIXTURE_OWNED_ROOT } from './fixture-roots.ts';
 const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const optedInRoots = new Map<string, {device:number;inode:number}>();
+
+/** Allocation grants are scoped to the exact scratch inode, including descendants. */
+export function allocatedFixtureRoot(path: string): boolean {
+  for (const [root, identity] of optedInRoots) {
+    if (path !== root && !path.startsWith(root + '/')) continue;
+    try { const info = lstatSync(root); if (info.dev === identity.device && info.ino === identity.inode) return true; } catch { /* missing grant */ }
+  }
+  for (const key of [FIXTURE_OWNED_ROOT, FIXTURE_HOST_SOCKET_ROOT]) {
+    const inherited = process.env[key];
+    if (!inherited) continue;
+    try { const root = realpathSync(inherited); if (root !== '/' && (path === root || path.startsWith(root + '/'))) return true; } catch { /* missing grant */ }
+  }
+  return false;
+}
 
 /** Short endpoints for explicitly owned fixture projects only. */
 export function fixtureFallbackSocket(root: string, endpoint: string): string | undefined {

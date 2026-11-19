@@ -191,3 +191,10 @@ guard until callback work and cleanup have joined. The preparation observation
 has its own named bound; final refusal/candidate assertions remain in the case.
 
 The T2 policy/preparation scenarios enroll `caseDeadlines` before acquisition and run their entire callback through its sequence owner. Setup hooks (including partial `suiteUnit` acquisition), reopen, ticks and caller continuations drain before storage or roots close. The policy case also checks held sibling completion precedes the next attempt, transient/persistent history command failures, and positive root/no-introduction receipts. Its I/O-turn scheduling has no elapsed-time assertion.
+
+The candidate alias/replacement control keeps its `/var` and `/private/var`
+candidate paths as synthetic host facts. Its fake writer's open receipt lives
+under a real `tempProject` allocation, with candidate association only in
+non-disposable `sourceCheckout` metadata. The canonical writer still prevents
+removal through the alias; replaced or unowned candidates still refuse before
+process discovery. No synthetic path is created or granted as scratch.

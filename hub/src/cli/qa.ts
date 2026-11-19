@@ -1,4 +1,5 @@
-import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
+import { qaCaseEnvironment } from '../../../test-support/fixture-environment.ts';
+import { prepareQaNode, type QaNodeDescriptor } from '../../../shared/qa-node.ts';
 // `cland --headless --qa <case.lua> [--out <dir>]`: one scripted QA case in one headless Neovim with no
 // socket (spec 4.10, #57). The case runs inside Neovim through the Lua QA API (`nvim/lua/cland/qa.lua`),
 // against a fixture project in the temp dir with its own stdio hub (`cland hub serve --stdio --no-listen`)
@@ -80,7 +81,7 @@ function runDir(): string | null {
   }
 }
 
-type Said = { result: QaResult; message?: unknown; hub?: unknown; evidence?: unknown };
+type Said = { result: QaResult; message?: unknown; hub?: unknown; evidence?: unknown; nodeDiagnostic?: unknown };
 
 /** What the case's Neovim said on stdout: its last marked line, when it names a result. */
 function resultOf(stdout: string): Said | null {
@@ -145,9 +146,17 @@ export async function runQa(args: string[], cwd: string = process.cwd()): Promis
   }
 
   const dir = runDir();
+  let node: QaNodeDescriptor;
+  try { node = prepareQaNode(dir); }
+  catch (error) {
+    process.stderr.write(JSON.stringify({ event: 'qa-node-setup-refused', outcome: 'refused', nativeCode: typeof (error as NodeJS.ErrnoException).code === 'string' ? (error as NodeJS.ErrnoException).code : null }) + '\n');
+    if (dir !== null) try { rmSync(dir, { recursive: true, force: true }); }
+    catch (cleanup) { process.stderr.write(JSON.stringify({ event: 'qa-node-setup-cleanup-incomplete', nativeCode: typeof (cleanup as NodeJS.ErrnoException).code === 'string' ? (cleanup as NodeJS.ErrnoException).code : null }) + '\n'); }
+    return blocked('the QA Node channel could not be prepared');
+  }
   // nothing of the user's: an environment of its own, every Neovim and XDG path inside the run's directory
   const home = dir ?? '/var/empty';
-  const env: Record<string, string> = {
+  const env = qaCaseEnvironment(home, {
     ...PINNED,
     PATH: process.env.PATH ?? '/usr/bin:/bin',
     HOME: join(home, 'home'),
@@ -158,17 +167,18 @@ export async function runQa(args: string[], cwd: string = process.cwd()): Promis
     XDG_RUNTIME_DIR: join(home, 'xdg', 'run'),
     NVIM_APPNAME: 'cland-qa',
     NVIM_LOG_FILE: '/dev/null',
-    CLAND_NODE: process.execPath,
+    CLAND_NODE: node.node,
     CLAND_QA_CASE: caseFile,
     CLAND_QA_NAME: name,
     CLAND_QA_TMP: dir ?? '',
     CLAND_QA_OUT: out ?? '',
     CLAND_QA_HUB: options.hub ?? '',
-  };
-  if (process.env.TMPDIR) env.TMPDIR = process.env.TMPDIR;
+    ...(process.env.TMPDIR ? { TMPDIR: process.env.TMPDIR } : {}),
+  });
 
   // detached: Neovim leads a process group of its own, so whatever it leaves is found and killed
-  const child = spawn(nvim, ['--clean', '-u', join(NVIM_DIR, 'init.lua'), '--headless'], { cwd: dir ?? '/', env: withoutExecutorCredentials(env), detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const descriptor = `lua vim.g.cland_qa_node_descriptor = vim.json.decode(${JSON.stringify(JSON.stringify(node))})`;
+  const child = spawn(nvim, ['--clean', '--cmd', descriptor, '-u', join(NVIM_DIR, 'init.lua'), '--headless'], { cwd: dir ?? '/', env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = '';
   let stderr = '';
   let quitting: NodeJS.Timeout | null = null;
@@ -216,5 +226,6 @@ export async function runQa(args: string[], cwd: string = process.cwd()): Promis
   // dump files are named the way --out was given
   const asGiven = (p: unknown): unknown => (out !== null && typeof p === 'string' && p.startsWith(out + sep) ? `${(options.out as string).replace(/\/+$/, '')}${p.slice(out.length)}` : p);
   const evidence = Array.isArray(said.evidence) ? said.evidence.map(asGiven) : said.evidence;
+  if (said.nodeDiagnostic !== undefined) process.stderr.write(JSON.stringify(said.nodeDiagnostic) + '\n');
   return report(said.result, { hub: said.hub, ...(said.message !== undefined ? { message: said.message } : {}), evidence });
 }

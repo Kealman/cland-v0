@@ -717,6 +717,7 @@ end
 --- opts: root (a directory inside the project; default the cwd), transport ('socket' | 'stdio'),
 --- restore (read a restart snapshot even without v:startreason "restart"). A QA run also gives cli (the
 --- `cland` command as a list, instead of CLAND_COMMAND or this repository's) and serve_args (for the stdio hub).
+--- before_spawn is an optional allocator-owned QA check before each stdio launch.
 function M.start(opts)
   opts = opts or {}
   local open_session = vim.env.CLAND_OPEN_SESSION
@@ -739,7 +740,7 @@ function M.start(opts)
     state.say(msg, level and level >= vim.log.levels.WARN and 'ClandAmberBar' or 'ClandDimBar')
   end
 
-  M.client = hub.new({ root = root, transport = transport, cli = opts.cli or cli_command(repo), serve_args = opts.serve_args })
+  M.client = hub.new({ root = root, transport = transport, cli = opts.cli or cli_command(repo), serve_args = opts.serve_args, before_spawn = opts.before_spawn })
   wire_client(M.client)
   require('cland.views').setup(M.client)
   require('cland.verification').start_clock()

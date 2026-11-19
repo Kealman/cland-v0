@@ -1,5 +1,17 @@
 # hub/test/fixture-socket-path.test.ts
 
+The registration alias control uses an allocated scratch directory and a
+symlink alias inside its owner. On macOS it also presents that same allocation
+through `/var` when its canonical path starts with `/private/var`. Each persisted
+receipt must list only the canonical scratch root. Replacement and unowned-root
+refusals remain covered independently by the candidate and registration guards.
+
+Optional registration has a refused-root control and an independently accepted
+scratch-root control. A planted initial ENOSPC write preserves its structured
+cause, closes the exact failed descriptor (EBADF), removes the partial receipt
+and independently observes the retained scratch directory. Both controls run
+inside the positively controlled native launch guard.
+
 T2 exercises `fixtureSocketPath` from `shared/fixture-sockets.ts` (also exported
 through the test compatibility path `test-support/socket-path.ts`) through a
 native Unix listener. A disposable multibyte directory longer than 90 UTF-8 bytes
@@ -56,3 +68,16 @@ lifetime owner for raw fake-host registrations and deep-root opt-ins.
 A separate replacement case registers a new grant while an older asynchronous
 disposal is in flight. Completion of the old scope must preserve that new grant;
 registration identity is per admission even when device/inode are unchanged.
+
+Registration controls attempt the live source worktree and a scratch symlink to
+it. Both refuse before creating a receipt. A valid version-1 local receipt is
+then forged to include the source; the reader refuses it. The orphan component
+regression exercises sweepFixtureOrphans with the forged receipt, checks zero
+termination calls and independently checks the preserved diagnostic files.
+
+The source association control uses separate source and scratch directories. An
+authorized source-removal callback observes the PID/birth-bound scratch process
+joined. Actual guarded scratch removal then leaves the source sentinel intact.
+A positively controlled directory-open observer sees the scratch traversal and
+rejects source traversal. A previous local version-1 receipt without association
+metadata is still read successfully with scratch-only selection.

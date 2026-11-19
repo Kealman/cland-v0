@@ -28,14 +28,18 @@ function native(deadline?: number): FixtureProcesses {
     } };
 }
 const candidate = (row: SystemProcess) => /(?:^|\/)nvim\s+(?:.*\s)?--headless(?:\s|$)|(?:^|\/)stub-hub\.ts(?:\s|$)|(?:^|\/)cland\.ts\s+hub\s+serve(?:\s|$)|(?:^|\/)fake-claude\.ts\s+__session(?:\s|$)/.test(row.command);
-async function ownedRoots(row: SystemProcess, readers: FixtureProcesses, deadline?: number): Promise<string[]> {
+async function ownedRoots(row: SystemProcess, readers: FixtureProcesses, deadline?: number, worktree?: string): Promise<string[]> {
   if (!candidate(row) || !await readers.sameUser(row.pid)) return [];
   const paths = await readers.paths(row.pid, deadline);
   const roots: string[] = [];
   for (const path of paths.files) {
     const receipt = await readFixtureReceipt(path);
     const birth = Math.floor(Date.parse(row.started) / 1000);
-    if (receipt?.pid === row.pid && birth >= receipt.born.min && birth <= receipt.born.max) roots.push(...receipt.roots);
+    if (receipt?.pid === row.pid && birth >= receipt.born.min && birth <= receipt.born.max) {
+      const associated = worktree !== undefined && (receipt.sourceCheckout !== undefined && within(receipt.sourceCheckout, resolve(worktree))
+        || paths.cwd !== null && within(paths.cwd, resolve(worktree)));
+      roots.push(...receipt.roots.filter(root => worktree === undefined || associated || within(root, resolve(worktree))));
+    }
   }
   return roots;
 }
@@ -44,8 +48,8 @@ export async function findFixtureOrphans(scope?: string, deadline?: number, read
   const out: FixtureOrphan[] = [];
   for (const row of await readers.rows()) {
     if (row.pid === process.pid || !candidate(row)) continue;
-    const roots = await ownedRoots(row, readers, deadline);
-    const root = roots.find(root => (scope === undefined || within(root, resolve(scope))) && (worktree === undefined ? readers.missing(root) : within(root, resolve(worktree))));
+    const roots = await ownedRoots(row, readers, deadline, worktree);
+    const root = roots.find(root => (scope === undefined || within(root, resolve(scope))) && (worktree !== undefined || readers.missing(root)));
     if (!root && worktree === undefined && !roots.length) {
       // Old fixtures have no receipt. Report removed cland roots, but never authorize a signal.
       const cwd = (await readers.paths(row.pid, deadline)).cwd;
@@ -64,7 +68,7 @@ export async function sweepFixtureOrphans(log: (entry: Record<string, unknown>) 
   for (const orphan of await findFixtureOrphans(scope, deadline, readers, worktree)) {
     if (!orphan.owned) { log({ event: 'orphan-preserved', pid: orphan.process.pid, reason: orphan.reason }); continue; }
     const current = (await readers.rows()).find(row => row.pid === orphan.process.pid && row.started === orphan.process.started);
-    if (!current || !(await ownedRoots(current, readers, deadline)).includes(orphan.root)) continue;
+    if (!current || !(await ownedRoots(current, readers, deadline, worktree)).includes(orphan.root)) continue;
     const canSignal = (rows: SystemProcess[]) => {
       // endProcess retains captured descendants after the original leader exits,
       // and verifies each captured PID/start time immediately before its signal.
@@ -77,7 +81,7 @@ export async function sweepFixtureOrphans(log: (entry: Record<string, unknown>) 
       if ((await readFixtureReceipt(path))?.pid === current.pid) receipts.push(path);
     }
     let authorized = false;
-    const beforeSignal = async () => { authorized = (await ownedRoots(current, readers, deadline)).includes(orphan.root); };
+    const beforeSignal = async () => { authorized = (await ownedRoots(current, readers, deadline, worktree)).includes(orphan.root); };
     if (await readers.end({ pid: current.pid, pidStarted: current.started, pidIdentity: current.identity ?? null }, () => {}, /cland\.ts\s+hub\s+serve/.test(current.command) ? 5000 : 1000, beforeSignal, { deadline, canSignal: rows => authorized && canSignal(rows) })) {
       for (const path of receipts) {
         if ((await readFixtureReceipt(path))?.pid !== current.pid) continue;

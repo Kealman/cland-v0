@@ -1,6 +1,9 @@
 import { lockHostIdentity } from '../src/hub/lock-identity.ts';
 import { fakePollerProcesses } from './fakes/poller-processes.ts';
 import { rememberFakeClaudeRegistry, rememberFakeClaudeSessions } from './fake-claude-census.ts';
+import { fixtureRootPreload, fixtureRootBootstrap } from '../../shared/fixture-root-preload.ts';
+import { ignoreFixtureStorage } from '../../shared/fake-layout.ts';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
 import { fakeHarness, FAKE_FLAVOURS, type FakeFlavour, type FakeHarness } from './fakes/harness.ts';
 import { realClock, type Clock } from '../src/hub/clock.ts';
@@ -22,7 +25,7 @@ import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -940,8 +943,14 @@ export async function fakeClaude(
       await new Promise<void>(resolve => writerClock.setTimeout(resolve, 25));
     }
   } });
+  const storage = join(home, '.fixture-sockets');
+  mkdirSync(storage, { mode: 0o700 }); // Fresh allocated home: never reuse caller storage.
+  ignoreFixtureStorage(storage);
+  const preload = join(storage, 'fake-claude-node.mjs');
+  writeFileSync(preload, fixtureRootPreload(home), { flag: 'wx', mode: 0o600 });
   const env = {
     PATH: `${FAKE_CLAUDE_DIR}:${process.env.PATH ?? ''}`,
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=data:text/javascript,${encodeURIComponent(fixtureRootBootstrap(home, pathToFileURL(preload).href))}`.trim(),
     FAKE_CLAUDE_HOME: home,
     FAKE_CLAUDE_WRITERS: writers,
     CLAND_CLAUDE_AGENTS_MS: String(timings.pollMs ?? 50),

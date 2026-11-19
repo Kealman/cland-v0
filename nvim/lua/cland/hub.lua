@@ -37,12 +37,14 @@ end
 --- opts: root (the project), transport ('socket' | 'stdio'), cli (the `cland` command as a list),
 --- autostart (run `cland hub start` when no hub runs; default true, socket transport only),
 --- serve_args (more arguments for the stdio child's `hub serve --stdio`, such as `--no-listen`).
+--- before_spawn (optional allocator-owned QA validation, called before every stdio child launch).
 function M.new(opts)
   return setmetatable({
     root = opts.root,
     transport = opts.transport or 'socket',
     cli = opts.cli,
     serve_args = opts.serve_args or {},
+    before_spawn = opts.before_spawn,
     autostart = opts.autostart ~= false,
     handlers = {},
     pending = {},
@@ -338,6 +340,10 @@ function Client:_hub_start(why)
 end
 
 function Client:_spawn()
+  if self.before_spawn and not self.before_spawn() then
+    self:_set_state('failed', 'the QA Node launch was refused')
+    return
+  end
   local cmd = vim.list_extend(vim.list_extend(vim.deepcopy(self.cli), { 'hub', 'serve', '--stdio', '--client', 'nvim' }), self.serve_args)
   local proc
   self:_set_state('connecting', 'starting a hub on stdio')

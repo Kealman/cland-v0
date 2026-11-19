@@ -9,15 +9,71 @@ import { dirname, sep, join } from 'node:path';
 import { cp, mkdir, lstat, stat, writeFile, readFile, readdir, realpath } from 'node:fs/promises';
 import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { tempProject } from './harness.ts';
+import { tempProject, CLI_ENTRY, isolateVerification, readDiscovery } from './harness.ts';
 import { afterCleanup, beforeDirectories, captureProcess, ownProcess, guardDirectoryRemoval } from './process-cleanup.ts';
 import { enableFixtureHostSockets } from '../../shared/fixture-sockets.ts';
 import { hostPaths } from '../src/host/records.ts';
-import { findFixtureOrphans, sweepFixtureOrphans } from '../src/fixture-processes.ts';
+import { findFixtureOrphans, removeWorktreeWithFixtures } from '../src/fixture-processes.ts';
 import { residueControl, residueChild } from './fixture-residue-control.ts';
 import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
 import { fixtureCopyFilter } from '../../shared/fake-layout.ts';
 import { ensureGitignore, layout } from '../src/project.ts';
+import { askHubFrame } from '../src/cli/socket-client.ts';
+import { eventually } from './until.ts';
+
+test('a hub serves requests after refusing an unowned fixture registration', t => residueControl(t, { native: true }).run(async c => {
+  const root = await c.root('refused-', '/tmp'), accounts = await c.root();
+  await c.step('isolated serving configuration', async () => { await mkdir(join(root, '.git')); await isolateVerification(root); });
+  // Separate account authority deliberately grants no registration to root in
+  // the child. The parent retains responsibility for joining this native hub.
+  const extras = {
+    CLAND_TEST_FIXTURE_ROOT: root, CLAND_TEST_ORPHAN_ROOT: root, CLAND_TEST_SKIP_ORPHAN_SWEEP: '1',
+  };
+  const env = fixtureEnvironment(accounts, process.env, extras);
+  const refusalReceipt = Promise.withResolvers<unknown>();
+  void refusalReceipt.promise.catch(() => {});
+  const native = await residueChild(c, 'unowned fixture hub launch', () => {
+    const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve'], {
+      cwd: root, env: fixtureEnvironment(accounts, process.env, extras), detached: true, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    // Observe the exact producer receipt before startup can displace it from
+    // the bounded diagnostic tail. Retain at most one 16 KiB partial line.
+    let pending = Buffer.alloc(0), complete = false;
+    child.stderr.on('data', (bytes: Buffer) => {
+      if (complete) return;
+      let offset = 0;
+      while (offset < bytes.length) {
+        const newline = bytes.indexOf(10, offset), end = newline < 0 ? bytes.length : newline;
+        if (pending.length + end - offset > 16 * 1024) {
+          complete = true; pending = Buffer.alloc(0);
+          refusalReceipt.reject(new Error('incomplete registration diagnostic: line exceeds 16 KiB'));
+          return;
+        }
+        pending = Buffer.concat([pending, bytes.subarray(offset, end)]);
+        if (newline < 0) return;
+        try {
+          const value = JSON.parse(pending.toString('utf8'));
+          if (value.event === 'fixture-ownership-refused') { complete = true; refusalReceipt.resolve(value); }
+        } catch { /* Not the structured receipt. */ }
+        pending = Buffer.alloc(0); offset = end + 1;
+        if (complete) return;
+      }
+    });
+    return child;
+  });
+  const discovery = await native.observe('persisted serving readiness', () => eventually('discovery names the launched hub', async () => {
+    const value = await readDiscovery(root);
+    return value.pid === native.child.pid ? value : undefined;
+  }, 5000));
+  const refusal = await native.observe('structured registration refusal', () => refusalReceipt.promise);
+  assert.deepEqual(refusal, { event: 'fixture-ownership-refused', outcome: 'refused', root, reason: 'unowned-root', nativeCode: null, cleanupCodes: [] });
+  const status = await native.observe('request served after refusal', () => askHubFrame(discovery, { type: 'hub.status' }, 3000, env));
+  assert.equal((status as { root: string }).root, root);
+  await c.step('no ownership authority persisted', () => assert.rejects(lstat(join(root, '.fixture-sockets/owners')), { code: 'ENOENT' }));
+  await native.observe('requested hub stop', () => askHubFrame(discovery, { type: 'hub.stop' }, 3000, env));
+  assert.deepEqual(await native.observe('native serving hub close', () => native.closed), [0, null], native.diagnostic());
+  await c.step('serving owner settlement', native.close);
+}));
 
 test('fixture runtime metadata stays out of Git status, commits, clones and copies', t => residueControl(t, { native: true }).run(async c => {
   const outer = await c.root('fixture-git-', '/tmp'), root = join(outer, 'project');
@@ -116,11 +172,13 @@ await c.step('paths publication',()=>writeFile(${JSON.stringify(receipt)},JSON.s
 
 test('orphan sweep discovers a root-local receipt after the test worker is killed', t => residueControl(t, { native: true }).run(async c => {
   const root = await c.root();
-  const stub = join(root, 'stub-hub.ts');
+  const sourceCheckout = join(root, 'source-checkout');
+  await c.step('separate source setup', async () => { await mkdir(sourceCheckout); await writeFile(join(sourceCheckout, 'keep'), 'source remains'); });
+  const stub = join(sourceCheckout, 'stub-hub.ts');
   const ownership = new URL('../../shared/fixture-ownership.ts', import.meta.url).href;
   const environment = new URL('./fixture-environment.ts', import.meta.url).href;
   await c.step('stub source setup', () => writeFile(stub, `import {fixtureOwnership} from ${JSON.stringify(ownership)};
-const owner=fixtureOwnership([process.cwd(),process.cwd()+'/removed-checkout']);
+const owner=fixtureOwnership([process.cwd()],${JSON.stringify(sourceCheckout)});
 process.send({pid:process.pid,path:owner.path});setInterval(()=>{},1000);`));
   const source = `import {spawn} from 'node:child_process';import {fixtureEnvironment} from ${JSON.stringify(environment)};
 process.on('message',()=>{const child=spawn(process.execPath,[process.argv[1]],{cwd:process.cwd(),env:fixtureEnvironment(process.cwd(),process.env),stdio:['ignore','ignore','ignore','ipc']});child.on('message',message=>process.send(message));});process.send('ready');setInterval(()=>{},1000);`;
@@ -137,11 +195,13 @@ process.on('message',()=>{const child=spawn(process.execPath,[process.argv[1]],{
   worker.kill('SIGKILL');
   const [, signal] = await native.observe('killed worker native completion', () => native.closed);
   assert.equal(signal, 'SIGKILL');
-  const found = await c.step('orphan discovery', () => findFixtureOrphans(root));
+  const found = await c.step('source-associated orphan discovery', () => findFixtureOrphans(root, undefined, undefined, sourceCheckout));
   assert.ok(found.some(row => row.owned && row.process.pid === receipt.pid), 'open receipt still grants discovery after worker death');
-  const ended = await c.step('orphan sweep completion', () => sweepFixtureOrphans(() => {}, root));
-  assert.ok(ended.some(row => row.process.pid === receipt.pid), 'sweep positively joins the orphan');
+  let joined = false;
+  await c.step('source-associated worktree removal join', () => removeWorktreeWithFixtures(sourceCheckout, async () => { joined = true; }));
+  assert.equal(joined, true, 'authorized source removal waits for the associated orphan');
   await c.step('swept receipt removal observation', () => assert.rejects(lstat(receipt.path), { code: 'ENOENT' }));
+  assert.equal(await c.step('source metadata preservation', () => readFile(join(sourceCheckout, 'keep'), 'utf8')), 'source remains');
 }));
 
 test('a cold hub child allocates its first host sockets beneath the scratch root and persists independent reader paths', async t => {

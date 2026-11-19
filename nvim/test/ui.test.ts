@@ -2,6 +2,7 @@
 // prove preference persistence at the real editor boundary.
 // Persistent preferences at the real Neovim process boundary, with the stub hub on stdio.
 import { test, type TestContext } from 'node:test';
+import { enableFixtureHostSockets } from '../../shared/fixture-sockets.ts';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -19,6 +20,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function fixture(t: TestContext) {
   const root = await mkdtemp(join(tmpdir(), 'cland-ui-'));
   ownDirectory(t, root);
+  enableFixtureHostSockets(root);
   await mkdir(join(root, '.cland'));
   return { root, path: join(root, '.cland', 'ui.json') };
 }

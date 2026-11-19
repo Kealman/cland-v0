@@ -14,12 +14,128 @@ import { hostPaths } from '../src/host/records.ts';
 import { layout } from '../src/project.ts';
 import { writeFile, readFile, lstat, symlink } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { fixtureOwnership, readFixtureReceipt } from '../../shared/fixture-ownership.ts';
+import { fixtureOwnership, registerFixtureOwnership, readFixtureReceipt } from '../../shared/fixture-ownership.ts';
 import { ownDirectory, onCleanup } from './process-cleanup.ts';
 import { residueControl } from './fixture-residue-control.ts';
 import cp from 'node:child_process';
 import { within } from '../src/executor/droplet/deadline.ts';
 import { testWaitMs } from './until.ts';
+import { removeWorktreeWithFixtures, type FixtureProcesses } from '../src/fixture-processes.ts';
+import fsPromises from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+import fs from 'node:fs';
+import { readdir } from 'node:fs/promises';
+
+test('optional registration refuses an unowned root without creating cleanup authority', t => residueControl(t).run(async c => {
+  const root = await c.root();
+  const source = await realpath(new URL('../../', import.meta.url).pathname);
+  assert.deepEqual(registerFixtureOwnership([source]), { outcome: 'refused', diagnostic: {
+    event: 'fixture-ownership-refused', outcome: 'refused', root: source, reason: 'unowned-root', nativeCode: null, cleanupCodes: [],
+  } });
+  const positive = registerFixtureOwnership([root]);
+  assert.equal(positive.outcome, 'registered');
+  if (positive.outcome !== 'registered') throw new Error('positive registration was refused');
+  const owner = c.own(positive.owner, receipt => receipt.close());
+  assert.deepEqual((await c.step('positive persisted receipt', () => readFixtureReceipt(owner.value.path)))?.roots, [root]);
+}));
+
+test('registration canonicalizes aliases of an allocated scratch root', t => residueControl(t).run(async c => {
+  const parent = await c.root(), root = join(parent, 'owned'), alias = join(parent, 'alias');
+  await c.step('scratch alias setup', async () => { await mkdir(root); await symlink(root, alias); });
+  const aliases = [alias, ...(root.startsWith('/private/var/') ? [root.replace('/private/var/', '/var/')] : [])];
+  for (const path of aliases) {
+    const owner = await c.acquire('aliased registration', () => fixtureOwnership([path]), receipt => receipt.close());
+    assert.deepEqual((await c.step('canonical receipt read', () => readFixtureReceipt(owner.value.path)))?.roots, [root]);
+  }
+}));
+
+test('a refused initial receipt write closes its descriptor and removes its partial receipt', t => residueControl(t).run(async c => {
+  const root = await c.root();
+  const seed = await c.acquire('storage positive control', () => fixtureOwnership([root]), receipt => receipt.close());
+  await c.step('seed closure', seed.close);
+  seed.value.remove();
+  const original = fs.writeSync;
+  const restore = () => { fs.writeSync = original; syncBuiltinESMExports(); };
+  c.restore(restore);
+  let failedFd: number | undefined;
+  fs.writeSync = ((fd: number) => { failedFd = fd; throw Object.assign(new Error('planted write failure'), { code: 'ENOSPC' }); }) as typeof fs.writeSync;
+  syncBuiltinESMExports();
+  const refusal = registerFixtureOwnership([root]);
+  restore();
+  assert.deepEqual(refusal, { outcome: 'refused', diagnostic: {
+    event: 'fixture-ownership-refused', outcome: 'refused', root, reason: 'receipt-write-failed', nativeCode: 'ENOSPC', cleanupCodes: [],
+  } });
+  assert.notEqual(failedFd, undefined, 'positive control: the initial receipt write was reached');
+  assert.throws(() => fs.fstatSync(failedFd!), { code: 'EBADF' });
+  assert.deepEqual(await c.step('partial receipt removal observation', () => readdir(join(root, '.fixture-sockets/owners'))), []);
+  assert.equal((await c.step('independent root preservation receipt', () => lstat(root))).isDirectory(), true);
+}));
+
+test('source association joins scratch writers without granting source directory cleanup', t => residueControl(t).run(async c => {
+  const parent = await c.root(), root = join(parent, 'scratch'), source = join(parent, 'checkout');
+  await c.step('separate roots setup', async () => { await mkdir(root); await mkdir(source); await writeFile(join(source, 'keep'), 'source remains'); });
+  const originalOpen = fsPromises.opendir;
+  const visited: string[] = [];
+  const restore = () => { fsPromises.opendir = originalOpen; syncBuiltinESMExports(); };
+  c.restore(restore);
+  fsPromises.opendir = async (...args) => { visited.push(String(args[0])); return originalOpen(...args); };
+  syncBuiltinESMExports();
+  await c.step('traversal observer positive control', async () => { const dir = await fsPromises.opendir(source); await dir.close(); });
+  assert.deepEqual(visited, [source]);
+  visited.length = 0;
+  const owner = await c.acquire('associated receipt setup', () => fixtureOwnership([root], source), receipt => receipt.close());
+  const started = new Date().toString(), born = Date.parse(started);
+  owner.value.bind(101, born, born);
+  const row = { pid: 101, parent: 1, group: 101, state: 'S', started, command: 'node /fixture/stub-hub.ts' };
+  let rows = [row], joined = false, removed = false;
+  const readers: FixtureProcesses = {
+    rows: async () => rows, paths: async () => ({ cwd: root, files: [owner.value.path] }), sameUser: async () => true, missing: () => false,
+    end: async (_identity, _log, _grace, beforeSignal, options) => { await beforeSignal?.(); assert.equal(options?.canSignal?.(rows), true); rows = []; joined = true; return true; },
+  };
+  await c.step('authorized source worktree removal', () => removeWorktreeWithFixtures(source, async () => { assert.equal(joined, true); removed = true; }, readers));
+  assert.equal(removed, true);
+  await c.step('receipt close', owner.close);
+  await c.step('guarded scratch directory removal', () => ownDirectory(undefined, root)());
+  assert.ok(visited.includes(root), 'positive control: actual scratch cleanup traversed its root');
+  assert.equal(visited.some(path => path === source || path.startsWith(source + '/')), false, 'no source metadata traversal');
+  restore();
+  await c.step('scratch removal receipt', () => assert.rejects(lstat(root), { code: 'ENOENT' }));
+  assert.equal(await c.step('independent source preservation receipt', () => readFile(join(source, 'keep'), 'utf8')), 'source remains');
+}));
+
+test('registration refuses the source worktree and cleanup ignores a forged source root', t => residueControl(t).run(async c => {
+  const root = await c.root();
+  const source = await realpath(new URL('../../', import.meta.url).pathname);
+  let unexpected: ReturnType<typeof fixtureOwnership> | undefined;
+  try {
+    assert.throws(() => { unexpected = fixtureOwnership([root, source]); }, /fixture-owned scratch root/);
+  } finally { unexpected?.close(); unexpected?.remove(); }
+  const escape = join(root, 'source-link');
+  await c.step('source link setup', () => symlink(source, escape));
+  assert.throws(() => fixtureOwnership([root, escape]), /fixture-owned scratch root/);
+  const owner = await c.acquire('valid receipt', () => fixtureOwnership([root]), value => value.close());
+  await c.step('receipt close', owner.close);
+  const original = await c.step('receipt bytes', () => readFile(owner.value.path, 'utf8'));
+  await c.step('forged root', () => writeFile(owner.value.path, JSON.stringify({ ...JSON.parse(original), roots: [root, source] })));
+  assert.equal(await c.step('forged receipt refusal', () => readFixtureReceipt(owner.value.path)), null);
+}));
+
+test('previous local receipt shape retains scratch selection without inventing source association', t => residueControl(t).run(async c => {
+  const parent = await c.root(), root = join(parent, 'scratch'), source = join(parent, 'source');
+  await c.step('legacy roots setup', async () => { await mkdir(root); await mkdir(source); });
+  const owner = await c.acquire('legacy receipt setup', () => fixtureOwnership([root]), receipt => receipt.close());
+  const started = new Date().toString(), born = Date.parse(started);
+  owner.value.bind(101, born, born);
+  let live = true;
+  const row = { pid: 101, parent: 1, group: 101, state: 'S', started, command: 'node /fixture/stub-hub.ts' };
+  const readers: FixtureProcesses = {
+    rows: async () => live ? [row] : [], paths: async () => ({ cwd: root, files: [owner.value.path] }), sameUser: async () => true, missing: () => false,
+    end: async () => { live = false; return true; },
+  };
+  assert.equal((await c.step('previous receipt read', () => readFixtureReceipt(owner.value.path)))?.sourceCheckout, undefined);
+  await c.step('unassociated source removal', () => removeWorktreeWithFixtures(source, async () => { assert.equal(live, true); }, readers));
+  await c.step('legacy scratch removal positive control', () => removeWorktreeWithFixtures(root, async () => { assert.equal(live, false); }, readers));
+}));
 
 for (const failure of ['cancelled acquisition', 'setup rejection', 'cancelled body observation']) test(`residue control retains root and native guard through ${failure}`, async t => {
   const originalSpawn = cp.spawn;
@@ -95,6 +211,7 @@ test('guarded root cleanup removes receipts left by a failed owner', t => residu
   const removal = await c.acquire('removal owner setup', () => ownDirectory(undefined, root), remove => remove(), { afterJoin: true });
   assert.ok(receipt.path.startsWith(root + '/'), receipt.path);
   assert.equal((await c.step('receipt acceptance', () => readFixtureReceipt(receipt.path)))?.pid, process.pid);
+  assert.equal((await c.step('previous local wire shape acceptance', () => readFixtureReceipt(receipt.path)))?.sourceCheckout, undefined);
   await c.step('failed owner descriptor closure', owner.close); // Leave its file for the directory owner.
   await c.step('guarded owner root removal', removal.close);
   await c.step('receipt removal observation', () => assert.rejects(lstat(receipt.path), { code: 'ENOENT' }));

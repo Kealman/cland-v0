@@ -1,4 +1,6 @@
 import { ownDirectory, ownProcess } from '../../hub/test/process-cleanup.ts';
+import { receiptFixtureCase, type ReceiptStep } from '../../hub/test/receipt-fixture-case.ts';
+import { enableFixtureHostSockets } from '../../shared/fixture-sockets.ts';
 // `cland --headless --qa <case.lua>` as a process (#57): the exit code, the one JSON line and the dump
 // files, against the stdio hub and the stub hub, also under sandbox-exec profiles.
 import { test, type TestContext } from 'node:test';
@@ -23,6 +25,33 @@ const CLI = fileURLToPath(new URL('../../hub/bin/cland.ts', import.meta.url));
 const SHIPPED = fileURLToPath(new URL('../../qa/cases/', import.meta.url));
 const CASES = fileURLToPath(new URL('./qa-cases/', import.meta.url));
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
+
+/** Enroll the original QA call before observing setup. A close that wins during
+ * allocation also stops a late child as soon as its native owner is captured. */
+async function ownedQa(t: TestContext, step: ReceiptStep, adoptRoot: (root: string) => void, release: (action: () => void) => void,
+  args: string[], options: NonNullable<Parameters<typeof qa>[2]> = {}) {
+  const setup = Promise.withResolvers<void>();
+  let closing = false, child: ChildProcess | undefined;
+  const stop = () => { if (child?.pid !== undefined && child.exitCode === null && child.signalCode === null) child.kill('SIGTERM'); };
+  release(() => { closing = true; stop(); });
+  const original = step('original QA run', () => qa(t, args, {
+    ...options,
+    rootAllocated: root => {
+      adoptRoot(root);
+      if (closing) throw new Error('QA acquisition closed before launch');
+      options.rootAllocated?.(root);
+    },
+    started: value => {
+      child = value;
+      if (closing) stop();
+      options.started?.(value);
+      setup.resolve();
+    },
+  }));
+  void original.catch(error => setup.reject(error));
+  await step('QA native ownership setup', () => setup.promise);
+  return step('QA native completion and result', () => original);
+}
 
 /** A stand-in for the Neovim binary that writes its pid to `pidFile` and becomes the real one: the run's process group leader. */
 async function pidWrapper(dir: string): Promise<{ wrapper: string; pid: () => Promise<number> }> {
@@ -70,6 +99,7 @@ async function qaReady(child: ChildProcess): Promise<void> {
 async function tempDir(t: TestContext, prefix: string): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), prefix));
   ownDirectory(t, dir);
+  enableFixtureHostSockets(dir);
   return dir;
 }
 
@@ -107,6 +137,34 @@ test('the QA fixture seals its CLI environment before the product starts', { ski
   assert.equal(explicit, 'requested');
   assert.notEqual(cwd, process.cwd());
 });
+
+test('QA child hubs register allocated roots without grant variables in the case environment', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  for (const hub of ['stdio', 'stub']) {
+    const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}OWNERS-001.lua`, '--hub', hub]);
+    assert.equal(run.code, 0, JSON.stringify(run.line));
+    assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
+  }
+}));
+
+for (const target of ['shim', 'preload'] as const) for (const change of ['missing', 'tampered'] as const) {
+  test(`QA refuses a ${change} ${target} before launching Node`, { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+    const dir = await step('QA tamper control directory setup', async () => {
+      const root = await tempDir(t, 'cland-qa-node-check-');
+      adoptRoot(root);
+      return root;
+    });
+    const edit = join(dir, 'edit.mjs'), wrapper = join(dir, 'nvim-wrapper');
+    const filename = target === 'shim' ? 'qa-node' : 'qa-node-preload.mjs';
+    await step('QA tamper script setup', () => writeFile(edit, `import{readFileSync,writeFileSync,unlinkSync}from'node:fs';import{join}from'node:path';const file=join(process.cwd(),${JSON.stringify(filename)});${change === 'missing' ? 'unlinkSync(file);' : "const bytes=readFileSync(file);bytes[0]^=1;writeFileSync(file,bytes);"}`));
+    const word = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
+    await step('QA tamper wrapper setup', () => writeFile(wrapper, `#!/bin/sh\n${word(process.execPath)} ${word(edit)}\nexec ${word(bin)} "$@"\n`, { mode: 0o700 }));
+    const run = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}SHELL-001.lua`, '--hub', 'stub'], { env: { CLAND_NVIM: wrapper } });
+    assert.equal(run.code, 2, JSON.stringify(run.line));
+    assert.equal(run.line.result, 'BLOCKED', JSON.stringify(run.line));
+    const diagnostic = run.stderr.split('\n').flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } }).find(value => value.event === 'qa-node-launch-refused');
+    assert.deepEqual(diagnostic, { event: 'qa-node-launch-refused', outcome: 'refused', launch: 'not-started', reason: change === 'missing' ? 'file-unavailable' : 'bytes-mismatch', target, nativeCode: change === 'missing' ? 'ENOENT' : null });
+  }));
+}
 
 test('a failed expectation exits 1 with FAIL, its message, and the grid and the state dumped in --out', { skip }, async (t) => {
   const out = join(await tempDir(t, 'cland-qa-out-'), 'evidence');

@@ -19,6 +19,31 @@ local api = vim.api
 local uv = vim.uv
 
 local M = {}
+-- Captured by the allocator's argument, outside the user-authored case environment.
+local node_descriptor = vim.g.cland_qa_node_descriptor
+vim.g.cland_qa_node_descriptor = nil
+local node_diagnostic
+local function validate_node()
+  local function refuse(reason, target, native_code)
+    node_diagnostic = { event = 'qa-node-launch-refused', outcome = 'refused', launch = 'not-started', reason = reason, target = target, nativeCode = native_code or vim.NIL }
+    return false
+  end
+  if type(node_descriptor) ~= 'table' or node_descriptor.version ~= 1 or type(node_descriptor.files) ~= 'table' then return refuse('descriptor-missing', 'descriptor') end
+  if vim.env.CLAND_NODE ~= node_descriptor.node then return refuse('node-mismatch', 'shim') end
+  for _, file in ipairs(node_descriptor.files) do
+    local info, _, code = uv.fs_lstat(file.path)
+    if not info then return refuse('file-unavailable', file.target, code) end
+    if info.type ~= 'file' or info.dev ~= file.dev or info.ino ~= file.ino or info.mode ~= file.mode or info.size ~= file.size then
+      return refuse('identity-mismatch', file.target)
+    end
+    local handle = io.open(file.path, 'rb')
+    if not handle then return refuse('file-unreadable', file.target) end
+    local bytes = handle:read(#file.bytes + 1)
+    handle:close()
+    if bytes ~= file.bytes then return refuse('bytes-mismatch', file.target) end
+  end
+  return true
+end
 
 --- The grid every case sees: the smallest size the design is drawn for.
 M.COLUMNS = 160
@@ -161,6 +186,7 @@ end
 
 --- The `cland` command of this repository, as a list.
 local function cland_cli()
+  if not validate_node() then blocked('the QA Node launch was refused') end
   return { vim.env.CLAND_NODE or 'node', vim.fn.fnamemodify(nvim_dir(), ':h') .. '/hub/bin/cland.ts' }
 end
 
@@ -222,11 +248,12 @@ local function start_shell(case, root, project, hub)
     end
     -- the scenario goes inline: a read-only run has nowhere to write it
     vim.env.CLAND_STUB_SCENARIO_JSON = next(scenario) and vim.json.encode(scenario) or '{}'
+    if not validate_node() then blocked('the QA Node launch was refused') end
     cli = { vim.env.CLAND_NODE or 'node', nvim_dir() .. '/test/qa-stub-hub.ts' }
   else
     cli = cland_cli()
   end
-  require('cland').start({ root = root, transport = 'stdio', cli = cli, serve_args = { '--no-listen' } })
+  require('cland').start({ root = root, transport = 'stdio', cli = cli, serve_args = { '--no-listen' }, before_spawn = validate_node })
   require('cland.state').S.project = project
 end
 
@@ -273,7 +300,7 @@ function M.run()
       message = (message and (message .. '\n') or '') .. 'the last screen was not dumped: ' .. tostring(err)
       result = result == 'PASS' and 'BLOCKED' or result
     end
-    io.stdout:write(RESULT_MARK .. vim.json.encode({ result = result, message = message, hub = hub, evidence = evidence }) .. '\n')
+    io.stdout:write(RESULT_MARK .. vim.json.encode({ result = result, message = message, hub = hub, evidence = evidence, nodeDiagnostic = node_diagnostic }) .. '\n')
     io.stdout:flush()
     -- where :qall is refused (the command-line window, a locked text), leave anyway
     if not pcall(vim.cmd, 'qall!') then

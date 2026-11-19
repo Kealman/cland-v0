@@ -129,9 +129,19 @@ This is the supported cleanup for future orphan bridges; manual process killing
 is unnecessary.
 
 Fixture clients, stdio stubs and explicitly test-launched hubs also hold a private
-PID-bound ownership receipt open outside their disposable directories. The receipt
-names both the fixture cwd and its source checkout. Startup and doctor discover
-these fixtures when either root has disappeared; `doctor --fix` requires the open
+PID-bound ownership receipt open under the scratch root's private
+`.fixture-sockets/owners/` directory. Disposable `roots` name only allocated
+scratch directories; optional `sourceCheckout` records a non-disposable process
+association separately. Fixture allocation grants the root in the allocating
+process or its sealed child environment; receiving a caller's path grants nothing.
+Headless QA carries its grant through an allocator-owned fixed-root Node preload,
+with file bytes and identities checked before launch; the case environment has
+no fixture grant keys. The shim/preload are removed with the joined QA run root.
+An optional hub or stdio-stub receipt refusal emits a structured
+`fixture-ownership-refused` stderr line and leaves the hub serving without receipt
+authority for that root. The diagnostic retains the producer's reason, native
+code and secondary cleanup codes; unavailable causes remain unknown. Startup and doctor discover these fixtures when a scratch
+root has disappeared; `doctor --fix` requires the open
 receipt, its private same-user file metadata, the process UID and fresh PID/start-time
 checks before termination. Old fixtures without receipts appear as ambiguous
 candidates and are preserved. Command lines and environments are never printed or
@@ -140,8 +150,17 @@ checkout removal stop receipt-bearing fixtures associated with that worktree and
 observe completion before Git removes it; incomplete cleanup keeps the worktree.
 When a deleted-project hub has both OS project ownership and a fixture receipt,
 doctor reports it once as `orphan hub`; the hub classification takes precedence.
-The receipt still authorizes fixture/worktree cleanup when its source checkout
-disappears while the project itself remains live.
+During authorized source-worktree removal, process selection reads
+`sourceCheckout` and joins the receipt's PID/birth-bound fixture processes even
+when their scratch roots lie elsewhere. The metadata is never a directory
+traversal or removal target, nor an independent grant to remove that checkout.
+Fresh observed cwd can also associate a receipt-bound fake-Claude process with
+an authorized project removal. Its allocated home remains the disposable root;
+the cwd observation grants no directory cleanup authority.
+Previous version-1 local receipts without the optional field retain scratch-root
+selection only; unsafe legacy global receipts are refused.
+Source association takes effect when the running hub uses this reader; an older
+running hub retains scratch-root selection until restarted onto it.
 
 Neovim fixtures inherit the receipt as explicit child fd 3. Unix spawn clears
 close-on-exec for this descriptor; the parent's copy then closes. Linux discovery

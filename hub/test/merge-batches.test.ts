@@ -28,6 +28,7 @@ import { requireMergeClosedItemWording } from '../src/merge-closed-item-wording.
 import { removeWorktreeWithFixtures, type FixtureProcesses } from '../src/fixture-processes.ts';
 import { captureCandidateOwnership, requireCandidateOwnership, removeOwnedBatchCandidate, type CandidateOwnershipHost } from '../src/batch-candidate-ownership.ts';
 import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
+import { tempProject } from './harness.ts';
 import { dependencyInstall } from '../src/dependency-install.ts';
 
 /** Enroll before acquisition; even late fixture hooks must join the whole body. */
@@ -644,7 +645,10 @@ test('candidate cleanup accepts the var to private-var alias and preserves repla
   const remove = (owned: BatchCandidate) => removeOwnedBatchCandidate('/scratch', owned, {}, async () => { removed++; }, host, processes);
   await step(() => remove(candidate));
   assert.equal(removed, 1, 'fresh matching owner reaches guarded removal');
-  const receipt = fixtureOwnership([observation.cwd]);
+  // Candidate paths above are synthetic host facts, never allocated directories.
+  // Keep disposal authority in real scratch and association metadata separate.
+  const receiptRoot = await step(() => tempProject(t, 'batch-writer-'));
+  const receipt = fixtureOwnership([receiptRoot], observation.cwd);
   t.after(() => { receipt.close(); receipt.remove(); });
   receipt.bind(101, 100_000, 100_000);
   const writer: FixtureProcesses = {

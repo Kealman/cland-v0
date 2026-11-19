@@ -128,8 +128,8 @@ export async function createClient(t: TestContext, bin: string, root: string, en
     if (env.CLAND_COMMAND && process.env[key]) childEnv[key] = process.env[key];
   }
   if (opts.launcher) childEnv.CLAND_NVIM = bin;
-  const launchEnv = fixtureEnvironment(dir, base, childEnv);
-  const ownership = fixtureOwnership([root, fileURLToPath(new URL('../../', import.meta.url))]);
+  const launchEnv = fixtureEnvironment(dir, base, childEnv, root);
+  const ownership = fixtureOwnership([root], fileURLToPath(new URL('../../', import.meta.url)));
   const launch = () => opts.launcher
     ? spawn(join(NVIM_DIR, 'bin/cland-nvim'), ['--headless', '--listen', sock], { cwd: root, env: launchEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe', ownership.fd] })
     : spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: launchEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe', ownership.fd] });

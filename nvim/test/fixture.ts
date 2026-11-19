@@ -1,4 +1,4 @@
-import { removeFixtureSockets } from '../../shared/fixture-sockets.ts';
+import { enableFixtureHostSockets, removeFixtureSockets } from '../../shared/fixture-sockets.ts';
 // Neovim fixture ownership: stop clients before removing their scratch directories.
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -43,6 +43,8 @@ export function ownDirectory(t: TestContext, path: string): void {
 export async function tempProject(t: TestContext, prefix = 'cland-proj-', parent = tmpdir()): Promise<string> {
   await ensureFixtureAdmission();
   const root = await realpath(await mkdtemp(join(parent, prefix)));
+  const revoke = enableFixtureHostSockets(root);
+  beforeDirectories(t, revoke);
   ownDirectory(t, root);
   return root;
 }
