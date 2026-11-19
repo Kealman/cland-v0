@@ -77,7 +77,7 @@ import { gateEpicVerdict, incompleteEpicCriteria, gateVerdicts, missingDoneCrite
 import { MergeError, type MergeCode } from '../merge.ts';
 import type { MergeReceipt } from './index-db.ts';
 import { deltaComment } from './merge-delta.ts';
-import { Freshness, pending, type TipSchedule } from './freshness.ts';
+import { Freshness, pending, type TipSchedule, type MovedBranches } from './freshness.ts';
 import { StageCandidates } from './stage-candidates.ts';
 import { watchFolder, type FolderWatch } from '../watch.ts';
 
@@ -492,7 +492,7 @@ export class Tracker {
         this.#announceBatch(ids);
         for (const id of ids) { this.#scheduleReady(id); this.#schedulePlannedFor(id); }
       },
-      tipsMoved: () => { this.#tipsMoved(); options.onDevTip?.(this.#fresh.tip('dev')); },
+      tipsMoved: branches => { this.#tipsMoved(branches); options.onDevTip?.(this.#fresh.tip('dev')); },
     });
   }
 
@@ -540,6 +540,7 @@ export class Tracker {
 
   /** The index changed for `id`: the `task` event, and a fresh look at the branch tips (a verdict may need one). */
   #changed(id: string, planned = false): void {
+    this.#demoMembership.clear();
     this.#revisions.set(id, (this.#revisions.get(id) ?? 0) + 1);
     this.#fresh.poke();
     const previous = this.#announced.get(`T-${idNumber(id)}`);
@@ -638,12 +639,12 @@ export class Tracker {
     }
   }
 
-  /** Every item's freshness may have moved with a branch tip: announce the ones whose known answers changed. */
-  #tipsMoved(): void {
+  /** Refresh moved branches and ancestor projections; shared dependencies retain broad invalidation. */
+  #tipsMoved(branches: MovedBranches): void {
     for (const listener of this.#tipListeners) {
       try { listener(); } catch (error) { this.#log({ event: 'task-tip-listener-failed', error: String(error) }); }
     }
-    const ids = this.#index.freshnessIds(this.ladder.planning);
+    const ids = this.#index.freshnessIds(this.ladder.planning, branches);
     this.#announceBatch(ids);
     for (const id of ids) this.#scheduleReady(id);
   }
@@ -1841,7 +1842,15 @@ export class Tracker {
     return { ...view, claim: view.claim ? { ...view.claim, sessionId: this.#identityOf(view.claim.sessionId) } : null, verdicts: [...view.verdicts.filter(v => v.source === 'file'), ...annotated] };
   }
 
-  #demoTasks(id: string): string[] { return this.#index.list({ under: id, kind: 'task' }).map(t => t.id).sort(); }
+  readonly #demoMembership = new Map<string, string[]>();
+  #demoTasks(id: string): string[] {
+    let tasks = this.#demoMembership.get(id);
+    if (!tasks) {
+      tasks = this.#index.list({ under: id, kind: 'task' }).map(t => t.id).sort();
+      this.#demoMembership.set(id, tasks);
+    }
+    return tasks;
+  }
 
   /** Closed demos can read a cached answer, but never enqueue new history work.
    * Reopening restores normal scheduling; an uncomputed answer stays unknown. */
@@ -2202,6 +2211,7 @@ export class Tracker {
   }
 
   #rememberSource(item: Item): void {
+    this.#demoMembership.clear();
     if (this.isPlanContainer(item.fm.kind)) this.#planSources.set(item.fm.id, item);
     else this.#planSources.delete(item.fm.id);
     const {names,words} = outline(item.body);

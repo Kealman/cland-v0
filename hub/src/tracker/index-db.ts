@@ -374,8 +374,15 @@ export class TrackerIndex {
     return (this.#db.prepare('select id from tracker_items order by n').all() as Row[]).map((r) => this.#canonical(r.id as string));
   }
 
-  /** Tip changes affect branches, planning containers, retained verdicts and ready rows. */
-  freshnessIds(planningKinds: readonly string[]): string[] {
+  /** Ordinary moves use the branch index; shared changes retain the complete freshness selection. */
+  freshnessIds(planningKinds: readonly string[], branches: readonly string[] | null = null): string[] {
+    if (branches !== null) {
+      if (!branches.length) return [];
+      const rows = this.#db.prepare(`select kind, n from tracker_items
+        where branch in (${branches.map(() => '?').join(', ')})
+        order by coalesce(rank, n * 10), n`).all(...branches) as Row[];
+      return rows.map(row => `${prefixOf(row.kind as string)}-${row.n as number}`);
+    }
     const rows = this.#db.prepare(`select i.kind, i.n from tracker_items i
       where (i.branch is not null and i.branch != '')
         ${planningKinds.length ? `or i.kind in (${planningKinds.map(() => '?').join(', ')})` : ''}

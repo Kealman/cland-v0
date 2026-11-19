@@ -16,6 +16,148 @@ import { tempProject, until } from './harness.ts';
 import { watchFolder, SAFETY_POLL_MS } from '../src/watch.ts';
 import { TrackerIndex } from '../src/tracker/index-db.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+import { tipChurnFixture } from './tip-churn-fixture.ts';
+import { Freshness, type MovedBranches } from '../src/tracker/freshness.ts';
+
+test('tip invalidations identify moved and absent branches while dev and base changes retain shared invalidation', async t => {
+  await fixtureNativeGuard(t);
+  const a = 'a'.repeat(40), b = 'b'.repeat(40);
+  let tips = new Map([['dev', a], ['main', a], ['t/one', a], ['t/two', a]]);
+  let base: string | null = 'dev';
+  const changes: MovedBranches[] = [];
+  const fresh = new Freshness({
+    git: async () => [...tips].map(([branch, tip]) => `${tip} refs/heads/${branch}`).join('\n'),
+    readBase: async () => base, settled() {}, tipsMoved: branches => changes.push(branches),
+  });
+  try {
+    await fresh.refresh();
+    assert.deepEqual(changes.splice(0), [null]);
+    tips.set('t/one', b);
+    await fresh.refresh();
+    assert.deepEqual(changes.splice(0), [['t/one']]);
+    await fresh.refresh();
+    assert.deepEqual(changes, [], 'unchanged successful reads do no invalidation');
+    tips.delete('t/two');
+    await fresh.refresh();
+    assert.deepEqual(changes.splice(0), [['t/two']]);
+    assert.equal(fresh.ancestor('T-2', a, 't/two'), undefined);
+    await fresh.refresh();
+    assert.deepEqual(changes.splice(0), [['t/two']], 'absence settles only after its own successful read');
+    assert.equal(fresh.ancestor('T-2', a, 't/two'), false);
+    tips.set('dev', b);
+    await fresh.refresh();
+    assert.deepEqual(changes.splice(0), [null]);
+    base = 'main';
+    await fresh.refresh();
+    assert.deepEqual(changes.splice(0), [null]);
+    tips.set('main', b);
+    await fresh.refresh();
+    assert.deepEqual(changes.splice(0), [null]);
+    tips = new Map([...tips, ['t/new', b]]);
+    await fresh.refresh();
+    assert.deepEqual(changes.splice(0), [['t/new']]);
+  } finally { await fresh.stop(); }
+});
+
+test('demo surfaces follow reparented and removed task membership after a cached read', async t => {
+  await fixtureNativeGuard(t);
+  const root = await tempProject(t), a = 'a'.repeat(40), b = 'b'.repeat(40);
+  const history = `${b}\0T-3\n\0\n:100644 100644 ${a} ${b} M\0surface.ts\0`;
+  const tracker = new Tracker({root, db: ':memory:', clock: new FakeClock(Date.now()),
+    git: async args => {
+      if (args[0] === 'for-each-ref') return `${b} refs/heads/dev`;
+      if (args[0] === 'merge-base' && args[1] === '--is-ancestor') return '';
+      if (args[0] === 'log') return history;
+      throw new Error(`unexpected fake Git operation: ${args[0]}`);
+    }, readBase: async () => 'dev', scheduleTips: () => ({poke() {}, stop() {}}), watch: () => ({close() {}}),
+  });
+  try {
+    for (const n of [1, 2]) await writeFile(join(root, `.cland/tasks/E-${n}-fixture.md`),
+      `---\nid: E-${n}\nkind: epic\ntitle: Epic ${n}\n---\n`);
+    const path = join(root, '.cland/tasks/T-3-fixture.md');
+    const task = (parent: string) => `---\nid: T-3\ntitle: Surface owner\nparent: ${parent}\n---\n`;
+    await writeFile(path, task('E-1'));
+    await tracker.start({deferReadyChecks: true});
+    assert.equal((await tracker.demoFreshness('E-1', a, b)).current, false);
+    assert.equal((await tracker.demoFreshness('E-2', a, b)).current, true);
+    await writeFile(path, task('E-2'));
+    tracker.rescan();
+    assert.equal((await tracker.demoFreshness('E-1', a, b)).current, true);
+    assert.equal((await tracker.demoFreshness('E-2', a, b)).current, false);
+    await rm(path);
+    tracker.rescan();
+    assert.equal((await tracker.demoFreshness('E-2', a, b)).current, true);
+  } finally { await tracker.stop(); }
+});
+
+test('a moved task tip makes only its own exact-tip criteria stale in summaries and views', async t => {
+  await fixtureNativeGuard(t);
+  const root = await tempProject(t), a = 'a'.repeat(40), b = 'b'.repeat(40);
+  let tip = a, refresh!: () => Promise<void>;
+  const tracker = new Tracker({root, db: ':memory:', clock: new FakeClock(Date.now()),
+    git: async () => `${a} refs/heads/dev\n${tip} refs/heads/t/one\n${a} refs/heads/t/two`,
+    readBase: async () => 'dev', scheduleTips: read => { refresh = read; return {poke() {}, stop() {}}; },
+    watch: () => ({close() {}}),
+  });
+  try {
+    const at = new Date().toISOString();
+    for (const [n, branch] of [[1, 'one'], [2, 'two']] as const) {
+      await writeFile(join(root, `.cland/tasks/T-${n}-fixture.md`),
+        `---\nid: T-${n}\ntitle: Exact tip ${n}\nbranch: t/${branch}\n---\n` +
+        `## Acceptance criteria\n- [ ] C1. Exact tip\n  - verified: rev [reviewer] · run r${n} · ${at} · commit ${a}\n`);
+    }
+    await tracker.start({deferReadyChecks: true});
+    await refresh();
+    assert.equal(tracker.summary('T-1')!.criteria.verified, 1);
+    const unrelated = JSON.stringify(tracker.summary('T-2'));
+    tip = b;
+    await refresh();
+    assert.deepEqual(tracker.summary('T-1')!.criteria, {total: 1, done: 0, verified: 0, stale: 1, failed: 0});
+    assert.deepEqual(tracker.view('T-1').criteriaCounts, tracker.summary('T-1')!.criteria);
+    assert.equal(JSON.stringify(tracker.summary('T-2')), unrelated);
+  } finally { await tracker.stop(); }
+});
+
+test('ten moving branches in a 1650-item tracker keep summaries and hydration proportional to moved branches', async t => {
+  await fixtureNativeGuard(t);
+  const root = await tempProject(t), database = sqliteProbe();
+  const fixture = await tipChurnFixture(root);
+  const logs: Record<string, unknown>[] = [];
+  const tracker = new Tracker({ root, clock: new FakeClock(Date.now()), openDatabase: database.open,
+    ...fixture, log: entry => logs.push(entry), watch: () => ({ close() {} }),
+  });
+  try {
+    await tracker.start({deferReadyChecks: true});
+    tracker.onChange(() => {});
+    await fixture.refresh();
+    const oracle = JSON.stringify(tracker.list());
+    // Receipt timestamps are real per run; retain a stable cross-run oracle too.
+    // The byte-equality assertion below still compares every original byte.
+    const stableOracle = JSON.stringify(JSON.parse(oracle), (key, value) =>
+      ['at', 'created', 'updated'].includes(key) && typeof value === 'string' ? '<fixture time>' : value);
+    const digest = createHash('sha256').update(stableOracle).digest('hex');
+    assert.equal(digest, '022b27e1c78253fc0c96f0df78a3cf228227db51cb68ace680868503562bd745', 'pre-change synthetic explorer/criteria/demo oracle');
+    let hydrated = 0, summaries = 0;
+    database.trace(t, (sql, method, _bindings, result) => {
+      if (method === 'all' && sql.startsWith('select b.blocker from tracker_blocked_by')) summaries++;
+      const rows = Array.isArray(result) ? result : [result];
+      hydrated += rows.filter(row => row && typeof row === 'object' && 'title' in row).length;
+    });
+    logs.length = 0;
+    fixture.move();
+    await fixture.refresh();
+    const work = {summaries, hydrated};
+    const recomputed = logs.filter(row => row.event === 'explorer-recomputed').flatMap(row => row.items as string[]);
+    // Capture refresh work before list/view deliberately hydrate their requested rows.
+    assert.equal(JSON.stringify(tracker.list()), oracle, 'explorer and criteria counts stay byte-equal to the pre-change oracle');
+    assert.equal(tracker.summary('E-1')!.verdicts.at(-1)!.current, true, 'unrelated task tips retain current demo freshness');
+    assert.equal(tracker.summary('E-1')!.criteria.verified, 1, 'demo-backed criteria remain verified');
+    t.diagnostic(JSON.stringify({items: 1650, moved: 10, oracle: digest, ...work, recomputed}));
+    assert.ok(work.summaries <= 100, `summary budget 10 per moved branch: ${work.summaries} > 100`);
+    assert.ok(work.hydrated <= 400, `hydration budget 40 per moved branch: ${work.hydrated} > 400`);
+  } finally { await tracker.stop(); }
+});
 
 test('tip moves do not hydrate unrelated tracker rows or announce unchanged answers', async t => {
   const root = await tempProject(t), database = sqliteProbe();
@@ -73,6 +215,8 @@ test('index selects freshness-dependent ids in rank order without hydrating unre
   reads.length = 0;
   assert.deepEqual(index.freshnessIds([]), ['Q-4', 'T-5', 'T-1'], 'no planning level still selects branches, verdicts and ready rows');
   assert.equal(reads.length, 1);
+  assert.deepEqual(index.freshnessIds(['epic', 'feature'], ['t/branched']), ['T-1']);
+  assert.deepEqual(index.freshnessIds(['epic', 'feature'], []), []);
 });
 
 test('index lists build own ids from selected rows and only look up referenced kinds', t => {

@@ -1,5 +1,14 @@
 ## The tracker
 
+Branch-tip polling refreshes summaries through the branch index for the branches
+that moved, then updates their ancestor projections. Unrelated branch moves keep
+demo freshness and criteria projections cached. Demo task membership is reused
+between tracker edits and invalidated on edits, reparenting and removal. First
+tip discovery, dev moves and a configured verdict-base switch or move retain
+shared freshness invalidation, because patch comparisons and epic demos depend
+on those integration tips. Freshness Git work remains asynchronous; replies read
+cached answers and preserve unknown values until their receipt settles.
+
 `closed` is an optional ISO timestamp in item frontmatter and the index. Hub close, merge and an edit to closed/done write it; reopen clears it. A hand close without a time stays unresolved. List, view and `task` events expose the field, and session archival reads it before the older receipt/index fallbacks.
 
 `task.list` and `task` event summaries carry `criteria: {total, done, verified, stale, failed}` from indexed marks, without reading an item file. Counts are exclusive: failed takes priority over current verified, stale, then done; a checkbox alone counts as open. Verification is current only at the exact branch tip (the receipt tip for a landed task, `dev` for a planning container). `task.view` retains the full `criteria` array and adds `criteriaCounts` with the same counts.

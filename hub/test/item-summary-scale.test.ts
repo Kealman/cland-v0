@@ -10,6 +10,43 @@ import {serializeItem} from '../src/tracker/item.ts';
 import {connectUi,projectHub,tempProject,until} from './harness.ts';
 import {FakeClock} from './fake-clock.ts';
 import {withPlan} from '../src/tracker/plan.ts';
+import {tipChurnFixture} from './tip-churn-fixture.ts';
+import {fixtureNativeGuard} from './fake-native-guard.ts';
+
+test('task.view and verify queue replies have p95 below one second during ten-branch churn in a 1650-item tracker', async t => {
+  await fixtureNativeGuard(t);
+  const root = await tempProject(t);
+  const fixture = await tipChurnFixture(root);
+  const hub = await projectHub(t, root, {}, {clock: new FakeClock(Date.now()), ...fixture});
+  try {
+    const ui = await connectUi(t, hub.discovery);
+    await fixture.refresh();
+    const samples = {view: [] as number[], queue: [] as number[]};
+    for (let round = 0; round < 40; round++) {
+      fixture.move();
+      // Start both observers before the producer. Sample ends at the exact reply,
+      // and includes queued refresh work, socket delivery and task.view file I/O.
+      const viewStart = performance.now();
+      const view = ui.request({type: 'task.view', item: `T-${51 + round % 10}`}).then(reply => {
+        samples.view.push(performance.now() - viewStart);
+        assert.equal(reply.ok, true, reply.error);
+        assert.equal((reply.value as {item: {id: string}}).item.id, `T-${51 + round % 10}`);
+      });
+      const queueStart = performance.now();
+      const queue = ui.request({type: 'suite.queue'}).then(reply => {
+        samples.queue.push(performance.now() - queueStart);
+        assert.equal(reply.ok, true, reply.error);
+        assert.ok(reply.value, 'queue reply has its structured snapshot');
+      });
+      await Promise.all([view, queue, fixture.refresh()]);
+    }
+    for (const [name, values] of Object.entries(samples)) {
+      const p95 = [...values].sort((a, b) => a - b)[Math.ceil(values.length * 0.95) - 1]!;
+      t.diagnostic(`${name}: ${values.length} replies, p95 ${p95.toFixed(3)} ms; behaviour bound 1000 ms; excludes fixture setup; real socket, fake Git, no browser`);
+      assert.ok(p95 < 1000, `${name} p95 ${p95.toFixed(3)} ms exceeds behaviour bound 1000 ms`);
+    }
+  } finally { await hub.dispose(); }
+});
 
 async function plannedStartup(t:test.TestContext, backlog=false) {
   const root=await tempProject(t),at='2026-10-16T12:00:00.000Z';

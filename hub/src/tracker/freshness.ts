@@ -25,6 +25,9 @@ type Worker = { demo: boolean; working: boolean; promise: Promise<void> | null }
 /** Owns when tip reads run, including the first read; tests can drive and await them by hand. */
 export type TipSchedule = (read: () => Promise<void>, intervalMs: number) => { poke: () => void; stop: () => void };
 
+/** null means first read or a shared dev/base dependency changed. */
+export type MovedBranches = readonly string[] | null;
+
 const scheduleTips: TipSchedule = (read, intervalMs) => {
   const timer = setInterval(() => void read(), intervalMs);
   timer.unref();
@@ -58,8 +61,8 @@ export type FreshnessOptions = {
   /** Unique waiting item ids, published once per completed foreground or demo drain. */
   settled: (ids: string[]) => void;
   recordDelta?: (ids: string[], delta: MergeDelta) => Promise<void>;
-  /** A branch tip or the base moved (or the first read is done): every item's freshness may have changed. */
-  tipsMoved: () => void;
+  /** Changed branch names; null retains shared invalidation for first read, dev or base changes. */
+  tipsMoved: (branches: MovedBranches) => void;
 };
 
 export class Freshness {
@@ -73,7 +76,7 @@ export class Freshness {
   readonly #scheduleTips: TipSchedule;
   readonly #recordDelta: FreshnessOptions['recordDelta'];
   readonly #settled: (ids: string[]) => void;
-  readonly #tipsMoved: () => void;
+  readonly #tipsMoved: FreshnessOptions['tipsMoved'];
   /** Branch → tip as last read; null until the first read. */
   #tips: Map<string, string> | null = null;
   readonly #results = new Map<string, boolean>();
@@ -277,6 +280,11 @@ export class Freshness {
         resumed(() => {
           if (this.#stopped) return;
           const next = read ?? new Map<string, string>();
+          const previous = this.#tips;
+          const branches = new Set([...(previous?.keys() ?? []), ...next.keys()]);
+          const changed = [...branches].filter(branch => previous?.get(branch) !== next.get(branch));
+          const shared = previous === null || this.#base !== base ||
+            changed.some(branch => branch === 'dev' || branch === base || branch === this.#base);
           const moved = this.#tips === null || !sameTips(this.#tips, next) || this.#base !== base;
           this.#tips = next;
           this.#base = base;
@@ -284,11 +292,14 @@ export class Freshness {
           let settled = false;
           for (const [branch, missing] of this.#missing) {
             if (next.has(branch)) this.#missing.delete(branch);
-            else if (!missing.absent && missing.asked < seq) settled = missing.absent = true;
+            else if (!missing.absent && missing.asked < seq) {
+              settled = missing.absent = true;
+              if (!changed.includes(branch)) changed.push(branch);
+            }
           }
           if (moved) this.#prune();
           this.#retryDue();
-          if (moved || settled) this.#tipsMoved();
+          if (moved || settled) this.#tipsMoved(shared ? null : changed);
         });
       } while (this.#readAgain && !this.#stopped);
     } finally {

@@ -2,6 +2,16 @@ import cp from 'node:child_process';
 import { promisify } from 'node:util';
 import { syncBuiltinESMExports } from 'node:module';
 import assert from 'node:assert/strict';
+import type { TestContext } from 'node:test';
+import { afterCleanup } from './process-cleanup.ts';
+
+/** Keep the positive guard through shared resources, hubs and directory cleanup. */
+export async function fixtureNativeGuard(t: TestContext): Promise<void> {
+  let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
+  guard = await fakeNativeGuard(restore => afterCleanup(t, () => {
+    try { guard?.verify(); } finally { restore(); }
+  }));
+}
 
 /** Install before fake launch overrides; verify after their cleanup, before restore. */
 export async function fakeNativeGuard(registerRestore: (restore: () => void) => void, options: { afterInstall?: (method: string) => void } = {}) {
