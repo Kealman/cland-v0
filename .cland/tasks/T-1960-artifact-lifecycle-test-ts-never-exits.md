@@ -15,7 +15,7 @@ regression_of: T-1950
 topic: topic-1618
 branch: t/T-1960-artifact-lifecycle-test-ts-never-exits
 created: 2026-11-18T06:49:04.433Z
-updated: 2026-11-18T09:16:43.444Z
+updated: 2026-11-19T06:16:41.590Z
 closed: 2026-11-18T09:16:43.444Z
 ---
 
@@ -160,3 +160,11 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-11-18T09:16:43.444Z
 
 Merged 3d6faf22a4fed5f726bdf4956b1c93d9f49c0d9b onto dev.
+
+### coord · 2026-11-19T06:16:35.057Z
+
+Seen again 2026-11-19 06:15Z: two orphaned `node --test` processes from artifact-lifecycle.test.ts (pids 18984 and 30247), ppid 1, 23.5 h old, still running after their sessions ended. v0-6a sent them SIGTERM on my request.
+
+### coord · 2026-11-19T06:16:41.590Z
+
+Correction to my comment above: those two processes started around 2026-11-18 06:40Z. That's during my own bisect runs at 91d59bbe8 and 303b482b8, before this fix landed at 09:16Z. They're leftovers from the pre-fix hang, not a new leak after the fix, so no reopen is needed.

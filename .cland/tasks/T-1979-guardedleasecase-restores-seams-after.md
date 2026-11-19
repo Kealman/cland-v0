@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T13:25:29.069Z
-updated: 2026-11-19T02:23:15.907Z
+updated: 2026-11-19T03:20:58.510Z
 ---
 
 ## Summary
@@ -34,3 +34,7 @@ Found by impl-1973 in T-1973's second review (2026-11-18). The shared executor l
 ### coord · 2026-11-19T02:23:15.907Z
 
 Confirmed again by impl-1957 during T-1957 (A-21490): the generic `guardedLeaseCase` default can restore seams and the native guard after a rejected cleanup, once the global pending set has emptied. T-1957 opts only its own new cases into a positive settlement fence; all legacy callers keep the old default. This item should migrate and audit those callers.
+
+### coord · 2026-11-19T03:20:58.510Z
+
+Second local opt-in: T-1857 adds a successful-cleanup fence limited to its new case, using the same names as T-1957's seam (`deferRestore`, `canRestore`, `releaseSeams`). This item should fold both T-1957's and T-1857's opt-ins into the shared `guardedLeaseCase` default and migrate the legacy callers.

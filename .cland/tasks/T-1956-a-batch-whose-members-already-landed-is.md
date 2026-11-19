@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T02:51:26.880Z
-updated: 2026-11-18T02:51:26.880Z
+updated: 2026-11-19T04:39:56.909Z
 ---
 
 ## Summary
@@ -28,3 +28,13 @@ A process-table failure after a member has landed never marks the batch blocked 
 
 - [ ] C1. With a fake ps that times out after every member has landed, the batch records landed outcomes, no blocked notice is posted, and the follow-up diagnostic names the repair (test).
 - [ ] C2. With the same ps timeout before landing, the batch is still held as blocked with its retained heads (test).
+
+## Comments
+
+### coord · 2026-11-19T02:56:00.216Z
+
+Recurred 2026-11-19 at 02:53:53Z. Batch 45b4bcd2 landed T-1976 (157bf6b2f, 02:53:13Z) and T-1975 (2d7fe873e, 02:53:46Z). Both items are closed and the queue is empty, yet 7 s later the hub posted "blocked: cannot inspect the OS process table: ps failed or timed out" with cancel and re-enqueue instructions for both merged members. A ps probe right afterwards took 0.03 s for 705 processes at a 1-minute load of 5.3. I did not follow the instructions. This is the second recurrence; worth pulling into the next stage.
+
+### coord · 2026-11-19T04:39:56.909Z
+
+Third recurrence, 2026-11-19 04:39:43Z. Batch 1c6ae520 landed T-1958 as 183f0f95d at 04:39:35Z, and the item is closed. Eight seconds later the hub posted "blocked: cannot inspect the OS process table" with cancel and re-enqueue advice for the merged member. The queue had already moved on to the next batch (5173aa29), with a 1-minute load of 10.4. I didn't act on it. Three recurrences in about 26 h, so this should go into the next stage.

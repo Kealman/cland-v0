@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-18T19:17:05.544Z
+updated: 2026-11-19T06:16:11.641Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -654,3 +654,15 @@ Hub restart #84 and an unplanned hub exit three minutes later. Restart #84 (stan
 ### human · 2026-11-18T19:17:05.544Z
 
 Restarts #85 and #86, 2026-11-18 (cland-impl). #85 on coord's GO at d7050e7e2: stop 18:34:57Z, serving 18:37:51Z as pid 62039, gap 175 s; 'binding web listener' took 148,145 ms (T-1952). The hub then ran at 96-127% CPU for 33 minutes and did not answer verify queue or task view (15 s and 10 s timeouts); six tracker-storage-stalled events 18:38-18:41Z, no fatal; hub.log written 13-22 minutes late; RSS passed 3 GB at 19:06:07Z (peak 3.79 GB); coord got inject-uncertain at 18:41:02Z and no bridge-connected. Profile: 74% in freshness #work -> settled (tracker.ts:486-487, added by T-1973 da95b9681) -> #announceBatch -> #refreshExplorer: every freshness answer re-announced all stage-cover dependents. #86 on coord's GO as a rollback: hub code from a detached checkout at a343e305a (/Users/evgeniyivanov/.claude/jobs/92748b6f/tmp/hub-a343e305a), root and dev untouched at d7050e7e2; stop 19:10:48Z, serving 19:11:11Z as pid 71467, gap 23 s, web listener bind 615 ms; job cland-hub-r86, nice 0, env check 2, homebrew on PATH; coord bridge-connected 19:11:11Z, injected 19:11:22Z; tracker answers in 0-1 s with pauses up to 15 s in the first 5 minutes. Remote runs 5b247a17 and 1e764299 were still listed after #86.
+
+### coord · 2026-11-19T03:06:39.526Z
+
+Incident 2026-11-19 03:04:54Z: the hub (pid 71467, a343e305a rollback build) exited on tracker-storage-fatal. Timeline, per v0-6a: a "plan set" stall on E-1883 at 03:00:53Z, while I was adding T-1993; then a "ready check" stall on T-1952 from 03:01:38Z to 03:04:54Z (196 s); then abandon and exit. The 1-minute load peaked at 23, from about six Implementers running whole-project typecheck, lint and T1 batches at once (one tsc at 261% CPU). launchd respawned the hub as pid 49256, serving at 03:05:39Z after a 45 s gap, on the same build. Losses: impl-1993's session_launch (worktree created, no session); some Implementer local test runs (hub socket closed, code 1006); possibly in-flight tracker writes, which Implementers are told to check before retrying. Batch 45b4bcd2 had already landed at 02:53Z. Mitigation until T-1952 lands and the hub restarts on dev: no Coordinator plan edits under load; Implementers start heavy local checks only below load 8, one at a time.
+
+### human · 2026-11-19T03:13:13.110Z
+
+Hub self-exit and respawn, 2026-11-19 (cland-impl). Hub 71467 (a343e305a code from the rollback worktree, job cland-hub-r86) logged tracker-storage-stalled 'plan set' E-1883 at 03:00:59Z, then a 'ready check' on T-1952 started 03:01:38Z stalled 196 s; tracker-storage-abandoned and tracker-storage-fatal at 03:04:54Z, exit. Load average peaked at 23 (about six implementers in typecheck/lint at once plus a plan write). launchd respawned pid 49256, serving 03:05:39Z (gap 45 s); nice 0, env check 2, homebrew on PATH, port 53010; coord bridge-connected 03:05:34Z, injected 03:08:15Z. verify queue timed out at 15 s until 03:10:13Z, normal from 03:10:39Z. git-maintenance-failed at 03:06:48Z (collector pid 60223 'process inspection unavailable', T-1971); owner file gone by 03:12:57Z, no completed event. A session launch for impl-1993 timed out at 60 s at 03:01Z. Batch 45b4bcd2 (T-1976, T-1975) had landed at 02:53Z.
+
+### human · 2026-11-19T06:16:11.641Z
+
+Restart #87 (2026-11-19, on coord's GO): hub r86 pid 49256 (rollback code a343e305a) stopped 06:12:27Z; job cland-hub-r87 pid 72462 started from the root at db53a0cb9 (dev = origin/dev), serving 06:12:44.866Z, gap about 17 s. Startup steps: reading startup journal 6,588 ms, indexing tracker 1,756 ms, restoring core and suites 2,771 ms, binding listeners 4 ms, binding web listener 398 ms, restoring sessions 2,825 ms. Port 52403, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job. Coord bridge-connected 06:12:44.947Z, injected 06:13:07.613Z. task view 0.13-0.63 s from the first minute; one slow-answer suite.queue 8,909 ms at 06:13:29Z and one slow-request ask.answer 2,268 ms at 06:14:09Z, then verify queue 0 s. No tracker-storage-stalled lines. Remote dev-t3 run ad53181b survived and reported 06:14:53Z; batch f8aac81f (T-1676) stayed queued and its droplet run 76eb3120 is running. Hub CPU 110% at start, 59% by 06:15:23Z; RSS 0.8-1.4 GB. Rollback worktree a343e305a kept.

@@ -2,8 +2,8 @@
 id: T-1958
 kind: task
 title: 232 released leases with no spend entry log executor-lease-spend-missing on every compaction pass (about 760,000 lines a day), and the lease-index migration leaves no log line
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1950
 topic: topic-1640
 branch: t/T-1958-232-released-leases-with-no-spend-entry
 created: 2026-11-18T06:13:57.102Z
-updated: 2026-11-19T02:52:53.832Z
+updated: 2026-11-19T04:39:12.262Z
+closed: 2026-11-19T04:39:12.262Z
 ---
 
 ## Summary
@@ -30,10 +31,13 @@ A released lease without a spend entry reaches a terminal state of its own: a re
 
 - [x] C1. With a fake leases root holding released leases that lack spend entries, repeated compaction passes log the missing-spend diagnostic once per lease, record an unknown spend with its receipt, and leave the hot index (test counts log lines and index entries over N passes).
   - done: impl-1958 · 2026-11-19T02:50:39.417Z
+  - verified: rev-36 [reviewer] · run rev-36-1958-final-1 · 2026-11-19T03:44:19.860Z · commit 147f3ea23cf9aaf2a93f6135336d0bed8feb73b9
 - [x] C2. The lease-index migration emits one structured log line with its read, indexed and settled counts, and a rerun on an existing index emits none (test).
   - done: impl-1958 · 2026-11-19T02:50:39.849Z
+  - verified: rev-36 [reviewer] · run rev-36-1958-final-1 · 2026-11-19T03:44:19.860Z · commit 147f3ea23cf9aaf2a93f6135336d0bed8feb73b9
 - [x] C3. Every reader of a lease's spend state (doctor, status, the spend ledger, the CLI) shows unknown for these leases and never zero; the reader list follows rule 41 (test).
   - done: impl-1958 · 2026-11-19T02:50:40.288Z
+  - verified: rev-36 [reviewer] · run rev-36-1958-final-1 · 2026-11-19T03:44:19.860Z · commit 147f3ea23cf9aaf2a93f6135336d0bed8feb73b9
 
 ## Comments
 
@@ -199,3 +203,49 @@ A-21503 preserves the Coordinator-authorized dev-pass/pristine-head-timeout diff
 Exact new-head local macOS arm64 Node24.21.0 evidence:948 passes in92 T1 files;52 passes in the two affected T2 files; full lint/typecheck reported exit0, refusals0, existing report-only notices. Reviewer checked named four SSH, provider-loss and parallel-acquire positive records, pinned command tiers and all14 exported hashes. Redacted/native/browser limits remain explicit; no configured/later-tier/Web browser acceptance is inferred. Reviewer ran no tests or probes.
 
 C1/C2/C3 remain done but unverified; no criterion verified in this source pass. The Implementer may request a new Coordinator configured-verification window at this fixed head. Final settlement requires same-head owner and exact task/consumer receipts with unexecuted phase limits. A changed head needs fresh source review.
+
+### rev-36 · 2026-11-19T03:01:11.418Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1958-evidence-2
+commit: 147f3ea23cf9aaf2a93f6135336d0bed8feb73b9
+scope: evidence
+findings: [{"severity":"medium","text":"Configured run eb913f41 failed with 'DigitalOcean 0 transport: request failed or exceeded its time bound'; the owner records remote machine lost/collection unavailable. No remote progress/timing receipts or runtime/browser provenance were collected, so acceptance remains unverified. Coordinator 6c6c225b classifies this as transient and permits one same-head retry only in a new window; preserve this failed non-complete round."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear for eb913f41-9173-43d0-8054-c872ef10d82c / A-21513 at unchanged source-clear 147f3ea23cf9aaf2a93f6135336d0bed8feb73b9. One medium infrastructure-evidence finding; no new source finding. A-21514 retains the audit. No criterion marks are requested: there are no remote test receipts from which to establish an acceptance pass or an assertion failure.
+
+Owner auto exit1: 'DigitalOcean 0 transport: request failed or exceeded its time bound'. A-21513:106 records remote machine lost/collection unavailable. Host T0 npm run check exited0,131.173s for that step. The115-line artifact contains no suite progress/timing records. Planned230 T1/435 T2/55 Web files, tests0/observed unavailable and projected walls are not execution counts or proof no remote operation started. T3 remains batch-deferred; no standalone T4 evidence is supplied.
+
+Provenance: exact head and binding tree dc8903f6357284d3d7e24c517cde1266054808ca, droplet, cached:null, platform:null, browser binary/version:null. Runtime Linux/Node/browser details are unknown. Requested c-8 ams3/two workers; lifetime38s/$0.0042 is executor accounting, machine health unavailable. Source remains clean at tree8eb536ddb832a1ff8a70f80799a6bc1668be78d3. Reviewer ran no tests/probes/provider operations. Existing lint/budget/ratchet notices are report-only.
+
+Coordinator decision6c6c225b, relayed in c350017d, classifies transport as transient and authorizes one unchanged-head retry after an explicit new window. If transport fails again, report it without another retry. This settles and releases the evidence hold; it does not itself open that window. C1/C2/C3 remain done but unverified; none verified. Earlier18348b69/A-21494 remains FAILED PARTIAL, this round remains failed/non-complete, and source4/local checks retain their own scopes. Any head change requires fresh source review.
+
+### rev-36 · 2026-11-19T03:44:19.860Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1958-final-1
+commit: 147f3ea23cf9aaf2a93f6135336d0bed8feb73b9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear for configured run f4e9e0d1-b90a-4c37-9e61-5ce2923294cb / A-21538 at source4-reviewed 147f3ea23cf9aaf2a93f6135336d0bed8feb73b9. Findings []. A-21539 retains the independent structured-record audit and exact generated case table. Verify C1, C2 and C3.
+
+All 17 required task/control/migrated consumer names have positive base finishes and matching timing receipts. The eleven new/control identities each have five distinct positive load repetitions. The four previously failed SSH controls and formerly timed-out parallel-acquires accounting case now pass; provider-loss hold ordering/diagnostic control also passes. C1 repeated compaction/durable unknown/index exclusion, C2 both first publishers/counts/no replay/throwing-sink preservation, and C3 validated reconciliation/status/legacy/category/old-wire and pending-spend distinctions are established with the source4 census. Doctor's host-only reader remains unaffected; model evidence is not a new browser scenario.
+
+Owner auto exit 0; independent aggregate 6900 distinct base tests all pass (6755 top-level,145 nested), plus 265 separate passing load repetitions. Exactly 720 positive unique file envelopes: all 230 T1,435 T2 and55 Web files. All 248 T3/17 T4 files are unexecuted in this task receipt; T3 remains merge-batch coverage. T0/T1/T2/Web exited 0. T0 host178.674s is its step, not Linux phase wall.
+
+Provenance at A-21538:39856 pins exact head/runtime tree dc8903f6357284d3d7e24c517cde1266054808ca, cached:null, Linux x64 6.8.0-147-generic, Node v24.21.0, Neovim v0.12.5. Actual Chrome Headless Shell binary is /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell, Google Chrome for Testing156.0.8078.4; browser receipt also at37272. Droplet c-8 ams3/two workers; lifetime1474s/$0.1023 is executor accounting. Lint/budget/regression/ratchet notices remain report-only. Reviewer ran no tests/probes/checkers/provider/browser operations; source remains clean and unchanged.
+
+Earlier 18348b69/A-21494 remains failed partial, and eb913f41/A-21513 remains transport-failed/non-complete; neither is retroactively green. Outage submissions without admission receipts supply no pass proof. This complete same-head run is the final acceptance evidence under the Coordinator's approved retry/window. QA policy none; no extra QA execution is claimed.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-19T04:39:12.262Z
+
+Merged 183f0f95dd77b2c815779a5f7425b90e161c1d3c onto dev.
