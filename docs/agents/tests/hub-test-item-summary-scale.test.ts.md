@@ -25,10 +25,20 @@ the fake now accepts only that exact log request and returns unknown provenance.
 
 Startup explorer regressions use `item-summary-scale.test.ts` at T2: a thousand
 durable rows with a planned epic and retained verdicts count recompute batches.
-The serving case arms the existing task-write gate before startup, observes the
-listening and serving receipts separately, and keeps an unscaled two-second
-monotonic gap assertion. It then observes the held planned write, proves a status
-reply while it is held, releases it and observes the planned status. Fixture
-setup has its own bound. No real daemon or browser is needed. The diagnostic
+The serving case arms both receipt promises and an early Unix client before
+startup, retaining the first listener receipt as the two-second serving anchor.
+It also measures serving to the actual `hub.status` reply, including client
+readiness, within two seconds while the first freshness read is still running.
+This avoids hiding a blocked event loop by waiting for `projectHub` to return
+before sending the request. A prototype observer counts the real explorer source
+updates for E-2 and R-1: each refreshes once in that first announcement batch.
+The held planned write is observed separately, released, and followed by the
+planned status receipt. The whole-case owner and positive launch guard cover
+setup through cleanup. The original seed promise is enrolled with the cleanup
+owner before observing its separate 15-second setup deadline. That observation
+may reject early; cleanup still joins the seed's original writes before removing
+the root or restoring fixture seams. Individual write failures are collected
+only after every seed write settles.
+Fixture setup has its own bound. No real daemon or browser is needed. The diagnostic
 `hub/scripts/measure-startup.ts` copies durable live inputs into a sealed scratch
 root; its measurements are diagnostic evidence, not a suite receipt.

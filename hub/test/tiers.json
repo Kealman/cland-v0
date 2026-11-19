@@ -763,6 +763,7 @@
     "hub/test/startup-cleanup.test.ts": "T2",
     "hub/test/startup-deadline-component.test.ts": "T2",
     "hub/test/startup-diagnostic.test.ts": "T1",
+    "hub/test/startup-listener-scale.test.ts": "T3",
     "hub/test/startup-ready-component.test.ts": "T2",
     "hub/test/startup-replies-scale.test.ts": "T3",
     "hub/test/startup-smoke.test.ts": "T3",

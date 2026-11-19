@@ -1,10 +1,9 @@
 // T2: thousand-item startup receipts and public frames through an in-process projectHub.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {existsSync} from 'node:fs';
 import {taskWriteGate} from './tracker-write-gate.ts';
-import {onCleanup} from './process-cleanup.ts';
 import {join} from 'node:path';
 import {serializeItem} from '../src/tracker/item.ts';
 import {connectUi,projectHub,tempProject,until} from './harness.ts';
@@ -12,6 +11,9 @@ import {FakeClock} from './fake-clock.ts';
 import {withPlan} from '../src/tracker/plan.ts';
 import {tipChurnFixture} from './tip-churn-fixture.ts';
 import {fixtureNativeGuard} from './fake-native-guard.ts';
+import {stageCase} from './stage-case-fixture.ts';
+import {ExplorerFieldsIndex} from '../src/tracker/explorer-fields.ts';
+import {within} from '../src/executor/droplet/deadline.ts';
 
 test('task.view and verify queue replies have p95 below one second during ten-branch churn in a 1650-item tracker', async t => {
   await fixtureNativeGuard(t);
@@ -48,11 +50,12 @@ test('task.view and verify queue replies have p95 below one second during ten-br
   } finally { await hub.dispose(); }
 });
 
-async function plannedStartup(t:test.TestContext, backlog=false) {
-  const root=await tempProject(t),at='2026-10-16T12:00:00.000Z';
+async function plannedStartup(t:test.TestContext, backlog=false, suppliedRoot?:string) {
+  const root=suppliedRoot??await tempProject(t);
+  const at='2026-10-16T12:00:00.000Z';
   await mkdir(join(root,'.cland/tasks'),{recursive:true});
   const tasks=Array.from({length:998},(_,n)=>`T-${n+3}`);
-  await Promise.all(Array.from({length:1000},(_,n)=>{
+  const writes=await Promise.allSettled(Array.from({length:1000},(_,n)=>{
     const num=n+1,kind=num===1?'release':num===2?'epic':'task',id=`${kind==='release'?'R':kind==='epic'?'E':'T'}-${num}`;
     return writeFile(join(root,`.cland/tasks/${id}-fixture.md`),serializeItem({
       fm:{id,kind,title:`Item ${num}`,state:'open',...(kind==='task'?{size:'S' as const,status:(backlog&&num===3?'backlog':'planned') as 'backlog'|'planned'}:{}),labels:[],assignee:null,
@@ -60,6 +63,8 @@ async function plannedStartup(t:test.TestContext, backlog=false) {
       body:num===2?withPlan('## Summary\n\nStartup fixture.',{stages:[{name:'first',qa:{scope:'none',when:'per-item'},lanes:[tasks]}]}):'## Summary\n\nStartup fixture.',comments:kind==='task'&&num%20===0?[{author:'reviewer',at,text:'Reviewed',verdict:{verdict:'review' as const,result:'clear' as const,by:'reviewer',run:`review-${id}`,commit:'a'.repeat(40)}}]:[],
     }));
   }));
+  const failures=writes.filter(result=>result.status==='rejected');
+  if(failures.length)throw new AggregateError(failures.map(result=>result.reason),'planned fixture writes failed after all writers settled');
   return {root};
 }
 
@@ -79,28 +84,71 @@ test('a thousand-item planned startup batches explorer recomputation',async t=>{
 
 // C2 explicitly measures the real listening-to-serving interval; fixture setup has its own bound.
 test('a thousand-item planned hub serves within two seconds of listening before maintenance',async t=>{
-  const {root}=await plannedStartup(t,true);
-  const gate=await taskWriteGate(t,root);await gate.arm();onCleanup(t,()=>gate.release());
+  const owner=stageCase(t);
+  await owner.run(async step=>{
+  const root=await owner.wait('root setup',()=>step(async()=>{const root=await tempProject(owner.fixtures);owner.adoptRoot(root);return root;}));
+  const seeding=step(()=>plannedStartup(owner.fixtures,true,root));
+  // Observation can time out; the cleanup owner still joins every original
+  // seed writer before it releases the root or restores fixture seams.
+  owner.requireClose(async()=>{await Promise.allSettled([seeding]);});
+  await within(seeding,15000,undefined,()=>new Error('planned tracker seed setup incomplete after 15000 ms'));
+  const gate=await owner.wait('write gate setup',()=>step(()=>taskWriteGate(owner.fixtures,root)));
+  await owner.wait('write gate armed',()=>step(()=>gate.arm()));
   let plannedBeforeServing=false;
-  let listening:number|undefined,serving:number|undefined;
-  const starting=projectHub(t,root,gate.env, {clock:new FakeClock(),
+  const listening=Promise.withResolvers<number>(),socketBound=Promise.withResolvers<string>(),serving=Promise.withResolvers<number>();
+  const firstRead=Promise.withResolvers<void>();
+  const ancestorRefreshes=new Map<string,number>();
+  let inFirstRead=false,readCount=0;
+  const update=ExplorerFieldsIndex.prototype.update;
+  owner.patch(ExplorerFieldsIndex.prototype,'update',function(this:ExplorerFieldsIndex,...args:Parameters<ExplorerFieldsIndex['update']>){
+    if(inFirstRead&&(args[0]==='E-2'||args[0]==='R-1'))ancestorRefreshes.set(args[0],(ancestorRefreshes.get(args[0])??0)+1);
+    return update.apply(this,args);
+  });
+  // Both observers are armed before startup. The early client connects to the
+  // actual Unix edge, so waiting for projectHub's return cannot hide starvation.
+  const client=socketBound.promise.then(async socket=>{
+    const secret=await step(()=>readFile(join(root,'.cland/secret'),'utf8'));
+    return step(()=>connectUi(owner.fixtures,{root,socket,secret:secret.trim()}));
+  });
+  const response=serving.promise.then(async at=>{
+    const ui=await client;
+    const reply=await step(()=>ui.request({type:'hub.status'}));
+    return {reply,elapsed:performance.now()-at,duringFirstRead:inFirstRead};
+  });
+  void client.catch(()=>{});void response.catch(()=>{});
+  const starting=step(()=>projectHub(owner.resources,root,gate.env, {clock:new FakeClock(),stageTree:async()=>null,
     git:async args=>args[0]==='for-each-ref'?`${'a'.repeat(40)} refs/heads/dev`:null,
     readBase:async()=> 'dev',
-    log:entry=>{if(entry.event==='listening')listening??=performance.now();if(entry.event==='serving'){serving=performance.now();plannedBeforeServing=existsSync(join(gate.env.CLAND_TEST_TASK_WRITE_GATE,'entered'));}},
-  });
-  await until(()=>listening!==undefined,{what:'fixture listener bound',timeoutMs:15000});
-  await until(()=>serving!==undefined,{what:'serving receipt after listening',timeoutMs:2000,loadFactor:1});
-  const hub=await starting;
-  const gap=serving!-listening!;
+    scheduleTips:read=>{
+      const run=async()=>{const first=readCount++===0;if(first)inFirstRead=true;try{await read();}finally{if(first){inFirstRead=false;firstRead.resolve();}}};
+      void run();return {poke(){},stop(){}};
+    },
+    log:entry=>{if(entry.event==='listening'){listening.resolve(performance.now());if(typeof entry.socket==='string')socketBound.resolve(entry.socket);}if(entry.event==='serving'){serving.resolve(performance.now());plannedBeforeServing=existsSync(join(gate.env.CLAND_TEST_TASK_WRITE_GATE,'entered'));}},
+  }));
+  void starting.catch(()=>{});
+  try{
+  const bound=await within(listening.promise,15000,undefined,()=>new Error('fixture listener bound incomplete after 15000 ms'));
+  const served=await owner.wait('serving receipt after listening',()=>within(serving.promise,2000,undefined,()=>new Error('serving receipt after listening: not within 2000 ms')));
+  const gap=served-bound;
   assert.ok(gap<2000,`listening to serving took ${gap.toFixed(3)} ms; bound 2000 ms`);
-  await gate.entered();
+  await owner.wait('first freshness announcement completed',()=>firstRead.promise);
+  t.diagnostic(`first-batch ancestor refreshes ${JSON.stringify(Object.fromEntries(ancestorRefreshes))}`);
+  assert.deepEqual(Object.fromEntries(ancestorRefreshes),{'R-1':1,'E-2':1},'each ancestor is refreshed once in the first freshness batch');
+  const answered=await owner.wait('post-serving status reply',()=>response);
+  assert.equal(answered.reply.ok,true,answered.reply.error); // lint-allow-wall-clock: asserts the real socket reply carried beside the monotonic latency receipt
+  assert.ok(answered.elapsed<2000,`serving to status reply took ${answered.elapsed.toFixed(3)} ms; bound 2000 ms`); // lint-allow-wall-clock: real post-serving socket responsiveness cannot be measured by the fixture scheduling clock
+  assert.equal(answered.duringFirstRead,true,'the status reply arrives while the first freshness batch is still running'); // lint-allow-wall-clock: checks the first-read boundary recorded at the actual socket response
+  const hub=await starting;
+  await owner.wait('planned write entered',()=>step(()=>gate.entered()));
   assert.equal(plannedBeforeServing,false,'planned writes start after serving');
-  const ui=await connectUi(t,hub.discovery);
+  const ui=await client;
   assert.equal((await ui.request({type:'hub.status'})).ok,true,'status replies while planned write is held');
-  await gate.release();
+  await step(()=>gate.release());
   const planned=await ui.request({type:'task.view',item:'T-3'});
   assert.equal((planned.value as {item:{status:string}}).item.status,'planned');
-  t.diagnostic(`${process.platform}/${process.arch}; local projectHub; listening to serving ${gap.toFixed(3)} ms; bound 2000 ms`);
+  t.diagnostic(`${process.platform}/${process.arch}; local projectHub; listening to serving ${gap.toFixed(3)} ms; serving to status reply ${answered.elapsed.toFixed(3)} ms; bounds 2000 ms; ancestor refreshes ${JSON.stringify(Object.fromEntries(ancestorRefreshes))}`);
+  }finally{await gate.release();}
+  });
 });
 
 test('a thousand-item task change recomputes only its three-row chain within 100 ms',async t=>{

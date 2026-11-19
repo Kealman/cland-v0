@@ -997,13 +997,27 @@ export class HubCore {
     return changed;
   }
 
+  #publishingTaskBatch = false;
+
+  /** Tracker projections are already flushed: share their topic context across the batch. */
+  publishTaskBatch(publish: () => void): void {
+    if (this.#publishingTaskBatch) { publish(); return; }
+    const changed = this.#refreshExplorerContext(false);
+    this.#publishingTaskBatch = true;
+    try { publish(); }
+    finally {
+      this.#publishingTaskBatch = false;
+      for (const item of changed) this.#emit({ type: 'task', id: item.id, item });
+    }
+  }
+
   publishTask(change: ItemChange): void {
     const done = this.#items?.doneItemCount?.();
     const inventory = done === undefined ? {} : {done_items:done};
     if (change.item) this.#store.heartbeatItemSince(change.item.id, change.item.status ?? change.item.state, Date.parse(change.item.updated), this.#now().getTime());
     if (change.item) this.#itemSnapshots.set(`T-${idNumber(change.id)}`, change.item);
     else this.#itemSnapshots.delete(`T-${idNumber(change.id)}`);
-    const contextChanged = this.#refreshExplorerContext(false);
+    const contextChanged = this.#publishingTaskBatch ? [] : this.#refreshExplorerContext(false);
     if (change.item) change = {...change,item:this.#items?.get?.(change.id) ?? change.item};
     if (!change.item || change.item.state === 'closed' || change.item.status === 'ready') {
       // Include disconnected verifiers: reopening an item must not revive an old reservation.

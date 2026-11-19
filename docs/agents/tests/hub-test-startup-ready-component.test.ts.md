@@ -1,5 +1,23 @@
 # hub/test/startup-ready-component.test.ts
 
+The topic-context batch case and listener-diagnostic fault cases use the shared
+whole-case owner before root acquisition, with named setup/behavior bounds and
+late-root/resource adoption. The positive native launch guard covers setup,
+body and cleanup; the stage-tree read is explicitly injected. Diagnostic sink
+faults exercise both successful listener acquisition and original bind failure,
+then check Unix removal and actual TCP rebind receipts. Captured server owners
+remain as fallback fixture cleanup if an assertion exposes a listener leak.
+
+The two yielded-freshness cases hold the actual first batch continuation after
+16 source refreshes, then observe the settled producer arriving while it is held.
+On release, the first batch's 65 rows finish before the queued batch starts;
+source and ancestor updates are unique per batch, and the changed ancestor keeps
+its notification. The stop variant joins the captured continuation and queued
+producer before its close receipt, with no later source refresh or announcement.
+Both use the same whole-case owner and native guard, fake Git and clock, and a
+scratch in-process tracker. Cleanup releases the captured continuation before
+joining writers and removing the fixture.
+
 The cold-start CLI case runs with captured runner lock identity present and
 absent. Both variants use the shared fixture CLI boundary and assert the
 persisted lock identity after the embedded hub starts. Its mocked spawn acquires

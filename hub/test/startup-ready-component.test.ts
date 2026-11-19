@@ -18,6 +18,179 @@ import { readLeaseHistory, writeLease } from '../src/executor/droplet/lease.ts';
 import { onCleanup } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { Server, createServer } from 'node:net';
+import { ExplorerFieldsIndex } from '../src/tracker/explorer-fields.ts';
+import { serializeItem } from '../src/tracker/item.ts';
+
+for (const stopping of [false, true]) test(`yielded freshness batches ${stopping ? 'are joined and fenced by stop' : 'finish before the next producer publishes'}`, async t => {
+  const owner = stageCase(t);
+  await owner.run(async step => {
+    const root = await owner.wait('root setup', () => step(async () => {
+      const root = await tempProject(owner.fixtures); owner.adoptRoot(root); return root;
+    }));
+    const head = 'a'.repeat(40), clock = new FakeClock(), at = clock.now().toISOString();
+    await owner.wait('tracker seed setup', () => step(async () => {
+      await step(() => files.mkdir(join(root, '.cland/tasks'), { recursive: true }));
+      for (let n = 1; n <= 65; n++) await step(() => files.writeFile(join(root, `.cland/tasks/${n === 1 ? 'E' : 'T'}-${n}-fixture.md`), serializeItem({
+        fm: { id: `${n === 1 ? 'E' : 'T'}-${n}`, kind: n === 1 ? 'epic' : 'task', title: `Row ${n}`, state: 'closed',
+          ...(n === 1 ? {} : { status: 'done', size: 'S' }), parent: n === 1 ? null : 'E-1', branch: n === 1 ? null : 't/shared',
+          labels: [], assignee: null, blocked_by: [], topic: null, created: at, updated: at }, body: '',
+        comments: n === 1 ? [] : [{ author: 'reviewer', at, text: '', verdict: { verdict: 'review', result: 'clear', by: 'reviewer', run: `r${n}`, commit: 'b'.repeat(40) } }],
+      })));
+    }));
+    const settled = Promise.withResolvers<void>(), paused = Promise.withResolvers<void>(), published = Promise.withResolvers<void>();
+    const tracker = new Tracker({ root, db: ':memory:', clock, stageTree: async () => null,
+      git: async args => args[0] === 'for-each-ref' ? `${head} refs/heads/t/shared` : args[0] === 'rev-parse' ? head : null,
+      readBase: async () => null, scheduleTips: () => ({ poke() {}, stop() {} }), watch: () => ({ close() {} }),
+      log: entry => { if (entry.event === 'task-freshness-settled') settled.resolve(); },
+    });
+    owner.requireClose(() => tracker.stop());
+    await owner.wait('tracker setup', () => step(() => tracker.start({ deferFreshness: true, deferReadyChecks: true })));
+    const updates: Array<{ id: string; completed: number }> = [], notifications: string[][] = [];
+    let completed = 0, holdNext = false, resume = () => {}, stopSettled = false, yieldedContinuationRan = false;
+    const immediate = globalThis.setImmediate, update = ExplorerFieldsIndex.prototype.update;
+    owner.patch(globalThis, 'setImmediate', (callback: (...args: unknown[]) => void, ...args: unknown[]) => {
+      if (!holdNext) return immediate(callback, ...args);
+      holdNext = false; resume = () => { yieldedContinuationRan = true; callback(...args); }; paused.resolve();
+      return immediate(() => {});
+    });
+    owner.releaseOnClose(() => resume());
+    owner.patch(ExplorerFieldsIndex.prototype, 'update', function(this: ExplorerFieldsIndex, ...args: Parameters<ExplorerFieldsIndex['update']>) {
+      updates.push({ id: args[0], completed });
+      if (updates.length === 16) holdNext = true;
+      return update.apply(this, args);
+    });
+    let current: string[] = [];
+    tracker.onChange(change => current.push(change.id), publish => {
+      current = []; publish(); notifications.push(current); completed++;
+      if (completed === 2) published.resolve();
+    });
+    const closeOrder: string[] = [];
+    const refreshing = step(() => tracker.refreshFreshness()).then(() => { closeOrder.push('freshness completed'); });
+    void refreshing.catch(() => {});
+    try {
+      await owner.wait('first batch yielded', () => paused.promise);
+      await owner.wait('settled producer queued during first batch', () => settled.promise);
+      if (stopping) {
+        const stopped = tracker.stop().then(() => {
+          assert.equal(yieldedContinuationRan, true, 'stop follows the owned continuation receipt');
+          closeOrder.push('stop completed'); stopSettled = true;
+        });
+        // A positive stop-close receipt follows the captured continuation, not
+        // merely a timeout or a snapshot saying the worker is no longer running.
+        resume();
+        await owner.wait('owned batch and stop close receipts', () => Promise.all([refreshing, stopped]));
+        assert.equal(stopSettled, true);
+        assert.deepEqual(closeOrder, ['freshness completed', 'stop completed'], 'stop closes after the full freshness owner settles');
+        assert.equal(completed, 0, 'stop fences the in-flight and queued publications');
+        assert.equal(updates.length, 16, 'no row refresh follows stop');
+        assert.deepEqual(notifications, []);
+      } else {
+        resume();
+        await owner.wait('both announcement batches completed', () => Promise.all([refreshing, published.promise]));
+        assert.equal(completed, 2);
+        const boundary = updates.findIndex(update => update.completed === 1);
+        assert.equal(boundary, 65, 'the first 65-row batch completes before any settled-batch source refresh');
+        for (const batch of [0, 1]) {
+          const ids = updates.filter(update => update.completed === batch).map(update => update.id);
+          assert.ok(ids.length >= 2 && ids.length <= 65);
+          assert.equal(new Set(ids).size, ids.length, 'each ancestor and source refreshes once per batch');
+          assert.ok(notifications[batch]!.filter(id => id === 'E-1').length <= 1, 'a changed ancestor is announced once');
+        }
+        assert.equal(notifications.flat().filter(id=>id==='E-1').length,1,'the changed ancestor retains its notification');
+        assert.equal(tracker.list().find(item => item.id === 'T-65')!.verdicts[0]!.current, true, 'settled batch retains the final child answer');
+      }
+    } finally { resume(); await refreshing; }
+  });
+});
+
+for (const failedBind of [false, true]) test(`listener timing sink failure preserves ${failedBind ? 'the original bind failure and closes earlier edges' : 'acquired listeners through normal cleanup'}`, async t => {
+  const owner = stageCase(t);
+  await owner.run(async step => {
+    const root = await owner.wait('root setup', () => step(async () => {
+      const root = await tempProject(owner.fixtures); owner.adoptRoot(root); return root;
+    }));
+    const bindFailure = new Error('controlled socket bind failure');
+    const sinkFailure = new Error('controlled listener diagnostic failure');
+    const listen = Server.prototype.listen;
+    let attempts = 0, sinkThrows = 0;
+    const ports: number[] = [], paths: string[] = [];
+    const servers = new Set<Server>();
+    // Register this fallback before projectHub's checks: a regression must not
+    // let a failed resource census strand the captured native listeners.
+    owner.requireClose(async () => {
+      for (const server of servers) if (server.listening) await new Promise<void>(resolve => server.close(() => resolve()));
+    });
+    owner.patch(Server.prototype, 'listen', function(this: Server, ...args: Parameters<Server['listen']>) {
+      servers.add(this);
+      if (++attempts === 3 && failedBind) throw bindFailure;
+      return listen.apply(this, args);
+    });
+    const starting = owner.wait('hub setup', () => step(() => projectHub(owner.resources, root, {}, {
+      stageTree: async () => null,
+      log: entry => {
+        if (entry.event === 'listening' && typeof entry.url === 'string') {
+          if (entry.url.startsWith('ws://')) ports.push(Number(new URL(entry.url).port));
+          const unix = /^ws\+unix:(.*):\/$/.exec(entry.url); if (unix) paths.push(unix[1]!);
+        }
+        if (entry.event === 'listening' && typeof entry.socket === 'string') paths.push(entry.socket);
+        if ((entry.event === 'hub-startup-listener-completed' && (!failedBind || entry.outcome === 'failed')) || entry.event === 'hub-startup-listener-log-failed') {
+          sinkThrows++; throw sinkFailure;
+        }
+      },
+    })));
+    if (failedBind) await assert.rejects(starting, error => error === bindFailure);
+    else {
+      const hub = await starting;
+      await owner.wait('listener owner stopped', () => step(() => hub.stop()));
+    }
+    assert.ok(sinkThrows > 0, 'the diagnostic fault was exercised');
+    assert.equal(ports.length, 1, 'the actual TCP listener was acquired');
+    for (const path of paths) await owner.wait('Unix listener removal receipt', () => step(() => assert.rejects(files.lstat(path), { code: 'ENOENT' })));
+    const probe = createServer();
+    owner.requireClose(() => new Promise<void>(resolve => probe.close(() => resolve())));
+    await owner.wait('TCP listener release receipt', () => step(() => new Promise<void>((resolve, reject) => {
+      probe.once('error', reject); probe.listen(ports[0]!, '127.0.0.1', resolve);
+    })));
+    await owner.wait('TCP probe stopped', () => step(() => new Promise<void>(resolve => probe.close(() => resolve()))));
+  });
+});
+
+test('one freshness announcement batch refreshes the hub topic context once', async t => {
+  const owner = stageCase(t);
+  await owner.run(async step => {
+  const root = await owner.wait('root setup', () => step(async () => {
+    const root = await tempProject(owner.fixtures); owner.adoptRoot(root); return root;
+  }));
+  const clock = new FakeClock(), head = 'a'.repeat(40);
+  const { serializeItem } = await import('../src/tracker/item.ts');
+  const { Store } = await import('../src/hub/store.ts');
+  const at = clock.now().toISOString();
+  await owner.wait('tracker seed setup', () => step(async () => {
+  await step(() => files.mkdir(join(root, '.cland/tasks'), { recursive: true }));
+  for (let n = 1; n <= 4; n++) await step(() => files.writeFile(join(root, `.cland/tasks/T-${n}-fixture.md`), serializeItem({
+    fm: { id: `T-${n}`, kind: 'task', title: `Retained ${n}`, state: 'closed', status: 'done', size: 'S', labels: [], assignee: null, parent: null,
+      blocked_by: [], topic: null, branch: `t/${n}`, created: at, updated: at }, body: '',
+    comments: [{ author: 'reviewer', at, text: '', verdict: { verdict: 'review', result: 'clear', by: 'reviewer', run: `r${n}`, commit: head } }],
+  })));
+  }));
+  let refresh: (() => Promise<void>) | undefined;
+  const hub = await owner.wait('hub setup', () => step(() => projectHub(owner.resources, root, {}, { clock, stageTree: async () => 'f'.repeat(40),
+    git: async args => args[0] === 'for-each-ref' ? Array.from({ length: 4 }, (_, n) => `${head} refs/heads/t/${n + 1}`).join('\n') : null,
+    readBase: async () => null, scheduleTips: read => { refresh = read; return { poke() {}, stop() {} }; },
+  })));
+  let topicReads = 0;
+  const topics = Store.prototype.topics;
+  owner.patch(Store.prototype, 'topics', function(this: InstanceType<typeof Store>) { topicReads++; return topics.call(this); });
+  await owner.wait('freshness batch receipt', () => step(() => refresh!()));
+  assert.equal(topicReads, 1, 'one full topic-context read for four freshness announcements');
+  const ui = await owner.wait('transport setup', () => step(() => connectUi(owner.fixtures, hub.discovery)));
+  const reply = await owner.wait('last item reply', () => step(() => ui.request({ type: 'task.view', item: 'T-4' })));
+  assert.equal(reply.ok, true, reply.error);
+  assert.equal((reply.value as { item: ItemView }).item.verdicts[0]?.current, true, 'the last announced item retains its freshness');
+  });
+});
 
 test('startup logs named durations for every step from listener binding through serving', async t => {
   const root = await tempProject(t);
@@ -26,6 +199,7 @@ test('startup logs named durations for every step from listener binding through 
   const binding = entries.findIndex(entry => entry.event === 'hub-startup-step' && entry.step === 'binding listeners');
   const serving = entries.findIndex(entry => entry.event === 'serving');
   const window = entries.slice(binding, serving);
+  assert.deepEqual(window.filter(entry => entry.event === 'hub-startup-listener-completed').map(entry => entry.listener), ['websocket', 'spoke', 'socket']);
   const starts = window.filter(entry => entry.event === 'hub-startup-step');
   assert.deepEqual(starts.map(entry => entry.step), ['binding listeners', 'binding web listener', 'restoring sessions', 'publishing discovery']);
   for (const start of starts) {

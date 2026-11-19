@@ -94,7 +94,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { createHostRegistry?: typeof projectSshHosts; prepareLogin?: import('./dispatch.ts').DispatcherOptions['prepareLogin']; runLoginSignIn?: import('./dispatch.ts').DispatcherOptions['runLoginSignIn']; createHost?: import('./dispatch.ts').DispatcherOptions['createHost']; uploadOpen?: typeof import('node:fs/promises').open; uploadAllocate?: (size: number) => Buffer; gatewayMessenger?: MessengerFactory; gatewayState?: RemoteStates; gatewayProcesses?: PollerProcesses; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; lockIdentity?: import('./lock.ts').LockHostIdentity; processes?: LockProcessTable; droplet?: DropletDependencies; hostConfigurations?: Readonly<Record<string, import('../host/registry.ts').HostConfiguration>>; hosts?: readonly import('../host/host.ts').Host[]; adapters?: AdapterFactory[]; transportClock?: Clock; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { createHostRegistry?: typeof projectSshHosts; prepareLogin?: import('./dispatch.ts').DispatcherOptions['prepareLogin']; runLoginSignIn?: import('./dispatch.ts').DispatcherOptions['runLoginSignIn']; createHost?: import('./dispatch.ts').DispatcherOptions['createHost']; uploadOpen?: typeof import('node:fs/promises').open; uploadAllocate?: (size: number) => Buffer; gatewayMessenger?: MessengerFactory; gatewayState?: RemoteStates; gatewayProcesses?: PollerProcesses; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; stageTree?: (head: string) => Promise<string | null>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; lockIdentity?: import('./lock.ts').LockHostIdentity; processes?: LockProcessTable; droplet?: DropletDependencies; hostConfigurations?: Readonly<Record<string, import('../host/registry.ts').HostConfiguration>>; hosts?: readonly import('../host/host.ts').Host[]; adapters?: AdapterFactory[]; transportClock?: Clock; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const launchEnv = options.env ?? process.env;
@@ -247,7 +247,7 @@ export async function serveProject(root: string, options: { createHostRegistry?:
   let devTip: string | null = null;
   let tracker: Tracker;
   try {
-    tracker = new Tracker({ onDevTip: head => { devTip = head; if (!starting) lintWarmer.request(head); }, clock, ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), now: () => clock.now(), env, git: options.git ?? gitIn(root, env), ...(options.readBase ? { readBase: options.readBase } : {}), onStorageFatal: operation => {
+    tracker = new Tracker({ onDevTip: head => { devTip = head; if (!starting) lintWarmer.request(head); }, clock, ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), now: () => clock.now(), env, git: options.git ?? gitIn(root, env), ...(options.stageTree ? { stageTree: options.stageTree } : {}), ...(options.readBase ? { readBase: options.readBase } : {}), onStorageFatal: operation => {
     if (starting || stopping) return;
     // Freeze admission and native/index continuations before yielding or announcing the failure.
     void tracker.stop({ stalled: operation });
@@ -306,7 +306,7 @@ export async function serveProject(root: string, options: { createHostRegistry?:
     log({ event: 'hub-startup-step', step: 'indexing tracker', pid: process.pid });
     // Finish index recovery/migrations before exposing the hub, but do not queue
     // background readiness ahead of that barrier or the status listeners.
-    const migrations = tracker.start({ deferReadyChecks: true });
+    const migrations = tracker.start({ deferReadyChecks: true, deferFreshness: true });
     log({ event: 'hub-startup-step', step: 'settling tracker migrations', pid: process.pid });
     await migrations;
     log({ event: 'hub-startup-step', step: 'loading roles', pid: process.pid });
@@ -650,11 +650,25 @@ export async function serveProject(root: string, options: { createHostRegistry?:
   };
 
   if (listen !== 'never') {
+    const bind = async <T>(listener: string, work: () => Promise<T>): Promise<T> => {
+      const started = performance.now();
+      let outcome = 'failed';
+      try { const edge = await work(); outcome = 'bound'; return edge; }
+      finally {
+        try { log({ event: 'hub-startup-listener-completed', listener, outcome, durationMs: performance.now() - started, pid: process.pid }); }
+        catch {
+          // An ancillary sink cannot discard an acquired edge or replace the
+          // bind owner's rejection before the caller captures its resource.
+          try { processLog({ event: 'hub-startup-listener-log-failed', listener, outcome, pid: process.pid }); }
+          catch { /* Preserve the producing outcome even when both sinks fail. */ }
+        }
+      }
+    };
     try {
       log({ event: 'hub-startup-step', step: 'binding listeners', pid: process.pid });
-      ws = await createWebSocketEdge(hub.dispatcher, { port: 0, host: '127.0.0.1', secret, log });
-      spoke = await createWebSocketEdge(hub.dispatcher, { port: 0, path: l.spokeSocket, secret, log });
-      edge = await createSocketEdge({ path: l.socket, dispatcher: hub.dispatcher, log });
+      ws = await bind('websocket', () => createWebSocketEdge(hub.dispatcher, { port: 0, host: '127.0.0.1', secret, log }));
+      spoke = await bind('spoke', () => createWebSocketEdge(hub.dispatcher, { port: 0, path: l.spokeSocket, secret, log }));
+      edge = await bind('socket', () => createSocketEdge({ path: l.socket, dispatcher: hub.dispatcher, log }));
     } catch (err) {
       // All listeners or none: a hub.json naming only half of them would send its readers to a dead end
       await spoke?.close();
@@ -720,6 +734,7 @@ export async function serveProject(root: string, options: { createHostRegistry?:
     scheduleHeartbeat();
     starting = false;
     hub.dispatcher.startExecutorRecovery();
+    tracker.resumeFreshness();
     tracker.resumeReadyChecks();
     lintWarmer.request(devTip);
     return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; }, get cleanupIncomplete() { return mergeCleanupRetained; } };
@@ -783,6 +798,7 @@ export async function serveProject(root: string, options: { createHostRegistry?:
   scheduleHeartbeat();
   starting = false;
   hub.dispatcher.startExecutorRecovery();
+  tracker.resumeFreshness();
   tracker.resumeReadyChecks();
   lintWarmer.request(devTip);
   accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env, clock, options.accountReader);

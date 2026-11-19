@@ -101,7 +101,25 @@ invalidate that count; ordinary coalesced inbox publications still refresh detai
 restore phases. Each phase ends with `hub-startup-step-completed`, naming its
 monotonic `durationMs` through the next phase or serving. The listening-to-serving
 window names listener binding, web listener binding, session restoration and
-discovery publication separately. Executor lease recovery is admitted only after
+discovery publication separately. Each WebSocket, spoke and UI socket bind also
+records `hub-startup-listener-completed` with `listener`, `outcome` (`bound` or
+`failed`) and monotonic `durationMs`, including a rejected bind. These additive
+receipts preserve the existing phase names for older diagnostic readers.
+If a completion sink throws, the ancillary diagnostic cannot discard the bound
+listener or replace its original bind failure. A best-effort
+`hub-startup-listener-log-failed` notice retains the producing listener/outcome;
+failure of that fallback also leaves resource ownership and the bind result intact.
+Scheduled verdict freshness starts after serving; workers yield between answers
+so cached Git results cannot monopolize a microtask drain ahead of socket work.
+Tracker freshness announcement batches refresh each source and ancestor stage
+summary once, yielding after every 16 source rows before flushing projections.
+Tip-movement and settled-answer batches serialize on their own queue; they never
+wait on the tracker writer queue, which may itself await a foreground tip read.
+Their synchronous publications share one hub topic context refresh and retain
+one notification per changed ancestor. Stop fences publication and joins both
+the read and worker through their batch completion. Single-change subscribers
+keep the same item events and callback shape.
+Executor lease recovery is admitted only after
 serving (`executor-recovery-started`); neither startup nor ordinary status and
 bridge traffic waits for its provider calls. Recovery keeps its existing bounded
 completion/deferred receipts and periodic retries. To profile a disposable copy, use

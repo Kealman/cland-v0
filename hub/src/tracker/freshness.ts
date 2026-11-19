@@ -11,6 +11,7 @@ import { epicDemoFreshness } from './epic-surfaces.ts';
 import type { IndexedVerdict } from './index-db.ts';
 import type { VerdictKind } from './item.ts';
 import type { LogFn } from '../log.ts';
+import type { Resumed } from '../hub/budget.ts';
 import { branchTips, resolveCommit, taskPatch, verdictBaseOf, type Git } from './verdict-git.ts';
 
 /** How often the branch tips are read, ms. */
@@ -59,10 +60,10 @@ export type FreshnessOptions = {
   scheduleTips?: TipSchedule;
   /** Answers are known for these items now: announce them again. */
   /** Unique waiting item ids, published once per completed foreground or demo drain. */
-  settled: (ids: string[]) => void;
+  settled: (ids: string[]) => void | Promise<void>;
   recordDelta?: (ids: string[], delta: MergeDelta) => Promise<void>;
   /** Changed branch names; null retains shared invalidation for first read, dev or base changes. */
-  tipsMoved: (branches: MovedBranches) => void;
+  tipsMoved: (branches: MovedBranches, resumed: Resumed) => void | Promise<void>;
 };
 
 export class Freshness {
@@ -75,7 +76,7 @@ export class Freshness {
   readonly #intervalMs: number;
   readonly #scheduleTips: TipSchedule;
   readonly #recordDelta: FreshnessOptions['recordDelta'];
-  readonly #settled: (ids: string[]) => void;
+  readonly #settled: FreshnessOptions['settled'];
   readonly #tipsMoved: FreshnessOptions['tipsMoved'];
   /** Branch → tip as last read; null until the first read. */
   #tips: Map<string, string> | null = null;
@@ -277,7 +278,7 @@ export class Freshness {
           resumed(() => this.#fail('read', err));
           return;
         }
-        resumed(() => {
+        await resumed(() => {
           if (this.#stopped) return;
           const next = read ?? new Map<string, string>();
           const previous = this.#tips;
@@ -299,7 +300,7 @@ export class Freshness {
           }
           if (moved) this.#prune();
           this.#retryDue();
-          if (moved || settled) this.#tipsMoved(shared ? null : changed);
+          if (moved || settled) return this.#tipsMoved(shared ? null : changed, resumed);
         });
       } while (this.#readAgain && !this.#stopped);
     } finally {
@@ -370,11 +371,19 @@ export class Freshness {
         if (failed && (want.ancestry || want.demoTasks)) this.#retries.set(key, { want, after: performance.now() + this.#intervalMs });
         for (const id of want.ids) settled.add(id);
         if (!failed) this.#queueDelta(key, want, value);
+        // Cached/injected Git can resolve every await in one microtask drain.
+        // Give listener and request continuations a turn between answers.
+        await new Promise<void>(resolve => setImmediate(resolve));
       }
     } finally {
-      worker.working = false;
-      // Publish one batch per drain, after every cached result is visible.
-      if (!this.#stopped && settled.size) this.#settled([...settled]);
+      try {
+        // The worker owns publication through its yields, so stop joins it too.
+        if (!this.#stopped && settled.size) await this.#settled([...settled]);
+      } finally {
+        worker.working = false;
+        // Publication can discover new wants while this lane is still owned.
+        if ([...this.#wants.values()].some(want => !!want.demoTasks === worker.demo)) this.#startWork();
+      }
     }
   }
 

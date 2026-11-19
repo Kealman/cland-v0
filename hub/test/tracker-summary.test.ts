@@ -28,7 +28,7 @@ test('tip invalidations identify moved and absent branches while dev and base ch
   const changes: MovedBranches[] = [];
   const fresh = new Freshness({
     git: async () => [...tips].map(([branch, tip]) => `${tip} refs/heads/${branch}`).join('\n'),
-    readBase: async () => base, settled() {}, tipsMoved: branches => changes.push(branches),
+    readBase: async () => base, settled() {}, tipsMoved: branches => { changes.push(branches); },
   });
   try {
     await fresh.refresh();

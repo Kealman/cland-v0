@@ -13091,6 +13091,13 @@
     "hub/test/verification-tier-receipts.test.ts::uploaded writer atomically publishes ordered native exits": 0.002693
   },
   "allow": {
+    "hub/test/startup-listener-scale.test.ts::listener binds report each await while retained verdict freshness drains": {
+      "seconds": 20,
+      "owner": "E-880",
+      "added": "2026-11-19",
+      "expires": "2026-11-26",
+      "reason": "T-1952: production-scale embedded startup fixture (375 verdict wants, 1645 suites, 8163 artifacts, 4202 released lease files). Source3 local macOS arm64/Node24.21.0 passing top-level sample 9.276969 s (10.166253 s parent wall), source fingerprints recorded with the receipt; Linux is not yet measured. Coordinator decision 3337c19b projects 9.28 s at the 1.4x droplet/local ratio to about 13 s, then 1.5x headroom rounded upward to 20 s; refresh from the first passing configured-droplet receipt. Native process launch remains guarded; standing owner E-880, seven-day expiry unchanged. Duration budgets remain report-only."
+    },
     "hub/test/item-summary-scale.test.ts::task.view and verify queue replies have p95 below one second during ten-branch churn in a 1650-item tracker": {
       "seconds": 19,
       "owner": "C-216",

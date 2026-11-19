@@ -101,7 +101,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
   } : {}) });
   const unwatchMissingDone = options.tracker?.onMissingDone(notice => core.publishMissingDone(notice));
   // closing a unit of work closes its topic (spec 4.5)
-  const unwatchEvents = options.tracker?.onChange(change => core.publishTask(change));
+  const unwatchEvents = options.tracker?.onChange(change => core.publishTask(change), publish => core.publishTaskBatch(publish));
   const unwatchItems = options.tracker?.onClosed((id) => core.itemClosed(id));
   // `task.link` and `task.create` with a topic bind through the topics (one each side); items closed while no hub ran
   const unbindTopics = options.tracker?.bindTopicsThrough(core.topicBinding());

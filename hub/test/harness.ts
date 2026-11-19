@@ -475,6 +475,7 @@ export type ProjectHubOptions = {
   hosts?: readonly import('../src/host/host.ts').Host[];
   adapters?: import('../src/adapters/index.ts').AdapterFactory[];
   git?: import('../src/tracker/verdict-git.ts').Git;
+  stageTree?: (head: string) => Promise<string | null>;
   hasTerritory?: typeof import('../src/territory.ts').hasTerritory;
   territoryLock?: typeof import('../src/territory.ts').withTerritoryLockAsync;
   readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>;

@@ -41,6 +41,9 @@ Interrupted sign-in uses exact-machine deletion receipts to release its native
 fence, with retained snapshot obligations left to their existing owner.
 Add subsystem text to its file; keep this index as pointers.
 
+Startup listener await receipts and post-serving verdict freshness admission are
+described in the [startup reference](../docs/hub/coordinator-subscription-procedure.md).
+
 Background merge-prune shutdown joins and its bounded incomplete outcome are
 documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merge-cleanup-shutdown).
 

@@ -331,6 +331,7 @@ export class Tracker {
   readonly #tipListeners = new Set<() => void>();
   /** Told after every index change (a write, a hand edit, a removal, a claim): the `task` event. */
   readonly #changeListeners = new Set<(change: ItemChange) => void>();
+  readonly #announcementBatches = new Set<(publish: () => void) => void>();
   /** Told when a verdict comment is written through the hub: the inbox notes it (#33). */
   readonly #verdictListeners = new Set<(id: string, author: string, verdict: Verdict, report?: VerdictReport, human?: boolean) => void>();
   readonly #missingDoneListeners = new Set<(notice: MissingDoneNotice) => void>();
@@ -485,14 +486,15 @@ export class Tracker {
           await this.comment({ id: 'hub', name: 'hub', role: null }, id, text);
         }
       },
-      settled: (ids) => {
+      settled: async (ids) => {
         if (this.#stageAncestryChanged) ids = [...new Set([...ids, ...this.#stageCoverDependents])];
         this.#stageAncestryChanged = false;
         this.#log({ event: 'task-freshness-settled', items: ids.length, stageDependents: ids.filter(id => this.#stageCoverDependents.has(id)).length });
-        this.#announceBatch(ids);
+        await this.#announceBatch(ids, this.#watchResumed);
+        if (this.#stopping) return;
         for (const id of ids) { this.#scheduleReady(id); this.#schedulePlannedFor(id); }
       },
-      tipsMoved: branches => { this.#tipsMoved(branches); options.onDevTip?.(this.#fresh.tip('dev')); },
+      tipsMoved: async (branches, resumed) => { await this.#tipsMoved(branches, resumed); if (!this.#stopping) resumed(() => options.onDevTip?.(this.#fresh.tip('dev'))); },
     });
   }
 
@@ -531,11 +533,12 @@ export class Tracker {
     return () => this.#tipListeners.delete(listener);
   }
 
-  /** Listen to index changes; returns the unsubscribe. */
-  onChange(listener: (change: ItemChange) => void): () => void {
+  /** Listen per item; an optional synchronous wrapper shares publication work for a batch. */
+  onChange(listener: (change: ItemChange) => void, batch?: (publish: () => void) => void): () => void {
     if (!this.#changeListeners.size) for (const item of this.list()) this.#rememberAnnouncement(item.id,item);
     this.#changeListeners.add(listener);
-    return () => this.#changeListeners.delete(listener);
+    if (batch) this.#announcementBatches.add(batch);
+    return () => { this.#changeListeners.delete(listener); if (batch) this.#announcementBatches.delete(batch); };
   }
 
   /** The index changed for `id`: the `task` event, and a fresh look at the branch tips (a verdict may need one). */
@@ -640,21 +643,46 @@ export class Tracker {
   }
 
   /** Refresh moved branches and ancestor projections; shared dependencies retain broad invalidation. */
-  #tipsMoved(branches: MovedBranches): void {
+  async #tipsMoved(branches: MovedBranches, resumed: Resumed): Promise<void> {
     for (const listener of this.#tipListeners) {
       try { listener(); } catch (error) { this.#log({ event: 'task-tip-listener-failed', error: String(error) }); }
     }
     const ids = this.#index.freshnessIds(this.ladder.planning, branches);
-    this.#announceBatch(ids);
-    for (const id of ids) this.#scheduleReady(id);
+    await this.#announceBatch(ids, resumed);
+    if (!this.#stopping) resumed(() => { for (const id of ids) this.#scheduleReady(id); });
   }
 
-  /** Refresh all source rows before a projected read flushes the shared aggregates. */
-  #announceBatch(ids: string[]): void {
-    const affected = new Set(ids.flatMap(id => [id, ...this.#ancestorIds(this.#index.get(id)?.parent ?? null)]));
-    for (const id of affected) this.#refreshExplorer(id);
-    this.#explorer?.flush();
-    for (const id of ids) this.#announce(id, true);
+  #announcementQueue: Promise<void> = Promise.resolve();
+
+  /** Serialize freshness batches separately from the writer queue (which can await a tip read). */
+  #announceBatch(ids: string[], resumed: Resumed): Promise<void> {
+    const work = this.#announcementQueue.then(async () => {
+      if (this.#stopping) return;
+      const direct = new Set(ids);
+      const affected = resumed(() => new Set(ids.flatMap(id => [id, ...this.#ancestorIds(this.#index.get(id)?.parent ?? null)])));
+      let count = 0;
+      // An ancestor's stage snapshot can read its whole plan. Hydrate it once,
+      // rather than once again for every child notification. Retain dependents.
+      for (const id of affected) {
+        if (this.#stopping) return;
+        resumed(() => { for (const dependent of this.#refreshExplorer(id)) affected.add(dependent); });
+        if (++count % 16 === 0) await new Promise<void>(resolve => setImmediate(resolve));
+      }
+      if (this.#stopping) return;
+      resumed(() => {
+        this.#explorer?.flush();
+        let publish = () => { for (const id of affected) this.#announce(id, direct.has(id), undefined, false, false, false, true); };
+        for (const batch of this.#announcementBatches) {
+          const next = publish;
+          publish = () => batch(next);
+        }
+        // Wrappers remain synchronous: unrelated requests between hydration
+        // chunks must never inherit HubCore's shared-publication flag.
+        publish();
+      });
+    });
+    this.#announcementQueue = work.catch(() => {});
+    return work;
   }
 
   /** Freshness, verdicts and branch changes converge on one queued workflow check. */
@@ -780,14 +808,14 @@ export class Tracker {
    * Publish changed projected fields, including stage-only changes from asynchronous cover/tree settlement.
    * `ifMoved` retains the pending-verdict guard; whole-row equality suppresses unchanged freshness callbacks.
    */
-  #announce(id: string, ifMoved: boolean, siblings?: string[], silent = false, ancestors = true, notifyUnchanged = false): void {
+  #announce(id: string, ifMoved: boolean, siblings?: string[], silent = false, ancestors = true, notifyUnchanged = false, prepared = false): void {
     const indexed = this.#index.get(id);
     id = indexed?.id ?? id;
     if (!this.#explorer && this.#changeListeners.size === 0) {
       this.#rememberAnnouncement(id,indexed ? this.#rawSummary(indexed) : null);
       return;
     }
-    const nextDependents = this.#refreshExplorer(id);
+    const nextDependents = prepared ? [] : this.#refreshExplorer(id);
     const item = indexed ? this.#projected(indexed.id) : null;
     // Internal write observers also drive maintenance on idempotent operations.
     // HubCore separately suppresses identical client deltas; ancestors stay quiet.
@@ -882,9 +910,11 @@ export class Tracker {
     }
   }
 
+  #deferredFreshness = false;
+
   /** Bring the index level with the folder, then watch it. */
   /** Index synchronously, then acknowledge the durable migrations admitted by that scan. */
-  start(options: { deferReadyChecks?: boolean } = {}): Promise<void> {
+  start(options: { deferReadyChecks?: boolean; deferFreshness?: boolean } = {}): Promise<void> {
     if (options.deferReadyChecks) this.#deferredReady = new Set();
     this.#recoverCriterionCaptures();
     this.rescan();
@@ -923,7 +953,8 @@ export class Tracker {
       { env: this.#env, log: this.#log, event: 'task-watch-error' },
     );
     this.#polled = this.#folderStamp();
-    this.#fresh.start();
+    this.#deferredFreshness = options.deferFreshness ?? false;
+    if (!this.#deferredFreshness) this.#fresh.start();
     this.#scheduleCapturePrune(1);
     for (const [id, candidate] of this.#planCandidates) if (candidate.item.fm.state === 'open' && this.#index.plan(id)) this.#schedulePlanned(id);
     return Promise.all([this.#queue, ...this.#background]).then(() => {});
@@ -941,6 +972,13 @@ export class Tracker {
       });
     }, delay);
     this.#capturePruneTimer.unref();
+  }
+
+  /** Start background Git reads only after the daemon has published its listeners. */
+  resumeFreshness(): void {
+    if (!this.#deferredFreshness || this.#stopping) return;
+    this.#deferredFreshness = false;
+    this.#fresh.start();
   }
 
   /** Start planning and readiness only after the daemon can answer status probes. */
