@@ -1,5 +1,13 @@
 # hub/test/daemon.test.ts
 
+Long fixture roots opt into root-owned short aliases. The native regression
+checks the alias's real directory inside the fixture, byte limit, status, stop,
+native process closure and endpoint deletion. Its containing directory is fenced
+by the item ownership scope through original acquisition and positive close.
+Separate non-fixture layout assertions retain the ordinary temporary-directory
+fallback and stable production basename. The final named census checks roots,
+aliases and exact fallback paths after every case's cleanup.
+
 For hub shutdown, `daemon.test.ts` runs a real `hub serve` with the web edge
 enabled and a scratch epic-demo freshness Git command held at its batched raw history read.
 It arms the durable `stopped` log observer before stopping, then separately

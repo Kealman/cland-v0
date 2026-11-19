@@ -2,6 +2,7 @@
 // Routing checks use isolated in-process hubs; real CLI calls prove cwd/discovery selection.
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
+import { fixtureResidueCensus } from './harness.ts';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
@@ -159,3 +160,5 @@ test('CLAND_HUB_FILE selects the named hub from another project, including a cop
   assert.equal((await wait('CLI hub status', () => cland(root, 'hub', 'status'))).code, 1);
   assert.equal(JSON.parse(ok(await wait('CLI hub status --json', () => cland(other, 'hub', 'status', '--json'))).stdout).pid, otherHub.discovery.pid);
 });
+
+test('fixture file outputs are removed', fixtureResidueCensus());

@@ -2002,6 +2002,27 @@ death before removing the root. Linux `ps lstart` truncation needs the one-secon
 lower birth margin already used by self receipts; fd inheritance alone is not
 the complete ownership proof.
 
+New receipts for an existing fixture root live in its private
+`.fixture-sockets/owners/` directory. Guarded directory disposal removes them
+after all writers have joined, including owners killed before exit callbacks.
+The reader keeps accepting legacy global receipts. Orphan discovery reads the
+receipt paths held open by each candidate process, so root-local placement needs
+no global pointer or directory census. Symlinked storage and receipts fail closed.
+
+Before any receipt or alias, the private storage owner publishes a self-ignoring
+`.fixture-sockets/.gitignore` containing `*`. Runtime identities stay out of Git
+status and commits even when storage precedes repository initialization. Fixture
+root/image copies use the shared `fixtureCopyFilter`; Git ignore rules alone do
+not exclude runtime identities from a filesystem copy. Cloned or copied roots
+must allocate their own identities. The product's managed ignore writer reads
+only the layout's `.cland/.gitignore`, never this nested owner file.
+
+Files using `fixtureResidueCensus` pass its callback to a final top-level test
+named `fixture file outputs are removed`, declared in the test file itself so
+source identity and runtime location both name that file. It runs after the
+fixture tests and their teardown. A filtered run must include that case
+to claim census coverage; a test-body exit alone is not a residue receipt.
+
 Read-only QA stub runs keep serving inline scenarios when receipt creation fails
 with EACCES, EPERM or EROFS. Without a receipt they have no ownership authority:
 doctor may report a missing-root hint as unowned, but never signals it. Other

@@ -18,9 +18,27 @@ symlinks, verify each reciprocal alias target and unlink aliases only after
 resource and child drainage, including after SIGKILL. Ordinary root removal owns
 the actual socket nodes. Recovery never sweeps global temporary paths. A live-writer removal guard retains its root
 and socket directory when drainage is incomplete; keep existing child/peer drainage barriers. Do not pass a live project root.
-Production layout tests, absent-socket controls, and native fake harnesses receiving
-production-selected paths retain those paths to test the production contract.
+Production layout tests and absent-socket controls without fixture opt-in retain
+production paths. Opted-in project hub/spoke and local Codex fallbacks use the
+same private allocator when their project paths exceed the native byte budget.
+Short project paths retain their existing placement. A root-local receipt control
+closes the owner descriptor without its normal unlink, then exercises guarded
+root cleanup and verifies receipt removal. A separate negative control points one
+root's ownership directory at another root's receipts: the reader refuses that
+link, guarded cleanup preserves the foreign receipt, and the original reader
+still accepts it. Root metadata that names a different root is also refused.
 No command, setting, wire shape or role permission changes.
+
+The new receipt and fallback controls enroll `residueControl` before acquisition.
+It composes the existing case-deadline owner: each setup and observation has its
+own bound, while the original operation remains joined after a deadline or
+cancellation. The counted native guard covers callback, custom-promisifier,
+sync and lower-spawn forms before the first root. Resource close rejection keeps
+its positive closure obligation; root guards reject removal until that obligation
+is met. Guard and TMPDIR restoration follow observed root removal. Two held-close
+controls cancel an acquisition or reject setup, observe the still-present root
+and installed guard, then require a written closure receipt and root removal
+before confirming restoration. Other fixture families are not migrated here.
 
 The nested fake-storage case allocates reciprocal aliases at two depths and
 asserts that owner disposal removes both. Traversal includes nested

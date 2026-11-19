@@ -14,6 +14,7 @@ import { completeJournalLines } from './journal-lines.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
+import { fixtureResidueCensus } from './harness.ts';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { execFile } from 'node:child_process';
@@ -730,3 +731,5 @@ test('a missing native turn-start result becomes uncertain after its accepted tu
   assert.equal(ui.frames.filter(f => f.type === 'message' && (f.message as { text: string }).text === `pong: ${text}`).length, 1);
   assert.equal(((await fake.log(launched.pid!)).match(/item: <channel [^\n]*>\nplease lose the answer/g) ?? []).length, 1);
 });
+
+test('fixture file outputs are removed', fixtureResidueCensus());

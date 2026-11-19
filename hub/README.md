@@ -75,6 +75,7 @@ documented under [queued batches](../docs/agents/tests.md#queued-merge-batches).
 - [Claude terminal approval notifications](../docs/hub/adapters-and-sessions.md): retain pending hook identity across parent turns and send one reminder after 30 minutes on the hub clock; the session states reference describes resolution and legacy hook behaviour.
 - [Topics](../docs/hub/topics.md)
 - [Native fixture inventory](../qa/briefs/T-1806-inventory.md): shared exact name-set checks and scratch-only host socket routing.
+- [Fixture ownership](../docs/agents/tests.md#implementer-test-selection): private runtime receipts and aliases stay out of Git and fixture copies; copies acquire fresh ownership.
 - [Host process observation](../docs/agents/host-agent.md): Linux procfs ENOENT requires an independent signal-zero ESRCH before exit; hidden live PIDs remain unknown.
 - [Demo publication policy](../docs/agents/qa-demo-recording.md): remote QA captures reject Bearer credentials in Authorization headers and standalone token runs of at least 16 characters; short prose remains publishable. Manual captures still require redaction and scanning.
 - [Thread runs and fold lines](../docs/hub/thread-runs-and-fold-lines.md)

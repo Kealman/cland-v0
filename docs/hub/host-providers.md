@@ -553,6 +553,11 @@ snapshot receipt and the additive history list; invalid retained records fail
 closed. Old receipts without saved contents can be listed and deleted, but
 cannot supply a clone.
 
+Fake snapshots and restored copies omit the reserved `.fixture-sockets`
+runtime directory. Socket aliases and process-owner receipts belong to the
+original fixture root and cannot grant authority to a restored copy. Ordinary
+login data remains in the saved contents.
+
 DigitalOcean implements snapshot history, lookup, restoration and confirmed
 deletion through its API; see [DigitalOcean volumes](#digitalocean-volumes).
 

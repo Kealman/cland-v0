@@ -16,7 +16,7 @@ import { scratchAccountEnvironment, type ScratchAccountPaths, scratchGitEnvironm
 import { execFile } from 'node:child_process';
 import { clandCliLaunch } from './tier-cli.ts';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, readlink, lstat, realpath, rm, writeFile } from 'node:fs/promises';
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -386,11 +386,30 @@ async function runCland(cwd: string, extra: Record<string, string>, provider: (S
   });
 }
 
+const residueRoots = new Set<string>();
+const residueAliases = new Set<string>();
+let censusEnabled = false;
+/** Build the callback for a final named test in the caller's file. It checks
+ * only paths allocated by this worker; it never sweeps the real TMPDIR. */
+export function fixtureResidueCensus(extraPaths: () => Iterable<string> = () => []): () => Promise<void> {
+  censusEnabled = true;
+  return async () => {
+    for (const path of [...residueRoots, ...residueAliases, ...extraPaths()]) {
+      await assert.rejects(lstat(path), { code: 'ENOENT' }, `fixture residue: ${path}`);
+    }
+  };
+}
+
 /** A fresh project folder under the system temp dir, removed when the test ends (after its daemon is gone). */
 export async function tempProject(t: TestContext, prefix = 'cland-proj-', parent = tmpdir()): Promise<string> {
   await ensureAccountFixture();
   const root = await realpath(await mkdtemp(join(parent, prefix)));
-  ownDirectory(t, root);
+  if (censusEnabled) residueRoots.add(root);
+  ownDirectory(t, root, { beforeRemove: async () => {
+    if (!censusEnabled) return;
+    try { residueAliases.add(await readlink(join(root, '.fixture-sockets/alias'))); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  } });
   const { enableFixtureHostSockets } = await import('../../shared/fixture-sockets.ts');
   afterCleanup(t, enableFixtureHostSockets(root));
   return root;

@@ -15,6 +15,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { testMessenger } from './fakes/messenger.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
+import { fixtureResidueCensus } from './harness.ts';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -802,3 +803,5 @@ test('a natively launched OpenCode session keeps the gateway serving across its 
   assert.equal(stopped.ok, true, stopped.error);
   await hub.stop();
 });
+
+test('fixture file outputs are removed', fixtureResidueCensus());

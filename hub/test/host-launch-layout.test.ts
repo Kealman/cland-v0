@@ -1,7 +1,7 @@
 // T2: record the native launch boundary without starting any harness process.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readdir, readFile, realpath, stat } from 'node:fs/promises';
+import { mkdir, readdir, readFile, realpath, stat, writeFile, lstat } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ClaudeCodeAdapter, MOD_DIR } from '../src/adapters/claude-code.ts';
@@ -12,6 +12,38 @@ import type { HostCommand, HostLaunchLayoutInput } from '../src/host/host.ts';
 import type { AdapterHost } from '../src/adapters/contract.ts';
 import { tempProject } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { enableFixtureHostSockets, removeFixtureSockets } from '../../shared/fixture-sockets.ts';
+import { fileOperations } from '../src/host/agent/files.ts';
+import { residueControl } from './fixture-residue-control.ts';
+
+test('failed Codex launch keeps its placeholder beneath the owned root', t => residueControl(t).run(async c => {
+  const parent = await c.root(), root = join(parent, 'deep'.repeat(40));
+  await c.step('deep root setup', () => mkdir(root));
+  const previousTmp = process.env.TMPDIR;
+  c.restore(() => { if (previousTmp === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = previousTmp; });
+  process.env.TMPDIR = parent;
+  let disable: (() => void) | undefined;
+  c.restore(() => disable?.());
+  await c.step('socket opt-in setup', async () => { disable = enableFixtureHostSockets(root); });
+  let socket = '';
+  const machine = recordingHost(root, { overrides: {
+    ...fileOperations,
+    run: async () => ({ code: 0, stdout: 'codex 0.160.0', stderr: '' }),
+    spawn: async command => {
+      socket = command.args.find(arg => arg.startsWith('unix://'))!.slice(7);
+      assert.ok((await realpath(dirname(socket))).startsWith(root + '/'), socket);
+      await writeFile(socket, 'socket placeholder');
+      throw new Error('planted launch failure');
+    },
+  } });
+  const host: AdapterHost = { root, discoveryFile: join(root, '.cland/hub.json'), node: '/fixture/node', cli: '/fixture/cli', spoke: '/fixture/spoke', hostForLaunch: () => machine, log: () => {}, signal: () => {}, exited: () => {}, recordPid: () => {} };
+  const adapter = await c.acquire('adapter setup', () => new CodexAdapter(host, { env: fixtureEnvironment(root, {}), bin: '/fixture/codex' }), value => value.close());
+  await c.step('failed native boundary receipt', () => assert.rejects(adapter.value.spawn({ name: 'worker', sessionId: 'placeholder', role: null, model: null, cwd: root }), /planted launch failure/));
+  assert.ok(socket);
+  await c.step('adapter closure', adapter.close);
+  await c.step('socket disposal', () => removeFixtureSockets(root));
+  await c.step('socket removal observation', () => assert.rejects(lstat(socket), { code: 'ENOENT' }));
+}));
 
 for (const mask of [0o022, 0o002]) for (const mapped of [false, true]) for (const [name, Adapter] of Object.entries({ claude: ClaudeCodeAdapter, codex: CodexAdapter, opencode: OpenCodeAdapter })) {
   test(`${mapped ? 'mapped Host' : 'local'} ${name} launch preserves baseline argv, environment and file bytes/modes (umask ${mask.toString(8)})`, async t => {

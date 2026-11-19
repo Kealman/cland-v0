@@ -12,6 +12,18 @@ replacement endpoint. Both short and system temporary roots exercise real binds;
 pure long/UTF-8 path checks cover stable fallback selection separately. Real
 space, Unicode, colon and fragment-character roots also set an unsafe TMPDIR,
 observe a welcome on the fixed `/tmp` fallback and retain human socket placement.
+Those four hubs use unregistered children of owned temporary parents: registering
+the hub root itself would opt into fixture aliases and stop proving production
+placement. Hub shutdown removes its exact captured endpoints; the final named
+`fixture file outputs are removed` case checks those paths, all owned roots and
+any fixture aliases are absent. It does not sweep unrelated temporary sockets.
+Before hub startup, each containing parent registers normal/signal cleanup and
+an exact-parent removal guard on the original acquisition and hub disposal.
+Unknown or rejected closure retains parent and child; a bounded observer does
+not abandon the in-flight owner. The local rejected-disposal control invokes the
+registered cleanup hook, separately observes retained directories and a live
+writer, then requires a closed-writer receipt before observing parent removal.
+The cleanup hook keeps its original rejection even after positive closure.
 
 Preservation files are `hub/test/daemon.test.ts` (hub socket),
 `hub/test/resilience.test.ts` (native spoke reconnect), and

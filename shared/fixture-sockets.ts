@@ -3,10 +3,17 @@ import { existsSync, lstatSync, mkdirSync, readlinkSync, realpathSync, symlinkSy
 import { dirname, isAbsolute, join } from 'node:path';
 import { opendir } from 'node:fs/promises';
 
-import { fakeStorageDirectory as socketDirectory } from './fake-layout.ts';
+import { fakeStorageDirectory as socketDirectory, ignoreFixtureStorage } from './fake-layout.ts';
 import { FIXTURE_HOST_SOCKET_ROOT } from './fixture-roots.ts';
 const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const optedInRoots = new Map<string, {device:number;inode:number}>();
+
+/** Short endpoints for explicitly owned fixture projects only. */
+export function fixtureFallbackSocket(root: string, endpoint: string): string | undefined {
+  // Ordinary path planning stays pure, including callers with nonexistent roots.
+  if (!optedInRoots.has(root) && process.env[FIXTURE_HOST_SOCKET_ROOT] !== root) return;
+  return fixtureHostSocketDirectory(root, 'endpoints') === undefined ? undefined : fixtureSocketPath(root, endpoint);
+}
 
 /** Register without adding root entries. Persist only at first allocation;
  * child launchers carry the exact root through the shared fixture environment. */
@@ -31,6 +38,7 @@ export function fixtureHostSocketDirectory(root: string, id: string): string | u
     if (!(registered?.device === info.dev && registered.inode === info.ino) && !childOptIn) return;
     mkdirSync(directory, {recursive:true,mode:0o700});
     privateDirectory(directory);
+    ignoreFixtureStorage(directory);
     try { writeFileSync(marker, '', {mode:0o600,flag:'wx'}); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
   }
@@ -55,6 +63,7 @@ export function fixtureSocketPath(root: string, endpoint: string): string {
   try { mkdirSync(directory, { mode: 0o700 }); }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
   privateDirectory(directory);
+  ignoreFixtureStorage(directory);
   const record = join(directory, 'alias');
   let alias: string;
   try { alias = readlinkSync(record); }

@@ -1,5 +1,6 @@
 import { withInitGitIdentity } from './git-identity-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { fixtureCopyFilter } from '../../shared/fake-layout.ts';
 import { verificationFixture, type FixtureStack } from './verification-fixture.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 // Worker-local seeds are private. Copy every file (including objects), never hardlink
@@ -67,10 +68,10 @@ export async function copyPreparedProject(root: string, shape: Shape = 'territor
     seeds.set(key, seed);
   }
   const source = await seed;
-  await cp(source, root, { recursive: true, verbatimSymlinks: true });
+  await cp(source, root, { recursive: true, verbatimSymlinks: true, filter: fixtureCopyFilter });
   if (shape === 'release') {
     assert.ok(github, 'a release fixture needs its own GitHub stand-in');
-    await cp(`${source}-github`, github, { recursive: true, verbatimSymlinks: true });
+    await cp(`${source}-github`, github, { recursive: true, verbatimSymlinks: true, filter: fixtureCopyFilter });
   }
   // Only Git config contains operational absolute paths; hooks and skills use
   // relative paths. Reflog messages are historical and need no relocation.

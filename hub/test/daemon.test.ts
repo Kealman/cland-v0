@@ -5,15 +5,17 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile, spawn, spawnSync } from 'node:child_process';
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import WebSocket from 'ws';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
-import { assignRole, cland, clandWithEnv, CLI_ENTRY, connectSocket, killDaemon, pidAlive, projectHub, readDiscovery, eventually, sleep, startDaemon, tempProject } from './harness.ts';
+import { assignRole, cland, clandWithEnv, CLI_ENTRY, connectSocket, killDaemon, pidAlive, projectHub, readDiscovery, eventually, sleep, startDaemon, tempProject, fixtureResidueCensus } from './harness.ts';
+import { residueControl } from './fixture-residue-control.ts';
+import { layout } from '../src/project.ts';
 import { NO_PS } from './native-process.ts';
 import { askHubFrame } from '../src/cli/socket-client.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
@@ -21,6 +23,9 @@ import { preparedDropletFixture } from './droplet-fixture.ts';
 import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+
+const fallbackOutputs = new Set<string>();
+const checkFixtureResidue = fixtureResidueCensus(() => fallbackOutputs);
 
 for (const action of ['hub stop', 'SIGTERM', 'SIGTERM with stalled socket close'] as const) test(`${action} during an in-flight droplet create retains ownership and reaps the hub within three seconds`, async t => {
   const root = await tempProject(t);
@@ -437,17 +442,23 @@ test('autostart recovers after grace expires and after a crash, recording only s
   assert.doesNotMatch(journal.stdout, /CLAND_STARTUP_SENTINEL|must-not-be-journalled/);
 });
 
-test('a project path too long for a Unix socket puts the socket under the temp dir', async (t) => {
-  const base = await tempProject(t);
+test('a project path too long for a Unix socket puts the socket under the temp dir', t => residueControl(t, { native: true }).run(async c => {
+  const base = await c.root();
   const root = join(base, 'a-rather-long-directory-name-'.repeat(3));
-  await mkdir(root, { recursive: true });
-  const { discovery } = await startDaemon(t, root, {}, { sweep: true });
-  assert.ok(discovery.socket.startsWith(tmpdir()), discovery.socket);
+  await c.step('deep root setup', () => mkdir(root, { recursive: true }));
+  const daemon = await c.acquire('fixture daemon startup', () => startDaemon(t, root, {}, { sweep: true }), value => killDaemon(value.discovery.pid));
+  const { discovery } = daemon.value;
+  fallbackOutputs.add(discovery.socket); fallbackOutputs.add(dirname(discovery.socket));
+  assert.equal(await c.step('owned socket storage observation', () => realpath(dirname(discovery.socket))), join(root, '.fixture-sockets'));
   assert.ok(Buffer.byteLength(discovery.socket) <= 100);
-  assert.match((await cland(root, 'hub', 'status')).stdout, /^hub running for/);
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await assert.rejects(stat(discovery.socket), { code: 'ENOENT' });
-});
+  const production = layout('/unregistered-project/' + 'deep/'.repeat(40)).socket;
+  assert.match(production, /\/cland-[a-f0-9]{16}\.sock$/);
+  assert.ok([tmpdir(), '/tmp'].includes(dirname(production)), production);
+  assert.match((await c.step('daemon status', () => cland(root, 'hub', 'status'))).stdout, /^hub running for/);
+  assert.equal((await c.step('daemon stop', () => cland(root, 'hub', 'stop'))).code, 0);
+  await c.step('native daemon closure', daemon.close);
+  await c.step('socket removal observation', () => assert.rejects(stat(discovery.socket), { code: 'ENOENT' }));
+}));
 
 test('git sees only what is meant to be committed under .cland/ while a hub runs', async (t) => {
   const root = await tempProject(t);
@@ -603,3 +614,5 @@ test('a stale hub.lock — its hub was killed, or its pid now belongs to another
   assert.match(third.result.stdout, /hub started for/);
   assert.equal((JSON.parse(await readFile(lockFile, 'utf8')) as { pid: number }).pid, third.discovery.pid);
 });
+
+test('fixture file outputs are removed', checkFixtureResidue);

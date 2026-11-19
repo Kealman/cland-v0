@@ -2,16 +2,147 @@
 // socket owners through native close receipts; all children and roots are disposable.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { once } from 'node:events';
-import { dirname, sep } from 'node:path';
-import { lstat, stat, writeFile, readdir, realpath } from 'node:fs/promises';
+import { dirname, sep, join } from 'node:path';
+import { cp, mkdir, lstat, stat, writeFile, readFile, readdir, realpath } from 'node:fs/promises';
 import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { tempProject } from './harness.ts';
 import { afterCleanup, beforeDirectories, captureProcess, ownProcess, guardDirectoryRemoval } from './process-cleanup.ts';
 import { enableFixtureHostSockets } from '../../shared/fixture-sockets.ts';
 import { hostPaths } from '../src/host/records.ts';
+import { findFixtureOrphans, sweepFixtureOrphans } from '../src/fixture-processes.ts';
+import { residueControl, residueChild } from './fixture-residue-control.ts';
+import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
+import { fixtureCopyFilter } from '../../shared/fake-layout.ts';
+import { ensureGitignore, layout } from '../src/project.ts';
+
+test('fixture runtime metadata stays out of Git status, commits, clones and copies', t => residueControl(t, { native: true }).run(async c => {
+  const outer = await c.root('fixture-git-', '/tmp'), root = join(outer, 'project');
+  await c.step('repository directory setup', () => mkdir(root));
+  const receipt = await c.acquire('live receipt setup', () => fixtureOwnership([root]), owner => owner.close());
+  await c.step('socket alias setup', async () => { fixtureSocketPath(root, 'copy-control'); });
+  const env = fixtureEnvironment(outer, process.env, {}, root), exec = promisify(execFile);
+  const git = (cwd: string, ...args: string[]) => c.step('isolated Git ' + args[0], async () => (await exec('git', args, { cwd, env })).stdout.trim());
+  await git(root, 'init', '-q', '-b', 'dev');
+  await c.step('ordinary source setup', () => writeFile(join(root, 'seed'), 'fixture seed\n'));
+  assert.equal(await git(root, 'status', '--porcelain', '--untracked-files=all'), '?? seed', 'ordinary source is visible while live runtime metadata is excluded');
+  await git(root, 'add', '.');
+  await git(root, '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Fixture source');
+  assert.equal(await git(root, 'ls-tree', '-r', '--name-only', 'HEAD'), 'seed');
+  assert.equal(await git(root, 'status', '--porcelain', '--untracked-files=all'), '');
+  const clone = join(outer, 'clone');
+  await git(outer, 'clone', '-q', '--no-hardlinks', root, clone);
+  assert.equal(await c.step('clone source receipt', () => readFile(join(clone, 'seed'), 'utf8')), 'fixture seed\n');
+  await c.step('clone has no runtime metadata', () => assert.rejects(lstat(join(clone, '.fixture-sockets')), { code: 'ENOENT' }));
+  assert.equal(await git(clone, 'status', '--porcelain', '--untracked-files=all'), '');
+  const copied = join(outer, 'copied');
+  await c.step('fixture tree copy', () => cp(root, copied, { recursive: true, verbatimSymlinks: true, filter: fixtureCopyFilter }));
+  assert.equal(await c.step('copied source receipt', () => readFile(join(copied, 'seed'), 'utf8')), 'fixture seed\n');
+  await c.step('copy has no runtime metadata', () => assert.rejects(lstat(join(copied, '.fixture-sockets')), { code: 'ENOENT' }));
+  await c.step('managed ignore directory setup', () => mkdir(join(root, '.cland')));
+  await c.step('managed ignore update', async () => { ensureGitignore(layout(root)); });
+  assert.equal(await c.step('nested ignore remains owner controlled', () => readFile(join(root, '.fixture-sockets/.gitignore'), 'utf8')), '*\n');
+  const ordinary = join(outer, 'ordinary');
+  await c.step('non-fixture storage setup', async () => {
+    await mkdir(join(ordinary, '.fixture-sockets'), { recursive: true, mode: 0o700 });
+    await writeFile(join(ordinary, '.fixture-sockets/user-data'), 'ordinary project data');
+  });
+  await git(ordinary, 'init', '-q', '-b', 'dev');
+  assert.equal(await git(ordinary, 'status', '--porcelain', '--untracked-files=all'), '?? .fixture-sockets/user-data', 'non-fixture project data remains visible to Git');
+  await c.step('live receipt descriptor closure', receipt.close);
+  await c.step('receipt removal', async () => { receipt.value.remove(); });
+  assert.equal(await git(root, 'status', '--porcelain', '--untracked-files=all'), '?? .cland/.gitignore', 'receipt removal creates no tracked deletion');
+}));
+
+test('rejected fixture closure retains its root and native guard until the owning process exits', t => residueControl(t, { native: true }).run(async c => {
+  const root = await c.root('rejected-', '/tmp'), source = join(root, 'rejected.test.mjs'), receipt = join(root, 'retained.json');
+  const control = new URL('./fixture-residue-control.ts', import.meta.url).href;
+  await c.step('rejected-close worker source setup', () => writeFile(source, `import test from 'node:test';import assert from 'node:assert/strict';import cp from 'node:child_process';import {lstat,writeFile} from 'node:fs/promises';import {residueControl} from ${JSON.stringify(control)};
+const originalSpawn=cp.spawn;let root='',rejected=false;
+test('resource close rejects',t=>residueControl(t).run(async c=>{root=await c.root();await c.acquire('fake owner setup',()=>({}),async()=>{rejected=true;throw Error('planted closure rejection');});}));
+test('observe the rejected owner',t=>residueControl(t,{native:true}).run(async c=>{assert.equal(rejected,true);assert.notEqual(cp.spawn,originalSpawn);assert.equal((await c.step('retained root receipt',()=>lstat(root))).isDirectory(),true);await c.step('retention publication',()=>writeFile(${JSON.stringify(receipt)},JSON.stringify({root,rejected,guardRetained:cp.spawn!==originalSpawn})));}));`));
+  const native = await residueChild(c, 'rejected-close worker setup', () => spawn(process.execPath, ['--test', source], {
+    cwd: root, detached: true, env: fixtureEnvironment(root, process.env, { TMPDIR: root, NODE_TEST_CONTEXT: undefined }), stdio: ['ignore', 'pipe', 'pipe'],
+  }));
+  const [code, signal] = await native.observe('rejected-close worker native completion', () => native.closed);
+  assert.equal(code, 1, native.diagnostic()); assert.equal(signal, null);
+  const { readFile } = await import('node:fs/promises');
+  const saved = JSON.parse(await c.step('retention receipt read', () => readFile(receipt, 'utf8'))) as {root:string;rejected:boolean;guardRetained:boolean};
+  assert.equal(saved.rejected, true); assert.equal(saved.guardRetained, true);
+  const retained = await c.step('retained root canonical ownership', () => realpath(saved.root));
+  assert.ok(retained.startsWith(root + sep));
+  assert.equal((await c.step('retained root observation', () => lstat(retained))).isDirectory(), true);
+  await c.step('worker ownership settlement', native.close);
+  const { ownDirectory } = await import('./process-cleanup.ts');
+  await c.step('guarded recovery after native exit', () => ownDirectory(undefined, retained)());
+  await c.step('recovered root removal observation', () => assert.rejects(lstat(retained), { code: 'ENOENT' }));
+}));
+
+for (const failed of [false, true]) test(`post-file census clears fixture endpoints and receipts after ${failed ? 'test failure' : 'success'}`, t => residueControl(t, { native: true }).run(async c => {
+  const root = await c.root('census-', '/tmp'), source = join(root, 'case.test.mjs'), receipt = join(root, 'paths.json');
+  const harness = new URL('./harness.ts', import.meta.url).href;
+  const ownership = new URL('../../shared/fixture-ownership.ts', import.meta.url).href;
+  const project = new URL('../src/project.ts', import.meta.url).href;
+  const control = new URL('./fixture-residue-control.ts', import.meta.url).href;
+  await c.step('test worker source setup', () => writeFile(source, `import test from 'node:test';import {writeFile} from 'node:fs/promises';
+import {fixtureResidueCensus} from ${JSON.stringify(harness)};
+import {fixtureOwnership} from ${JSON.stringify(ownership)};import {layout} from ${JSON.stringify(project)};
+import {residueControl} from ${JSON.stringify(control)};
+test('owned fixture',t=>residueControl(t).run(async c=>{const root=await c.root('deep'.repeat(35));const owner=await c.acquire('receipt setup',()=>fixtureOwnership([root]),value=>value.close());
+const paths=[root,layout(root).socket,layout(root).spokeSocket,owner.value.path];
+for(const path of paths.slice(1,3))await c.step('placeholder setup',()=>writeFile(path,'failed socket placeholder'));
+await c.step('paths publication',()=>writeFile(${JSON.stringify(receipt)},JSON.stringify(paths)));${failed ? "throw new Error('planted test failure');" : ''}}));test('fixture file outputs are removed',fixtureResidueCensus());`));
+  const native = await residueChild(c, 'test worker launch setup', () => spawn(process.execPath, ['--test', source], { cwd: root, detached: true, env: fixtureEnvironment(root, process.env, { NODE_TEST_CONTEXT: undefined, TMPDIR: root }), stdio: ['ignore', 'pipe', 'pipe'] }));
+  const [code, signal] = await native.observe('test worker native completion', () => native.closed);
+  assert.equal(code, failed ? 1 : 0, native.diagnostic()); assert.equal(signal, null);
+  if (failed) assert.match(native.diagnostic(), /planted test failure/);
+  const { readFile } = await import('node:fs/promises');
+  const paths = JSON.parse(await c.step('paths receipt read', () => readFile(receipt, 'utf8'))) as string[];
+  assert.equal(paths.length, 4);
+  const kinds = ['project root', 'hub fallback placeholder', 'spoke fallback placeholder', 'owner receipt'];
+  const remaining: string[] = [];
+  for (const [index, path] of paths.entries()) {
+    const present = await c.step('file completion output census', () => lstat(path).then(() => true, error => {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+      throw error;
+    }));
+    if (present) remaining.push(kinds[index]!);
+  }
+  assert.deepEqual(remaining, [], 'no named fixture output survives file completion');
+}));
+
+test('orphan sweep discovers a root-local receipt after the test worker is killed', t => residueControl(t, { native: true }).run(async c => {
+  const root = await c.root();
+  const stub = join(root, 'stub-hub.ts');
+  const ownership = new URL('../../shared/fixture-ownership.ts', import.meta.url).href;
+  const environment = new URL('./fixture-environment.ts', import.meta.url).href;
+  await c.step('stub source setup', () => writeFile(stub, `import {fixtureOwnership} from ${JSON.stringify(ownership)};
+const owner=fixtureOwnership([process.cwd(),process.cwd()+'/removed-checkout']);
+process.send({pid:process.pid,path:owner.path});setInterval(()=>{},1000);`));
+  const source = `import {spawn} from 'node:child_process';import {fixtureEnvironment} from ${JSON.stringify(environment)};
+process.on('message',()=>{const child=spawn(process.execPath,[process.argv[1]],{cwd:process.cwd(),env:fixtureEnvironment(process.cwd(),process.env),stdio:['ignore','ignore','ignore','ipc']});child.on('message',message=>process.send(message));});process.send('ready');setInterval(()=>{},1000);`;
+  const native = await residueChild(c, 'worker launch setup', () => spawn(process.execPath, ['--input-type=module', '-e', source, stub], { cwd: root, detached: true, env: fixtureEnvironment(root, process.env), stdio: ['ignore', 'ignore', 'pipe', 'ipc'] }), true);
+  const worker = native.child;
+  const [ready] = await native.observe('worker readiness setup', () => native.firstMessage!);
+  assert.equal(ready, 'ready');
+  const receiptMessage = once(worker, 'message', { signal: AbortSignal.any([c.signal, AbortSignal.timeout(5000)]) });
+  worker.send('spawn');
+  const [receipt] = await native.observe('stub ownership publication', () => receiptMessage) as [{pid:number;path:string}];
+  await c.acquire('stub native owner setup', () => ownProcess(undefined, receipt.pid), stop => stop());
+  assert.ok(receipt.path.startsWith(root + '/'));
+  assert.equal((await c.step('persisted receipt observation', () => stat(receipt.path))).isFile(), true);
+  worker.kill('SIGKILL');
+  const [, signal] = await native.observe('killed worker native completion', () => native.closed);
+  assert.equal(signal, 'SIGKILL');
+  const found = await c.step('orphan discovery', () => findFixtureOrphans(root));
+  assert.ok(found.some(row => row.owned && row.process.pid === receipt.pid), 'open receipt still grants discovery after worker death');
+  const ended = await c.step('orphan sweep completion', () => sweepFixtureOrphans(() => {}, root));
+  assert.ok(ended.some(row => row.process.pid === receipt.pid), 'sweep positively joins the orphan');
+  await c.step('swept receipt removal observation', () => assert.rejects(lstat(receipt.path), { code: 'ENOENT' }));
+}));
 
 test('a cold hub child allocates its first host sockets beneath the scratch root and persists independent reader paths', async t => {
   const root = await tempProject(t);

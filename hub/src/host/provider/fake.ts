@@ -10,6 +10,7 @@ import { readFile, writeFile, opendir, stat, unlink, mkdir, cp, rm } from 'node:
 import { join, dirname, isAbsolute } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { hostDirectory } from '../../../../shared/fake-host-directory.ts';
+import { fixtureCopyFilter } from '../../../../shared/fake-layout.ts';
 import { createFakeHost } from '../../../../shared/fake-host-machine.ts';
 import type { HostProvider, Machine, AcquireOptions, AcquireResult, MachineStatus, ReleaseResult, ReleaseObserver, ReapOptions, ReapResult, PrepareResult, Volume, CreateVolumeOptions, CreateVolumeResult, DeleteVolumeResult, ListVolumesResult, AttachVolumeResult, DetachVolumeResult, SnapshotVolumeResult } from './provider.ts';
 
@@ -134,7 +135,7 @@ export class FakeHostProvider implements HostProvider {
       if (source && (source.volume.project !== options.project || options.sizeGiB < source.volume.sizeGiB)) throw new Error('snapshot ownership or size mismatch');
       const volume: Volume = { project: options.project, name: options.name, region: source?.volume.region ?? options.region, sizeGiB: options.sizeGiB, id: 'volume-' + randomUUID(), created: new Date(this.#now()).toISOString(), attachedTo: null };
       await mkdir(join(this.#root, 'volumes'), { recursive: true, mode: 0o700 });
-      if (source) await cp(this.#snapshotContents(source.snapshot!.id), this.#contents(volume.id), { recursive: true, errorOnExist: true, force: false });
+      if (source) await cp(this.#snapshotContents(source.snapshot!.id), this.#contents(volume.id), { recursive: true, errorOnExist: true, force: false, filter: fixtureCopyFilter });
       else await mkdir(this.#contents(volume.id), { mode: 0o700 });
       await this.#writeVolume({ volume });
       return { state: 'created', volume };
@@ -152,7 +153,7 @@ export class FakeHostProvider implements HostProvider {
       await mkdir(this.#contents(volume.id), { recursive: true, mode: 0o700 });
       await mkdir(join(this.#root, 'snapshots', snapshot.id), { recursive: true, mode: 0o700 });
       try{authorizeSnapshot(options);}catch(error){await rm(join(this.#root,'snapshots',snapshot.id),{recursive:true,force:true});throw error;}
-      await cp(this.#contents(volume.id), this.#snapshotContents(snapshot.id), { recursive: true });
+      await cp(this.#contents(volume.id), this.#snapshotContents(snapshot.id), { recursive: true, filter: fixtureCopyFilter });
       await durableJson(join(this.#root, 'snapshots', snapshot.id, 'record.json'), { volume: record.volume, lastSnapshotAt: now, snapshot });
       record.snapshots = [...(record.snapshots ?? (record.snapshot ? [record.snapshot] : [])), snapshot];
       record.lastSnapshotAt = now;

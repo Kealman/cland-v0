@@ -1,4 +1,5 @@
 import test, { type TestContext } from 'node:test';
+import { fixtureResidueCensus } from './harness.ts';
 import { EventEmitter, once } from 'node:events';
 import fsp from 'node:fs/promises';
 import { AppServerClient } from '../src/adapters/codex/app-server.ts';
@@ -17,6 +18,8 @@ import { ToolForbidden } from '../src/roles/permissions.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
 import { eventually, tempProject } from './harness.ts';
 import { sessionRunDirectory, writeSessionCredential } from '../../shared/session-credential.ts';
+
+const placeholderSockets = new Set<string>();
 
 // Host publication owns the staging descriptor, including partial-write cleanup.
 function ignoreStagingWrite(t: TestContext, root: string, effect: (write: (bytes: string | Uint8Array) => Promise<void>, bytes: Uint8Array) => Promise<void>): void {
@@ -128,6 +131,7 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
   });
   t.mock.method(AppServerClient, 'connect', async (socket: string) => {
     watchCalls.push('connect');
+    placeholderSockets.add(socket);
     await fsp.writeFile(socket, 'socket placeholder');
     if (fault === 'connect') throw new Error('planted connect failure');
     return client;
@@ -287,6 +291,7 @@ test('OpenCode rollback waits for its owned child exit receipt before undoing fi
   } finally { receipt.resolve(); await launch; }
   assert.ok(f.children.every(p => p.exitCode !== null || p.signalCode !== null));
 });
+
 
 test('CodexAdapter: post-spawn log close failure retains the normal live session and child', async t => {
   const f = await fixture(t, CodexAdapter);
@@ -740,3 +745,5 @@ for (const Adapter of [CodexAdapter, OpenCodeAdapter]) test(`${Adapter.name}: pe
   assert.ok(f.events.some(entry => entry.event === 'launch-recovered'));
   assert.ok(f.children.every(p => p.exitCode !== null || p.signalCode !== null));
 });
+
+test('fixture file outputs are removed', fixtureResidueCensus(() => placeholderSockets));

@@ -3,6 +3,7 @@
 // Hub process starts: 11: skeleton 1, fallback 1, stop 1, grace 2, spoke restart 2, sweep modes 4; discovery uses projectHub. Only one hub is live at a time.
 import { beforeDirectories, ownProcess } from '../process-cleanup.ts';
 import { test } from 'node:test';
+import { fixtureResidueCensus } from '../harness.ts';
 import { Socket } from 'node:net';
 import { once } from 'node:events';
 import { createInterface } from 'node:readline';
@@ -10,7 +11,7 @@ import { fixtureWork } from '../fixture-work.ts';
 import { testWaitMs } from '../until.ts';
 import { within } from '../../src/executor/droplet/deadline.ts';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { PROTOCOL_VERSION } from '../../src/protocol.ts';
 import { SOCKET_PATH_MAX } from '../../src/project.ts';
@@ -60,10 +61,10 @@ test('cland hub start publishes and serves a fallback socket when the project an
     const root = await work.root(() => tempProject(t, `cland-fallback-${'a'.repeat(SOCKET_PATH_MAX)}-`));
     const primary = join(root, '.cland', 'hub.sock');
     assert.ok(Buffer.byteLength(primary) > SOCKET_PATH_MAX);
-    assert.ok(Buffer.byteLength(root) > SOCKET_PATH_MAX, 'the child TMPDIR also forces the /tmp fallback');
+    assert.ok(Buffer.byteLength(root) > SOCKET_PATH_MAX, 'the child TMPDIR also needs a short fixture alias');
     const { discovery } = await work.acquire(() => startDaemon(t, root, { TMPDIR: root }), daemon => killDaemon(daemon.discovery.pid));
     assert.notEqual(discovery.socket, primary);
-    assert.equal(dirname(discovery.socket), '/tmp');
+    assert.ok((await realpath(dirname(discovery.socket))).startsWith(root + '/'));
     assert.ok(Buffer.byteLength(discovery.socket) <= SOCKET_PATH_MAX);
     assert.equal((await work.step(() => stat(discovery.socket))).isSocket(), true);
     await work.step(() => assert.rejects(stat(primary), { code: 'ENOENT' }));
@@ -265,3 +266,5 @@ syncBuiltinESMExports();
     await killDaemon(discovery.pid);
   }
 });
+
+test('fixture file outputs are removed', fixtureResidueCensus());

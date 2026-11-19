@@ -8,6 +8,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, sta
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { VERSION } from './version.ts';
+import { fixtureFallbackSocket } from '../../shared/fixture-sockets.ts';
 
 export const CLAND_DIR = '.cland';
 
@@ -82,7 +83,7 @@ export function layout(root: string): Layout {
   const dir = join(root, CLAND_DIR);
   const inside = join(dir, 'hub.sock');
   const name = `cland-${createHash('sha256').update(root).digest('hex').slice(0, 16)}.sock`;
-  const socket = shortSocketPath(inside, name);
+  const socket = Buffer.byteLength(inside) > SOCKET_PATH_MAX ? fixtureFallbackSocket(root, name) ?? shortSocketPath(inside, name) : inside;
   return {
     root,
     dir,
@@ -111,12 +112,18 @@ function shortSocketPath(inside: string, name: string, accepts: (path: string) =
 /** Stable spoke endpoint; no discovery change is needed for local clients. */
 export function spokeSocketPath(root: string): string {
   const name = `cland-spoke-${createHash('sha256').update(root).digest('hex').slice(0, 16)}.sock`;
-  return shortSocketPath(join(root, CLAND_DIR, 'run', 'spoke.sock'), name, path => {
-    // ws uses URL.pathname literally, then splits at ':', without URL-decoding
-    // the native socket path. Screen TMPDIR too; the JSON-lines socket keeps its paths.
+  const inside = join(root, CLAND_DIR, 'run', 'spoke.sock');
+  // ws uses URL.pathname literally, then splits at ':', without URL-decoding
+  // the native socket path. Screen TMPDIR too; the JSON-lines socket keeps its paths.
+  const accepts = (path: string) => {
     const url = new URL(`ws+unix:${path}:/`);
     return !path.includes(':') && url.pathname === `${path}:/` && !url.search && !url.hash;
-  });
+  };
+  if (Buffer.byteLength(inside) > SOCKET_PATH_MAX || !accepts(inside)) {
+    const fixture = fixtureFallbackSocket(root, name);
+    if (fixture) return fixture;
+  }
+  return shortSocketPath(inside, name, accepts);
 }
 
 /** The nearest ancestor of `cwd` whose `.cland/hub.json` exists — where a spoke finds its hub — or null. */

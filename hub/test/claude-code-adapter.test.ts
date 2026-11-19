@@ -11,6 +11,7 @@
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
 import { setRoleKey } from '../src/roles/editor.ts';
 import { test } from 'node:test';
+import { fixtureResidueCensus } from './harness.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -360,3 +361,5 @@ test('Claude unpinned binary launch, native relaunch and remedies preserve an un
   assert.ok(notice.text.includes('claude auth login'));
   assert.equal(notice.text.includes('CLAUDE_CONFIG_DIR='), false);
 });
+
+test('fixture file outputs are removed', fixtureResidueCensus());

@@ -1,4 +1,5 @@
 import { deadLoginReason } from '../host/login-signals.ts';
+import { fixtureFallbackSocket } from '../../../shared/fixture-sockets.ts';
 import { generationAdapter } from './generation-adapter.ts';
 import { FailedForwardSettlement } from './failed-forward.ts';
 import type { LaunchFilesState } from './launch-files.ts';
@@ -369,6 +370,7 @@ export class CodexAdapter implements HarnessAdapter {
   #timer: ClockTimer | null = null;
   readonly #local: Host;
   #tmpRun = join(tmpdir(), 'cland-run');
+  #fixtureRun: string | undefined;
   #closed = false;
   #closing: Promise<void> | null = null;
   readonly #flights = new Set<Promise<unknown>>();
@@ -376,7 +378,7 @@ export class CodexAdapter implements HarnessAdapter {
   readonly #cleanupFailures = new Map<string, unknown>();
   readonly #stopping = new Set<string>();
 
-  constructor(host: AdapterHost, options: CodexOptions = {}, generationScope = false) {
+  constructor(host: AdapterHost, options: CodexOptions = {}, generationScope = false, fixtureRun?: string) {
     this.#host = host;
     this.#clock = options.clock ?? realClock;
     this.#connect = options.connect ?? (socket => AppServerClient.connect(socket, { client: { name: 'cland_hub', title: 'cland hub', version: VERSION }, timeoutMs: this.#spawnDeadlineMs, connectTimeoutMs: 3000 }));
@@ -388,11 +390,16 @@ export class CodexAdapter implements HarnessAdapter {
     this.#stopGraceMs = options.stopGraceMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;
     this.#spawnDeadlineMs = options.spawnDeadlineMs ?? 30_000;
+    this.#fixtureRun = fixtureRun;
+    if (!generationScope && Buffer.byteLength(join(dirname(host.discoveryFile), 'run', 'cx-ffffffffffff.sock')) > 100) {
+      const fixture = fixtureFallbackSocket(host.root, 'codex');
+      if (fixture) this.#fixtureRun = dirname(fixture);
+    }
     const env: NodeJS.ProcessEnv = {};
     for (const [k, v] of Object.entries(withoutExecutorCredentials(options.env ?? process.env))) if (!k.startsWith('CLAND_') || k === 'CLAND_CODEX_BIN') env[k] = v;
     this.#env = env;
     const Adapter = new.target;
-    if (!generationScope) return generationAdapter(this, host, scoped => new Adapter(scoped, options, true));
+    if (!generationScope) return generationAdapter(this, host, scoped => new Adapter(scoped, options, true, this.#fixtureRun));
   }
 
   readonly #failedForwards = new FailedForwardSettlement();
@@ -478,7 +485,7 @@ export class CodexAdapter implements HarnessAdapter {
     const inProject = join(layout.runDirectory, file);
     // sun_path is 104 bytes on macOS, 108 on Linux
     if (machine.name !== 'local' && Buffer.byteLength(inProject) + 1 > 104) throw new Error(`Codex socket exceeds 104 bytes on host ${machine.name}: ${inProject}`);
-    return machine.name !== 'local' || Buffer.byteLength(inProject) <= 100 ? inProject : join(this.#tmpRun, file);
+    return machine.name !== 'local' || Buffer.byteLength(inProject) <= 100 ? inProject : join(this.#fixtureRun ?? this.#tmpRun, file);
   }
 
   /** Start an app-server on the socket; resolves with its pid once it answers there. */

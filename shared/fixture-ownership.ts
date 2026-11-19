@@ -1,9 +1,10 @@
 // An open private receipt proves a fixture's ownership without inspecting its environment.
-import { closeSync, constants, lstatSync, mkdirSync, openSync, realpathSync, unlinkSync, writeSync, ftruncateSync } from 'node:fs';
+import { closeSync, constants, existsSync, lstatSync, mkdirSync, openSync, realpathSync, unlinkSync, writeSync, ftruncateSync } from 'node:fs';
 import { lstat, open, realpath, type FileHandle } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { ignoreFixtureStorage } from './fake-layout.ts';
 
 export type FixtureReceipt = { version: 1; pid: number; born: { min: number; max: number }; roots: string[] };
 const canonical = (path: string) => { try { return realpathSync(path); } catch { return resolve(path); } };
@@ -11,7 +12,18 @@ export const fixtureReceiptDirectory = () => join(canonical(tmpdir()), `cland-fi
 
 /** Pass fd to exactly the fixture child, or keep it open in the fixture itself. */
 export function fixtureOwnership(roots: string[]): { path: string; fd: number; bind: (pid: number, earliest?: number, latest?: number) => void; close: () => void; remove: () => void } {
-  const dir = fixtureReceiptDirectory();
+  // The directory owner removes these after joining every writer, even when
+  // SIGKILL prevents this process from running its exit callback. Legacy
+  // missing-root probes retain the old location and reader compatibility.
+  const root = roots[0] && existsSync(roots[0]) ? canonical(roots[0]) : undefined;
+  const storage = root ? join(root, '.fixture-sockets') : undefined;
+  if (storage) {
+    mkdirSync(storage, { mode: 0o700, recursive: true });
+    const info = lstatSync(storage);
+    if (!info.isDirectory() || info.uid !== process.getuid?.() || (info.mode & 0o077) !== 0) throw new Error('fixture ownership storage is not private');
+    ignoreFixtureStorage(storage);
+  }
+  const dir = storage ? join(storage, 'owners') : fixtureReceiptDirectory();
   mkdirSync(dir, { mode: 0o700, recursive: true });
   const info = lstatSync(dir);
   if (!info.isDirectory() || info.uid !== process.getuid?.() || (info.mode & 0o077) !== 0) throw new Error('fixture ownership directory is not private');
@@ -30,20 +42,29 @@ export function fixtureOwnership(roots: string[]): { path: string; fd: number; b
   return { path, fd, bind: (pid, earliest = createdAt, latest = Date.now()) => { receipt.pid = pid; receipt.born = { min: Math.floor(earliest / 1000) - 1, max: Math.floor(latest / 1000) }; save(); }, close: () => { if (!closed) { closeSync(fd); closed = true; } }, remove: () => { try { unlinkSync(path); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; } } };
 }
 
-/** Only paths in our private receipt directory are read; symlinks and loose files fail closed. */
+/** Accept legacy global and root-local private receipts; never follow symlinks. */
 export async function readFixtureReceipt(path: string): Promise<FixtureReceipt | null> {
   if (!/^[0-9a-f-]{36}\.json$/.test(path.slice(path.lastIndexOf('/') + 1))) return null;
   const scratch = await realpath(tmpdir()).catch(() => resolve(tmpdir()));
   const directory = join(scratch, `cland-fixture-owners-${process.getuid?.() ?? 'unknown'}`);
-  if (dirname(path) !== directory) return null;
+  const localStorage = dirname(dirname(path));
+  const localRoot = dirname(localStorage);
+  const local = localStorage === join(localRoot, '.fixture-sockets') && dirname(path) === join(localStorage, 'owners');
+  if (dirname(path) !== directory && !local) return null;
   let file: FileHandle | undefined;
   try {
+    if (local) {
+      if (await realpath(localRoot) !== localRoot) return null;
+      const storage = await lstat(localStorage);
+      if (!storage.isDirectory() || storage.uid !== process.getuid?.() || (storage.mode & 0o077) !== 0) return null;
+    }
     const dir = await lstat(dirname(path));
     if (!dir.isDirectory() || dir.uid !== process.getuid?.() || (dir.mode & 0o077) !== 0) return null;
     file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     const info = await file.stat();
     if (!info.isFile() || info.uid !== process.getuid?.() || (info.mode & 0o077) !== 0 || info.size > 16_384) return null;
     const value = JSON.parse(await file.readFile('utf8'));
+    if (local && !value.roots?.includes(localRoot)) return null;
     return value.version === 1 && Number.isSafeInteger(value.pid) && value.pid > 1 && Number.isSafeInteger(value.born?.min) && Number.isSafeInteger(value.born?.max) && value.born.min <= value.born.max && Array.isArray(value.roots) && value.roots.length > 0 && value.roots.every((root: unknown) => typeof root === 'string' && root.startsWith('/')) ? value : null;
   } catch { return null; }
   finally { await file?.close(); }
