@@ -82,6 +82,11 @@ reasons do not exempt a line. An inline exemption applies only to its own line.
 In-memory fixture tracker controls run at T0 without a test worker; `--self-test`
 runs only those controls, and `--help` describes the command. The guard uses the
 candidate checkout's tracker state, without contacting a running hub.
+Queued batch preparation also runs this same policy on immutable candidate
+blobs with every member prepared so far treated as closed. A finding refuses
+the responsible member before suite admission or landing and names the file
+and line. References to other open items remain allowed; the projection never
+rewrites tracker files.
 MDX front matter, fenced code, complete import/export statements and JSX tags/attributes are
 ignored, retaining line numbers and component child prose. Markdown scanning is
 unchanged. The MDX positive control uses the production document patterns with

@@ -12,6 +12,7 @@ import { BatchRefusal, type BatchCandidate } from './merge-batches.ts';
 import { checkQueuedMerge } from './merge-queue-preflight.ts';
 import { refusedOverridePaths } from '../merge-override.ts';
 import { worktreeInstall } from '../host/agent/worktree-install.ts';
+import { requireMergeClosedItemWording } from '../merge-closed-item-wording.ts';
 
 /** Share the root install before suite admission; never run an installer. */
 export async function prepareBatchDependencies(root: string, cwd: string): Promise<void> {
@@ -26,7 +27,7 @@ export async function prepareBatchDependencies(root: string, cwd: string): Promi
 /** Git/object and immutable-tree reads, replaceable by an in-process repository provider. */
 export type BatchRepository = {
   git(args: string[], input?: string): Promise<string>;
-  facts(tree: string, head: string, base: string): Promise<MergeTreeFacts>;
+  facts(tree: string, head: string, base: string, closing: string[]): Promise<MergeTreeFacts>;
   identity(head: string): Promise<string | null>;
   checkout(candidate: BatchCandidate): Promise<void>;
   remove(candidate: BatchCandidate): Promise<void>;
@@ -57,7 +58,10 @@ export async function prepareMergeBatch(root: string, id: string, members: Merge
 
 async function buildPinnedMergeBatch(root: string, id: string, members: MergeQueueEntry[], env: NodeJS.ProcessEnv, provider?: BatchRepository, pinnedBase?: string, pinned?: Map<string, string>): Promise<BatchCandidate> {
   const repository = provider ?? { git: (args: string[], input?: string) => territoryGitAsync(root, args, false, input, env),
-    facts: (tree: string, head: string, base: string) => mergeTreeFacts(root, tree, head, base, undefined, env),
+    facts: async (tree: string, head: string, base: string, closing: string[]) => {
+      await requireMergeClosedItemWording(tree, closing, args => territoryGitAsync(root, args, false, undefined, env));
+      return mergeTreeFacts(root, tree, head, base, undefined, env);
+    },
     identity: (head: string) => committedTreeOrThrow(root, head, env),
     checkout: (candidate: BatchCandidate) => checkoutMergeBatch(root, candidate, env),
     remove: (candidate: BatchCandidate) => removeMergeBatch(root, candidate, env) };
@@ -83,7 +87,7 @@ async function buildPinnedMergeBatch(root: string, id: string, members: MergeQue
         }
         throw error;
       }
-      budgetLines.push(...gateMergeTree(await repository.facts(tree, tip, head)));
+      budgetLines.push(...gateMergeTree(await repository.facts(tree, tip, head, members.slice(0, index + 1).map(member => member.item))));
       head = await git(['commit-tree', tree, '-p', head], `Batch candidate ${entry.item}\n`);
     } catch (error) {
       if (error instanceof MergeError && !(error instanceof MergeLintReadError)) throw new BatchRefusal(entry, error.message);

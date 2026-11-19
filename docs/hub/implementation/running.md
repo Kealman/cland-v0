@@ -31,6 +31,11 @@ or additional permissions are needed.
 
 Landing test-lint read failures retry three times, then retain batch membership and green evidence under `merge-git` for automatic retry, including after restart. Genuine lint findings still drop their member. See `docs/hub/running.md`.
 
+Batch preparation shares the standalone closed-item wording policy and checks
+candidate blobs with prepared member IDs projected closed. Findings refuse the
+member before admission with file/line diagnostics. Tracker files stay intact;
+unavailable blob reads retain the batch as infrastructure failures.
+
 After shutdown, a later passing host-check receipt supersedes an aborted attempt
 only at the same run, tree and command. Retain both attempts in log and notice;
 unbound legacy interruptions stay inconclusive. No recovery command is added.

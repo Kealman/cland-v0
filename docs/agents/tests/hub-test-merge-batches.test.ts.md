@@ -157,4 +157,14 @@ no native worker or repository mutation is used.
 
 The existing recoverable-code regressions retain the old `merge-git` restart shape. `test-lint-policy.test.ts` (T2) owns the added landing-preparation, fake `cat-file --batch`, and history-read recovery scenarios through the production lint helper and controller. Its infrastructure preparation scenario reopens the durable controller, then checks all members land with the original single green run and no drops; its finding scenario keeps member drops.
 
+Projected closure (T-1635) runs `prepareMergeBatch` with fake immutable Git
+receipts and the production closed-item wording policy. The member's own
+`until` phrase must refuse with its member identity and exact document line;
+the same phrase naming a different open item must produce a candidate. The
+tracker fixture stays open. No native Git, hub process or executor is launched.
+Both callbacks use `guardedMemberCase`: its bounded owner enrolls before guard
+setup, owns original preparation through `step`, and retains the counted native
+guard until callback work and cleanup have joined. The preparation observation
+has its own named bound; final refusal/candidate assertions remain in the case.
+
 The T2 policy/preparation scenarios enroll `caseDeadlines` before acquisition and run their entire callback through its sequence owner. Setup hooks (including partial `suiteUnit` acquisition), reopen, ticks and caller continuations drain before storage or roots close. The policy case also checks held sibling completion precedes the next attempt, transient/persistent history command failures, and positive root/no-introduction receipts. Its I/O-turn scheduling has no elapsed-time assertion.

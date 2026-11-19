@@ -507,6 +507,11 @@ to the human and the Coordinator; reap requires the token.
 #### Run and result
 
 A host check interrupted by hub shutdown can rerun under the same admitted run.
+Batch preparation checks closed-item wording on immutable candidate blobs,
+projecting each prepared member as closed before admission. Findings refuse
+the member with file/line diagnostics; other open items remain open for this
+check. The standalone T0 lint continues to use the checkout tracker state.
+
 Each new T0 receipt records its run, candidate tree and command. Batch settlement
 ignores an interrupted attempt only after a later passing receipt with all three
 bindings equal. The raw log retains both attempts and a supersession note; the

@@ -24,6 +24,7 @@ import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 import { fixtureWork, type FixtureStep } from '../../test-support/fixture-work.ts';
 import { fakeNativeGuard } from './fake-native-guard.ts';
 import { tierReceipt } from '../src/verification-tier-receipts.ts';
+import { requireMergeClosedItemWording } from '../src/merge-closed-item-wording.ts';
 
 /** Enroll before acquisition; even late fixture hooks must join the whole body. */
 function joinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep) => Promise<void>) {
@@ -1236,6 +1237,35 @@ test('batch preparation reports the pinned and current heads when a task ref mov
     return true;
   });
 });
+
+for (const referenced of ['T-1', 'T-2']) test(`batch projected closure ${referenced === 'T-1' ? 'refuses its member with a file and line' : 'preserves references to another open item'}`, t => guardedMemberCase(t, async (_fixtures, step, wait) => {
+  const member: MergeQueueEntry = { item: 'T-1', branch: 't/1', head: '1'.repeat(40), verdictBase: 'dev', enqueued: '2026-10-16T12:00:00Z', by: { id: 'coord', name: 'coord', role: 'coordinator' } };
+  const blobs: Record<string, string> = {
+    '.cland/tasks/member.md': '---\nid: T-1\nstate: open\n---\n',
+    '.cland/tasks/other.md': '---\nid: T-2\nstate: open\n---\n',
+    'docs/guide.md': `# Guide\nWait until ${referenced} lands.\n`,
+  };
+  const prepare = () => step(() => prepareMergeBatch('/isolated', 'wording', [member], {}, {
+    git: async args => {
+      if (args[0] === 'rev-parse') return args[1] === '--is-bare-repository' ? 'false' : args[1] === 'refs/heads/dev' ? 'base' : member.head;
+      if (args[0] === 'merge-tree') return 'tree\0';
+      if (args[0] === 'commit-tree') return 'candidate';
+      throw new Error(`unexpected Git operation ${args[0]}`);
+    },
+    facts: async (tree, _head, _base, closing) => {
+      await requireMergeClosedItemWording(tree, closing, async args => {
+        if (args[0] === 'ls-tree') return Object.keys(blobs).join('\0') + '\0';
+        if (args[0] === 'show' && args[1]?.startsWith('tree:')) return blobs[args[1].slice(5)]!;
+        throw new Error(`unexpected blob read ${args}`);
+      });
+      return { context: null, workers: 1 };
+    },
+    identity: async () => 'tree', checkout: async () => {}, remove: async () => {},
+  }));
+  if (referenced === 'T-1') await wait('immutable batch preparation', () => assert.rejects(prepare(), error => error instanceof BatchRefusal && error.entry === member && /docs\/guide.md:2: closed item T-1 with until wording/.test(error.reason)));
+  else assert.equal((await wait('immutable batch preparation', prepare)).tree, 'tree');
+  assert.match(blobs['.cland/tasks/member.md']!, /state: open/);
+}));
 
 async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none' | 'dev' | 'task' | 'dirty' | 'follow-up' | 'manual-follow-up') {
   const { f, runner, landed, reports, boundary, entries, dropped } = await fixture(t);
