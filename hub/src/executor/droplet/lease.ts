@@ -4,6 +4,7 @@ import { open, mkdir, opendir, readFile, readdir, rename, rm, stat } from 'node:
 import { dirname, join, resolve, relative, sep } from 'node:path';
 import type { Droplet } from './api.ts';
 import type { Lease } from '../executor.ts';
+import type { LogFn } from '../../log.ts';
 
 export type ReleaseAttention = {
   reason?: 'deletion-timeout' | 'deletion-unconfirmed';
@@ -46,6 +47,20 @@ export const leaseRoot = (root: string): string => join(root, '.cland/run/execut
 export const leaseDir = (root: string, lease: DropletLease): string => join(leaseRoot(root), lease.lease);
 const indexPath = (root: string) => join(leaseRoot(root), '..', 'lease-index.json');
 type LeaseIndex = { version: 1; leases: string[] };
+/** Both first-publication owners share count and unchanged-write semantics. */
+async function publishIndex(root: string, previous: LeaseIndex | null, leases: string[], read: number, log?: LogFn): Promise<void> {
+  if (previous ? leases.length === previous.leases.length && leases.every((id, i) => id === previous.leases[i]) : read === 0) return;
+  await durableJson(indexPath(root), { version: 1, leases });
+  if (!previous) {
+    try { log?.({ event: 'executor-lease-index-migrated', read, indexed: leases.length, settled: read - leases.length }); }
+    catch {
+      // Diagnostics cannot interrupt the remaining lease publication or replace
+      // a status receipt. Offer one secondary notice; a broken sink stays ancillary.
+      try { log?.({ event: 'executor-lease-index-log-failed', cause: 'sink-threw' }); }
+      catch { /* No diagnostic delivery is claimed when both attempts fail. */ }
+    }
+  }
+}
 const validLeaseId = (id: unknown): id is string => typeof id === 'string' && Boolean(id) && id !== '.' && id !== '..' && !/[\\/]/.test(id);
 async function readIndex(root: string): Promise<LeaseIndex | null> {
   try {
@@ -140,7 +155,7 @@ export async function runDirectory(root: string, path: string): Promise<void> {
   let current = anchor;
   for (const part of suffix.split(sep)) { current = join(current, part); await ownDirectory(current); }
 }
-export async function compactLeaseIndex(root: string, settled: ReadonlySet<string>, missing: (lease: string, reason: 'spend' | 'record') => void, rebuild = false): Promise<LeaseCompaction> {
+export async function compactLeaseIndex(root: string, settled: ReadonlySet<string>, missing: (lease: string, reason: 'spend' | 'record', record?: DropletLease) => void | boolean | Promise<void | boolean>, rebuild = false, log?: LogFn): Promise<LeaseCompaction> {
   let outcome: LeaseCompaction = { status: 'compacted' };
   await leaseWrite(leaseRoot(root), async () => {
     try {
@@ -155,10 +170,10 @@ export async function compactLeaseIndex(root: string, settled: ReadonlySet<strin
         try { lease = await readLease(join(leaseRoot(root), id)); }
         catch (error) {
           if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-          keep.push(id); missing(id, 'record'); continue;
+          keep.push(id); await missing(id, 'record'); continue;
         }
         if (lease.lease !== id) throw new Error('lease directory identity mismatch');
-        if (lease.state === 'released' && settled.has(lease.lease)) {
+        if (lease.state === 'released' && (settled.has(lease.lease) || await missing(lease.lease, 'spend', lease) === true)) {
           // Settlement is not local cleanup. Preserve membership until both key
           // removals have completed, including recovery after a partial removal.
           await rm(join(leaseDir(root, lease), 'key'), { force: true });
@@ -167,12 +182,9 @@ export async function compactLeaseIndex(root: string, settled: ReadonlySet<strin
           continue;
         }
         keep.push(id);
-        if (lease.state === 'released') missing(lease.lease, 'spend');
       }
       await ownDirectory(leaseRoot(root));
-      if (index ? keep.length !== index.leases.length || keep.some((id, i) => id !== index.leases[i]) : ids.length > 0) {
-        await durableJson(indexPath(root), { version: 1, leases: keep });
-      }
+      await publishIndex(root, index, keep, ids.length, log);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       // An unrelated missing record is not evidence that the owner vanished.
@@ -197,7 +209,7 @@ async function leaseWrite(dir: string, work: () => Promise<void>): Promise<void>
   finally { if (writes.get(key) === pending) writes.delete(key); }
 }
 const sameWatchdog = (left: DropletLease['watchdog'], right: DropletLease['watchdog']): boolean => Boolean(left && right && left.pid === right.pid && left.startedUtc === right.startedUtc);
-export async function writeLease(root: string, lease: DropletLease): Promise<void> {
+export async function writeLease(root: string, lease: DropletLease, log?: LogFn): Promise<void> {
   const dir = leaseDir(root, lease);
   await leaseWrite(leaseRoot(root), async () => {
     await runDirectory(root, dir);
@@ -205,7 +217,8 @@ export async function writeLease(root: string, lease: DropletLease): Promise<voi
     // Admit before writing: a crash can add a missing-file read, never hide a lease.
     if (!index || !index.leases.includes(lease.lease)) {
       const ids = index?.leases ?? await directoryIds(root);
-      await durableJson(indexPath(root), { version: 1, leases: [...new Set([...ids, lease.lease])] });
+      const next = [...new Set([...ids, lease.lease])];
+      await publishIndex(root, index, next, next.length, log);
     }
     let current: DropletLease | undefined;
     try { current = await readLease(dir); }

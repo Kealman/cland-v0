@@ -684,8 +684,31 @@ The first lease append includes those legacy directories in its durable index
 before writing the new lease record.
 Migration with only settled legacy directories publishes an empty index to end
 the retained-directory fallback.
-Missing or pending spend retains the lease in the hot index and reports
-`executor-lease-spend-missing`. A missing lease file retains its uncertain id and
+Released leases without a ledger entry publish an unknown-spend receipt in the
+ledger (`cost: null`, `spendReceipt.reason: ledger-entry-missing`) before leaving
+the hot index. Each new receipt logs `executor-lease-spend-missing` once; rebuilds
+reuse it. The shared receipt policy validates the missing-entry reason and exact
+project, lease and finite release-date bindings on ingestion and creation.
+Malformed or foreign metadata refuses accounting and cleanup. Primary/legacy
+reconciliation preserves terminal unknown in either duplicate order, including
+beside an older pending or numeric-zero entry. Read-only migration retains legacy
+file bytes while publishing the merged primary ledger; ordinary mutations retain
+locked write-through. Terminal unknowns are excluded from pending reservations.
+Pending reservations remain in the hot index. Initial index publication
+logs `executor-lease-index-migrated` with read, indexed and settled counts;
+rebuilding an existing index logs no migration. Both compaction and the first
+lease writer share the publication policy. Counts describe identifiers considered,
+indexed and settled; a first writer includes its newly admitted identifier and
+settles none. A synchronous migration-log failure cannot interrupt lease-record
+publication or replace an observed run status. The publisher offers one secondary
+`executor-lease-index-log-failed` notice; if that sink also throws, no diagnostic
+delivery is claimed. Actual index/lease durable-write failures still propagate.
+Status exposes optional
+`spend.unknownLeases`, a count over retained unknown receipts, and names these
+leases in its CLI summary and Web spend label. Known numeric totals exclude them;
+`todayCostUsd` is null when unknown receipts exist. Older status replies without
+the additive count retain their previous rendering.
+A missing lease file retains its uncertain id and
 reports `executor-lease-record-missing`; repair cannot establish idleness from it.
 Periodic recovery retries settlement and index compaction. Compaction creates
 only individual executor directories below an existing `.cland/run`; it never

@@ -1,5 +1,9 @@
 # hub/test/executor-droplet-component.test.ts
 
+Local-SSH hold controls count the exact hold-enter/hold-leave event kinds. Index
+migration diagnostics can share the logger; they do not change the required hold
+counts, ordering, run identity, original diagnostic or running/lost result.
+
 The uploaded tier-status VM case uses `guardedLeaseCase`: ownership is enrolled
 before guard setup, dynamic import has its own named setup wait, and each VM
 evaluation is an admitted step. The shared sequence fences before joining on

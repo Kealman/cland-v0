@@ -212,7 +212,7 @@ git write-tree
     // Persist the local prefix with delivery itself. A hub crash before its job
     // checkpoint must not count these diagnostics as collected remote bytes.
     lease.execution = { head: run.head, delivered: true, deliveryLogEnd: (await stat(run.log)).size };
-    await writeLease(this.#root, lease);
+    await writeLease(this.#root, lease, this.#logger);
   }
   async start(lease: DropletLease): Promise<void> {
     if (!lease.execution?.delivered) throw new Error('remote run is not delivered');
@@ -224,7 +224,7 @@ git write-tree
     if (status.state === 'lost') throw new Error(status.cause ?? 'remote machine lost');
     if (status.state === 'running' || status.state === 'done') {
       lease.execution.started = true; lease.execution.startedAt ??= this.#clock.now().toISOString();
-      await writeLease(this.#root, lease);
+      await writeLease(this.#root, lease, this.#logger);
     }
   }
   /** End diagnostic ownership after observed recovery or lifecycle settlement. */
@@ -248,7 +248,7 @@ git write-tree
     try {
       const program = runStatusProgram();
       const status = JSON.parse(await this.#machine.exec(lease, `node -e ${quote(program)} ${remoteDir(lease)}`, { timeoutMs: 10000 })) as RunStatus;
-      if (lease.execution?.unreachableSince) { delete lease.execution.unreachableSince; await writeLease(this.#root, lease); }
+      if (lease.execution?.unreachableSince) { delete lease.execution.unreachableSince; await writeLease(this.#root, lease, this.#logger); }
       return status;
     } catch (statusError) {
       try {
@@ -259,7 +259,7 @@ git write-tree
           // Clear an older network outage too, so recovery gets a fresh bound.
           if (lease.execution?.unreachableSince) {
             delete lease.execution.unreachableSince;
-            await writeLease(this.#root, lease);
+            await writeLease(this.#root, lease, this.#logger);
           }
           if (!this.#holds.has(lease.lease)) {
             const held = { run: lease.run, error: statusError.message };
@@ -271,7 +271,7 @@ git write-tree
         if (droplet.status === 'active' && !(statusError instanceof MachineRequestError && statusError.localClientUnavailable)) this.endObservation(lease, 'unknown');
         if (droplet.status === 'active' && lease.execution) {
           lease.execution.unreachableSince ??= this.#clock.now().toISOString();
-          await writeLease(this.#root, lease);
+          await writeLease(this.#root, lease, this.#logger);
           if (this.#clock.now().getTime() - Date.parse(lease.execution.unreachableSince) >= testTiming('CLAND_TEST_DROPLET_LOST_MS', 300000, this.#env)) return { state: 'lost', code: 1, cause: 'remote machine lost' };
         }
       } catch (error) { if (error instanceof DigitalOceanError && error.status === 404) return { state: 'lost', code: 1, cause: 'remote machine lost' }; }

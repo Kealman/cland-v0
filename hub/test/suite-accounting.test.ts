@@ -15,7 +15,7 @@ import { machineAccounting, releaseT3Cover, type SuiteJob } from '../src/hub/sui
 import { machineHealthSummary } from '../src/executor/droplet/health.ts';
 import { until } from './until.ts';
 import { legacyLedger, scratchMachine, snapshot } from './init-machine.ts';
-import { spendPath } from '../src/executor/droplet/spend.ts';
+import { hasUnknownSpend, spendPath } from '../src/executor/droplet/spend.ts';
 import { DropletRun } from '../src/executor/droplet/run.ts';
 import { deriveCover } from '../src/hub/suite-cover.ts';
 import { caseDeadlines } from './case-deadlines.ts';
@@ -411,8 +411,9 @@ test('parallel acquires each reserve shared spend; cap refusals stay local witho
   f.hold(true);
   f.api.beforeCreate(async () => {
     const ledger = JSON.parse(await readFile(join(f.root, '.cland/executor-state/spend.json'), 'utf8'));
-    assert.equal(ledger.entries.filter((e: { cost: number | null }) => e.cost === null).length, 1);
-    assert.equal(ledger.entries.find((e: { cost: number | null }) => e.cost === null).reservation, 0.0625);
+    const pending = ledger.entries.filter((e: Parameters<typeof hasUnknownSpend>[0]) => e.cost === null && !hasUnknownSpend(e));
+    assert.equal(pending.length, 1);
+    assert.equal(pending[0].reservation, 0.0625);
   });
   const jobs = await Promise.all([f.launch(), f.launch(), f.launch()]);
   const q = await f.machine.waits.run(f.when(() => {
@@ -424,6 +425,13 @@ test('parallel acquires each reserve shared spend; cap refusals stay local witho
     assert.ok(f.notices.includes(job.id)); assert.match((await f.jobs()).find(j => j.id === job.id)!.fallback!, /daily spend cap \$0\.1 reached/);
   }
   await f.finish(active); assert.equal(f.suites.snapshot().remote!.length, 0);
+  const ledger = JSON.parse(await readFile(join(f.root, '.cland/executor-state/spend.json'), 'utf8'));
+  for (const job of jobs) if (job.id !== active) {
+    const entry = ledger.entries.find((entry: { run: string }) => entry.run === job.id);
+    assert.ok(entry, 'a refused peer retains its accounting receipt');
+    assert.equal(entry.cost, null, 'terminal unknown never becomes a zero cost');
+    assert.equal(hasUnknownSpend(entry), true);
+  }
   const later = await f.launch({ fresh: true }); await running(f, later.id); await f.finish(later.id);
   for (const job of jobs) if (job.id !== active) { await f.suites.cancel(job.id, null, () => {}); await f.result(job.id); }
   assert.deepEqual(f.api.droplets, []);

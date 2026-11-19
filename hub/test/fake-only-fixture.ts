@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { mock, type TestContext } from 'node:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { FixtureStep } from '../../test-support/fixture-work.ts';
 
 /** Guard native delegation, including already-promisified async launchers. */
 function launchGuard() {
@@ -42,7 +43,7 @@ function launchGuard() {
 }
 
 /** Enroll before acquisition and join the entire body before removing its root. */
-export async function fakeOnlyFixture<T>(t: TestContext, body: (root: string) => Promise<T>): Promise<T> {
+export async function fakeOnlyFixture<T>(t: TestContext, body: (root: string) => Promise<T>, step: FixtureStep = operation => operation()): Promise<T> {
   const guard = launchGuard();
   let root: string | undefined, work: Promise<T> | undefined, closing: Promise<void> | undefined;
   const close = () => closing ??= (async () => {
@@ -52,15 +53,15 @@ export async function fakeOnlyFixture<T>(t: TestContext, body: (root: string) =>
   })();
   t.after(close);
   work = Promise.resolve().then(async () => {
-    await guard.control();
+    await step(() => guard.control());
     // Suite TMPDIRs on macOS can consume the Unix socket's entire path budget.
     // Keep this owned root short even when the runner supplies a deep TMPDIR.
-    root = await mkdtemp(join(process.platform === 'darwin' ? '/private/tmp' : '/tmp', 'cf-'));
+    root = await step(() => mkdtemp(join(process.platform === 'darwin' ? '/private/tmp' : '/tmp', 'cf-')));
     // Recording Hosts declare these socket shapes without binding native sockets.
     for (const socket of [join(root, 'run', 'cx-0123456789ab.sock'), join(root, 'fake-forward.sock'), join(root, 'missing.sock')]) {
       assert.ok(Buffer.byteLength(socket) <= 103, `fake-only socket exceeds 103 bytes: ${socket}`);
     }
-    return body(root);
+    return step(() => body(root!));
   });
   let value: T;
   try { value = await work; }

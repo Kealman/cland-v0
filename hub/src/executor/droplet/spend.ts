@@ -11,14 +11,26 @@ import { acquireLockAsync, acquireLockWithRetry, type LockProcessTable, type Loc
 import { compactLeaseIndex, durableJson, readLeases, type DropletLease, type LeaseCompaction } from './lease.ts';
 import { registeredHubSpendStatus, type SpendHubStatus } from './spend-hubs.ts';
 
-type Entry = { category?: 'verify' | 'hosts'; pool?: string; priceHourly?: number; billingMinimumMs?: number; project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
+type Entry = { category?: 'verify' | 'hosts'; pool?: string; priceHourly?: number; billingMinimumMs?: number; project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string; spendReceipt?: { reason: 'ledger-entry-missing'; project: string; lease: string; released: string } };
 type MissingProject = { project: string; since: string; pruned?: true };
 type Ledger = { version: 1; entries: Entry[]; projects?: string[]; missingProjects?: MissingProject[]; legacyRetired?: true };
 export const spendPath = (env: NodeJS.ProcessEnv = process.env): string => join(userStateDirectory(env), 'spend.json');
+/** The same persisted absence receipt governs ingestion, settlement and views. */
+export function hasUnknownSpend(entry: Entry): boolean {
+  const receipt = entry.spendReceipt;
+  if (receipt === undefined) return false;
+  if (!receipt || typeof receipt !== 'object' || receipt.reason !== 'ledger-entry-missing'
+    || typeof entry.project !== 'string' || !entry.project || receipt.project !== entry.project
+    || typeof entry.lease !== 'string' || !entry.lease || receipt.lease !== entry.lease
+    || typeof receipt.released !== 'string' || !Number.isFinite(Date.parse(receipt.released)) || receipt.released !== entry.released
+    || entry.cost !== null || category(entry) !== 'verify') throw new Error('invalid executor spend receipt');
+  return true;
+}
 async function readExisting(path: string): Promise<Ledger | null> {
   try {
     const ledger = JSON.parse(await readFile(path, 'utf8')) as Ledger;
     if (ledger.version !== 1 || !Array.isArray(ledger.entries) || ledger.entries.some(e => !Number.isFinite(e.reservation) || e.reservation < 0 || e.cost !== null && (!Number.isFinite(e.cost) || e.cost < 0))) throw new Error('invalid executor spend ledger');
+    for (const entry of ledger.entries) hasUnknownSpend(entry);
     return ledger;
   } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
 }
@@ -41,8 +53,14 @@ function reconcile(current: Ledger, legacy: Ledger): Ledger {
     const existing = entries.get(key);
     if (!existing) { entries.set(key, { ...entry }); continue; }
     existing.reservation = Math.max(existing.reservation, entry.reservation);
-    if (entry.cost !== null) existing.cost = Math.max(existing.cost ?? 0, entry.cost);
-    if (entry.released && (!existing.released || entry.released > existing.released)) existing.released = entry.released;
+    const unknown = hasUnknownSpend(existing) ? existing.spendReceipt : hasUnknownSpend(entry) ? entry.spendReceipt : undefined;
+    if (unknown) {
+      // An older writer's pending/zero row cannot resolve terminal uncertainty.
+      existing.cost = null; existing.spendReceipt = unknown; existing.released = unknown.released;
+    } else {
+      if (entry.cost !== null) existing.cost = Math.max(existing.cost ?? 0, entry.cost);
+      if (entry.released && (!existing.released || entry.released > existing.released)) existing.released = entry.released;
+    }
   }
   // A real lease replaces its shard reservation. Retained legacy bytes must
   // not resurrect the group after reserveSpend consumed it in the new ledger.
@@ -59,7 +77,7 @@ function reconcile(current: Ledger, legacy: Ledger): Ledger {
 function totals(ledger: Ledger, clock: Clock) {
   const day = clock.now().toISOString().slice(0, 10);
   // Unconfirmed reservations carry across midnight; a crash must not reset admission.
-  const reserved = ledger.entries.filter(e => e.cost === null).reduce((sum, e) => sum + e.reservation, 0);
+  const reserved = ledger.entries.filter(e => e.cost === null && !hasUnknownSpend(e)).reduce((sum, e) => sum + e.reservation, 0);
   const spent = ledger.entries.filter(e => e.released?.startsWith(day)).reduce((sum, e) => sum + (e.cost ?? 0), 0);
   return { day, spent, reserved };
 }
@@ -169,25 +187,42 @@ export async function settleSpend(input: DropletLease | DropletLease[], env: Nod
   if (!released.size) return;
   // Final costs never become reservations again. Skip settled history without
   // taking either lock; revalidate pending entries inside the transaction.
-  if (!(await observe(env)).entries.some(entry => category(entry) === 'verify' && entry.cost === null && released.has(entry.lease))) return;
+  if (!(await observe(env)).entries.some(entry => category(entry) === 'verify' && entry.cost === null && !hasUnknownSpend(entry) && released.has(entry.lease))) return;
   await locked(ledger => {
     for (const entry of ledger.entries) {
       const lease = released.get(entry.lease);
-      if (lease && category(entry) === 'verify' && entry.cost === null) { entry.cost = lease.costUsd!; entry.released = lease.released!; }
+      if (lease && category(entry) === 'verify' && entry.cost === null && !hasUnknownSpend(entry)) { entry.cost = lease.costUsd!; entry.released = lease.released!; }
     }
   }, env, processes ? { processes } : undefined, 1000);
 }
-/** Observe only published spend. Missing/pending entries retain recovery files
- * in the hot index; the ledger remains the accounting authority. */
+/** Missing historical entries settle with a durable unknown-spend receipt;
+ * pending reservations retain recovery files. The ledger is authoritative. */
 const compactions = new Map<string, Promise<LeaseCompaction>>();
-export function compactLeaseHistory(root: string, env: NodeJS.ProcessEnv, log: (event: Record<string, unknown>) => void, rebuild = false): Promise<LeaseCompaction> {
+export function compactLeaseHistory(root: string, env: NodeJS.ProcessEnv, log: (event: Record<string, unknown>) => void, rebuild = false, processes?: LockProcessTable): Promise<LeaseCompaction> {
   const key = JSON.stringify([resolve(root), spendPath(env), rebuild]);
   const current = compactions.get(key);
   if (current) return current;
   const work = (async () => {
     const ledger = await observe(env);
-    const settled = new Set(ledger.entries.filter(e => e.project === root && category(e) === 'verify' && e.cost !== null && Boolean(e.released)).map(e => e.lease));
-    return compactLeaseIndex(root, settled, (lease, reason) => log({ event: reason === 'record' ? 'executor-lease-record-missing' : 'executor-lease-spend-missing', lease }), rebuild);
+    const settled = new Set(ledger.entries.filter(e => e.project === root && category(e) === 'verify' && (e.cost !== null || hasUnknownSpend(e)) && Boolean(e.released)).map(e => e.lease));
+    return compactLeaseIndex(root, settled, async (lease, reason, record) => {
+      if (reason === 'record') { log({ event: 'executor-lease-record-missing', lease }); return; }
+      if (!record?.released) return;
+      if (ledger.entries.some(e => e.project === root && e.lease === lease)) return;
+      // The ledger lock proves absence, including concurrent reservations. The
+      // receipt is durable before cleanup/index removal or the diagnostic.
+      const created = await locked(ledger => {
+        if (ledger.entries.some(e => e.project === root && e.lease === lease)) return false;
+        const entry: Entry = { project: root, lease, category: 'verify', run: record.run, size: record.size,
+          reservation: 0, cost: null, created: record.created, deadline: record.deadline, released: record.released!,
+          spendReceipt: { reason: 'ledger-entry-missing', project: root, lease, released: record.released! } };
+        hasUnknownSpend(entry);
+        ledger.entries.push(entry);
+        return true;
+      }, env, processes ? { processes } : undefined, 1000);
+      if (created) log({ event: 'executor-lease-spend-missing', lease });
+      return created;
+    }, rebuild, log);
   })().finally(() => { if (compactions.get(key) === work) compactions.delete(key); });
   compactions.set(key, work);
   return work;
@@ -196,7 +231,8 @@ export async function inspectSpend(cap: number, env: NodeJS.ProcessEnv = process
   // Status observes atomically published files. Conservative merging is safe
   // without migration or a lock; only admission needs serialized publication.
   const ledger = readOnly ? await observe(env) : await load(env, { clock, ...(processes ? { processes } : {}) });
-  return { path: spendPath(env), ...totals(ledger, clock), cap };
+  const unknownLeases = ledger.entries.filter(hasUnknownSpend).length;
+  return { path: spendPath(env), ...totals(ledger, clock), cap, ...(unknownLeases ? { unknownLeases } : {}) };
 }
 
 class InvalidProject extends Error {
@@ -367,12 +403,13 @@ export async function inspectHostSpend(env: NodeJS.ProcessEnv = process.env, clo
 export async function inspectHostSpendSnapshot(env: NodeJS.ProcessEnv, clock: Clock, project?:string) {
   const ledger = await observe(env);
   const day = clock.now().toISOString().slice(0, 10), month = day.slice(0, 7);
-  type Period = { today: number; month: number };
+  type Period = { today: number; month: number; unknownLeases?: number };
   const categories: Record<'verify' | 'hosts', Period> = { verify: { today: 0, month: 0 }, hosts: { today: 0, month: 0 } };
   const pools: Record<string, Period> = Object.create(null);
   for (const entry of ledger.entries) {
     if(project!==undefined&&entry.project!==project)continue;
     const bucket = categories[category(entry)];
+    if (hasUnknownSpend(entry)) bucket.unknownLeases = (bucket.unknownLeases ?? 0) + 1;
     const pool = category(entry) === 'hosts' && entry.pool ? pools[entry.pool] ??= { today: 0, month: 0 } : undefined;
     if (entry.cost === null || !entry.released) continue;
     for (const target of [bucket, pool]) if (target) {

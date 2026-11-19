@@ -1,5 +1,13 @@
 # hub/test/suite-accounting.test.ts
 
+The parallel-acquire control reads pending reservations with the shared validated
+hasUnknownSpend policy: terminal unknown cost:null rows are distinct from pending
+reservations. Two refused peers retain their bound unknown receipts, and a later
+fresh acquisition must still see exactly one pending reservation of 0.0625.
+The provider hook's assertion must not enroll the retained unknown rows. The
+fake API currently converts a rejected hook into a 500; T-1994 tracks preserving
+that original fixture failure instead of leaving a status waiter unresolved.
+
 The failed-acquisition control rejects scripted readiness after durable admission
 and completes provider cleanup. Suites retains the same released lease identity
 and cost even though the hot index has removed it; no historical scan supplies

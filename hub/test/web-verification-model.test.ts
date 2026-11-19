@@ -35,3 +35,7 @@ test('remote-only summary estimates admission and ageing preserves estimates and
   assert.equal(verificationModel(recordedQueue, -5000).local?.time, '3s');
   assert.equal(verificationModel(queue, 0, { spend: { spent: 1.12, cap: 3 } }).spend, 'droplets today $1.12 of the $3.00 cap');
 });
+test('verification spend retains unknown lease accounting and older hub replies', () => {
+  assert.match(verificationModel(null, 0, { spend: { spent: 0, cap: 5, unknownLeases: 2 } }).spend, /unknown spend: 2 released leases/);
+  assert.equal(verificationModel(null, 0, { spend: { spent: 0, cap: 5 } }).spend, 'droplets today $0.00 of the $5.00 cap');
+});

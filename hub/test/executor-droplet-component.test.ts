@@ -517,18 +517,19 @@ for (const [label, stderr, code] of [
   f.clock.block(300001);
   assert.deepEqual(await step(() => f.observer.status(f.lease)), { state: 'unknown', cause: 'local SSH client unavailable' });
   assert.equal((await step(() => readLease(leaseDir(f.root, f.lease)))).execution!.unreachableSince, undefined);
-  assert.equal(f.logs.length, 1, 'one enter event despite repeated failed polls');
-  assert.equal(f.logs[0]!.event, 'executor-local-ssh-hold-enter');
-  assert.equal(f.logs[0]!.run, f.lease.run);
-  assert.equal(f.logs[0]!.cause, 'local SSH client unavailable');
-  assert.match(String(f.logs[0]!.error), /machine command failed/);
-  if (stderr) assert.ok(String(f.logs[0]!.error).includes(stderr));
+  const entered = f.logs.filter(entry => entry.event === 'executor-local-ssh-hold-enter');
+  assert.equal(entered.length, 1, 'one enter event despite repeated failed polls');
+  assert.equal(entered[0]!.run, f.lease.run);
+  assert.equal(entered[0]!.cause, 'local SSH client unavailable');
+  assert.match(String(entered[0]!.error), /machine command failed/);
+  if (stderr) assert.ok(String(entered[0]!.error).includes(stderr));
   f.recover();
   assert.deepEqual(await step(() => f.observer.status(f.lease)), { state: 'running' });
   assert.deepEqual(await step(() => f.observer.status(f.lease)), { state: 'running' });
-  assert.equal(f.logs.length, 2, 'one leave event despite repeated successful polls');
-  assert.deepEqual(f.logs[1], { event: 'executor-local-ssh-hold-leave', run: f.lease.run,
-    cause: 'local SSH client unavailable', error: f.logs[0]!.error, state: 'running' });
+  const holds = f.logs.filter(entry => entry.event === 'executor-local-ssh-hold-enter' || entry.event === 'executor-local-ssh-hold-leave');
+  assert.equal(holds.length, 2, 'one enter and one leave event despite repeated successful polls');
+  assert.deepEqual(holds[1], { event: 'executor-local-ssh-hold-leave', run: f.lease.run,
+    cause: 'local SSH client unavailable', error: entered[0]!.error, state: 'running' });
 }));
 
 test('ordinary SSH connection failure still becomes lost at five minutes', async t => statusCase(t, async (root, step, fixtures) => {
@@ -559,13 +560,15 @@ test('unconfirmed provider stays unknown during local SSH failure', async t => s
 test('provider loss ends a local SSH hold once with its original diagnostic', async t => statusCase(t, async (root, step, fixtures) => {
   const f = await step(() => statusFixture(fixtures, root, 'No user exists for uid 501'));
   await step(() => f.observer.status(f.lease));
-  assert.equal(f.logs.length, 1);
+  const entered = f.logs.filter(entry => entry.event === 'executor-local-ssh-hold-enter');
+  assert.equal(entered.length, 1);
   f.gone();
   assert.deepEqual(await step(() => f.observer.status(f.lease)), { state: 'lost', code: 1, cause: 'remote machine lost' });
   await step(() => f.observer.status(f.lease));
-  assert.deepEqual(f.logs.map(entry => entry.event), ['executor-local-ssh-hold-enter', 'executor-local-ssh-hold-leave']);
-  assert.equal(f.logs[1]!.run, f.lease.run);
-  assert.equal(f.logs[1]!.cause, 'local SSH client unavailable');
-  assert.equal(f.logs[1]!.error, f.logs[0]!.error);
-  assert.equal(f.logs[1]!.state, 'lost');
+  const holds = f.logs.filter(entry => entry.event === 'executor-local-ssh-hold-enter' || entry.event === 'executor-local-ssh-hold-leave');
+  assert.deepEqual(holds.map(entry => entry.event), ['executor-local-ssh-hold-enter', 'executor-local-ssh-hold-leave']);
+  assert.equal(holds[1]!.run, f.lease.run);
+  assert.equal(holds[1]!.cause, 'local SSH client unavailable');
+  assert.equal(holds[1]!.error, entered[0]!.error);
+  assert.equal(holds[1]!.state, 'lost');
 }));

@@ -228,6 +228,12 @@ reservations and renewals obey both the shared daily cap and hosts sub-cap; UTC
 settled totals are available per category and pool. See [spend accounting](../docs/hub/running.md#leases-cleanup-and-spend)
 for the additive API and confirmed-absence settlement boundary.
 
+Released verification leases predating their ledger entry settle as unknown
+(`cost: null` plus a missing-entry receipt). Status names the retained unknown
+count alongside known totals; compaction removes them from the hot index without
+inventing a zero cost. The initial index migration logs its read/indexed/settled
+counts once. See the spend accounting guide for receipts and older-client fields.
+
 - [Session pool placement](../docs/hub/session-pool-placement.md): role pool selection, capacity promises, explicit pins and session Host facts.
 - [Host leases and renewal ownership](../docs/hub/host-leases.md)
 - [Waiting launches](../docs/hub/waiting-launches.md): no-process replies, status records, cancellation and capacity wake-ups.

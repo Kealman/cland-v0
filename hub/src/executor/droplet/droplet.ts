@@ -87,7 +87,7 @@ export class DropletExecutor implements Executor {
   }
 
   async #save(lease: DropletLease): Promise<void> {
-    await writeLease(this.root, lease);
+    await writeLease(this.root, lease, this.logger);
     await this.#publishLeases();
   }
 
@@ -96,7 +96,7 @@ export class DropletExecutor implements Executor {
   }
 
   async #compact(rebuild = false): Promise<boolean> {
-    const outcome = await compactLeaseHistory(this.root, this.#env, this.logger, rebuild);
+    const outcome = await compactLeaseHistory(this.root, this.#env, this.logger, rebuild, this.dependencies.processes);
     if (outcome.status === 'stopped') {
       this.logger({ event: 'executor-lease-maintenance-stopped', reason: outcome.reason });
       return false;
@@ -553,7 +553,7 @@ export class DropletExecutor implements Executor {
       // Capability 1 promises that every transaction preserves legacyRetired and
       // stops reading/writing the legacy ledger once that marker is activated.
       const spend = { ...await inspectSpend((await this.#config()).verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes, true), legacyRetirement: 1 as const };
-      const todayCostUsd = spend.spent;
+      const todayCostUsd = spend.unknownLeases ? null : spend.spent;
       let taggedDroplets: number | null = this.#taggedDroplets;
       let providerError: string | undefined;
       if (token) try { taggedDroplets = (await within(this.dependencies.api!.droplets('cland'), 250, this.clock)).length; this.#taggedDroplets = taggedDroplets; } catch { providerError = 'provider unavailable or deferred'; }
@@ -561,7 +561,7 @@ export class DropletExecutor implements Executor {
       // Return a coherent snapshot and terminal job state from the same observation.
       if (job !== this.#prepareJob || jobState !== job?.state) continue;
       const summary = [`executor: ${this.#sweepState}`, snapshot ? `snapshot: ${snapshot.name} image=${snapshot.image} ${freshnessText} local=origin/dev@${inspection?.base.slice(0, 12) ?? 'unknown'} key=${JSON.stringify({ ...snapshot.key, provision: snapshot.key.provision ?? 'none', lock: snapshot.key.lock ?? 'none' })}` : 'snapshot: none', ...(prepare ? [`prepare: ${prepare.state} ${prepare.step} elapsed=${Math.round(prepare.elapsedMs / 1000)}s`] : []), ...snapshotRecovery.map(record => `snapshot recovery: ${record.name} ${record.phase}`), `token: ${token ? 'present' : 'absent (DIGITALOCEAN_TOKEN)'}`, ...(!leases.length ? ['leases: none'] : leases.map(l => `${l.name} id=${l.id ?? 'pending'} ${l.region} ${l.size} ${l.state} age=${Math.round(l.ageMs / 1000)}s deadline=${l.deadline} watchdog=${l.watchdogAlive ? 'alive' : 'dead'}${l.attention ? `; operator attention: ${l.attention.reason === 'deletion-unconfirmed' ? 'deletion not confirmed' : l.attention.reason === 'deletion-timeout' ? 'deletion confirmation timed out' : `identity mismatch (${l.attention.fields.join(', ')})`}, provider status ${l.attention.observed.status}` : ''}`)), `ledger: ${spend.path}`, `today: spent $${spend.spent.toFixed(4)} + reserved $${spend.reserved.toFixed(4)} / cap $${spend.cap}`, `tagged droplets: ${taggedDroplets ?? providerError ?? 'unavailable'}`].join('\n');
-      return { reconciliation: this.#sweepState, spend, snapshotRecovery, snapshot: snapshot ? { ...snapshot, freshness: freshnessText } : null, prepare, token, leases, todayCostUsd, taggedDroplets, ...(providerError ? { providerError } : {}), summary };
+      return { reconciliation: this.#sweepState, spend, snapshotRecovery, snapshot: snapshot ? { ...snapshot, freshness: freshnessText } : null, prepare, token, leases, todayCostUsd, taggedDroplets, ...(providerError ? { providerError } : {}), summary: spend.unknownLeases ? `${summary}\nunknown spend: ${spend.unknownLeases} released leases (excluded from known totals)` : summary };
     }
   }
 

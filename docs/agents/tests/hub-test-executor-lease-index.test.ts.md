@@ -36,7 +36,7 @@ four-record root, so independent fault checks never rebuild the large history.
 The read-count assertion expects exactly three file reads: one bounded index
 and two live lease files, with no directory enumeration and fewer than 2,048
 decoded bytes. Separate small-root checks retain
-missing/pending spend, preserve the prior checkpoint on interrupted publication,
+unknown/pending spend, preserve the prior checkpoint on interrupted publication,
 retry idempotently, recover a file omitted from the index at startup, and read
 the latest released demo through its cold pointer without enumerating history.
 Demo reconciliation drains at most 32 queued reports per pass; interrupted
@@ -45,3 +45,38 @@ Released keys must be removed before compaction, and an injected partial key
 cleanup failure keeps recovery membership until the next successful attempt.
 An interrupted startup repair remains pending for the next periodic retry,
 including recovery of a file omitted from the previous checkpoint.
+
+Released leases with no ledger entry publish `cost: null` and a `spendReceipt`
+identifying the project, lease, release and `ledger-entry-missing` reason before
+leaving the index. Four compactions (including rebuilds) count exactly one
+missing-spend diagnostic per lease. Ledger and executor status assertions keep
+spend unknown; `todayCostUsd` is null and the summary names the unknown count.
+Pending entries remain recoverable. Migration counts are asserted on the first
+durable index publication only; rebuilding an existing index emits no migration.
+
+The first-writer control seeds a legacy id, appends a new lease and requires one
+read=2/indexed=2/settled=0 log across later writes, compactions and rebuilds.
+Primary/legacy permutation controls observe and migrate unknown receipts beside
+pending or zero duplicates in both orders. Malformed reason, shape, project,
+lease and release bindings refuse status, settlement and compaction while the
+prior index and key remain intact.
+
+New callbacks enroll fixtureWork before acquisition, register the same close on
+TestContext normal cleanup and abort, and use caseDeadlines for named root/seed
+setup bounds. Each effect is admitted through step. A setup deadline fences
+continuations and joins its original producer before fixture removal or seam
+restoration. Normal, abort and fake-clock timeout controls hold setup, require
+the original root while held, then require no later write and observed removal.
+The existing positive native-launch guard remains installed through that join.
+This owner imports no native process-cleanup module; older callers are unchanged.
+The fixture's optional step argument carries admission through guard setup, root
+acquisition and callback entry. A held-guard control closes admission and requires
+the next root acquisition itself to be refused. Existing two-argument callers
+keep their prior behavior.
+
+The throwing-sink case uses the real first publisher and DropletRun.status with
+fake provider/transport boundaries. A migration-only and a permanently throwing
+sink must both preserve lease.json publication and the exact parsed completion
+receipt after clearing an outage marker. It checks the secondary notice attempt
+and no replay on an existing index. A real lease-record rename fault must still
+reject with its original write error and leave the conservative index checkpoint.

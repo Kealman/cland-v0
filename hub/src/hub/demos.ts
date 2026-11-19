@@ -84,7 +84,7 @@ export class Demos {
         await this.executor.deliver(lease, { id, config, commands, cwd: this.root, head, mode: 'auto', log: join(dir, 'log'), result: join(dir, 'result'), gate: join(dir, 'gate') }, true);
         authorize();
         if (Date.parse(lease.deadline) <= this.executor.clock.now().getTime()) throw new Error('demo deadline reached during delivery');
-        lease.demo!.ready = true; await writeLease(this.root, lease);
+        lease.demo!.ready = true; await writeLease(this.root, lease, this.executor.logger);
         await this.#report(lease);
         return this.#value(lease);
       } catch (error) { await this.executor.release(lease); await this.#report(lease); throw error; }

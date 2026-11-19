@@ -1,7 +1,7 @@
 import type { VerificationHolder, VerificationQueue } from '../../../shared/wire/index.ts';
 
 /** The read-only subset consumed from executor.status. No provider operations. */
-export type ExecutorStatus = { spend: { spent: number; cap: number } };
+export type ExecutorStatus = { spend: { spent: number; cap: number; unknownLeases?: number } };
 export type QueueRow = { slot: string; session: string; item: string; detail: string; since: string; time: string; eta: string };
 
 // Match Neovim's duration and estimate semantics, including unknown values.
@@ -44,6 +44,6 @@ export function verificationModel(queue: VerificationQueue | null | undefined, e
     waiters: waiters.map(row => ({ slot: `waiting ${row.position}`, session: row.session, item: row.item ?? '—',
       detail: `${row.occasion ?? row.mode} · executor ${row.executor ?? 'unknown'} · ${row.worktree}`, since: row.queuedAt ?? 'unknown', time: age(row.waitMs), eta: eta(row.etaMs) })),
     metrics: metrics ? `last ${metrics.count}/${metrics.window} runs · run median ${duration(metrics.run.medianMs)}, p90 ${duration(metrics.run.p90Ms)} · wait median ${duration(metrics.wait.medianMs)}, p90 ${duration(metrics.wait.p90Ms)}` : 'last 20 runs · —',
-    spend: executor ? `droplets today $${executor.spend.spent.toFixed(2)} of the $${executor.spend.cap.toFixed(2)} cap` : 'droplets today —',
+    spend: executor ? `droplets today $${executor.spend.spent.toFixed(2)} of the $${executor.spend.cap.toFixed(2)} cap${executor.spend.unknownLeases ? ` · unknown spend: ${executor.spend.unknownLeases} released leases` : ''}` : 'droplets today —',
   };
 }
