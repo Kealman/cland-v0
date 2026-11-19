@@ -108,6 +108,11 @@ UNRESOLVED overflow count and oldest path name roots outside automatic retry;
 their ownership markers remain, and the item diagnostic records the path.
 Unknown legacy ownership and replacement identities refuse removal. Never treat
 an overflow count or a missing ownership receipt as completed cleanup.
+Idle unmarked upgrade batches preserve their roots and durable path/cause
+diagnostics, then retire so retained requests receive a fresh batch and run.
+Cancelling all members clears a blocked batch after its workers finish; immediate
+same-head re-enqueue also recovers through fresh preparation. Marked candidates
+with changed identity remain refused. Never adopt a legacy root for deletion.
 Overflow item diagnostics survive failed publication and active-batch clearance
 in individual existing-meta obligations. Bounded one-notice replay uses captured
 requester identities and settles only after durable publication succeeds.

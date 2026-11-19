@@ -1,4 +1,5 @@
 import { TerritoryBusy } from '../territory-lock-context.ts';
+import { CandidateOwnershipUnavailable } from '../batch-candidate-ownership.ts';
 import { batchT1Summary } from '../batch-member-verification.ts';
 // Durable merge-batch policy; Git preparation and landing are owned by the territory boundary.
 import { randomUUID, createHash } from 'node:crypto';
@@ -68,6 +69,8 @@ export type BatchBoundary = {
   land(entry: MergeQueueEntry, candidate: BatchCandidate): Promise<void>;
   drop(entry: MergeQueueEntry, reason: string): void;
   cleanup(candidate: BatchCandidate): Promise<void>;
+  /** Inspect retained admission authority before resuming an idle legacy batch. */
+  validateOwnership?(candidate: BatchCandidate): Promise<void>;
   checkout(candidate: BatchCandidate): Promise<void>;
   isLanded(entry: MergeQueueEntry): boolean;
   /** Return only after durable publication to every required target; throw keeps its obligation. */
@@ -184,14 +187,17 @@ export class MergeBatches {
       try { await this.#tick(); return; }
       catch (error) {
         const batch = this.snapshot();
-        if (!(error instanceof BatchRefusal || error instanceof BatchRebuild) || !batch) throw error;
+        if (!(error instanceof BatchRefusal || error instanceof BatchRebuild || error instanceof CandidateOwnershipUnavailable) || !batch) throw error;
         // Recheck the new base against the retained evidence on the next tick.
         // A base race alone does not invalidate a completed suite.
         if (error instanceof BatchRebuild) return;
         if (error instanceof BatchRefusal) this.boundary.drop(error.entry, error.reason);
-        await this.#cleanup(batch);
-        const members = batch.members.filter(entry => (!(error instanceof BatchRefusal) || entry.item !== error.entry.item) && !batch.diagnosis?.excluded?.includes(entry.item) && !batch.completed?.includes(entry.item) && !this.boundary.isLanded(entry));
+        await this.#cleanup(batch, true);
+        const members = batch.members.filter(entry => (!(error instanceof BatchRefusal) || entry.item !== error.entry.item)
+          && this.boundary.entries().some(current => current.item === entry.item && current.head === entry.head && current.enqueued === entry.enqueued)
+          && !batch.diagnosis?.excluded?.includes(entry.item) && !batch.completed?.includes(entry.item) && !this.boundary.isLanded(entry));
         this.#save(members.length ? { id: randomUUID(), members } : null);
+        if (error instanceof CandidateOwnershipUnavailable) return;
         if (!members.length) return;
       }
     }
@@ -214,8 +220,9 @@ export class MergeBatches {
     if (admitted && !batch.run) { batch.run = admitted.id; this.#save(batch); }
     // A cancellation cannot replace the candidate checkout under a live worker.
     if (admitted && !admitted.reported || this.suites.findRun(job => job.batch?.id === batch!.id && !job.reported)) return;
+    if (batch.candidate && !batch.candidate.owner) await this.boundary.validateOwnership?.(batch.candidate);
     if (batch.retryRequested) {
-      await this.#cleanup(batch);
+      await this.#cleanup(batch, true);
       const members = batch.members.filter(entry => this.boundary.entries().some(current => current.item === entry.item && current.head === entry.head && current.enqueued === entry.enqueued)
         && !batch!.completed?.includes(entry.item) && !batch!.diagnosis?.excluded?.includes(entry.item) && !this.boundary.isLanded(entry));
       this.#save(members.length ? { id: randomUUID(), members } : null);
@@ -366,14 +373,25 @@ export class MergeBatches {
       }
     }
   }
-  async #cleanup(batch: MergeBatch): Promise<void> {
+  async #cleanup(batch: MergeBatch, retiring = false): Promise<void> {
     const candidates = [batch.candidate, ...batch.diagnosis?.jobs.map(job => job.candidate) ?? []].filter((candidate): candidate is BatchCandidate => !!candidate);
     for (const candidate of new Map(candidates.map(c => [c.cwd, c])).values()) {
       if (this.cleanups().some(job => job.candidate.cwd === candidate.cwd)) continue;
       try { await this.boundary.cleanup(candidate); }
       catch (error) {
+        if (error instanceof CandidateOwnershipUnavailable) {
+          // Missing admission authority never grants deletion authority. Persist
+          // the preservation receipt before retiring this batch, including on upgrade.
+          this.store.setMeta(`merge-batch-preserved-candidate:${candidate.cwd}`, JSON.stringify({
+            batch: batch.id, cwd: candidate.cwd, head: candidate.head, tree: candidate.tree,
+            cause: error.code, reason: error.message,
+          }));
+          continue;
+        }
         // Only durable terminal receipts let cleanup become ancillary work.
-        if (!batch.members.every(entry => batch.completed?.includes(entry.item) || batch.diagnosis?.excluded?.includes(entry.item) || this.boundary.isLanded(entry))) throw error;
+        // An idle cancelled/replaced request retires its batch independently of
+        // cleanup. The guarded obligation retains the root and original authority.
+        if (!retiring && !batch.members.every(entry => batch.completed?.includes(entry.item) || batch.diagnosis?.excluded?.includes(entry.item) || this.boundary.isLanded(entry))) throw error;
         const compact = { ...candidate, budgetLines: [] };
         const job: BatchCleanup = { batch: { id: batch.id, members: batch.members, ...(batch.run ? { run: batch.run } : {}) }, candidate: compact, error: cleanupError(error), attempts: 1,
           retryAt: new Date(this.clock.now().getTime() + 1000).toISOString() };
@@ -540,7 +558,7 @@ export class MergeBatches {
       }
       this.#save(batch);
     });
-    await this.#cleanup(batch); this.#save(null);
+    await this.#cleanup(batch, true); this.#save(null);
   }
   #fileReport(diagnosis: BatchDiagnosis): string {
     return (diagnosis.budgetLines?.length ? diagnosis.budgetLines.join('\n') + '\n' : '')

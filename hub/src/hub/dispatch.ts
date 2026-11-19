@@ -1,4 +1,5 @@
 import { suiteInfrastructureCauses } from '../suite-infrastructure.ts';
+import { requireCandidateOwnership } from '../batch-candidate-ownership.ts';
 import { selectHostPool } from '../host/pools.ts';
 import { which } from '../doctor/report.ts';
 import {removeLogin} from '../host/login-remove.ts';
@@ -409,6 +410,7 @@ export class Dispatcher {
       entries: () => { landingReports?.reconcile(); return this.#mergeQueue!.entries(); },
       build: (id, members, base) => this.#worktrees!.serial(() => prepareMergeBatch(root, id, members, options.env, options.batchRepository, base)),
       rebuildReason: (tested, current) => batchRebuildReason(root, tested, current, options.env, options.batchRepository),
+      ...(!options.batchRepository ? { validateOwnership: (candidate: import('./merge-batches.ts').BatchCandidate) => requireCandidateOwnership(root, candidate, options.env ?? process.env) } : {}),
       cleanup: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.remove(candidate) : removeMergeBatch(root, candidate, options.env)),
       checkout: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.checkout(candidate) : checkoutMergeBatch(root, candidate, options.env)),
       isLanded: entry => options.tracker!.summary(entry.item)?.state === 'closed' && !!options.tracker!.mergeReceipt(entry.item),

@@ -1744,6 +1744,16 @@ worker admission still stop preparation on failure.
 Changed checkout identities still refuse cleanup. Incomplete standalone clones are recreated
 there after checking HEAD and tracked-file status. Complete checkouts are reused;
 active workers finish before cleanup.
+
+Merge-batch upgrades apply the same preservation rule at the idle worker
+boundary: an unmarked candidate records its path and structured missing-ownership
+cause in `merge-batch-preserved-candidate:<path>` metadata. The batch retires;
+retained queued requests get a fresh batch id, candidate path, head/tree and run.
+Cancelling all members clears the blocked record after workers finish, including
+when same-head requests are immediately re-enqueued. Marked replacement roots
+still refuse removal. Candidate ownership uses the shared verification tree
+identity excluding tracker items and RULES, plus the exact HEAD, private marker
+and native directory identities. It never adopts an old root for deletion.
 Red files search candidate merges with detached diagnostic probes; Web test
 files select the Web tier and require their own execution receipts. Test-root
 and parent-traversal validation also applies to these probes. Historical admission

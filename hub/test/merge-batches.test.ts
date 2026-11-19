@@ -1,5 +1,7 @@
 // T1: batch policy at the durable controller/Suites seam, FakeClock and in-process executor receipts.
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { ownedTracker } from './owned-tracker.ts';
 import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { TaskMerges, joinMergeCleanup } from '../src/hub/merge.ts';
@@ -26,7 +28,7 @@ import { fakeNativeGuard } from './fake-native-guard.ts';
 import { tierReceipt } from '../src/verification-tier-receipts.ts';
 import { requireMergeClosedItemWording } from '../src/merge-closed-item-wording.ts';
 import { removeWorktreeWithFixtures, type FixtureProcesses } from '../src/fixture-processes.ts';
-import { captureCandidateOwnership, requireCandidateOwnership, removeOwnedBatchCandidate, type CandidateOwnershipHost } from '../src/batch-candidate-ownership.ts';
+import { CandidateOwnershipUnavailable, captureCandidateOwnership, requireCandidateOwnership, removeOwnedBatchCandidate, type CandidateOwnershipHost } from '../src/batch-candidate-ownership.ts';
 import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
 import { tempProject } from './harness.ts';
 import { dependencyInstall } from '../src/dependency-install.ts';
@@ -631,6 +633,128 @@ for (const noticeFailure of [false, true]) test(`post-landing ps failure retains
   assert.deepEqual(state.runner.cleanups(), []);
   assert.ok(reports.some(text => /cleanup[\s\S]*automatic retry/i.test(text)));
   assert.equal(removed, 1, 'notice recovery cannot repeat positively completed cleanup');
+}));
+
+for (const rejectedClose of [false, true]) test(`shared tracker owner preserves constructor failure with ${rejectedClose ? 'rejected then confirmed' : 'confirmed'} closure`, t => guardedMemberCase(t, async (t, step) => {
+  let close = async () => {}, refuse = rejectedClose;
+  t.after(async () => { refuse = false; await close(); });
+  const { f } = await step(() => fixture(t));
+  let captured: DatabaseSync | undefined;
+  const failure = new Error('injected constructor rejection');
+  assert.throws(() => ownedTracker({ requireClose: fn => { close = fn; } }, {
+    root: f.root, db: ':memory:', clock: f.clock, openDatabase: path => {
+      const db = captured = new DatabaseSync(path), nativeClose = db.close.bind(db), executeSql = db.exec.bind(db);
+      db.exec = sql => { if (sql.includes('tracker_items')) throw failure; executeSql(sql); };
+      db.close = () => { if (refuse) throw new Error('injected close refusal'); nativeClose(); };
+      return db;
+    },
+  }), error => error === failure);
+  assert.ok(captured);
+  if (rejectedClose) {
+    await step(() => assert.rejects(close(), /injected close refusal/));
+    assert.equal(captured.isOpen, true);
+  }
+  refuse = false;
+  await step(close);
+  assert.equal(captured.isOpen, false);
+}));
+
+for (const unresolved of [false, true]) for (const refusal of ['legacy', 'marked', 'inspection']) for (const settle of [false, true]) test(`cancelling every blocked member clears the ${unresolved ? 'unresolved ' : ''}${refusal} batch with ${settle ? 'settled' : 'immediate'} same-head re-enqueue`, t => guardedMemberCase(t, async (t, step) => {
+  let closeTracker = async () => {};
+  // Every fixture disposer gates root/storage release on the pre-owned tracker.
+  const fixtures = new Proxy(t, { get(target, key) {
+    if (key === 'after') return (close: () => unknown) => t.after(async () => { await closeTracker(); await close(); });
+    const value = Reflect.get(target, key, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  } });
+  const state = await step(() => fixture(fixtures));
+  const { f, boundary, entries } = state;
+  const tracker = ownedTracker({ requireClose: close => { closeTracker = close; } }, { root: f.root, db: join(f.root, 'tracker.db'), git: async () => null,
+    readBase: async () => 'dev', clock: f.clock, scheduleTips: () => ({ poke() {}, stop() {} }) });
+  for (const entry of entries) await step(() => tracker.create(entry.by, { title: entry.item, branch: entry.branch, size: 'S' }));
+  const queue = new MergeQueue(f.store, tracker, f.clock, () => true, async () => null);
+  t.after(() => queue.stop());
+  for (const entry of entries) f.store.enqueueMerge(entry);
+  boundary.entries = () => queue.entries();
+  const legacy: BatchCandidate = { base: 'old', head: 'old-head', tree: 'old-tree', cwd: join(f.root, 'legacy'), budgetLines: [] };
+  let birth = 'admitted';
+  const markers = new Map<string, string>();
+  const host: CandidateOwnershipHost = {
+    inspect: async () => ({ root: f.root, cwd: legacy.cwd, gitdir: join(f.root, 'fake-gitdir'), rootBirth: 'root', birth, gitBirth: 'git', head: legacy.head, tree: legacy.tree }),
+    read: async path => markers.get(path) ?? '', write: async (path, text) => { markers.set(path, text); },
+  };
+  if (refusal === 'marked') {
+    await step(() => captureCandidateOwnership(f.root, legacy, {}, host));
+    birth = 'replacement';
+  }
+  boundary.drop = entry => { f.store.dropMerge(entry.item); };
+  f.store.setMeta('merge-batch', JSON.stringify({ id: 'blocked', members: entries, candidate: legacy, failed: 'cleanup failure',
+    ...(unresolved ? { diagnosis: { unresolved: true, reported: true, failure: { run: 'old', tree: 'old-tree', log: { artifact: 'old', path: 'old' } }, failures: [], files: [], jobs: [] } } : {}) }));
+  boundary.cleanup = async candidate => {
+    if (candidate.cwd === legacy.cwd) {
+      if (refusal === 'legacy') throw new CandidateOwnershipUnavailable();
+      if (refusal === 'marked') return removeOwnedBatchCandidate(f.root, candidate, {}, async () => { assert.fail('changed marked candidate must not be removed'); }, host);
+      throw new Error('ps unavailable');
+    }
+  };
+  for (const entry of entries) assert.equal(queue.cancel(entry.item).cancelled, true);
+  if (settle) {
+    await step(() => state.runner.tick());
+    assert.equal(state.runner.snapshot(), null);
+  }
+  assert.deepEqual(queue.entries(), []);
+  for (const entry of entries) {
+    const view = await step(() => tracker.viewAsync(entry.item, work => work()));
+    queue.enqueue(view, entry.head, 'dev', entry.by);
+  }
+  await step(() => state.runner.tick());
+  const fresh = state.runner.snapshot()!;
+  assert.notEqual(fresh.id, 'blocked');
+  if (refusal !== 'legacy') {
+    assert.equal(state.runner.cleanups()[0]!.candidate.cwd, legacy.cwd);
+    assert.match(state.runner.cleanups()[0]!.error, refusal === 'marked' ? /ownership changed/ : /ps unavailable/);
+  }
+  await step(() => state.runner.tick());
+  assert.ok(state.runner.snapshot()!.run);
+  await step(() => f.finish(state.runner.snapshot()!.run!));
+}));
+
+test('upgrade restart preserves an unmarked blocked candidate and runs a fresh batch', t => guardedMemberCase(t, async (t, step) => {
+  const state = await step(() => fixture(t));
+  const { f, boundary, landed } = state;
+  const legacy = { base: 'old', head: 'legacy-head', tree: 'legacy-tree', cwd: join(f.root, 'legacy'), budgetLines: [] };
+  await step(() => mkdir(legacy.cwd));
+  await step(() => writeFile(join(legacy.cwd, 'sentinel'), 'preserved'));
+  f.store.setMeta('merge-batch', JSON.stringify({ id: 'legacy', members: state.entries, candidate: legacy, failed: 'old cleanup failure' }));
+  boundary.validateOwnership = candidate => requireCandidateOwnership(f.root, candidate, {});
+  boundary.cleanup = async candidate => {
+    if (candidate.cwd === legacy.cwd) await removeOwnedBatchCandidate(f.root, candidate, {}, () => writeFile(join(legacy.cwd, 'sentinel'), 'removed'));
+  };
+  const build = boundary.build;
+  boundary.build = async (id, members, base) => ({ ...await build(id, members, base), cwd: join(f.root, id) });
+  // The fake checkout models the creation receipt; the legacy root is never adopted.
+  const checkout = boundary.checkout;
+  boundary.checkout = async candidate => {
+    await checkout(candidate);
+    candidate.owner = { id: 'fresh', root: f.root, cwd: candidate.cwd, gitdir: 'fake', rootBirth: 'root', birth: 'fresh', gitBirth: 'fresh', head: candidate.head, tree: candidate.tree };
+  };
+  await step(() => state.reopen());
+  await step(() => state.runner.tick());
+  await step(() => state.runner.tick());
+  const fresh = state.runner.snapshot()!;
+  assert.notEqual(fresh.id, 'legacy');
+  assert.notEqual(fresh.candidate!.cwd, legacy.cwd);
+  assert.ok(fresh.run);
+  await step(() => f.finish(fresh.run!));
+  await step(() => state.runner.tick());
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+  assert.equal(state.runner.snapshot(), null);
+  assert.equal(await step(() => readFile(join(legacy.cwd, 'sentinel'), 'utf8')), 'preserved');
+  const diagnostic = JSON.parse(f.store.meta(`merge-batch-preserved-candidate:${legacy.cwd}`)!);
+  assert.equal(diagnostic.cwd, legacy.cwd);
+  assert.equal(diagnostic.cause, 'ownership-unavailable');
+  await step(() => state.reopen());
+  assert.ok(f.store.meta(`merge-batch-preserved-candidate:${legacy.cwd}`));
 }));
 
 test('candidate cleanup accepts the var to private-var alias and preserves replaced or unowned roots after reopen', t => guardedMemberCase(t, async (t, step) => {

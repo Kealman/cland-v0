@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { lstat, realpath, open } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { territoryGitAsync } from './territory.ts';
+import { committedTreeOrThrow } from './verification-tree.ts';
 import { removeWorktreeWithFixtures, type FixtureProcesses } from './fixture-processes.ts';
 
 export type CandidateOwnership = { id: string; root: string; cwd: string; gitdir: string; rootBirth: string; birth: string; gitBirth: string; head: string; tree: string };
@@ -48,7 +49,7 @@ function native(env: NodeJS.ProcessEnv): CandidateOwnershipHost {
       const projectCommon = await realpath(isAbsolute(projectRaw) ? projectRaw : resolve(project, projectRaw));
       if (common !== projectCommon || dirname(gitdir) !== join(common, 'worktrees')) throw new Error('candidate belongs to another repository');
       const head = await territoryGitAsync(cwd, ['rev-parse', 'HEAD'], false, undefined, env);
-      const tree = await territoryGitAsync(cwd, ['rev-parse', 'HEAD^{tree}'], false, undefined, env);
+      const tree = await committedTreeOrThrow(cwd, head, env);
       return { root: project, cwd, gitdir, rootBirth: await birth(project), birth: await birth(cwd), gitBirth: await birth(gitdir), head, tree };
     },
   };

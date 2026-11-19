@@ -13,6 +13,7 @@ import { scratchMachine, commandIn } from './init-machine.ts';
 import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
 import { suiteCase } from './suite-case-fixture.ts';
 import type { BatchCandidate } from '../src/hub/merge-batches.ts';
+import { committedTreeOrThrow } from '../src/verification-tree.ts';
 
 const exec = promisify(execFile);
 const generator = fileURLToPath(new URL('./durations.ts', import.meta.url));
@@ -378,7 +379,9 @@ for (const preparation of ['legacy worktree', 'interrupted clone', 'interrupted 
       [`${file}::slow`]: { seconds: 6, owner: 'E-677', legacy: true, reason: 'Historical process contract.' },
     } }));
   await git('add', '.'); await git('commit', '-qm', 'Open owner');
-  const head = await git('rev-parse', 'HEAD'), tree = await git('rev-parse', 'HEAD^{tree}');
+  const head = await git('rev-parse', 'HEAD');
+  const tree = await step('historical admitted verification tree', () => committedTreeOrThrow(f.root, head, f.env));
+  assert.notEqual(tree, await git('rev-parse', 'HEAD^{tree}'), 'committed tracker metadata is excluded from admission identity');
   await writeFile(owner, '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: closed\n---\n');
   await git('add', '.'); await git('commit', '-qm', 'Close live owner');
   await assert.rejects(lintHubShards(f.root), /closed owner E-677/);

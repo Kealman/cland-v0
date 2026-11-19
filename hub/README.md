@@ -66,6 +66,12 @@ tick. Overflow is unresolved, with count and oldest path in status and an item
 diagnostic; its owned roots remain and are not auto-retried. Checkout ownership
 markers and native directory identities fence delayed removal, including after
 restart. Unknown legacy ownership or a replacement checkout preserves the root.
+At an idle upgrade boundary, an unmarked batch candidate is preserved with a
+durable path/cause diagnostic; its batch retires and retained queue requests
+receive a new batch id, candidate identity and run. Cancelling every member also
+clears a blocked batch after its workers finish. Marked replacements still refuse
+cleanup. Ownership compares the shared verification tree (excluding tracker
+items and RULES), alongside the exact commit and native directory identities.
 The canonical owned path scopes process guarding too. Overflow notice obligations
 reuse individual meta records; one bounded keyset page replays per tick, keeping
 captured requester identities until a positive durable publication receipt.

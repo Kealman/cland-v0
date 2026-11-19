@@ -198,3 +198,20 @@ under a real `tempProject` allocation, with candidate association only in
 non-disposable `sourceCheckout` metadata. The canonical writer still prevents
 removal through the alias; replaced or unowned candidates still refuse before
 process discovery. No synthetic path is created or granted as scratch.
+
+Upgrade recovery reopens the durable Store with an unmarked blocked candidate.
+The guarded removal boundary refuses it before process discovery; a real scratch
+sentinel and a durable path/cause receipt independently prove preservation. The
+new batch uses fresh head/tree/path/run facts and lands the retained members.
+Cancellation controls use MergeQueue with immediate and settled same-head
+re-enqueue. The existing native-birth/marker replacement controls still refuse.
+Cancellation also covers changed marked native birth through the actual guarded
+removal helper and process-inspection failure. Retired batches keep separate
+cleanup obligations while their original roots remain fenced. Tracker connections
+are captured before constructor return, with a rejection control. Every fixture
+disposer gates root/storage release on positive tracker database closure.
+These fixtures import the shared owned-tracker policy. Constructor/schema
+failure keeps its original error identity even when the registered native close
+refuses; a later confirmed close settles the captured connection. Unresolved
+diagnosis variants also retire their dropped requests while retaining guarded
+cleanup obligations for changed marked roots and inspection failures.

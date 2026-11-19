@@ -22,6 +22,11 @@ proves an admitted worker never re-enters checkout or starts another job.
 
 Create the owned legacy checkout with `checkoutMergeBatch`, so its producer
 captures the same private marker and directory identity as production batches.
+Derive its admitted tree with the shared `committedTreeOrThrow` reader, matching
+production preparation, and assert it differs from the full `HEAD^{tree}` because
+the fixture commits its allowance owner in `.cland/tasks`. Keep this contract
+across all six historical preparation variants; raw Git trees are not candidate
+verification identities.
 The separate unmarked upgrade case deliberately uses raw fixture Git and first
 asserts `removeMergeBatch` refuses it. Seed that candidate in the probe checkpoint,
 admit its replacement clone through the default repository, reopen the owner and
