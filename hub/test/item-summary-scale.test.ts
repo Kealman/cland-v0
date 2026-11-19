@@ -9,20 +9,26 @@ import {serializeItem} from '../src/tracker/item.ts';
 import {connectUi,projectHub,tempProject,until} from './harness.ts';
 import {FakeClock} from './fake-clock.ts';
 import {withPlan} from '../src/tracker/plan.ts';
+import {trackerFileCase} from './tip-churn-file-fixture.ts';
 import {tipChurnFixture} from './tip-churn-fixture.ts';
 import {fixtureNativeGuard} from './fake-native-guard.ts';
 import {stageCase} from './stage-case-fixture.ts';
 import {ExplorerFieldsIndex} from '../src/tracker/explorer-fields.ts';
 import {within} from '../src/executor/droplet/deadline.ts';
 
-test('task.view and verify queue replies have p95 below one second during ten-branch churn in a 1650-item tracker', async t => {
+// A single consumer gets a fresh file-owned hub; no other case mutates its tips.
+const churnFixture = await trackerFileCase(async ({owner, root, step}) => {
+  const fixture = await step(() => tipChurnFixture(root, owner));
+  const hub = await step(() => projectHub(owner.resources, root, {}, {clock: new FakeClock(Date.now()), ...fixture}));
+  await step(() => fixture.refresh());
+  return {fixture, hub};
+});
+
+test('task.view and verify queue replies have p95 below one second during ten-branch churn in a 1650-item tracker', t => churnFixture.run(t, async t => {
   await fixtureNativeGuard(t);
-  const root = await tempProject(t);
-  const fixture = await tipChurnFixture(root);
-  const hub = await projectHub(t, root, {}, {clock: new FakeClock(Date.now()), ...fixture});
+  const {fixture, hub} = churnFixture.value;
   try {
     const ui = await connectUi(t, hub.discovery);
-    await fixture.refresh();
     const samples = {view: [] as number[], queue: [] as number[]};
     for (let round = 0; round < 40; round++) {
       fixture.move();
@@ -48,7 +54,7 @@ test('task.view and verify queue replies have p95 below one second during ten-br
       assert.ok(p95 < 1000, `${name} p95 ${p95.toFixed(3)} ms exceeds behaviour bound 1000 ms`);
     }
   } finally { await hub.dispose(); }
-});
+}));
 
 async function plannedStartup(t:test.TestContext, backlog=false, suppliedRoot?:string) {
   const root=suppliedRoot??await tempProject(t);

@@ -1,14 +1,15 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { TrackerIndex } from '../src/tracker/index-db.ts';
+import { seedTransaction } from './seed-transaction.ts';
+import { ownedDatabases } from './owned-tracker.ts';
 import type { Git } from '../src/tracker/verdict-git.ts';
 import type { TipSchedule } from '../src/tracker/freshness.ts';
 
 /** Synthetic only: fifty epic trees, 1,600 branches, and ten moving tips. */
-export async function tipChurnFixture(root: string) {
+export async function tipChurnFixture(root: string, owner: Parameters<typeof ownedDatabases>[0]) {
   await mkdir(join(root, '.cland/tasks'), {recursive: true});
   const dev = 'a'.repeat(40);
   let generation = 1;
@@ -17,46 +18,32 @@ export async function tipChurnFixture(root: string) {
   // Seed the public durable index before startup. This case measures tip refresh,
   // not 1,600 independent status migrations and cold per-item announcements.
   const db = join(root, '.cland/hub.db');
-  const connection = new DatabaseSync(db);
+  const connection = ownedDatabases(owner)(db);
   let index: TrackerIndex | undefined;
   try {
-    index = new TrackerIndex(db, ['release', 'epic', 'task', 'question', 'spec', 'map', 'category'], () => connection);
-    const exec = connection.exec, prepare = connection.prepare;
-    const statements = new Map<string, StatementSync>();
-    // Seed-only adapter joins public put() transactions to this one owner; no SQL
-    // rows or derived criteria/verdict values are copied from the index writer.
-    exec.call(connection, 'begin immediate');
-    connection.exec = sql => { if (sql !== 'begin immediate' && sql !== 'commit') exec.call(connection, sql); };
-    connection.prepare = sql => {
-      let statement = statements.get(sql);
-      if (!statement) { statement = prepare.call(connection, sql); statements.set(sql, statement); }
-      return statement;
-    };
+    const writer = index = new TrackerIndex(db, ['release', 'epic', 'task', 'question', 'spec', 'map', 'category'], () => connection);
     let writes: Promise<void>[] = [];
-    try {
-      for (let n = 1; n <= 1650; n++) {
-        const epic = n <= 50, id = `${epic ? 'E' : 'T'}-${n}`;
-        const item = parseItem(`---\nid: ${id}\nkind: ${epic ? 'epic' : 'task'}\ntitle: Synthetic ${n}\n` +
-          (epic ? '' : `status: backlog\nupdated: ${at}\nparent: E-${1 + (n - 51) % 50}\nbranch: t/fixture-${n - 51}\n`) +
-          `---\n## Summary\n\nSynthetic tracker oracle.\n\n## ${epic ? 'Definition of done' : 'Acceptance criteria'}\n- [ ] C1. Fixture criterion\n` +
-          (epic ? `  - verified: qa [qa] · run demo-${id} · ${at} · commit ${dev}\n` : ''));
-        if (epic) item.comments.push({author: 'qa', at, text: 'Synthetic demo receipt.',
-          verdict: {verdict: 'qa', result: 'clear', by: 'qa', run: `demo-${id}`, commit: dev}});
-        const file = `${id}-fixture.md`, text = serializeItem(item);
-        index.put(item, {file, hash: createHash('sha256').update(text).digest('hex'), source: 'hand', indexedAt: Date.parse(at)});
-        writes.push(writeFile(join(root, '.cland/tasks', file), text));
-        if (writes.length === 16) { await Promise.all(writes); writes = []; }
+    await seedTransaction(connection, async () => {
+      try {
+        for (let n = 1; n <= 1650; n++) {
+          const epic = n <= 50, id = `${epic ? 'E' : 'T'}-${n}`;
+          const item = parseItem(`---\nid: ${id}\nkind: ${epic ? 'epic' : 'task'}\ntitle: Synthetic ${n}\n` +
+            (epic ? '' : `status: backlog\nupdated: ${at}\nparent: E-${1 + (n - 51) % 50}\nbranch: t/fixture-${n - 51}\n`) +
+            `---\n## Summary\n\nSynthetic tracker oracle.\n\n## ${epic ? 'Definition of done' : 'Acceptance criteria'}\n- [ ] C1. Fixture criterion\n` +
+            (epic ? `  - verified: qa [qa] · run demo-${id} · ${at} · commit ${dev}\n` : ''));
+          if (epic) item.comments.push({author: 'qa', at, text: 'Synthetic demo receipt.',
+            verdict: {verdict: 'qa', result: 'clear', by: 'qa', run: `demo-${id}`, commit: dev}});
+          const file = `${id}-fixture.md`, text = serializeItem(item);
+          writer.put(item, {file, hash: createHash('sha256').update(text).digest('hex'), source: 'hand', indexedAt: Date.parse(at)});
+          writes.push(writeFile(join(root, '.cland/tasks', file), text));
+          if (writes.length === 16) { await Promise.all(writes); writes = []; }
+        }
+        await Promise.all(writes);
+      } finally {
+        // A rejected write still joins its other batch writers before root cleanup.
+        await Promise.allSettled(writes);
       }
-      await Promise.all(writes);
-      exec.call(connection, 'commit');
-    } catch (error) {
-      if (connection.isTransaction) exec.call(connection, 'rollback');
-      throw error;
-    } finally {
-      // A rejected write still joins its other batch writers before root cleanup.
-      await Promise.allSettled(writes);
-      connection.exec = exec; connection.prepare = prepare;
-    }
+    });
   } finally {
     // Also close when schema construction fails before the index is returned.
     if (index) index.close(); else connection.close();

@@ -65,14 +65,27 @@ the whole callback, joins original work, observes writer closure, then removes
 the root and restores the native guard.
 The existing 5,000-job work bound and 16-history equality oracle are unchanged.
 
-Coordinator decision 6aa3dd7b grants only the new unrelated-answer case a
-16-second C-216 duration allowance, added 2026-11-18 and expiring 2026-11-25.
-Run 6a6430c0 at d61c64aa6 (A-21412/A-21413) passed its assertions but failed the
-enforcing new-case duration gate at 10.381 seconds against 5 seconds; that round
-remains failed/partial. The allowance covers 1,500-file fixture setup, with
-about 1.5 times the Linux droplet sample as headroom. It changes neither the
-at-most-once count assertion nor the semantic controls, and grants no startup
-latency claim. Fixture setup optimization is separate follow-up work.
+T-1988 puts acquisition, initial warmup and the 1,500-row synthetic seed in the
+same positive file owner used by the churn fixtures. Writes are batched sixteen
+at a time and every writer joins before rollback or root cleanup. The seed
+rescan uses one owned transaction with reused prepared statements through the
+public index writer; driver methods are restored before observation. A fake
+watcher leaves indexing to that explicit rescan. The single consumer alone
+owns the branch counter, answer counter and tracker; other file cases use their
+own roots/state. The positive active-cover observation, branch-count transition,
+all-1,500-answer drain and both exact final assertions remain in the callback.
+After the original callback joins and resources positively close, restoration
+releases its guard before the other cases. Unknown/rejected closure retains it.
+File-process envelopes include the moved setup; named-case timings exclude it.
+The 16-second allowance stays removed; no baseline or runner policy is changed.
+The actual droplet sample must be below the separate five-second C1 acceptance
+bar even though this already-baselined identity's tier checks are report-only.
+The touched constructor uses `ownedTracker`: before native open it enrolls a
+required close with the stageCase owner. Captured SQLite connections have a
+fallback close when schema construction rejects before Tracker assignment.
+Successful acquisition transfers closure to Tracker, with a remaining-open
+connection refusing root/control disposal. The constructor-failure control is
+in tracker-summary.test.ts and uses this same acquisition helper.
 
 The startup-response variant moved to T-1987 by Coordinator decision after
 run 8c6a55b1 at d2ca5ba8b failed. A-21401 and A-21405 retain both failure classes:

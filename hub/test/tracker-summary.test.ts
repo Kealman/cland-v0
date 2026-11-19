@@ -17,8 +17,25 @@ import { watchFolder, SAFETY_POLL_MS } from '../src/watch.ts';
 import { TrackerIndex } from '../src/tracker/index-db.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
+import { trackerFileCase } from './tip-churn-file-fixture.ts';
 import { tipChurnFixture } from './tip-churn-fixture.ts';
+import { ownedTracker } from './owned-tracker.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { DatabaseSync } from 'node:sqlite';
+
 import { Freshness, type MovedBranches } from '../src/tracker/freshness.ts';
+
+// Cold seed/startup/warmup are file setup; only the moved-tip work is observed.
+const churnFixture = await trackerFileCase(async ({owner, root, step}) => {
+  const fixture = await step(() => tipChurnFixture(root, owner)), database = sqliteProbe();
+  const logs: Record<string, unknown>[] = [];
+  const tracker = ownedTracker(owner, {root, clock: new FakeClock(Date.now()), openDatabase: database.open,
+    ...fixture, log: entry => logs.push(entry), watch: () => ({close() {}})});
+  await step(() => tracker.start({deferReadyChecks: true}));
+  tracker.onChange(() => {});
+  await step(() => fixture.refresh());
+  return {fixture, database, logs, tracker};
+});
 
 test('tip invalidations identify moved and absent branches while dev and base changes retain shared invalidation', async t => {
   await fixtureNativeGuard(t);
@@ -119,18 +136,10 @@ test('a moved task tip makes only its own exact-tip criteria stale in summaries 
   } finally { await tracker.stop(); }
 });
 
-test('ten moving branches in a 1650-item tracker keep summaries and hydration proportional to moved branches', async t => {
+test('ten moving branches in a 1650-item tracker keep summaries and hydration proportional to moved branches', t => churnFixture.run(t, async t => {
   await fixtureNativeGuard(t);
-  const root = await tempProject(t), database = sqliteProbe();
-  const fixture = await tipChurnFixture(root);
-  const logs: Record<string, unknown>[] = [];
-  const tracker = new Tracker({ root, clock: new FakeClock(Date.now()), openDatabase: database.open,
-    ...fixture, log: entry => logs.push(entry), watch: () => ({ close() {} }),
-  });
+  const {fixture, database, logs, tracker} = churnFixture.value;
   try {
-    await tracker.start({deferReadyChecks: true});
-    tracker.onChange(() => {});
-    await fixture.refresh();
     const oracle = JSON.stringify(tracker.list());
     // Receipt timestamps are real per run; retain a stable cross-run oracle too.
     // The byte-equality assertion below still compares every original byte.
@@ -157,7 +166,7 @@ test('ten moving branches in a 1650-item tracker keep summaries and hydration pr
     assert.ok(work.summaries <= 100, `summary budget 10 per moved branch: ${work.summaries} > 100`);
     assert.ok(work.hydrated <= 400, `hydration budget 40 per moved branch: ${work.hydrated} > 400`);
   } finally { await tracker.stop(); }
-});
+}));
 
 test('tip moves do not hydrate unrelated tracker rows or announce unchanged answers', async t => {
   const root = await tempProject(t), database = sqliteProbe();
@@ -742,4 +751,166 @@ test('open startup pages split multibyte rows by encoded bytes and stable numeri
     assert.ok(pages>1);
     assert.deepEqual(ids,Array.from({length:12},(_,n)=>`T-${n+1}`));
   } finally { await tracker.stop(); }
+});
+
+// Drive the real registered teardown rather than an exists-only retention stand-in.
+function fileCleanupContext() {
+  const hooks: Array<() => unknown> = [];
+  const context = {name: 'controlled tracker file', after: (hook: () => unknown) => hooks.push(hook)} as unknown as test.TestContext;
+  return {context, async dispose() {
+    const failures: unknown[] = [];
+    for (const hook of hooks) try { await hook(); } catch (error) { failures.push(error); }
+    if (failures.length) throw new AggregateError(failures, 'controlled file cleanup rejected');
+  }};
+}
+
+test('file setup cancellation joins its late writer before root removal and native restoration', t => {
+  const supervisor = stageCase(t);
+  return supervisor.run(async () => {
+    const c = fileCleanupContext(), entered = Promise.withResolvers<string>(), release = Promise.withResolvers<void>();
+    const closing = Promise.withResolvers<void>();
+    let nested: ReturnType<typeof stageCase> | undefined, stopped = false, wrote = false;
+    supervisor.releaseOnClose(() => release.resolve());
+    supervisor.requireClose(async () => { release.resolve(); await nested?.close(); await nested?.restore(); });
+    const outerBoundary = supervisor.nativeBoundary();
+    const starting = trackerFileCase(async ({owner, root}) => {
+      nested = owner;
+      owner.releaseOnClose(() => closing.resolve());
+      owner.requireClose(async () => { assert.equal(wrote, true); stopped = true; });
+      entered.resolve(root);
+      await release.promise;
+      await writeFile(join(root, 'late-setup'), 'joined');
+      wrote = true;
+      return root;
+    }, c.context);
+    void starting.catch(() => {});
+    const root = await supervisor.wait('late setup entered', () => entered.promise);
+    const heldBoundary = nested!.nativeBoundary();
+    const disposing = c.dispose(); void disposing.catch(() => {});
+    await supervisor.wait('setup close admission fenced', () => closing.promise);
+    assert.equal((await files.stat(root)).isDirectory(), true, 'the actual removal guard retains the root');
+    assert.equal(nested!.nativeBoundary(), heldBoundary, 'the installed native control remains held');
+    assert.equal(stopped, false);
+    release.resolve();
+    await assert.rejects(starting, /fixture work admission closed/);
+    await supervisor.wait('late setup cleanup completes', () => disposing);
+    assert.equal(wrote, true);
+    assert.equal(stopped, true);
+    await assert.rejects(files.stat(root), {code: 'ENOENT'});
+    assert.equal(nested!.nativeBoundary(), outerBoundary);
+  });
+});
+
+test('file callback cancellation retains trace cleanup through its late finally and resource close', t => {
+  const supervisor = stageCase(t);
+  return supervisor.run(async () => {
+    const c = fileCleanupContext(), entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+    const closing = Promise.withResolvers<void>();
+    let nested: ReturnType<typeof stageCase> | undefined, trace = true, finished = false, stopped = false;
+    supervisor.releaseOnClose(() => release.resolve());
+    supervisor.requireClose(async () => { release.resolve(); await nested?.close(); await nested?.restore(); });
+    const f = await trackerFileCase(async ({owner, root}) => {
+      nested = owner;
+      owner.releaseOnClose(() => closing.resolve());
+      owner.requireClose(async () => { assert.equal(finished, true); stopped = true; });
+      return root;
+    }, c.context);
+    const heldBoundary = nested!.nativeBoundary();
+    const body = f.run(supervisor.fixtures, async owned => {
+      owned.after(() => { trace = false; });
+      entered.resolve();
+      try { await release.promise; await writeFile(join(f.value, 'late-callback'), 'joined'); }
+      finally { finished = true; }
+    });
+    void body.catch(() => {});
+    await supervisor.wait('callback observer armed', () => entered.promise);
+    const disposing = c.dispose(); void disposing.catch(() => {});
+    await supervisor.wait('callback close admission fenced', () => closing.promise);
+    assert.equal((await files.stat(f.value)).isDirectory(), true);
+    assert.equal(trace, true, 'trace/socket after-hooks cannot restore in a lost TestContext');
+    assert.equal(nested!.nativeBoundary(), heldBoundary);
+    assert.equal(stopped, false);
+    release.resolve();
+    await assert.rejects(body, /fixture work admission closed/);
+    await supervisor.wait('callback cleanup completes', () => disposing);
+    assert.equal(finished, true);
+    assert.equal(stopped, true);
+    assert.equal(trace, false);
+    await assert.rejects(files.stat(f.value), {code: 'ENOENT'});
+  });
+});
+
+test('rejected file resource close retains its actual root and installed controls until positive closure', t => {
+  const supervisor = stageCase(t);
+  return supervisor.run(async () => {
+    const c = fileCleanupContext(), seam = {active: true};
+    let nested: ReturnType<typeof stageCase> | undefined, refuse = true, closed = false;
+    supervisor.releaseOnClose(() => { refuse = false; });
+    supervisor.requireClose(async () => { refuse = false; await nested?.close(); await nested?.restore(); });
+    const outerBoundary = supervisor.nativeBoundary();
+    const f = await trackerFileCase(async ({owner, root}) => {
+      nested = owner;
+      owner.patch(seam, 'active', false);
+      owner.requireClose(async () => { if (refuse) throw new Error('controlled tracker close refusal'); closed = true; });
+      return root;
+    }, c.context);
+    await f.run(supervisor.fixtures, async () => {});
+    const heldBoundary = nested!.nativeBoundary();
+    await assert.rejects(c.dispose(), /controlled file cleanup rejected/);
+    await assert.rejects(nested!.restore(), /resource close unconfirmed/);
+    assert.equal((await files.stat(f.value)).isDirectory(), true, 'root retained through real rejected cleanup');
+    assert.equal(nested!.nativeBoundary(), heldBoundary, 'native guard retained separately from the root receipt');
+    assert.equal(seam.active, false, 'fixture seams remain installed');
+    assert.equal(closed, false);
+    refuse = false;
+    await nested!.close(); await nested!.restore();
+    assert.equal(closed, true);
+    await assert.rejects(files.stat(f.value), {code: 'ENOENT'});
+    assert.equal(seam.active, true);
+    assert.equal(nested!.nativeBoundary(), outerBoundary);
+  });
+});
+
+for (const rejectedClose of [false, true]) test(`rejecting tracker construction preserves the native failure with ${rejectedClose ? 'rejected then confirmed' : 'confirmed'} database closure`, t => {
+  const supervisor = stageCase(t);
+  return supervisor.run(async () => {
+    const c = fileCleanupContext();
+    let nested: ReturnType<typeof stageCase> | undefined, connection: DatabaseSync | undefined, root = '', closed = false;
+    let refuse = rejectedClose;
+    const failure = new Error('controlled tracker schema failure');
+    supervisor.releaseOnClose(() => { refuse = false; });
+    supervisor.requireClose(async () => {
+      refuse = false;
+      if (connection?.isOpen) DatabaseSync.prototype.close.call(connection);
+      await nested?.close(); await nested?.restore();
+    });
+    const outerBoundary = supervisor.nativeBoundary();
+    const starting = trackerFileCase(async ({owner, root: directory}) => {
+      nested = owner; root = directory;
+      ownedTracker(owner, {root, db: ':memory:', openDatabase: path => {
+        const db = connection = new DatabaseSync(path), close = db.close.bind(db), executeSql = db.exec.bind(db);
+        db.close = () => {
+          if (refuse) throw new Error('controlled database close refusal');
+          assert.equal(fs.statSync(root).isDirectory(), true); close(); closed = true;
+        };
+        db.exec = sql => { if (sql.includes('tracker_items')) throw failure; executeSql(sql); };
+        return db;
+      }});
+    }, c.context);
+    await assert.rejects(starting, error => error === failure);
+    assert.ok(connection);
+    if (rejectedClose) {
+      assert.equal(connection.isOpen, true);
+      assert.equal((await files.stat(root)).isDirectory(), true);
+      assert.notEqual(nested!.nativeBoundary(), outerBoundary);
+      assert.ok(failure.cause instanceof AggregateError, 'cleanup failure is secondary to the selected native error');
+      refuse = false;
+      await nested!.close(); await nested!.restore();
+    }
+    assert.equal(connection.isOpen, false, 'the captured native connection has a positive close receipt');
+    assert.equal(closed, true, 'native close ran while the guarded root still existed');
+    await assert.rejects(files.stat(root), {code: 'ENOENT'});
+    assert.equal(nested!.nativeBoundary(), outerBoundary);
+    await c.dispose();
+  });
 });

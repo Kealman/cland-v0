@@ -21,12 +21,39 @@ Tracker starts. Explicit backlog/updated fields retain the original migrated
 oracle without exercising 1,600 unrelated status migrations during setup. No live
 database is read or copied. The original oracle and work bounds stay unchanged.
 
-C-216 allowance for the exact ten-branch churn case is 8.5 seconds, owned by
-C-216, added 2026-11-18 and expiring 2026-11-25. Coordinator decisions
-090c77db and 27f858fb authorized it after the optimized assertion-passing 5.553-second Linux
-sample in run 28f039c4 (A-21397); that suite remains failed on its duration cap.
-The allowance covers fixture setup, not the 100-summary/400-hydration work bounds
-or C2's one-second reply behaviour bound, and changes no other test or tier.
+The file fixture uses one pre-acquisition `stageCase` sequence spanning root
+creation, seeding, tracker acquisition, warmup and the single churn callback.
+Worker admission keeps its native load-scaled timeout/outcome. Following its
+positive receipt, setup has a separate 15-second bound and the callback has the
+owner's five-second bound; expired observers retain their original work. Callback
+trace/socket after-hooks route to the file owner, and raw-context cancellation
+joins the callback before resource closure. The root-removal guard and control
+restoration require original-work joining and positive resource-close receipts.
+`ownedTracker` enrolls disposal before construction, captures opened connections
+before schema work, and closes them directly if construction never returns.
+On successful acquisition the Tracker owns their closure; retained open
+connections refuse fixture disposal. No shared constructor is changed.
+The seed writer uses the same pre-enrolled `ownedDatabases` close fence, so a
+failed seed/index close cannot leave an unowned open connection after the
+original seed sequence has joined. Ordinary seed cleanup still closes its
+index before Tracker acquisition; fallback disposal is checked by the file owner.
+
+Five fake-only controls exercise registered cleanup during held setup and a late
+callback/finally, rejected close retention with separate actual-root/native-guard
+and seam receipts, and an injected schema-construction failure with a positive
+native SQLite close before root removal. A refused constructor-fallback close
+keeps the original schema error selected, records cleanup as a secondary cause,
+and retains the root/guard until that same owner confirms closure. Held work is released by an outer
+owner on failure. These need no child process, real Git or socket. They cover
+the new item-local fixture lifetime, without migrating the file's other cases.
+
+The churn seed, tracker acquisition and initial warm refresh are file-level setup
+(T-1988). Only this case uses that root and mutable tip set. Register this setup
+before any tests so file cleanup cannot attach to an earlier test. The case
+retains its oracle, observer arming, moved-tip refresh and 100-summary/400-row
+bounds unchanged. File totals include seed/startup/warmup and ordered teardown;
+case timings exclude them. The setup allowance is removed. No live database is
+opened, and the native guard covers the complete file-owned fixture lifetime.
 
 The pre-change oracle for this synthetic case has timestamp-normalized SHA-256
 `022b27e1c78253fc0c96f0df78a3cf228227db51cb68ace680868503562bd745`.

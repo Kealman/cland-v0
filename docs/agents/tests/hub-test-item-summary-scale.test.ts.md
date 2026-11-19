@@ -14,14 +14,20 @@ For T-1646, criterion proof comes from reviewed-head droplet receipts.
 Coordinator-authorized local troubleshooting is report-only and requires the
 quiet-over notice.
 
-The exact C2 churn case has a 19-second setup-inclusive duration allowance, owner
-C-216, added 2026-11-18, expiring 2026-11-25. Coordinator decision 39891d33
-uses C1's roughly 1.4 droplet/local ratio (5.55/3.97 seconds) to project C2's
-8.917725-second local case at roughly 12.5 seconds remotely, then sets the cap to
-about 1.5 times that projection. This is not a droplet latency receipt; all 40
-reply samples and the one-second p95 assertions remain unchanged. The earlier
-droplet C2 attempt failed during config provenance lookup before any samples;
-the fake now accepts only that exact log request and returns unknown provenance.
+The churn root, seed, hub acquisition and initial warm refresh are file-level
+setup (T-1988). This case alone consumes that mutable fixture; the other startup
+cases have separate roots. The forty observed refresh/reply rounds, exact item
+identities and one-second p95 assertions remain inside the case unchanged.
+File totals include setup and teardown; case timings exclude setup. The
+19-second setup allowance is removed. Fake Git accepts the exact configuration
+provenance lookup and returns unknown provenance, with other logs refused.
+
+The same pre-acquisition file owner spans seed, projectHub startup, initial
+refresh and the original churn callback. projectHub registers partial-startup
+closure through the owner's resource context. Callback socket/trace hooks stay
+with that owner through cancellation; teardown joins original work, requires
+successful resource closure, then permits root removal and native-control
+restoration. Unknown or rejected closure retains these controls and the root.
 
 Startup explorer regressions use `item-summary-scale.test.ts` at T2: a thousand
 durable rows with a planned epic and retained verdicts count recompute batches.
