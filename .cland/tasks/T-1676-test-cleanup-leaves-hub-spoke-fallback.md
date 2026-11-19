@@ -2,8 +2,8 @@
 id: T-1676
 kind: task
 title: Test cleanup leaves hub/spoke fallback endpoints, Codex placeholder cx-*.sock files and fixture-owner receipts in TMPDIR
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1645
 branch: t/T-1676-test-cleanup-leaves-hub-spoke-fallback
 created: 2026-11-04T14:47:20.399Z
-updated: 2026-11-19T08:21:08.072Z
+updated: 2026-11-19T10:17:47.669Z
+closed: 2026-11-19T10:17:47.669Z
 ---
 
 ## Summary
@@ -34,9 +35,11 @@ Each fixture removes the fallback endpoints, placeholder files and owner receipt
 
 - [x] C1. After each named file, TMPDIR holds no fallback endpoint, placeholder socket file or owner receipt that the file created (test).
   - done: impl-1676 · 2026-11-19T07:54:41.342Z
+  - verified: rev-36 [reviewer] · run rev-36-1676-final-2 · 2026-11-19T09:30:37.723Z · commit a00443f4ddd098cce660f1382a69dfb4a6e22c0d
 - [x] C2. The same holds when a test in those files fails (test).
   - done: impl-1676 · 2026-11-19T05:09:08.536Z
   - verified: rev-36 [reviewer] · run rev-36-1676-final-1 · 2026-11-19T05:50:44.357Z · commit 925ffa2ea5a467d1a9e572d65cd323fb998bd43d
+  - verified: rev-36 [reviewer] · run rev-36-1676-final-2 · 2026-11-19T09:30:37.723Z · commit a00443f4ddd098cce660f1382a69dfb4a6e22c0d
 
 ## Comments
 
@@ -244,3 +247,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Narrow source delta CLEAR at clean pusheda00443f4ddd098cce660f1382a69dfb4a6e22c0d/treef1584bab6f8c672a2ad692465eedee8e5e3ec035, sole parent863db7822; A-21675. Exactly closure.json plus appended frozenArtifactConsumers entry changed.48closure paths/order unchanged; sole hashreplacement shared/fake-layout.ts e548769f…→1b9a81a3… independently matches current file bytes and authorized touched-file-only correction. Canonical generator exit0 retained inA-21673; no Reviewer generator/run. Previous normalized289-row/111listing census and every existing key unchanged;A-21674 matches committed JSON. Added actual producer/source-byte agentBundle/deep-equal T1/T3restart/delivered verifier/whole-runtime/historical QA consumer dispositions. No runtime/assertion/schema or dev merge changes. A-21673 exact committed-head serial receipts:host-agent-closure T1 5/5pass/exit0 including exact equality and boundary controls;full root typecheck0;full lint0/zero refusals,129report-only findings62files. LocalmacOSarm64/Node24.21,no browser;unknown independent per-check trees/native close and whole static wall times stay unavailable. No findings. Source5/6 basis remains for unchanged code. Failed942e5084/A-21671 staysfailed/partial,T2/T3/Webunexecuted;old e4 native91/91 remains separate. C1/C2 done,not currentlyverified;earlier C2 verification stale. Hold released for Coordinator's new exact-reviewed-head verify-all, replacing normalverify. No duplicate Implementer submission/extra native rerun requested. Final same-head named producer/failure/census and complete-phase evidence pending.
+
+### rev-36 · 2026-11-19T09:30:37.723Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1676-final-2
+commit: a00443f4ddd098cce660f1382a69dfb4a6e22c0d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head CLEAR at unchanged cleana00443f4ddd098cce660f1382a69dfb4a6e22c0d, source7/A-21675 current. A-21688 audits Coordinator verify-all47aa7cab/A-21687 finished/passed, ownerall exit0. C1 six native producer exact final censuses pass37930/38296/38657/43320/44575/49003, each also5distinct loadpasses; full files pass. Spoke/daemon censuses, all4URL-unsafe welcomes and parent-retention control pass. Native Gitstatus/add/commit/clone/copy/non-fixture/nested-ignore/no-tracked-deletion control39990+5passes; prior failed daemon/executor/release consumers all pass. Frozen closure equality2668 and T3agentrestart complete. C2 native success40018/failure40034 censuses eachbase+5, retaining expected childcode1/signalnull and separate four-path absence assertions; rejected-close40007/orphan40045 each+5, incomplete-drain/normal-killed-listener/cold-child and both recovery controls pass. Required T2cancellation/foreignlink/failedowner/placeholder controlsbase+5.9093base outcomes=9081pass+12skip,0fail/cancel/todo; passes8854top+227nested.330separate loadpasses.994file envelopes pass exactly pinned231T1/436T2/272T3/55Web;0missing/extra/unfinished/duplicate. T0/T1/T2/fullT3/Web exit0;T4unexecuted.12named prerequisite skips:5sandbox-exec,1caffeinate,2realOpenCode,4nestedzsh;not countedpass/no new macOS/realbinary proof. Provenance52503 exacthead/runtime treefe78517490a2156c1d3faf712b953841b127986a,cachednull,Linuxx64 6.8.0-147-generic Node24.21/Nv0.12.5,droplet c8ams3,actual HeadlessShell1248/ChromeTesting156.0.8078.4.3847334ms/$0.2671759722222222 executor accounting;106.202s T0hoststep only.129lint62files,budget/ratchet/allowance notices report-only. Earlier942e5084 remainsfailed/partial,T2/T3/Webunexecuted there; integrated/localred and925/e4greens retain own epochs. No Reviewer runtime/edit,new sourcefinding or whole-macOS-cover claim. C1/C2 verified;hold released.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-19T10:17:47.669Z
+
+Merged 1ae83dc7bc4a56ce2a2d041669bf76476bb586e3 onto dev.

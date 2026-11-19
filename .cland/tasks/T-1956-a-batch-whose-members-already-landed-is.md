@@ -3,7 +3,7 @@ id: T-1956
 kind: task
 title: A batch whose members already landed is reported "blocked" when a post-landing ps check times out, and the notice tells the Coordinator to cancel and re-enqueue the merged members
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1647
 branch: t/T-1956-a-batch-whose-members-already-landed-is
 created: 2026-11-18T02:51:26.880Z
-updated: 2026-11-19T08:30:05.154Z
+updated: 2026-11-19T11:38:40.750Z
 ---
 
 ## Summary
@@ -28,11 +28,11 @@ A process-table failure after a member has landed never marks the batch blocked 
 ## Acceptance criteria
 
 - [x] C1. With a fake ps that times out after every member has landed, the batch records landed outcomes, no blocked notice is posted, and the follow-up diagnostic names the repair (test).
-  - done: impl-1956 · 2026-11-19T07:58:30.624Z
-  - verified: rev-35 [reviewer] · run rev-35-1956-evidence-1 · 2026-11-19T08:30:04.830Z · commit 8c9379698bd527c26b23952d185947845ced3d26
+  - done: impl-1956 · 2026-11-19T11:36:20.354Z
 - [x] C2. With the same ps timeout before landing, the batch is still held as blocked with its retained heads (test).
-  - done: impl-1956 · 2026-11-19T06:31:41.001Z
   - verified: rev-35 [reviewer] · run rev-35-1956-evidence-1 · 2026-11-19T08:30:04.831Z · commit 8c9379698bd527c26b23952d185947845ced3d26
+  - verified: rev-36 [reviewer] · run rev-36-1956-final-1 · 2026-11-19T09:36:25.092Z · commit e4b8c31e5a055211fc2af63533d1bbc076c93df4
+  - done: impl-1956 · 2026-11-19T11:36:20.495Z
 
 ## Comments
 
@@ -136,3 +136,71 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head CLEAR at clean8c9379698bd527c26b23952d185947845ced3d26/Git tree60a76fc1; source4 A-21667 current. A-21677 audits bc99f3c2/A-21676 beyond exit0. C1 two post-landing cases pass ordinary0.120179037/0.154154452s plus5/5 each, retaining landed/null-active/guarded-root/repair/no-blocked facts, next-batch progress and positive cleanup/nonrepetition. C2 pre-landing case0.104899860s+5/5 preserves blocked pinned heads/recovery. All12owned generated T1/T2 regression identities base+5/5; complete index6942pass/723file envelopes,0nonpass/unfinished. Separate270load tests+270files cover54identities,60owned+210site, not added toordinarytotal. T0/allT1/allfallbackT2 inclNeovim44files385tests/Web complete. T3 changed-duration only merge-batch-dependencies2/2 once,0.284003811/0.267051603s; addedwall1.247s excludesmachinewait, no fullT3/repetition claim. RemainingT3batchdeferred,T4unexecuted. Uncached snapshot706d79d0 differs fromGit tree; Linuxx64/Node24.21,nvim0.12.5,c8ams3,1395s/$0.0969; actualHeadlessShell1248/ChromeTesting156. Generalduration/lintadvisoriesreport-only, includingmerge-batches19.108s>advisory10s and129lintfindings62files. Earlierlocal/red/precommitnativeepochs remain separately labelled; no retroactivefixedheadclaim. C1/C2verified,findings[]. Hold released; no further item runtime/source change requested. Reviewer static log/source/index inspection only.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-36 · 2026-11-19T09:03:25.583Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1956-delta-1
+commit: e4b8c31e5a055211fc2af63533d1bbc076c93df4
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta SOURCE CLEAR at clean pushede4b8c31e5a055211fc2af63533d1bbc076c93df4/tree37d406de84dad99d5d6ec41133e17f233019a915; A-21684. Exact parents reviewed8c9379698 anddev330472a52; Coordinatora7067a19/822ad74d authorizes one merge. Compared resolutions against both parents: injected CLIout preserves cleanup/overflow/JSON rendering; dispatch retains runReferenced/retainsSuiteRun plus cleanup snapshots and dev retention startup; merge-queue retains sealed component CLI/defaultprojectHub/stageTree and dispose capture. Shared exact two-case table selects the existing whole-case positive-close native guard, with consumed membership assertions; all other cases keep file guard. No loss of callback/custom/sync/lower-spawn positive controls or previous root/DB/guard retention assertions. Per-file guidance agrees. Own merge-batches/candidate-ownership/native dependency file unchanged. Prior rev35 source4/evidence remains basis for unchanged T-1956 behavior, not new-head runtime proof. A-21682 retains fixed-head283selected passes/exit0 under standard tripwire enforce; manifest confirms8T1+11T2, not whole tiers. Fulltypecheck/lint exit0 summaries,zero refusals/129report-only findings62files; retained narrative lacks fullraw/native-close/per-checktree/case census facts. Independent source read confirms no nativeIdentityProjectHub in440normalizedT2files. Previous bc99f3c2/A-21676 applies only8c9379698; configured/Web/T3/T4 not rerun at this merge head. No findings/Reviewer runtime/edits. C1/C2done,earlier verification stale; neither verified here. Hold released; request Coordinator's new exact-head verification window and then same-head evidence settlement.
+
+### rev-36 · 2026-11-19T09:36:25.092Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1956-final-1
+commit: e4b8c31e5a055211fc2af63533d1bbc076c93df4
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head CLEAR at unchanged clean/pushede4b8c31e5a055211fc2af63533d1bbc076c93df4; source deltaA-21684 current. A-21692 auditsc4cee9d7/A-21690 finished/passed,autoexit0. C1 post-landing generated cases finish/pass4619/4628,timing4620/4629,0.124045347/0.175057769s plus5distinct loadpasses each; retain all landed/null-active/guarded-root/original-cause/repair/no-blocked,next-batch,reopen/backoff/once-only-positive-cleanup assertions. C2 pre-landing case4679/timing4680,0.096034757s+5/5, retains pinned heads,blocked ps cause,recovery advice and no landings. All12owned regressions base+5; two merge-queue projection/constructor cases23188/23192+5 each preserve exact guard delegation and positive disposal/database/root/guard assertions after merged seams.6963basepass=6818top+145nested,60separateloadpasses,0nonpass/unfinished/duplicate.729base file envelopes pass232T1/440T2/1selectedT3/1mappedT4/55Web; complete T1/T2/Web index matches. T0/T1/T2/selectedT3/mappedT4/Web exit0. Native dependency/removal T3 two cases36087/36092 pass once,addedwall1.266s excludingmachinewait; T4retention-scale two cases36130/36136 pass once,57.315436132/0.974553943s,addedwall59.591s excludingmachinewait,T4repetitionsskipped. RemainingT3batchdeferred/otherT4unexecuted. Provenance38753 exacthead/runtime tree6c2b1de82c4f9d16df570f5a222e2963667d0f95,cachednull,Linuxx64 6.8.0-147-generic Node24.21/Nv0.12.5,c8nyc1,actual HeadlessShell1248/ChromeTesting156.0.8078.4.1461237ms/$0.10147479166666666 executoraccounting;106.469s T0hoststep.129lint62files,budgets/ratchet/T4overage report-only,no timing speedup claim. Priorbc99f3c2 remains bound to8c9379698;newrun supplies currentproof. No findings,Reviewer runtime/edits or whole-macOS/fullT3T4 claim. C1/C2verified;holdreleased.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1956 · 2026-11-19T11:03:10.602Z
+
+Missed-consumer correction in progress after attributed batch 0aeef731 failure: durations.test.ts's legacy-worktree setup produces an unmarked linked candidate consumed by DevT3Probes.checkout/remove → removeMergeBatch. Previous 'legacy refusal unaffected' disposition was incorrect for upgrade progress. Current production creates independent clones; persisted old linked roots must remain refused/preserved while a fresh clone completes the probe (Coordinator 99ec55a2). Consumers: default DevT3Probes repository in dispatch/daemon, probe meta checkpoint/restart, fake repositories in dev-t3-search/component and suite-persistence tests, native dependencies test, durations historical setup; no CLI/web wire shape changes. New pure relocation checkpoint regression was shown red (actual old cwd vs expected replacement cwd), then green after persisting the actual candidate before worker admission. Native upgrade/ownership controls pending slot.
+
+### impl-1956 · 2026-11-19T11:13:46.940Z
+
+Correction committed/pushed at 3539ad50a641eab63a4ca62b1b4afee348faab29 (tree 89d8e9b808899de3252c6307304a0970775800bd), parent e4b8c31e5, no dev merge. Native red controls reproduced checkout and already-completed cleanup refusal. Default DevT3Probes now catches only CandidateOwnershipUnavailable (typed code ownership-unavailable), records cwd/head/tree/reason/replacement in direct-key existing meta, preserves unmarked roots, and proceeds through a deterministic standalone clone or already-collected receipt. Changed ownership still refuses; no removal adoption. Actual checkout path is saved before Suites admission. Fixture legacy producer uses checkoutMergeBatch; its node_modules ignore reflects unchanged pre-item dependency-link behavior. Additional consumer: existing admitted legacy jobs skip checkout and reach repository.remove after restart (Coordinator d8f27764 scope). Native full durations 25/25 and dependencies 2/2 passed on local Darwin arm64/Node24.21 during labeled precommit epochs; separate relocation T1 red→green and reachable 174/174 pass, full fixed-head lint/typecheck/batch follow. No new verify claim.
+
+### rev-36 · 2026-11-19T11:21:53.625Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1956-upgrade-source-1
+commit: 3539ad50a641eab63a4ca62b1b4afee348faab29
+scope: full
+findings: [{"severity":"medium","text":"After probe collects/validates the completed worker receipt/verdict(:140–145), the missing-ownership cleanup catch directly invokes #preserveLegacy/store.setMeta(:100–103). A diagnostic write throw escapes remove/probe and prevents the selected ProbeReceipt from returning. Durable Suites evidence for a later retry does not contain this ancillary failure. Implementer0822b289 confirms no preservation boundary; completed-legacy control covers successful persistence only. Preserve the completed receipt/root with bounded secondary persistence diagnostics and failure-path proof, without weakening required pre-admission durable writes or changed-ownership refusal (rule39/Coordinatord8f27764).","file":"hub/src/hub/dev-t3-probe.ts","line":93}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source NOT CLEAR at3539ad50a641eab63a4ca62b1b4afee348faab29/tree89d8e9b808899de3252c6307304a0970775800bd, parente4b8c31e5, no dev merge; A-21745. Full Standards/Spec pass of changed upgrade design, unchanged batch source/evidence retain prior basis. One medium finding shared across axes, no high/low. Typed missing-authority classification, deterministic retained-root/separate clone, actual-path checkpoint before Suites admission, owned fixture producer and suiteCase/native lifecycle controls otherwise reviewed. Changed ownership still refuses and no deletion-time adoption is introduced. Coordinatord8f27764 requires preserving completed legacy result, which the diagnostic-write failure path does not meet; the pre-admission failure behavior must stay deliberate. A-21743 retains original failed0aeef731/A-21730 and824e6ee4, separate red/green epochs, dependencies2/2 before completed-worker fix, durations25/25 precommit after it, missing invocation-tree/native facts unknown. Fixed-head fulltypecheck/lint0 (129report-only/zero refusals), selected2T1+2T2 174/174 with enforced tripwire are narrower receipts; no new configured/full-tier/Web/T4 proof. Priorc4cee9d7 is parent-head evidence only. C1failed; C2done unverified at newhead; nothingverified. Hold released for bounded outcome-preservation correction then fresh immutable-head source review before configured verification. No Reviewer edits/tests/probes/scanners/generators/provider calls.
+
+Criteria: C1 failed (The authorized completed-legacy path still loses its selected ProbeReceipt return when ancillary preservation-diagnostic persistence throws.).
+
+### impl-1956 · 2026-11-19T11:29:32.611Z
+
+A-21745 correction: preservation writer now emits a structured bounded persistence-failure line through the injected hub LogFn and throws a private typed receipt. Before admission that remains fatal to preparation. After a collected/validated worker result, only this typed ancillary failure is contained; the original result/run/artifact remain selected and bounded secondary context travels in the existing optional ProbeReceipt.reason. DevT3Search already persists that field; dev-t3-report now renders it. A subsequent same-job call can persist the dedicated root diagnostic without another worker. Original admission failures remain primary if their ancillary cleanup diagnostic fails. Changed ownership continues to refuse. Consumer additions: dispatch constructor log injection; shared cleanupError export reused by batch and probe (no copied byte policy); ProbeReceipt reason readers in DevT3Search/probeEvidence/reportDevT3Search and their tests, suite-soak reporter scenarios. Old reason-less receipts keep previous rendering; no new wire field or CLI/help text. Native fault reproduced red before fix, then green and full durations26/26 at local Darwin/Node24.21 in precommit epoch; intermediate unsupported TS parameter-property attempt separately retained. Fixed-head checks follow.
+
+### rev-36 · 2026-11-19T11:38:40.750Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1956-upgrade-source-2
+commit: 40724f62627aff2969f0a85f03ec981793f0fd22
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards/Spec SOURCE CLEAR at40724f62627aff2969f0a85f03ec981793f0fd22/treed6685819647b49397253cf303d00bdd16fb25d7a, parent3539ad50a, no dev merge; A-21755. M1 resolved: private producing persistence-failure receipt is contained only after collected/identity-validated completion, preserves result/run/artifact and bounded secondary reason, with nonthrowing structured LogFn observer. Search checkpoint/report retain existing reason; old reason-less rendering unchanged. Required pre-admission diagnostic/candidate writes and changed-ownership refusals remain fatal, no deletion authority adoption. Existing encoded-byte cleanupError policy exported/reused unchanged; dispatch log injection and consumer/report/docs migration reviewed. Guarded T1 checkpoint/report and owned T3 native fault/root/diagnostic-retry controls retain assertions and no extra worker. A-21753 fixed-head fulltypecheck/lint0 (129report-only/zero refusals), selected246/246 with enforced tripwire; pinned manifest confirms4T1+2T2. Native red and unsupported-TS intermediate remainfailed; focused1/1/full durations26/26 are precommit localDarwin/Node24.21 source/test epochs, missing independent tree/native facts unknown, dependencies2/2 earlier. A-21752 corrects earlier174 batch to3T1+1T2. Old failed0aeef731/824e6ee4 retained, parentc4cee9d7 not current-head proof. No configured/full-tier/Web/T4 pass at407yet; source review grants no criterion verification. C1/C2 remain run-dependent unverified/stale. Findings[]; hold released. Implementer may obtain Coordinator window for exact-head configured verification; final settlement requires its named receipts. Reviewer source/log/metadata inspection only, no edits/runtime/scans/generators/provider/browser.

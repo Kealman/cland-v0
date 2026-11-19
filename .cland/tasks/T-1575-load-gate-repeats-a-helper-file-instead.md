@@ -2,8 +2,8 @@
 id: T-1575
 kind: task
 title: Load gate repeats a helper file instead of the test file that registered a shared contract case
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1648
 branch: t/T-1575-load-gate-repeats-a-helper-file-instead
 created: 2026-11-01T00:09:14.452Z
-updated: 2026-11-19T08:04:36.453Z
+updated: 2026-11-19T09:28:03.276Z
+closed: 2026-11-19T09:28:03.276Z
 ---
 
 ## Summary
@@ -126,3 +127,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence CLEAR at unchanged clean/pushed396ad2dccc64f9ea139362b582332a52761e16e5; A-21670 (corrects A-21669 structured timing references to37112/37117). Run8bc534e9-e540-4195-8012-5de5e9036e6a/A-21668 finished/passed, auto exit0. C1/C2 native generated wrapper case has finish/pass37111 and timing/pass37112,2.412002301s; source assertions require wrapper load5/5, one ordinary timing, wrapper T1 report-only budget/tier lines, no helper attribution and five retained progress completions. C3 exact unchanged direct-registration callback matches original808 base byte-for-byte and passes37116/37117,2.220866946s, retaining expected planted flaky inner exit1 plus stable5/5/journal/overlap assertions. Complete T3 durations-runner20/20; one outer base execution, no outer repetitions. Both new T1 reporter cases base+five distinct load passes. Source3 remains current; no new source finding. Structured audit6950basepass=6805top+145nested,220separate loadpasses;723base file envelopes pass231T1/436T2/1selectedT3/55Web, no duplicate finish IDs or fails/cancels/skips. T0/T1/T2/changedT3/Web exit0; remainingT3 batch-deferred,T4 unexecuted. Provenance39810 exacthead/runtime tree63cdc5936a9dec4c7bcfe726c998657109b2be2b,cachednull,Linuxx64 6.8.0-147-generic Node24.21/Nv0.12.5,droplet c8ams3,actual HeadlessShell1248/ChromeTesting156.0.8078.4. Lifetime1357107ms/$0.09424354166666667 machine accounting;127.793s is T0host step only.129lint62files,budget/tier/ratchet/allowance suggestions report-only. Earlier0c7a3e63/A-21648 stays failed/partial at6ef and is not retroactively green. No Reviewer runtime/edits or new macOS native-cover claim. C1,C2,C3 verified; hold released.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-19T09:28:03.276Z
+
+Merged 8431152db4252c852896053dcff283c439248590 onto dev.

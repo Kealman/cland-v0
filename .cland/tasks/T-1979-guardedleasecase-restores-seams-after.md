@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T13:25:29.069Z
-updated: 2026-11-19T03:20:58.510Z
+updated: 2026-11-19T10:07:31.375Z
 ---
 
 ## Summary
@@ -38,3 +38,7 @@ Confirmed again by impl-1957 during T-1957 (A-21490): the generic `guardedLeaseC
 ### coord · 2026-11-19T03:20:58.510Z
 
 Second local opt-in: T-1857 adds a successful-cleanup fence limited to its new case, using the same names as T-1957's seam (`deferRestore`, `canRestore`, `releaseSeams`). This item should fold both T-1957's and T-1857's opt-ins into the shared `guardedLeaseCase` default and migrate the legacy callers.
+
+### coord · 2026-11-19T10:07:31.374Z
+
+Third opt-in success fence: T-1933 adds one in process-cleanup for its newly migrated guards, leaving the legacy default unchanged. That's alongside T-1957's and T-1857's fences in guardedLeaseCase. This item should consolidate all three into the shared default.

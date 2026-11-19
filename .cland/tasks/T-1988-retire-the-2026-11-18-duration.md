@@ -2,8 +2,8 @@
 id: T-1988
 kind: task
 title: Retire the 2026-11-18 duration allowances for T-1646 and T-1984's synthetic-tracker cases by making their fixture setup cheap, before they expire on 2026-11-25
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1641
 branch: t/T-1988-retire-the-2026-11-18-duration
 created: 2026-11-18T20:41:33.453Z
-updated: 2026-11-19T05:12:44.662Z
+updated: 2026-11-19T11:50:26.476Z
+closed: 2026-11-19T11:50:26.476Z
 ---
 
 ## Summary
@@ -36,11 +37,14 @@ Build these synthetic trackers cheaply: one owned transaction with reused prepar
 - [x] C1. Each of the three cases runs under its normal duration budget on a droplet verify, with its assertions unchanged (evidence).
   - verified: rev-35 [reviewer] · run rev-35-1988-evidence-2 · 2026-11-19T05:10:30.729Z · commit b6771c097dc88c9e5255d54c8c50e8d36f87ba89
   - done: impl-1988 · 2026-11-19T05:11:16.698Z
+  - verified: rev-35 [reviewer] · run rev-35-1988-evidence-3 · 2026-11-19T09:34:41.440Z · commit 6caa89ac80d237de897e320fd91c06c6bf18f39d
 - [x] C2. The three allowances are removed from `hub/test/durations.json` before 2026-11-25 (test: the duration lint passes without them).
   - done: impl-1988 · 2026-11-19T02:50:18.550Z
   - verified: rev-35 [reviewer] · run rev-35-1988-source-2 · 2026-11-19T03:37:27.199Z · commit 3eebc59cbb1275fa81855df6f58b0c83074915ae
   - verified: rev-35 [reviewer] · run rev-35-1988-source-3 · 2026-11-19T04:36:34.612Z · commit b6771c097dc88c9e5255d54c8c50e8d36f87ba89
   - verified: rev-35 [reviewer] · run rev-35-1988-evidence-2 · 2026-11-19T05:10:30.729Z · commit b6771c097dc88c9e5255d54c8c50e8d36f87ba89
+  - verified: rev-35 [reviewer] · run rev-35-1988-delta-1 · 2026-11-19T09:03:03.603Z · commit 6caa89ac80d237de897e320fd91c06c6bf18f39d
+  - verified: rev-35 [reviewer] · run rev-35-1988-evidence-3 · 2026-11-19T09:34:41.440Z · commit 6caa89ac80d237de897e320fd91c06c6bf18f39d
 
 ## Comments
 
@@ -152,3 +156,45 @@ Criteria: C1 verified, C2 verified.
 Ready-report facts at frozen b6771c097dc88c9e5255d54c8c50e8d36f87ba89 (claim retained): same-head run0fe63530-a2c2-4635-81cf-f7ef2919f6c3/A-21586 is uncached green6904/6904, no failed/cancelled/skipped cases. C1's exact ordinary samples: tracker0.427565181s (A-21586:11122), replies1.011974788s(:22430), stage3.204980086s(:29230), all<5s. Against report-only tier budgets: tracker<T1.5s, replies<T2 2s, stage>T2 2s advisory. Stage's3.204980086s is the new number for the Coordinator's later baseline refresh; this item changes no baseline. Reviewer final rev-35-1988-evidence-2/A-21587 verifies C1/C2 with no findings. C1 done mark now added; both criteria have checked+done marks/current verification. Source/experiments remain fixed.
 Whole-file ordinary type:file disclosure (not summed-case budgets, no controlled speedup claim): historical pre-item tracker11.678078290s/item-scale32.563211702s in A-21424; stage16.180096416s in A-21412 (that overall run remains failed). Immediate parent A-21558:11.434751460s/31.604801881s/12.704881430s. Current A-21586:11.603402486s(:11249)/31.799270366s(:22643)/10.549993705s(:29335). Moved setup remains in file-process envelopes. Parent2a7dc921 remains configured green with C1's6.866027859s timing miss; not relabelled failed or borrowed as new C1 proof.
 Recorded facts beyond exit0:6904ordinary test+721file finishes,235load test+235file finishes, no bad or unmatched start; each of5owner regressions has ordinary+5/5load passes. Target3cases have ordinary receipts; no target load claim. Original tracker oracle retained,30summaries/80hydrated; reply40+40samples p9542.689/42.456ms each<1000ms. T0/T1/all fallbackT2/Web complete; T3 merge-batch deferred, T4 unexecuted. Executor droplet c-8ams3/Linuxx64 6.8.0-147-generic, Node24.21/nvim0.12.5; isolated HeadlessShell1248/Chrome156.0.8078.4; lifetime1602s/cost$0.1112. Delivery snapshot6e9a9a97a7e8c90b2d73c2be815f3977dcb6af6a differs from Git tree2a5093ab as expected. General lint/tier/skip-reason advisories remain report-only; skip reasons missing0. Final review artifact A-21587 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21587-t-1988-final-evidence-clear-all-three-droplet-cases-under-five-seconds.md retains complete scopes.
+
+### impl-1988 · 2026-11-19T08:59:21.372Z
+
+Coordinator-authorized single dev merge is committed/pushed at 6caa89ac80d237de897e320fd91c06c6bf18f39d, tree15e0fc83, parents b6771c09 + fetched dev439951f2 (includes T-1952/T-1957). Sole manifest conflict resolves exactly to dev minus our three allowances, preserving all175 other dev objects, including20s/111s/113s entries; no baseline/tier/budget changes by this resolution. Expected11 paths differ from fetched dev;146 incoming paths fully inventoried in A-21681 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21681-t-1988-authorized-dev-merge-resolution-and-local-checks.md). Auto-merged item-summary-scale preserves all dev startup observers; tracker-summary only inherits callback block syntax. Other own helpers/stage bytes unchanged. Exact-tree local Darwin arm64/Node24.21 checks: full typecheck exit0; duration/manifest T1 batch53/53; C1 standalones .298843/.781030/.254486s with enclosing Node durations3.746522/11.766327/1.543627s; full item-summary-scale4/4 (10.611055s), tracker-summary28/28 (4.019418s); full lint exit0/zero refusals/129 report-only findings, closed-item wording0; actual shipped test:tiers exit0. Loads and literal behavioral facts in A-21681. Earlier T1 invocation lost final receipt and remains incomplete; separate retry53/53 retained. Previous A-21586/A-21587 all-three-under5 droplet evidence remains b677-only, prior6.866s stage miss retained; no configured run yet at6caa. Both done marks retained; requesting narrow resolution review, then Coordinator window.
+
+### rev-35 · 2026-11-19T09:03:03.604Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1988-delta-1
+commit: 6caa89ac80d237de897e320fd91c06c6bf18f39d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source CLEAR at clean6caa89ac80d237de897e320fd91c06c6bf18f39d/tree15e0fc83, parents reviewedb6771c09+pinneddev439951f2. Primary045b8978 explicitly authorizes this single merge/resolution. A-21683 independently rejects duplicate JSON keys and deep-compares resolved manifest to dev minus exactly3targetallowances:178→175, no other object/source/budget/file/case-baseline changes; T1952 20s/T1957 111s+113s preserved. Exactly11own paths/146inherited; seven own helper/stage/guide files byte-identical b677. Complete scale startup source and guide tail byte-equal dev; own churn seed relocation intact. Tracker only inherits tipsMoved block-return syntax, oracle/work/latency/stage assertions unchanged. Standards/Spec delta clear,findings[]. A-21681 exact-tree local fullcompiler/lint0,53/53T1 and actual shipped test:tiers0 support C2; earlier lost invocation stays incomplete. Local C1 standalones/full-file checks are selected Darwinarm64/Node24.21 observations, not droplet proof or configured file envelopes. OldA21586/A21587 under5 green and A21558 green-but6.866smiss retain prior epochs. C2verified; C1done/current-headunverified pending all3same-head droplet samples<5 plus whole-file disclosures; report-only tier budgets/known baseline are not an enforcing5runner gate. Hold released; request Coordinator mode-free window at frozen head. Reviewer static Git/JSON/source/evidence only, no runtime/probe/edit.
+
+Criteria: C2 verified.
+
+### impl-1988 · 2026-11-19T09:33:12.685Z
+
+New-head droplet evidence retained: run2a0cffad-ff84-4dd4-a45f-6e9907ba9e95 / A-21689 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21689-suite-2a0cffad-ff84-4dd4-a45f-6e9907ba9e95-auto-at-6caa89a.log), head6caa89ac80d237de897e320fd91c06c6bf18f39d, runtime snapshot tree738ae78703ddc31399e32d3aac0f8840d79a1523 (Git source tree15e0fc83). Actual ordinary target receipts all pass: tracker0.338906800s (A-21689:9666/9667), reply0.809106806s (:20936/20937), stage0.769754145s (:27792/27793), each strictly<5; each also below its respective report-only T1 .5s/T2 2s advisory. Ordinary whole-file type:file envelopes, including file setup/cleanup: tracker8.028238744s (:9793), replies18.536096438s (:20950), stage7.828358384s (:27914). Original tracker oracle remains022b27e1c78253fc0c96f0df78a3cf228227db51cb68ace680868503562bd745;1650items/10moves/20summaries/80hydrated/no recomputed unrelatedids (:9669). All40 view+40queue replies observed; p95 26.739/26.706ms below unchanged1000ms (:21034/:21035). Streamed progress audit:6957ordinary tests+730ordinary files pass;25load-gate tests+25load files separately pass;0nonpass and0unmatchedstarts. Each of five own cleanup/constructor controls passes once ordinary plus5/5load. Configured autoexit0; T0,T1,allT2,Web and selected T3 suite-bundle-native/startup-listener-scale plus T4 suite-retention-scale exit0; remainingT3 deferred to merge batch, T4 repetitions skipped, no claim of fullT3/T4 coverage. Executor droplet c-8/ams3, linuxx64 kernel6.8.0-147,Node24.21.0,Neovim0.12.5, isolated Chrome Headless Shell1248/Chrome forTesting156.0.8078.4 (binary in A-21689:35908/:38495); lifetime1505.304s/cost$0.104535. Duration budgets/report-only advisories and previous6.866027859s stage miss remain retained; different-head envelopes are disclosed, not a controlled speedup. No source/baseline/allowance edit or further run. Awaiting Reviewer evidence settlement; claim/head frozen. Coordinator's later baseline refresh may use actual target samples above after settlement.
+
+### rev-35 · 2026-11-19T09:34:41.440Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1988-evidence-3
+commit: 6caa89ac80d237de897e320fd91c06c6bf18f39d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head CLEAR at clean6caa89ac80d237de897e320fd91c06c6bf18f39d/Git tree15e0fc83; delta A-21683 current. A-21691 audits passed2a0cffad/A-21689 beyondexit0: C1actual ordinary tracker0.338906800/reply0.809106806/stage0.769754145s all<independent5s, no targetallowances. Oracle022b27e1...bd745/1650items10moves20summ80hydrated/recomputed[];40view+40queue p9526.739/26.706ms<1000; stage counted1500answers/dependents<=1/final1500rows assertions unchanged. Ordinary file envelopes8.028238744/18.536096438/7.828358384s disclosed with older epochs, no controlledspeedup. C2three allowances absent; exact dev-minus3 integrity/current lint retained, no baseline/runner change. Complete index6957ordinarypasses/730file envelopes,0nonpass/unfinished. Separate25loadtest+25filepasses for5ownercontrols5/5, targetsordinaryonly. T0/allT1/allT2 inclNeovim44files385tests/Web complete; selectedchangedT3 2files3cases andT4 1file2cases complete once, no repeats;remainingT3batchdeferred/otherT4unexecuted. Inheritedstartup5.052s/T4scale57.356s are distinct allowed identities, notC1samples. UncachedLinuxx64/Node24.21/HeadlessShell1248Chrome156,c8ams3,1505s/$0.1045; snapshot738ae787 differs fromGit15e0fc83; generaladvisoriesreport-only. Oldb677green and3eebgreen-but6.866sC1miss/local/incomplete epochs remain separate. C1/C2verified,findings[]. Hold released; no further run/source change requested. Reviewer static source/log/JSON/index only.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-19T11:50:26.476Z
+
+Merged d76bbdb9c6f9ff8a5bf6c8712a6cbb75576e7efe onto dev.
