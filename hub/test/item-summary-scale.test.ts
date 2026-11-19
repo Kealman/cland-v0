@@ -97,6 +97,8 @@ test('a thousand-item planned hub serves within two seconds of listening before 
   let plannedBeforeServing=false;
   const listening=Promise.withResolvers<number>(),socketBound=Promise.withResolvers<string>(),serving=Promise.withResolvers<number>();
   const firstRead=Promise.withResolvers<void>();
+  const releaseFirstRead=Promise.withResolvers<void>();
+  owner.releaseOnClose(()=>releaseFirstRead.resolve());
   const ancestorRefreshes=new Map<string,number>();
   let inFirstRead=false,readCount=0;
   const update=ExplorerFieldsIndex.prototype.update;
@@ -111,16 +113,19 @@ test('a thousand-item planned hub serves within two seconds of listening before 
     return step(()=>connectUi(owner.fixtures,{root,socket,secret:secret.trim()}));
   });
   const response=serving.promise.then(async at=>{
+    try{
     const ui=await client;
     const reply=await step(()=>ui.request({type:'hub.status'}));
     return {reply,elapsed:performance.now()-at,duringFirstRead:inFirstRead};
+    }
+    finally{releaseFirstRead.resolve();}
   });
   void client.catch(()=>{});void response.catch(()=>{});
   const starting=step(()=>projectHub(owner.resources,root,gate.env, {clock:new FakeClock(),stageTree:async()=>null,
     git:async args=>args[0]==='for-each-ref'?`${'a'.repeat(40)} refs/heads/dev`:null,
     readBase:async()=> 'dev',
     scheduleTips:read=>{
-      const run=async()=>{const first=readCount++===0;if(first)inFirstRead=true;try{await read();}finally{if(first){inFirstRead=false;firstRead.resolve();}}};
+      const run=async()=>{const first=readCount++===0;if(first)inFirstRead=true;try{if(first)await releaseFirstRead.promise;await read();}finally{if(first){inFirstRead=false;firstRead.resolve();}}};
       void run();return {poke(){},stop(){}};
     },
     log:entry=>{if(entry.event==='listening'){listening.resolve(performance.now());if(typeof entry.socket==='string')socketBound.resolve(entry.socket);}if(entry.event==='serving'){serving.resolve(performance.now());plannedBeforeServing=existsSync(join(gate.env.CLAND_TEST_TASK_WRITE_GATE,'entered'));}},
