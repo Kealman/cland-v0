@@ -28,7 +28,7 @@ const KEY = 'test-last-green';
 const CODE = ['hub', 'nvim', 'shared', 'test-support', 'package.json', 'package-lock.json'];
 
 export async function reportSoakQuarantine(core: HubCore, job: Readonly<SuiteJob>, log: string, artifact: { id: string; path: string }, git: Git): Promise<void> {
-  if (job.cached || job.cancelled || job.requesterDied || !job.tree || !job.outcome) return;
+  if (job.cached || job.cancelled || job.requesterDied || !job.tree || !job.outcome || job.outcome.notRun) return;
   const history = JSON.parse(core.store.meta(KEY) ?? '{}') as Record<string, Green>;
   if (job.outcome.code === 0) {
     // Timing rows also describe skipped/TODO tests. Only outcome receipts can

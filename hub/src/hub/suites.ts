@@ -1019,9 +1019,9 @@ export class Suites {
       // Pending delivery/start receipts can re-enter launch with that boundary set.
       if (job.remoteLogStart === undefined) await appendFile(job.log, `Workers ${job.workers} · source ${job.workersOverride !== undefined ? 'explicit --workers' : 'hub config'} · admitted\n`);
       const run = runRef(job);
-      // Periodic dev owns the admitted commit's objects, independent of later
+      // Integrated dev owns the admitted commit's objects, independent of later
       // root commits. Its check runs remotely against that detached commit.
-      const committedOnly = job.occasion === 'dev-t3';
+      const committedOnly = job.occasion === 'dev-t3' || job.integrated === true;
       if (job.executor === 'droplet') {
         // Undelivered leases cannot have submitted a worker. A restored delivered
         // lease may have lost its start acknowledgement, so remains uncertain.
@@ -1069,7 +1069,11 @@ export class Suites {
             job.remoteLogStart = (await stat(job.log)).size;
           }
           catch (error) {
-            if (committedOnly || job.parentRun) job.outcome = { code: 1, cause: error instanceof Error ? error.message : String(error), notRun: 'infrastructure' };
+            if (committedOnly || job.parentRun) {
+              const cause = error instanceof Error ? error.message : String(error);
+              if (job.outcome) await appendFile(job.log, `secondary delivery failure: ${cause}\n`);
+              else job.outcome = { code: 1, cause, notRun: 'infrastructure' };
+            }
             throw error;
           }
         }
@@ -1163,8 +1167,8 @@ export class Suites {
       await writeFile(shard.log, '', { flag: 'a', mode: 0o600 });
     }
     // Repeat only an interrupted host gate; provider acquisition is reconciled per child.
-    if (!shards.some(shard => shard.remoteAcquireAttempted)) await this.#hostGate(job);
-    if (await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) {
+    if (!job.integrated && !shards.some(shard => shard.remoteAcquireAttempted)) await this.#hostGate(job);
+    if (!job.integrated && await this.#candidate.tree(job.cwd, job.head) !== job.tree) {
       const cause = 'dirty or changed integrated dev candidate';
       // A restored group may already have submitted workers. Only untouched
       // shards prove this parent fence refused every child before execution.

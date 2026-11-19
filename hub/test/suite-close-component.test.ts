@@ -475,7 +475,9 @@ test('another project stage close skips sharding and runs once without a check',
   const result = await drive(f, f.result(job.id));
   assert.match(result.text, /all exit 0/);
   assert.match(result.text, /stage cover/);
-  assert.match(await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8'), /Host gate: check not set/);
+  const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
+  assert.match(log, /^Commands: check not set · test printf project-test$/m);
+  assert.doesNotMatch(log, /^Host gate:/m);
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
   assert.equal((await f.messages(job.id)).length, 1);
   assert.deepEqual(f.api.droplets, []);

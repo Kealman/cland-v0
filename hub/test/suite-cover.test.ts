@@ -13,6 +13,7 @@ import { caseDeadlines } from './case-deadlines.ts';
 import { devT3Result } from '../src/hub/dev-t3-result.ts';
 import { DevT3Search } from '../src/hub/dev-t3-search.ts';
 import { suiteEvidence } from '../src/suite-log.ts';
+import { suiteCase } from './suite-case-fixture.ts';
 
 async function shardedCover(t: Parameters<typeof suiteUnit>[0], options: Parameters<typeof suiteUnit>[1] = {}) {
   const f = await suiteUnit(t, { executor: 'droplet', machineReceiptsOnly: true, ...options });
@@ -71,72 +72,49 @@ for (const refusal of ['capacity', 'delivery', 'mixed causes', 'acquisition', 'm
   assert.deepEqual(f.suites.covers(), []);
 });
 
-for (const [boundary, unchangedReads] of [['parent validation', 0], ['child bundle admission', 1], ['child bundle recheck', 3]] as const) test(`tree changes at ${boundary} refuse unstarted shards without red cover or search`, async t => {
-  const run = caseDeadlines(t);
+test('integrated shards deliver the admitted head after the live root changes', t => suiteCase(t, async ({ setup, step }) => {
   let f: Awaited<ReturnType<typeof shardedCover>>;
-  let reads = 0;
-  const firstChildChecks = Promise.withResolvers<void>();
-  // Candidate facts: optional valid parent read, then both children's first
-  // bundle checks when exercising their second check. Later reads see dirt.
-  f = await run.wait('sealed changing-candidate fixture', () => shardedCover(run.fixtures, { candidate: {
+  f = await setup(fixtures => shardedCover(fixtures, { candidate: {
     head: async () => f.candidate.head,
-    tree: async () => {
-      const read = ++reads;
-      if (unchangedReads === 3 && read > 1 && read <= 3) {
-        if (read === 3) firstChildChecks.resolve();
-        await firstChildChecks.promise;
-      }
-      return read <= unchangedReads ? f.candidate.tree : null;
-    },
+    tree: async () => assert.fail('live root tree must not gate integrated delivery'),
     inspect: async () => ({ ...structuredClone(f.candidate), tierPlan: [], budgetBase: undefined }),
   } }));
-  let acquisitions = 0;
-  t.mock.method(DropletExecutor.prototype, 'acquire', async () => { acquisitions++; throw new Error('unexpected acquisition'); });
-  const job = await run.wait('stage admission', () => f.launch({ mode: 'all', integrated: true, occasion: 'stage', fresh: true }));
-  await run.wait('bundle admission I/O', () => f.suites.settled());
-  const reported = f.result(job.id);
-  await run.wait('collect bundle refusals', async () => { await f.tick(); await f.suites.settled(); });
-  await run.wait('durable bundle refusal', () => reported);
-  const receipt = await f.suites.receipt(job.id);
-  assert.equal(acquisitions, 0);
-  assert.equal(f.machine.calls.some(call => call.step === 'start'), false);
-  assert.equal(receipt.job.outcome?.notRun, 'infrastructure');
-  for (const shard of ['shard-1', 'shard-2']) assert.ok(receipt.job.outcome!.cause.includes(`${shard}: dirty or changed`), receipt.job.outcome!.cause);
-  assert.equal(JSON.parse(await readFile(receipt.job.result, 'utf8')).notRun, 'infrastructure');
-  assert.deepEqual(f.suites.covers(), []);
-  assert.deepEqual(f.suites.stageCovers(), []);
-  assert.doesNotMatch(receipt.log, /shard failure|\bred\b/);
-  const result = await devT3Result(receipt.job, receipt.log, { id: 'A-1', path: '/durable/log' }, async () => null);
-  assert.equal(result.result, 'not-run');
-  const search = new DevT3Search(f.store, {
-    currentDev: async () => 'm8', probe: async () => assert.fail('no bundle-refusal culprit probe'), report: async () => assert.fail('no bundle-refusal culprit search') });
-  search.accept(result); await search.tick();
-  assert.equal(f.store.meta('dev-t3-searches'), null);
-  await f.reopen();
-  assert.equal((await f.suites.receipt(job.id)).job.outcome?.notRun, 'infrastructure');
-  assert.deepEqual(f.suites.covers(), []);
-});
+  f.hostGate(async () => assert.fail('live root check must run remotely at the admitted head'));
+  const delivered: string[] = [];
+  const deliver = f.machine.dependencies.run.deliver.bind(f.machine.dependencies.run);
+  t.mock.method(f.machine.dependencies.run, 'deliver', async (...[lease, ref, committedOnly]: Parameters<typeof deliver>) => {
+    assert.equal(committedOnly, true);
+    delivered.push(ref.head);
+    await deliver(lease, ref, committedOnly);
+  });
+  const job = await step('stage admission', () => f.launch({ mode: 'all', integrated: true, occasion: 'stage', fresh: true }));
+  await step('both workers started', () => f.machine.waits.run(Promise.all([1, 2].map(n => f.machine.started(`${job.id}-shard-${n}`)))));
+  assert.deepEqual(delivered, ['a'.repeat(40), 'a'.repeat(40)]);
+  for (const n of [1, 2]) f.machine.finish(`${job.id}-shard-${n}`, 0);
+  await step('completion collection', async () => { await f.tick(); await f.suites.settled(); });
+  const result = await step('durable completed group', () => f.machine.waits.run(f.result(job.id)));
+  assert.equal(result.outcome?.code, 0);
+}));
 
-test('a recovered group with submitted workers keeps failure when its candidate changes', async t => {
-  const run = caseDeadlines(t);
-  const f = await run.wait('sealed shard fixture', () => shardedCover(run.fixtures));
-  const job = await run.wait('stage admission', () => f.launch({ mode: 'all', integrated: true, occasion: 'stage', fresh: true }));
-  await run.wait('both workers started', () => f.machine.waits.run(Promise.all([1, 2].map(n => f.machine.started(`${job.id}-shard-${n}`)))));
-  await run.wait('launch I/O settled', () => f.suites.settled());
-  const parent = (await f.jobs()).find(saved => saved.id === job.id)!;
+test('a recovered integrated group keeps its admitted workers when the live candidate changes', t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(fixtures => shardedCover(fixtures));
+  const job = await step('stage admission', () => f.launch({ mode: 'all', integrated: true, occasion: 'stage', fresh: true }));
+  await step('both workers started', () => f.machine.waits.run(Promise.all([1, 2].map(n => f.machine.started(`${job.id}-shard-${n}`)))));
+  await step('launch I/O settled', () => f.suites.settled());
+  const parent = (await step('durable jobs', () => f.jobs())).find(saved => saved.id === job.id)!;
   parent.state = 'launching';
   f.candidate.tree = null;
-  await f.reopen([parent]);
+  await step('restart', () => f.reopen([parent]));
+  for (const n of [1, 2]) f.machine.finish(`${job.id}-shard-${n}`, 0);
   const reported = f.result(job.id);
-  await run.wait('recovered launch I/O', async () => { await f.tick(); await f.suites.settled(); });
-  await run.wait('recovered collection I/O', async () => { await f.tick(); await f.suites.settled(); });
-  await run.wait('durable recovered failure', () => f.machine.waits.run(reported));
-  const receipt = await f.suites.receipt(job.id);
+  await step('recovered launch I/O', async () => { await f.tick(); await f.suites.settled(); });
+  await step('recovered collection I/O', async () => { await f.tick(); await f.suites.settled(); });
+  await step('durable recovered completion', () => f.machine.waits.run(reported));
+  const receipt = await step('receipt', () => f.suites.receipt(job.id));
   assert.equal(receipt.job.outcome?.notRun, undefined);
-  assert.equal(receipt.job.outcome?.code, 1);
-  assert.equal(receipt.job.cover?.status, 'red');
-  assert.match(receipt.job.outcome!.cause, /dirty or changed integrated dev candidate/);
-});
+  assert.equal(receipt.job.outcome?.code, 0);
+  assert.equal(receipt.job.cover?.status, 'green');
+}));
 
 test('ambiguous shard start errors remain executed-or-unknown failures rather than not-run', async t => {
   const run = caseDeadlines(t);

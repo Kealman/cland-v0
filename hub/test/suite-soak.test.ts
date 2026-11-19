@@ -14,6 +14,73 @@ import { caseDeadlines } from './case-deadlines.ts';
 import { readFile, writeFile } from 'node:fs/promises';
 import { eventRow } from '../src/hub/journal.ts';
 import { heartbeatDigest } from '../src/hub/heartbeat.ts';
+import { reportSoakQuarantine } from '../src/hub/soak-quarantine.ts';
+import { suiteCase } from './suite-case-fixture.ts';
+
+test('cancelled soak preserves its durable outcome after late delivery rejection', t => suiteCase(t, async ({ setup, step, releaseOnClose }) => {
+  const f = await setup(fixtures => suiteUnit(fixtures, { machineReceiptsOnly: true }));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  releaseOnClose(() => { entered.resolve(); release.resolve(); });
+  // Delivery never submitted a worker; its cleanup has a semantic cancellation receipt.
+  t.mock.method(DropletExecutor.prototype, 'cancel', async () => {});
+  t.mock.method(DropletExecutor.prototype, 'deliver', async () => {
+    entered.resolve();
+    await release.promise;
+    throw new Error('late delivery rejected');
+  });
+  const job = await step('submission', () => f.launch({ mode: 'all', occasion: 'soak', integrated: true, executor: 'droplet', fresh: true }));
+  await step('dispatch', () => f.tick());
+  await step('delivery entered', () => entered.promise);
+  await step('durable cancellation', () => f.suites.cancel(job.id, null, () => {}));
+  assert.deepEqual(f.status(job.id).outcome, { code: 143, cause: 'cancelled' });
+  const reported = f.result(job.id);
+  release.resolve();
+  await step('delivery settled', () => f.suites.settled());
+  assert.deepEqual(f.status(job.id).outcome, { code: 143, cause: 'cancelled' });
+  await step('collection', async () => { await f.tick(); await f.suites.settled(); });
+  await step('report publication', async () => { await f.tick(); await f.suites.settled(); });
+  const result = await step('durable result', () => f.machine.waits.run(reported));
+  assert.deepEqual(result.outcome, { code: 143, cause: 'cancelled' });
+  const receipt = await step('result receipt', () => f.suites.receipt(job.id));
+  const persisted = JSON.parse(await step('result JSON', () => readFile(receipt.job.result, 'utf8')));
+  assert.equal(persisted.code, 143);
+  assert.equal(persisted.cause, 'cancelled');
+  assert.equal(persisted.notRun, undefined);
+  assert.match(await step('durable diagnostic log', () => f.log(job.id)), /secondary delivery failure: late delivery rejected/);
+  assert.equal(f.machine.calls.some(call => call.step === 'start'), false);
+}));
+
+test('soak delivery failure retains infrastructure cause without execution or incident cover', t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(fixtures => suiteUnit(fixtures, { machineReceiptsOnly: true }));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  t.mock.method(DropletExecutor.prototype, 'deliver', async () => { throw new Error('bundle: captured object missing'); });
+  const job = await step('submission', () => f.launch({ mode: 'all', occasion: 'soak', integrated: true, executor: 'droplet', fresh: true }));
+  await step('dispatch', async () => { await f.tick(); await f.suites.settled(); });
+  await step('collection', async () => { await f.tick(); await f.suites.settled(); });
+  const result = await step('durable result publication', () => f.machine.waits.run(f.result(job.id)));
+  assert.deepEqual(result.outcome, { code: 1, cause: 'bundle: captured object missing', notRun: 'infrastructure' });
+  assert.equal(f.machine.calls.some(call => call.step === 'start'), false);
+  assert.equal(f.suites.covers().some(cover => cover.id === job.id), false);
+  const receipt = await step('receipt', () => f.suites.receipt(job.id));
+  assert.equal(JSON.parse(await step('persisted result', () => readFile(receipt.job.result, 'utf8'))).notRun, 'infrastructure');
+  const file = 'hub/test/example.test.ts', name = 'delivery diagnostic';
+  f.store.setMeta('test-last-green', JSON.stringify({ [`${file}::${name}`]: {
+    run: 'green', head: 'old', tree: 'old-tree', log: { artifact: 'A-1', path: '/durable/log' },
+  } }));
+  const notices: unknown[] = [];
+  const core = { store: f.store, noticeTo: (...args: unknown[]) => { notices.push(args); return 'notice'; }, boundedText: (text: string) => text } as unknown as HubCore;
+  const diagnostic = `suite test failures ${JSON.stringify([{ file, name }])}\n`;
+  const git = async () => '';
+  const artifact = { id: 'A-2', path: '/durable/delivery-log' };
+  await step('incident positive control', () => reportSoakQuarantine(core, { ...receipt.job, outcome: { code: 1, cause: '' } }, diagnostic, artifact, git));
+  assert.equal(notices.length, 1, 'positive control: executed failure would propose an incident');
+  notices.length = 0;
+  await step('infrastructure incident suppression', () => reportSoakQuarantine(core, receipt.job, diagnostic, artifact, git));
+  assert.equal(notices.length, 0, 'delivery diagnostics cannot propose an incident');
+}));
 
 test('periodic queue and heartbeat name the hub while human shell runs keep human attribution', async t => {
   const run = caseDeadlines(t);

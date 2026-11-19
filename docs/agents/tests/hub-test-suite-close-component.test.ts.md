@@ -1,5 +1,11 @@
 # hub/test/suite-close-component.test.ts
 
+The other-project integrated stage close with an unset check records
+`Commands: check not set · test printf project-test` and no local `Host gate:`.
+Committed-only integrated delivery skips that local gate, including its former
+unset-check notice. Keep the positive completed stage result, one whole-run
+provider acquisition, one result message, warning and cleanup assertions.
+
 Admission is not shard acquisition: observe `startedShards` or the scripted
 machine's start receipt before asserting remote slot membership or sharding
 notices. Join `verificationSettled()` where the assertion consumes completed

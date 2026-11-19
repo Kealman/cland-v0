@@ -1,5 +1,18 @@
 # hub/test/suite-soak.test.ts
 
+The corrected refusal and late-rejection cases use `suiteCase` to register
+normal/signal ownership before setup, adopt the acquired root and fence caller
+continuations. A positive launch guard covers callback/custom/sync/lower-spawn
+routes through setup, body and cleanup. Held delivery releases during teardown.
+Cancellation followed by delivery rejection retains code 143/cancelled in the
+durable result, plus a secondary diagnostic in the full log. The scripted
+undelivered worker's cancellation boundary is explicitly faked.
+
+The soak delivery refusal retains infrastructure `notRun` in its durable result
+JSON and supplies no cover. Plant failure-looking delivery diagnostics with a
+last-green identity: the executed-failure control must propose an incident, while
+the same diagnostics under the infrastructure outcome must produce no notice.
+
 T1 scheduler policy uses `suiteUnit`, candidate facts, semantic executor receipts
 and a `FakeClock`; no process, socket or real provider is needed. For periodic
 infrastructure outcomes, inject a bundle failure at the executor delivery seam,

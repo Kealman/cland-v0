@@ -780,6 +780,7 @@
     "hub/test/suite-admission-native.test.ts": "T3",
     "hub/test/suite-admission-responsive.test.ts": "T2",
     "hub/test/suite-admission.test.ts": "T2",
+    "hub/test/suite-bundle-native.test.ts": "T3",
     "hub/test/suite-cache-recovery.test.ts": "T2",
     "hub/test/suite-cache.test.ts": "T1",
     "hub/test/suite-cancel.test.ts": "T3",

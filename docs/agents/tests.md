@@ -219,8 +219,10 @@ durable-comment controls live in
 ### Project commands
 
 `[verification]` records POSIX shell command strings, independent of the stack.
-`check` is the fast gate. Before creating a droplet, the host runs the recorded
-command and logs `Host gate: <command>`; a failure reports
+`check` is the fast gate. For ordinary task runs and merge batches, before
+creating a droplet the host runs the recorded command and logs
+`Host gate: <command>`; integrated dev and periodic dev T3 run the check remotely
+at the captured commit instead. A host failure reports
 `host check failed (exit <n>); no droplet created`. An unset check logs
 `Host gate: check not set` and continues. `prepare` installs dependencies on the remote executor.
 Stage, epic and release closes shard only candidates carrying cland's own runner.

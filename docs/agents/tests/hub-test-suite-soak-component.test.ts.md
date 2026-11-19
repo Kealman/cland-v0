@@ -1,17 +1,17 @@
 # hub/test/suite-soak-component.test.ts
 
-Periodic bundling uses `suiteUnit` with a disposable native Git repository and
-`fixtureEnvironment` (scratch HOME/XDG/Git and credential filtering). Advance
-root source HEAD at the delivery boundary, then call the real `runBundle` using
-the scheduler's delivery policy. Fetch the resulting bundle into a scratch bare
-repository and assert the captured commit and file contents, followed by the
-fake executor's start and completion receipts. No real hub process or provider
-is needed. `caseDeadlines` bounds setup and behaviour separately.
+Periodic and soak native bundle proofs live in the T3
+[bundle contract](hub-test-suite-bundle-native.test.ts.md). Their earlier T2
+receipts supply no T3 coverage after migration.
 
-Public reporting uses `remote-fixture`'s scripted provider and in-process hub:
+Public reporting uses `suiteCase` with its pre-acquisition whole-caller owner,
+adopted root, fenced steps and positive native launch guard through cleanup,
+with `remote-fixture`'s scripted provider and in-process hub:
 inject a delivery failure, drain verification I/O and observe the exact durable
-`verification-dev-t3-result` message. Assert its infrastructure headline, additive
-`notRun`/`cause` fields, no executed start and no culprit-search result.
+`verification-dev-t3-result` or `verification-soak-result` message. Assert the
+infrastructure unavailable headline and retained cause, no executed start, no
+incident cover and no culprit-search result. Periodic detail retains its existing
+`notRun`/`cause` fields; soak uses the existing suite outcome in status.
 
 Consumer inventory for the no-cover infrastructure outcome (T-1015): `Suites`
 cover history and `suite.classify`; `hub.status --history` dispatch; the CLI's

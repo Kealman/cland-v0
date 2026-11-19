@@ -525,8 +525,10 @@ batch notice labels the aborted exit and duration as superseded. An unbound
 legacy interruption, an unmatched retry or an interruption without a later pass
 still holds the batch as inconclusive. Ordinary failing receipts remain failures.
 
-Before acquiring a droplet, the hub runs the recorded check command at the
-submitted head on the host (`Host gate: <command>`). A failure posts
+For ordinary task runs and merge batches, before acquiring a droplet the hub
+runs the recorded check command at the submitted head on the host
+(`Host gate: <command>`). Integrated dev and periodic dev T3 instead check the
+captured commit remotely, independently of later root movement. A host failure posts
 `host check failed (exit <n>); no droplet created`; an unset check logs
 `Host gate: check not set` and continues. A `MODULE_NOT_FOUND` or
 `ERR_MODULE_NOT_FOUND` naming a locked package also reports
@@ -592,14 +594,14 @@ still exist; fresh builders install even with a matching key. The log retains
 
 Delivery ignores uncommitted changes under `.cland/tasks` and to `.cland/RULES.md`, including tracker writes
 between submission and bundling. Every bundle contains the committed head's tracker
-state; this applies to each shard of an occasion run too. Other dirty files still
-refuse delivery, with their paths in the error. Integrated dev runs permit a changed
-head only when the canonical candidate tree is unchanged; delivery still bundles
-the submitted head. Task runs require their exact submitted head. Periodic
+state; this applies to each shard of an occasion run too. Task runs require their
+exact submitted head and refuse other dirty files, with their paths in the error.
+Integrated dev runs (including soak, stage, epic and release) and periodic
 `dev-t3` runs bundle the admitted commit directly from Git objects, independent
 of later source or administrative commits and dirty files in root dev. They
 skip the live-root host gate and run the recorded check remotely at the detached
-submitted head.
+submitted head. A pre-execution delivery failure is retained as infrastructure
+not run, with its cause, and supplies no failed incident cover or culprit search.
 
 The host computes the suite selection while `origin/dev` is available. The uploaded
 `env` carries the selection (inline JSON or a delivered selection file), worker

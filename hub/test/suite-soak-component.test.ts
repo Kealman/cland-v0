@@ -13,11 +13,8 @@ import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { coverageMaps, coverageSelection } from '../src/suite-coverage.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { runBundle } from '../src/executor/droplet/run.ts';
-import { committedTree } from '../src/verification-tree.ts';
+import { suiteCase } from './suite-case-fixture.ts';
 import { DigitalOceanError } from '../src/executor/droplet/api.ts';
 import type { Artifact, Message } from '../src/protocol.ts';
 
@@ -41,51 +38,6 @@ test('periodic cover ancestry requires a positive native Git descendant receipt'
   assert.equal(await run.wait('native positive ancestry', () => candidate.isAncestor!(machine.root, old, newer)), true);
   assert.equal(await run.wait('native reverse ancestry', () => candidate.isAncestor!(machine.root, newer, old)), false);
   assert.equal(await run.wait('native missing ancestry', () => candidate.isAncestor!(machine.root, old, 'f'.repeat(40))), false, 'missing Git evidence is not coverage');
-});
-
-test('periodic dev T3 bundles its captured commit when root dev moves during delivery', async t => {
-  const run = caseDeadlines(t);
-  const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true }, 'dev_t3_every="1s"'));
-  const env = fixtureEnvironment(f.root, process.env);
-  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: f.root, env: fixtureEnvironment(f.root, process.env), timeout: 10000 })).stdout.trim();
-  await git('init', '-q', '-b', 'dev');
-  await git('config', 'user.name', 'Test'); await git('config', 'user.email', 'test@example.com');
-  await writeFile(join(f.root, '.gitignore'), '.cland/\nhub.db*\n');
-  await writeFile(join(f.root, 'source'), 'captured source\n');
-  await git('add', '.'); await git('commit', '-qm', 'Captured candidate');
-  const head = await git('rev-parse', 'HEAD');
-  f.candidate.head = head; f.candidate.tree = await committedTree(f.root, head, env); f.candidate.branch = 'dev';
-  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: head };
-  const transport = f.machine.dependencies.run;
-  const deliver = transport.deliver.bind(transport);
-  const bundled = Promise.withResolvers<string>();
-  t.mock.method(transport, 'deliver', async (...args: Parameters<typeof transport.deliver>) => {
-    const [lease, ref, committedOnly] = args;
-    await writeFile(join(f.root, 'source'), 'later source\n');
-    await git('add', 'source'); await git('commit', '-qm', 'Root dev advanced during bundling');
-    f.candidate.head = await git('rev-parse', 'HEAD');
-    f.candidate.tree = await committedTree(f.root, f.candidate.head, env);
-    await writeFile(join(f.root, 'source'), 'uncommitted later source\n');
-    const bundle = join(f.root, '.cland', 'captured.bundle');
-    await runBundle(ref, bundle, undefined, committedOnly ?? false, env);
-    bundled.resolve(bundle);
-    await deliver(lease, ref, committedOnly);
-  });
-  await f.tick(); await f.suites.settled();
-  await f.tick(); await f.suites.settled();
-  const job = (await f.jobs())[0]!;
-  assert.ok(job);
-  assert.equal(job.outcome, null, job.outcome?.cause);
-  const bundle = await run.wait('captured bundle receipt', () => bundled.promise);
-  assert.equal(await git('bundle', 'list-heads', bundle), `${head} refs/cland/suites/${job.id}`);
-  await git('init', '--bare', '-q', join(f.root, '.cland', 'receiver.git'));
-  await git('--git-dir=.cland/receiver.git', 'fetch', bundle, head);
-  assert.equal(await git('--git-dir=.cland/receiver.git', 'show', `${head}:source`), 'captured source');
-  assert.notEqual(await git('rev-parse', 'HEAD'), head);
-  await run.wait('execution receipt', () => f.machine.waits.run(f.machine.started(job.id)));
-  await run.wait('completion receipt', () => f.finish(job.id));
-  assert.equal(f.status(job.id).outcome?.code, 0);
-  assert.equal(f.status(job.id).head, head);
 });
 
 test('occasions keep T4 load tests in the base phase without parallel repetitions', async t => {
@@ -442,28 +394,33 @@ test('periodic dev T3 posts a hub-owned structured red result to the Coordinator
   assert.doesNotMatch(result.text, /owner E-42|::legacy/);
 });
 
-test('periodic delivery failure publishes infrastructure rather than a red headline or culprit search', async t => {
-  const run = caseDeadlines(t);
-  const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted', config: 'dev_t3_every="1s"' }));
+for (const occasion of ['dev-t3', 'soak'] as const) test(`${occasion} delivery failure publishes infrastructure rather than a red headline or culprit search`, t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(fixtures => fixture(fixtures, { machine: 'scripted', config: occasion === 'soak' ? 'soak="12:00"' : 'dev_t3_every="1s"' }));
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
   t.mock.method(f.dependencies.run!, 'deliver', async () => { throw new Error('bundle: captured object missing'); });
-  const tick = () => run.wait('periodic I/O settled', async () => { await f.clock.advance(1000); await drive(f, f.verificationSettled()); });
+  const tick = () => step('periodic I/O settled', async () => { await f.clock.advance(1000); await drive(f, f.verificationSettled()); });
   await tick(); await tick(); await tick();
-  const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { text: string; detail?: { event: string; run: string; result: string; notRun?: string; cause?: string } }[] }).messages;
-  const message = history.find(message => message.detail?.event === 'verification-dev-t3-result');
+  const history = ((await step('published message history', () => f.ui.request({ type: 'topic.history', topic: 'agents' }))).value as { messages: { text: string; detail?: { event: string; run: string; result: string; notRun?: string; cause?: string } }[] }).messages;
+  const message = history.find(message => message.detail?.event === `verification-${occasion}-result`);
   assert.ok(message, 'durable periodic result published');
-  assert.equal(message.detail!.result, 'not-run');
-  assert.equal(message.detail!.notRun, 'infrastructure');
-  assert.equal(message.detail!.cause, 'bundle: captured object missing');
-  assert.match(message.text, /Periodic dev T3 not run · infrastructure/);
+  if (occasion === 'dev-t3') {
+    assert.equal(message.detail!.result, 'not-run');
+    assert.equal(message.detail!.notRun, 'infrastructure');
+    assert.equal(message.detail!.cause, 'bundle: captured object missing');
+    assert.match(message.text, /Periodic dev T3 not run · infrastructure/);
+  } else {
+    assert.match(message.text, /all unavailable: infrastructure/);
+    assert.match(message.text, /bundle: captured object missing/);
+    assert.doesNotMatch(message.text, /all exit 1/);
+  }
   assert.doesNotMatch(message.text, /Periodic dev T3 red/);
   assert.equal(history.some(message => message.detail?.event === 'verification-dev-t3-search'), false);
   assert.equal(f.machine.calls.some(call => call.step === 'start'), false);
-  const status = (await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; outcome: { notRun?: string } }[]; covers: { id: string }[] };
+  const status = (await step('durable status', () => f.ui.request({ type: 'hub.status', history: true }))).value as { suites: { id: string; outcome: { notRun?: string } }[]; covers: { id: string }[] };
   assert.equal(status.suites.find(job => job.id === message.detail!.run)!.outcome.notRun, 'infrastructure');
   assert.equal(status.covers.some(cover => cover.id === message.detail!.run), false);
-});
+}));
 
 for (const capacity of ['regions', 'unavailable-size', 'absent-size'] as const) test(`periodic provider capacity refusal publishes not run with no red headline or culprit search (${capacity})`, async t => {
   const run = caseDeadlines(t);

@@ -12,8 +12,13 @@ and provider I/O remain in their executor tests. The public unavailable notice
 is covered by the typed and generic pre-lease refusal cases in `suite-close-component.test.ts`.
 Start acknowledgement failures remain executed-or-unknown failures; an attempted
 start without a receipt cannot establish that execution never occurred.
-Script valid parent/first-child candidate facts followed by dirt to cover parent
-validation and both child bundle checks with zero acquisition/start. A recovered
-group with submitted workers stays red when the candidate changes. Readiness and
+Integrated shards use captured candidate facts even when live tree reads are
+unavailable. Assert committed-only delivery for both children and durable green
+completion, including recovery after the root candidate changes. Readiness and
 delivery errors are pre-execution only while the lease is undelivered; a restored
 delivered lease retains uncertainty even without a start acknowledgement.
+
+The two changed integrated-shard callbacks use `suiteCase` with a pre-acquisition
+whole-caller owner, adopted roots and fenced steps through teardown. The positive
+native launch guard covers setup, body, recovery and cleanup; shard reservation,
+release and acquisition retain their explicit semantic fakes.
