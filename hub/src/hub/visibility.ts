@@ -114,6 +114,16 @@ export class Visibility {
     return this.#overrides[surface]?.[kind] ?? defaults[kind] ?? 'background';
   }
 
+  /** Old messages can still be raised by policy or a human's topic/session pin. */
+  inboxWindow(): { since: string; topics: string[]; sessions: string[] } | undefined {
+    if (this.layer('messages', 'old') === 'now') return;
+    const preferences = this.preferences?.get() ?? {};
+    const pinned = (surface: 'topics' | 'sessions') => Object.entries(preferences[surface] ?? {})
+      .filter(([, mode]) => mode === 'pin').map(([id]) => id);
+    return { since: new Date(this.#now().getTime() - OLD_MESSAGE_MS).toISOString(),
+      topics: pinned('topics'), sessions: pinned('sessions') };
+  }
+
   /** Project policy can promote an informational event; human pins do not change its class. */
   raisedToNow(surface: Surface, object: Row, kind?: string): boolean {
     if (!this.#overrides[surface]) return false;

@@ -361,7 +361,7 @@ export class InboxBoard {
       .map(t => p.visibility.place('inbox', t, 'waiting'));
     this.#syncApprovals();
     const placedApprovals = [...this.#approvals.values()].map(a => p.visibility.place('inbox', a, 'approval'));
-    const candidates = p.store.inboxMessages();
+    const candidates = p.store.inboxMessages(p.visibility.inboxWindow());
     const requests: InboxRequest[] = [];
     const messages: InboxMessage[] = [];
     for (const candidate of candidates) {

@@ -3,12 +3,102 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { copyFile, mkdir } from 'node:fs/promises';
+import { copyFile, mkdir, writeFile } from 'node:fs/promises';
 import { FakeClock } from './fake-clock.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
+import { InboxBoard } from '../src/hub/inbox.ts';
+import { Visibility } from '../src/hub/visibility.ts';
+import { VisibilityPreferenceFile } from '../src/hub/visibility-preferences.ts';
 import { Store } from '../src/hub/store.ts';
 import { oldInboxQuery, oldInboxMessages } from './inbox-query-oracle.ts';
 import { tempProject, projectHub, connectUi, inProcessSpoke, eventually } from './harness.ts';
+
+test('inbox decodes only its recent window with 100,000 retained unread messages', t => {
+  const probe = sqliteProbe();
+  let db!: DatabaseSync;
+  const store = new Store(':memory:', path => { db = probe.open(path); return db; });
+  t.after(() => store.close());
+  let decoded = 0;
+  let plan: string[] = [];
+  probe.trace(t, (sql, method, _bindings, result) => {
+    if (sql.startsWith('with latest_messages') && method === 'all') {
+      decoded += (result as unknown[]).length;
+      plan = db.prepare('explain query plan ' + sql).all(..._bindings as string[]).map(r => String(r.detail));
+    }
+  });
+  const clock = new FakeClock(Date.parse('2026-11-19T00:00:00.000Z'));
+  const now = () => clock.now();
+  store.createTopic('retained', 'Retained', null, now().toISOString());
+  // Fixture owns one in-memory connection; reuse one insert in one transaction.
+  const insert = db.prepare(`insert into messages(id,from_name,from_kind,via,to_json,text,ts,created_at,topic,seq)
+    values (?, 'worker', 'agent', 'session', '[]', 'retained', ?, 0, 'retained', ?)`);
+  store.transaction(() => {
+    for (let i = 0; i < 100000; i++) insert.run(`retained-${i}`, i < 99997 ? '2026-10-01T00:00:00.000Z' : now().toISOString(), i + 1);
+    db.prepare("update counters set value=100000 where name='message_seq'").run();
+  });
+  const board = new InboxBoard({ store, clock, visibility: new Visibility({ now }), now, log: () => {}, emit: () => {},
+    topics: () => store.topics(), items: () => [], presence: () => [], stateOf: () => 'idle',
+    idleNotifyMs: 0, idle: () => {}, approvalNote: () => {}, sizeRefusal: () => null });
+  t.after(() => board.close());
+  const frame = board.list();
+  const facts = { ids: frame.messages.map(m => m.id), needsYou: frame.needsYou,
+    topics: store.topics().map(t => ({ id: t.id, unread: t.unread, readSeq: t.readSeq })) };
+  t.diagnostic(JSON.stringify({ facts, decoded }));
+  assert.deepEqual(facts, { ids: ['retained-99999', 'retained-99998', 'retained-99997'], needsYou: 3,
+    topics: [{ id: 'retained', unread: 100000, readSeq: 0 }] });
+  assert.ok(decoded <= frame.messages.length + 1, `decoded ${decoded} for ${frame.messages.length} returned messages`);
+  t.diagnostic(JSON.stringify({ plan }));
+  assert.ok(plan.some(row => row.includes('messages_inbox_recent')), 'recent window uses its timestamp index');
+  // Whole-reply equivalence runs in the small policy differential below. The
+  // volume case keeps its independently recorded facts without decoding the
+  // retained history again through the legacy oracle.
+});
+
+test('windowed inbox preserves old replies through pins, overrides, reads and waiting-topic transitions', async t => {
+  const root = await tempProject(t), clock = new FakeClock(Date.parse('2026-11-19T00:00:00.000Z'));
+  const now = () => clock.now();
+  for (const mode of ['default', 'topic-pin', 'session-pin', 'topic-mute', 'old-now'] as const) {
+    const uiPath = join(root, `${mode}.json`);
+    await writeFile(uiPath, JSON.stringify({ visibility: mode === 'topic-pin' ? { topics: { open: 'pin' } }
+      : mode === 'session-pin' ? { sessions: { worker: 'pin' } } : mode === 'topic-mute' ? { topics: { open: 'mute' } } : {} }));
+    const preferences = new VisibilityPreferenceFile(uiPath);
+    const make = (oracle: boolean) => {
+      const db = new DatabaseSync(':memory:'), store = new Store(':memory:', () => db);
+      for (const topic of ['open', 'waiting']) store.createTopic(topic, topic, null, now().toISOString());
+      store.setTopicStatus('waiting', 'waiting for human', now().toISOString());
+      const add = (id: string, ts: string, topic = 'open', extra: Partial<import('../src/protocol.ts').Message> = {}) =>
+        store.record({ id, from: 'worker', fromKind: 'agent', via: 'session', to: [], text: id, ts, topic, ...extra }, [], 0);
+      add('old', '2026-10-01T00:00:00.000Z');
+      add('old-wait', '2026-10-01T00:00:00.000Z', 'waiting', { to: ['reviewer'] });
+      add('boundary', '2026-11-12T00:00:00.000Z');
+      add('hour-24-boundary', '2026-11-11T24:00:00.000Z');
+      add('backdated', '2026-10-02T00:00:00.000Z');
+      add('tied', '2026-11-12T00:00:00.000Z');
+      add('noncanonical', '2026-11-18T00:00:00Z');
+      add('invalid-time', 'unknown');
+      add('sqlite-special-time', 'now');
+      add('request', '2026-10-01T00:00:00.000Z', 'open', { kind: 'request', request: 'review', subject: 'T-1' });
+      if (oracle) store.inboxMessages = () => oldInboxMessages(db);
+      const board = new InboxBoard({ store, clock, visibility: new Visibility({ now, preferences,
+        overrides: mode === 'old-now' ? { messages: { old: 'now' } } : {} }), now, log: () => {}, emit: () => {},
+        topics: () => store.topics(), items: () => [], presence: () => [], stateOf: () => 'idle',
+        idleNotifyMs: 0, idle: () => {}, approvalNote: () => {}, sizeRefusal: () => null });
+      t.after(() => { board.close(); store.close(); });
+      return { store, board, add };
+    };
+    const current = make(false), previous = make(true);
+    const compare = () => assert.deepEqual(current.board.list(true), previous.board.list(true), mode);
+    compare();
+    for (const fixture of [current, previous]) {
+      fixture.store.markMessageRead('tied');
+      fixture.add('human', now().toISOString(), 'open', { from: 'human', fromKind: 'human' });
+      fixture.store.setTopicStatus('waiting', 'open', now().toISOString());
+    }
+    compare();
+    clock.block(1);
+    compare();
+  }
+});
 
 function seed(path: string) {
   new Store(path).close();

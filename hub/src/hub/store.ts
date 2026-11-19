@@ -33,6 +33,11 @@ export type KnownSession = { name: string; lastSeen: string; status: string | nu
 export type ReleasedDigest = { trigger: string; session: string; notes: string[]; reheld: string[] };
 
 export type HeartbeatSchedule = { sessionId: string; role: string; interval: number; last: number; next: number };
+// SQLite preserves hour 24 in strftime whereas Date.parse normalizes it to the
+// following day. Only generated UTC stamps may use lexical time bounds.
+// Guard the native parser too: legacy strings such as 'now' must never invoke
+// SQLite's nondeterministic date modes while an index is being maintained.
+const CANONICAL_MESSAGE_TIME = "(case when length(ts) = 24 and ts glob '????-??-??T??:??:??.???Z' then strftime('%Y-%m-%dT%H:%M:%fZ', ts) = ts and substr(ts, 12, 2) < '24' else 0 end)";
 const SCHEMA = `
 ${WAITING_LAUNCH_SCHEMA}
 create table if not exists host_worktrees (item text primary key, value text not null);
@@ -292,6 +297,11 @@ create index if not exists messages_inbox_human_v2 on messages (topic, seq)
   where (from_kind = 'agent' or (from_kind = 'hub' and (json_extract(notice_detail, '$.event') = 'verification-cleanup-incomplete' or notice = '${COORDINATOR_RETIRED}')))
     and coalesce(notice, '') not in ('progress', 'event', 'request') and json_array_length(to_json) = 0;
 create index if not exists messages_inbox_requests on messages (id) where notice = 'request';
+-- Canonical UTC stamps have the same lexical and Date.parse order. Other
+-- supported timestamp spellings use the conservative fallback index.
+create index if not exists messages_inbox_recent on messages (topic, ${CANONICAL_MESSAGE_TIME}, ts, seq);
+create index if not exists messages_inbox_other_time on messages (topic, seq)
+  where ${CANONICAL_MESSAGE_TIME} is not 1;
 create index if not exists deliveries_topic_waits on deliveries (state, verifier_item, message_id, session, verifier_role);
 create index if not exists deliveries_digest on deliveries (session, digest_id);
 create index if not exists deliveries_verifier_queue on deliveries (verifier_item) where verifier_item is not null and state = 'queued';
@@ -1945,10 +1955,23 @@ export class Store implements HygieneMemory {
   // ---------------------------------------------------------------- asks (#33)
 
   /** Candidate messages and their durable read/reply facts. Sequence order handles equal timestamps. */
-  inboxMessages(): Array<{ message: TopicMessage; read: boolean; replied: boolean; toHuman: boolean; latest: boolean }> {
+  inboxMessages(window?: { since: string; topics: string[]; sessions: string[] }): Array<{ message: TopicMessage; read: boolean; replied: boolean; toHuman: boolean; latest: boolean }> {
     const hubCandidate = `(m.from_kind = 'hub' and (json_extract(m.notice_detail, '$.event') = 'verification-cleanup-incomplete' or m.notice = '${COORDINATOR_RETIRED}'))`;
     // An addressed report becomes a human inbox candidate only on a waiting
     // topic. Unread direct messages and unsettled requests have separate paths.
+    const unread = (index: string, condition = '') => `select m.rowid as row_id from topic_facts t cross join messages m indexed by ${index} on m.topic = t.id
+        and m.seq > max(t.read_seq, t.human_seq)
+      where (m.from_kind = 'agent' or ${hubCandidate})
+        and coalesce(m.notice, '') not in ('progress', 'event', 'request') and json_array_length(m.to_json) = 0 ${condition}`;
+    const unreadQuery = window ? [
+      unread('messages_inbox_recent', `and ${CANONICAL_MESSAGE_TIME} = 1 and m.ts >= ?`),
+      unread('messages_inbox_other_time', `and ${CANONICAL_MESSAGE_TIME} is not 1`),
+      unread('messages_inbox_human_v2', 'and t.id in (select value from json_each(?))'),
+      `select m.rowid from json_each(?) pins cross join messages m indexed by messages_from_seq on m.from_name = pins.value
+        join topic_facts t on t.id = m.topic where m.seq > max(t.read_seq, t.human_seq)
+        and (m.from_kind = 'agent' or ${hubCandidate}) and coalesce(m.notice, '') not in ('progress', 'event', 'request')
+        and json_array_length(m.to_json) = 0`,
+    ].join(' union ') : unread('messages_inbox_human_v2');
     const query = this.#prepare(`with latest_messages as materialized (
       select t.id as topic, (select m.seq from messages m where m.topic = t.id
         and m.from_kind = 'agent' and coalesce(m.notice, '') not in ('progress', 'event', 'request')
@@ -1958,10 +1981,7 @@ export class Store implements HygieneMemory {
       select t.*, coalesce((select h.seq from messages h where h.topic = t.id and h.from_kind = 'human' order by h.seq desc limit 1), 0) as human_seq from topics t
     ), candidates as materialized (
       -- Only unread human-addressed rows after the last same-topic human reply can become messages.
-      select m.rowid as row_id from topic_facts t cross join messages m indexed by messages_inbox_human_v2 on m.topic = t.id
-        and m.seq > max(t.read_seq, t.human_seq)
-      where (m.from_kind = 'agent' or ${hubCandidate})
-        and coalesce(m.notice, '') not in ('progress', 'event', 'request') and json_array_length(m.to_json) = 0
+      ${unreadQuery}
       union
       select m.rowid from latest_messages l cross join messages m on m.topic = l.topic and m.seq = l.seq
       union
@@ -1984,7 +2004,7 @@ export class Store implements HygieneMemory {
       order by m.seq desc`);
     // Array rows avoid native property-name allocation for every retained candidate.
     query.setReturnArrays(true);
-    const rows = query.all() as unknown as Array<Array<Row[string]>>;
+    const rows = (window ? query.all(window.since, JSON.stringify(window.topics), JSON.stringify(window.sessions)) : query.all()) as unknown as Array<Array<Row[string]>>;
     return rows.map(values => {
       const [id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, topic, notice, notice_detail, answer_to, seq, request_kind, request_subject, artifact, artifacts, criteria, answer_attribution, was_read, to_human, latest, replied] = values;
       const r = { id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, topic, notice, notice_detail, answer_to, seq, request_kind, request_subject, artifact, artifacts, criteria, answer_attribution, was_read, to_human, latest, replied } as Row;

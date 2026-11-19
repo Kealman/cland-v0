@@ -1,0 +1,202 @@
+# Inbox candidate window consumer inventory
+
+T-1975 preserves the Inbox wire shape and sequence ordering. No consumer needs migration. Inbox has no page cursor; the fixture records the topic readSeq cursor and aggregate unread count separately.
+
+Search: inbox.list, inboxMessages, inbox.list(), needsYou and archiveToday across hub/src, web/src, nvim/lua, shared, shipped .agents skills, docs, hub/test, web/test and nvim/test, including frozen JSON fixtures. This includes the CLI, web inbox and archive, Neovim snapshot/event/thread paths, hub snapshot and heartbeat (budget), setup pairing, remote cards, admission, raw request readers and tests in every tier. The file list below deliberately retains field readers and documentation as well as direct callers. All are unaffected because candidate filtering is internal and whole-reply equality is checked against the frozen previous query.
+
+Recorded before the source change on the synthetic 100,000-message fixture: message IDs retained-99999, retained-99998, retained-99997 in that order; needsYou 3; topic retained unread 100000, readSeq 0. The old query decoded 100000 rows and failed the unchanged bound (at most returned rows + 1). The window query decodes 3. These are work counts, not whole-hub timing claims.
+
+The normal generated UTC millisecond timestamp path uses a topic/canonical-format/time index. Timestamp spellings outside that format use a conservative indexed fallback to retain Date.parse semantics. Human pins and old=now policy can legitimately expose old history. Requests, latest waiting-topic candidates and durable inbox waits remain eligible independently of age. The optimization does not cap visible rows or alter visibility policy.
+
+- `.agents/skills/implement/CHANGES/T-1744-waiting-launches.md`
+- `docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`
+- `docs/agents/tests/hub-test-discord-cards.test.ts.md`
+- `docs/agents/tests/hub-test-inbox-query.test.ts.md`
+- `docs/agents/tests/hub-test-opencode-adapter.test.ts.md`
+- `docs/agents/tests/hub-test-outbox-gateway.test.ts.md`
+- `docs/agents/tests/hub-test-pairing-service.test.ts.md`
+- `docs/agents/tests/hub-test-telegram-approvals.test.ts.md`
+- `docs/agents/tests/hub-test-telegram-cards.test.ts.md`
+- `docs/agents/tests/hub-test-waiting-launch.test.ts.md`
+- `docs/agents/tests/web-test-hosts-view.test.ts.md`
+- `docs/evidence/T-702-assertion-inventory.md`
+- `docs/hub/asks-and-the-inbox.md`
+- `docs/hub/coordinator-subscription-procedure.md`
+- `docs/hub/gateway-authority.md`
+- `docs/hub/negotiated-connection-snapshot.md`
+- `docs/hub/remote-commands.md`
+- `docs/hub/roles.md`
+- `docs/hub/the-projects-hub.md`
+- `docs/hub/waiting-launches.md`
+- `docs/spec/v0.1.2.md`
+- `docs/spec/v0.1.md`
+- `docs/spec/v0.3.md`
+- `docs/visibility.md`
+- `hub/src/cli/inbox.ts`
+- `hub/src/hub/budget.ts`
+- `hub/src/hub/core.ts`
+- `hub/src/hub/daemon.ts`
+- `hub/src/hub/dispatch.ts`
+- `hub/src/hub/inbox.ts`
+- `hub/src/hub/snapshot.ts`
+- `hub/src/hub/store.ts`
+- `hub/src/hub/visibility.ts`
+- `hub/src/hub/web-authority.ts`
+- `hub/src/protocol.ts`
+- `hub/src/remote/authority.ts`
+- `hub/src/remote/discord-cards.ts`
+- `hub/src/remote/discord-commands.ts`
+- `hub/src/remote/redact.test.ts` (T1)
+- `hub/src/remote/replies.ts`
+- `hub/src/remote/telegram-cards.ts`
+- `hub/src/remote/telegram-prompts.ts`
+- `hub/src/remote/telegram.ts`
+- `hub/src/roles/handover.ts`
+- `hub/src/setup/hub.ts`
+- `hub/test/answer-users.test.ts` (T2)
+- `hub/test/approval-records.test.ts` (T2)
+- `hub/test/approval-restart.test.ts` (T3)
+- `hub/test/artifact-user.test.ts` (T2)
+- `hub/test/ask-chain.test.ts` (T2)
+- `hub/test/ask-outcomes.test.ts` (T2)
+- `hub/test/asks-cli.test.ts` (T2)
+- `hub/test/asks.test.ts` (T2)
+- `hub/test/claude-code-schedule.test.ts` (T2)
+- `hub/test/claude-code-sessions.test.ts` (T2)
+- `hub/test/cli-as-user.test.ts` (T2)
+- `hub/test/cli-identity.test.ts` (T3)
+- `hub/test/codex-adapter.test.ts` ([object Object])
+- `hub/test/codex-native.test.ts` (T2)
+- `hub/test/connection-snapshot.test.ts` (T2)
+- `hub/test/default-subscriptions-lifecycle.test.ts` (T3)
+- `hub/test/default-subscriptions.test.ts` (T2)
+- `hub/test/discord-cards.test.ts` (T2)
+- `hub/test/discord-pairing.test.ts` (T2)
+- `hub/test/discord-workbench-fixture.ts`
+- `hub/test/doctor-remotes.test.ts` (T2)
+- `hub/test/durations.json`
+- `hub/test/events-quiet.test.ts` (T2)
+- `hub/test/events.test.ts` (T2)
+- `hub/test/fixtures/tracker-snapshot/items.json`
+- `hub/test/gateway-secrets.test.ts` (T2)
+- `hub/test/gateway.test.ts` (T2)
+- `hub/test/heartbeat.test.ts` (T2)
+- `hub/test/hub-cards-authority.test.ts` (T1)
+- `hub/test/hub-cards.test.ts` (T2)
+- `hub/test/inbox-actions.test.ts` (T2)
+- `hub/test/inbox-archive-workload.ts`
+- `hub/test/inbox-query.test.ts` (T2)
+- `hub/test/inbox-requests-component.test.ts` (T2)
+- `hub/test/inbox-requests.test.ts` (T3)
+- `hub/test/inject-stalled.test.ts` (T2)
+- `hub/test/login-card-signin-remote.test.ts` (T2)
+- `hub/test/login-card-signin.test.ts` (T3)
+- `hub/test/login-list.test.ts` (T2)
+- `hub/test/login-remove.test.ts` (T2)
+- `hub/test/login-signed-out.test.ts` (T2)
+- `hub/test/login-signin-recovery.test.ts` (T2)
+- `hub/test/login-wait.test.ts` (T2)
+- `hub/test/measure-memory.ts`
+- `hub/test/nvim-inbox-requests-rules.test.ts` (T2)
+- `hub/test/nvim-item-prefixes-rules.test.ts` (T2)
+- `hub/test/nvim-needs-you-rules.test.ts` (T2)
+- `hub/test/opencode-adapter.test.ts` ([object Object])
+- `hub/test/opencode-native.test.ts` (T2)
+- `hub/test/outbox-gateway.test.ts` (T2)
+- `hub/test/pairing-approval.test.ts` (T2)
+- `hub/test/pairing-codes.test.ts` (T2)
+- `hub/test/pairing-service.test.ts` (T1)
+- `hub/test/plan-approval.test.ts` (T2)
+- `hub/test/remote-cli.test.ts` (T2)
+- `hub/test/remote-docs-pairing.test.ts` (T2)
+- `hub/test/remote-neutral.test.ts` (T1)
+- `hub/test/remote-workbench.test.ts` (T2)
+- `hub/test/rule-sessions-component.test.ts` (T2)
+- `hub/test/rule-sessions.test.ts` (T3)
+- `hub/test/scenarios/integrated-v04.test.ts` ([object Object])
+- `hub/test/scenarios/remotes.test.ts` ([object Object])
+- `hub/test/setup-remote-component.test.ts` (T2)
+- `hub/test/snapshot-framing.test.ts` (T1)
+- `hub/test/subscription-hygiene.test.ts` (T2)
+- `hub/test/suite-timeouts.test.ts` (T3)
+- `hub/test/task-worktrees.test.ts` (T2)
+- `hub/test/telegram-approvals.test.ts` (T2)
+- `hub/test/telegram-cards.test.ts` (T2)
+- `hub/test/telegram-commands.test.ts` (T2)
+- `hub/test/telegram-marks-fixture.ts`
+- `hub/test/telegram-mute.test.ts` (T2)
+- `hub/test/telegram-notices.test.ts` (T2)
+- `hub/test/telegram-pairing.test.ts` (T2)
+- `hub/test/visibility-component.test.ts` (T2)
+- `hub/test/visibility-events.ts`
+- `hub/test/visibility-volume.test.ts` (T4)
+- `hub/test/visibility.test.ts` (T3)
+- `hub/test/waiting-launch-restart.test.ts` (T2)
+- `hub/test/waiting-launch.test.ts` (T2)
+- `hub/test/web-area-state.test.ts` (T1)
+- `hub/test/web-authority.test.ts` (T2)
+- `hub/test/web-notifications.test.ts` (T1)
+- `nvim/lua/cland/hub.lua`
+- `nvim/lua/cland/inbox.lua`
+- `nvim/lua/cland/init.lua`
+- `nvim/lua/cland/state.lua`
+- `nvim/lua/cland/thread.lua`
+- `nvim/test/events.test.ts` (T2)
+- `nvim/test/fixtures/live-protocol-frames.json`
+- `nvim/test/fixtures/protocol-frames.json`
+- `nvim/test/fixtures/protocol-frames/agents-filters.json`
+- `nvim/test/fixtures/protocol-frames/artifacts.json`
+- `nvim/test/fixtures/protocol-frames/crew.json`
+- `nvim/test/fixtures/protocol-frames/declined-ask-component.json`
+- `nvim/test/fixtures/protocol-frames/events-quiet.json`
+- `nvim/test/fixtures/protocol-frames/explorer-component.json`
+- `nvim/test/fixtures/protocol-frames/explorer.json`
+- `nvim/test/fixtures/protocol-frames/hosts.json`
+- `nvim/test/fixtures/protocol-frames/human-marks-component.json`
+- `nvim/test/fixtures/protocol-frames/inbox-actions.json`
+- `nvim/test/fixtures/protocol-frames/inbox-requests.json`
+- `nvim/test/fixtures/protocol-frames/item-prefixes.json`
+- `nvim/test/fixtures/protocol-frames/items.json`
+- `nvim/test/fixtures/protocol-frames/launcher-component.json`
+- `nvim/test/fixtures/protocol-frames/message-users.json`
+- `nvim/test/fixtures/protocol-frames/needs-you.json`
+- `nvim/test/fixtures/protocol-frames/panel-placement-component.json`
+- `nvim/test/fixtures/protocol-frames/plan-component.json`
+- `nvim/test/fixtures/protocol-frames/progress-counts-component.json`
+- `nvim/test/fixtures/protocol-frames/remote-via.json`
+- `nvim/test/fixtures/protocol-frames/sessions.json`
+- `nvim/test/fixtures/protocol-frames/shell-component.json`
+- `nvim/test/fixtures/protocol-frames/shell.json`
+- `nvim/test/fixtures/protocol-frames/thread.json`
+- `nvim/test/fixtures/protocol-frames/vboard.json`
+- `nvim/test/inbox-actions.test.ts` (T2)
+- `nvim/test/inbox-requests.test.ts` (T2)
+- `nvim/test/inbox-sections.test.ts` (T2)
+- `nvim/test/layers-component.test.ts` (T2)
+- `nvim/test/needs-you.test.ts` (T2)
+- `nvim/test/remote-via.test.ts` (T2)
+- `nvim/test/remotes.test.ts` (T3)
+- `nvim/test/scenarios/workbench.test.ts` ([object Object])
+- `nvim/test/shell-component.test.ts` (T2)
+- `nvim/test/shell.test.ts` (T3)
+- `nvim/test/stub-control.test.ts` (T2)
+- `nvim/test/stub-hub.ts`
+- `shared/wire/index.ts`
+- `web/src/InboxArchive.tsx`
+- `web/src/PhoneNotifications.tsx`
+- `web/src/Shell.tsx`
+- `web/src/accounts/Profile.tsx`
+- `web/src/connection.ts`
+- `web/src/notification-rules.ts`
+- `web/src/notification-state.ts`
+- `web/test/asks.test.ts` (Web)
+- `web/test/hosts-view.test.ts` (Web)
+- `web/test/inbox.test.ts` (Web)
+- `web/test/notifications.test.ts` (Web)
+- `web/test/pairing.test.ts` (Web)
+- `web/test/phone-approvals.test.ts` (Web)
+- `web/test/phone-disconnected.test.ts` (Web)
+- `web/test/phone-inbox.test.ts` (Web)
+- `web/test/phone-notifications.test.ts` (Web)
+- `web/test/phone.test.ts` (Web)
+
