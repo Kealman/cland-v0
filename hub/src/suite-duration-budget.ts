@@ -1,5 +1,5 @@
 // Timing diagnostics and pure merge admission policy over pinned manifest facts.
-import { durationAllowanceStanzas, fileTimings, timingKey, TIER_BUDGETS, type DurationManifest, type TestTiming } from './suite-durations.ts';
+import { durationAllowanceStanzas, durationLegacyOwner, fileTimings, timingKey, TIER_BUDGETS, type DurationManifest, type TestTiming } from './suite-durations.ts';
 import type { Tier } from './suite-shards.ts';
 import { projectedWall } from './suite-tier-report.ts';
 
@@ -23,7 +23,7 @@ export function taskDurationReport(manifest: DurationManifest, tiers: Record<str
   }
   const summary = `duration check: ${options.fileCount} changed T3/T4 files; ${samples.filter(test => test.outcome === 'pass').length} passing identities; added wall ${(options.wallMs / 1000).toFixed(3)} s (selected phases, excluding machine wait); platform ${options.platform}; executor ${options.executor}; changed = test file in branch diff from origin/dev merge-base plus dirty/untracked files; one base execution, no repetitions; T4 has no tier budget; ${lines.length ? `${lines.length} allowance stanza` : 'no allowance stanzas'}${options.platform === 'linux' ? '' : '; Linux evidence unavailable on this platform'}`;
   lines.unshift(summary);
-  if (!options.owner) lines.push('duration check: allowance owner unavailable; cannot print commit-ready stanzas; link task to an open container');
+  if (!options.owner) lines.push('duration check: allowance owner unavailable; cannot print commit-ready stanzas; use an open standing container (a category or an epic directly under an open category) as an ancestor or budget.legacyOwner');
   return lines;
 }
 
@@ -61,7 +61,7 @@ export function durationBudgetReport(manifest: DurationManifest, tiers: Record<s
     lines.push(`${ratchet}: ${seconds(projected)} s vs base ${seconds(total)} s${projected > total ? allowed ? '; allowed' : '; would refuse growth (needs T3 allowance)' : ''}${missingFiles || unbaselined ? `; incomplete base timings (${missingFiles} files, ${unbaselined} observed existing tests)` : ''}${uncertain ? `; uncertain source identity (${uncertain} observed tests retained)` : ''}`);
   } else lines.push(`${ratchet}: unavailable (no base manifest)`);
   const legacy = Object.values(manifest.allow).filter(entry => entry.legacy);
-  lines.push(`budget legacy allowances: ${legacy.length}; ${seconds(legacy.reduce((sum, entry) => sum + entry.seconds, 0))} s; owner ${manifest.budget.legacyOwner ?? 'E-677'}`);
+  lines.push(`budget legacy allowances: ${legacy.length}; ${seconds(legacy.reduce((sum, entry) => sum + entry.seconds, 0))} s; owner ${durationLegacyOwner(manifest)}`);
   return [...ranked, ...lines];
 }
 

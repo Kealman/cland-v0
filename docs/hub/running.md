@@ -1529,7 +1529,8 @@ match diff paths; reports name the guarding file and changed source. Fallback
 keeps that exact changed/guarded T3/T4 file set. See
 [shared read-path selection](../agents/tests.md#shared-read-path-load-selection-t-1203). On the Linux droplet, passing T3
 identities at >=80% of their tier budget print JSON allowances with 1.5x worst
-passing sample headroom, the nearest open container owner and seven-day UTC
+passing sample headroom, the nearest admitted standing ancestor (or validated
+manifest `budget.legacyOwner` fallback) and seven-day UTC
 dates; T4 has no budget and prints no stanza. No manifest values are written.
 The ready report retains stanzas and measured added phase wall (excluding
 machine wait), with platform/executor. The duration summary counts the printed

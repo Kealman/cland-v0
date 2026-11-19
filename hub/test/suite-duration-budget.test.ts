@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { durationBudgetReport, taskDurationReport, type DurationBudgetContext } from '../src/suite-duration-budget.ts';
-import { durationAllowanceStanzas, lintDurationManifest, type DurationManifest } from '../src/suite-durations.ts';
+import { durationAllowanceOwner, durationAllowanceStanzas, lintDurationManifest, type DurationManifest, type DurationOwner } from '../src/suite-durations.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { parseDurationManifest } from '../src/suite-durations.ts';
 
@@ -29,6 +29,54 @@ test('duration duplicates include escaped baseline keys and repeated equal value
 });
 
 const manifest = (): DurationManifest => ({ version: 1, source: { artifacts: [], commit: 'base' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {} });
+
+for (const task of ['T-1952', 'T-1957']) test(`allowance printer for ${task} uses the configured standing fallback and passes lint unchanged`, async t => {
+  const owners: Record<string, DurationOwner> = {
+    [task]: { state: 'open', kind: 'task', parent: 'E-1883' },
+    'E-1883': { state: 'open', kind: 'epic', parent: 'R-1880' },
+    'R-1880': { state: 'open', kind: 'release' },
+    'E-77': { state: 'open', kind: 'epic', parent: 'C-1' },
+    'C-1': { state: 'open', kind: 'category' },
+  };
+  const current = manifest();
+  current.budget.legacyOwner = 'E-77';
+  const owner = await durationAllowanceOwner('unused-fake-root', task, {
+    fallbackOwner: current.budget.legacyOwner, readOwner: async id => owners[id],
+  });
+  const file = 'hub/test/process.test.ts';
+  const now = Date.parse('2026-11-19T00:00:00Z');
+  t.mock.method(Date, 'now', () => now);
+  // Feed the resolved owner through the same reporting seam used by the runner.
+  const lines = taskDurationReport(current, { [file]: 'T3' }, [{ file, name: 'slow', seconds: 9, outcome: 'pass' }],
+    { fileCount: 1, wallMs: 10, platform: 'linux', executor: 'droplet', owner });
+  assert.doesNotMatch(lines.join('\n'), /owner unavailable/);
+  assert.equal(owner, 'E-77');
+  const stanzas = JSON.parse(lines.find(line => line.startsWith('duration allowance stanza '))!.slice('duration allowance stanza '.length));
+  assert.equal(stanzas[`${file}::slow`]!.owner, 'E-77');
+  assert.equal(stanzas[`${file}::slow`]!.expires, '2026-11-26', 'legacy fallback still gets seven days, not 31');
+  assert.doesNotThrow(() => lintDurationManifest({ ...current, allow: stanzas }, { owners, now }));
+  assert.throws(() => lintDurationManifest({ ...current, allow: { [`${file}::slow`]: { ...stanzas[`${file}::slow`], owner: 'E-1883' } } }, { owners, now }), /epic owner E-1883/);
+});
+
+test('allowance owner prefers an admitted ancestor and refuses invalid fallbacks with accurate advice', async () => {
+  const owners: Record<string, DurationOwner> = {
+    'T-1': { state: 'open', kind: 'task', parent: 'E-2' },
+    'E-2': { state: 'open', kind: 'epic', parent: 'C-1' },
+    'C-1': { state: 'open', kind: 'category' },
+    'E-3': { state: 'closed', kind: 'epic', parent: 'C-1' },
+    'R-1': { state: 'open', kind: 'release' },
+    'E-4': { state: 'open', kind: 'epic', parent: 'R-1' },
+    'E-5': { state: 'open', kind: 'epic', parent: 'E-5' },
+  };
+  const readOwner = async (id: string) => owners[id];
+  assert.equal(await durationAllowanceOwner('unused-fake-root', 'T-1', { readOwner, fallbackOwner: 'C-1' }), 'E-2');
+  for (const fallbackOwner of [undefined, 'E-3', 'E-4', 'E-5', 'E-99', '../invalid']) {
+    const owner = await durationAllowanceOwner('unused-fake-root', 'E-4', { readOwner, fallbackOwner });
+    assert.equal(owner, undefined);
+    const report = taskDurationReport(manifest(), {}, [], { fileCount: 0, wallMs: 0, platform: 'linux', executor: 'droplet', owner });
+    assert.match(report.join('\n'), /owner unavailable.*open standing container.*budget.legacyOwner/);
+  }
+});
 
 test('task duration summary counts the allowance stanza printed for mixed T3/T4 receipts', () => {
   const file = 'hub/test/process.test.ts', soak = 'hub/test/soak.test.ts';

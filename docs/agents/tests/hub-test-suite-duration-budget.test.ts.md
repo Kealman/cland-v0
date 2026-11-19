@@ -5,3 +5,11 @@ T1 duplicate-parser cases plant raw JSON through parseDurationManifest. Preserve
 Exercise durationAllowanceStanzas through explicit passing, failing, skipped and legacy outcome-less samples at a fixed UTC date. Keep literals for the exact 80% threshold, worst passing sample, 1.5x headroom and year-boundary seven-day expiry. Lint the generated entries with an open container owner and assert the input manifest is unchanged.
 
 Exercise taskDurationReport with planted T3/T4 receipts: the summary counts printed JSON stanza lines, including one object with multiple entries. Keep zero-output cases for empty, below-threshold, failed/skipped, T4-only and missing-owner samples, plus the local macOS evidence label. No child process or real-time sample is needed for these reporting rules.
+
+Inject fake tracker facts through durationAllowanceOwner's readOwner boundary.
+Delivery epics under releases have no standing ancestor: resolve the configured
+legacy-owner fallback, parse the actual taskDurationReport JSON, and admit it
+unchanged with lintDurationManifest. Keep seven-day expiry under a fixed clock,
+the positive refusal of the delivery epic, ancestor precedence, and closed,
+nonstanding, missing, cyclic and malformed fallback cases. No live tracker or
+native launch is needed.

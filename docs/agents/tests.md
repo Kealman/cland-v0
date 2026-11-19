@@ -1770,9 +1770,13 @@ to milliseconds. Failed, skipped, TODO and old outcome-less receipts contribute
 no recommendation. This follows **T-931's headroom rule**: set an allowance at
 about 1.5x the worst observed passing sample, rather than at the last sample.
 Review the generated reason for the lifecycle need before committing. The owner
-is the task's nearest open container, with UTC `added` today and `expires` seven
-days later. A missing open container is reported instead of printing an invalid
-stanza. Existing allowances and baselines remain untouched.
+is the task's nearest open standing container: a category, or an epic directly
+under an open category, admitted by the lint's `isStandingDurationOwner` rule.
+If no ancestor qualifies, the printer uses the manifest's `budget.legacyOwner`
+(historically E-677 when omitted), validated by that same rule. UTC `added` is
+today and `expires` is seven days later, including for the legacy-owner fallback.
+If neither qualifies, an owner-unavailable diagnostic names the standing-container
+rule instead of printing an invalid stanza. Existing allowances and baselines remain untouched.
 
 The ready report retains the complete JSON stanza and a `duration check:` line
 naming platform/executor, selection rule, passing identity count and **added wall**:

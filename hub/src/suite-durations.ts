@@ -24,6 +24,7 @@ export type DurationManifest = {
   tests: Record<string, number>;
   allow: Record<string, { file?: true; seconds: number; reason: string; owner?: string; added?: string; expires?: string; legacy?: true }>;
 };
+export const durationLegacyOwner = (manifest: DurationManifest): string => manifest.budget.legacyOwner ?? 'E-677';
 export const timingKey = (test: TestTiming): string => `${test.file}::${test.name}`;
 export type DurationRegression = { key: string; before: number; now: number; budget?: number };
 export type DurationOwner = { state: string; kind: string; parent?: string | null };
@@ -55,23 +56,39 @@ export function durationAllowanceStanzas(tests: TestTiming[], manifest: Duration
 }
 
 /** The nearest standing container survives closure of the delivery that measured it. */
-export async function durationAllowanceOwner(cwd: string, item: string): Promise<string | undefined> {
-  const root = projectRoot(cwd), seen = new Set<string>();
+export async function durationAllowanceOwner(cwd: string, item: string, options: {
+  fallbackOwner?: string | undefined;
+  readOwner?: (id: string) => Promise<DurationOwner | undefined>;
+} = {}): Promise<string | undefined> {
+  const readOwner = options.readOwner ?? (async (id: string) => {
+    const root = projectRoot(cwd);
+    for await (const path of glob(`.cland/tasks/${id}-*.md`, { cwd: root })) {
+      const parsed = parseItem(await readFile(join(root, path), 'utf8'));
+      if (parsed.fm.id === id) return { state: parsed.fm.state, kind: parsed.fm.kind, parent: parsed.fm.parent };
+    }
+    return undefined;
+  });
+  const seen = new Set<string>();
   const owners: Record<string, DurationOwner> = {};
   let id: string | null | undefined = item;
   while (id && /^[A-Z]+-[1-9]\d*$/.test(id) && !seen.has(id)) {
     seen.add(id);
-    let parent: string | null | undefined;
-    for await (const path of glob(`.cland/tasks/${id}-*.md`, { cwd: root })) {
-      const parsed = parseItem(await readFile(join(root, path), 'utf8'));
-      if (parsed.fm.id !== id) continue;
-      owners[id] = { state: parsed.fm.state, kind: parsed.fm.kind, parent: parsed.fm.parent };
-      parent = parsed.fm.parent;
-      break;
-    }
-    id = parent;
+    const owner = await readOwner(id);
+    if (owner) owners[id] = owner;
+    id = owner?.parent;
   }
-  return [...seen].find(id => isStandingDurationOwner(owners[id], owners));
+  const ancestor = [...seen].find(id => isStandingDurationOwner(owners[id], owners));
+  if (ancestor) return ancestor;
+  const fallback = options.fallbackOwner;
+  if (!fallback || !/^[A-Z]+-[1-9]\d*$/.test(fallback)) return undefined;
+  id = fallback;
+  while (id && /^[A-Z]+-[1-9]\d*$/.test(id) && !seen.has(id)) {
+    seen.add(id);
+    const owner = await readOwner(id);
+    if (owner) owners[id] = owner;
+    id = owner?.parent;
+  }
+  return isStandingDurationOwner(owners[fallback], owners) ? fallback : undefined;
 }
 
 /** Dated allowances expire at midnight UTC; legacy allowances expire on owner closure. */
@@ -168,7 +185,7 @@ export function lintDurationManifest(manifest: DurationManifest, options: { now?
   if (!object(manifest) || manifest.version !== 1 || !object(manifest.budget) || !time(manifest.budget.testSeconds) || manifest.budget.testSeconds <= 0 || !time(manifest.budget.fileSeconds) || manifest.budget.fileSeconds <= 0 || !object(manifest.files) || !object(manifest.tests) || !object(manifest.allow)) throw new Error(`invalid duration manifest: ${DURATION_MANIFEST}`);
   if (manifest.budget.mode !== undefined && manifest.budget.mode !== 'report' && manifest.budget.mode !== 'enforce') throw new Error('invalid duration budget mode: expected report or enforce');
   if (manifest.budget.legacyOwner !== undefined && (typeof manifest.budget.legacyOwner !== 'string' || !/^[A-Z]+-[1-9]\d*$/.test(manifest.budget.legacyOwner))) throw new Error('invalid duration legacy owner: expected an item id');
-  const legacyOwner = manifest.budget.legacyOwner ?? 'E-677';
+  const legacyOwner = durationLegacyOwner(manifest);
   for (const tier of ['T1', 'T2', 'T3', 'Web'] as const) {
     const budget = manifest.budget[tier];
     if (budget !== undefined && (!object(budget) || ![budget.testSeconds, budget.fileSeconds, budget.wallSeconds].every(value => time(value) && value > 0))) throw new Error(`invalid duration tier budget: ${tier}`);

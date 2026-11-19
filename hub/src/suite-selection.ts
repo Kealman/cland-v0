@@ -9,7 +9,7 @@ import { coverageSelection, type CoverageRecording } from './suite-coverage.ts';
 import { defaultConfig, parseConfig } from './init/config.ts';
 import { fetchSuiteDev, selectionFailure } from './suite-dev-fetch.ts';
 import { readTierAssignments, readTierLoadGuards, type LoadGuards, type Tier } from './suite-shards.ts';
-import { durationAllowanceOwner } from './suite-durations.ts';
+import { durationAllowanceOwner, durationLegacyOwner, readDurationManifest } from './suite-durations.ts';
 import { selectWebRepetitionFiles, newWebFiles } from './web-repetitions.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'web-only' | 'full';
@@ -250,7 +250,10 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
   if (taskSelection.tiers?.join(',') !== 'T1,T2') return taskSelection;
   const sampled = taskDurationSelection(taskSelection, await readTierAssignments(cwd) ?? new Map(), await readTierLoadGuards(cwd));
   if (!sampled.durationCheck) return sampled;
-  const owner = await durationAllowanceOwner(cwd, branch.split('/')[1]!.match(/^[A-Z]+-\d+/)?.[0] ?? '');
+  const manifest = await readDurationManifest(cwd);
+  const owner = await durationAllowanceOwner(cwd, branch.split('/')[1]!.match(/^[A-Z]+-\d+/)?.[0] ?? '', {
+    fallbackOwner: manifest ? durationLegacyOwner(manifest) : undefined,
+  });
   return { ...sampled, durationCheck: { ...sampled.durationCheck, ...(owner ? { owner } : {}) } };
 }
 
