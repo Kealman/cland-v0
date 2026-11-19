@@ -1,6 +1,6 @@
 // T3: the assertion is teardown of a real CLI which writes after hub shutdown.
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
@@ -8,7 +8,119 @@ import test, { type TestContext } from 'node:test';
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
 import { FakeClock } from './fake-clock.ts';
 import { fakeClaude, FAKE_CLAUDE_DIR, until } from './harness.ts';
-import { beforeDirectories, captureProcess } from './process-cleanup.ts';
+import { beforeDirectories, captureProcess, ownProcess, cleanupProcesses, fixtureProcessCensus } from './process-cleanup.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { findFixtureOrphans, removeWorktreeWithFixtures } from '../src/fixture-processes.ts';
+import { systemProcesses } from '../src/system-processes.ts';
+import { assertFakeClaudeCensus } from './fake-claude-census.ts';
+import { residueControl, residueChild, type ResidueCase } from './fixture-residue-control.ts';
+
+// Stop the captured worker group before joining the original controller work.
+// Only then discover detached sessions, whose final census gates root removal.
+async function nativeControlRoot(c: ResidueCase): Promise<{ root: string; drain: () => Promise<void> }> {
+  const root = await c.root();
+  const writers = c.own(root, async root => {
+    await cleanupProcesses(root, [], undefined, undefined, undefined, { discover: true });
+    assert.deepEqual(fixtureProcessCensus(root), [], 'all detached fixture writers exited before root removal');
+  }, { afterJoin: true });
+  return { root, drain: writers.close };
+}
+
+for (const mode of ['dropped cleanup', 'failing body'] as const) {
+  test(`fake Claude final census detects ${mode}`, { timeout: 30_000 }, t => residueControl(t, { native: true }).run(async c => {
+    const { root } = await nativeControlRoot(c);
+    const script = join(root, 'census.test.mjs');
+    const marker = join(root, 'session.json');
+    const mcp = join(root, 'mcp.json');
+    const harness = new URL('./harness.ts', import.meta.url).href;
+    const environment = new URL('./account-fixture-env.ts', import.meta.url).href;
+    const census = new URL('./fake-claude-census.ts', import.meta.url).href;
+    await c.step('MCP configuration setup', () => fs.writeFile(mcp, JSON.stringify({ mcpServers: { cland: { command: process.execPath, args: [new URL('../bin/cland-spoke.ts', import.meta.url).pathname] } } })));
+    await c.step('census child script setup', () => fs.writeFile(script, `import test from 'node:test';
+import { execFile } from 'node:child_process';
+import { writeFile } from 'node:fs/promises';
+import { fakeClaude, FAKE_CLAUDE_DIR, until } from ${JSON.stringify(harness)};
+import { accountFixtureEnvironment } from ${JSON.stringify(environment)};
+import { assertFakeClaudeCensus } from ${JSON.stringify(census)};
+import { systemProcesses } from ${JSON.stringify(new URL('../src/system-processes.ts', import.meta.url).href)};
+test('fixture body', async t => {
+  const fake = await fakeClaude(${mode === 'dropped cleanup' ? '{ after() {} }' : 't'});
+  const env = await accountFixtureEnvironment(fake.env);
+  await new Promise((resolve, reject) => execFile(FAKE_CLAUDE_DIR + '/claude', ['--bg', '--mcp-config', ${JSON.stringify(mcp)}], { cwd: process.cwd(), env }, error => error ? reject(error) : resolve()));
+  const [session] = await fake.sessions();
+  await until(async () => (await fake.log(session.id)).includes('session ready'), { what: 'session ready before body exit' });
+  const spoke = (await systemProcesses()).find(row => row.parent === session.pid && row.command.includes('cland-spoke.ts'));
+  if (!spoke) throw new Error('spoke launch incomplete');
+  await writeFile(${JSON.stringify(marker)}, JSON.stringify({ session, spoke, home: fake.home }));
+  ${mode === 'failing body' ? "throw new Error('controlled fixture body failure');" : ''}
+});
+test('final fake Claude census', assertFakeClaudeCensus);
+`));
+    const worker = await residueChild(c, 'census worker acquisition', () => spawn(process.execPath, ['--test', '--test-reporter=tap', script], { cwd: root, detached: true, env: fixtureEnvironment(root, process.env, { TMPDIR: root, NODE_TEST_CONTEXT: undefined }), stdio: ['ignore', 'pipe', 'pipe'] }));
+    await worker.observe('fixture file native close', () => worker.closed);
+    const output = worker.diagnostic();
+    const receipt = JSON.parse(await worker.observe('fixture session receipt', () => fs.readFile(marker, 'utf8'))) as { session: { pid: number }; spoke: { pid: number }; home: string };
+    await c.acquire('late session ownership', async () => ownProcess(undefined, receipt.session.pid), stop => stop());
+    await c.acquire('late spoke ownership', async () => ownProcess(undefined, receipt.spoke.pid), stop => stop());
+    if (mode === 'dropped cleanup') {
+      assert.ok(captureProcess(receipt.session.pid), 'positive control: omitted teardown leaks the session');
+      assert.ok(captureProcess(receipt.spoke.pid), 'positive control: omitted teardown leaks the spoke');
+      assert.equal(worker.child.exitCode, 1, output);
+      assert.match(output, /not ok \d+ - final fake Claude census/);
+      assert.match(output, /fake-Claude session and spoke groups are empty/);
+    } else {
+      assert.equal(worker.child.exitCode, 1, output);
+      assert.match(output, /controlled fixture body failure/);
+      assert.match(output, /(?:^|\n)ok \d+ - final fake Claude census/);
+      assert.equal(captureProcess(receipt.session.pid), null, 'failing body joins the session');
+      assert.equal(captureProcess(receipt.spoke.pid), null, 'failing body joins the spoke');
+    }
+  }));
+}
+
+test('orphan sweep joins a fake Claude session after its fixture worker is killed', { timeout: 30_000 }, t => residueControl(t, { native: true }).run(async c => {
+  const { root, drain } = await nativeControlRoot(c);
+  const marker = join(root, 'launched.json');
+  const script = join(root, 'worker.mjs');
+  const harness = new URL('./harness.ts', import.meta.url).href;
+  const environment = new URL('./account-fixture-env.ts', import.meta.url).href;
+  const mcp = join(root, 'mcp.json');
+  await c.step('MCP configuration setup', () => fs.writeFile(mcp, JSON.stringify({ mcpServers: { cland: { command: process.execPath, args: [new URL('../bin/cland-spoke.ts', import.meta.url).pathname] } } })));
+  await c.step('SIGKILL worker script setup', () => fs.writeFile(script, `import { execFile } from 'node:child_process';
+import { writeFile } from 'node:fs/promises';
+import { fakeClaude, FAKE_CLAUDE_DIR, until } from ${JSON.stringify(harness)};
+import { accountFixtureEnvironment } from ${JSON.stringify(environment)};
+const fake = await fakeClaude({ after() {} });
+const env = await accountFixtureEnvironment(fake.env);
+await new Promise((resolve, reject) => execFile(FAKE_CLAUDE_DIR + '/claude', ['--bg', '--mcp-config', ${JSON.stringify(mcp)}], { cwd: process.cwd(), env }, error => error ? reject(error) : resolve()));
+const [session] = await fake.sessions();
+await until(async () => (await fake.log(session.id)).includes('session ready'), { what: 'session ready before worker death' });
+await writeFile(${JSON.stringify(marker)}, JSON.stringify({ ...session, home: fake.home }));
+setInterval(() => {}, 1000);
+`));
+  const worker = await residueChild(c, 'SIGKILL worker acquisition', () => spawn(process.execPath, [script], { cwd: root, detached: true, env: fixtureEnvironment(root, process.env, { TMPDIR: root }), stdio: ['ignore', 'pipe', 'pipe'] }));
+  await worker.observe('worker session receipt setup', () => until(async () => !!await fs.stat(marker).catch(() => null), { what: 'worker session receipt' }));
+  const session = JSON.parse(await worker.observe('session receipt read', () => fs.readFile(marker, 'utf8'))) as { pid: number; home: string };
+  await c.acquire('live session ownership', async () => ownProcess(undefined, session.pid), stop => stop());
+  const spoke = (await c.step('live spoke discovery', () => systemProcesses())).find(row => row.parent === session.pid && row.command.includes('cland-spoke.ts'));
+  assert.ok(spoke, 'positive control: session owns a live spoke');
+  await c.acquire('live spoke ownership', async () => ownProcess(undefined, spoke.pid), stop => stop());
+  assert.ok(captureProcess(session.pid), 'positive control: detached session is alive');
+  await c.step('worker SIGKILL', async () => { worker.child.kill('SIGKILL'); });
+  const [, signal] = await worker.observe('killed fixture worker native close', () => worker.closed);
+  assert.equal(signal, 'SIGKILL', 'worker close confirms the injected signal');
+  assert.ok(captureProcess(session.pid), 'positive control: worker SIGKILL leaves the session alive');
+  const orphans = await c.step('private receipt orphan discovery', () => findFixtureOrphans(root, undefined, undefined, root));
+  assert.ok(orphans.some(orphan => orphan.process.pid === session.pid && orphan.owned), 'orphan sweep recognizes the session through its private ownership receipt');
+  await c.step('guarded worktree removal', () => removeWorktreeWithFixtures(root, async () => {
+    assert.equal(captureProcess(session.pid), null, 'session exited before root removal');
+    assert.equal(captureProcess(spoke.pid), null, 'spoke exited before root removal');
+    await drain(); // Settle fallback discovery while its original root still exists.
+    await fs.rm(root, { recursive: true, force: true });
+  }));
+  assert.equal(captureProcess(session.pid), null, 'empty session census after sweep');
+  assert.equal(captureProcess(spoke.pid), null, 'empty spoke census after sweep');
+}));
 
 // Capture teardown so assertions can invoke it early. The real test must still
 // own it when setup or a child fails before those assertions are reached.
@@ -266,3 +378,5 @@ test('captured fake Claude teardown survives setup rejection and child error', {
     }
   }
 });
+
+test('Claude cleanup file ends with no fake sessions or spokes', assertFakeClaudeCensus);

@@ -27,7 +27,7 @@ function native(deadline?: number): FixtureProcesses {
       return !result.error && result.code === 0 && /^\d+$/.test(result.stdout.trim()) && Number(result.stdout.trim()) === process.getuid();
     } };
 }
-const candidate = (row: SystemProcess) => /(?:^|\/)nvim\s+(?:.*\s)?--headless(?:\s|$)|(?:^|\/)stub-hub\.ts(?:\s|$)|(?:^|\/)cland\.ts\s+hub\s+serve(?:\s|$)/.test(row.command);
+const candidate = (row: SystemProcess) => /(?:^|\/)nvim\s+(?:.*\s)?--headless(?:\s|$)|(?:^|\/)stub-hub\.ts(?:\s|$)|(?:^|\/)cland\.ts\s+hub\s+serve(?:\s|$)|(?:^|\/)fake-claude\.ts\s+__session(?:\s|$)/.test(row.command);
 async function ownedRoots(row: SystemProcess, readers: FixtureProcesses, deadline?: number): Promise<string[]> {
   if (!candidate(row) || !await readers.sameUser(row.pid)) return [];
   const paths = await readers.paths(row.pid, deadline);

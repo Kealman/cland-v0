@@ -1,6 +1,7 @@
 // T3: native Claude supervisor contract: per-directory commands, authentication hooks, PID discovery and re-find after hub teardown.
 // FakeClock owns directory schedules; child transport deadlines remain real.
 import { completeJournalLines } from './journal-lines.ts';
+import { assertFakeClaudeCensus } from './fake-claude-census.ts';
 import { accountClaude, accountFixtureEnvironment } from './account-fixture-env.ts';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -402,3 +403,5 @@ process.stdout.write(r.stdout); process.stderr.write(r.stderr); process.exitCode
   assert.ok(journal.some(entry => entry.event === 'hub-stopped'), 'the fixture hub stops before its probe directory can be removed');
   assert.equal((await stat(bin)).isDirectory(), true, 'the probe directory survives until the hub has stopped');
 });
+
+test('Claude accounts file ends with no fake sessions or spokes', assertFakeClaudeCensus);

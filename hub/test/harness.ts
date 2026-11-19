@@ -1,5 +1,6 @@
 import { lockHostIdentity } from '../src/hub/lock-identity.ts';
 import { fakePollerProcesses } from './fakes/poller-processes.ts';
+import { rememberFakeClaudeRegistry, rememberFakeClaudeSessions } from './fake-claude-census.ts';
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
 import { fakeHarness, FAKE_FLAVOURS, type FakeFlavour, type FakeHarness } from './fakes/harness.ts';
 import { realClock, type Clock } from '../src/hub/clock.ts';
@@ -912,6 +913,7 @@ export async function fakeClaude(
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
   const writers = join(home, 'writers');
   await mkdir(writers);
+  rememberFakeClaudeRegistry(writers);
   await writeFile(join(home, 'writers-open'), '');
   const writerClock = timings.writerClock ?? realClock;
   // All resource and hub shutdown hooks precede directory disposal. Only then
@@ -925,6 +927,7 @@ export async function fakeClaude(
     const deadline = writerClock.now().getTime() + 5000;
     for (;;) {
       const all = await identities();
+      rememberFakeClaudeSessions(all);
       await cleanupOwnedProcesses(all.filter(writer => writer.session));
       const pending = all.filter(writer => !writer.session && captureProcess(writer.pid)?.started === writer.started);
       if (!pending.length) break;

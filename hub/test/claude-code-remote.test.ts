@@ -1,6 +1,7 @@
 // T3: fake SSH + scripted Claude exercise native worker adoption, hooks and mod bridge.
 // Native processes are required to prove detached worker capture and joined stop; fixture owns every writer.
 import test, {type TestContext} from 'node:test';
+import { assertFakeClaudeCensus } from './fake-claude-census.ts';
 import assert from 'node:assert/strict';
 import { testWaitMs } from './until.ts';
 import { readFile, symlink, readdir, stat, chmod, mkdir, unlink } from 'node:fs/promises';
@@ -737,3 +738,5 @@ test('remote Claude memory floor refuses actual launchClaude with no process the
   assert.equal(worker.pid,row.pid);assert.equal(worker.identity,birth?.pidIdentity);
   const stopped=await d.ui.request({type:'session.stop',session:'worker'},testWaitMs());assert.equal(stopped.ok,true,stopped.error);
 });
+
+test('Claude remote file ends with no fake sessions or spokes', assertFakeClaudeCensus);

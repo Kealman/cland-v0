@@ -62,6 +62,10 @@ function processes(pids?: number[], groups: number[] = []): ProcessRow[] {
     return { ...row, identity, ...(exited.has(row.pid) ? { nativeExited: true } : {}), ...(!identity ? { identityError: exited.has(row.pid) ? 'native exit observed; listed descendants are not confirmed gone' : errors.get(row.pid) ?? 'native birth unavailable or changed across ownership snapshot' } : {}) };
   });
 }
+/** Read-only census of captured fixture session groups; never grants signal authority. */
+export function processGroupCensus(groups: number[]): ProcessIdentity[] {
+  return processes([], groups).map(row => ({ pid: row.pid, started: row.started, identity: row.identity ?? null, group: row.group }));
+}
 function requireIdentities(expected: Iterable<ProcessIdentity>, current: ProcessRow[], draining = false): void {
   const captured = new Map([...expected].map(target => [target.pid, target]));
   for (const target of captured.values()) {

@@ -2,6 +2,8 @@
 import { existsSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { captureProcess } from '../../process-cleanup.ts';
+import { fixtureOwnership } from '../../../../shared/fixture-ownership.ts';
+import { fileURLToPath } from 'node:url';
 
 export function registerWriter(home: string, session: boolean): boolean {
   const registry = process.env.FAKE_CLAUDE_WRITERS;
@@ -18,5 +20,13 @@ export function registerWriter(home: string, session: boolean): boolean {
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error; }
   // Cleanup may close admission between the first check and registration. A
   // rejected invocation never creates directories or writes calls/jobs afterwards.
-  return existsSync(active);
+  if (!existsSync(active)) return false;
+  if (session) {
+    // A test worker can die without running its directory hooks. Keep a private
+    // PID/birth receipt open in the native session so guarded worktree removal
+    // can recover this detached writer and join its captured spoke descendants.
+    const owner = fixtureOwnership([home, process.cwd(), fileURLToPath(new URL('../../../../', import.meta.url))]);
+    process.once('exit', () => { owner.close(); owner.remove(); });
+  }
+  return true;
 }

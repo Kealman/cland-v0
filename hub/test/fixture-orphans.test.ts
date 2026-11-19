@@ -4,11 +4,13 @@ import assert from 'node:assert/strict';
 import { chmodSync, writeFileSync } from 'node:fs';
 import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
-import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
+import { fixtureOwnership, readFixtureReceipt } from '../../shared/fixture-ownership.ts';
 import { findFixtureOrphans, removeWorktreeWithFixtures, sweepFixtureOrphans, type FixtureProcesses } from '../src/fixture-processes.ts';
 import { initialised, toolchain, probeTools } from './doctor-fixture.ts';
 import { runDoctor } from '../src/cli/doctor.ts';
 import type { SystemProcess } from '../src/system-processes.ts';
+import { fixtureReceiptCase } from './fixture-receipt-case.ts';
+import cp from 'node:child_process';
 
 const checkout = '/repo/.cland/worktrees/T-1';
 const row = (pid: number, command = 'nvim --clean -u /repo/.cland/worktrees/T-1/nvim/init.lua --headless'): SystemProcess => ({ pid, parent: 1, group: pid, started: 'Tue Oct 20 08:00:00 2026', state: 'S', command });
@@ -19,6 +21,9 @@ function fixture(t: TestContext) {
     t.after(() => { receipt.close(); receipt.remove(); });
     return receipt;
   });
+  return receiptReaders(receipts);
+}
+function receiptReaders(receipts: Array<ReturnType<typeof fixtureOwnership>>) {
   let rows = [row(101), row(102, 'node /repo/nvim/test/stub-hub.ts hub serve --stdio'), row(103, 'node /repo/hub/bin/cland.ts hub serve'), row(104)];
   const ended: number[] = [];
   const readers: FixtureProcesses = {
@@ -51,6 +56,76 @@ test('live roots and other projects are outside deleted-root sweeping', async t 
   assert.deepEqual(await findFixtureOrphans(undefined, undefined, f.readers), []);
   f.readers.missing = path => path === '/scratch/cland-proj-1';
   assert.deepEqual((await findFixtureOrphans(undefined, undefined, f.readers)).map(p => p.process.pid), [101, 102, 103]);
+});
+
+test('fake Claude session recovery requires its own PID and birth receipt', t => fixtureReceiptCase(t, checkout).run(async ({ step, receipt }) => {
+  const f = await step('fake receipt fixture setup', async () => receiptReaders([101, 102, 103].map(pid => receipt(pid, Date.parse(row(pid).started)))));
+  const command = 'node /repo/hub/test/fakes/claude-code/fake-claude.ts __session abcd1234';
+  f.setRows([row(101, command), row(104, command), row(102, command.replace('__session abcd1234', 'agents --json'))]);
+  assert.deepEqual((await step('matching receipt discovery', () => findFixtureOrphans(undefined, undefined, f.readers))).filter(p => p.owned).map(p => p.process.pid), [101]);
+  const birth = Date.parse(row(101).started);
+  f.receipts[0]!.bind(999, birth, birth);
+  assert.equal((await step('wrong PID receipt publication', () => readFixtureReceipt(f.receipts[0]!.path)))?.pid, 999, 'the mismatched receipt remains readable before refusal');
+  assert.deepEqual((await step('inherited PID refusal', () => findFixtureOrphans(undefined, undefined, f.readers))).filter(p => p.owned), [], 'an inherited receipt cannot authorize another PID');
+  f.receipts[0]!.bind(101, birth, birth);
+  await step('owned fake session sweep', () => sweepFixtureOrphans(() => {}, undefined, undefined, f.readers));
+  assert.deepEqual(f.ended, [101], 'matching argv without private ownership cannot authorize a signal');
+}));
+
+for (const phase of ['save', 'bind'] as const) test(`receipt recovery owns a rejected ${phase} before constructor setup returns`, async t => {
+  const owner = fixtureReceiptCase(t, checkout);
+  const failure = new Error(`planted receipt ${phase} rejection`);
+  const native = cp.spawn;
+  let root = '';
+  await owner.run(async c => {
+    root = c.root;
+    owner.faults[phase] = failure;
+    await assert.rejects(c.step('rejected receipt acquisition', async () => c.receipt(101, Date.parse(row(101).started))), error => error === failure);
+    assert.deepEqual(owner.acquisitionErrors, [failure]);
+    const pending = owner.opened.filter(entry => entry.receipt && !entry.closed);
+    assert.equal(pending.length, 1, 'pre-return failure leaves one positively captured descriptor');
+    assert.ok(fs.fstatSync(pending[0]!.fd!), 'captured descriptor really remains open');
+    assert.notEqual(cp.spawn, native, 'positive native guard remains installed');
+  });
+  await owner.close(); // The same registered cleanup also owns constructor rejections.
+  assert.ok(owner.opened.every(entry => entry.closed && (!entry.receipt || entry.removed)));
+  await assert.rejects(fs.promises.lstat(root), { code: 'ENOENT' });
+  await owner.restore();
+  assert.equal(cp.spawn, native);
+});
+
+for (const phase of ['close', 'remove'] as const) test(`receipt recovery retains its root and native guard after rejected ${phase}`, async t => {
+  const owner = fixtureReceiptCase(t, checkout);
+  const failure = new Error(`planted receipt ${phase} rejection`);
+  const native = cp.spawn;
+  let root = '', first: ReturnType<typeof fixtureOwnership> | undefined;
+  await owner.run(async c => {
+    root = c.root;
+    [first] = await c.step('independent receipt setup', async () => [c.receipt(101, Date.parse(row(101).started)), c.receipt(102, Date.parse(row(102).started))]);
+    assert.ok(first);
+    if (phase === 'close') owner.faults.close = { fd: first.fd, error: failure };
+    else owner.faults.remove = { path: first.path, error: failure };
+  });
+  await assert.rejects(owner.close(), error => error instanceof AggregateError && error.errors.includes(failure));
+  assert.ok(owner.attempts[0]!.errors.includes(failure), 'the original failed attempt remains recorded');
+  assert.equal(owner.attempts[0]!.pending.length, 1);
+  assert.ok(owner.opened.some(entry => entry.owner !== first && entry.receipt && entry.closed && entry.removed), 'other receipt settles independently');
+  assert.equal(fs.lstatSync(root).isDirectory(), true, 'actual cleanup keeps the root');
+  assert.equal(fs.lstatSync(first!.path).isFile(), true, 'failed receipt metadata stays present until positive disposal');
+  assert.notEqual(cp.spawn, native);
+  await assert.rejects(owner.restore(), /resource close unconfirmed/);
+  assert.notEqual(cp.spawn, native, 'failed restoration cannot release the native guard');
+  if (phase === 'close') assert.ok(fs.fstatSync(first!.fd), 'failed close preserves its real descriptor');
+  else assert.equal(owner.opened.find(entry => entry.owner === first)!.closed, true, 'removal failure retains positive close separately');
+  delete owner.faults[phase]; // Explicit recovery, never an automatic retry presented as first-attempt proof.
+  await owner.close();
+  assert.equal(owner.attempts.length, 2);
+  assert.equal(owner.attempts[0]!.pending[0]!.closed, phase === 'remove', 'explicit recovery never rewrites the earlier close outcome');
+  assert.equal(owner.attempts[0]!.pending[0]!.removed, false);
+  assert.deepEqual(owner.attempts[1]!.pending, []);
+  await assert.rejects(fs.promises.lstat(root), { code: 'ENOENT' });
+  await owner.restore();
+  assert.equal(cp.spawn, native);
 });
 
 test('receipt PID binding, private permissions, same user and open descriptor are required', async t => {

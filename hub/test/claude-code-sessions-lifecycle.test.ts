@@ -1,5 +1,6 @@
 // T3: real delayed hook-process ordering, early bridge confirmation, PID resume identity, TERM escalation and held-hook reaping.
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
+import { assertFakeClaudeCensus } from './fake-claude-census.ts';
 import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -375,3 +376,5 @@ test('Claude relaunch stops the previous native job after its PID has exited', {
   const calls = (await readFile(join(fake.home, 'calls.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { args: string[] });
   assert.ok(calls.some(c => c.args[0] === 'stop' && c.args[1] === discovered.harnessId), 'native stop receipt names the previous job');
 });
+
+test('Claude sessions file ends with no fake sessions or spokes', assertFakeClaudeCensus);

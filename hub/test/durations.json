@@ -13091,6 +13091,13 @@
     "hub/test/verification-tier-receipts.test.ts::uploaded writer atomically publishes ordered native exits": 0.002693
   },
   "allow": {
+    "hub/test/fake-claude-cleanup.test.ts::orphan sweep joins a fake Claude session after its fixture worker is killed": {
+      "seconds": 9.5,
+      "owner": "C-216",
+      "added": "2026-11-19",
+      "expires": "2026-11-26",
+      "reason": "T-1669: Coordinator d7a77698 authorized about 1.5x the worst observed sample for this exact setup-inclusive native lifecycle case. Linux x64 c-8 sfo2 batch run 32669467-c103-44b3-bd58-e87a24cbda04 (A-21788), head d13169d6f2dd513991c8c6b2697dca47eb71fea0, recorded a passing ordinary case at 5.886217868 s and five passing load-gate repetitions, worst 6.303101045 s. The batch remains failed on the enforced 5 s new-case cap; these samples are not a passing batch receipt. The 9.5 s allowance rounds 1.5x the worst observed sample upward to half a second. Worker SIGKILL, session/spoke survival, PID/birth receipt authority, joined exit, guarded root removal and final census assertions stay unchanged. Standing owner C-216; seven-day expiry 2026-11-26."
+    },
     "hub/test/suite-retention-scale.test.ts": {
       "file": true,
       "seconds": 113,

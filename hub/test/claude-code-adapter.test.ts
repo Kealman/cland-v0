@@ -9,6 +9,7 @@
 // - "Claude unpinned binary launch": stop, native-conversation relaunch and environment frame.
 // Scheduler and signed-out-latch negatives live in claude-code-schedule.test.ts on FakeClock.
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
+import { assertFakeClaudeCensus } from './fake-claude-census.ts';
 import { setRoleKey } from '../src/roles/editor.ts';
 import { test } from 'node:test';
 import { fixtureResidueCensus } from './harness.ts';
@@ -363,3 +364,4 @@ test('Claude unpinned binary launch, native relaunch and remedies preserve an un
 });
 
 test('fixture file outputs are removed', fixtureResidueCensus());
+test('Claude adapter file ends with no fake sessions or spokes', assertFakeClaudeCensus);
