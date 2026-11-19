@@ -15,7 +15,7 @@ found_by: review
 topic: topic-1655
 branch: t/T-1805-login-add-leaves-a-fixture-owner
 created: 2026-11-10T12:19:52.954Z
-updated: 2026-11-19T11:44:35.101Z
+updated: 2026-11-19T14:12:48.924Z
 ---
 
 ## Summary
@@ -29,9 +29,9 @@ Found by impl-1778 during T-1778's native slot at 1cba8d79c, 2026-11-10 12:18Z, 
 ## Acceptance criteria
 
 - [x] C1. The login-add fixture registers only roots it allocated under its scratch root, and the source worktree never appears in a fixture-owner registry's disposable roots. A separate non-disposable `sourceCheckout` field may name it only for PID- and birth-bound process selection during an authorized source-worktree removal (test).
-  - done: impl-1805 · 2026-11-19T11:25:28.671Z
+  - done: impl-1805 · 2026-11-19T13:52:34.900Z
 - [x] C2. The registry is removed, or marks every root released, once the file's cleanup has joined; a TMPDIR inventory after the file reads 0 → 0 (test).
-  - done: impl-1805 · 2026-11-19T11:42:40.353Z
+  - done: impl-1805 · 2026-11-19T14:08:55.727Z
 - [x] C3. A guard in the shared fixture-owner code refuses to register a path outside the scratch roots, with a planted control (test).
   - done: impl-1805 · 2026-11-19T11:25:30.483Z
 
@@ -111,3 +111,90 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards/Spec SOURCE CLEAR at48953e6a8e6685ed11d3c7ca3327775050bd136c/treee05ab974ceade9bf0e83ec788cdc371c8b1d7e54; A-21757. Parent e3a6da732, no dev merge, exact one-file5+/4- correction. Both original removal operations enter step at production before intermediate observations, retain immediate rejection forwarding and final await/assertions on those same owned handles; normal/signal caller fence, releases and positive full native guard unchanged. Source2 residual medium resolved; prior source1 production/field/cleanup/docs/census corrections remain the reviewed basis in A-21751. A-21756 log hashes/bytes/completeness inspected: changedT2 11/11 incl exact2controls, all232pinnedT1 files/1924pass with no index gap, code0/signalnull/HOMEpositive; fullstatic0/129report-only. Expected head/tree fields remain expected, session Git association distinct. No speedup claim. A-21750 native/otherT2 at e3a remains prior-head evidence, failed7-case launcher-HOME attempt+orderedretry retained;1291mixed-tree earlier stays separate. No new native/Web/Linux/fullT2T3/T4/QA/configured proof at48953, actualNeovimbinary/versionunknown. Findings[]; C1/C2/C3 remain test-dependent unverified, no criterion verification. Hold released; Implementer may obtain Coordinator window for mode-free configured verification at exact cleanhead, final settlement awaits same-head named receipts/phases. Reviewer read-only source/log/metadata, no edits/runtime/probes/scanners/generators/provider/browser.
+
+### rev-36 · 2026-11-19T12:44:44.114Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1805-evidence-1
+commit: 48953e6a8e6685ed11d3c7ca3327775050bd136c
+scope: evidence
+findings: [{"severity":"medium","text":"Configured385be52a/A-21770 has44 literal ownership-refusal errors. Layers:27–31/palette:26–30 allocate valid scratch roots via mkdtemp+ownDirectory but no grant, then nvim/client:132 reaches the new strict guard. Missed legitimate producer migration breaks native coverage (literal errors47817–47820/47847–47850). Coordinator46293447 attributes this to T-1805: migrate allocation sites and complete caller/root census; keep guard strict.","file":"shared/fixture-ownership.ts","line":30},{"severity":"medium","text":"Ownership registration runs before serving with no refusal containment; nvim/test/stub-hub.ts:45–47 catches only permission/read-only errors. Coordinator46293447 requires root-local refusal to produce structured secondary diagnostics while the hub keeps serving, with positive control. QA INCONCLUSIVE/stdio-exit and later expectation failures remain distinct pending actual case stderr/SHELL-001 confirmation; do not infer all57 failures from44 refusal occurrences or invent receipt authority.","file":"hub/src/cli/hub.ts","line":329}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Same-head configured evidence NOT CLEAR at48953e6a8e6685ed11d3c7ca3327775050bd136c,run385be52a-b01b-4030-abc1-9b061b6e8dbc/A-21770 exit1; A-21772 consolidates2medium/nohigh/low. A-21772 corrects only A-21771's T0 transcription: actual90.214s atlog106, not90.186s. All232T1/440T2/272T3filesfinished:937pass7fail; T0/T1/T2exit0,T3exit1,Web55filesunexecuted,T4unexecuted. Ordinary8769tests=8700pass57fail12skip plus30separateloadgatepasses; owner8799/8730 includesloadgate. No duplicate/unfinishedidentities. Own login/registration/source-association/previous-shape controls passed but failed round supplies no acceptance. Census-only loadgate is not repeatedlogin-bodycleanup. Literalerrors includeownershiprefusal atlayers103/palette51/shell316; QA SHELL001INCONCLUSIVE wait_for10000ms emptyGeneral connected /stdiohubexit1Node24.21.0 remains separate, actualstderrconfirmation stillneeded. Coordinator46293447/impl7aff59fa scope:allocation grants atproducers,strictguard unchanged,structured nonfatalhubrefusal+servingcontrol,completecensus,affectedNeovim/SHELL001 undernewslot,thenfreshsourcereview/newverifyall;laterexpectationclassesonlyassessedafterSHELL001. Provenance48610 exacthead/runtime treea18a6aa08cb2afff2d612b462b7833f0e4404909,uncachedLinuxx64Node24.21Nv0.12.5,c8ams3,3037539ms/$0.21094020833333332,browsernull.12skips areprerequisitesnotpasses;budgets/lint/tiernoticesreport-onlynotfailurecauses. C1failed;C2/C3unverified;nothingverified. Hold released for authorizedcorrection/diagnosis; retainfailed385be52a and all prior epochs,no blindresubmit. Reviewer read-only source/loginspection,noedits/runtime/scans/generators/provider/browser.
+
+Criteria: C1 failed (The shared strict ownership contract has missed legitimate scratch-root producers; configured native Neovim consumers fail registration.).
+
+### impl-1805 · 2026-11-19T12:59:04.941Z
+
+Post-full-run consumer/root census before correction (Coordinator46293447; guard remains strict):
+Registration writers: shared/fixture-ownership; CLI hub serve (hub/src/cli/hub.ts); nvim/test/client.ts receives caller project root, allocates a separate socket/account dir; nvim/test/stub-hub.ts self-registers cwd, also imported by nvim/test/qa-stub-hub.ts. Source selection readers/copy/removal owners unchanged from A-21750.
+Missed raw allocated-project producers: nvim/test/layers.test.ts start; palette.test.ts start; shell.test.ts startShell (parent dir + proj-shell child); ui.test.ts start; graph.test.ts start; vboard.test.ts start; qa.test.ts tempDir (including direct startClient callback). These must grant at actual mkdtemp allocation, not inside createClient/ownDirectory for arbitrary caller paths. Graph/vboard were outside default full T1-T3 coverage if their manifest tier is T4; preserve tier and name any limited local controls.
+QA: hub/src/cli/qa.ts runDir actually allocates the run root; Lua qa.build_fixture creates validated plain-name project children under it, or read-only stub fallback /var/empty or /. Its manually constructed Nvim env currently does not carry the sealed allocation grant. Use shared builder after overlays for actual allocated run root, and do not grant read-only fallback paths. QA cases are data under that root; qa-stub-hub imports stub receipt writer. nvim/test/qa-runner.ts outer CLI root already uses hub tempProject, but runQa allocates a different sibling root.
+Already granted project factories: hub/test/harness.tempProject and nvim/test/fixture.tempProject; all remaining createClient/startClient call sites inspected by filename/root-helper searches are fed by those or the seven raw producers above. Account/socket-only allocations in nvim/test/client.ts and sessions-lifecycle.test.ts are not caller project registration roots. nvim-path.test.ts cache roots and web-graph-layout.test.ts render roots do not register fixture owners.
+Web: web/test/harness uses hub tempProject; pairing passes that fixture.root to Nvim; readme checkout lies within its sealed outer scratch root; browser installer/prerequisite allocations do not register receipts. Recorder: hub/test/record-nvim-frames.ts owns output/account root and seals worker env; project root producers are the test factories above. Startup-budget support gets its subject root from fixture factories and seals it explicitly.
+New nonfatal boundary must be shared by real CLI serve and stub, emit structured producer refusal metadata (unknown stays unknown), and preserve serving with no ownership grant/receipt for refused root. Add T2 refusal outcome control and real native serving control. No field parser/receipt root guard will be weakened. Actual QA primary stderr is not present in old A-21770 bounded hub detail: stdio SHELL-001 passed, stub variant disconnected, so old class2 linkage remains unconfirmed until explicit local checks; later expectations remain unattributed.
+
+### impl-1805 · 2026-11-19T13:05:35.057Z
+
+Nonfatal registration contract before implementation: introduce shared registerFixtureOwnership result (registered owner or refused diagnostic), used by real CLI hub serve and nvim/test/stub-hub (including qa-stub importer). Strict fixtureOwnership still throws for ungranted roots; diagnostics carry producer-selected reason/native code/cleanup diagnostics, never infer cause from message text. A guard refusal happens before receipt creation; initial write failures must close/unlink their just-created receipt before returning refusal. CLI/stub log the shared diagnostic and keep serving. createClient remains a strict consumer and is repaired only by actual allocator grants. Direct tests in fixture-socket-path will cover structured refusal and FD/receipt cleanup; fixture-socket-lifecycle adds real serving-after-refusal control. No stdout wire/help export change. New field/result consumers are these two server entry points, strict client and their tests; old version-1 receipt reader/roots shape unchanged.
+
+### impl-1805 · 2026-11-19T13:14:07.613Z
+
+Correction census update: two further raw allocated-project producers are hub/test/discord-workbench-fixture.ts project() and hub/test/telegram-marks-fixture.ts project(). Their actual owned mkdtemp roots now get grants before return; shared directory owners already retire discarded grants on disposal. Consumers include nvim/test/remotes.test.ts, nvim/test/telegram-marks.test.ts, web/test/remotes.test.ts, web/test/telegram-marks.test.ts, hub/test/doctor-remotes.test.ts and hub/test/telegram-marks-setup.test.ts. telegram-liveness-fixture.ts and host-create-fixture.ts already allocate via hub tempProject. Correcting my earlier conditional tier note: production readTierAssignments at this tree says graph.test.ts and vboard.test.ts are T2, not T4; neither is deferred as T4. Seven Neovim raw producer helpers plus these two shared helpers and QA's allocated runDir comprise the allocation correction. Full filename/tier dispositions will be retained with the next pinned evidence.
+
+### impl-1805 · 2026-11-19T13:23:15.867Z
+
+Observer epoch correction: eae4b2889 full lint/typecheck and all232 T1/1924 tests passed, but its first native serving control failed `incomplete structured registration refusal: exit pending, signal none` / `refusal diagnostic: not within 5000 ms` after discovery named the live child. No later native file ran. A-21784 preserves this failed/partial epoch plus 65-file consumer/tier census and exact commands/raw bounded logs. Native slot released. Commit34df63aaa arms a <=16KiB JSON-line observer inside the spawn producer, retains the producer's structured object and validates the whole schema/value before a separate real hub.status reply; no diagnostic-text cause inference. Repeating required full static/T1 before renewed native slot per Coordinatorc4ea479e.
+
+### impl-1805 · 2026-11-19T13:40:33.841Z
+
+ENV-001 producer correction consumer census BEFORE new channel use: CLAND_NODE readers are nvim/lua/cland/init.lua cli_command (ordinary value unchanged outside QA), nvim/lua/cland/qa.lua cland_cli and stub command (migrated to descriptor validation), hub/mod/cland/hooks/register.ts (launched harness values supplied separately by claude-code adapter, not the QA case shim), hub/src/adapters/claude-code.ts (writer per session), hub/test/fakes/claude-code/fake-claude.ts (exec-compatible path, no argument-shape assumption), nvim/test/explorer.test.ts explicit Node path (not QA projection), nvim/test/qa-cases/ENV-001.lua (unchanged allowed Node path), hub/test/mod-bridge.test.ts, claude-code-remote.test.ts and doctor.test.ts (synthetic launch/override records, unaffected). nvim/README.md updated with QA-specific condition. Historical stripping examples qa/briefs/T-270/T-271/T-272/T-276,E-423/E-424/E-425/E-426/E-468/E-579 remain isolation examples. No frozen CLAND_NODE bytes identified. New private descriptor/nodeDiagnostic reply is only QA CLI->qa.lua->QA CLI; ordinary CLI result fields unchanged, structured refusal forwarded on stderr. Optional before_spawn callback is passed qa.lua->init.lua->hub.lua for repeated stdio attempts; absent callback preserves previous client shape. Six introduced generated keys (OWNED_ROOT, HOST_SOCKET_ROOT, EXECUTOR_STATE and three API roots) are removed only by qaCaseEnvironment; ordinary fixture/runner/host consumers keep fixtureEnvironment unchanged. Pure positive-control red/green shows no new CLAND key in the case projection; native ENV-001 remains unchanged and pending.
+
+### impl-1805 · 2026-11-19T13:52:35.090Z
+
+Final local correction at854cb29d3525cbd2cbb8893b0c9c46d788ca3ecb/tree2eb45474c32b1501037844f3955326e61c8b8262 pushed local origin, clean before/after checks; no post-first-review dev merge. A-21806 retains full lint0 (129report-only/0refusals), full typecheck0, all232T1/1925pass, five selectedT2 files/73pass, eleven selectedT3/102pass, all0fail/skip/cancel. Local darwinarm64Node24.21, actual Nvim binary/version not independently captured; browsernone. Full QA30 includes unchangedENV-001, positive stdio/stub receipt, four missing/tampered not-started controls. Native slot released; no more local run. Census includes65client files and76six-key consumer matches with tiers/dispositions; CLAND_NODE/private descriptor/callback consumers and historical/frozen readers listed. Prior failed epochs A-21781/A-21782/A-21784/A-21803 and configuredA-21770/A-21772 remain retained at original scope, no failed proof admitted. C1 re-marked done; C2/C3 done preserved. Request fresh full source review next, then Coordinator submits authorized fullverifyall after clear; no per-itemQA brief/policy requirement (scope none/after-stage).
+
+### rev-36 · 2026-11-19T13:59:12.063Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1805-source-4
+commit: 854cb29d3525cbd2cbb8893b0c9c46d788ca3ecb
+scope: full
+findings: [{"severity":"medium","text":"Standards M1: the five new native QA callbacks (also lines 122–137) use raw TestContext without a pre-acquisition whole-caller normal/signal fence/join or separate setup bound. qa-runner.ts:16–26 awaits tempProject before spawn/process ownership; tamper cases also await raw tempDir/writeFile. Resource hooks do not join the remaining caller continuation, so late setup/write/launch can escape teardown. Implementer a1f7b0fe confirms no omitted owner or approved disposition. Own/fence/join the original sequences and late acquisitions while preserving exact positive receipt, refusal/not-started and final assertions.","file":"nvim/test/qa.test.ts","line":113}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full source NOT CLEAR at 854cb29d3/tree2eb45474c32b1501037844f3955326e61c8b8262; A-21807. One medium Standards finding, no additional Spec/high/low finding. Three actual correction commits since 48953e6a8, no dev merge, clean. Nine allocator grants preserve strict registration and separate sourceCheckout authority. Structured optional refusal/initial-write cleanup and native serving-after-refusal control match Coordinator scope; producer object observed before startup tail displacement, exact-PID discovery, real status response and native exit0 retained. QA sealed projection, fixed-root shim/preload, pinned argument descriptor bytes/identity before fixture CLI and each stdio attempt, read-only no-grant fallback, positive stdio/stub persisted receipts and exact missing/tampered not-started controls reviewed positively. This is the approved accidental mismatch boundary, not an OS exec fence. Matching docs/censuses read; ENV-001 unchanged, ordinary stdout/wire unchanged.
+
+A-21806: all 38 log hashes match declared values; T1 command exactly all 232 pinned files, 1925 pass; selected five T2/73 and eleven T3/102 pass, QA30 includes five new controls. Full lint/typecheck code0/signalnull, 129 report-only findings/zero refusals. Local darwin arm64 Node24.21, expected head/tree plus separate clean readbacks, actual Neovim binary/version unknown; no browser/real providers/cloud. Remaining tiers/new configured Linux proof unexecuted. Prior A-21770 remains failed/partial, 44 ownership refusals separate from other QA failure classes; A-21772 corrected T0 90.214s and all earlier failed/precommit epochs retained. C2 failed, C1/C3 done unverified, nothing verified. Hold released for bounded caller-ownership correction; fresh pinned source review before Coordinator's new verify all. Reviewer read-only inspection only, no edits/tests/probes/scans/native/browser/delegation.
+
+Criteria: C2 failed (The five new QA callbacks lack whole-caller setup/cleanup ownership and a separate setup bound, allowing late allocation/write/launch to escape teardown despite passing normal local runs.).
+
+### impl-1805 · 2026-11-19T14:02:38.298Z
+
+Source4 lifetime correction census before helper option use: qa-runner.ts has only qa.test.ts and qa-shipped.test.ts importers (repo-wide qa-runner search). Added optional rootAllocated callback immediately after actual tempProject acquisition and before env/spawn; existing callers omit it and remain unchanged, no result/wire field change. Five new callbacks only enter existing receiptFixtureCase pre-acquisition normal/signal owner. An item-local ownedQa enrolls the original qa() promise before separate native-ownership setup observation, immediately handles rejection and retains the same final completion. Actual late roots adopt into the guard; close before root completion refuses launch, and a known child is signalled through its observed handle before joining. Tamper dir/script/wrapper each use named setup steps. Exact positive receipt/refusal/not-started assertions preserved. QA file guide updated; no helper-wide migration or tier/config change.
+
+### impl-1805 · 2026-11-19T14:09:21.993Z
+
+Source5 final evidence A-21809 at16369c145dd69171e6e7cd5cf6ade3327f3b0b22/treeaba17086f9b5880ae719e3150f0e4c88b55b20fe. Full lint0 (129report-only/0refusals), full typecheck0, all232T1/1925pass, QA T3 whole30 and ownershipT2 11+19, all0fail/skip/cancel/code0/signalnull. Localdarwinarm64Node24.21, Nvim actualbinary/versionnotindependentlycaptured, browsernone. Three-file lifetime correction only; C1/C2/C3 done, no criterion verification claimed. Source review accepted byrev-36; worktree/experiments held fixed. Coordinator owns subsequent fullverifyall. OlderrawQA callback migration is T-2007. Prior broad854/local/configuredfailed epochs stay separate; no borrowed proof. Native slot released.
+
+### rev-36 · 2026-11-19T14:12:48.924Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1805-source-5
+commit: 16369c145dd69171e6e7cd5cf6ade3327f3b0b22
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source CLEAR at 16369c145/treeaba17086f9b5880ae719e3150f0e4c88b55b20fe; A-21811. Sole parent854cb29d3, exactly three correction files, clean, no dev merge. Source4 M1 resolved: all five new callbacks enter receiptFixtureCase before acquisition; named tamper setup steps, original QA operation admitted before its separate native-ownership observation, immediate rejection forwarding and final await of the same operation. Actual qa-runner root is adopted before env/spawn; closure refuses a late launch and stops a captured live child through its observed handle. Shared owner fences before release, retains original pending work behind bounded observations, joins caller/resources before cleanup, retains roots on incomplete join. Positive receipt and exact structured refusal/not-started/final assertions unchanged. Native T3 branch is intentional; no fake guard required for real QA lifecycle.
+
+Optional rootAllocated hook consumers checked: qa.test and qa-shipped only; omitted default unchanged, qa-shipped T4 deferred. File guide updated. Prior allocator/strict guard/structured serving refusal/fixed-root QA channel/sourceCheckout/ENV-001 implementation from A-21807 unchanged. Remaining older caller-family work is separate T-2007, not claimed complete.
+
+A-21809 read-only audit: 12 stream hashes match; all232 pinned T1 files exactly/1925pass, QA T3 whole30pass including five controls, selected T2 11+19pass; all0fail/cancel/skip/code0/signalnull. Full lint/typecheck0,129 report-only findings/zero refusals. Local darwin arm64 Node24.21, positive HOME and start loads below4; expected head/tree plus clean readbacks, actual Neovim binary/version unknown, browser none. Broader T2/T3/T4/Web/new configured Linux proof unexecuted. A-21806 broad854 receipts and all earlier configured/local failures remain separate. Findings[]; C1/C2/C3 unverified by source, hold released for Coordinator-owned new exact-head verify all. Any changed head needs review. Reviewer read-only inspection only; no edits/runtime/scans/generators/native/browser/delegation.

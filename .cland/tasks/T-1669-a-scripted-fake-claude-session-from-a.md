@@ -3,7 +3,7 @@ id: T-1669
 kind: task
 title: A scripted fake-Claude __session from a fixture outlived its test for nine days, reparented to launchd with its spoke
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1649
 branch: t/T-1669-a-scripted-fake-claude-session-from-a
 created: 2026-11-04T00:16:33.070Z
-updated: 2026-11-19T11:23:07.142Z
+updated: 2026-11-19T14:10:34.838Z
 ---
 
 ## Summary
@@ -28,8 +28,12 @@ Find the fixture path that can leave a fake-Claude `__session` (and its spoke) r
 
 - [x] C1. The leaking fixture path is named, with a deterministic reproduction that leaves a `__session` alive before the fix (test).
   - done: impl-1669 · 2026-11-19T11:20:31.113Z
+  - verified: rev-35 [reviewer] · run rev-35-1669-evidence-1 · 2026-11-19T12:14:08.912Z · commit e059388e3d869a01beb9b9ba31e56d8e5fad721f
+  - verified: rev-35 [reviewer] · run rev-35-1669-evidence-2 · 2026-11-19T14:10:34.454Z · commit 9a037a9d2c73648c9888bb932e1392ebaa01f624
 - [x] C2. After the fix, the Claude adapter test files end with an empty census of fake-Claude sessions and spokes, including on a failing test (test).
   - done: impl-1669 · 2026-11-19T11:20:31.738Z
+  - verified: rev-35 [reviewer] · run rev-35-1669-evidence-1 · 2026-11-19T12:14:08.912Z · commit e059388e3d869a01beb9b9ba31e56d8e5fad721f
+  - verified: rev-35 [reviewer] · run rev-35-1669-evidence-2 · 2026-11-19T14:10:34.454Z · commit 9a037a9d2c73648c9888bb932e1392ebaa01f624
 
 ## Comments
 
@@ -111,3 +115,50 @@ Full source3 CLEAR at clean e059388e3d869a01beb9b9ba31e56d8e5fad721f/tree80d2203
 ### impl-1669 · 2026-11-19T11:23:07.142Z
 
 Full source3 review clear rev-35-1669-source-3 at e059388e3d869a01beb9b9ba31e56d8e5fad721f/tree80d22036c6e777877ba615ccb70df87778206274, no findings (A-21746). C1/C2 done, awaiting same-head post-source verification. Requested Coordinator verify window; no submission yet. Head/tree frozen, no dev merge or worktree logs/evidence until confirmed delivery.
+
+### rev-35 · 2026-11-19T12:14:08.912Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1669-evidence-1
+commit: e059388e3d869a01beb9b9ba31e56d8e5fad721f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head CLEAR at unchanged cleane059388e3d869a01beb9b9ba31e56d8e5fad721f/Git80d22036, source3A21746 retained. A-21766 independently auditsf75dc18b/A21764 finished/passed ownerexit0, provenance39996 samehead/runtime snapshotd60adc5b distinct from Git.7230ordinarypasses=7083top-level+147nested/741files;25separate loadpasses, no nonpass/duplicate/unmatchedstarts/finishes. C1 corrected808a00be red/mechanism A21611 retained, not identificationofunknownhistoricaltest; exactLinuxworkerSIGKILL recovery36898pass4.976297960s proves live session/spoke, capturednativeclose, ownership and both exits before guardedremoval. C2 allfivefinalClaudeaccounts/adapter/sessions/remote/cleanupcensuses36284/36339/36463/36805/36952pass; droppedcleanup36866/failingbody36889pass real expectednegative/positive nestedcensus assertions. Linuxbirth/PIDstop36406 nowpass5.357387394s/no skip. Fakeauthority16697 and4receipt save/bind/close/remove controls16702/16707/16712/16717 basepass+5distincteach; nativeT3once/no native5/5claim. T0/all232T1/all440T2 inclNVM44/385/selected13T3(263top+2nested)/mapped1T4two tests/Web55 completed. RemainingT3batchdeferred/otherT4unexecuted; allowances/lint/durationadvisoriesreport-only. UncachedLinuxx646.8.0-147Node24.21/Nv0.12.5, actualisolatedHeadless1248/ChromeTesting156.0.8078.4,c8nyc1workers2;2262s/$0.1571accounting,141.871sT0hoststep distinct. Earlier failed/source/macOS/precommit epochs and scope limits preserved. A21766 supersedes A21765 only for one existing adapter-output log-line reference36334; outcomes unchanged. No findings;C1/C2verified,holdreleased. Static Reviewer inspection only.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1669 · 2026-11-19T13:35:06.567Z
+
+Authorized duration-only correction committed/pushed at9a037a9d2c73648c9888bb932e1392ebaa01f624/treea398e736da8aed908ad2458fceea4672d5a9ec96; narrow review requested. Exact-case allowance9.5s/C-216/Nov19–26; retained batch A-21788 ordinary5.886217868s and worst repeat6.303101045s establish1.5x rounded headroom. Failed batch remains failed; separate failing-file green is not substituted. Full lint/typecheck and53 duration T1 cases pass; production checker replay all six samples has0duration failures with allowance, reproduces old gate failures without it. Native test unchanged; Coordinator542d5591 waived a fresh native run for this manifest-only correction. Evidence A-21796, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21796-t-1669-exact-case-duration-allowance-and-sample-replay/validation.md. Old queue entry dropped because head changed. No configured resubmission; waiting narrow source review before verify-window question.
+
+### rev-35 · 2026-11-19T13:37:04.266Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1669-source-4
+commit: 9a037a9d2c73648c9888bb932e1392ebaa01f624
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Narrow source4 CLEAR at clean9a037a9d2c73648c9888bb932e1392ebaa01f624/treea398e736, parent fully reviewed e059388e3; no dev merge. A-21800 records zero findings. Exact onefile/sevenline stanza only; duplicate-rejecting JSON comparison minusnewentry equalsparententiremanifest.9.5s/C216/Nov19–26 follows primaryd7a77698/542d5591;1.5xworst6.303101045=9.4546515675 roundeduphalfsecond. Independently checked A21788 failedbatch32669467 atd13169d6 Linuxc8sfo2 Node24.21 ordinarypass5.886217868+5distinctpassingreps,max6.303101045; actualfailure is duration budget: hub/test/fake-claude-cleanup.test.ts::orphan sweep joins a fake Claude session after its fixture worker is killed 5.886 s > 5 s (add to hub/test/durations.json with a reason). Batchremainsfailed. Globalreportmode,allotherallowances/baselines/tier/timeouts/nativeassertionsunchanged. A21796 localprecommit samebytes fullcompiler/lint0,53durationT1casespass,actualmanifestlint/checkDurationsreplayall6zero failureswithstanza/ordinary+4repsfailwithout;replaynotfreshnative/configuredtiming. Primary542d5591explicitlyrequiresnonativerunforthismanifest-onlychange. Earlier9sintermediate,e059fullgreenA21766anddifferenthead/selectionautomaticrerunsremainseparate. C1/C2donewithpriorverificationstale; neitherverifiedherependingnewsameheadconfiguredreceipt. Holdreleased;requestCoordinatorwindow. Static Reviewer reads only.
+
+### rev-35 · 2026-11-19T14:10:34.454Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1669-evidence-2
+commit: 9a037a9d2c73648c9888bb932e1392ebaa01f624
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence2 CLEAR at unchanged clean9a037a9d2c73648c9888bb932e1392ebaa01f624/Gita398e736, source4A21800 retained. A-21810 independently auditsf70f8c71/A21808 finished/passed ownerexit0; provenance39832samehead, snapshot248df981 distinctfromGit.7230ordinarypasses=7083top+147nested/741files;25separateT2loadpasses, no nonpass/duplicate/unmatchedstarts/finishes. C1corrected808a00be red/mechanism retained(notunknownhistoricaltestidentity); currentLinuxworkerSIGKILL36813pass3.698673506s observes actualclose/surviving session/spoke/ownership andboth exits beforeguardedrootremoval. C2fivefinalnativefilecensuses36200/36263/36383/36725/36857pass, droppedcleanup36786/failingbody36790pass expectednestedfailure-vs-censuscontrols;Linuxbirth/PIDstop36331pass/no skip. Fakeauthority16638+4receipt rejectioncontrols16643/16648/16653/16658base+5distincteach, nativeT3once. T0/all232T1/all440T2 incl44NVM/385tests/selected13T3(263top+2nested)/mapped1T4two tests/Web55completed;remainingT3batchdeferred/otherT4unexecuted. UncachedLinuxx646.8.0-149Node24.21/Nv0.12.5, actualisolatedHeadless1248/ChromeTesting156.0.8078.4,c8nyc1workers2;1708s/$0.1186accounting,104.228sT0hoststep distinct. Exact9.5allowanceunchanged; currentcasewithinbound,notcontrolledspeedcomparison. Failed32669467/A21788 andpriorheadgreen/rerun/replay/sourceepochsremainseparate; no failed batch promoted. No findings;C1/C2verified,holdreleased. Static Reviewer audit only.
+
+Criteria: C1 verified, C2 verified.

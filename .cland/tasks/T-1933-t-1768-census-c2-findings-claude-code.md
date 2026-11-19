@@ -2,8 +2,8 @@
 id: T-1933
 kind: task
 title: "T-1768 census C2 findings: claude-code-schedule lock caller, codex-remote process cleanup and host fixture lock probes still make native calls in T2"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1653
 branch: t/T-1933-t-1768-census-c2-findings-claude-code
 created: 2026-11-17T04:43:27.159Z
-updated: 2026-11-19T11:11:39.149Z
+updated: 2026-11-19T12:38:20.606Z
+closed: 2026-11-19T12:38:20.606Z
 ---
 
 ## Summary
@@ -215,3 +216,7 @@ Standards/Spec no findings. VerifyC1,C2,C3. No Reviewer tests/probes/browser/sou
 A-21742: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21742-t-1933-final-clear-seven-paths-and-cleanup-load-receipts.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-19T12:38:20.606Z
+
+Merged 954d11733f596d11e950a14f888a17f5d9752187 onto dev.

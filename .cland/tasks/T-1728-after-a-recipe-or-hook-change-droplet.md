@@ -2,8 +2,8 @@
 id: T-1728
 kind: task
 title: After a recipe or hook change, droplet runs keep booting the old snapshot and status says "inspection deferred", not stale
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -14,7 +14,8 @@ regression_of: T-1709
 topic: topic-1652
 branch: t/T-1728-after-a-recipe-or-hook-change-droplet
 created: 2026-11-06T18:48:43.508Z
-updated: 2026-11-19T11:24:42.767Z
+updated: 2026-11-19T12:39:00.079Z
+closed: 2026-11-19T12:39:00.079Z
 ---
 
 ## Summary
@@ -188,3 +189,7 @@ Standards/Spec:no findings. All source findings from A-21701/A-21711 remain reso
 A-21749: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21749-t-1728-final-clear-configured-retry-and-unchanged-native-receipts.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-19T12:39:00.079Z
+
+Merged 5e3a2005c80cd62166b635f132a037a2aedf62fd onto dev.

@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-19T06:16:11.641Z
+updated: 2026-11-19T12:50:37.003Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -666,3 +666,7 @@ Hub self-exit and respawn, 2026-11-19 (cland-impl). Hub 71467 (a343e305a code fr
 ### human · 2026-11-19T06:16:11.641Z
 
 Restart #87 (2026-11-19, on coord's GO): hub r86 pid 49256 (rollback code a343e305a) stopped 06:12:27Z; job cland-hub-r87 pid 72462 started from the root at db53a0cb9 (dev = origin/dev), serving 06:12:44.866Z, gap about 17 s. Startup steps: reading startup journal 6,588 ms, indexing tracker 1,756 ms, restoring core and suites 2,771 ms, binding listeners 4 ms, binding web listener 398 ms, restoring sessions 2,825 ms. Port 52403, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job. Coord bridge-connected 06:12:44.947Z, injected 06:13:07.613Z. task view 0.13-0.63 s from the first minute; one slow-answer suite.queue 8,909 ms at 06:13:29Z and one slow-request ask.answer 2,268 ms at 06:14:09Z, then verify queue 0 s. No tracker-storage-stalled lines. Remote dev-t3 run ad53181b survived and reported 06:14:53Z; batch f8aac81f (T-1676) stayed queued and its droplet run 76eb3120 is running. Hub CPU 110% at start, 59% by 06:15:23Z; RSS 0.8-1.4 GB. Rollback worktree a343e305a kept.
+
+### human · 2026-11-19T12:50:37.003Z
+
+Restart #88 (2026-11-19, on coord's GO after the human's answer to ask 7e4ea70b): hub r87 pid 72462 (db53a0cb9) stopped 12:48:18Z; job cland-hub-r88 pid 38295 started from the root at 5e3a2005c (dev = origin/dev), serving 12:48:33.350Z, gap 15 s. Binding listeners 5 ms, web listener 407 ms. Port 49800, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 12:48:33.518Z, injected 12:48:36.960Z. task view 0.12-0.47 s, no tracker-storage-stalled lines. Batch eb9e7cad (T-1729, T-1669) survived with droplet run 32669467 still running. T-1957 retention ran in report mode: total 5,266, kept 5,242, wouldRetire 24, removed 0; .cland/run/suites stayed at 96,758 entries. Before the restart the human ran sudo killall fseventsd (old pid 97903 at 4.1 GB, new pid 12267 at 7 MB, about 12:44Z). Rollback worktree prepared at db53a0cb9 (jobs/92748b6f/tmp/hub-db53a0cb9); the a343e305a one is kept.

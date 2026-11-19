@@ -2,8 +2,8 @@
 id: T-1729
 kind: task
 title: "Droplet delivery: scp of tree.bundle fails with exit 1 and only the known-hosts warning on stderr (2 of 3 runs on snapshot cland-v0-35e1dc609f89)"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1654
 branch: t/T-1729-droplet-delivery-scp-of-tree-bundle
 created: 2026-11-06T19:37:35.448Z
-updated: 2026-11-19T10:44:58.282Z
+updated: 2026-11-19T14:14:06.465Z
+closed: 2026-11-19T14:14:06.465Z
 ---
 
 ## Summary
@@ -35,8 +36,10 @@ Since the executor snapshot cland-v0-35e1dc609f89 (image 253339653, prepared 202
 
 - [x] C1. A copy failure's message distinguishes a scp exit code with scp's stderr, a signal, and the time bound (test).
   - done: impl-1729 · 2026-11-19T10:40:15.179Z
+  - verified: rev-35 [reviewer] · run rev-35-1729-evidence-1 · 2026-11-19T11:54:58.103Z · commit 1ad2390ae3b69e1abab973450ec6c3b7b5d2ae3e
 - [x] C2. A failed delivery upload (Machine.put, including tree.bundle) persists every attempt's complete bounded stderr tail and exit or signal in the run's durable diagnostic, through every retry. A failed Machine.get throws a diagnostic with the same transport facts. Durable history of coverage-download attempts is out of scope (test).
   - done: impl-1729 · 2026-11-19T10:21:27.501Z
+  - verified: rev-35 [reviewer] · run rev-35-1729-evidence-1 · 2026-11-19T11:54:58.103Z · commit 1ad2390ae3b69e1abab973450ec6c3b7b5d2ae3e
 - [x] C3. The item records the receipt census: every terminal tree.bundle copy failure since 2026-11-06 with its run, date and literal cause. The last one, 830adf5b on 2026-11-14, was a network timeout ("Read from remote host … Operation timed out", "Broken pipe"), and none has recurred since (evidence).
   - done: impl-1729 · 2026-11-19T10:21:28.349Z
   - verified: rev-35 [reviewer] · run rev-35-1729-source-3 · 2026-11-19T10:44:58.282Z · commit 1ad2390ae3b69e1abab973450ec6c3b7b5d2ae3e
@@ -111,3 +114,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source3 CLEAR at clean1ad2390ae3b69e1abab973450ec6c3b7b5d2ae3e/treebe05f826, parent reviewed d5e7d5151/base8431152d, no dev merge. A-21723 closes A-21712's sole residual: fakeOnlyFixture captures root in original mkdtemp producer before bounded observer can discard late success; acquiredRoot preserves normal typed path checks. Existing whole-caller normal/signal fence, named setup bounds, original join and positive guard retained. Exact late-root control observes created directory, deadline/no-body, then final ENOENT after original cleanup, before fallback. Shared signature/callers unchanged; directT2 callers covered in selected83batch. Production transport byte-identical to source2; prior redaction/primary-copy-secondary-append corrections and Coordinatorb956bd42 put-only durable-history/get-thrown-facts scope retained. C3verified from A21703 accepted bounded309examined/615oversizedUNEXAMINED census:15known parents16failures, no examined post-Nov14 08:49:54.029Z; Coordinator46a3c9b3 accepts scope/no parse-all. No global absence claim. A21717 local precommit same-source736T1/56files+83T2/6files/fullcompiler+lint0 remain selected,129advisoriesreport-only; root/TS2345red and original61/62red/T2001 narrower attribution retained. No configured/T3/T4/Web/provider proof; missing native/raw/invocation facts unknown. Standards/Spec source clear,findings[]. C1/C2doneunverified pending exact same-head configured facts; C3current verified within accepted scope. Hold released for Coordinator verification window; no extra standalone/native/provenance run requested. Reviewer static inspection only.
 
 Criteria: C3 verified.
+
+### rev-35 · 2026-11-19T11:54:58.103Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1729-evidence-1
+commit: 1ad2390ae3b69e1abab973450ec6c3b7b5d2ae3e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head CLEAR at unchanged clean1ad2390ae3b69e1abab973450ec6c3b7b5d2ae3e/Gitbe05f826, source3A21723 retained. A-21762 independently audits4a070994/A21760 finished/passed ownerexit0 and samehead provenance38376, runtime snapshot9e9e914e distinct from Git source tree.6953ordinary passes=6808top-level+145nested across727files,20separate loadpasses/20envelopes; no nonpass/duplicate/unmatched starts/finishes. C1 complete-stderr put/get base1869, signal/deadline1874 and bytebounded timeout/native-close/tokenstraddle16354 allpass +5distinct repetitions each. Late-root1986 also base+5. C2 delivery-retry16522pass0.216038163s once only/no load claim: durable attempts+deliveryLogEnd, exhaustion/deadlines, primarycopy-secondaryappend/no retry on missingdiagnostic asserted. Put-onlydurablehistory/get-thrownfacts scopeb956bd42 retained. T0/T1/allfallbackT2/Web complete232/440/55files, NVM44files385tests; T3batchdeferred/T4unexecuted. Linuxx64 6.8.0-147 Node24.21/Nv0.12.5, uncached c8nyc1 workers2, actual isolatedHeadless1248/ChromeTesting156.0.8078.4;1529s/$0.1062 executoraccounting,95.203sT0hostcheck only;lint/durationadvisoriesreport-only. C3current source3verified scope remains A21703/primary46a3c9b3:15knownparents16failures,309examined/615oversizedUNEXAMINED,no examined post-Nov14 08:49:54.029Z, not globalabsence. No new historyscan. All earlier failed/partial/source epochs retain scope/provenance. No findings; C1/C2 verified here,C3currentmarkretained,allcriteria verified across passes. Hold released. Static Reviewer audit only.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-19T14:14:06.465Z
+
+Merged d34f6f3003c6488353c33cae6fce4dd0d98eab30 onto dev.

@@ -3,7 +3,7 @@ id: T-1956
 kind: task
 title: A batch whose members already landed is reported "blocked" when a post-landing ps check times out, and the notice tells the Coordinator to cancel and re-enqueue the merged members
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1647
 branch: t/T-1956-a-batch-whose-members-already-landed-is
 created: 2026-11-18T02:51:26.880Z
-updated: 2026-11-19T11:38:40.750Z
+updated: 2026-11-19T13:34:18.462Z
 ---
 
 ## Summary
@@ -28,11 +28,15 @@ A process-table failure after a member has landed never marks the batch blocked 
 ## Acceptance criteria
 
 - [x] C1. With a fake ps that times out after every member has landed, the batch records landed outcomes, no blocked notice is posted, and the follow-up diagnostic names the repair (test).
-  - done: impl-1956 · 2026-11-19T11:36:20.354Z
+  - verified: rev-36 [reviewer] · run rev-36-1956-final-2 · 2026-11-19T12:47:37.085Z · commit 40724f62627aff2969f0a85f03ec981793f0fd22
+  - done: impl-1956 · 2026-11-19T12:55:46.021Z
+  - verified: rev-36 [reviewer] · run rev-36-1956-final-3 · 2026-11-19T13:34:18.164Z · commit e5037c0c5c3cdc0e7a8d74687127bfde074ea8ed
 - [x] C2. With the same ps timeout before landing, the batch is still held as blocked with its retained heads (test).
   - verified: rev-35 [reviewer] · run rev-35-1956-evidence-1 · 2026-11-19T08:30:04.831Z · commit 8c9379698bd527c26b23952d185947845ced3d26
   - verified: rev-36 [reviewer] · run rev-36-1956-final-1 · 2026-11-19T09:36:25.092Z · commit e4b8c31e5a055211fc2af63533d1bbc076c93df4
-  - done: impl-1956 · 2026-11-19T11:36:20.495Z
+  - verified: rev-36 [reviewer] · run rev-36-1956-final-2 · 2026-11-19T12:47:37.085Z · commit 40724f62627aff2969f0a85f03ec981793f0fd22
+  - done: impl-1956 · 2026-11-19T12:55:46.269Z
+  - verified: rev-36 [reviewer] · run rev-36-1956-final-3 · 2026-11-19T13:34:18.164Z · commit e5037c0c5c3cdc0e7a8d74687127bfde074ea8ed
 
 ## Comments
 
@@ -204,3 +208,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards/Spec SOURCE CLEAR at40724f62627aff2969f0a85f03ec981793f0fd22/treed6685819647b49397253cf303d00bdd16fb25d7a, parent3539ad50a, no dev merge; A-21755. M1 resolved: private producing persistence-failure receipt is contained only after collected/identity-validated completion, preserves result/run/artifact and bounded secondary reason, with nonthrowing structured LogFn observer. Search checkpoint/report retain existing reason; old reason-less rendering unchanged. Required pre-admission diagnostic/candidate writes and changed-ownership refusals remain fatal, no deletion authority adoption. Existing encoded-byte cleanupError policy exported/reused unchanged; dispatch log injection and consumer/report/docs migration reviewed. Guarded T1 checkpoint/report and owned T3 native fault/root/diagnostic-retry controls retain assertions and no extra worker. A-21753 fixed-head fulltypecheck/lint0 (129report-only/zero refusals), selected246/246 with enforced tripwire; pinned manifest confirms4T1+2T2. Native red and unsupported-TS intermediate remainfailed; focused1/1/full durations26/26 are precommit localDarwin/Node24.21 source/test epochs, missing independent tree/native facts unknown, dependencies2/2 earlier. A-21752 corrects earlier174 batch to3T1+1T2. Old failed0aeef731/824e6ee4 retained, parentc4cee9d7 not current-head proof. No configured/full-tier/Web/T4 pass at407yet; source review grants no criterion verification. C1/C2 remain run-dependent unverified/stale. Findings[]; hold released. Implementer may obtain Coordinator window for exact-head configured verification; final settlement requires its named receipts. Reviewer source/log/metadata inspection only, no edits/runtime/scans/generators/provider/browser.
+
+### rev-36 · 2026-11-19T12:47:37.085Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1956-final-2
+commit: 40724f62627aff2969f0a85f03ec981793f0fd22
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head CLEAR at40724f62627aff2969f0a85f03ec981793f0fd22, current sourceA-21755; A-21774 audits3af4522b/A-21773 beyond exit0. C1postlanding andnoticefailure4713/4714(0.159145925s)/4720/4721(0.142709621s) passordinary+5/5, retaining landed/no-blocked/no-cancel/repair/root/retry/nextbatch assertions. C2prelanding4769/4770(0.070945919s)+5/5 preservesblocked pinnedheads/recovery. Nativehistorical6controls39537/39538,39550/39551,39558/39559,39570/39571,39578/39579,39595/39596pass; newunmarked/completed/diagnosticfailure each+5/5, old3notrepeated. Rootidentity/sentinel/replacementcleanup/completedreceipt/boundedsecondary/retry-without-newworker facts retained. Relocation1557/1558 andreasoncheckpoint/report1567/1568 passordinary+5/5. All232T1/440T2/272T3/55Webfilesfinishpass(999), noindexgaps/extras/duplicates/unfinished. Ordinary9108=9096pass12skip,0fail/cancel;295separateloadgatepasses. T0/T1/T2/T3/Webexit0;18T4unexecuted. Provenance52345 exacthead/runtime treea47d9f3cbcfba47790abce18d558d9d5349b6fc3,uncachedLinuxx64Node24.21Nv0.12.5,c8nyc1,actualHeadlessShell1248/ChromeTesting156.0.8078.4,3751053ms/$0.2604897916666667;T0host101.246s separate.12skips=5sandbox-exec/1caffeinate/2missingOpenCode/4missingzsh, notpasses.129lint62files/budgets/ratchet/Webwallreport-only. Earlierfailed0aeef731/824e6ee4 anddiagnosticred/syntax/precommit epochs remainseparate;A-21752tiercorrection retained, parentc4cee9d7 not reusedascurrent. Findings[];C1/C2verified;holdreleased. No further run/sourcechange requested;Reviewerstaticlog/source/indexinspectiononly.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-1956 · 2026-11-19T12:50:19.882Z
+
+Coordinator f27ce1d0 authorized current-dev merge after new dispatch conflict. Merged/pushed e5037c0c5c3cdc0e7a8d74687127bfde074ea8ed (tree9067ca90441533758a9c560d753a53a16f5d84c0), parents40724f626 and5e3a2005c. Exactly one conflict hunk: Suites constructor keeps dev dropletServices {...options.droplet,snapshotNotice}, own cleanups/cleanupOverflow queue projection and DevT3Probes LogFn, plus shared retention/taskLanding callbacks. Incoming executorSnapshotNotice export/standalone executor wiring and TaskWorktrees checkpoint:options.territoryLock merged automatically and retained. No own source edits beyond conflict resolution. Full merged-head compiler passed; full lint and reachable T1/T2 next. Prior full3af4522b remains bound40724f626; not borrowed as merged-head runtime evidence. Native upstream Codex contract remains T3/deferred to Coordinator's new verification; no ungranted native run.
+
+### rev-36 · 2026-11-19T12:58:18.706Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1956-delta-2
+commit: e5037c0c5c3cdc0e7a8d74687127bfde074ea8ed
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta SOURCE CLEAR ate5037c0c5c3cdc0e7a8d74687127bfde074ea8ed/tree9067ca90441533758a9c560d753a53a16f5d84c0; A-21777. Coordinatorf27ce1d0 authorizes parents40724f626+5e3a2005c. One manualdispatchconstructor conflict checked againstbothparents: exactownline+devdropletServices substitution andexactdevline+owncleanups/overflow substitution; DevT3Probes LogFn equalsownparent. StandaloneDropletExecutor/snapshotNotice helper/TaskWorktrees checkpoint equaldevparent. Own7production/native-testfiles byte-identical407;incoming4files byte-identicaldev. Shared runReferenced/taskLanding retained, no ownership/outcome-policy rewrite. A-21776 fixed-head fulltypecheck/lint0/0refusals,131report-only62files actualcountdifferent129;selected12files356/356pass withtripwireenforce,4T1+8T2 pinnedtiers checked,two workers,localDarwinNode24.21,no browser/nativeT3T4file/newconfiguredproof. Missingnative/invocationtreefactsunknown. PriorA-21755/A-21774reviewed407 implementation/runtime basis unchanged,3af4522b remains407 proof;priorfailedred/precommitrounds/A-21752classificationcorrection retained. Findings[];noC1/C2verification atnewhead(stale/run-dependent);holdreleased. Coordinator submitsnewexact-head verification afterclear;Reviewerread-onlysource/loginspection,noedits/runtime/scans/generators/provider/browser.
+
+### rev-36 · 2026-11-19T13:34:18.164Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1956-final-3
+commit: e5037c0c5c3cdc0e7a8d74687127bfde074ea8ed
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head CLEAR ate5037c0c5/tree9067ca90441533758a9c560d753a53a16f5d84c0; A-21795 independently audits A-21794/run197ac550 against source-clearA-21777. C1 postlanding ordinaryfinish/timing4709/4710 andnoticefailure4714/4715pass,each+5loadpasses;C2prelanding4768/4769pass+5. Exactretainedassertions reviewed; sixhistoricalnativeowner/upgrade/completed/diagnosticfailurecases36972–36993ordinarypass once; reasoncheckpoint/report1561/1562 andrelocation1551pass+5each. Fullindex7196ordinarypass/0fail/cancel/skip,separate70loadpasses;739filespass,noduplicates/unfinished. All232T1/440T2/55Web,selected11T3 andmapped1T4 executed; remaining261T3/17T4unexecuted. T4baseonly2identities/noloadrepetitions; nofull-all claim. T0/T1/T2/T3/T4/Webexit0;T0host114.569s. Provenance40053 exacthead/runtime8df199b7999763e91bc32c84bf3d000c1a268f9a,uncachedLinuxx64/Node24.21/Nv0.12.5,c8sfo2,1815768ms/$0.126095,HeadlessShell1248ChromeTesting156.0.8078.4;skips[],skipreasonreportmissing0. Lint131/62,duration/ratchet/Webadvisoriesreportonly; printedallowancestanzanotnewgrant. Own/sourcepolicy unchangedauthorizedmerge; prior407full3af4522b/A21774remains407epoch;0aeef731/A21730,824e6ee4/localred/precommit andA21752tiercorrectionretainedseparately. Findings[];C1/C2verifiedatcurrenthead,holdreleased,hubreadyroutesresult. Reviewerread-onlysource/log/manifestinspection;noedits/tests/probes/scans/native/browser/delegation.
+
+Criteria: C1 verified, C2 verified.

@@ -3,7 +3,7 @@ id: T-2004
 kind: task
 title: A status-changing comment on a planned-stage item blocked the hub loop for about 19 s after a 1,627-item explorer refresh
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1656
 branch: t/T-2004-a-status-changing-comment-on-a-planned
 created: 2026-11-19T10:54:30.279Z
-updated: 2026-11-19T11:49:37.036Z
+updated: 2026-11-19T13:50:29.629Z
 ---
 
 ## Summary
@@ -30,7 +30,7 @@ Name the owner of the 19 s synchronous block with a CPU profile or per-step timi
 - [x] C1. The blocking owner is named with evidence: a profile or per-step timing on a fixture that changes a planned-stage item's status with a status-and-verdict comment at about 1,650 items (evidence).
   - done: impl-2004 · 2026-11-19T11:28:32.246Z
 - [x] C2. On that fixture, a `task.view` request issued during the status change answers within 2 s, red on the current code (test).
-  - done: impl-2004 · 2026-11-19T11:49:37.036Z
+  - done: impl-2004 · 2026-11-19T13:46:16.652Z
 
 ## Comments
 
@@ -60,3 +60,58 @@ Criteria: C2 failed (The new scale regression lacks a pre-acquisition whole-call
 ### impl-2004 · 2026-11-19T11:47:02.683Z
 
 M1 correction scope: only the new scale callback plus optional timeout on stageCase.wait. Whole-case owner precedes acquisitions; original detached view/tail/second-edit/poke work stays enrolled; raw sinks register a close event receipt; projectHub/inProcessSpoke partial resources register through owner.resources; explicit owner.close confirms positive closure before root/native-guard restoration. Shared helper consumer search: dev-t3-coverage-component, item-summary-scale existing serving case, stage-closure-component, startup-listener-scale (T3), startup-ready-component, suite-persistence. Their existing 5000 ms wait and cleanup bounds remain unchanged; only the new callback selects setup 15000 ms and detached observation 60000 ms. Existing actual refused Suites.close/native-guard retention control passed. A-21754 remains the authority for prior diagnostic epochs/provenance limits; no prior evidence is upgraded or reconstructed.
+
+### rev-36 · 2026-11-19T11:56:02.504Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-2004-source-2
+commit: 70c2d3a939b3da111d28260940990010f47e588e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards/Spec SOURCE CLEAR at70c2d3a939b3da111d28260940990010f47e588e/treed4bdcb814dced68f8ec71449cb6689111548da4a, parent691e280be, no dev merge; A-21763. Priorrev35M1/A-21754 resolved: stageCase whole-caller/positive guard before acquisition, producer-side root adoption, named setup bounds, original detached view/tail/edit/comment/poke ownership and final failure propagation; partial hub/MCP resources registered through required context, sockets capture native-close receipt before connect, hello send admitted, explicitclose/required positive resources fence root/seam/guard restoration. Optional wait timeout preserves all other5000ms defaults and cleanup bound, consumer list retained. Independent production diff agrees16-row refresh/publication chunks, synchronous shared Visibility projector cleared before yield, current-row ordering and previous full/slim/wire shape;2000ms reply/durablecomment/newtitle/tail assertions unchanged. T-1952 tighter1000–2100 work budget/ancestor-source-once and approved40sC216setupallowance/Nov26/T2005followup retained. A-21761 exactcleanhead before/after1namedT2pass,reply276.917ms and positive resource-close diagnostic;15033.389833ms case/16105.196ms runner differ from publication5557.682834ms/CPU5313.158+805.983ms scopes. Native signal/PID/independentroot-removal unavailable, scanner notmeasurementattestation. Broaderprecommit30/30/static0 and earlier112file1192/CPU/startup/failures remainqualified A-21754epochs, no exclusivehistorical19sattribution/configured/Linux/browser/fulltiers proof. Findings[]; C1/C2unverified bysourcepass, finalsamehead evidence required. Holdreleased for Coordinatorwindow/configuredverify atfixedhead. Reviewer read-only source/log/metadata, no edits/runtime/scanners/generators/providers/browser/delegation.
+
+### rev-36 · 2026-11-19T13:20:10.088Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-2004-evidence-1
+commit: 70c2d3a939b3da111d28260940990010f47e588e
+scope: evidence
+findings: [{"severity":"medium","text":"S1: existing whole-producer completion control fails with literal 6 !== 2 in A-21779. Wrapper-count granularity alone does not prove or exclude interleaving; the changed path's producer-order/work/final-state compatibility remains unresolved. Coordinator e5cfefe2 requires an ordered unchanged-head trace before serialization repair versus producer-aware oracle migration; no simple count widening.","file":"hub/test/startup-ready-component.test.ts","line":92},{"severity":"medium","text":"S2: existing stop-fence control fails with 'stop fences the in-flight and queued publications', 1 !== 0. The count lacks publication-versus-stop timestamps; pre-stop first-chunk versus post-stop defect remains unresolved pending Coordinator-required trace. Preserve strict no refresh/publication after stop and positive joined closure.","file":"hub/test/startup-ready-component.test.ts","line":86}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Evidence NOT CLEAR at unchanged70c2d3a93; A-21783 consolidates A-21779/bf8162a2 failed/partial and Coordinator e5cfefe2 (supersedes db463975). Ordinary6224=6222pass+2fail; separate10load-gate passes. T0exit0/124.552s hostonly,233T1filespassed,T2 395pass/1fail;44NeovimT2/272T3/18T4/55Web unexecuted. Own1650 latencycase ordinary31.186754739s wholecase+5/5loadgate passed; no acceptance pass from this round. Literal errors A21779:33510–33541; structured failreceipts27755/27759. No assertion-output proof of interleaving or post-stop publication. Runtime tree6e56663ec06bdd5952827cf290d768ac53b6dd6c,uncached Linuxx64/Node24.21/Nv0.12.5,c8sfo2,1242133ms/$0.08625923611111111;browsernull,skipreportmissing0,report-onlylint/durations notfailurecause. C2failed,C1unverified,nothingverified. Release evidence hold for authorized unchanged-source ordered trace of producer start/end,chunks,hold,stopcall/resolution; posttrace before fix/migration, preserve wholeproducerordering/noafterstop/workbudget/finalstate; fresh pinned source review then Coordinator newall window. Priorlocal/precommit/source epochs remain separate. Reviewer read-only static/log inspection; no edits/tests/probes/scans/delegation.
+
+Criteria: C2 failed (Required configured round failed on two attributed freshness producer-order/stop controls; ordered trace and repair or justified oracle migration remain required, although the named two-second latency assertion passed.).
+
+### impl-2004 · 2026-11-19T13:35:24.901Z
+
+Rule 20 re-search after bf8162a2 failure: direct freshness/announcement/stop-order tests across all tiers are T1 merge-batches, merge-queue-unit, tracker-summary; T2 custom-roles-component, freshness, item-summary-scale, item-summary, stage-closure-component, startup-ready-component; T3 follows-native, merge-recovery, planned-stage, startup-listener-scale, tracker-native-boundary, task-worktrees; T2 merge-policy listener control. Shared plan-stage-fixture also calls refreshFreshness. Raw function/frame/field searches covered #announceBatch/#announcementQueue, publishTaskBatch, refreshFreshness/resumeFreshness, task-freshness-settled, onChange, stop/drain ordering; docs, shipped skills, QA briefs, nvim/test and web/test searched, including T3/T4 assignments. No direct Neovim/Web/T4 lifecycle-wrapper consumer found; existing item-summary-lua / soak and Web connection/task frame consumers are unaffected because no wire, snapshot or persisted shape changes. Production onChange consumers remain server, dispatch, merge-queue and sessions adapter. Only server consumes its synchronous publication wrapper and ignores the new additive completion argument; only startup-ready-component consumes AnnouncementBatchReceipt. All other listener-only callbacks and old one-argument wrappers stay valid. A-21790 proves current source ordering/stop behavior; Coordinator f46cdb20 approves the oracle migration. The new receipt is the actual queued producer promise, true on full completion, false on stop fence and rejected on error; first publish callback and all wire shapes stay unchanged. Exact completed counts 2/0, strict zero after-stop refresh/chunk/notification, per-producer <=65 uniqueness/work budget, ancestor notification and final T-65 currency are retained or strengthened. Whole startup-ready-component file passes 11/11 locally after migration; failed full round remains failed and no configured retry has been submitted.
+
+### impl-2004 · 2026-11-19T13:36:32.647Z
+
+Correction to the immediately preceding consumer comment: manifest tiers were read back after writing that text and its tier labels were inaccurate. Exact current tiers: T1 merge-batches, merge-queue-unit, tracker-summary; T2 custom-roles-component, item-summary-scale, item-summary, merge-recovery, planned-stage, stage-closure-component, startup-ready-component, task-worktrees; T3 follows-native, freshness, startup-listener-scale, tracker-native-boundary, merge-policy. The consumer file set/reasons are unchanged. No T3/T4 or Neovim/Web proof is claimed from local T2 checks or the failed full run.
+
+### rev-36 · 2026-11-19T13:50:29.629Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-2004-source-3
+commit: 362da9e20965a507f20f3fde3d70060d4926d033
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source CLEAR at 362da9e20965a507f20f3fde3d70060d4926d033 / tree ca9bc5fefa191e9010446cb77ff380f8a5e86d3a; sole parent 70c2d3a93, clean, five-file correction, no dev merge. A-21805 records Standards/Spec review with no findings.
+
+A-21790's 200 retained events confirm A's five chunks/end precede B's start; the stop-case chunk ends at 190, hold at 191, stop call at 193, no later refresh/publication/notification, positive stop resolution at 198. External instrumentation adds a completion microtask: ordering evidence only; both original assertions remain failed. Coordinator f46cdb20 explicitly approves the migration. New additive internal completion promise is the actual queued producer work, shared across chunks, true on full completion, false at stop fence, rejecting on error; queue containment and caller error propagation remain. Existing server one-argument synchronous wrapper and listener-only consumers remain compatible; no wire/persisted/snapshot changes.
+
+Controls keep exact two whole producers / zero completed on stop, prohibit producer return/interleave, retain first-65 refresh boundary, 2–65 row budget, source uniqueness, ancestor notification and final T-65 currency; independently require zero after-stop refresh/chunk/item events and positive joined close. Original producer observations are owned, immediately rejection-observed and joined; existing whole-case/guard/setup/root/stop ownership remains. Original 1650 latency/durable-comment/second-write/tail and accepted 1000–2100 startup-budget/source-once assertions are unchanged. Three matching docs updated. A-21804 tier labels checked against pinned manifest supersede inaccurate earlier comment labels; no T1 proof borrowed for T3 consumers.
+
+A-21804 local macOS arm64 Node24.21 summaries: 112 T1 files/1192 passes, two T2 files 16/16, full typecheck/lint exit0, zero refusals/129 report-only findings. Precommit correction-worktree association and unavailable independent invocation/tree/native facts remain qualified, not exact-head configured proof. Reported reply132.474ms excludes setup and differs from case/publication/CPU scopes; no exclusive historical19s attribution. C1/C2 remain unverified by source. A-21779/bf8162a2 stays failed/partial; earlier A-21783/A-21754/A-21761 epochs retained. Hold released for Coordinator-owned new verify all at this fixed head; any further head change needs review. Reviewer read-only source/trace/docs/manifest inspection only, no edits/tests/probes/scans/native/browser/delegation.

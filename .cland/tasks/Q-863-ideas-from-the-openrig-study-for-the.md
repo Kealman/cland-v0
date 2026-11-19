@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-19T10:04:03.112Z
-updated: 2026-10-19T10:04:03.112Z
+updated: 2026-11-19T13:18:46.734Z
 ---
 
 ## Question
@@ -47,3 +47,9 @@ Their Slack gateway (many bugs), their 87-command surface and coined vocabulary,
 ## Source
 
 The marketing session's write-up `research/openrig/features.md` in the private marketing repo: section 4 "Ideas worth taking" (with OpenRig file paths, issue numbers, sizes and fit), the comparison table in section 2, their pain points in section 5. The ideas are copied here because that repo is not reachable from this one.
+
+## Comments
+
+### coord · 2026-11-19T13:18:46.734Z
+
+Related idea filed as T-2006 (Ideas, needs-triage, 2026-11-19): self-scheduled follow-ups and broader watcher events, after Vercel Board. It overlaps #5 (a single wake at a limit reset) and #12 ("watch this for me"); triage may merge them.
