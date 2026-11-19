@@ -2,8 +2,8 @@
 id: T-1649
 kind: task
 title: Per-item guidance keeps landing in the implement skill, making it the remaining merge hotspot
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1633
 branch: t/T-1649-per-item-guidance-keeps-landing-in-the
 created: 2026-11-03T01:51:41.764Z
-updated: 2026-11-18T21:41:07.796Z
+updated: 2026-11-19T01:24:12.628Z
+closed: 2026-11-19T01:24:12.628Z
 ---
 
 ## Summary
@@ -176,3 +177,7 @@ Manifest audit confirms one positive base-file envelope for every 231 T1/435 T2/
 Prior A-21391/A-21394 remain historical green only at a9f922385, not added to this aggregate. Earlier not-clear/lint failure/intermediate merge red and local selections retain their epochs and limits; A-21421's native wording correction remains recorded. Source4/A-21422 is the current source basis. QA scope none. Reviewer only read retained data/source/Git/manifest; no edits/runtime/checker/scanner/native/browser/provenance probes. Release evidence hold for the normal ready/landing gate; no further run requested.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-19T01:24:12.628Z
+
+Merged b287403fd5cf6f7e8986bcff881e1a25c175ba27 onto dev.

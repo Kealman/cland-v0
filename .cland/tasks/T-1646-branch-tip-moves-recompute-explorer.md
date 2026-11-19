@@ -2,8 +2,8 @@
 id: T-1646
 kind: task
 title: Branch tip moves recompute explorer summaries and demo freshness for the whole tracker
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1630
 branch: t/T-1646-branch-tip-moves-recompute-explorer
 created: 2026-11-02T23:57:57.064Z
-updated: 2026-11-18T23:33:13.137Z
+updated: 2026-11-19T02:09:37.810Z
+closed: 2026-11-19T02:09:37.810Z
 ---
 
 ## Summary
@@ -34,12 +35,15 @@ Make a tip-move refresh proportional to the moved branches: recompute only the a
 - [x] C1. A synthetic tracker the size of the live one (about 1,650 items, 10 active branches moving every few seconds) keeps a tip-move refresh under a stated work-count budget proportional to the moved branches (test).
   - done: impl-1646 · 2026-11-18T20:06:25.112Z
   - verified: rev-35 [reviewer] · run rev-35-1646-evidence-2 · 2026-11-18T21:17:02.857Z · commit 67ac97a580f857f680b577f8bfe9edeb0356c0f4
+  - verified: rev-35 [reviewer] · run rev-35-1646-evidence-3 · 2026-11-19T01:14:27.234Z · commit f4c0d84ab68559c2dfc24acba90a9528a5208444
 - [x] C2. Hub replies (`verify queue`, `task.view`) stay under 1 s at p95 during that churn (test).
   - done: impl-1646 · 2026-11-18T20:44:49.480Z
   - verified: rev-35 [reviewer] · run rev-35-1646-evidence-2 · 2026-11-18T21:17:02.857Z · commit 67ac97a580f857f680b577f8bfe9edeb0356c0f4
+  - verified: rev-35 [reviewer] · run rev-35-1646-evidence-3 · 2026-11-19T01:14:27.234Z · commit f4c0d84ab68559c2dfc24acba90a9528a5208444
 - [x] C3. Explorer, criteria counts and demo freshness results are unchanged (test).
   - done: impl-1646 · 2026-11-18T19:14:14.339Z
   - verified: rev-35 [reviewer] · run rev-35-1646-evidence-2 · 2026-11-18T21:17:02.857Z · commit 67ac97a580f857f680b577f8bfe9edeb0356c0f4
+  - verified: rev-35 [reviewer] · run rev-35-1646-evidence-3 · 2026-11-19T01:14:27.234Z · commit f4c0d84ab68559c2dfc24acba90a9528a5208444
 
 ## Comments
 
@@ -246,3 +250,30 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Coordinator-directed merge delta source clear; Standards0/Spec0 findings. Parents67ac97a5/e9b6b6d95, clean/pushed f4c0d84a, Git tree307b8cda. Primary3b18aedc/399b7887 read directly. All three duration entries8.5s/19s/16s are byte-identical to their producing parents; manifest equals parent2 plus precisely T-1646's two entries, no duplicate/budget/baseline loss. C-216 open, expiry2026-11-25 unchanged. Tracker/Freshness auto-merge retains exact moved-branch/null shared invalidation and demo membership caching alongside worker-drain unique-id batching and relevant ancestry-change-only stage-dependent fanout. Own tests/fixture/guard byte-identical to parent1; incoming stage-closure/config/tiers byte-identical to parent2. Other landed upstream paths unchanged relative parent2 outside the11 T-1646 paths. No new spec/standards regression found. Reported full lint/typecheck0 remain local static-check support; Reviewer ran no tests/probes. No new-head criteria verified: old green363b9788/A-21425 is valid only at67ac97a5, marks now stale, all prior failed rounds retained. Quiet gate stays active; after quiet over, complete Coordinator's11 T1/T2 files then obtain new same-head verify window and runtime/C2 settlement. Hold released. Full scope and pending-proof boundaries: A-21449, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21449-t-1646-merged-freshness-and-allowance-delta-source-clearance-at-f4c0d84a.md.
+
+### impl-1646 · 2026-11-19T00:40:38.988Z
+
+After quiet-over891b933b, all11 Coordinator-directed T1/T2 files ran serially at source-cleared merge head f4c0d84ab68559c2dfc24acba90a9528a5208444:181/181passed,0failed/cancelled/skipped, local macOS/Node24.21, started1mload3.438965. Full command duration88.309s includes setup and is not reply latency. Set: durations-refresh,suite-duration-budget,suite-tiers,tracker-summary,item-summary-scale,stage-closure-component,suite-soak-component,dev-t3-search-component,dev-t3-coverage-component,suite-scheduling,suite-soak. Merged C1 oracle unchanged,30summaries/80hydrated. C2 local timing remains report-only. Prior full lint/typecheck at unchanged merged head passed; no source edits. Requesting first priority verify window for new same-head configured evidence; old363b9788 remains scoped only to67ac97a58.
+
+### impl-1646 · 2026-11-19T01:12:00.832Z
+
+Merged-head configured evidence green:522c66a6-b193-4f98-9ed5-2e9efca87e5d at f4c0d84ab68559c2dfc24acba90a9528a5208444, A-21470. Hub aggregate6894/6894passed,0failed/cancelled/skipped. T0,T1,allT2 including Neovim,andWeb complete; T3 remains in merge batch,T4unexecuted. C1 original oracle retained,1650items/10moves,30summaries/80hydrated; base7.086699s within8.5s allowance. C2 droplet40replies per command: p95 view54.175ms,queue54.149ms, both<1s, excluding fixture setup; case17.268401s within19s allowance. All five authored cases have base+5/5 passing repetitions. Linux x64c-8ams3,Node24.21,Neovim0.12.5,actual Chrome Headless Shell1248/Google Chrome for Testing156.0.8078.4; lifetime1527s/cost$0.1060. All3 C-216 allowances expire2026-11-25; general budget/lint advisories remain report-only. Prior failed rounds and green363b9788/old67ac97a58 remain separately retained. Source head clean/unchanged; Reviewer has current same-head receipts for final criterion settlement.
+
+### rev-35 · 2026-11-19T01:14:27.234Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1646-evidence-3
+commit: f4c0d84ab68559c2dfc24acba90a9528a5208444
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final evidence clear; Standards0/Spec0 findings. Owner522c66a6/A-21470 finished/passed at unchanged delta-clearedf4c0d84a, clean/pushed; snapshotcb76bdb6 distinct from Gittree307b8cda. C1 current30summaries/80hydrated/original oracle and exact-result assertions; base7.086698553s plus5/5 fits8.5s allowance. C2 current40view+40queue replies: p95s54.175/54.149ms<1000ms, base17.268400959s plus5/5 fits19s; all5 authored identities have positive base/load/file receipts. Inherited T-1984 unrelated-answer control passes ordinarily10.944568673s<16s; no load claim for it. Verify C1/C2/C3. All720 selected files/6894ordinary tests pass (230T1/435T2/55Web),235load tests/files separate; no bad/incomplete structured outcomes. T0/T1/allT2 including Neovim44files/385tests/Web complete; T3 deferred,T4unexecuted. Linuxx64 Node24.21/nvim0.12.5,c-8ams3; isolated Headless Shell1248 Chrome156.0.8078.4. All3 C-216 allowances expire00:00UTCNov25; general advisories report-only. Prior failed rounds and old green363b9788 remain correctly scoped; new merged-head proof now present. Hold released. Full exact receipts/limits: A-21473, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-21473-t-1646-merged-head-final-evidence-at-f4c0d84a.md.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-19T02:09:37.810Z
+
+Merged 3e99d425bbc520b9daeeb277db76a425fe740c30 onto dev.

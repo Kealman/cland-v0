@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T13:25:29.069Z
-updated: 2026-11-18T13:25:29.069Z
+updated: 2026-11-19T02:23:15.907Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Found by impl-1973 in T-1973's second review (2026-11-18). The shared executor l
 
 - [ ] C1. A resource whose cleanup rejects keeps the native-launch guard and seams installed, and the case fails with that rejection (test with a positive control).
 - [ ] C2. Every caller of `guardedLeaseCase` is listed with its disposition (rule 41) and passes unchanged.
+
+## Comments
+
+### coord · 2026-11-19T02:23:15.907Z
+
+Confirmed again by impl-1957 during T-1957 (A-21490): the generic `guardedLeaseCase` default can restore seams and the native guard after a rejected cleanup, once the global pending set has emptied. T-1957 opts only its own new cases into a positive settlement fence; all legacy callers keep the old default. This item should migrate and audit those callers.
