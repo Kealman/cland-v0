@@ -3,7 +3,7 @@ id: T-1805
 kind: task
 title: login-add leaves a fixture-owner registry whose roots list a removed fixture root and the live source worktree
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels: []
@@ -15,7 +15,7 @@ found_by: review
 topic: topic-1655
 branch: t/T-1805-login-add-leaves-a-fixture-owner
 created: 2026-11-10T12:19:52.954Z
-updated: 2026-11-19T14:12:48.924Z
+updated: 2026-11-19T17:57:55.014Z
 ---
 
 ## Summary
@@ -29,11 +29,17 @@ Found by impl-1778 during T-1778's native slot at 1cba8d79c, 2026-11-10 12:18Z, 
 ## Acceptance criteria
 
 - [x] C1. The login-add fixture registers only roots it allocated under its scratch root, and the source worktree never appears in a fixture-owner registry's disposable roots. A separate non-disposable `sourceCheckout` field may name it only for PID- and birth-bound process selection during an authorized source-worktree removal (test).
-  - done: impl-1805 · 2026-11-19T13:52:34.900Z
+  - verified: rev-36 [reviewer] · run rev-36-1805-final-1 · 2026-11-19T15:53:52.387Z · commit 16369c145dd69171e6e7cd5cf6ade3327f3b0b22
+  - done: impl-1805 · 2026-11-19T16:35:00.470Z
+  - verified: rev-36 [reviewer] · run rev-36-1805-final-2 · 2026-11-19T17:57:54.820Z · commit ddb45805acdf450f9c440a0ccd7a036d32de14be
 - [x] C2. The registry is removed, or marks every root released, once the file's cleanup has joined; a TMPDIR inventory after the file reads 0 → 0 (test).
-  - done: impl-1805 · 2026-11-19T14:08:55.727Z
+  - verified: rev-36 [reviewer] · run rev-36-1805-final-1 · 2026-11-19T15:53:52.387Z · commit 16369c145dd69171e6e7cd5cf6ade3327f3b0b22
+  - done: impl-1805 · 2026-11-19T16:35:00.595Z
+  - verified: rev-36 [reviewer] · run rev-36-1805-final-2 · 2026-11-19T17:57:54.820Z · commit ddb45805acdf450f9c440a0ccd7a036d32de14be
 - [x] C3. A guard in the shared fixture-owner code refuses to register a path outside the scratch roots, with a planted control (test).
-  - done: impl-1805 · 2026-11-19T11:25:30.483Z
+  - verified: rev-36 [reviewer] · run rev-36-1805-final-1 · 2026-11-19T15:53:52.387Z · commit 16369c145dd69171e6e7cd5cf6ade3327f3b0b22
+  - done: impl-1805 · 2026-11-19T16:35:00.717Z
+  - verified: rev-36 [reviewer] · run rev-36-1805-final-2 · 2026-11-19T17:57:54.820Z · commit ddb45805acdf450f9c440a0ccd7a036d32de14be
 
 ## Comments
 
@@ -198,3 +204,80 @@ Source CLEAR at 16369c145/treeaba17086f9b5880ae719e3150f0e4c88b55b20fe; A-21811.
 Optional rootAllocated hook consumers checked: qa.test and qa-shipped only; omitted default unchanged, qa-shipped T4 deferred. File guide updated. Prior allocator/strict guard/structured serving refusal/fixed-root QA channel/sourceCheckout/ENV-001 implementation from A-21807 unchanged. Remaining older caller-family work is separate T-2007, not claimed complete.
 
 A-21809 read-only audit: 12 stream hashes match; all232 pinned T1 files exactly/1925pass, QA T3 whole30pass including five controls, selected T2 11+19pass; all0fail/cancel/skip/code0/signalnull. Full lint/typecheck0,129 report-only findings/zero refusals. Local darwin arm64 Node24.21, positive HOME and start loads below4; expected head/tree plus clean readbacks, actual Neovim binary/version unknown, browser none. Broader T2/T3/T4/Web/new configured Linux proof unexecuted. A-21806 broad854 receipts and all earlier configured/local failures remain separate. Findings[]; C1/C2/C3 unverified by source, hold released for Coordinator-owned new exact-head verify all. Any changed head needs review. Reviewer read-only inspection only; no edits/runtime/scans/generators/native/browser/delegation.
+
+### impl-1805 · 2026-11-19T15:52:11.972Z
+
+Configured full run66123f95-0ec3-4f83-99e2-66c2f3a1e2f8 delivered exit0 atsource-clear16369c145; A-21828. Read-only structured-log check:999ordinary file passes;9117ordinary test passes+12skips;75separate load-gate passes;0duplicate finish identities. T0,T1,T2,T3,Web completed0;T4unexecuted. All named own acceptance controls have ordinary pass receipts, including login body+finalcensus (not census-only repetition), QA receipt/four refusals, source/escapeguard and nonfatalserving. ActualproducerLinuxx64Node24.21,Nvim0.12.5,ChromeHeadlessShell1248/ChromeForTesting156.0.8078.4,c8sfo2,lifetime3132277ms,$0.2175192361111111. Producer tree53bde904... is recorded separately from reviewedGit treeaba17086...; no equality inferred. All12skips retain prerequisite reasons; advisories report-only. Reviewer final same-head evidence settlement pending; I make no verification/ready mark. Earlierfailed385be52a/localepochs retained, not acceptance proof.
+
+### rev-36 · 2026-11-19T15:53:52.387Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1805-final-1
+commit: 16369c145dd69171e6e7cd5cf6ade3327f3b0b22
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head CLEAR at 16369c145/treeaba17086f9b5880ae719e3150f0e4c88b55b20fe; A-21829 audits run66123f95/A-21828 against source5. C1 actual login body40546/40547 pass10.837810844s, paired source-association16737/16738, forged-source refusal16744/16745, old-shape16749/16750 pass; native headless-client/stub cleanup38343/38344 passes. C2 final login file-owned residue census40551/40552 follows body and passes, file envelope40554 pass; source checks ENOENT for every recorded allocated root/alias after joins, not a new machine-wide numeric TMPDIR sweep. Its5 repetitions are census-only, never5 login-body proofs. Real success/failure cleanup controls38461/38462 and38473/38474 pass. C3 planted unowned-root/accepted-root16726/16727 and initial-write failure16730/16731 plus5 each pass through strict guards; foreign-link real cleanup16769/16770 passes.
+
+Serving-after-refusal38364/38365 pass+5 retains exact structured producer/PID-discovery/status/native-close assertions. Positive stdio/stub QA ownership47524/47525 and four missing/tampered shim/preload47531–47556 pass+5 each; corrected original-work owners remain. Real SHELL-00147476/47477 and separate env-sealing47485/47486 pass. Migrated graph17/vboard24/layers4/palette5/shell25/ui10 pass; Linux QA27pass/3sandboxskip, not30pass.
+
+Complete structured index:9129ordinary=9117pass+12skip,0fail/cancel; separate75load passes. All999file envelopes passed, no missing/duplicate/unfinished executed identities:232T1/440T2/272T3/55Web.18T4 unexecuted. T0/T1/T2/T3/Web exit0;T0host94.65s. Provenance50742 exacthead/runtime53bde904df2371d28f7443ee2868a0f928165880,uncached Linuxx64 6.8.0-149/Node24.21/Nv0.12.5,c8sfo2,3132277ms/$0.2175192361111111;isolated HeadlessShell1248/ChromeTesting156.0.8078.4. Skips5sandbox/1caffeinate/2OpenCode/4zsh remain unavailable coverage;skipreasonreportmissing0. Lint129/62,duration/budget/ratchet notices report-only. A-21809 local macOS facts/Nvim unknown stay separate; failed A-21770/A-21772 and all earlier local/precommit/source epochs retain their outcomes. Findings[]; C1/C2/C3 verified at current head, hold released. Hub ready routes settlement; no extra run requested. Reviewer read-only inspection only, no edits/tests/probes/scans/native/browser/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1805 · 2026-11-19T16:08:59.595Z
+
+Coordinator51abbb52 authorized origin/dev merge after ready16369c145 conflicts. Mergingd58a09d79 includingT-1669(a158ec3c1) andT-1956(23e1a659a); no root config edits. Conflict hunks: README keeps strict ownership + fake-Claude recovery lines; fixture-processes keeps fake-__session candidate plus worktree/source filtering, adds fresh observed-cwd association for receipt-bound project removal; fixture-orphans keeps owned real scratch fixtures/whole-caller guards and allT-1669 PID/birth/rejection controls. NewT-1669 consumers writers.ts andfixture-receipt-case.ts migrate roots to actualhome/root only, sourceCheckout separate. Shared fixed-root preload policy extracted from QA; fakeClaude allocator creates its private ignored preload and carries compiled bootstrap viaNODE_OPTIONS through existing builders (no consumer-side root grant/allowlist). Removed home grants nothing; old writer admission retains staleCLI no-op. T-1669 C1 preserved by worker-SIGKILL live session/spoke before guarded removal, strengthened with home outsideprojectcwd; C2 preserved by post-file censuses and positive native closure. Save failure keeps structured cause metadata with EBADF+unlink receipts; bind failure still retains realFD/file until explicit ownercleanup. These changedT-1669 expectations will be explicit in merge-review request perCoordinator8fa1f695.
+
+### impl-1805 · 2026-11-19T16:19:06.787Z
+
+Authorized merge resolution956b659109348f9740fb6fc567372f867400f897 incorporates origin/dev d58a09d79 over source16369c145. Three conflict hunks: README preserves both scratch-only/source-metadata policy and fake-Claude recovery; fixture-processes combines fake-Claude candidate with private receipt/PID/birth guard and observed cwd association (association never grants cwd/source as disposable roots); fixture-orphans retains both sets of controls with actual allocated receipt roots. New integration consumers/census: hub/test/fakes/claude-code/writers.ts session receipt now [home], sourceCheckout metadata separately; hub/test/fixture-receipt-case.ts actual root only, synthetic sourceCheckout separately; shared/fixture-root-preload.ts consumed by shared/qa-node.ts and hub/test/harness.ts, fixed allocator root/inode preload, no root from env/argv. Harness propagates through NODE_OPTIONS because fake session launch removes CLAND_ keys; its removed-home bootstrap grants nothing and lets existing writer admission reject stale invocations. Raw NODE_OPTIONS reader/override census includes claude-code-sessions-lifecycle.test.ts (worker env observer, not fake.env); account-poller.test.ts (usage-only no session receipt); record-nvim-frames.ts (appends); setup/init/daemon/suite/startup/spawn-census/account-fixture probes (separate fixtures). Existing full producer/client/doc/QA/raw/frozen census retained in A-21806; unchanged wire/help/frozen fields unaffected. T-1669 criterion mapping: C1 deterministic orphan reproduction still asserts live __session and spoke after worker SIGKILL; now allocated fake home is outside project cwd and guarded removal demonstrates association without disposable cwd. C2 cleanup/census: writer roots and receipt-case roots are actual allocated scratch; save rejection returns typed reason/cause/nativeCode/cleanupCodes and closes/unlinks native descriptor; bind rejection retains open native descriptor until owner cleanup. Separate close/removal receipts and final named session/spoke censuses remain. Native files pending slot; prior163 proof remains prior-head only.
+
+### impl-1805 · 2026-11-19T16:22:54.030Z
+
+New incoming registry producer found in hub/test/merge-batches.test.ts:647 during full-T1 integration at956b65910 (1944pass/1fail/0skip). The case's /var/scratch and /private/var candidate strings are synthetic CandidateOwnershipHost facts; no root allocation exists there. Correct migration keeps fake alias/replacement ownership assertions, allocates the receipt under granted tempProject in the joined callback and keeps synthetic candidate association in sourceCheckout only. Guard unchanged. An actual scratch symlink alias plus macOS /var alias positive control is added to fixture-socket-path.test.ts. Existing candidate replaced/unowned refusal assertions remain. This producer is added to the rule20 census; pre-merge complete-census claims do not cover this new incoming consumer.
+
+### rev-36 · 2026-11-19T16:39:56.918Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1805-delta-1
+commit: ddb45805acdf450f9c440a0ccd7a036d32de14be
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta SOURCE CLEAR at ddb45805a/tree09c9c483a0752265d612971bfbd6a8cf426cd40f; A-21836. Coordinator51abbb52 authorizes merge956b65910 of reviewed16369c145+devd58a09d79; final ddb fixes incoming synthetic-root producer under23a961ca. Both parents/combined ownership changes checked. Strict registration, sourceCheckout separation, CLI/QA/Lua ownership channel and original login owner remain. Shared fixed-root identity preload centralizes QA/fake allocator policy; fake home bootstrap is allocation-owned and removed-home admission grants nothing. Fresh observed cwd/source metadata selects only already private PID/birth-receipt-bound processes, revalidated before signals; association never grants directory cleanup.
+
+T-1669 C1/C2 read and checked per8fa1f695: deterministic worker SIGKILL retains live session; home now outside project, actual private receipt selects home, both session/spoke must exit before guarded project removal. Spoke is observed live before SIGKILL, not separately asserted live after it; dropped-cleanup control independently observes both after worker exit. Failing-body/empty final census remains. Save failure retains typed reason/original cause/nativeCode/cleanupCodes plus EBADF and partial unlink; bind failure retains fd/metadata until cleanup. Separate close/remove failure roots/guard/earlier-attempt receipts remain. T-1956 production behavior unchanged; writer receipt now uses real granted tempProject and synthetic candidate association only, retaining all replaced/unowned/canonical writer refusals. Actual alias positive control reads canonical persisted root; conditional /var branch has no independent execution receipt.
+
+A-21835 final epoch:30 stream hashes match; all232T1/1945pass, selectedT2 37pass,10T3files144pass+1Linux-identityskip, no failures. Full lint/typecheck code0/signalnull;131 report-only findings/zero refusals. Local darwinarm64 Node24.21, serial unloaded native slot, actual Neovim binary/version unknown, no browser. Declared expected head/tree plus clean readbacks are not independent invocation-time Git probes. A-21833 first merge1944pass/1fail and A-21832 working checks remain separate; prior configured66123f95/A21829 stays163-head proof. New configured/remainingT2T3/T4/Web unexecuted. Findings[]; C1/C2/C3 remain unverified/stale at new head, hold released for Coordinator's new exact-head verification. Reviewer read-only inspection only; no edits/tests/probes/scans/native/browser/delegation.
+
+### rev-36 · 2026-11-19T17:57:54.820Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1805-final-2
+commit: ddb45805acdf450f9c440a0ccd7a036d32de14be
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head CLEAR at ddb45805acdf450f9c440a0ccd7a036d32de14be / Git tree09c9c483a0752265d612971bfbd6a8cf426cd40f, clean readback; delta-source A-21836 retained. A-21852 audits verify-all424bf364/A-21851; A-21853 corrects only its source citation to login-add.test.ts:40–43.
+
+C1 exact login-body finish41299/timing41300 pass15.616500193s whole-case. Source reads every published receipt and asserts roots exactly[realpath(f.root)]; separate non-disposable sourceCheckout and observed-cwd selection retain PID/birth/private-open-receipt authority. C2 final file-owned census41304/41305 pass, tracks newly allocated worker roots/aliases before body and independently requires their ENOENT after joined cleanup, including registry removal. This is allocated-output/alias cleanup proof, not a machine-wide numeric TMPDIR inventory. Five distinct load passes41259/41266/41273/41280/41293 repeat census only, not login body. Actual success/failing-worker endpoint/receipt cleanup39225/39226 and39235/39236 pass.
+
+C3 planted unowned-root refusal with positive granted-root registration16912/16913 pass+5. Actual allocated-symlink canonicalization16916/16917+5; initial-write EBADF/partial-receipt/root-preservation16920/16921+5; source-associated join/no-traversal16924/16925+5; source forgery16928/16929+5; old-shape16932/16933+5. Receipt save/bind/close/remove controls16856–16872 and observed-cwd authority16851/16852 pass. Conditional macOS var/private-var branch is not inferred from Linux larger-case pass.
+
+Fake-Claude dropped-cleanup38714/38715, failing-body38732/38733, killed-worker38751/38752 and final session/spoke census38806/38807 pass ordinarily+5 each. Preserve prior qualification of no separate post-kill still-live-spoke assertion. Nonfatal serving-refusal39201/39202+5; QA root-grant48283/48284 and four missing/tampered shim/preload48293–48313 pass+5 each. SHELL-00148233/48234, environment48244/48245 and final process/root clearance48618/48619 pass. All27 runnable QA cases pass,3macOS sandbox skips. Allocated-root Neovim clients graph17/vboard24/layers4/palette5/shell25/ui10 allpass; no GUI/real-browser QA claim.
+
+Complete index9182ordinary=9170pass+12skip,0fail/cancel; separate140loadpasses. All999fileenvelopes pass,232T1/440T2/272T3/55Web,none missing/duplicated/unfinished.18T4unexecuted. T0/T1/T2/T3/Web exit0;T0host70.923s step only. Provenance51569 exacthead/runtimecandidate56e0d5598ef023062a8715e104a4508e64b51b48,uncachedLinuxx64 6.8.0-149/Node24.21/Nv0.12.5,c8sfo2,4265745ms/$0.29623229166666665 executor accounting;isolated HeadlessShell1248/ChromeTesting156.0.8078.4.12skips5sandbox/1caffeinate/2OpenCode/4zsh unavailable coverage,skipreasonreportmissing0. Lint131/62 and budget/ratchet/Web notices report-only.
+
+Findings[];C1/C2/C3 current verified, hold released. Failed385be52a/A21770 and its separate failure classes remain failed; parent16369c145 fullgreen and A21832/33/35 local/merge epochs retain original scopes/native/conditional limits. No extra verification requested. Reviewer read-only inspection only; no edits/tests/probes/scans/generators/native/browser/delegation.
+
+Criteria: C1 verified, C2 verified, C3 verified.

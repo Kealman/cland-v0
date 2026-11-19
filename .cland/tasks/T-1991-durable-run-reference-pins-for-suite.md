@@ -2,8 +2,8 @@
 id: T-1991
 kind: task
 title: "Durable run-reference pins for suite runs: verdict, criterion, coverage and duration publishers pin a raw run before referencing it, with an exclusive retirement claim"
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1657
 branch: t/T-1991-durable-run-reference-pins-for-suite
 created: 2026-11-19T01:26:31.956Z
-updated: 2026-11-19T14:48:47.937Z
+updated: 2026-11-19T16:59:35.596Z
+closed: 2026-11-19T16:59:35.596Z
 ---
 
 ## Summary
@@ -28,10 +29,12 @@ Before a publisher's final check and write, it creates a durable per-run pin. Re
 
 ## Acceptance criteria
 
-- [ ] C1. For each publisher class, a deterministic overlap regression shows a pin taken before the claim retains the run, and a publish attempted after retirement is refused (test).
-  - failed: rev-35 [reviewer] · 2026-11-19T14:48:47.937Z · note Retry bf7a2441 failed in delivery fetch before tests; counts are unavailable and final verification awaits Coordinator-authorized rule-35 run 29e3e474.
+- [x] C1. For each publisher class, a deterministic overlap regression shows a pin taken before the claim retains the run, and a publish attempted after retirement is refused (test).
+  - done: impl-1991 · 2026-11-19T16:01:16.471Z
+  - verified: rev-35 [reviewer] · run rev-35-1991-evidence-3 · 2026-11-19T16:04:31.616Z · commit b35d36e30dba2b9b460bd04b62e804bf61a8d355
 - [x] C2. A crash between pin and write leaves the run retained, and recovery never ages an unknown pin out (test).
   - done: impl-1991 · 2026-11-19T13:38:14.868Z
+  - verified: rev-35 [reviewer] · run rev-35-1991-evidence-3 · 2026-11-19T16:04:31.616Z · commit b35d36e30dba2b9b460bd04b62e804bf61a8d355
 - [x] C3. Every publisher and reader of raw-run references is listed with its disposition (rules 20 and 41).
   - done: impl-1991 · 2026-11-19T13:38:15.468Z
   - verified: rev-35 [reviewer] · run rev-35-1991-source-3 · 2026-11-19T13:41:13.953Z · commit b35d36e30dba2b9b460bd04b62e804bf61a8d355
@@ -132,3 +135,22 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Evidence2 NOT CLEAR at unchanged clean b35d36e30dba2b9b460bd04b62e804bf61a8d355/Git931d630c. A-21819 retains bf7a2441/A21818 as a separate failed pre-test attempt: producing hub result reports delivery fetch, SSH exit255 and Operation timed out; retained log itself lacks that failure payload. No new pin-source defect inferred. Log124 binds same head/snapshotdea94c39; no suite-progress records, counts unavailable rather than zero/passing. T0 exit0/80.246s and successful delivery uploads do not imply tests ran; all runtime/Web/T4 phases unexecuted or without completion, planned counts/projections not passes. Remote platform/browser null, c8sfo2 lifetime123s/$0.0085 accounting only. Source3 clearance/C3 current verification retained; C1 final gate failed, C2 done/unverified, nothing new verified. Original56cc3b92 host-supervisor red, own13base+5 passes, CoordinatorT2009 attribution/A21816isolatedpasses remain distinct/A21815+A21817. Primarya7a60a60 authorizes rule35 resubmission1of2, pending29e3e474 at samehead; it is not current proof. Hold released; no source change/additional experiment or retry requested by Reviewer. Static reads only.
 
 Criteria: C1 failed (Retry bf7a2441 failed in delivery fetch before tests; counts are unavailable and final verification awaits Coordinator-authorized rule-35 run 29e3e474.).
+
+### rev-35 · 2026-11-19T16:04:31.616Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1991-evidence-3
+commit: b35d36e30dba2b9b460bd04b62e804bf61a8d355
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence3 CLEAR at unchanged clean b35d36e30dba2b9b460bd04b62e804bf61a8d355/Git931d630c; source3 A21802 retained. A-21831 independently audits authorized29e3e474/A21830 finished/passed ownerexit0, provenance50851 samehead/snapshotdea94c39 distinct from Git. Ordinary9145=9133pass(8906top+227nested)/12reasonedskips(8top+4nested),1000passingfiles;70separate currentloadpasses. Own13 cases28840–28904 each basepass+5distinct currentrepetitions/65loads;extra5durationwrapper. CurrentloadIDs have zero overlap with56cc3b92, not reused old proof. C1create/edit/verdict/criterion/coverage/duration overlap/refusal and captured alias passes; owner positive/pending/failure/unknown/recovery controls and zero repeat-entry/<=16new-entry work asserts pass. C2unknown-age and abandonedpin/recovery pass base+5 each. C3sourcecurrentverified retained/T1992C5oldmarkmigration/deletionoff unchanged. All232T1/441T2/272T3/55Web complete,T4unexecuted;NVM71files530records incl3skips. Twelve skip reasons retained;lint/duration/ratchet advisories report-only. UncachedLinuxx646.8.0-149Node24.21/Nv0.12.5,c8sfo2workers2,actual isolatedHeadless1248/ChromeTesting156.0.8078.4;4291s/$0.2980accounting,85.616sT0hoststep distinct. Prior supervisor case now40179pass2.570790423s; original56cc red and bf7 pre-testSSHfailure remain separately scoped A21815/17/19, CoordinatorT2009 attribution/A21816isolatedpasses and a7a60a60 single rule35retry authorization retained. No failed epoch erased or partial proofs combined. No findings;C1/C2verified,C3currentmarkretained,allcriteria verified. Hold released. Static Reviewer reads only.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-19T16:59:35.596Z
+
+Merged 4ccc058a5046770341d529d17e0ec40eb72d5025 onto dev.

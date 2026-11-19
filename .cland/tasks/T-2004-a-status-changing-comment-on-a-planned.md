@@ -2,8 +2,8 @@
 id: T-2004
 kind: task
 title: A status-changing comment on a planned-stage item blocked the hub loop for about 19 s after a 1,627-item explorer refresh
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1656
 branch: t/T-2004-a-status-changing-comment-on-a-planned
 created: 2026-11-19T10:54:30.279Z
-updated: 2026-11-19T14:58:14.662Z
+updated: 2026-11-19T18:27:21.262Z
+closed: 2026-11-19T18:27:21.262Z
 ---
 
 ## Summary
@@ -29,8 +30,12 @@ Name the owner of the 19 s synchronous block with a CPU profile or per-step timi
 
 - [x] C1. The blocking owner is named with evidence: a profile or per-step timing on a fixture that changes a planned-stage item's status with a status-and-verdict comment at about 1,650 items (evidence).
   - done: impl-2004 · 2026-11-19T11:28:32.246Z
-- [ ] C2. On that fixture, a `task.view` request issued during the status change answers within 2 s, red on the current code (test).
-  - failed: rev-36 [reviewer] · 2026-11-19T14:58:14.662Z · note Required configured round failed on an attributed startup explorer work-bound compatibility control; same-fixture row measurements and correction or justified migration remain required, although the own two-second latency assertion passed.
+  - verified: rev-36 [reviewer] · run rev-36-2004-final-1 · 2026-11-19T16:55:14.681Z · commit d7975cb79e34a3fa798bad48d353e4922365ace4
+  - verified: rev-36 [reviewer] · run rev-36-2004-final-2 · 2026-11-19T17:36:59.688Z · commit dccc14d8a9db40a36d109c17d1b4adb108d0f09e
+- [x] C2. On that fixture, a `task.view` request issued during the status change answers within 2 s, red on the current code (test).
+  - done: impl-2004 · 2026-11-19T15:05:42.923Z
+  - verified: rev-36 [reviewer] · run rev-36-2004-final-1 · 2026-11-19T16:55:14.682Z · commit d7975cb79e34a3fa798bad48d353e4922365ace4
+  - verified: rev-36 [reviewer] · run rev-36-2004-final-2 · 2026-11-19T17:36:59.688Z · commit dccc14d8a9db40a36d109c17d1b4adb108d0f09e
 
 ## Comments
 
@@ -134,3 +139,89 @@ Audit: 8621 ordinary=8611pass+1fail+9skip, separate15load passes;918 file envelo
 Coordinator39397d11 attributes missed consumer to T-2004: post unchanged362 row series and same-fixture pre-change baseline first; full passes require coalescing and retained<=4, partial rows allow at-least-as-strict row budget only with before/after numbers. Preserve all byte/latency/final-state assertions and update raw-field/all-tier census with miss reason. Coordinator7e7a8f58 controls native slot. C2failed,C1unverified,nothingverified. Hold released for authorized measurement and bounded correction; fresh source review before Coordinator's new verify all. Priorbf8162a2/A21779 remains separately failed; local/trace/source epochs retain scopes. Reviewer read-only inspection only, no edits/tests/probes/scans/native/browser/delegation.
 
 Criteria: C2 failed (Required configured round failed on an attributed startup explorer work-bound compatibility control; same-fixture row measurements and correction or justified migration remain required, although the own two-second latency assertion passed.).
+
+### impl-2004 · 2026-11-19T15:01:23.442Z
+
+Additional raw-diagnostic consumer census after A-21820: startup-replies-scale.test.ts is T3 and directly counts explorer-recomputed, without importing or naming announceBatch, publishTaskBatch or freshness methods. Prior all-tier search omitted this raw diagnostic field and 'startup recomputed' assertion wording, so an actual consumer was missed (not a tier exemption). Expanded explorer-recomputed/raw assertion search finds tracker-summary (T1), item-summary and item-summary-scale (T2), startup-replies-scale (T3), production Tracker emitter and tracker docs; inbox-archive-workload's similarly worded startup inbox counter is a different producer/field and unaffected. The first three were already covered; new T3 consumer now counts actual touched rows. A-21825 posted unchanged-head/baseline row series before migration: 65 chunks/3074 rows vs3/3012. Coordinator39397d11/7e7a8f58 authorizes >=1004 && <=4016 ceiling, no weaker than old4×1004. Fixture/byte/latency/positive durable-state assertions remain unchanged. No configured retry yet.
+
+### impl-2004 · 2026-11-19T15:03:57.666Z
+
+Follow-through to Coordinatorebc5915e: startup-replies-scale now observes exactly one startup publication producer by the existing internal completion-promise identity, at most ceil(1004/16)=63 chunks for that producer, and at most63+2 recompute calls (initial source hydration and visibility passes). Thus per-row flushing fails even if touched-row total fits. No new asynchronous work is started or retained by this observer; existing hub owner joins production work. This adds startup-replies-scale as the second test-only AnnouncementBatchReceipt consumer alongside startup-ready-component; production server still ignores the additive argument and wire shape remains unchanged. Whole T3 file passed2/2 locally after final guard, including462955 reply bytes/99498 snapshot bytes and all preserved latency/plan-child assertions; no full configured pass inferred.
+
+### rev-36 · 2026-11-19T15:10:00.218Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-2004-source-4
+commit: d7975cb79e34a3fa798bad48d353e4922365ace4
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source CLEAR at d7975cb79/tree65fa30c13b5eb911706790f4f7c5fe18cda87949; A-21827. Sole parent362da9e20, clean, two-file T3 test/guide correction, no production/helper/tier/config/allowance change or dev merge. A-21821 finding resolved for source by A-21825 same-fixture measurements and Coordinator39397d11/ebc5915e approval: unchanged current65 calls/3074 touched rows remains original-assertion fail/code1; three pre-change production modules on identical current fixture yield3 calls/3012 rows/pass/code0, both signalnull. Baseline module and common original test hashes independently match Git; this is a three-module controlled baseline, not a whole historical checkout pass.
+
+ExplorerFieldsIndex producer items count actual recomputed aggregates; new1004–4016 row bound preserves old4×1004 ceiling. Separate exactly-one producer / <=ceil(1004/16)=63 chunks / <=63+2 calls catches per-row explosion. Synchronous wrapper forwards publish/completion unchanged; promise is identity only and adds no async acquisition/wait. Raw diagnostic reader census and miss reason now explicit, second test-only receipt consumer recorded. Matching guide updated. All other original checkpoint/history/read/latency/frame-total-byte/snapshot/durable-child assertions retained; prior1650 and producer/stop controls unchanged. Row counts do not establish CPU-cost equivalence or exclusive historical stall attribution.
+
+A-21826 final precommit bytes match both committed source hashes: whole T3 file2/2pass,462955 startup reply bytes/99498 card snapshot, full typecheck/lint exit0,129 report-only findings/zero refusals. Local darwinarm64 Node24.21, fake Git/in-process fixtures, browsernone. Final native PID/signal/root-removal facts unavailable; no T1 rerun/new-head configured/Linux/full-tier claim. Parent pass and both failed configured rounds remain separate epochs with unexecuted phases. Findings[]; C1/C2 unverified by source. Hold released for Coordinator-owned new verify all at fixed head; changes need new review. Reviewer read-only inspection only, no edits/tests/probes/scans/native/browser/delegation.
+
+### rev-36 · 2026-11-19T16:55:14.682Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-2004-final-1
+commit: d7975cb79e34a3fa798bad48d353e4922365ace4
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head CLEAR at d7975cb79/tree65fa30c13b5eb911706790f4f7c5fe18cda87949; A-21838 audits run38e5d328/A-21837 against source4. C1 retained source/profile diagnosis identifies fixture freshness fan-out and repeated visibility/item-layer projection; current publication/CPU receipt21076 is scoped to that fixture, not exclusive attribution of the historical live19s stall. C2 exact1650 case ordinary21070/timing21071 pass26.045232169s whole-case; five distinct load passes21016/21594/22641/23439/24461. Actual request diagnostic21077 is404.539ms during status/verdict write excluding setup; positive whole-case resource close21078. Durable status/verdict, newer interleaved title and tail assertions remain required.
+
+Prior failures now ordinary pass: producer ordering27701/27702 and stop27705/27706; thousand-row startup42931/42932, pinned startup42935/42936. Actual startup3074 touched rows/65 recompute calls, preserved producer/chunk/call limits;460381 reply bytes/99498 snapshot bytes. Original planned1000-row control retains2058-row bound receipt21105. Shared synchronous projection/legacy frame9926/9927 passes+5. Whole-case, startup-status, CPU and publication intervals remain distinct; no speedup claim.
+
+Full structured index:9117ordinary=9105pass+12skip,0fail/cancel; separate15load passes. All1000file envelopes pass, no duplicate/unfinished/missing T1T2T3Web identities:233T1/440T2/272T3/55Web.18T4 unexecuted. T0/T1/T2/T3/Web exit0;T0host66.688s. Provenance50261 exacthead/runtime595d997c01fdc369db12d0b4bcdd33a7261d727d,uncached Linuxx64 6.8.0-149/Node24.21/Nv0.12.5,c8sfo2,3355625ms/$0.2330295138888889;isolated HeadlessShell1248/ChromeTesting156.0.8078.4.12skips5sandbox/1caffeinate/2OpenCode/4zsh remain unavailable coverage,skipreasonreportmissing0. Lint129/62,duration/ratchet/Web notices report-only. Priorbf8162a2/A21779 and74401041/A21820 stay failed/partial; diagnostic/baseline/local/source epochs retain original scopes and limits. Findings[];C1/C2 verified at current head, hold released; hub ready routes settlement. No extra run requested. Reviewer read-only inspection only, no edits/tests/probes/scans/native/browser/delegation.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-36 · 2026-11-19T17:04:05.621Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-2004-delta-1
+commit: dccc14d8a9db40a36d109c17d1b4adb108d0f09e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized duration-conflict delta SOURCE CLEAR at dccc14d8a/treeec649a5377532d45f0b354de81ff330e183747bd; A-21844. Coordinator90d60c22 authorizes parents final-reviewed d7975cb79+devd58a09d79. Sole manual conflict durations.json: exact dev manifest plus seven lines for existing40s C-216 entry; dev9.5s T-1669 allowance and deletion of retired19/8.5/16s entries retained, no rewrite/default/gate change. Original allowance projection wording remains historical rationale; actual later Linux measurements remain A-21837/A-21838.
+
+Both-parent intersection is only manifest and auto-merged item-summary-scale/guide. Dev's T-1988 first churn fixture ownership/setup merges with unchanged own1650 comment case, two-second/durable-comment/interleaved-tail assertions and startup row controls. Tracker/core/visibility, stage-case, producer/stop and startup-replies controls are byte-identical to own parent. Eager upstream file-fixture/name-selection observation separately routed as Tech debt S for dedup; unchanged shared helper, outside this resolution.
+
+Independent key search hub/test+nvim/test matches only manifest and whole fake-Claude(T3)/item-summary-scale(T2) files, no Neovim match. A-21841 precommit final merged candidate, no subsequent edits: those files12/12 and5/5; four pinned durationT1files34/34; full typecheck/lint0,131 report-only findings/zero refusals, production manifest lint0. Local darwinarm64 Node24.21, disposable/fake lifecycle, granted native slot, browsernone. Independent top-level signal/PID/root-removal facts unavailable; no postcommit configured/full-tier proof. Prior38e5d328/A21837 stays d797 pass with18T4unexecuted; both earlier failed rounds and diagnostic/local epochs stay separate. Findings[]; C1/C2 remain stale/unverified at newhead. Hold released for Coordinator's authorized mode-free verification; merge-batch T3 retains configured scope. Reviewer read-only inspection only, no edits/tests/probes/scans/native/browser/delegation.
+
+### rev-36 · 2026-11-19T17:36:59.688Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-2004-final-2
+commit: dccc14d8a9db40a36d109c17d1b4adb108d0f09e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head CLEAR at dccc14d8a9db40a36d109c17d1b4adb108d0f09e / Git tree ec649a5377532d45f0b354de81ff330e183747bd, clean readback. A-21847 independently audits configured aed68391/A-21846 against delta-clear A-21844. C1 retained fixture diagnosis/profile identifies freshness fan-out and repeated visibility/item-layer projection, without exclusive attribution of the historical live19s stall. Current21224 CPU user9689.372ms/system3558.322ms and publication12053.904ms remain distinct scopes. C2 exact1650 case ordinary21218/timing21219 pass25.595685591s whole-case plus five distinct load passes21285/22618/23568/24762/25633. Actual task.view diagnostic21225 is389.325ms during status/verdict write excluding setup; positive hub/resource closure21226. Durable comment/interleaved title/tail assertions retained.
+
+Prior-failure controls ordinary pass: producer ordering27895/27896, stop27899/27900, thousand-row startup36295/36296 and pinned startup36299/36300. Startup65calls/3074touchedrows,1004files/1008reads/max2,1checkpoint/0fulljobs,460424replybytes/99498snapshot; preserved producer/chunk/call/row and byte/latency/durable-state assertions complete. Shared synchronous projection/legacy frame10014/10015 plus5passes. Whole-case/request/startup/publication/CPU intervals are not compared as speedups.
+
+Complete index7126ordinarypasses,0fail/cancel/skip; separate10loadpasses;737fileenvelopes allpass/no duplicates/unfinished.233T1/440T2/8selectedT3/1mappedT4/55Web complete.264remainingT3 batch-deferred;17T4 unexecuted. MappedT4 verifier-load basepass36560/36561 supplies no repetition proof. T0/T1/T2/selectedT3/mappedT4/Web exit0;T0host100.908s step only. Exacthead provenance39172 runtimecandidate02034cfe6a26fc53f1b46b182c454b2c916a2c94,uncachedLinuxx64 6.8.0-149/Node24.21/Nv0.12.5,c8sfo2,1481901ms/$0.10290979166666667 accounting;isolated HeadlessShell1248/ChromeTesting156.0.8078.4,skips[],skipreasonreportmissing0. Lint/budget/ratchet advisories remain report-only; projections not timings. No verify-all/current complete-T3 claim.
+
+Findings[];C1/C2 verified at this head. Prior bf8162a2/A21779 and74401041/A21820 remain failed/partial;38e5d328/A21837 remains prior d797 full-green epoch. Local/precommit/profile/native provenance limits and T2005/separate upstream fixture aside retain scopes. Hold released; no extra run requested. Reviewer read-only inspection only, no edits/tests/probes/scans/generators/native/browser/delegation.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-19T18:27:21.262Z
+
+Merged e3c0e9320d9ada99dbd2510737e33985416a51fd onto dev.
