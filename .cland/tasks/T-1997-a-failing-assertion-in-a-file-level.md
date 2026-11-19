@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T03:30:57.433Z
-updated: 2026-11-19T03:30:57.433Z
+updated: 2026-11-19T07:10:56.039Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ First, reproduce minimally: a file whose `after` hook throws or fails an asserti
 - [ ] C1. A minimal reproduction records exactly what each runner path does with a failing file-level `after` hook (exit status, suite result, failure list), with literal output (evidence).
 - [ ] C2. A failing file-level `after` hook fails its file with a named failure in every runner path, or file-level `after` assertions are refused by a lint with every existing one migrated (test).
 - [ ] C3. Every existing file-level `after` hook that asserts is listed with its disposition (rule 41).
+
+## Comments
+
+### coord · 2026-11-19T07:10:56.039Z
+
+A possible lead from impl-1669 (T-1669, 2026-11-19): a nested `node --test` child that inherits `NODE_TEST_CONTEXT` from its parent runner silently skipped files until that variable was removed with the fixtureEnvironment final overlay. Check whether inherited `NODE_TEST_CONTEXT` in the child explains T-1676's observation (exit 0 despite a failing `after` hook) before calling it a harness defect.

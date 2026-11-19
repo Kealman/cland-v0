@@ -3,7 +3,7 @@ id: T-1676
 kind: task
 title: Test cleanup leaves hub/spoke fallback endpoints, Codex placeholder cx-*.sock files and fixture-owner receipts in TMPDIR
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1645
 branch: t/T-1676-test-cleanup-leaves-hub-spoke-fallback
 created: 2026-11-04T14:47:20.399Z
-updated: 2026-11-19T05:50:44.672Z
+updated: 2026-11-19T08:21:08.072Z
 ---
 
 ## Summary
@@ -33,8 +33,7 @@ Each fixture removes the fallback endpoints, placeholder files and owner receipt
 ## Acceptance criteria
 
 - [x] C1. After each named file, TMPDIR holds no fallback endpoint, placeholder socket file or owner receipt that the file created (test).
-  - done: impl-1676 · 2026-11-19T05:00:27.978Z
-  - verified: rev-36 [reviewer] · run rev-36-1676-final-1 · 2026-11-19T05:50:44.357Z · commit 925ffa2ea5a467d1a9e572d65cd323fb998bd43d
+  - done: impl-1676 · 2026-11-19T07:54:41.342Z
 - [x] C2. The same holds when a test in those files fails (test).
   - done: impl-1676 · 2026-11-19T05:09:08.536Z
   - verified: rev-36 [reviewer] · run rev-36-1676-final-1 · 2026-11-19T05:50:44.357Z · commit 925ffa2ea5a467d1a9e572d65cd323fb998bd43d
@@ -169,3 +168,79 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged clean/pushed 925ffa2ea5a467d1a9e572d65cd323fb998bd43d, source tree bdfe9656c1bd593f7c41879c5448223495464493. A-21597 records the independent audit of de227e4a-1253-40fd-b3ed-417945f32a98/A-21596, finished/passed, owner exit0. C1: all six named T3 producer files completed and each literal final fixture-file-output census has structured pass (37637/37675/37815/37902/37951/37984); all four corrected /tmp spoke welcomes and its final census also pass. C2: selected native post-file success/failure censuses, rejected-close retention, killed-worker root-local receipt discovery and cleanup/recovery cases pass. The failure worker's expected native exit1/signalnull and each captured path's absence are asserted, not inferred from a headline. New registered-cleanup parent/writer retention control and T2 cancellation/setup/link/failed-owner/placeholder controls pass base plus five distinct load observations each. 7050 base passes = 6905 top-level +145 nested, zero fail/cancel/skip/todo;255 separate load passes. All729 base file envelopes pass:231 T1/436 T2/7 selected T3/55 Web. Selected T3 has137 identities, one base execution/file, no repetitions. T0/T1/T2/selected T3/Web exit0; unchanged fixture-orphans-lifecycle and remaining T3 deferred/unexecuted, T4 unexecuted, no coverage borrowed. Provenance40626 binds runtime tree d6b30b3084c5427070e49b7ddd8d08e26d7cbc52, cachednull, droplet Linuxx64 6.8.0-147-generic Node24.21/Nv0.12.5 and actual isolated HeadlessShell1248/ChromeTesting156.0.8078.4.106.046s is T0 host step only. Budget/ratchet/owner advice and130 lint findings63files remain report-only. Earlier b401c4c8/A-21579 and local/source red epochs remain failed/partial and separately scoped. No findings, new Reviewer runtime or whole-macOS-cover claim. C1/C2 verified; hold released.
 
 Criteria: C1 verified, C2 verified.
+
+### hub · 2026-11-19T07:13:17.258Z
+
+Merge-delta assessment (report-only)
+{"reviewed":"925ffa2ea5a467d1a9e572d65cd323fb998bd43d","head":"107a1526c4c25ce8bf00cdec3e81f559cb0116f7","dev":"808a00be1bd05ffeebd32d5a17036409dd025fec","mergeBase":"13cefb4b05e6be0b36a3038761739add149b8777","mode":"report","rule":"conservative-runtime-coupling-v1","result":"overlapping","branchPaths":["docs/agents/tests.md","docs/agents/tests/hub-test-fixture-socket-lifecycle.test.ts.md","docs/agents/tests/hub-test-fixture-socket-path.test.ts.md","docs/agents/tests/hub-test-host-launch-layout.test.ts.md","docs/agents/tests/hub-test-spoke-unix-edge.test.ts.md","docs/evidence/T-1676-spoke-consumer.md","hub/src/adapters/codex.ts","hub/src/project.ts","hub/test/adapter-native-boundary.test.ts","hub/test/claude-code-adapter.test.ts","hub/test/codex-adapter.test.ts","hub/test/fixture-residue-control.ts","hub/test/fixture-socket-lifecycle.test.ts","hub/test/fixture-socket-path.test.ts","hub/test/harness.ts","hub/test/host-launch-layout.test.ts","hub/test/opencode-adapter.test.ts","hub/test/scenarios/hub-lifecycle.test.ts","hub/test/spoke-unix-edge.test.ts","hub/test/worktree-cli.test.ts","shared/fixture-ownership.ts","shared/fixture-sockets.ts"],"devPaths":[".agents/skills/implement/CHANGES/T-1635-projected-closure.md",".cland/tasks/E-1883-merge-queue-verification-delivery-and.md",".cland/tasks/T-1635-a-landing-that-closes-an-item-can-turn.md",".cland/tasks/T-1652-a-soak-run-on-dev-is-lost-when-dev-moves.md",".cland/tasks/T-1676-test-cleanup-leaves-hub-spoke-fallback.md",".cland/tasks/T-1857-a-long-verify-result-truncates-its.md",".cland/tasks/T-1952-hub-startup-spends-64-s-between-binding.md",".cland/tasks/T-1956-a-batch-whose-members-already-landed-is.md",".cland/tasks/T-1957-cland-run-suites-has-no-retention-49-781.md",".cland/tasks/T-1958-232-released-leases-with-no-spend-entry.md",".cland/tasks/T-1960-artifact-lifecycle-test-ts-never-exits.md",".cland/tasks/T-1979-guardedleasecase-restores-seams-after.md",".cland/tasks/T-1988-retire-the-2026-11-18-duration.md",".cland/tasks/T-1993-the-duration-allowance-printer-names-the.md",".cland/tasks/T-1995-opendatabase-s-cleanup-close-can-throw.md",".cland/tasks/T-1996-suite-soak-component-s-periodic-cover.md",".cland/tasks/T-1997-a-failing-assertion-in-a-file-level.md",".cland/tasks/T-1998-the-per-run-write-census-misses-stream.md",".cland/tasks/T-204-incident-log-lost-suite-runs-and-stalled.md","docs/agents/tests.md","docs/agents/tests/hub-test-executor-droplet-component.test.ts.md","docs/agents/tests/hub-test-executor-lease-index.test.ts.md","docs/agents/tests/hub-test-item-summary-scale.test.ts.md","docs/agents/tests/hub-test-merge-batches.test.ts.md","docs/agents/tests/hub-test-startup-listener-scale.test.ts.md","docs/agents/tests/hub-test-startup-ready-component.test.ts.md","docs/agents/tests/hub-test-suite-accounting.test.ts.md","docs/agents/tests/hub-test-suite-bundle-native.test.ts.md","docs/agents/tests/hub-test-suite-close-component.test.ts.md","docs/agents/tests/hub-test-suite-cover.test.ts.md","docs/agents/tests/hub-test-suite-duration-budget.test.ts.md","docs/agents/tests/hub-test-suite-protocol.test.ts.md","docs/agents/tests/hub-test-suite-soak-component.test.ts.md","docs/agents/tests/hub-test-suite-soak.test.ts.md","docs/agents/tests/index.md","docs/hub/coordinator-subscription-procedure.md","docs/hub/implementation/running.md","docs/hub/running.md","docs/hub/standing-duration-allowance-owners.md","hub/README.md","hub/src/closed-item-wording.ts","hub/src/executor/droplet/droplet.ts","hub/src/executor/droplet/lease.ts","hub/src/executor/droplet/run.ts","hub/src/executor/droplet/spend.ts","hub/src/hub/core.ts","hub/src/hub/daemon.ts","hub/src/hub/demos.ts","hub/src/hub/dispatch.ts","hub/src/hub/merge-batch-territory.ts","hub/src/hub/server.ts","hub/src/hub/soak-quarantine.ts","hub/src/hub/suites.ts","hub/src/merge-closed-item-wording.ts","hub/src/suite-accounting.ts","hub/src/suite-duration-budget.ts","hub/src/suite-durations.ts","hub/src/suite-provenance.ts","hub/src/suite-selection.ts","hub/src/tracker/freshness.ts","hub/src/tracker/tracker.ts","hub/test/durations.json","hub/test/executor-droplet-component.test.ts","hub/test/executor-lease-fixture.ts","hub/test/executor-lease-index.test.ts","hub/test/fake-only-fixture.ts","hub/test/harness.ts","hub/test/item-summary-scale.test.ts","hub/test/lint-closed-item-wording.ts","hub/test/merge-batches.test.ts","hub/test/startup-listener-scale.test.ts","hub/test/startup-ready-component.test.ts","hub/test/suite-accounting.test.ts","hub/test/suite-billing-fixture.ts","hub/test/suite-bundle-native.test.ts","hub/test/suite-case-fixture.ts","hub/test/suite-close-component.test.ts","hub/test/suite-cover.test.ts","hub/test/suite-duration-budget.test.ts","hub/test/suite-protocol.test.ts","hub/test/suite-remote-log.test.ts","hub/test/suite-soak-component.test.ts","hub/test/suite-soak.test.ts","hub/test/suite-summary.test.ts","hub/test/tiers.json","hub/test/tracker-summary.test.ts","hub/test/web-verification-model.test.ts","qa/briefs/E-614.md","web/src/sessions/verification.ts"],"overlap":["docs/agents/tests.md","hub/test/harness.ts"],"dependency":{"status":"known","importers":["hub/src/adapters/codex.ts","hub/test/adapter-native-boundary.test.ts","hub/test/claude-code-adapter.test.ts","hub/test/codex-adapter.test.ts","hub/test/fixture-residue-control.ts","hub/test/fixture-socket-lifecycle.test.ts","hub/test/fixture-socket-path.test.ts","hub/test/harness.ts","hub/test/host-launch-layout.test.ts","hub/test/opencode-adapter.test.ts","hub/test/scenarios/hub-lifecycle.test.ts","hub/test/spoke-unix-edge.test.ts","hub/test/worktree-cli.test.ts"]},"patchIdCurrent":true}
+Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove behavioral independence.
+
+### impl-1676 · 2026-11-19T07:18:50.491Z
+
+Batch correction census A-21646 now lists every declared T3/T4 fixture consumer after the Coordinator-authorized dev merge (250 T3,17 T4),105 directory-call test files and exact-root/data-subtree/recursive reader dispositions. Copy owners migrated: prepared-project roots and bare companion; fake DigitalOcean snapshot boot/capture; fake Host volume clone/snapshot. Ordinary source/skill/docs/task-only copies are outside runtime-root metadata scope. Managed ignore project.ts/ensureGitignore and init/provision read only layout.gitignore=.cland/.gitignore; nested owner file is not traversed. Red A-21647: exact selected cases at925ffa2ea exit1,8/8fail,0cancel/skip,local macOS Node24.21.0; release showed earlier copied-alias EEXIST,not batch sync-dirty. Merge/cherry-picks applied only by c151a576 authorization; e6f7d7abb includes ordered T-1999 fixes. New owner self-ignore/shared copy filter and Git/clone/copy positive control are implemented; broad native correction run still unexecuted. Static checks pending before freeze/slot request.
+
+### impl-1676 · 2026-11-19T07:38:44.741Z
+
+Fixed head e4c1036b751c957c22e10819c15d825e61930a4a committed/pushed and clean. A-21655 retains exact five-file native command/output: daemon,release,executor-run,executor-safety,fixture-socket-lifecycle;91/91pass,0fail/cancel/skip,tool exit0,local macOS arm64 Node24.21.0,runner428059.630875ms. New actual Gitstatus/add/commit/clone/copy/non-fixture control and all attributed failures pass; native slot released. A-21657 retains final full root typecheck0 and full lint0/0refusals/129report-only findings with completion excerpts/order. A-21646 consumer census covers all250declaredT3+17T4 and listing/copy dispositions; A-21647 preserves red. Other T3 and unchangedT4 unexecuted locally. Per Coordinator4b722b5d: fresh source review first, then Coordinator submits reviewed-head verify all on Linux, replacing normal mode-free verify. No configured receipt at this new head yet.
+
+### rev-36 · 2026-11-19T07:45:32.369Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1676-source-5
+commit: e4c1036b751c957c22e10819c15d825e61930a4a
+scope: full
+findings: [{"severity":"medium","text":"The claimed complete census omits all 22 object-form T3 manifest entries: final tiers.json declares 272 T3+17 T4, while rows contain 250 T3+17 T4. Missing files include original required Claude/Codex/OpenCode/hub-lifecycle producers and other shared fixture consumers. Reconcile both supported tier representations, add every missing filename's current relationship/executed-or-deferred disposition and correct counts/completeness claims; earlier-head passes cannot supply current proof. Full list and independent comparison in A-21660 (rules20/41/43).","file":"docs/evidence/T-1676-native-consumers.json","line":2}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source NOT CLEAR at clean pushed e4c1036b751c957c22e10819c15d825e61930a4a/tree174bdf28f9c8237ec736b5d1466b43904ae888ac. A-21660 consolidates one medium census finding and all22 missing names; no other findings. Reviewed authorized merge925+808, ordered patch-identical T-1999 fixes, private atomic owner ignore before runtime publication, shared copy filter at prepared roots/fake images/fake volumes, owned daemon correction/new native Git/copy control and docs. Copy-call search and source review found no additional defect. A-21655 named receipts independently inspected: five T3 files91/91pass, native runner428059.630875ms, local macOSarm64/Node24.21, no browser. A-21657 final precommit source-byte typecheck/lint exit0, zero refusals/129 report-only findings62files; complete raw static logs/per-check trees unavailable. These are not broad T3/configured proof. Earlier integrated76eb3120/A-21632 and localA-21647 remain failed/partial; earlier925 own green remains its own epoch. Other current T3/allT4 unexecuted. Coordinator4b722b5d's future reviewed-head verify-all plan is retained; actual manifest272 T3 supersedes its250 count, subject to recorded execution. C1 failed for incomplete changed-contract consumer census; C2 remains done/unverified, nothing verified. Hold released for inventory/count/disposition correction and fresh narrow source review; keep behavior/assertions fixed. No new native rerun or duplicate verify requested.
+
+Criteria: C1 failed (Current shared storage/copy consumer census omits 22 object-form T3 entries, including original required producer files; current filename/execution dispositions are incomplete.).
+
+### impl-1676 · 2026-11-19T07:54:41.818Z
+
+Source5 inventory correction committed/pushed863db782229e3c398e6fdfb290d234396082555b,clean. Only docs/evidence/T-1676-native-consumers.json changed; behavior/assertions/manifests untouched. A-21661 rebuilt through production readTierAssignments includes272T3+17T4,all22object-form filenames with relationships and deferred dispositions,111directory-call test files with normalized tiers/current lines. A-21662 retains exact reconciliation command/completion:289rows,0missing/duplicate/mismatch;five-file A-21655 remains bound to priore4source,267T3deferred to Coordinator reviewed-head Linux verifyall,17T4unchanged/unexecuted. Closed-item wording lint exit0,0findings;gitdiffcheck0. No native/test rerun or new whole typecheck/full lint; prior A-21657 stays scoped to unchanged behavior at e4. Corrected272count supersedes old250premise in A-21646/A-21655 planning prose/source5 request,without rewriting native91/91 or failed receipts. Fresh narrow source review next.
+
+### rev-36 · 2026-11-19T07:56:07.725Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1676-source-6
+commit: 863db782229e3c398e6fdfb290d234396082555b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Narrow source delta CLEAR at clean pushed863db782229e3c398e6fdfb290d234396082555b/tree0adadf895b8c672a2ad692465eedee8e5e3ec035, sole parente4c1036b7. A-21663 resolves source5 M1; only the consumer JSON changed, no behavior/assertion/manifest/runtime source or dev merge. Independent pinned-data comparison:272T3+17T4,289unique rows,0missing/extra/tier mismatch; all22object-form entries restored with raw declaration/current relationship/deferred disposition. Retained reconstruction uses exported production readTierAssignments; no parallel runtime tier parser. A-21661 bytes match committed JSON; existing dependency paths retained.111listing-consumer files unique, normalized tiers agree. Five A-21655 rows remain explicitly at prior e4 behavior head91/91;267T3 deferred and17T4 unexecuted. Superseded250-count/planning wording corrected without rewriting old receipts. A-21662 selected inventory/closed-wording/diff checks exit0 are not runtime or full static reruns. A-21660 remains source basis for unchanged code; prior failed rounds and e4 static/native epochs retained. No findings, Reviewer runtime or source edits. C1/C2 done, neither currently verified; earlier925 C2 verification remains stale. Hold released for Coordinator4b722b5d/65690f4c's single reviewed-head verify-all on Linux, replacing normal verify; no duplicate submission or extra local native rerun. Final same-head named producer/failure/census and actual complete-phase receipts remain pending.
+
+### rev-36 · 2026-11-19T08:07:23.903Z
+
+verdict: review
+result: not clear
+by: rev-36 [reviewer]
+run: rev-36-1676-evidence-2
+commit: 863db782229e3c398e6fdfb290d234396082555b
+scope: evidence
+findings: [{"severity":"medium","text":"Committed shared/fake-layout.ts hash remains e548769f... while the changed leaf hashes to1b9a81a3...; exact closure-equality case fails942e5084/A-21671. Frozen closure consumer was missed in source review. Coordinator02fe365a/8aac7b18 attributes to T-1676 and authorizes only regeneration/touched-file hash inspection, closure consumer census entry, single closure test plus full typecheck/lint, fresh narrow source review and then its new verify-all; preserve failed partial evidence and do not relax the assertion.","file":"hub/src/host/agent/closure.json","line":193}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence NOT CLEAR at unchanged clean863db782229e3c398e6fdfb290d234396082555b; A-21672 settles942e5084/A-21671 finished/failed, ownerall exit1. Literal12082 AssertionError [ERR_ASSERTION]: run node hub/bin/generate-host-agent-closure.ts;12092–12094 show shared/fake-layout.ts committed e548769f72e24860ad61534715bdd60f5d85499fb0363eb8d4f42168c0e3c70e versus current1b9a81a3d19b452f47b29f6049eda369ba207cfa9ed12fed7d567765fab885e9. Structured exact testfail2662,0.184834107s whole-case,filefail2680; this is not a duration advisory. Reviewer missed this frozen consumer in source5/6. Coordinator02fe365a confirms item attribution and narrow repair/check/review/new-run scope; hold released for it.1919base=1918pass/1fail,210separate loadpasses explain owner2129completed/2128pass/1fail; no duplicate finishes. T0exit0/106.415hoststep,T1exit1;231T1files230pass/1fail.436T2/272T3/55Web planned but unexecuted;T4 unexecuted. No current native producer/cleanup outcome inferred; C1/C2 remain done/unverified, no marks changed.129lint62files,budgets/ratchet/tripwires report-only. Provenance12257 exacthead/runtime tree9df488260bf2cd83dce22b848350955e34f4a7d8,cachednull,Linuxx64/Node24.21/Nv0.12.5,droplet c8ams3, browsernull;269976ms/$0.018748333333333332 executor accounting. Earlier925/e4 greens and integrated/local reds retain their epochs. Source6 normalized census remains correct; add frozen closure consumer without replacing old proofs. No Reviewer runtime/generator/edit. Fresh narrow immutable-head source review required before Coordinator's new verify-all; no same-head retry.
+
+### impl-1676 · 2026-11-19T08:19:53.175Z
+
+Bounded closure repair a00443f4ddd098cce660f1382a69dfb4a6e22c0d committed/pushed,clean. Canonical generator changed only shared/fake-layout.ts hash(e548769f→1b9a81a3);all48paths unchanged. No runtime implementation/assertion edits. Frozen closure producer/readers/downstream/historical QA dispositions added to consumer list A-21674. At exact committed head, host-agent-closure.test.ts alone exit0/5pass/0fail-cancel-skip;root typecheck0;full test:lint0/0refusals/129report-only findings. A-21673 retains exact commands,incremental completion objects,scope/unknown limits and commit-before-check ordering. No native/T3 or configured rerun. Failed942e5084 remainsfailed/partial;T2/T3/Web at this head await Coordinator newverifyall after fresh narrow source review. C1/C2 implementationdone,not currentlyverified.
+
+### rev-36 · 2026-11-19T08:21:08.072Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1676-source-7
+commit: a00443f4ddd098cce660f1382a69dfb4a6e22c0d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Narrow source delta CLEAR at clean pusheda00443f4ddd098cce660f1382a69dfb4a6e22c0d/treef1584bab6f8c672a2ad692465eedee8e5e3ec035, sole parent863db7822; A-21675. Exactly closure.json plus appended frozenArtifactConsumers entry changed.48closure paths/order unchanged; sole hashreplacement shared/fake-layout.ts e548769f…→1b9a81a3… independently matches current file bytes and authorized touched-file-only correction. Canonical generator exit0 retained inA-21673; no Reviewer generator/run. Previous normalized289-row/111listing census and every existing key unchanged;A-21674 matches committed JSON. Added actual producer/source-byte agentBundle/deep-equal T1/T3restart/delivered verifier/whole-runtime/historical QA consumer dispositions. No runtime/assertion/schema or dev merge changes. A-21673 exact committed-head serial receipts:host-agent-closure T1 5/5pass/exit0 including exact equality and boundary controls;full root typecheck0;full lint0/zero refusals,129report-only findings62files. LocalmacOSarm64/Node24.21,no browser;unknown independent per-check trees/native close and whole static wall times stay unavailable. No findings. Source5/6 basis remains for unchanged code. Failed942e5084/A-21671 staysfailed/partial,T2/T3/Webunexecuted;old e4 native91/91 remains separate. C1/C2 done,not currentlyverified;earlier C2 verification stale. Hold released for Coordinator's new exact-reviewed-head verify-all, replacing normalverify. No duplicate Implementer submission/extra native rerun requested. Final same-head named producer/failure/census and complete-phase evidence pending.
