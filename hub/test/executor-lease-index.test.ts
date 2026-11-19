@@ -14,6 +14,37 @@ import type { Provider, MachineTransport } from '../src/executor/droplet/depende
 import { Demos } from '../src/hub/demos.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { fixtureWork, type FixtureStep } from '../../test-support/fixture-work.ts';
+import { copyFixtureCase } from './executor-copy-fixture.ts';
+
+test('copy setup deadline retains a late acquired root through guarded cleanup', async t => {
+  const hooks: Array<() => Promise<void>> = [];
+  const context = { name: t.name, signal: t.signal, after: (hook: () => Promise<void>) => { hooks.push(hook); } } as TestContext;
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const clock = new FakeClock(), mkdtemp = fs.mkdtemp;
+  let root: string | undefined, original: Promise<void> | undefined, bodyEntered = false;
+  t.after(async () => {
+    release.resolve(); await original?.catch(() => {});
+    for (const hook of hooks) await hook();
+    fs.mkdtemp = mkdtemp; syncBuiltinESMExports();
+    if (root) await fs.rm(root, { recursive: true, force: true });
+  });
+  fs.mkdtemp = (async (...args: Parameters<typeof fs.mkdtemp>) => {
+    entered.resolve(); await release.promise;
+    root = await mkdtemp(...args);
+    assert.ok((await fs.stat(root)).isDirectory(), 'producer observes the acquired directory before returning');
+    return root;
+  }) as typeof fs.mkdtemp;
+  syncBuiltinESMExports();
+  original = copyFixtureCase(context, async () => { bodyEntered = true; }, { clock });
+  const rejected = assert.rejects(original, /copy fixture root setup: deadline exceeded/);
+  await caseDeadlines(t, { timeoutMs: 5000 }).wait('root acquisition entered', () => entered.promise);
+  await clock.advance(5001);
+  release.resolve();
+  await rejected;
+  assert.ok(root);
+  assert.equal(bodyEntered, false, 'expired setup admits no copy behaviour');
+  await assert.rejects(fs.stat(root), { code: 'ENOENT' });
+});
 
 const row = (id: string, state: DropletLease['state']): DropletLease => ({ kind: 'droplet', provider: 'digitalocean', lease: id, run: id, name: id, tags: ['cland'], size: 'fixture', region: 'fixture', priceHourly: 1, keyName: id, state, resource: null, keyId: null, created: '2026-11-17T00:00:00Z', deadline: '2026-11-17T01:00:00Z', ...(state === 'released' ? { costUsd: 0, released: '2026-11-17T00:01:00Z' } : {}) });
 const environment = (root: string) => fixtureEnvironment(root, { ...process.env, CLAND_EXECUTOR_STATE: join(root, 'ledger') });

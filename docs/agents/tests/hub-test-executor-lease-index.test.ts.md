@@ -1,5 +1,13 @@
 # hub/test/executor-lease-index.test.ts
 
+The copy fixture's late-root regression holds mkdtemp until its injected setup
+clock passes the five-second observer deadline. It observes the new directory
+inside the producer, then requires the original deadline rejection, no body
+admission, and stat(root) ENOENT after guarded cleanup joins. fakeOnlyFixture
+captures the path inside the acquisition producer, so a rejecting observer
+cannot discard cleanup ownership. The test's fallback cleanup runs only after
+the original fixture joins; it does not substitute for the final ENOENT assertion.
+
 `hub/test/executor-lease-index.test.ts` is T1. It uses a disposable root,
 sealed fixture environment and 5,000 synthetic retained leases from distinct demo
 epics supplied through filesystem fakes. Cold pointers, report queues and their

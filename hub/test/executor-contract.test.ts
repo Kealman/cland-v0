@@ -5,6 +5,37 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fakeOnlyFixture } from './fake-only-fixture.ts';
 import { join } from 'node:path';
 import ts from 'typescript';
+import { copyFixtureCase } from './executor-copy-fixture.ts';
+
+test('copy failures retain complete stderr after known-hosts output and native exit facts', async t => copyFixtureCase(t, async (root, setup, step) => {
+  const { Machine } = await setup('copy transport import setup', () => import('../src/executor/droplet/machine.ts'));
+  const lease = { lease: 'fixture', address: '192.0.2.1' } as Parameters<InstanceType<typeof Machine>['put']>[0];
+  const stderr = `Warning: Permanently added fixture (ED25519) to the list of known hosts.\n${'copy detail\n'.repeat(500)}scp: remote write failed\n`;
+  const machine = new Machine(root, {}, async () => { throw { code: 1, signal: null, killed: false, stderr, message: 'private command arguments' }; });
+  for (const copy of [() => machine.put(lease, 'input', 'output'), () => machine.get(lease, 'output', 'input')]) {
+    await assert.rejects(() => step(copy), (error: Error) => {
+      assert.ok(error.message.includes(stderr), 'all stderr bytes, including the final copy error, survive');
+      assert.match(error.message, /exit 1/);
+      assert.ok(!error.message.includes('private command arguments'));
+      assert.ok(!error.message.includes('exceeded its time bound'));
+      return true;
+    });
+  }
+}));
+
+test('copy failures distinguish a signal from the owned deadline', async t => copyFixtureCase(t, async (root, setup, step) => {
+  const { Machine, MachineRequestError } = await setup('copy transport import setup', () => import('../src/executor/droplet/machine.ts'));
+  const lease = { lease: 'fixture', address: '192.0.2.1' } as Parameters<InstanceType<typeof Machine>['put']>[0];
+  for (const timedOut of [false, true]) {
+    const machine = new Machine(root, {}, async () => { throw { code: null, signal: 'SIGTERM', stderr: 'copy stopped\n', timedOut }; });
+    await assert.rejects(() => step(() => machine.get(lease, 'output', 'input', { timeoutMs: 25 })), (error: unknown) => {
+      assert.ok(error instanceof MachineRequestError);
+      assert.deepEqual(error.receipt, { code: 'unknown', signal: 'SIGTERM', stderr: 'copy stopped\n', timedOut, timeoutMs: 25 });
+      assert.equal(error.message.includes('exceeded its time bound'), timedOut);
+      return true;
+    });
+  }
+}));
 
 test('bootstrap ignores ungated binary overrides at every command boundary', async t => fakeOnlyFixture(t, async root => {
   const { provisionSsh } = await import('../src/host/provision-ssh.ts');

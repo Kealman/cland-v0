@@ -76,6 +76,7 @@ export class DropletRun {
     const allowance = Math.max(120000, 30000 + Math.ceil(bytes * 1000 / 32768));
     const attempts: string[] = [];
     let failure = 'delivery deadline reached';
+    let copyFailure: unknown;
     for (let attempt = 1; attempt <= 2; attempt++) {
       const started = this.#clock.now().getTime();
       const timeoutMs = Math.min(allowance, deadline - started);
@@ -86,10 +87,16 @@ export class DropletRun {
         // private file only after that writer has closed, never race a copy.
         await this.#machine.put(lease, local, remote, { timeoutMs });
         succeeded = true;
-      } catch (error) { failure = error instanceof Error ? error.message : 'machine request failed'; }
+      } catch (error) { copyFailure = error; failure = error instanceof Error ? error.message : 'machine request failed'; }
       const elapsed = this.#clock.now().getTime() - started;
       attempts.push(`${attempt}=${elapsed} ms`);
-      await appendFile(run.log, `delivery upload ${name} attempt ${attempt}: ${succeeded ? 'succeeded' : 'failed'}; elapsed ${elapsed} ms; timeout ${timeoutMs} ms\n`);
+      try {
+        await appendFile(run.log, `delivery upload ${name} attempt ${attempt}: ${succeeded ? 'succeeded' : 'failed'}; elapsed ${elapsed} ms; timeout ${timeoutMs} ms\n${succeeded ? '' : `${failure}\n`}`);
+      } catch (error) {
+        if (succeeded) throw error;
+        const diagnosticFailure = (error instanceof Error ? error.message : 'diagnostic write failed').slice(0, 1024);
+        throw Object.assign(new Error(`delivery upload ${name} attempt ${attempt}: ${failure}; diagnostic persistence failed: ${diagnosticFailure}`, { cause: copyFailure }), { diagnosticFailure });
+      }
       if (succeeded) return;
     }
     throw new Error(`delivery upload ${name}: ${attempts.length} attempts failed (${attempts.join(', ')}); ${failure}${this.#clock.now().getTime() >= deadline ? '; delivery deadline reached' : ''}`);

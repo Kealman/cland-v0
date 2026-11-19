@@ -1,5 +1,19 @@
 # hub/test/executor-prepare-component.test.ts
 
+Copy capture uses a guarded fake spawn and fake timers, with no real process.
+The timeout alone must not settle the copy: the fake close receipt supplies its
+final signal and stderr. Feed 131085 bytes in two chunks with a synthetic known
+token crossing both chunk and tail boundaries. The raw 65536-byte tail drops
+its partial first line, reporting 65566 bytes dropped and retaining the final
+failure line without the token suffix. The launch guard's controls include callback
+and promisified launchers. Restore the fake spawn only after copy completion.
+Every failed upload retry diagnostic persists even when the next attempt succeeds.
+The new callback uses copyFixtureCase's normal/signal admitted owner and named
+guard/root setup deadlines; no existing fake helper callers are migrated.
+The retry case also injects an append failure: the exact selected copy error
+remains Error.cause, a secondary persistence diagnostic stays within 1024
+characters, delivery remains unset, and no retry is admitted after that failure.
+
 Readiness expiry cases assert `ReadinessDeadlineError.phase`, `deadlineMs` and
 `observedMs` using the fixture clock. The boot probe reports `boot-readiness`;
 an expired delivery lease reports `delivery-lease-expiry` through the wrapper's

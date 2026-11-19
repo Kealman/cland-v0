@@ -562,6 +562,22 @@ inconclusive. `delivery.log` keeps the remote fetch/prepare output consumed by
 the runner; attempt diagnostics live in the run log. Local verification has no
 droplet transfer policy.
 
+Copy failures retain stderr through native process close. The transport drains
+stderr incrementally, keeping its last 64 KiB and reporting bytes seen and
+dropped; a truncated tail discards and marks its partial initial line before
+redaction, so it cannot publish the suffix of a token cut at that boundary.
+Smaller output remains complete. Every failed upload attempt persists
+that diagnostic, including attempts followed by success. Exit code, signal and
+the transport-owned timeout receipt remain distinct; a known-hosts warning or
+SIGTERM alone is not classified as a timeout. Command arguments are excluded
+and the provider token is redacted. This diagnostic does not establish the
+cause of a network failure or change the existing upload retry policy.
+If persisting a failed upload diagnostic itself fails, the copy error remains
+the primary cause and a bounded secondary diagnostic names the persistence
+failure. The upload stops without claiming a durable diagnostic or retrying.
+Coverage downloads retain transport facts in their thrown diagnostic; durable
+per-attempt history here applies to delivery uploads only.
+
 Readiness deadline errors retain a typed producer phase, deadline milliseconds
 and observed clock milliseconds. `boot-readiness` identifies the image/boot
 probe; `delivery-lease-expiry` identifies a lease already expired before

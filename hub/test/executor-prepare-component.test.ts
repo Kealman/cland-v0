@@ -27,7 +27,48 @@ import { Store } from '../src/hub/store.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { defaultConfig } from '../src/init/config.ts';
 import { ReadinessDeadlineError } from '../src/executor/droplet/readiness-deadline.ts';
+import cp from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import { copyFixtureCase } from './executor-copy-fixture.ts';
+import { MachineRequestError } from '../src/executor/droplet/machine.ts';
 import { readRecoveries } from '../src/executor/droplet/snapshot-recovery.ts';
+
+test('copy timeout drains a byte-bounded stderr tail through native completion', async t => copyFixtureCase(t, async (root, _setup, step) => {
+  const lease = { lease: 'fixture', address: '192.0.2.1' } as Parameters<Machine['put']>[0];
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let kills = 0;
+  let closed = false;
+  let receipt: Promise<void> | undefined;
+  const child = Object.assign(new EventEmitter(), { stderr: new EventEmitter(), kill: (signal: string) => { assert.equal(signal, 'SIGTERM'); kills++; return true; } });
+  const finish = () => { if (!closed) { closed = true; child.emit('close', null, 'SIGTERM'); } };
+  const patch = t.mock.method(cp, 'spawn', () => child);
+  syncBuiltinESMExports();
+  try {
+    let settled = false;
+    const copy = step(() => new Machine(root, { DIGITALOCEAN_TOKEN: 'secret-prefixcut-token-suffix' }).put(lease, 'input', 'output', { timeoutMs: 25 }));
+    receipt = assert.rejects(copy, (error: unknown) => {
+      assert.ok(error instanceof MachineRequestError);
+      assert.equal(error.receipt?.timedOut, true);
+      assert.ok(error.receipt?.stderr.endsWith('stderr received at close\n'));
+      assert.ok(!error.receipt!.stderr.includes('cut-token-suffix'));
+      assert.ok(error.message.includes('prefix line dropped'));
+      assert.equal(error.receipt?.stderrBytes, 131085);
+      assert.equal(error.receipt?.stderrDropped, 65566);
+      return true;
+    }).then(() => { settled = true; });
+    t.mock.timers.tick(25);
+    assert.equal(kills, 1);
+    await Promise.resolve();
+    assert.equal(settled, false, 'the timer signal alone is not native completion');
+    child.stderr.emit('data', Buffer.from(`${'x'.repeat(65536)}secret-prefix`));
+    child.stderr.emit('data', Buffer.from(`cut-token-suffix\n${'z'.repeat(65494)}stderr received at close\n`));
+    finish();
+    await receipt;
+  } finally {
+    finish(); await receipt?.catch(() => {});
+    patch.mock.restore(); syncBuiltinESMExports(); t.mock.timers.reset();
+  }
+}));
 
 async function fixture(t: TestContext, overrides: Record<string, string> = {}, adoptRoot?: (root: string) => void) {
   const root = await tempProject(t);
@@ -962,6 +1003,7 @@ test('delivery retries a failed bundle with timed attempts and keeps exhausted d
   const { run: _scriptedRun, ...dependencies } = f.dependencies;
   let failAll = false;
   let stall = false;
+  let lastCopyError: Error | undefined;
   const bounds: number[] = [];
   const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, {
     ...dependencies,
@@ -971,7 +1013,11 @@ test('delivery retries a failed bundle with timed attempts and keeps exhausted d
         if (!remote.endsWith('/tree.bundle')) return;
         bounds.push(options?.timeoutMs ?? 120000);
         f.clock.block(stall ? options!.timeoutMs : bounds.length === 1 ? 125000 : 250);
-        if (failAll || bounds.length === 1) throw new Error('machine copy failed (exit 255): connection reset');
+        if (failAll || bounds.length === 1) {
+          lastCopyError = new MachineRequestError(`machine copy failed (exit 255): Warning: Permanently added fixture\ncopy attempt ${bounds.length}: connection reset\n`, false,
+            { code: '255', signal: '', stderr: 'connection reset', timedOut: false, timeoutMs: options?.timeoutMs ?? 120000 });
+          throw lastCopyError;
+        }
       },
     },
   });
@@ -987,6 +1033,7 @@ test('delivery retries a failed bundle with timed attempts and keeps exhausted d
     assert.equal((await readLeaseHistory(f.root)).find(row => row.run === run.id)!.execution?.deliveryLogEnd, Buffer.byteLength(log));
     assert.match(log, /delivery upload tree.bundle attempt 1: failed; elapsed 125000 ms; timeout 318000 ms/);
     assert.match(log, /delivery upload tree.bundle attempt 2: succeeded; elapsed 250 ms; timeout 318000 ms/);
+    assert.match(log, /copy attempt 1: connection reset/);
     failAll = true; bounds.length = 0; delete lease.execution;
     await writeFile(run.log, '');
     let cause = '';
@@ -997,6 +1044,8 @@ test('delivery retries a failed bundle with timed attempts and keeps exhausted d
     });
     assert.equal(lease.execution, undefined);
     log = await readFile(run.log, 'utf8');
+    assert.match(log, /copy attempt 1: connection reset/);
+    assert.match(log, /copy attempt 2: connection reset/);
     assert.equal(log.split('\n').filter(line => line.includes('attempt ') && line.includes('failed;')).length, 2);
     assert.equal(diagnosticResult({ state: 'finished', outcome: { code: 1, cause, notRun: 'infrastructure' } }, log).result, 'inconclusive');
     stall = true;
@@ -1007,11 +1056,31 @@ test('delivery retries a failed bundle with timed attempts and keeps exhausted d
       bounds.length = 0;
       const started = f.clock.now().getTime();
       lease.deadline = new Date(started + row.lifetime).toISOString();
-      await assert.rejects(executor.deliver(lease, run), /delivery upload tree.bundle: .*attempts failed.*delivery deadline reached/);
+      await assert.rejects(executor.deliver(lease, run), /delivery upload tree.bundle: .*attempts failed.*delivery deadline reached/s);
       assert.deepEqual(bounds, row.bounds);
       assert.equal(f.clock.now().getTime() - started, row.elapsed);
       assert.equal(lease.execution, undefined);
     }
+    const append = files.appendFile;
+    const patch = t.mock.method(files, 'appendFile', async (...args: Parameters<typeof files.appendFile>) => {
+      if (args[0] === run.log && String(args[1]).includes('copy attempt')) throw new Error(`diagnostic sink unavailable ${'x'.repeat(5000)}`);
+      return append(...args);
+    });
+    syncBuiltinESMExports();
+    try {
+      bounds.length = 0; stall = false;
+      lease.deadline = new Date(f.clock.now().getTime() + 1200000).toISOString();
+      await assert.rejects(executor.deliver(lease, run), (error: Error & { diagnosticFailure?: string }) => {
+        assert.equal(error.cause, lastCopyError, 'the selected copy receipt remains primary');
+        assert.match(error.message, /exit 255/);
+        assert.match(error.message, /connection reset/);
+        assert.match(error.diagnosticFailure!, /diagnostic sink unavailable/);
+        assert.ok(error.diagnosticFailure!.length <= 1024);
+        return true;
+      });
+      assert.equal(lease.execution, undefined);
+      assert.equal(bounds.length, 1, 'missing diagnostic receipt does not admit a retry');
+    } finally { patch.mock.restore(); syncBuiltinESMExports(); }
   } finally { await drive(f, executor.release(lease)); }
   assert.deepEqual(f.api.droplets, []);
 });
@@ -1027,7 +1096,8 @@ test('machine failures preserve exit and bounded stderr without leaking credenti
       assert.match(error.message, /exit 255.*ssh: connection reset <REDACTED>/);
       assert.ok(!error.message.includes(token));
       assert.ok(!error.message.includes('secret command arguments'));
-      assert.ok(error.message.length < 4300);
+      if (error.message.startsWith('machine command')) assert.ok(error.message.length < 4300);
+      else assert.ok(error.message.endsWith('x'.repeat(5000)), 'copy stderr is complete');
       return true;
     });
   }

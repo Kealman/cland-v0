@@ -56,9 +56,14 @@ export async function fakeOnlyFixture<T>(t: TestContext, body: (root: string) =>
     await step(() => guard.control());
     // Suite TMPDIRs on macOS can consume the Unix socket's entire path budget.
     // Keep this owned root short even when the runner supplies a deep TMPDIR.
-    root = await step(() => mkdtemp(join(process.platform === 'darwin' ? '/private/tmp' : '/tmp', 'cf-')));
+    const acquiredRoot = await step(async () => {
+      // Capture in the producer: a bounded observer may reject after this
+      // acquisition succeeds, before its value can reach the caller.
+      root = await mkdtemp(join(process.platform === 'darwin' ? '/private/tmp' : '/tmp', 'cf-'));
+      return root;
+    });
     // Recording Hosts declare these socket shapes without binding native sockets.
-    for (const socket of [join(root, 'run', 'cx-0123456789ab.sock'), join(root, 'fake-forward.sock'), join(root, 'missing.sock')]) {
+    for (const socket of [join(acquiredRoot, 'run', 'cx-0123456789ab.sock'), join(acquiredRoot, 'fake-forward.sock'), join(acquiredRoot, 'missing.sock')]) {
       assert.ok(Buffer.byteLength(socket) <= 103, `fake-only socket exceeds 103 bytes: ${socket}`);
     }
     return step(() => body(root!));
