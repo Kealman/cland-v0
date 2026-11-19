@@ -14,6 +14,12 @@ When adding item guidance, put subsystem instructions in the matching indexed re
 
 Run typechecking and targeted single test files while implementing. In a hub session, run full verification after a clear source review through the procedure below; outside the hub, run the full suite once at the end.
 
+<!-- cland-workflow-change: T-1890 point implementers to advisory condition-wait guidance -->
+Condition-wait literal bounds have a report-only ratchet in test lint. Use a
+named `behaviour` for a product deadline; setup waits use load headroom. New
+advisory findings do not change admission or lint exit status. See
+[test lint reports](../../../docs/agents/tests.md#test-lint-reports).
+
 For evidence publication, use `publishSessionEvidence` from the shared
 [scan-and-publish helper](../qa/EVIDENCE.md).
 It scans the exact private snapshot and calls artifact.create only after a clean

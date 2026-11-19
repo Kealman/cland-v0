@@ -799,6 +799,23 @@ not resolve arbitrary skip helpers or change admission. Platform skips use
 `skip: process.platform !== 'linux' ? 'requires Linux native process identity' : false`
 so every skipped repetition carries the prerequisite reason.
 
+Condition waits (`until`, `eventually`, `remoteEventually`, including imported
+aliases) with a numeric literal `timeoutMs` or literal `loadFactor: 1` report
+`wall-clock-wait` unless their options name a nonblank literal `behaviour`.
+The syntax census examines inline options, not values resolved at runtime.
+Each call counts once even when it specifies both properties. These findings
+are advisory: they never feed admission refusals or the lint exit status.
+The optional top-level `conditionWait` map in `hub/test/lint-baseline.json`
+freezes counts per file separately from enforced timer debt; older version-1
+readers ignore that field. Lint prints every excess site as a `test lint report`
+and a `condition wait growth (report only)` count, including without `--details`.
+`--shrink` also lowers these advisory allowances. Changing this check to enforce
+requires a separate item and platform/occasion replay evidence.
+Missing advisory maps mean zero: first publication and reintroducing a deleted
+or exhausted allowance report baseline growth, even when the source sites fit
+the candidate's proposed counts. Shrinking retains an empty map after retiring
+all advisory debt. These baseline notices also remain report-only.
+
 The direct-source census remains a report of existing debt. The policy gate
 refuses growth, before verify reserves a queue slot or merge changes refs:
 `verify-test-lint` and `merge-test-lint` name the file, line and rule.

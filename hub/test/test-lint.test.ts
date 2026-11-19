@@ -12,6 +12,69 @@ const input = (name: string): string => { assert.equal(typeof sources[name], 'st
 
 const file = 'hub/test/planted.test.ts';
 
+test('condition waits report fixed bounds and accept named behaviour deadlines', () => {
+  for (const name of ['until', 'eventually', 'remoteEventually']) {
+    for (const options of ['timeoutMs: 500', 'loadFactor: 1', 'timeoutMs: -1, loadFactor: 1', "'timeoutMs': (500)"]) {
+      const source = `${name}(() => ready, { ${options} });`;
+      const findings = lintTestSource(file, source, 'T2').findings;
+      assert.equal(findings.length, 1, source);
+      assert.equal(findings[0]?.rule, 'wall-clock-wait');
+      assert.equal(findings[0]?.reportOnly, true);
+      assert.deepEqual(lintTestSource(file, `${name}(() => ready, { ${options}, behaviour: 'native deadline' });`, 'T2').findings, []);
+    }
+  }
+  for (const source of ["until(() => ready, { timeoutMs: 50, behaviour: ' ' });", "until(() => ready, { timeoutMs: 50, behaviour: '' });"]) {
+    assert.equal(lintTestSource(file, source, 'T2').findings.length, 1);
+  }
+  for (const source of ["const text = 'until(f, { timeoutMs: 50 })';", '// until(f, { timeoutMs: 50 })', 'unrelated(f, { timeoutMs: 50 });', 'until(f, { timeoutMs: budget, loadFactor: 2 });']) {
+    assert.deepEqual(lintTestSource(file, source, 'T2').findings, []);
+  }
+  const alias = "import { until as waitFor } from './until.ts'; waitFor(f, { timeoutMs: 100 });";
+  assert.equal(lintTestSource(file, alias, 'T2').findings[0]?.reportOnly, true);
+});
+
+test('condition wait baseline freezes counts and reports growth without refusing old clients', async () => {
+  const { checkTestLint, shrinkLintBaseline } = await import('../src/test-lint-policy.ts');
+  const manifest = { version: 1 as const, tests: { [file]: 'T2' as const } };
+  const planted = 'until(f, { timeoutMs: 100 });';
+  const source = async () => planted;
+  const baseline = await shrinkLintBaseline(manifest, source);
+  assert.equal(baseline.conditionWait?.[file], 1);
+  const base = { manifest, baseline };
+  assert.deepEqual(await checkTestLint({ manifest, source, baseline, base, reportOnly: true }), []);
+  const grown = async () => `${planted}\nremoteEventually(f, { loadFactor: 1 });`;
+  const reports = await checkTestLint({ manifest, source: grown, baseline, base, reportOnly: true });
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0]?.line, 2);
+  assert.match(reports[0]!.message, /count 2 exceeds frozen allowance 1/);
+  assert.deepEqual(await checkTestLint({ manifest, source: grown, baseline, base }), []);
+  const legacy = { version: 1 as const, files: { [file]: {} } };
+  assert.deepEqual(await checkTestLint({ manifest, source, baseline, base: { manifest, baseline: legacy } }), []);
+  const raised = { ...baseline, conditionWait: { [file]: 2 } };
+  assert.match((await checkTestLint({ manifest, source: grown, baseline: raised, base, reportOnly: true }))[0]!.message, /baseline grew/);
+  assert.deepEqual(await checkTestLint({ manifest, source: grown, baseline: raised, base }), []);
+  assert.deepEqual(await checkTestLint({ manifest, source, baseline: legacy, base: { manifest, baseline: legacy } }), []);
+  assert.equal((await checkTestLint({ manifest, source: async () => 'sleep(10);', baseline, base }))[0]?.rule, 'wall-clock-wait');
+  assert.equal((await shrinkLintBaseline(manifest, async () => '', baseline)).conditionWait?.[file], undefined);
+});
+
+test('missing and exhausted advisory maps cannot silently seed or reset allowances', async () => {
+  const { checkTestLint, shrinkLintBaseline } = await import('../src/test-lint-policy.ts');
+  const manifest = { version: 1 as const, tests: { [file]: 'T2' as const } };
+  const source = async () => 'until(f, { timeoutMs: 100 });\nremoteEventually(f, { loadFactor: 1 });';
+  const legacy = { version: 1 as const, files: { [file]: {} } };
+  const inflated = { ...legacy, conditionWait: { [file]: 2 } };
+  const exhausted = await shrinkLintBaseline(manifest, async () => '', inflated);
+  for (const prior of [legacy, exhausted, { ...legacy, conditionWait: {} }]) {
+    const input = { manifest, source, baseline: inflated, base: { manifest, baseline: prior } };
+    const reports = await checkTestLint({ ...input, reportOnly: true });
+    assert.ok(reports.some(finding => /baseline grew/.test(finding.message)), JSON.stringify(prior));
+    assert.deepEqual(await checkTestLint(input), [], 'advisory growth never refuses admission');
+  }
+  const deletion = await checkTestLint({ manifest, source, baseline: legacy, base: { manifest, baseline: inflated }, reportOnly: true });
+  assert.equal(deletion.length, 2, 'removing the map leaves both sites without an allowance');
+});
+
 test('test skips report reasonless boolean conditions and accept platform reason strings', async () => {
   for (const skip of ["process.platform !== 'linux'", "process.platform === 'win32'", 'true', '!available', "'  '"]) {
     const source = `import test from 'node:test';\ntest('platform case', { skip: ${skip} }, () => {});`;

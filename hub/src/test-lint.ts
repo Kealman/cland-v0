@@ -9,7 +9,7 @@ import type { Tier, TierEntry, TierManifest } from './suite-shards.ts';
 // Most hub sessions never lint. Do not load the compiler into every daemon or CLI.
 const syntax = (): typeof ts => requireTypeScript('test lint');
 
-export type TestLintFinding = { file: string; line: number; rule: 'tier-import' | 'tier-process' | 'wall-clock-wait' | 'wall-clock-assertion' | 't3-lifecycle' | 'skip-reason'; message: string };
+export type TestLintFinding = { file: string; line: number; rule: 'tier-import' | 'tier-process' | 'wall-clock-wait' | 'wall-clock-assertion' | 't3-lifecycle' | 'skip-reason'; message: string; reportOnly?: boolean };
 export type TestLintFile = { file: string; tier: Tier; qualifies: Tier; findings: TestLintFinding[]; reachable?: { tier: Tier; resources: TestLintFinding[] } };
 const processHelpers = new Set(['startDaemon', 'killDaemon', 'spawnSpoke', 'fakeClaude', 'fakeCodex', 'fakeOpenCode']);
 const socketHelpers = new Set(['projectHub', 'startHub', 'cland', 'clandWithEnv', 'connectUi', 'connectSocket', 'connectWsUi', 'inProcessSpoke']);
@@ -272,6 +272,26 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
   for (const node of nodes) if (ts.isCallExpression(node)) {
     const b = bindingOf(node.expression);
     const name = b?.name ?? nameOf(node.expression);
+    if (['until', 'eventually', 'remoteEventually'].includes(name)) {
+      const unwrap = (value: ts.Expression): ts.Expression => ts.isParenthesizedExpression(value) || ts.isAsExpression(value) || ts.isSatisfiesExpression(value) ? unwrap(value.expression) : value;
+      for (const argument of node.arguments) {
+        const options = unwrap(argument);
+        if (!ts.isObjectLiteralExpression(options)) continue;
+        const properties = options.properties.filter(ts.isPropertyAssignment);
+        const key = (property: ts.PropertyAssignment) => ts.isStringLiteralLike(property.name) ? property.name.text : nameOf(property.name);
+        const reason = properties.find(property => key(property) === 'behaviour');
+        const value = reason && unwrap(reason.initializer);
+        if (value && ts.isStringLiteralLike(value) && value.text.trim()) continue;
+        if (properties.some(property => {
+          const value = unwrap(property.initializer);
+          return key(property) === 'timeoutMs' && numeric(value)
+            || key(property) === 'loadFactor' && ts.isNumericLiteral(value) && Number(value.text) === 1;
+        })) {
+          // Keep the existing wait rule in the census, with separate advisory debt.
+          findings.push({ file, line: lineOf(node), rule: 'wall-clock-wait', message: `${name} uses a fixed condition-wait bound without a named behaviour`, reportOnly: true });
+        }
+      }
+    }
     if (b?.module === 'test' && ['default', 'test', 'it', 'describe'].includes(name)) {
       for (const argument of node.arguments) if (ts.isObjectLiteralExpression(argument)) {
         for (const property of argument.properties) if (ts.isPropertyAssignment(property) && (ts.isStringLiteralLike(property.name) ? property.name.text : nameOf(property.name)) === 'skip') {

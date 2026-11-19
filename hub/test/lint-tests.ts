@@ -9,6 +9,9 @@ const cwd = args.find(arg => !['--shrink', '--details'].includes(arg)) ?? fileUR
 await readDurationManifest(cwd); // Duplicate diagnostics are advisory, outside refusal counts.
 if (args.includes('--shrink')) await shrinkTestLint(cwd);
 for (const line of testLintReport(await lintTests(cwd), { detailedReachable: true, summaryOnly: !details })) console.log(line);
+const reports = await testLintPolicy(cwd, { reportOnly: true });
+console.log(`condition wait growth (report only): ${reports.length}`);
+for (const finding of reports) console.log(`test lint report: ${finding.file}:${finding.line} [${finding.rule}] ${finding.message}`);
 const findings = await testLintPolicy(cwd);
 console.log(`test lint refusals: ${findings.length}`);
 for (const line of lintRefusalLines(findings)) console.log(line);

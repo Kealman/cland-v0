@@ -13,7 +13,7 @@ export const LINT_BASELINE = 'hub/test/lint-baseline.json';
 const TIERS = 'hub/test/tiers.json';
 export const lintCategories = ['wall-clock-wait', 'wall-clock-assertion', 'startDaemon', 'spawnSpoke', 'fakeClaude', 'fakeCodex', 'fakeOpenCode'] as const;
 type Category = typeof lintCategories[number];
-export type LintBaseline = { version: 1; files: Record<string, Partial<Record<Category, number>>> };
+export type LintBaseline = { version: 1; files: Record<string, Partial<Record<Category, number>>>; conditionWait?: Record<string, number> };
 type Source = (file: string) => Promise<string>;
 type Snapshot = { manifest?: TierManifest; baseline?: LintBaseline; source?: Source };
 export type LintRefusal = { file: string; line: number; rule: string; message: string };
@@ -30,7 +30,8 @@ export class TestLintError extends Error {
   }
 }
 export const lintRefusalLines = (findings: LintRefusal[]) => findings.map(f => `test lint refusal: ${f.file}:${f.line} [${f.rule}] ${f.message}`);
-function validate(value: LintBaseline): void {
+function validate(value: LintBaseline, advisory = false): void {
+  if (advisory && value.conditionWait !== undefined && (!value.conditionWait || typeof value.conditionWait !== 'object' || Array.isArray(value.conditionWait) || Object.values(value.conditionWait).some(count => !Number.isSafeInteger(count) || count < 0))) throw new Error('invalid condition wait baseline');
   if (value.version !== 1 || !value.files || typeof value.files !== 'object' || Array.isArray(value.files)) throw new Error('invalid lint baseline schema');
   for (const [file, counts] of Object.entries(value.files)) {
     if (!counts || typeof counts !== 'object' || Array.isArray(counts)) throw new Error(`invalid lint baseline counts: ${file}`);
@@ -39,30 +40,36 @@ function validate(value: LintBaseline): void {
     }
   }
 }
-function categories(facts: ReturnType<typeof testLintFacts>): Map<Category, TestLintFinding[]> {
-  const map = new Map<Category, TestLintFinding[]>(lintCategories.map(category => [category, []]));
-  for (const finding of facts.result.findings) if (finding.rule.startsWith('wall-clock')) map.get(finding.rule as Category)!.push(finding);
+function categories(facts: ReturnType<typeof testLintFacts>): Map<Category | 'condition-wait', TestLintFinding[]> {
+  const map = new Map<Category | 'condition-wait', TestLintFinding[]>([...lintCategories, 'condition-wait' as const].map(category => [category, []]));
+  for (const finding of facts.result.findings) if (finding.rule.startsWith('wall-clock')) map.get(finding.reportOnly ? 'condition-wait' : finding.rule as Category)!.push(finding);
   for (const call of facts.calls) map.get(call.message as Category)!.push(call);
   return map;
 }
 /** Freeze current counts, or lower each existing allowance without ever raising one. */
 export async function shrinkLintBaseline(manifest: TierManifest, source: Source, baseline?: LintBaseline): Promise<LintBaseline> {
-  if (baseline) validate(baseline);
+  if (baseline) validate(baseline, true);
   const files: LintBaseline['files'] = {};
+  const conditionWait: Record<string, number> = {};
   for (const [file, entry] of Object.entries(manifest.tests).sort(([a], [b]) => a.localeCompare(b))) {
     const counts: LintBaseline['files'][string] = {};
     for (const [category, findings] of categories(testLintFacts(file, await source(file), entry))) {
+      if (category === 'condition-wait') {
+        const count = baseline ? Math.min(baseline.conditionWait?.[file] ?? 0, findings.length) : findings.length;
+        if (count) conditionWait[file] = count;
+        continue;
+      }
       const count = baseline ? Math.min(baseline.files[file]?.[category] ?? 0, findings.length) : findings.length;
       if (count) counts[category] = count;
     }
     files[file] = counts;
   }
-  return { version: 1, files };
+  return { version: 1, files, conditionWait };
 }
-export async function checkTestLint(input: Snapshot & { manifest: TierManifest; source: Source; base?: Snapshot }): Promise<LintRefusal[]> {
+export async function checkTestLint(input: Snapshot & { manifest: TierManifest; source: Source; base?: Snapshot; reportOnly?: boolean }): Promise<LintRefusal[]> {
   const { manifest, source, baseline, base = {} } = input;
   const findings: LintRefusal[] = [];
-  try { if (baseline) validate(baseline); if (base.baseline) validate(base.baseline); }
+  try { if (baseline) validate(baseline, input.reportOnly); if (base.baseline) validate(base.baseline, input.reportOnly); }
   catch (error) { return [{ file: LINT_BASELINE, line: 1, rule: 'lint-baseline', message: String(error) }]; }
   // Before the one-time freeze, history supplies the existing debt.
   const previous = base.baseline ?? (base.manifest && base.source ? await shrinkLintBaseline(base.manifest, base.source) : { version: 1 as const, files: {} });
@@ -71,8 +78,21 @@ export async function checkTestLint(input: Snapshot & { manifest: TierManifest; 
     if (count > (previous.files[file]?.[category as Category] ?? 0)) findings.push({ file: LINT_BASELINE, line: 1, rule: 'lint-baseline', message: `baseline grew: ${file} [${category}]` });
   }
   const allowance = baseline ?? previous;
+  // Absence means zero, including first publication and a removed/exhausted map.
+  // Seeding an advisory allowance must itself remain visible in report mode.
+  if (input.reportOnly) {
+    for (const [file, count] of Object.entries(baseline?.conditionWait ?? {})) {
+      if (count > (previous.conditionWait?.[file] ?? 0)) findings.push({ file: LINT_BASELINE, line: 1, rule: 'wall-clock-wait', message: `condition wait baseline grew: ${file} (report only)` });
+    }
+  }
   for (const [file, entry] of Object.entries(manifest.tests).sort(([a], [b]) => a.localeCompare(b))) {
     const facts = testLintFacts(file, await source(file), entry);
+    if (input.reportOnly) {
+      const calls = categories(facts).get('condition-wait')!;
+      const allowed = allowance.conditionWait?.[file] ?? 0;
+      for (const call of calls.slice(allowed)) findings.push({ ...call, message: `condition-wait count ${calls.length} exceeds frozen allowance ${allowed} (report only)` });
+      continue;
+    }
     const isNew = !base.manifest?.tests[file];
     if (isNew) findings.push(...facts.result.findings.filter(f => ['tier-import', 'tier-process', 't3-lifecycle'].includes(f.rule)));
     const counts = categories(facts);
@@ -82,13 +102,14 @@ export async function checkTestLint(input: Snapshot & { manifest: TierManifest; 
       const oldEntry = base.manifest!.tests[file]!;
       const lostLifecycle = base.source && testLintFacts(file, await base.source(file), oldEntry).lifecycle;
       const processGrowth = [...counts].some(([category, calls]) =>
-        !category.startsWith('wall-clock') && calls.length > (allowance.files[file]?.[category] ?? 0));
+        category !== 'condition-wait' && !category.startsWith('wall-clock') && calls.length > (allowance.files[file]?.[category] ?? 0));
       if (lostLifecycle || processGrowth) {
         findings.push({ file, line: 1, rule: 't3-lifecycle', message: `first comment block must name the process behaviour: ${tier}: <behaviour>` });
         headerRefusal = true;
       }
     }
     for (const [category, calls] of counts) {
+      if (category === 'condition-wait') continue;
       if (!category.startsWith('wall-clock') && (facts.lifecycle || headerRefusal)) continue;
       const allowed = allowance.files[file]?.[category] ?? 0;
       for (const call of calls.slice(allowed)) findings.push({ ...call, rule: category, message: `${category} count ${calls.length} exceeds frozen allowance ${allowed}` });
@@ -181,7 +202,7 @@ export class TestLintWarmer {
   }
 }
 /** Both gates judge the same immutable sources; dirty admission also judges disk. */
-export async function testLintPolicy(cwd: string, options: { tree?: string; head?: string; base?: string; env?: NodeJS.ProcessEnv; readFailures?: 'throw' } = {}): Promise<LintRefusal[]> {
+export async function testLintPolicy(cwd: string, options: { tree?: string; head?: string; base?: string; env?: NodeJS.ProcessEnv; readFailures?: 'throw'; reportOnly?: boolean } = {}): Promise<LintRefusal[]> {
   const git = async (args: string[]) => (await promisify(execFile)('git', args, { cwd, env: options.env, maxBuffer: 16 * 1024 * 1024, timeout: 30_000 })).stdout.trimEnd();
   let baseRef: string | undefined;
   // The hub advances the shared local dev branch; origin/dev can be stale or
@@ -218,7 +239,7 @@ export async function testLintPolicy(cwd: string, options: { tree?: string; head
         base.baseline = frozen.baseline;
       }
     }
-    return await checkTestLint({ ...current, manifest: current.manifest, source: current.source!, base });
+    return await checkTestLint({ ...current, manifest: current.manifest, source: current.source!, base, reportOnly: options.reportOnly ?? false });
   } catch (error) {
     if (options.readFailures === 'throw' && !(error instanceof SyntaxError)) throw new TestLintReadError(`cannot read test lint policy: ${String(error)}`, { cause: error });
     return [{ file: LINT_BASELINE, line: 1, rule: 'lint-baseline', message: `cannot read test lint policy: ${String(error)}` }];
