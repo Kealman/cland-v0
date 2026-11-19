@@ -1,0 +1,3 @@
+T-1728: Executor snapshot freshness guidance remains in docs/hub/running.md. Acquisition publishes a durable advisory for each changed stale key; preparation remains an explicit human or Coordinator action. Status allows five seconds for local key/base inspection and names unavailable observations in an additive inspectionReason while preserving the legacy incomplete freshness value. Advisory publication requires a durable id; metadata failures never gate acquisition. No role permissions or shared implementation workflow changed.
+
+Source review corrections retain bounded redacted secondary diagnostics and document the snapshot test's containing-root and constructor-rejection native-handle ownership in its file-specific guide.

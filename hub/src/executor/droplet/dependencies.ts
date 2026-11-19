@@ -23,6 +23,8 @@ export const processHost = {
   armWatchdog, stopWatchdog, watchdogAlive,
 };
 export type DropletDependencies = {
+  /** Publish a durable, idempotent advisory to the Coordinator in Agents. */
+  snapshotNotice?: (id: string, text: string) => string | null;
   /** Host identities for durable executor and spend locks; file locking remains native. */
   processes?: LockProcessTable;
   clock?: Clock;

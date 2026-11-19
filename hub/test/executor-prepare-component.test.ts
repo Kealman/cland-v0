@@ -15,12 +15,16 @@ import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
 import { FakeClock } from './fake-clock.ts';
 import { drive } from './remote-clock.ts';
-import { onCleanup, beforeDirectories } from './process-cleanup.ts';
+import { onCleanup, beforeDirectories, guardDirectoryRemoval, ownDirectory } from './process-cleanup.ts';
+import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
+import { executorSnapshotNotice, Dispatcher } from '../src/hub/dispatch.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { keyHash, readSnapshot, snapshotPath, type Snapshot } from '../src/executor/droplet/prepare.ts';
 import { readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { Machine } from '../src/executor/droplet/machine.ts';
 import { diagnosticResult } from '../src/hub/merge-batches.ts';
+import { Store } from '../src/hub/store.ts';
+import { DatabaseSync } from 'node:sqlite';
 import { defaultConfig } from '../src/init/config.ts';
 import { ReadinessDeadlineError } from '../src/executor/droplet/readiness-deadline.ts';
 import { readRecoveries } from '../src/executor/droplet/snapshot-recovery.ts';
@@ -45,7 +49,7 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}, a
   api.sizes[0]!.regions.push('sfo2'); api.regions.push({ slug: 'sfo2', available: true, sizes: ['c-8'] });
   let failure = '';
   let keyInput: typeof import('../src/executor/droplet/prepare.ts').prepareKey = async () => structuredClone(key);
-  const dependencies = { ...machine.dependencies, api: api.provider, prepareKey: async (...args: Parameters<typeof keyInput>) => keyInput(...args),
+  const dependencies = { ...machine.dependencies, api: api.provider, prepareKey: async (...args: Parameters<typeof keyInput>) => keyInput(...args), prepareBase: async () => key.base,
     machine: { ...machine.dependencies.machine,
       exec: async (_lease: unknown, command: string) => {
         if (failure === 'ssh' || failure === 'unready' || failure === 'install' && command.includes('npm ci')) throw new Error('scripted machine failed');
@@ -232,6 +236,279 @@ async function sweep<T>(f: Awaited<ReturnType<typeof fixture>>, what: string, ch
 }
 const prepare = (ui: Awaited<ReturnType<typeof connectUi>>) => ui.request({ type: 'executor.prepare' });
 
+/** Capture each synchronous acquisition before another operation can fail. */
+function snapshotCase(t: TestContext) {
+  type Owner = { backend?: DropletExecutor; store?: Store; database?: DatabaseSync; closed: boolean; closing?: Promise<void> };
+  const owners: Owner[] = [];
+  const released = () => owners.every(owner => owner.closed);
+  const scope = guardedLeaseCase(t, undefined, { canRestore: released });
+  const assertReleased = () => { if (!released()) throw new Error('snapshot owner closure unconfirmed; root retained'); };
+  const close = (owner: Owner): Promise<void> => {
+    if (owner.closed) return Promise.resolve();
+    return scope.wait('snapshot owner closure', () => owner.closing ??= (async () => {
+      await owner.backend?.close();
+      if (owner.store) owner.store.close();
+      else if (owner.database?.isOpen) owner.database.close();
+      if (owner.database?.isOpen) throw new Error('snapshot database closure unconfirmed');
+      owner.closed = true;
+    })().finally(() => { delete owner.closing; }));
+  };
+  const dispose = async () => {
+    const results = await Promise.allSettled(owners.map(close));
+    const errors = results.flatMap(result => result.status === 'rejected' ? [result.reason] : []);
+    if (errors.length) throw new AggregateError(errors, 'snapshot owners did not close');
+    assertReleased();
+  };
+  beforeDirectories(t, dispose);
+  const guardRoot = (root: string) => guardDirectoryRemoval(root, assertReleased);
+  return { scope: { ...scope, adoptRoot(root: string) { scope.adoptRoot(root); guardRoot(root); } }, close, dispose, released, guardRoot,
+    open(f: Pick<Awaited<ReturnType<typeof fixture>>, 'root' | 'env'>, dependencies: DropletDependencies, storage = false, configureDatabase?: (database: DatabaseSync) => void) {
+      guardDirectoryRemoval(f.root, assertReleased);
+      const owner: Owner = { closed: false };
+      owners.push(owner);
+      if (storage) owner.store = new Store(join(f.root, 'notice.db'), path => {
+        const database = new DatabaseSync(path);
+        owner.database = database;
+        configureDatabase?.(database);
+        return database;
+      });
+      owner.backend = new DropletExecutor(f.root, owner.store, undefined, f.env, undefined, dependencies);
+      return owner as Owner & { backend: DropletExecutor };
+    },
+  };
+}
+
+test('snapshot status names recipe and hook drift after a slow local inspection', async t => {
+  const ownership = snapshotCase(t);
+  const { scope } = ownership;
+  return scope.run(async step => {
+    const f = await step(() => fixture(scope.fixtures, {}, scope.adoptRoot));
+    await step(() => f.stop());
+    await step(() => mkdir(join(f.root, '.cland/run/executor'), { recursive: true }));
+    await step(() => writeFile(snapshotPath(f.root), JSON.stringify({ image: 123, name: 'legacy', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'] })));
+    const owner = ownership.open(f, {
+      ...f.dependencies, prepareBase: async () => f.key.base,
+      prepareKey: async (_root, _env, _hook, refresh) => {
+        assert.equal(refresh, false);
+        await f.dependencies.wait!(300);
+        return { ...f.key, recipe: 'new-recipe', provisionPath: 'system.sh', provision: 'new-hook' };
+      },
+    });
+    const backend = owner.backend;
+    try {
+      const status = await step(() => drive(f, backend.inspect()));
+      assert.equal(status.snapshot?.freshness, 'stale: recipe|provision');
+      assert.deepEqual(f.api.droplets, []);
+      assert.deepEqual(f.api.keys, []);
+    } finally { await step(() => ownership.close(owner)); }
+  });
+});
+
+test('stale snapshot acquisition reports each changed key once and keeps preparation explicit', async t => {
+  const ownership = snapshotCase(t);
+  const { scope } = ownership;
+  return scope.run(async step => {
+    const f = await step(() => fixture(scope.fixtures, {}, scope.adoptRoot));
+    await step(() => f.stop());
+    const notices: string[] = [];
+    const oldKey = { ...f.key, recipe: 'old' };
+    const dependencies = {
+      ...f.dependencies, snapshotNotice: (id: string, text: string) => { notices.push(text); return notices.length === 1 ? null : id; },
+      machine: { ...f.dependencies.machine, exec: async () => JSON.stringify(oldKey) },
+    };
+    let owner = ownership.open(f, dependencies, true);
+    await step(() => mkdir(join(f.root, '.cland/run/executor'), { recursive: true }));
+    await step(() => writeFile(snapshotPath(f.root), JSON.stringify({ image: 123, name: 'prepared', key: { ...f.key, recipe: 'old' }, keyHash: keyHash({ ...f.key, recipe: 'old' }), regions: ['lon1'] })));
+    try {
+      for (let i = 0; i < 3; i++) {
+        if (i === 1) { await step(() => ownership.close(owner)); owner = ownership.open(f, dependencies, true); }
+        if (i === 2) Object.assign(f.key, { provision: 'changed', provisionPath: 'hook.sh' });
+        const lease = await step(() => drive(f, owner.backend.acquire({ id: `stale-${i}` }, new Date(f.clock.now().getTime() + 60000).toISOString())));
+        assert.equal(lease.state, 'active');
+        await step(() => drive(f, owner.backend.release(lease)));
+      }
+      assert.equal(notices.length, 3, 'a null publication receipt must be retried');
+      assert.match(notices[0]!, /stale: recipe.*cland executor prepare/);
+      assert.match(notices[2]!, /stale: recipe\|provision/);
+      assert.equal(f.api.images.length, 0, 'no implicit builder or snapshot');
+      assert.deepEqual(f.api.droplets, []);
+      assert.deepEqual(f.api.keys, []);
+    } finally { await step(() => ownership.dispose()); }
+  });
+});
+
+for (const boundary of ['read', 'write', 'clear'] as const) test(`snapshot advisory metadata ${boundary} failure never gates acquisition`, async t => {
+  const ownership = snapshotCase(t);
+  const { scope } = ownership;
+  return scope.run(async step => {
+    const f = await step(() => fixture(scope.fixtures, {}, scope.adoptRoot));
+    await step(() => f.stop());
+    const oldKey = boundary === 'clear' ? f.key : { ...f.key, recipe: 'old' };
+    const owner = ownership.open(f, { ...f.dependencies, snapshotNotice: id => id,
+      machine: { ...f.dependencies.machine, exec: async () => JSON.stringify(oldKey) } }, true);
+    const diagnostics: Parameters<DropletExecutor['logger']>[0][] = [];
+    scope.patch(owner.backend, 'logger', (record: Parameters<DropletExecutor['logger']>[0]) => {
+      if (record.event === 'executor-snapshot-advisory-deferred') {
+        diagnostics.push(record);
+        throw new Error('scripted diagnostic sink rejected');
+      }
+    });
+    await step(() => mkdir(join(f.root, '.cland/run/executor'), { recursive: true }));
+    await step(() => writeFile(snapshotPath(f.root), JSON.stringify({ image: 123, name: 'prepared', key: oldKey, keyHash: keyHash(oldKey), regions: ['lon1'] })));
+    const store = owner.store!;
+    const meta = store.meta, setMeta = store.setMeta;
+    if (boundary === 'read') scope.patch(store, 'meta', function(key: string) {
+      if (key === 'executor-stale-notice') throw new Error(`scripted advisory metadata read failed; Bearer synthetic-diagnostic-value ${'x'.repeat(800)}`);
+      return meta.call(store, key);
+    });
+    else scope.patch(store, 'setMeta', function(key: string, value: string) {
+      if (key === 'executor-stale-notice') throw new Error(`scripted advisory metadata write failed; Bearer synthetic-diagnostic-value ${'x'.repeat(800)}`);
+      return setMeta.call(store, key, value);
+    });
+    const lease = await step(() => drive(f, owner.backend.acquire({ id: `metadata-${boundary}` }, new Date(f.clock.now().getTime() + 60000).toISOString())));
+    assert.equal(lease.state, 'active');
+    assert.equal(diagnostics.length, 1);
+    const reason = String(diagnostics[0]!.reason);
+    assert.match(reason, /scripted advisory metadata/);
+    assert.ok(reason.length <= 500);
+    assert.ok(!reason.includes('synthetic-diagnostic-value'));
+    await step(() => drive(f, owner.backend.release(lease)));
+    await step(() => ownership.dispose());
+    assert.deepEqual(f.api.droplets, []);
+    assert.deepEqual(f.api.keys, []);
+  });
+});
+
+test('Agents publication retries a null core receipt before suppressing a stale snapshot notice', async t => {
+  const ownership = snapshotCase(t);
+  const { scope } = ownership;
+  return scope.run(async step => {
+    let core: Dispatcher['core'] | undefined;
+    const open = Dispatcher.prototype.open;
+    scope.patch(Dispatcher.prototype, 'open', function(this: Dispatcher, ...args: Parameters<typeof open>) { core = this.core; return open.apply(this, args); });
+    const f = await step(() => fixture(scope.fixtures, {}, scope.adoptRoot));
+    assert.ok(core, 'real dispatcher connection captured its producing core');
+    const oldKey = { ...f.key, recipe: 'old' };
+    const noticeTo = core.noticeTo.bind(core);
+    let admitted = false;
+    scope.patch(core, 'noticeTo', (...args: Parameters<typeof noticeTo>) => admitted ? noticeTo(...args) : null);
+    const owner = ownership.open(f, { ...f.dependencies,
+      snapshotNotice: executorSnapshotNotice(core),
+      machine: { ...f.dependencies.machine, exec: async () => JSON.stringify(oldKey) },
+    }, true);
+    await step(() => mkdir(join(f.root, '.cland/run/executor'), { recursive: true }));
+    await step(() => writeFile(snapshotPath(f.root), JSON.stringify({ image: 123, name: 'prepared', key: oldKey, keyHash: keyHash(oldKey), regions: ['lon1'] })));
+    for (let index = 0; index < 3; index++) {
+      admitted = index > 0;
+      const lease = await step(() => drive(f, owner.backend.acquire({ id: `publication-${index}` }, new Date(f.clock.now().getTime() + 60000).toISOString())));
+      assert.equal(lease.state, 'active');
+      await step(() => drive(f, owner.backend.release(lease)));
+      const history = await step(() => f.ui.request({ type: 'topic.history', topic: 'agents' }));
+      const notices = (history.value as { messages: { id: string; text: string }[] }).messages.filter(row => row.id.startsWith('executor-stale:'));
+      assert.equal(notices.length, admitted ? 1 : 0);
+      assert.equal(Boolean(owner.store!.meta('executor-stale-notice')), admitted);
+      if (admitted) assert.match(notices[0]!.text, /stale: recipe.*cland executor prepare/);
+    }
+    await step(() => ownership.dispose());
+    assert.deepEqual(f.api.droplets, []);
+    assert.deepEqual(f.api.keys, []);
+  });
+});
+
+test('snapshot owner cleanup fences root, database and controls until rejected closure is confirmed', async t => {
+  const ownership = snapshotCase(t);
+  const { scope } = ownership;
+  return scope.run(async step => {
+    const f = await step(() => fixture(scope.fixtures, {}, scope.adoptRoot));
+    await step(() => f.stop());
+    const parent = join(f.root, 'snapshot-parent');
+    const root = join(parent, 'snapshot-owner');
+    await step(() => mkdir(root, { recursive: true }));
+    ownership.guardRoot(parent);
+    const hooks: Array<() => unknown> = [];
+    const cleanupContext = { after: (hook: () => unknown) => { hooks.push(hook); } } as unknown as TestContext;
+    beforeDirectories(cleanupContext, ownership.dispose);
+    let removalAllowed = false, removalAttempts = 0;
+    const removeParent = ownDirectory(cleanupContext, parent, { beforeRemove: () => {
+      removalAttempts++;
+      if (!removalAllowed) throw new Error('positive control: recursive removal reached before closure');
+    } });
+    const remove = ownDirectory(undefined, root);
+    const owner = ownership.open({ ...f, root }, f.dependencies, true);
+    const restore = scope.patch(owner.backend, 'close', async () => { throw new Error('scripted close rejected'); });
+    try {
+    // A setup write fails after resources were enrolled, with no body-finally.
+    await assert.rejects(() => writeFile(join(root, 'missing', 'snapshot.json'), '{}'), { code: 'ENOENT' });
+    await assert.rejects(async () => { for (const hook of hooks) await hook(); }, /fixture cleanup failed/);
+    assert.equal(removalAttempts, 0, 'registered parent cleanup must stop at its resource fence');
+    assert.equal((await step(() => stat(parent))).isDirectory(), true);
+    await assert.rejects(remove, /closure unconfirmed/);
+    assert.equal((await step(() => stat(root))).isDirectory(), true);
+    owner.store!.setMeta('handle-receipt', 'open');
+    assert.equal(owner.store!.meta('handle-receipt'), 'open');
+    assert.throws(scope.releaseSeams, /native guard retained/);
+    restore();
+    await step(() => ownership.dispose());
+    assert.equal(ownership.released(), true);
+    assert.throws(() => owner.store!.meta('handle-receipt'), /closed|not open/i);
+    removalAllowed = true;
+    await step(removeParent);
+    await assert.rejects(() => stat(parent), { code: 'ENOENT' });
+    await assert.rejects(() => stat(root), { code: 'ENOENT' });
+    } finally { restore(); await ownership.dispose(); }
+  });
+});
+
+test('failed Store construction retains its native handle and containing parent until registered cleanup closes it', async t => {
+  const ownership = snapshotCase(t);
+  const { scope } = ownership;
+  return scope.run(async step => {
+    const f = await step(() => fixture(scope.fixtures, {}, scope.adoptRoot));
+    await step(() => f.stop());
+    const parent = join(f.root, 'constructor-parent'), root = join(parent, 'snapshot-owner');
+    await step(() => mkdir(root, { recursive: true }));
+    ownership.guardRoot(parent);
+    const hooks: Array<() => unknown> = [];
+    const cleanupContext = { after: (hook: () => unknown) => { hooks.push(hook); } } as unknown as TestContext;
+    beforeDirectories(cleanupContext, ownership.dispose);
+    let allowRemoval = false, removalAttempts = 0;
+    const remove = ownDirectory(cleanupContext, parent, { beforeRemove: () => {
+      removalAttempts++;
+      if (!allowRemoval) throw new Error('positive control: recursive removal reached before native close');
+    } });
+    let database: DatabaseSync | undefined;
+    let restoreClose = () => {};
+    try {
+      assert.throws(() => ownership.open({ ...f, root }, f.dependencies, true, native => {
+        database = native;
+        const exec = native.exec.bind(native);
+        scope.patch(native, 'exec', (sql: string) => {
+          if (sql === 'pragma busy_timeout = 5000;') return exec(sql);
+          throw new Error('scripted Store schema construction rejected');
+        });
+        restoreClose = scope.patch(native, 'close', () => { throw new Error('scripted native close rejected'); });
+      }), /schema construction rejected/);
+      assert.ok(database);
+      await assert.rejects(async () => { for (const hook of hooks) await hook(); }, /fixture cleanup failed/);
+      assert.equal(removalAttempts, 0);
+      assert.equal((await step(() => stat(parent))).isDirectory(), true);
+      assert.equal((await step(() => stat(root))).isDirectory(), true);
+      assert.equal(database.isOpen, true);
+      assert.equal(database.prepare('select 1 as receipt').get()!.receipt, 1);
+      assert.equal(ownership.released(), false);
+      assert.throws(scope.releaseSeams, /native guard retained/);
+      restoreClose();
+      await step(() => ownership.dispose());
+      assert.equal(database.isOpen, false);
+      assert.equal(ownership.released(), true);
+      allowRemoval = true;
+      await step(remove);
+      await assert.rejects(() => stat(parent), { code: 'ENOENT' });
+      await assert.rejects(() => stat(root), { code: 'ENOENT' });
+    } finally { restoreClose(); await ownership.dispose(); }
+  });
+});
+
 for (const movedBeforeConsumption of [false, true]) {
 test(`snapshot inspection consumes a completed deferred key with base moved before consumption=${movedBeforeConsumption}`, async t => {
   const f = await fixture(t);
@@ -255,15 +532,18 @@ test(`snapshot inspection consumes a completed deferred key with base moved befo
     let value: Awaited<typeof work> | undefined;
     void work.then(result => { value = result; });
     return eventually('inspection result published', async () => {
-      await f.clock.advance(250);
+      await f.clock.advance(5000);
       return value;
     });
   };
   try {
     const inspecting = backend.inspect();
     await eventually('inspection entered held key computation', () => entered.promise.then(() => true));
-    await f.clock.advance(250);
-    assert.equal((await inspecting).snapshot?.freshness, 'unknown (inspection deferred)');
+    await f.clock.advance(5000);
+    const timedOut = await inspecting;
+    assert.equal(timedOut.snapshot?.freshness, 'unknown (inspection deferred)');
+    assert.equal(timedOut.snapshot?.inspectionReason, 'local inspection exceeded 5s');
+    assert.match(timedOut.summary, /reason=local inspection exceeded 5s/);
     release.resolve();
     await completed.promise;
     if (movedBeforeConsumption) f.moveBase();
@@ -308,7 +588,7 @@ test('snapshot inspection validates the base after a pending key becomes consuma
   try {
     const deferred = backend.inspect();
     await eventually('held key computation entered', () => keyEntered.promise.then(() => true));
-    await f.clock.advance(250);
+    await f.clock.advance(5000);
     assert.equal((await deferred).snapshot?.freshness, 'unknown (inspection deferred)');
     observing = true;
     const inspecting = backend.inspect();

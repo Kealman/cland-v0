@@ -406,6 +406,8 @@ After provisioning changes land, restart the hub onto that code before preparing
 the root cloud-init template comes from the running hub, while a delivered branch's
 prepare command runs as the non-root runner. Collect Web evidence on the rebuilt image.
 
+Acquire reports stale inputs once per distinct snapshot/current key to the Coordinator in Agents, naming `cland executor prepare`. This advisory does not block the run or rebuild an image. Metadata/publication failures retain a bounded, credential-redacted secondary hub-log diagnostic; a failing diagnostic sink also cannot block acquisition. Its receipt survives hub restart; matching inputs or successful preparation clear it. Inspection uses local committed inputs with a five-second bound and no fetch.
+
 Acquire creates from the image, without user data, only in regions holding it.
 It polls until active with a public IPv4 address under a five-minute bound,
 then waits up to 180 seconds for SSH as `runner` to answer and for the image marker
@@ -476,9 +478,9 @@ spent and reserved USD against the daily cap, the shared ledger path, and the
 number of droplets tagged `cland`.
 Snapshot freshness compares against the local `refs/remotes/origin/dev` commit;
 the snapshot status line names it as `local=origin/dev@<short SHA>` (or `unknown`
-when inspection is deferred). Status never fetches or runs `ls-remote`. A key
-read that exceeds 250 ms continues in the background for one later observation;
-consumption checks the local base again and discards a key from an older base.
+when inspection fails or exceeds its bound). Status never fetches or runs `ls-remote`. A key
+read that exceeds 5 seconds continues in the background for one later observation;
+the snapshot’s additive `inspectionReason` and summary name the failure or timeout, while `freshness` keeps the compatible `unknown (inspection deferred)` incomplete value. Consumption checks the local base again and discards a key from an older base.
 `current` therefore means current against that named local commit. Remote changes
 become visible when the local ref refreshes; `executor prepare` still fetches
 `origin dev` by default before preparing its key and snapshot.
