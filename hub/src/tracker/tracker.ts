@@ -181,6 +181,8 @@ export type ExplorerSummary = CardTransport & Pick<ItemSummary, 'id' | 'kind' | 
 
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
 export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[]; events?: string[]; postedVerdicts?: Verdict[]; previousAncestry?: string[] };
+/** Internal producer-work receipt; false means a stop fence interrupted the batch. */
+export type AnnouncementBatchReceipt = { completed: boolean };
 
 // Card prose stays a single bounded preview; full comments remain on demand.
 const cardPreview = (text: string, limit: number): string => {
@@ -333,7 +335,7 @@ export class Tracker {
   readonly #tipListeners = new Set<() => void>();
   /** Told after every index change (a write, a hand edit, a removal, a claim): the `task` event. */
   readonly #changeListeners = new Set<(change: ItemChange) => void>();
-  readonly #announcementBatches = new Set<(publish: () => void) => void>();
+  readonly #announcementBatches = new Set<(publish: () => void, completion: Promise<AnnouncementBatchReceipt>) => void>();
   /** Told when a verdict comment is written through the hub: the inbox notes it (#33). */
   readonly #verdictListeners = new Set<(id: string, author: string, verdict: Verdict, report?: VerdictReport, human?: boolean) => void>();
   readonly #missingDoneListeners = new Set<(notice: MissingDoneNotice) => void>();
@@ -536,8 +538,8 @@ export class Tracker {
     return () => this.#tipListeners.delete(listener);
   }
 
-  /** Listen per item; an optional synchronous wrapper shares publication work for a batch. */
-  onChange(listener: (change: ItemChange) => void, batch?: (publish: () => void) => void): () => void {
+  /** A synchronous wrapper runs per chunk; its additive receipt joins the whole producer. */
+  onChange(listener: (change: ItemChange) => void, batch?: (publish: () => void, completion: Promise<AnnouncementBatchReceipt>) => void): () => void {
     if (!this.#changeListeners.size) for (const item of this.list()) this.#rememberAnnouncement(item.id,item);
     this.#changeListeners.add(listener);
     if (batch) this.#announcementBatches.add(batch);
@@ -659,33 +661,37 @@ export class Tracker {
 
   /** Serialize freshness batches separately from the writer queue (which can await a tip read). */
   #announceBatch(ids: string[], resumed: Resumed): Promise<void> {
-    const work = this.#announcementQueue.then(async () => {
-      if (this.#stopping) return;
+    const work: Promise<AnnouncementBatchReceipt> = this.#announcementQueue.then(async () => {
+      if (this.#stopping) return {completed:false};
       const direct = new Set(ids);
       const affected = resumed(() => new Set(ids.flatMap(id => [id, ...this.#ancestorIds(this.#index.get(id)?.parent ?? null)])));
-      let count = 0;
       // An ancestor's stage snapshot can read its whole plan. Hydrate it once,
       // rather than once again for every child notification. Retain dependents.
+      let chunk: string[] = [];
+      let visited = 0;
       for (const id of affected) {
-        if (this.#stopping) return;
+        if (this.#stopping) return {completed:false};
         resumed(() => { for (const dependent of this.#refreshExplorer(id)) affected.add(dependent); });
-        if (++count % 16 === 0) await new Promise<void>(resolve => setImmediate(resolve));
+        chunk.push(id);
+        if (++visited < affected.size && chunk.length < 16) continue;
+        resumed(() => {
+          this.#explorer?.flush();
+          let publish = () => { for (const id of chunk) this.#announce(id, direct.has(id), undefined, false, false, false, true); };
+          for (const batch of this.#announcementBatches) {
+            const next = publish;
+            publish = () => batch(next, work);
+          }
+          // Wrappers remain synchronous: requests between publication chunks
+          // must never inherit HubCore's shared-publication flag.
+          publish();
+        });
+        chunk = [];
+        await new Promise<void>(resolve => setImmediate(resolve));
       }
-      if (this.#stopping) return;
-      resumed(() => {
-        this.#explorer?.flush();
-        let publish = () => { for (const id of affected) this.#announce(id, direct.has(id), undefined, false, false, false, true); };
-        for (const batch of this.#announcementBatches) {
-          const next = publish;
-          publish = () => batch(next);
-        }
-        // Wrappers remain synchronous: unrelated requests between hydration
-        // chunks must never inherit HubCore's shared-publication flag.
-        publish();
-      });
+      return {completed:true};
     });
-    this.#announcementQueue = work.catch(() => {});
-    return work;
+    this.#announcementQueue = work.then(() => {}, () => {});
+    return work.then(() => {});
   }
 
   /** Freshness, verdicts and branch changes converge on one queued workflow check. */

@@ -19,12 +19,12 @@ export function stageCase(t: TestContext) {
   let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
   let restoreGuard: (() => void) | undefined;
   let attempt: Promise<void> | undefined;
-  const bound = <T>(name: string, work: Promise<T>) => within(work, 5000, undefined, () => new Error(`${t.name}: ${name} incomplete; fixture retained`));
-  const wait = <T>(name: string, start: () => Promise<T>) => {
+  const bound = <T>(name: string, work: Promise<T>, timeoutMs = 5000) => within(work, timeoutMs, undefined, () => new Error(`${t.name}: ${name} incomplete; fixture retained`));
+  const wait = <T>(name: string, start: () => Promise<T>, timeoutMs = 5000) => {
     const work = Promise.resolve().then(start);
     pending.add(work);
     void work.then(() => pending.delete(work), () => pending.delete(work));
-    return bound(name, work);
+    return bound(name, work, timeoutMs);
   };
   const join = async () => {
     if (joined) return;

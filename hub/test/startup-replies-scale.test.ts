@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
 import { withPlan } from '../src/tracker/plan.ts';
+import { Tracker, type AnnouncementBatchReceipt } from '../src/tracker/tracker.ts';
 
 test('eight startup replies fit per-frame and total budgets on a thousand-item durable fixture', { timeout: 120000 }, async t => {
   const { Store } = await import('../src/hub/store.ts');
@@ -74,7 +75,16 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
     event: 'notification', kind: 'verdict', item: `T-${i+1}`, text: 'A completed source review receipt. '.repeat(5)}) + '\n').join(''));
   const steps: Array<{ step: unknown; durationMs: unknown }> = [];
   const checkpoints: number[] = [];
-  let recomputes = 0;
+  const recomputes: number[] = [];
+  const publicationProducers = new Map<Promise<AnnouncementBatchReceipt>, number>();
+  const onChange = Tracker.prototype.onChange;
+  t.mock.method(Tracker.prototype, 'onChange', function(this: Tracker, ...args: Parameters<Tracker['onChange']>) {
+    const [listener, batch] = args;
+    return onChange.call(this, listener, batch ? (publish, completion) => {
+      publicationProducers.set(completion, (publicationProducers.get(completion) ?? 0) + 1);
+      batch(publish, completion);
+    } : undefined);
+  });
   const reads = new Map<string, number>();
   const itemsPath = join(root, '.cland/tasks') + '/';
   const countRead = (path: unknown) => {
@@ -114,7 +124,7 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
     readBase: async () => 'dev',
     log: entry => {
       if (entry.event === 'verification-checkpoint') checkpoints.push(Number(entry.jobs));
-      if (entry.event === 'explorer-recomputed') recomputes++;
+      if (entry.event === 'explorer-recomputed') recomputes.push((entry.items as string[]).length);
       if (entry.event === 'hub-startup-step-completed') steps.push({ step: entry.step, durationMs: entry.durationMs });
     },
   });
@@ -132,14 +142,27 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
       t.diagnostic(`first completed hub.status: ${elapsed.toFixed(1)} ms wall; ${cpuMs.toFixed(1)} ms process CPU; hang guard 30000 ms wall; ${process.platform}/${process.arch}; embedded projectHub`);
       t.diagnostic(`startup steps (wall ms): ${JSON.stringify(steps)}`);
       const maxReads = Math.max(...reads.values());
-      t.diagnostic(`startup work: ${checkpoints.length} checkpoints; ${checkpoints.reduce((a, b) => a + b, 0)} full jobs checkpointed; ${summaryRows} summary rows / ${summaryBytes} bytes; ${hydratedJobs} full jobs hydrated; ${recomputes} explorer batches; ${reads.size} item files; ${[...reads.values()].reduce((a, b) => a + b, 0)} reads; max ${maxReads} reads/item`);
+      const recomputedRows = recomputes.reduce((total, count) => total + count, 0);
+      t.diagnostic(`startup work: ${checkpoints.length} checkpoints; ${checkpoints.reduce((a, b) => a + b, 0)} full jobs checkpointed; ${summaryRows} summary rows / ${summaryBytes} bytes; ${hydratedJobs} full jobs hydrated; ${recomputes.length} explorer chunks / ${recomputedRows} rows; ${reads.size} item files; ${[...reads.values()].reduce((a, b) => a + b, 0)} reads; max ${maxReads} reads/item`);
       assert.equal(checkpoints.length, 1, 'retained suite history is checkpointed once, independent of stopped sessions');
       assert.equal(summaryRows, 1645, 'startup reads every retained suite as a summary exactly once');
       assert.ok(summaryBytes > 0 && summaryBytes <= 1645 * 2048, `startup summary bytes ${summaryBytes}; bound 2048 per fixture row`);
       assert.equal(hydratedJobs, 0, 'finished suite plans are never hydrated at startup');
       assert.equal(fullHistoryReads, 0, 'startup never materializes full archive history');
       assert.deepEqual(checkpoints, [0], 'the single active checkpoint serializes no finished full records');
-      assert.ok(recomputes > 0 && recomputes <= 4, `startup recomputed explorer ${recomputes} times; bound 4 batches`);
+      // Four complete 1004-row passes was the previous ceiling. Count actual
+      // work so yielding partial chunks cannot borrow another full-pass budget.
+      assert.ok(recomputedRows >= 1004 && recomputedRows <= 4 * 1004,
+        `startup recomputed explorer ${recomputedRows} rows; bound 1004–4016 rows`);
+      // This fixture has one initial tip-movement producer. Source hydration
+      // and initial visibility each need one full pass; that producer may
+      // flush once per 16-row chunk, never once for every individual row.
+      const producerChunks = Math.ceil(1004 / 16);
+      assert.equal(publicationProducers.size, 1, 'startup has one freshness publication producer');
+      for (const chunks of publicationProducers.values()) assert.ok(chunks <= producerChunks,
+        `producer published ${chunks} chunks; fixture-derived bound ${producerChunks}`);
+      assert.ok(recomputes.length <= 2 + producerChunks,
+        `startup made ${recomputes.length} recompute calls; bound two initial passes plus ${producerChunks} producer chunks`);
       assert.equal(reads.size, 1004, 'the complete durable tracker was read');
       assert.ok(maxReads <= 2, `startup read an item ${maxReads} times; bound 2 reads/item`);
       assert.ok(elapsed < 30000, `first hub.status took ${elapsed.toFixed(1)} ms; hang guard 30000 ms`); // lint-allow-wall-clock: gross hang guard through completed status; deterministic work counts enforce startup scaling.

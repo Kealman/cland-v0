@@ -112,13 +112,16 @@ failure of that fallback also leaves resource ownership and the bind result inta
 Scheduled verdict freshness starts after serving; workers yield between answers
 so cached Git results cannot monopolize a microtask drain ahead of socket work.
 Tracker freshness announcement batches refresh each source and ancestor stage
-summary once, yielding after every 16 source rows before flushing projections.
+summary once, flushing and publishing at most 16 source rows before yielding.
 Tip-movement and settled-answer batches serialize on their own queue; they never
 wait on the tracker writer queue, which may itself await a foreground tip read.
-Their synchronous publications share one hub topic context refresh and retain
-one notification per changed ancestor. Stop fences publication and joins both
-the read and worker through their batch completion. Single-change subscribers
-keep the same item events and callback shape.
+Each synchronous chunk shares one hub topic context and item-layer projection;
+changed ancestors retain their notifications. The internal `onChange` chunk
+wrapper receives an additive completion promise shared by every chunk of the
+same producer. Its receipt distinguishes a completed producer from one fenced
+by stop; rejection remains a failed producer. This promise stays off the wire,
+and existing wrappers can ignore it. Stop fences refresh/publication and joins
+both the read and worker through producer completion. Item events are unchanged.
 Executor lease recovery is admitted only after
 serving (`executor-recovery-started`); neither startup nor ordinary status and
 bridge traffic waits for its provider calls. Recovery keeps its existing bounded

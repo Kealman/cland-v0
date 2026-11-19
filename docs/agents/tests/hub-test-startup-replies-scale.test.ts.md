@@ -12,12 +12,27 @@ full-receipt visit expectation; it preserves the one-checkpoint guard independen
 of 217 stopped sessions. SQLite's native summary backfill is outside returned
 JavaScript byte counts; this seeded fixture already has its summary index.
 
-At most four explorer recomputation batches run, and all 1,004 item files are
-read at most twice each (initial scan plus plan validation). Native readFileSync,
+Explorer recomputation touches 1,004–4,016 rows through the completed first
+status reply. The upper bound is the former four-full-pass ceiling over the
+same 1,004-row fixture; partial publication chunks share that budget. T-2004's
+unchanged-source comparison A-21825 records 65 chunks / 3,074 touched rows,
+against three full passes / 3,012 rows with the pre-change production modules
+on the identical fixture. The old failed wrapper-count receipt remains failed;
+this migration does not widen the work ceiling. All 1,004 item files are read
+at most twice each (initial scan plus plan validation). Native readFileSync,
 readFile and Store observers are armed before startup. The existing
 verification-checkpoint completion follows its transaction/in-memory publication;
 it counts full records visited for serialization, not summary rows or rows
 changed. Reintroducing per-stopped-session saves must fail the checkpoint count.
+
+The fixture also observes the additive internal producer-completion identity:
+exactly one startup freshness producer may publish at most `ceil(1004 / 16)`
+chunks. Recompute calls are capped at that chunk count plus two one-time passes
+for source hydration and initial visibility. This separate call bound catches a
+per-row flush explosion even if the total touched rows still fit the row budget.
+The byte, completed-status latency, snapshot and durable plan-child assertions
+remain unchanged. The promise is observed as an identity only; the existing hub
+owner retains and joins the producer work.
 
 First-status process CPU, wall time, work counts and named startup-step wall
 durations remain diagnostic. The attempted fixed CPU budget failed on Linux at

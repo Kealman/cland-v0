@@ -6,7 +6,8 @@ import {existsSync} from 'node:fs';
 import {taskWriteGate} from './tracker-write-gate.ts';
 import {join} from 'node:path';
 import {serializeItem} from '../src/tracker/item.ts';
-import {connectUi,projectHub,tempProject,until} from './harness.ts';
+import {connectUi,projectHub,tempProject,until,eventually,inProcessSpoke,frameClient} from './harness.ts';
+import {createConnection} from 'node:net';
 import {FakeClock} from './fake-clock.ts';
 import {withPlan} from '../src/tracker/plan.ts';
 import {trackerFileCase} from './tip-churn-file-fixture.ts';
@@ -15,6 +16,7 @@ import {fixtureNativeGuard} from './fake-native-guard.ts';
 import {stageCase} from './stage-case-fixture.ts';
 import {ExplorerFieldsIndex} from '../src/tracker/explorer-fields.ts';
 import {within} from '../src/executor/droplet/deadline.ts';
+import {seedPlanStageCover} from './plan-stage-fixture.ts';
 
 // A single consumer gets a fresh file-owned hub; no other case mutates its tips.
 const churnFixture = await trackerFileCase(async ({owner, root, step}) => {
@@ -56,23 +58,139 @@ test('task.view and verify queue replies have p95 below one second during ten-br
   } finally { await hub.dispose(); }
 }));
 
-async function plannedStartup(t:test.TestContext, backlog=false, suppliedRoot?:string) {
+async function plannedStartup(t:test.TestContext, backlog=false, suppliedRoot?:string, count=1000, history=false) {
   const root=suppliedRoot??await tempProject(t);
   const at='2026-10-16T12:00:00.000Z';
   await mkdir(join(root,'.cland/tasks'),{recursive:true});
-  const tasks=Array.from({length:998},(_,n)=>`T-${n+3}`);
-  const writes=await Promise.allSettled(Array.from({length:1000},(_,n)=>{
+  const tasks=Array.from({length:count-2},(_,n)=>`T-${n+3}`);
+  const writes=await Promise.allSettled(Array.from({length:count},(_,n)=>{
     const num=n+1,kind=num===1?'release':num===2?'epic':'task',id=`${kind==='release'?'R':kind==='epic'?'E':'T'}-${num}`;
     return writeFile(join(root,`.cland/tasks/${id}-fixture.md`),serializeItem({
-      fm:{id,kind,title:`Item ${num}`,state:'open',...(kind==='task'?{size:'S' as const,status:(backlog&&num===3?'backlog':'planned') as 'backlog'|'planned'}:{}),labels:[],assignee:null,
-        parent:num===1?null:num===2?'R-1':'E-2',blocked_by:[],topic:null,branch:null,created:at,updated:at},
-      body:num===2?withPlan('## Summary\n\nStartup fixture.',{stages:[{name:'first',qa:{scope:'none',when:'per-item'},lanes:[tasks]}]}):'## Summary\n\nStartup fixture.',comments:kind==='task'&&num%20===0?[{author:'reviewer',at,text:'Reviewed',verdict:{verdict:'review' as const,result:'clear' as const,by:'reviewer',run:`review-${id}`,commit:'a'.repeat(40)}}]:[],
+      fm:{id,kind,title:`Item ${num}`,state:history&&num>=3&&(num<503||num>=750)?'closed':'open',...(kind==='task'?{size:'S' as const,status:history&&(num<503||num>=750)?'done':(backlog&&num===3?'backlog':'planned') as 'backlog'|'planned'}:{}),labels:[],assignee:null,
+        parent:num===1?null:num===2?'R-1':'E-2',blocked_by:[],topic:null,branch:history&&num>=750?`t/fixture-${num}`:null,created:at,updated:at},
+      body:num===2?withPlan('## Summary\n\nStartup fixture.',{stages:history?Array.from({length:4},(_,stage)=>({name:`stage-${stage}`,qa:{scope:'none',when:'after-stage'},lanes:[tasks.slice(stage*250,stage===3?undefined:(stage+1)*250)]})):[{name:'first',qa:{scope:'none',when:'per-item'},lanes:[tasks]}]}):'## Summary\n\nStartup fixture.'+(history?'\n\n## Acceptance criteria\n- [ ] C1. The fixture works.':''),comments:kind==='task'&&(history||num%20===0)?[{author:'reviewer',at,text:'Reviewed',verdict:{verdict:'review' as const,result:'clear' as const,by:'reviewer',run:`review-${id}`,commit:'a'.repeat(40)}}]:[],
     }));
   }));
   const failures=writes.filter(result=>result.status==='rejected');
   if(failures.length)throw new AggregateError(failures.map(result=>result.reason),'planned fixture writes failed after all writers settled');
   return {root};
 }
+
+test('a planned-stage status and verdict comment permits a task view within two seconds at 1650 items',async t=>{
+  const owner=stageCase(t);
+  await owner.run(async step=>{
+  const owned=<T>(name:string,operation:()=>Promise<T>,timeoutMs=15000)=>owner.wait(name,()=>step(operation),timeoutMs);
+  const pokeWork:Promise<void>[]=[];
+  // Joining rejected reads is separate from the required positive hub/resource
+  // close receipts registered by projectHub through owner.resources.
+  owner.requireClose(async()=>{await Promise.allSettled(pokeWork);});
+  const root=await owned('root setup',async()=>{
+    const root=await tempProject(owner.fixtures);owner.adoptRoot(root);return root;
+  });
+  await owned('tracker seed setup',()=>plannedStartup(owner.fixtures,false,root,1650,true));
+  const head='a'.repeat(40);
+  await owned('stage cover seed setup',()=>seedPlanStageCover(root,head));
+  let armed=false;
+  let moved=false;
+  let refresh:(()=>Promise<void>)|undefined;
+  const entered=Promise.withResolvers<number>();
+  const firstPublication=Promise.withResolvers<void>();
+  let tailPublished=false;
+  const hub=await owned('hub setup',()=>projectHub(owner.resources,root,{}, {clock:new FakeClock(),
+    git:async args=>args[0]==='for-each-ref'?`${head} refs/heads/dev\n`+Array.from({length:1148},(_,n)=>`${moved?'b'.repeat(40):head} refs/heads/t/fixture-${n+503}`).join('\n'):args[0]==='rev-parse'?head:args[0]==='diff'?'changed.ts':'',
+    scheduleTips:read=>{
+      refresh=read;let stopped=false;
+      return {poke(){if(moved&&!stopped){
+        const work=owned('poke freshness work',read,60000);pokeWork.push(work);
+        void work.catch(()=>{}); // Retained and propagated through the joined poke set below.
+      }},stop(){stopped=true;refresh=undefined;}};
+    },
+    stageTree:async()=> 'f'.repeat(40), readBase:async()=> 'dev',
+    log:entry=>{
+      if(!armed||entry.event!=='explorer-recomputed')return;
+      const ids=entry.items as string[];
+      if(ids.includes('T-750'))firstPublication.resolve();
+      if(ids.includes('T-1650')){armed=false;tailPublished=true;entered.resolve(performance.now());}
+    },
+  }));
+  const ui=await owned('legacy client setup',()=>connectUi(owner.fixtures,hub.discovery));
+  const reader=await owned('request client setup',()=>connectUi(owner.fixtures,hub.discovery));
+  const reviewer=await owned('reviewer setup',()=>inProcessSpoke(owner.resources,{discover:true,cwd:root,name:'scale-reviewer',role:'reviewer'}));
+  assert.equal((await owned('legacy subscription setup',()=>ui.request({type:'subscribe'}))).ok,true);
+  await owned('initial tips setup',()=>refresh!());
+  await owned('earlier stage closure setup',()=>eventually('earlier stages have durable closure receipts',async()=>{
+    const reply=await step(()=>ui.request({type:'task.view',item:'E-2'}));
+    return (reply.value as {item:{stages:Array<{closure?:unknown}>}}).item.stages.slice(0,2).every(s=>s.closure)?true:undefined;
+  }));
+  assert.equal((await owned('review status setup',()=>ui.request({type:'task.edit',item:'T-503',status:'review'}))).ok,true);
+  for(let n=0;n<20;n++){
+    await owned(`subscriber ${n} setup`,async()=>{
+    const socket=createConnection(hub.discovery.socket);
+    const closed=new Promise<void>(resolve=>socket.once('close',()=>resolve()));
+    owner.requireClose(async()=>{socket.destroy();await closed;});
+    await step(()=>within(new Promise<void>((resolve,reject)=>{socket.once('connect',resolve);socket.once('error',reject);}),5000,undefined,()=>new Error('subscriber connection setup incomplete')));
+    socket.setEncoding('utf8');socket.on('error',()=>{});
+    let receive:((chunk:string)=>void)|undefined;
+    const subscriber=frameClient(line=>socket.write(line),fn=>{receive=fn;socket.on('data',fn);},()=>socket.destroy());
+    await step(async()=>subscriber.send({type:'hello',protocol:2,secret:hub.discovery.secret,client:'ui'}));
+    await step(()=>subscriber.waitFor(frame=>frame.type==='welcome'));
+    assert.equal((await step(()=>subscriber.request({type:'subscribe'}))).ok,true);
+    // Extra clients drain native bytes; only the legacy subscriber parses
+    // task frames. Twenty in-process JSON parsers would measure fixture CPU.
+    socket.removeListener('data',receive!);socket.resume();
+    });
+  }
+  // Arm before the write. Start the latency clock at the producer's explorer
+  // receipt, so a blocked loop cannot hide behind a late timer callback.
+  const observed=owned('task view observation',async()=>{
+    const started=await step(()=>within(entered.promise,60000,undefined,()=>new Error('tail explorer receipt incomplete')));
+    const reply=await step(()=>reader.request({type:'task.view',item:'T-4'},60000));
+    return {reply,elapsed:performance.now()-started};
+  },60000);
+  const frameMark=ui.frames.length;
+  const settled=(id:string)=>(frame:Record<string,unknown>)=>ui.frames.indexOf(frame)>=frameMark&&frame.type==='task'&&frame.id===id&&frame.item!==null&&
+    (frame.item as {verdicts:Array<{current?:boolean}>}).verdicts.at(-1)?.current===false;
+  const tail=owned('legacy tail publication receipt',()=>ui.waitFor(settled('T-1650'),60000),60000);
+  const secondChange=owned('mid-publication edit sequence',async()=>{
+    await step(()=>within(firstPublication.promise,60000,undefined,()=>new Error('first publication receipt incomplete')));
+    const interleaved=!tailPublished;
+    const reply=await step(()=>reader.request({type:'task.edit',item:'T-1649',title:'Updated during publication'},60000));
+    assert.equal(reply.ok,true,reply.error);
+    return {afterEdit:ui.frames.length,interleaved};
+  },60000);
+  // Observations can reject before the body reaches their join; each original
+  // stays enrolled in the owner and is still awaited below.
+  void observed.catch(()=>{});void tail.catch(()=>{});void secondChange.catch(()=>{});
+  const cpuStarted=process.cpuUsage(),workStarted=performance.now();
+  armed=true;
+  moved=true;
+  const comment=owned('status and verdict comment',()=>reviewer.call<{ok:boolean;error?:string;item:{status:string;verdicts:Array<{run:string}>;criteria:Array<{id:string;marks:Array<{kind:string;note?:string}>}>}}>('task.comment',{id:'T-503',text:'Please fix the regression.',
+    verdict:'review',scope:'full',result:'not clear',run:'scale-review',failed:[{criterion:'C1',note:'Regression'}]}),60000);
+  const posted=await comment;
+  const answered=await within(observed,60000,undefined,()=>new Error('task view receipt incomplete'));
+  const {afterEdit,interleaved}=await secondChange;
+  await tail;
+  const cpu=process.cpuUsage(cpuStarted);
+  t.diagnostic(JSON.stringify({cpuUserMs:cpu.user/1000,cpuSystemMs:cpu.system/1000,publicationReceiptMs:performance.now()-workStarted}));
+  const later=ui.frames.slice(afterEdit).filter(frame=>frame.type==='task'&&frame.id==='T-1649');
+  assert.equal(posted.ok,true,posted.error);
+  const changed=posted.item;
+  assert.equal(changed.status,'in progress');
+  assert.ok(changed.verdicts.some(v=>v.run==='scale-review'));
+  assert.ok(changed.criteria.find(c=>c.id==='C1')?.marks.some(mark=>mark.kind==='failed'&&mark.note==='Regression'));
+  const {reply,elapsed}=answered;
+  assert.equal(reply.ok,true,reply.error);
+  assert.equal((reply.value as {item:{id:string}}).item.id,'T-4');
+  t.diagnostic(`${process.platform}/${process.arch}; local projectHub, fake Git, no browser; task.view ${elapsed.toFixed(3)} ms from explorer receipt during status-and-verdict write; excludes setup`);
+  assert.ok(elapsed<2000,`task.view during planned comment took ${elapsed.toFixed(3)} ms; bound 2000 ms`);
+  assert.equal(interleaved,true,'the second change starts before the tail publication');
+  assert.ok(later.length>0,'remaining freshness publication reaches the edited tail item');
+  assert.ok(later.every(frame=>(frame.item as {title:string}).title==='Updated during publication'),'no old title follows the newer write');
+  await owned('all poke work settled',async()=>{await Promise.all(pokeWork);},60000);
+  });
+  await owner.close();
+  t.diagnostic('whole-case hub/resource close confirmed before root and native-guard restoration');
+});
 
 test('a thousand-item planned startup batches explorer recomputation',async t=>{
   const {root}=await plannedStartup(t);
@@ -83,9 +201,11 @@ test('a thousand-item planned startup batches explorer recomputation',async t=>{
   assert.equal(reply.ok,true,reply.error);
   assert.equal((reply.value as {stages:Array<{items:string[]}>}).stages[0]!.items.length,998);
   const receipts=logs.filter(log=>log.event==='explorer-recomputed');
-  // Initial projection, freshness, core context and restored verification sources are separate batches.
-  assert.ok(receipts.length>0&&receipts.length<=4,`startup recomputed explorer ${receipts.length} times; bound 4 batches`);
-  t.diagnostic(`1000 rows with planned epic; ${receipts.length} explorer recompute batches`);
+  // The old four-batch ceiling permitted 4,000 rows on this 1,000-row fixture.
+  // Enforce a tighter work budget while permitting publication to yield.
+  const recomputed=receipts.reduce((sum,receipt)=>sum+(receipt.items as string[]).length,0);
+  assert.ok(recomputed>=1000&&recomputed<=2100,`startup recomputed ${recomputed} rows; bound 1000–2100 rows`);
+  t.diagnostic(`1000 rows with planned epic; ${receipts.length} explorer recompute chunks, ${recomputed} rows`);
 });
 
 // C2 explicitly measures the real listening-to-serving interval; fixture setup has its own bound.

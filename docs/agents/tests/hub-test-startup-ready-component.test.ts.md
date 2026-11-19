@@ -12,8 +12,17 @@ The two yielded-freshness cases hold the actual first batch continuation after
 16 source refreshes, then observe the settled producer arriving while it is held.
 On release, the first batch's 65 rows finish before the queued batch starts;
 source and ancestor updates are unique per batch, and the changed ancestor keeps
-its notification. The stop variant joins the captured continuation and queued
-producer before its close receipt, with no later source refresh or announcement.
+its notification. Chunk wrappers group by their shared internal producer
+completion promise: exactly two whole producers complete, and the next producer
+cannot publish before the prior receipt or return to an older producer. The
+per-producer source uniqueness and 2–65-row budget remain unchanged.
+The stop variant snapshots the pre-stop chunks, then requires exactly zero new
+refreshes, chunk publications and item notifications after the call. It joins
+the captured continuation and queued producer before its positive close receipt;
+an interrupted producer is not counted as completed. The unchanged-source trace
+A-21790 records five chunks then one chunk without interleaving, and the single
+stop-case wrapper occurring before the hold/stop. The failed full run remains
+A-21779; those original wrapper-count failures are not passing receipts.
 Both use the same whole-case owner and native guard, fake Git and clock, and a
 scratch in-process tracker. Cleanup releases the captured continuation before
 joining writers and removing the fixture.

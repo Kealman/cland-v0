@@ -818,7 +818,7 @@ export class HubCore {
       }
     }
     const seq = ++this.#modelSeq;
-    const projected = this.visibility.frame(event);
+    const projected = this.#taskProjector ? this.#taskProjector(event) : this.visibility.frame(event);
     let slim: import('../protocol.ts').ModelEvent = projected;
     if (projected.type === 'task') {
       const layers = projected.layers ?? {};
@@ -998,16 +998,19 @@ export class HubCore {
   }
 
   #publishingTaskBatch = false;
+  #taskProjector: ReturnType<Visibility['projector']> | null = null;
 
   /** Tracker projections are already flushed: share their topic context across the batch. */
   publishTaskBatch(publish: () => void): void {
     if (this.#publishingTaskBatch) { publish(); return; }
     const changed = this.#refreshExplorerContext(false);
     this.#publishingTaskBatch = true;
+    this.#taskProjector = this.visibility.projector();
     try { publish(); }
     finally {
       this.#publishingTaskBatch = false;
-      for (const item of changed) this.#emit({ type: 'task', id: item.id, item });
+      try { for (const item of changed) this.#emit({ type: 'task', id: item.id, item }); }
+      finally { this.#taskProjector = null; }
     }
   }
 

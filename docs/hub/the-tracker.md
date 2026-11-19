@@ -9,6 +9,18 @@ shared freshness invalidation, because patch comparisons and epic demos depend
 on those integration tips. Freshness Git work remains asynchronous; replies read
 cached answers and preserve unknown values until their receipt settles.
 
+Freshness announcements refresh and publish at most sixteen affected rows per
+synchronous chunk, yielding between chunks. Each ancestor source is refreshed
+once per batch. A chunk shares its item-layer visibility projection; that scope
+ends before yielding, so a later write uses a fresh projection. Remaining
+announcements read the current row when published, preserving newer writes that
+interleave with the batch. Legacy task frames and numbered full/slim deltas keep
+their existing shapes.
+The internal synchronous publication wrapper also receives the producer's
+completion promise, shared across its chunks. Its receipt reports whether all
+producer work completed or a stop fence interrupted it; errors reject it. The
+promise is not part of task frames, persisted records or client snapshots.
+
 `closed` is an optional ISO timestamp in item frontmatter and the index. Hub close, merge and an edit to closed/done write it; reopen clears it. A hand close without a time stays unresolved. List, view and `task` events expose the field, and session archival reads it before the older receipt/index fallbacks.
 
 `task.list` and `task` event summaries carry `criteria: {total, done, verified, stale, failed}` from indexed marks, without reading an item file. Counts are exclusive: failed takes priority over current verified, stale, then done; a checkbox alone counts as open. Verification is current only at the exact branch tip (the receipt tip for a landed task, `dev` for a planning container). `task.view` retains the full `criteria` array and adds `criteriaCounts` with the same counts.

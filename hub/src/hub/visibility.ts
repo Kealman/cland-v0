@@ -221,8 +221,14 @@ export class Visibility {
 
   /** Project only protocol records; text, arbitrary detail and capability maps remain untouched. */
   frame<T extends HubFrame | Row>(frame: T): T {
+    return this.projector()(frame);
+  }
+
+  /** Share one complete item-layer projection during a synchronous publication chunk. */
+  projector(): <T extends HubFrame | Row>(frame: T) => T {
     let activeItems: Set<unknown> | undefined;
     let itemRows: Row[] | undefined;
+    let taskLayers: Record<string, Layer> | undefined;
     const project = (payload: Row): Row => {
       const out = { ...payload };
       for (const [key, surface] of Object.entries({ messages: 'messages', digest: 'messages', sessions: 'sessions', presence: 'sessions', processes: 'sessions', harnesses: 'sessions', items: 'items', topics: 'topics', artifacts: 'artifacts' } as const)) {
@@ -239,7 +245,7 @@ export class Visibility {
       for (const key of ['value', 'inbox']) { const r = row(out[key]); if (r) out[key] = project(r); }
       if (out.type === 'task') {
         itemRows ??= this.#items();
-        if (itemRows.length) out.layers = Object.fromEntries(itemRows.map(item => [String(item.id), one('items', item).layer]));
+        if (itemRows.length) out.layers = taskLayers ??= Object.fromEntries(itemRows.map(item => [String(item.id), one('items', item).layer as Layer]));
       }
       if (out.type === 'session.state') {
         // State follows the process event on stop/exit; retain terminal facts and its launch role.
@@ -254,6 +260,6 @@ export class Visibility {
       const object = surface === 'messages' ? project(r) : r;
       return this.place(surface, object, this.#kind(surface, object, activeItems));
     };
-    return project(frame as Row) as T;
+    return <T extends HubFrame | Row>(frame: T): T => project(frame as Row) as T;
   }
 }

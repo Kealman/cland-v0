@@ -7,7 +7,7 @@ import childProcess, { type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { syncBuiltinESMExports } from 'node:module';
 import { runFixtureHub as runHub } from './fixture-hub-cli.ts';
-import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
+import { Tracker, type ItemView, type AnnouncementBatchReceipt } from '../src/tracker/tracker.ts';
 import { join } from 'node:path';
 import { connectUi, eventually, fixtureLockIdentity, projectHub, tempProject, until } from './harness.ts';
 import { fixtureWork } from './fixture-work.ts';
@@ -49,6 +49,10 @@ for (const stopping of [false, true]) test(`yielded freshness batches ${stopping
     await owner.wait('tracker setup', () => step(() => tracker.start({ deferFreshness: true, deferReadyChecks: true })));
     const updates: Array<{ id: string; completed: number }> = [], notifications: string[][] = [];
     let completed = 0, holdNext = false, resume = () => {}, stopSettled = false, yieldedContinuationRan = false;
+    let stopCalled = false, chunkPublications = 0, refreshesAfterStop = 0, publicationsAfterStop = 0, notificationsAfterStop = 0;
+    const producers = new Map<Promise<AnnouncementBatchReceipt>, string[]>(), producerWork: Promise<void>[] = [];
+    let activeProducer: Promise<AnnouncementBatchReceipt> | undefined;
+    owner.requireClose(async () => { await Promise.allSettled(producerWork); });
     const immediate = globalThis.setImmediate, update = ExplorerFieldsIndex.prototype.update;
     owner.patch(globalThis, 'setImmediate', (callback: (...args: unknown[]) => void, ...args: unknown[]) => {
       if (!holdNext) return immediate(callback, ...args);
@@ -58,13 +62,32 @@ for (const stopping of [false, true]) test(`yielded freshness batches ${stopping
     owner.releaseOnClose(() => resume());
     owner.patch(ExplorerFieldsIndex.prototype, 'update', function(this: ExplorerFieldsIndex, ...args: Parameters<ExplorerFieldsIndex['update']>) {
       updates.push({ id: args[0], completed });
+      if (stopCalled) refreshesAfterStop++;
       if (updates.length === 16) holdNext = true;
       return update.apply(this, args);
     });
     let current: string[] = [];
-    tracker.onChange(change => current.push(change.id), publish => {
-      current = []; publish(); notifications.push(current); completed++;
-      if (completed === 2) published.resolve();
+    tracker.onChange(change => {
+      if (stopCalled) notificationsAfterStop++;
+      current.push(change.id);
+    }, (publish, completion) => {
+      if (completion !== activeProducer) {
+        assert.equal(producers.has(completion), false, 'publication never returns to an older producer');
+        assert.equal(completed, producers.size, 'every earlier producer finishes before the next producer publishes');
+        activeProducer = completion;
+        const rows: string[] = []; producers.set(completion, rows);
+        const observation = owner.wait('whole announcement producer completion', () => step(async () => {
+          const receipt = await completion;
+          if (receipt.completed) {
+            notifications.push(rows); completed++;
+            if (completed === 2) published.resolve();
+          }
+        }));
+        producerWork.push(observation); void observation.catch(() => {});
+      }
+      chunkPublications++;
+      if (stopCalled) publicationsAfterStop++;
+      current = []; publish(); producers.get(completion)!.push(...current);
     });
     const closeOrder: string[] = [];
     const refreshing = step(() => tracker.refreshFreshness()).then(() => { closeOrder.push('freshness completed'); });
@@ -73,6 +96,8 @@ for (const stopping of [false, true]) test(`yielded freshness batches ${stopping
       await owner.wait('first batch yielded', () => paused.promise);
       await owner.wait('settled producer queued during first batch', () => settled.promise);
       if (stopping) {
+        const beforeStop = chunkPublications;
+        stopCalled = true;
         const stopped = tracker.stop().then(() => {
           assert.equal(yieldedContinuationRan, true, 'stop follows the owned continuation receipt');
           closeOrder.push('stop completed'); stopSettled = true;
@@ -84,6 +109,10 @@ for (const stopping of [false, true]) test(`yielded freshness batches ${stopping
         assert.equal(stopSettled, true);
         assert.deepEqual(closeOrder, ['freshness completed', 'stop completed'], 'stop closes after the full freshness owner settles');
         assert.equal(completed, 0, 'stop fences the in-flight and queued publications');
+        assert.equal(chunkPublications - beforeStop, 0, 'no chunk publication starts after stop');
+        assert.equal(publicationsAfterStop, 0);
+        assert.equal(refreshesAfterStop, 0, 'no source refresh starts after stop');
+        assert.equal(notificationsAfterStop, 0, 'no item notification follows stop');
         assert.equal(updates.length, 16, 'no row refresh follows stop');
         assert.deepEqual(notifications, []);
       } else {
@@ -101,6 +130,7 @@ for (const stopping of [false, true]) test(`yielded freshness batches ${stopping
         assert.equal(notifications.flat().filter(id=>id==='E-1').length,1,'the changed ancestor retains its notification');
         assert.equal(tracker.list().find(item => item.id === 'T-65')!.verdicts[0]!.current, true, 'settled batch retains the final child answer');
       }
+      await owner.wait('all original producer observations joined', () => Promise.all(producerWork));
     } finally { resume(); await refreshing; }
   });
 });
