@@ -1,6 +1,7 @@
 import { lstat, opendir, realpath, rename, rm, mkdir, open } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { checkpoint } from './host/agent/storage.ts';
+import { claimSuiteRetirement, suiteRunPinned } from './suite-reference-pins.ts';
 
 const rawName = 'coverage-map.json.raw';
 async function ownedDirectories(paths: string[], kind = 'suite-owned'): Promise<boolean> {
@@ -52,9 +53,11 @@ export async function retireSuiteRun(project: string, id: string, artifacts: rea
     if (!required?.length || !required.every(path => artifacts.includes(path))) return false;
   }
   if (!eligible()) return false;
+  if (await suiteRunPinned(canonical, id)) return false;
   // Production has no enabling setting. The explicit switch is exercised only
-  // on disposable roots; reference admission fencing lands before activation.
+  // on disposable roots; activation requires the report replay and age setting.
   if (options.remove !== true) return true;
+  if (!await claimSuiteRetirement(canonical, id)) return false;
   if (!required) {
     await mkdir(receipts, {recursive:true,mode:0o700});
     if (!await ownedDirectories([receipts])) return false;

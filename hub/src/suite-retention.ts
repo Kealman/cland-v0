@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { retireSuiteRun } from './suite-raw-coverage.ts';
 import { SUITE_RUNS_PER_OCCASION, suiteRetentionCandidates, suiteRunOldEnough } from './suite-retention-policy.ts';
 import { parseDurationManifest } from './suite-durations.ts';
+import { suiteRunPinned } from './suite-reference-pins.ts';
 
 export type RetainedSuite = { id: string; occasion?: string; sequence?: number; state?: string; cleaned?: boolean; reported: boolean; accountingPending?: boolean; completedAt?: string; finished?: string };
 type ArtifactEvidence = string | { id: string; path: string };
@@ -109,6 +110,7 @@ export class SuiteRetention {
       if (!suiteRunOldEnough(run.completedAt ?? run.finished, (this.#options.now ?? Date.now)())) { this.#record(id,'age-floor'); continue; }
       if (!eligible()) { this.#record(id,'reference'); continue; }
       try {
+        if (await suiteRunPinned(this.root, id)) { this.#record(id,'pin'); continue; }
         const receipts = artifacts(id);
         const paths = receipts.map(receipt => typeof receipt === 'string' ? receipt : receipt.path);
         if (durationSources.some(source => receipts.some(receipt => typeof receipt === 'string' ? receipt.includes('/' + source + '-') || receipt.endsWith('/' + source) : receipt.id === source))) { this.#record(id,'duration-source'); continue; }

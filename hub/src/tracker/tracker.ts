@@ -1,4 +1,5 @@
 import { DURATION_MANIFEST, parseDurationManifest } from '../suite-durations.ts';
+import { SuiteReferencePins } from '../suite-reference-pins.ts';
 import { isCustomRole } from '../names.ts';
 import { isDeepStrictEqual } from 'node:util';
 import { summary as bodySummary, outline, sentences } from './summary.ts';
@@ -298,6 +299,7 @@ export class Tracker {
   #storageError = 'tracker storage abandoned during shutdown';
   #abandonedOperations: StorageOperation[] = [];
   readonly #root: string;
+  readonly #referencePins: SuiteReferencePins;
   readonly #readStageTree: (head: string) => Promise<string | null>;
   readonly #dir: string;
   readonly #index: TrackerIndex;
@@ -452,6 +454,7 @@ export class Tracker {
     };
     this.#watchResumed = options.watchResumed ?? untimed;
     this.#root = options.root;
+    this.#referencePins = new SuiteReferencePins(this.#root);
     this.#readStageTree = options.stageTree ?? (head => committedTree(this.#root, head, this.#env));
     this.#writeGate = options.writeGate;
     this.#dir = join(options.root, TASKS_REL);
@@ -2653,6 +2656,13 @@ export class Tracker {
     const text = serializeItem(item);
     const written = this.#parseItem(text, name, this.ladder);
     this.#validPlan(written);
+    // Admission uses the exact parsed item that readers will index, including
+    // structured marks introduced through create/edit bodies or comments.
+    const references = new Set(written.comments.flatMap(comment => comment.verdict ? [comment.verdict.run] : []));
+    for (const criterion of parseCriteria(written.body, this.ladder.containers.includes(written.fm.kind)).criteria) {
+      for (const mark of criterion.marks) if (mark.kind === 'verified') references.add(mark.run);
+    }
+    for (const run of references) await this.#referencePins.pin(run);
     const oldName = name;
     if (read && this.#index.get(read.id)?.kind !== item.fm.kind) name = name.replace(/^[a-z]-\d+/i, item.fm.id);
     const oldPath = join(this.#dir, oldName);

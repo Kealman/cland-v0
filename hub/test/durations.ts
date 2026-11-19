@@ -4,6 +4,7 @@ import { basename, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isMap, isNode, parseDocument } from 'yaml';
 import { readTierAssignments } from '../src/suite-shards.ts';
+import { pinSuiteLog } from '../src/suite-reference-pins.ts';
 import type { TestProgress } from '../src/suite-progress.ts';
 import { DURATION_MANIFEST, fileTimings, readDurationManifest, timingKey, type DurationManifest, type TestTiming } from '../src/suite-durations.ts';
 
@@ -123,7 +124,8 @@ export async function refreshDurations(cwd: string, logs: string[], options: { a
   let legacyFile: ((name: string) => string | undefined) | undefined;
   const latestByFile = new Map<string, Set<string>>();
   for (const path of logs) {
-    const log = (await readFile(path, 'utf8')).replace(/\x1b\[[0-9;]*m/g, '');
+    const admitted = await pinSuiteLog(path);
+    const log = (await readFile(admitted, 'utf8')).replace(/\x1b\[[0-9;]*m/g, '');
     if (!/^Finished: exit 0\s*$/m.test(log)) throw new Error(`not a green integrated log: ${path}`);
     const artifact = /^A-\d+/.exec(basename(path))?.[0];
     if (artifact) artifacts.push(artifact);

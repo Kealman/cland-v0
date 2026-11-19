@@ -5,6 +5,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { LogFn } from './log.ts';
 import { projectRoot } from './project.ts';
+import { pinSuiteRun } from './suite-reference-pins.ts';
 
 export type CoveredFunction = { name: string; start: number; end: number; startLine: number; endLine: number; tests: string[] };
 export type CoverageMap = { version: 1; head: string; tree: string; created: string; testFiles: string[]; files: Record<string, { functions: CoveredFunction[] }> };
@@ -95,6 +96,7 @@ async function coveragePointerEntries(root: string): Promise<Array<{ path: strin
 export async function registerCoverageMap(root: string, run: string, pointer: Required<CoveragePointer>, keep: number, log: LogFn): Promise<void> {
   if (!Number.isSafeInteger(keep) || keep < 1) throw new Error('coverage map retention must be a positive integer');
   if (!/^[a-zA-Z0-9_-]+$/.test(run)) throw new Error('invalid coverage run id');
+  await pinSuiteRun(root, run);
   const dir = coveragePointers(root);
   await mkdir(dir, { recursive: true, mode: 0o700 });
   const path = join(dir, `${run}.json`);
