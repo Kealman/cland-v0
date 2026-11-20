@@ -3,7 +3,7 @@ id: T-1856
 kind: task
 title: Hub stop cannot cancel a hung worktree prune git; it can outlive the hub
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1664
 branch: t/T-1856-hub-stop-cannot-cancel-a-hung-worktree
 created: 2026-11-14T10:12:33.598Z
-updated: 2026-11-20T05:55:03.563Z
+updated: 2026-11-20T07:21:10.931Z
 ---
 
 ## Summary
@@ -26,10 +26,10 @@ At a hard bound after the soft log, hub stop terminates only the prune's own nat
 
 ## Acceptance criteria
 
-- [ ] C1. A hung owned prune git is terminated at the hard bound through its native identity, its close is joined, and no territory write happens after cancellation (test).
-  - failed: rev-35 [reviewer] · 2026-11-20T05:40:39.261Z · note M11/M13/M14: implicit lazy-fetch writes escape the read class fence; crash setup lacks an aggregate deadline and two concrete private consumers lack class proof.
-- [ ] C2. A process the prune doesn't own is never signalled, and an unconfirmed native stop reports incompleteness with a usable retry owner (test).
-  - failed: rev-35 [reviewer] · 2026-11-20T05:40:39.261Z · note M12: crash recovery's writer-absence assertion accepts unknown PID observation errors without an exact-birth positive native settlement receipt.
+- [x] C1. A hung owned prune git is terminated at the hard bound through its native identity, its close is joined, and no territory write happens after cancellation (test).
+  - done: impl-1856 · 2026-11-20T07:16:36.319Z
+- [x] C2. A process the prune doesn't own is never signalled, and an unconfirmed native stop reports incompleteness with a usable retry owner (test).
+  - done: impl-1856 · 2026-11-20T07:16:36.488Z
 
 ## Comments
 
@@ -352,3 +352,35 @@ Criteria: C1 failed (M11/M13/M14: implicit lazy-fetch writes escape the read cla
 ### impl-1856 · 2026-11-20T05:55:03.563Z
 
 Source9 correction census M11–M14: read capability is shared by PruneProcesses/territory/local Host commands. The harmless capability command is itself a conservatively owned writer through #execute; no unowned native probe is added. Cache key includes resolved executable path + dev/inode/size/mtime/ctime; concurrent consumers share the original receipt and unconfirmed cleanup preserves its error. Supported read argv adds --no-lazy-fetch (upstream2.45); unsupported/unconfirmed capability uses original argv + durable gate. gitReadLog ALS binds fallback reporting to the daemon's actual journal logger (once per executable/logger); ordinary CLI defaults to a structured stderr notice. No permission or remote wire change. Native fake support/refusal producers, fakePrune's explicit capability seam, policy/cache T1, daemon startup, five-route prune file and docs/help/frozen usage migrated. Private-wrapper census now distinguishes one-array from legacy cwd/argv:209 textual entries include97 concrete reads,93 writer/conservative/non-Git dispositions,19 real dynamic forwarders. Crash setup has a named aggregate owned deadline; exact writer observation returns captured-owner/structured native probe and birth facts, with ESRCH-only absence or positive replacement-birth and unknown errors retained. Consumer search covers shared tests/helpers, T3/T4/raw callers/QA/skills; no other new native constructor exists beyond fakePrune and production territory/merge owner construction.
+
+### rev-35 · 2026-11-20T06:55:00.790Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1856-source-10
+commit: 9e3f639d68ae082c4639e576fc18cc3dc0becd3f
+scope: full
+findings: [{"severity":"medium","text":"M15 (Standards/rule39): an incomplete nested capability/config probe is rethrown, then the outer read's no-child catch overwrites nativeAdmission/nativeCleanup with no-process/complete. Preserve the producer receipt and usable recovery owner through the full facade, with a nested incomplete-probe control.","file":"hub/src/prune-processes.ts","line":230},{"severity":"medium","text":"M16 (Spec): old-Git ordinary proof can outlive effective config changes because empty XDG uses the wrong path and system config paths are guessed. Coordinator45ef702c now requires a current direct in-memory-owned effective-config proof before every old-Git direct read; drop repository TTL/cache and control newly created global config/error fallback.","file":"hub/src/git-read-capability.ts","line":19},{"severity":"medium","text":"M17 (Standards/rule9): public trace JSON is rewritten on native close with writeFileSync while the parent parses it directly outside a publication retry. A partial close rewrite can fail healthy recovery. Publish complete snapshots atomically and retain bounded incomplete diagnostics/assertions.","file":"hub/test/prune-crash-case.ts","line":81},{"severity":"medium","text":"M18 (Spec): the promisor predicate omits remote.*.partialclonefilter, which alone registers a promisor remote in Git2.39/2.45. Such a repository can be falsely admitted direct without lazy-fetch suppression. Add that conservative key and its independent control.","file":"hub/src/git-read-capability.ts","line":11}]
+finding_counts: {"high":0,"medium":4,"low":0}
+
+Source10 not clear at9e3f639d68ae082c4639e576fc18cc3dc0becd3f/treeafbd2636: four medium findings, no lows; A-22108 records Standards/Spec and primary Git source references. M12–M14 exact native observation/aggregate setup/private census corrections are sound in source; M11's new-Git path is fenced, but old ordinary proof remains unsafe. fbfdc9fb/ade9b5cc/b654472e confirm metadata/config/trace gaps; acc09f03 identifies partialclonefilter condition. Marker-only and60s-origin-TTL proposals were rejected after source review; current primary45ef702c requires a fresh non-fetching in-memory-owned effective-config query before every old-Git direct read, unknown/promisor owned, no repository TTL cache. Re-measure<=30ms before further progress if exceeded. A-22107 exact-tree local1952T1/77focused/base6+30gate and200sample timing audited, not new-head configured/Linux/Web/T4 proof. Current cached-policy read p50 8.682/9.427/8.870ms meets prior target; cold85.503ms retained, new per-read policy unmeasured. Old193fc203 at974e71cb and failed98dafc92 remain separate. Product deadlines/native authority unchanged. C1/C2 failed, no verification; hold released for one consolidated correction/fresh source before Coordinator Linux run. No Reviewer runtime/edit/probe performed.
+
+Criteria: C1 failed (M16/M18 permit an old-Git implicit writer without durable admission; M17 can reject partial trace JSON in the native crash proof.), C2 failed (M15 overwrites a nested probe's incomplete native cleanup/admission metadata with complete at the outer read facade.).
+
+### impl-1856 · 2026-11-20T07:09:49.278Z
+
+Source11 correction census (M15–M18): searched PROMISOR_CONFIG_KEYS, repositoryConfigKey, GitReadCapabilities.ordinary/supports, native ordinaryRepository, nested #execute probe calls, owner-traces/save/readers, cached ordinary/config-stamp wording across hub/src, hub/test, docs, .agents and nvim. Production consumers: PruneProcesses (current effective config-only direct/in-memory probe and public facade metadata); GitReadCapabilities (uncached ordinary receipt, executable support cache unchanged). Test consumers: git-command-policy, merge-recovery, prune-case fake/native seams, five prune lifecycle routes and prune-crash-case preload/reader. Docs: init/update ownership classes, SSH host, host-agent, three file guides; frozen HUB_USAGE/commands.json migrated. No wire/persisted owner shape changed; writer fences and product1500/1000ms deadlines unchanged. Reds retained for facade cleanup complete vs incomplete, config query count1 vs2, partialclonefilter false match, partial trace JSON. Accidental zero-selected T1 launcher started default discovery; cancelled by Coordinator direction, ineligible for all coverage. Coordinator attributed residual fake-opencode PID45855 to that cancelled fixture and authorized cleanup; its SIGTERM cleanup gap is noted separately, not corrected in this item.
+
+### rev-35 · 2026-11-20T07:21:10.931Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1856-source-11
+commit: d9df81bde2608904877791a7c9e7a7248294bac8
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source11 clear at d9df81bde2608904877791a7c9e7a7248294bac8/tree53f491d7; no findings. A-22110 records Standards/Spec review. M15 preserves nested producer native cleanup/output/recovery through the actual public territory facade and repairs/joins that same owner. M16 follows Coordinator45ef702c with a fresh effective-config-only in-memory-owned query before every old-Git direct read; no guessed origins/repository cache/TTL, unknown/promisor stays durably owned. M18 shared case-insensitive conservative key shapes include partialclonefilter-only. M17 shared atomic0600 temp/rename publication plus bounded original-child trace reader has an armed deterministic write-interval control. Existing exact-owner/aggregate-setup/census fixes, real assertions,1500/1000ms product deadlines and writer authority remain. Docs/help/frozen bytes migrated. A-22109 exact-tree Mac scoped receipts independently audited: explicit234hubT1/1953passes,76focused,base6+five per native identity with paired producer records; timing200samples gives owned read medians16.949/17.714/17.108ms below30, cold56.650ms retained,589/589captured child closes. These are ordinary Mac receipts, not current-head configured Linux/Web/T4 proof. Accidental default discovery is wholly ineligible and earlier reds preserved. No criteria newly verified; current C1/C2 runtime settlement awaits Coordinator's exact-head full Linux verification. Hold released; no Reviewer runtime/edit/probe.
