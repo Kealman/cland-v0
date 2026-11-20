@@ -89,7 +89,8 @@ test('orphan sweep joins a fake Claude session after its fixture worker is kille
   const mcp = join(root, 'mcp.json');
   await c.step('MCP configuration setup', () => fs.writeFile(mcp, JSON.stringify({ mcpServers: { cland: { command: process.execPath, args: [new URL('../bin/cland-spoke.ts', import.meta.url).pathname] } } })));
   await c.step('SIGKILL worker script setup', () => fs.writeFile(script, `import { execFile } from 'node:child_process';
-import { writeFile } from 'node:fs/promises';
+import { open, rename } from 'node:fs/promises';
+import { once } from 'node:events';
 import { fakeClaude, FAKE_CLAUDE_DIR, until } from ${JSON.stringify(harness)};
 import { accountFixtureEnvironment } from ${JSON.stringify(environment)};
 const fake = await fakeClaude({ after() {} });
@@ -97,10 +98,24 @@ const env = await accountFixtureEnvironment(fake.env);
 await new Promise((resolve, reject) => execFile(FAKE_CLAUDE_DIR + '/claude', ['--bg', '--mcp-config', ${JSON.stringify(mcp)}], { cwd: process.cwd(), env }, error => error ? reject(error) : resolve()));
 const [session] = await fake.sessions();
 await until(async () => (await fake.log(session.id)).includes('session ready'), { what: 'session ready before worker death' });
-await writeFile(${JSON.stringify(marker)}, JSON.stringify({ ...session, home: fake.home }));
+const markerFile = await open(${JSON.stringify(marker + '.tmp')}, 'w');
+const release = once(process, 'message');
+process.send({ boundary: 'marker opened' });
+await release;
+await markerFile.writeFile(JSON.stringify({ ...session, home: fake.home }));
+await markerFile.close();
+await rename(${JSON.stringify(marker + '.tmp')}, ${JSON.stringify(marker)});
 setInterval(() => {}, 1000);
 `));
-  const worker = await residueChild(c, 'SIGKILL worker acquisition', () => spawn(process.execPath, [script], { cwd: project, detached: true, env: fixtureEnvironment(root, process.env, { TMPDIR: root }), stdio: ['ignore', 'pipe', 'pipe'] }));
+  const worker = await residueChild(c, 'SIGKILL worker acquisition', () => spawn(process.execPath, [script], { cwd: project, detached: true, env: fixtureEnvironment(root, process.env, { TMPDIR: root }), stdio: ['ignore', 'pipe', 'pipe', 'ipc'] }), true);
+  const [opened] = await worker.observe('held marker creation', () => worker.firstMessage!);
+  assert.deepEqual(opened, { boundary: 'marker opened' });
+  assert.equal(await fs.readFile(marker + '.tmp', 'utf8'), '', 'positive control: marker write is held before content');
+  // Hold the producer after create, before content. The public receipt must
+  // stay absent throughout that interval, so stat-then-read cannot see JSON
+  // that is empty or partially written.
+  await assert.rejects(async () => JSON.parse(await fs.readFile(marker, 'utf8')), { code: 'ENOENT' });
+  worker.child.send('release marker write');
   await worker.observe('worker session receipt setup', () => until(async () => !!await fs.stat(marker).catch(() => null), { what: 'worker session receipt' }));
   const session = JSON.parse(await worker.observe('session receipt read', () => fs.readFile(marker, 'utf8'))) as { pid: number; home: string };
   await c.acquire('live session ownership', async () => ownProcess(undefined, session.pid), stop => stop());
