@@ -13091,6 +13091,13 @@
     "hub/test/verification-tier-receipts.test.ts::uploaded writer atomically publishes ordered native exits": 0.002693
   },
   "allow": {
+    "hub/test/host-allow-list.test.ts::immediate merge revokes every host lease before landing the task": {
+      "seconds": 10.017,
+      "owner": "C-216",
+      "added": "2026-11-20",
+      "expires": "2026-11-27",
+      "reason": "T-1655: retained T3 native Git landing and Unix host socket denial after revoking both host leases; removed three CLI startup processes, with no fixed sleeps in the case. Quiet full-cover passing seconds: macOS A-22176 at 9fcfec3 4.535180167, A-22175 at 47da58e 4.493004375, A-22174 at fb3d9f0 3.905565375; Linux A-22170 at b4fec06 3.674780904, A-22142 at f62df55 4.468913434. Item historical macOS samples A-16171 6.678 and impl-1654 5.117 s. Cap is 1.5x worst quiet/historical sample (6.678 s); setup, assertions and cleanup included, worker startup excluded. These covers precede this change. Concurrent-crew local samples and starting loads are context in the per-file guide, excluded from sizing by Coordinator decision. Report mode and historical baselines unchanged. Seven-day allowance."
+    },
     "hub/test/prune-process-lifecycle.test.ts::hub crash after durable writer release is reconciled by restart before territory admission": {
       "seconds": 9.2,
       "owner": "C-216",

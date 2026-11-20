@@ -155,12 +155,23 @@ test('batch revokes every host and builds the pinned member head; later pushes a
   assert.equal(await f.git(f.territory, 'rev-parse', 't/batch'), head);
 });
 
-import { project, task, review, json } from './merge-native-support.ts';
-import { cland } from './harness.ts';
+import { project, git, review } from './merge-native-support.ts';
 import { onCleanup } from './process-cleanup.ts';
 test('immediate merge revokes every host lease before landing the task', async t => {
-  const { root, rev } = await project(t);
-  const work = await task(root);
+  const { root, ui, rev } = await project(t);
+  // This seam proves native landing and lease revocation, not CLI startup.
+  const created = await ui.request({ type: 'task.create', title: 'Ship the parser', size: 'M' });
+  assert.equal(created.ok, true, created.error);
+  const { item } = created.value as { item: { id: string } };
+  const claimed = await ui.request({ type: 'task.claim', item: item.id });
+  assert.equal(claimed.ok, true, claimed.error);
+  const { worktree } = claimed.value as { worktree: { path: string; branch: string } };
+  const work = { id: item.id, ...worktree };
+  await writeFile(join(work.path, 'parser.txt'), 'first\n');
+  git(work.path, 'add', 'parser.txt');
+  git(work.path, 'commit', '-qm', 'First step');
+  await writeFile(join(work.path, 'parser.txt'), 'finished\n');
+  git(work.path, 'commit', '-qam', 'Second step');
   const env = fixtureEnvironment(root, process.env, {});
   const listener = await startGitDaemon({ host: 'host-a', territory: join(root, '.cland/territory.git'), socket: join(root, 'merge.sock'), env, log: () => {} });
   onCleanup(t, () => listener.close());
@@ -170,7 +181,9 @@ test('immediate merge revokes every host lease before landing the task', async t
   await grantBranchLease(root, 'host-a', work.branch);
   await grantBranchLease(root, 'host-b', work.branch);
   await review(rev, work.id);
-  const result = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
+  const merged = await ui.request({ type: 'merge', item: work.id }, 30_000);
+  assert.equal(merged.ok, true, merged.error);
+  const result = merged.value as { commit: string };
   assert.ok(result.commit);
   assert.equal(await readFile(join(root, '.cland/territory.git/cland-branch-leases'), 'utf8'), '');
   await assert.rejects(exec('git', ['-c', 'gc.auto=0', '-c', `core.gitProxy=${proxy}`, 'push', 'git://territory/territory.git', `HEAD:refs/heads/${work.branch}`], { cwd: root, env: fixtureEnvironment(root, env, {}) }), /host-a/);
