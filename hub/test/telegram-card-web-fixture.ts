@@ -55,6 +55,13 @@ export function cardWebOwner(t: TestContext) {
     start: async (local: FrameClient, options: { signal?: AbortSignal; setupClock?: Clock; setupTimeoutMs?: number; publishReady?: boolean; closeReceipt?: Promise<void> } = {}) => {
       assert.equal(started.requests, 0, 'one web acquisition per owner');
       const signal = AbortSignal.any([abort.signal, t.signal, ...(options.signal ? [options.signal] : [])]);
+      const prerequisite = async <T>(what: string, receive: (timeoutMs: number) => Promise<T>): Promise<T> => {
+        try { return await receive(testSetupWaitMs()); }
+        catch (cause) {
+          signal.throwIfAborted();
+          throw new Error(`${what} receipt failed`, { cause });
+        }
+      };
       const ready = Promise.withResolvers<FrameClient>();
       // Arm the independent setup observer before starting any native work.
       observing = true;
@@ -64,9 +71,8 @@ export function cardWebOwner(t: TestContext) {
       signal.addEventListener('abort', stopNative, { once: true });
       const native = own(Promise.resolve().then(async () => {
         signal.throwIfAborted();
-        // Coordinator disposition: uncancellable FrameClient timers stay inside
-        // the 2s drain; T-1875 owns cancellation and scaling these inner waits.
-        const link = await local.request({ type: 'web.link' }, 1_000);
+        // Prerequisite receipts tolerate worker load; teardown cancels their timers.
+        const link = await prerequisite('card web web.link result', timeoutMs => local.request({ type: 'web.link' }, timeoutMs, signal));
         assert.equal(link.ok, true, link.error);
         signal.throwIfAborted();
         const { url } = link.value as { url: string };
@@ -105,7 +111,7 @@ export function cardWebOwner(t: TestContext) {
         socketStarted.resolve();
         await opened;
         signal.throwIfAborted();
-        const welcome = own(client.waitFor(frame => frame.type === 'welcome', 1_000));
+        const welcome = own(prerequisite('card web human welcome', timeoutMs => client.waitFor(frame => frame.type === 'welcome', timeoutMs, signal)));
         client.send({ type: 'hello', protocol: 2, client: 'human' });
         assert.equal((await abortable(welcome, signal)).name, 'human');
         return client;

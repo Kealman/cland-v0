@@ -3,7 +3,7 @@ import type {HubFrame} from '../src/protocol.ts';
 import {testWaitMs,waitTimeoutMs} from './until.ts';
 type Result=Extract<HubFrame,{type:'result'}>;
 
-/** Result receipt ownership independent of frameClient's uncancellable waiters. */
+/** Result receipt ownership independent of frameClient callers that omit its optional cancellation signal. */
 export function scenarioReplyOwner(clock:Clock=realClock) {
  const waiting=new Map<string,(error:Error|null,frame?:Result)=>void>();
  const operations=new Set<Promise<Result>>();

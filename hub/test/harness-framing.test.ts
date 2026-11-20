@@ -5,11 +5,162 @@ import { test, type TestContext } from 'node:test';
 import { performance } from 'node:perf_hooks';
 import { createServer, type Socket } from 'node:net';
 import { once } from 'node:events';
+import { getEventListeners } from 'node:events';
 import { join } from 'node:path';
 import { setImmediate } from 'node:timers/promises';
 import { connectSocket, frameClient, tempProject } from './harness.ts';
 import { ensureAccountFixture } from './account-fixture-env.ts';
 import { onCleanup } from './process-cleanup.ts';
+import { sessionClient } from './session-credential-fixture.ts';
+import { receiptFixtureCase } from './receipt-fixture-case.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
+import { FakeClock } from './fake-clock.ts';
+
+function cancellationCase(t: TestContext, body: (fixtures: TestContext, controller: () => AbortController, own: <T>(work: Promise<T>) => Promise<T>) => Promise<void>) {
+  return receiptFixtureCase(t, false, async (fixtures, step, _adoptRoot, release) => {
+    await step('FrameClient account fixture setup', ensureAccountFixture);
+    const owners: AbortController[] = [];
+    const pending = new Set<Promise<unknown>>();
+    const abort = () => { for (const owner of owners) owner.abort(new Error('FrameClient case disposed')); };
+    release(abort);
+    const own = <T>(work: Promise<T>): Promise<T> => {
+      pending.add(work);
+      void work.then(() => pending.delete(work), () => pending.delete(work));
+      return work;
+    };
+    await step('FrameClient cancellation scenario', async () => {
+      try { await body(fixtures, () => { const owner = new AbortController(); owners.push(owner); return owner; }, own); }
+      finally {
+        abort();
+        await Promise.allSettled([...pending]);
+        fixtures.mock.restoreAll();
+        fixtures.mock.timers.reset();
+      }
+    });
+  });
+}
+
+test('frameClient fixture cancellation settles requests and waits and clears their timers', t => cancellationCase(t, async (t, controller, own) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const timer = globalThis.setTimeout;
+  let fired = 0;
+  t.mock.method(globalThis, 'setTimeout', (callback: () => void, ms: number) => timer(() => { fired++; callback(); }, ms));
+  let receive = (_chunk: string) => {};
+  let predicates = 0;
+  // No actor on these frames: the wrapper must forward cancellation without
+  // consulting credentials or a store.
+  const client = sessionClient(frameClient(() => {}, fn => { receive = fn; }, () => {}), 'unused');
+  const owner = controller();
+  const cancelled = new Error('fixture disposed');
+  const pending = [
+    own(client.request({ type: 'never-answered' }, 60_000, owner.signal)),
+    own(client.waitFor(() => { predicates++; return false; }, 60_000, owner.signal)),
+  ];
+  const settled = Promise.allSettled(pending);
+  owner.abort(cancelled);
+  t.mock.timers.tick(60_000);
+  assert.equal(fired, 0, 'teardown ends every pending timer');
+  assert.deepEqual(await settled, pending.map(() => ({ status: 'rejected', reason: cancelled })));
+  receive('{"type":"after-teardown"}\n');
+  assert.equal(predicates, 0, 'cancelled waiters no longer inspect frames');
+}));
+
+test('frameClient cancellation leaves completed receipts intact and removes deadline waiters', t => cancellationCase(t, async (t, controller, own) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let receive = (_chunk: string) => {};
+  const sent: Array<Record<string, unknown>> = [];
+  const client = frameClient(line => sent.push(JSON.parse(line)), fn => { receive = fn; }, () => {});
+  const owner = controller();
+  const request = own(client.request({ type: 'status' }, 1000, owner.signal));
+  const welcome = own(client.waitFor(f => f.type === 'welcome', 1000, owner.signal));
+  receive(`${JSON.stringify({ type: 'result', id: sent[0]!.id, ok: true })}\n{"type":"welcome"}\n`);
+  assert.equal((await request).ok, true);
+  assert.deepEqual(await welcome, { type: 'welcome' });
+  assert.equal(getEventListeners(owner.signal, 'abort').length, 0);
+  const cancelled = new Error('already disposed');
+  owner.abort(cancelled);
+  await assert.rejects(client.request({ type: 'unsent' }, 1000, owner.signal), error => error === cancelled);
+  await assert.rejects(client.waitFor(() => true, 1000, owner.signal), error => error === cancelled);
+  assert.equal(sent.length, 1);
+  let inspected = 0;
+  const timeoutOwner = controller();
+  const expired = assert.rejects(own(client.waitFor(() => { inspected++; return false; }, 1000, timeoutOwner.signal)), /no frame matched/);
+  t.mock.timers.tick(1000);
+  await expired;
+  const before = inspected;
+  receive('{"type":"after-timeout"}\n');
+  assert.equal(inspected, before, 'expired waiters no longer inspect incoming frames');
+  assert.equal(getEventListeners(timeoutOwner.signal, 'abort').length, 0);
+}));
+
+test('frameClient dispatch skips synchronously cancelled waiters and preserves unrelated receipts', t => cancellationCase(t, async (t, controller, own) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let receive = (_chunk: string) => {};
+  const client = frameClient(() => {}, fn => { receive = fn; }, () => {});
+  const first = controller(), cancelled = controller(), last = controller();
+  const reason = new Error('cancelled during dispatch');
+  let inspected = 0;
+  const a = own(client.waitFor(() => { cancelled.abort(reason); first.abort(reason); return true; }, 1000, first.signal));
+  const b = own(client.waitFor(() => { inspected++; return true; }, 1000, cancelled.signal));
+  const frame = { type: 'unrelated', value: 42 };
+  const c = own(client.waitFor(f => f.type === 'unrelated', 1000, last.signal));
+  const rejected = Promise.all([assert.rejects(a, error => error === reason), assert.rejects(b, error => error === reason)]);
+  receive('{"type":"trigger"}\n');
+  assert.equal(inspected, 0, 'cancelled snapshot entries never evaluate their predicate');
+  receive(`${JSON.stringify(frame)}\n`);
+  assert.deepEqual(await c, frame, 'unrelated waiter retains its exact later receipt');
+  await rejected;
+}));
+
+for (const hit of [false, true]) test(`frameClient buffered predicate cancellation refuses admission with hit ${hit}`, t => cancellationCase(t, async (t, controller, own) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const timer = globalThis.setTimeout;
+  let fired = 0, inspected = 0;
+  t.mock.method(globalThis, 'setTimeout', (callback: () => void, ms: number) => timer(() => { fired++; callback(); }, ms));
+  let receive = (_chunk: string) => {};
+  const client = frameClient(() => {}, fn => { receive = fn; }, () => {});
+  receive('{"type":"buffered"}\n');
+  const owner = controller();
+  const reason = new Error('cancelled in buffered scan');
+  const receipt = own(client.waitFor(() => { inspected++; owner.abort(reason); return hit; }, 1000, owner.signal));
+  const rejected = assert.rejects(receipt, error => error === reason);
+  t.mock.timers.tick(1000);
+  await rejected;
+  assert.equal(fired, 0, 'buffered cancellation admits no timer');
+  assert.equal(getEventListeners(owner.signal, 'abort').length, 0);
+  receive('{"type":"after-buffered-cancellation"}\n');
+  assert.equal(inspected, 1, 'buffered cancellation retains no waiter');
+}));
+
+test('frameClient throwing result observer settles the request and retains the unread stream', t => cancellationCase(t, async (t, controller, own) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const timer = globalThis.setTimeout;
+  let fired = 0;
+  t.mock.method(globalThis, 'setTimeout', (callback: () => void, ms: number) => timer(() => { fired++; callback(); }, ms));
+  let receive = (_chunk: string) => {}, id = '';
+  const observerError = new Error('result observer failed');
+  const client = frameClient(line => { id = JSON.parse(line).id; }, fn => { receive = fn; }, () => {}, undefined, () => { throw observerError; });
+  const owner = controller();
+  const clock = new FakeClock(Date.now());
+  // Bound the settlement observer independently: the defective result handler
+  // loses every way to settle its read-only promise. Missing settlement is an
+  // explicit incomplete receipt, never a successful teardown observation.
+  const request = own(within(client.request({ type: 'status' }, 60_000, owner.signal), 1000, clock,
+    () => new Error('incomplete request settlement after observer failure')));
+  const rejected = assert.rejects(request, error => error === observerError);
+  void rejected.catch(() => {});
+  const nextFrame = { type: 'after-observer', value: 42 };
+  const next = own(client.waitFor(f => f.type === nextFrame.type, 60_000, owner.signal));
+  assert.throws(() => receive(`${JSON.stringify({ type: 'result', id, ok: true })}\n${JSON.stringify(nextFrame)}\n`), error => error === observerError);
+  receive('');
+  assert.deepEqual(await next, nextFrame);
+  owner.abort(new Error('fixture disposed after observer failure'));
+  t.mock.timers.tick(60_000);
+  assert.equal(fired, 0, 'observer failure leaves no timer after teardown');
+  assert.equal(getEventListeners(owner.signal, 'abort').length, 0);
+  await clock.advance(1000);
+  await rejected;
+}));
 
 for (const chunkKiB of [64, 4]) test(`frameClient receives a 20 MiB frame in ${chunkKiB} KiB chunks within 2 seconds`, async (t) => {
   await ensureAccountFixture();

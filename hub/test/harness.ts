@@ -734,11 +734,11 @@ export async function connectSocket(path: string): Promise<SocketClient> {
 
 export type FrameClient = {
   /** Send a request (an id is added) and resolve with its `result` frame. */
-  request: (frame: { type: string } & Record<string, unknown>, timeoutMs?: number) => Promise<{ ok: boolean; value?: unknown; error?: string; code?: string }>;
+  request: (frame: { type: string } & Record<string, unknown>, timeoutMs?: number, signal?: AbortSignal) => Promise<{ ok: boolean; value?: unknown; error?: string; code?: string }>;
   /** Every frame that was not a result: the welcome, refusals, `message` and `delivery` events. */
   frames: Array<Record<string, unknown>>;
   /** The first frame (seen or yet to come) matching `predicate`. */
-  waitFor: (predicate: (f: Record<string, unknown>) => boolean, timeoutMs?: number) => Promise<Record<string, unknown>>;
+  waitFor: (predicate: (f: Record<string, unknown>) => boolean, timeoutMs?: number, signal?: AbortSignal) => Promise<Record<string, unknown>>;
   /** Send a frame as is. */
   send: (frame: Record<string, unknown>) => void;
   close: () => void;
@@ -778,8 +778,11 @@ export function frameClient(write: (line: string) => void, onData: (fn: (chunk: 
       }
       frames.push(frame);
       for (const w of [...waiters]) {
+        if (!waiters.includes(w)) continue;
         if (w.predicate(frame)) {
-          waiters.splice(waiters.indexOf(w), 1);
+          const index = waiters.indexOf(w);
+          if (index < 0) continue;
+          waiters.splice(index, 1);
           w.resolve(frame);
         }
       }
@@ -790,32 +793,59 @@ export function frameClient(write: (line: string) => void, onData: (fn: (chunk: 
     frames,
     send,
     close,
-    request: (frame, timeoutMs = 5000) =>
+    request: (frame, timeoutMs = 5000, signal) =>
       new Promise((resolve, reject) => {
+        signal?.throwIfAborted();
         const id = `r${nextId++}`;
-        const timer = setTimeout(() => {
+        const cleanup = () => {
+          clearTimeout(timer);
           results.delete(id);
+          signal?.removeEventListener('abort', cancel);
+        };
+        const cancel = () => { cleanup(); reject(signal!.reason); };
+        const timer = setTimeout(() => {
+          cleanup();
           reject(new Error(`no result for ${frame.type} within ${timeoutMs}ms`));
         }, timeoutMs);
         results.set(id, (f) => {
-          clearTimeout(timer);
-          observeProcesses(f, root);
+          cleanup();
+          try { observeProcesses(f, root); }
+          catch (error) {
+            reject(error);
+            throw error; // Retain synchronous stream errors and the unread suffix.
+          }
           resolve(f as { ok: boolean; value?: unknown; error?: string });
         });
-        send({ ...frame, id });
+        signal?.addEventListener('abort', cancel, { once: true });
+        try { send({ ...frame, id }); }
+        catch (error) { cleanup(); reject(error); }
       }),
-    waitFor: (predicate, timeoutMs = 5000) => {
+    waitFor: (predicate, timeoutMs = 5000, signal) => {
+      if (signal?.aborted) return Promise.reject(signal.reason);
       const hit = frames.find(predicate);
+      if (signal?.aborted) return Promise.reject(signal.reason);
       if (hit) return Promise.resolve(hit);
       return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(`no frame matched within ${timeoutMs}ms; saw ${JSON.stringify(frames)}`)), timeoutMs);
-        waiters.push({
+        const cleanup = () => {
+          clearTimeout(timer);
+          const index = waiters.indexOf(waiter);
+          if (index >= 0) waiters.splice(index, 1);
+          signal?.removeEventListener('abort', cancel);
+        };
+        const cancel = () => { cleanup(); reject(signal!.reason); };
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error(`no frame matched within ${timeoutMs}ms; saw ${JSON.stringify(frames)}`));
+        }, timeoutMs);
+        const waiter = {
           predicate,
-          resolve: (f) => {
-            clearTimeout(timer);
+          resolve: (f: Record<string, unknown>) => {
+            cleanup();
             resolve(f);
           },
-        });
+        };
+        waiters.push(waiter);
+        signal?.addEventListener('abort', cancel, { once: true });
       });
     },
   };

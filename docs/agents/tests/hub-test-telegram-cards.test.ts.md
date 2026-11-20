@@ -215,10 +215,11 @@ complete. Disposal aborts acquisition, destroys outstanding HTTP work, terminate
 the socket and waits at most two seconds for native close and setup observers.
 Real outer readiness uses the shared scaled five-second setup base; injected
 setup clocks retain an exact one-second fault bound. The inner FrameClient
-`web.link` request and welcome waits retain their original one-second limits by
-the Coordinator's T-1874 disposition: these timers cannot be cancelled and must
-fit inside the two-second drain owner. T-1875 owns cancellable FrameClient waits
-and scaling these remaining real acquisition prerequisites.
+`web.link` result and human welcome prerequisites use the shared load-scaled
+five-second setup base with named receipt diagnostics. Both pass the owner's
+combined cancellation signal: disposal rejects pending receipts and clears their
+timers before the separate two-second native/setup drain completes. Injecting a
+setup clock changes the outer fault bound, not these real acquisition budgets.
 
 Three same-disposer controls preserve the actual web decline/card assertions:
 a deliberately omitted readiness receipt after a real authenticated handshake,

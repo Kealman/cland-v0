@@ -53,7 +53,7 @@ export function sessionClient(ui: FrameClient, source: string | Store): FrameCli
   const request = ui.request;
   const authenticated = <T extends Record<string, unknown>>(frame: T): T => frame.as && typeof frame.as === 'object'
     ? { ...frame, as: actorCredential(source, frame.as as Record<string, unknown>) } : frame;
-  return { ...ui, request: (frame, timeout) => request(authenticated(frame), timeout), send: frame => ui.send(authenticated(frame)) };
+  return { ...ui, request: (frame, timeout, signal) => request(authenticated(frame), timeout, signal), send: frame => ui.send(authenticated(frame)) };
 }
 
 /** Opt in only for permission/dispatch tests whose caller authentication is fixture setup. */
