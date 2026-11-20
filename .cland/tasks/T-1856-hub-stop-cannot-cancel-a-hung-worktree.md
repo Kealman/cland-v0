@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1664
 branch: t/T-1856-hub-stop-cannot-cancel-a-hung-worktree
 created: 2026-11-14T10:12:33.598Z
-updated: 2026-11-20T12:43:04.984Z
+updated: 2026-11-20T13:53:57.709Z
 ---
 
 ## Summary
