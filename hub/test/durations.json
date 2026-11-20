@@ -13092,61 +13092,47 @@
   },
   "allow": {
     "hub/test/fake-claude-cleanup.test.ts::orphan sweep joins a fake Claude session after its fixture worker is killed": {
-      "seconds": 9.5,
+      "seconds": 7.639,
       "owner": "C-216",
-      "added": "2026-11-19",
-      "expires": "2026-11-26",
-      "reason": "T-1669: Coordinator d7a77698 authorized about 1.5x the worst observed sample for this exact setup-inclusive native lifecycle case. Linux x64 c-8 sfo2 batch run 32669467-c103-44b3-bd58-e87a24cbda04 (A-21788), head d13169d6f2dd513991c8c6b2697dca47eb71fea0, recorded a passing ordinary case at 5.886217868 s and five passing load-gate repetitions, worst 6.303101045 s. The batch remains failed on the enforced 5 s new-case cap; these samples are not a passing batch receipt. The 9.5 s allowance rounds 1.5x the worst observed sample upward to half a second. Worker SIGKILL, session/spoke survival, PID/birth receipt authority, joined exit, guarded root removal and final census assertions stay unchanged. Standing owner C-216; seven-day expiry 2026-11-26."
+      "added": "2026-11-20",
+      "expires": "2026-11-27",
+      "reason": "T-2021: macOS arm64 Node24.21.0 at c352aade ordinary passing 5.092073459 s; Linux A-21945/A-21952 passing samples 3.836173248/3.641543103 s. No recorded test baseline exists, so report mode needs this allowance as its fallback baseline despite the T3 10 s tier budget. Cap is 1.5x worst passing sample rounded upward to milliseconds; setup/assertions/cleanup included. Seven-day span; report policy unchanged. Evidence in T-2021 topic."
     },
     "hub/test/suite-retention-scale.test.ts": {
       "file": true,
-      "seconds": 89,
+      "seconds": 144.752,
       "owner": "E-880",
-      "added": "2026-11-19",
-      "expires": "2026-11-26",
-      "reason": "T-1992: Coordinator53ffcc5e approves89s file allowance, E-880/2026-11-26. Current unindexed-case file sample35.074643666s plus retained prior-head separate indexed22.295835959s and scheduler1.310210750s sum58.680690375s; ceil(1.5x)=89s. This is a conservative sum of separate invocations/epochs, not current same-file timing. Linux pending. Actual pass24.207531375s removed4093 empty directories, so it is a floor for real populated runs; reloadable cap throttles later passes."
+      "added": "2026-11-20",
+      "expires": "2026-12-21",
+      "reason": "T-2021: macOS arm64 Node24.21.0 at c352aade ordinary passing 96.500700375 s; Linux A-21877/A-21949 passing samples 70.339698901/86.176443155 s. No recorded file baseline exists, so report mode needs this allowance as its fallback baseline despite T4 having no tier duration budget. Cap is 1.5x worst passing sample rounded upward to milliseconds; setup/assertions/cleanup included, summed over all three ordinary cases within each invocation. D72 31-day span; report policy unchanged. Evidence in T-2021 topic."
     },
     "hub/test/suite-retention-scale.test.ts::live unindexed scheduler pass stays responsive across fifty thousand directories": {
-      "seconds": 52,
+      "seconds": 98.471,
       "owner": "E-880",
-      "added": "2026-11-19",
-      "expires": "2026-11-26",
-      "reason": "T-1992: Coordinator53ffcc5e approves52s from local macOS arm64 Node24.21.0 case34.602201125s, ceil(1.5x)=52s. File35.074643666s includes setup/cleanup; actual serving-owner pass24.207531375s excludes them,4096 scanned/4093 empty directories removed, filesRemoved0, task.view4.667625ms<1000ms. Empty-directory timing is a floor for populated live runs; use reloadable pass cap. Linux sample pending."
+      "added": "2026-11-20",
+      "expires": "2026-12-21",
+      "reason": "T-2021: macOS arm64 Node24.21.0 at c352aade ordinary passing 65.646666750 s; Linux A-21877/A-21949 passing samples 50.417482972/61.742856366 s. No recorded test baseline exists, so report mode needs this allowance as its fallback baseline despite T4 having no tier duration budget. Cap is 1.5x worst passing sample rounded upward to milliseconds; setup/assertions/cleanup included. D72 31-day span; report policy unchanged. Evidence in T-2021 topic."
     },
     "hub/test/suite-retention-scale.test.ts::live mode retires eligible runs in bounded passes over fifty thousand directories while serving task views": {
-      "seconds": 35,
+      "seconds": 44.408,
       "owner": "E-880",
-      "added": "2026-11-19",
-      "expires": "2026-11-26",
-      "reason": "T-1992: Coordinator 542d4cee authorizes tightening the migrated E-880 allowance. Local macOS arm64 Node24.21.0 bounded-live file sample 22.295835959 s includes setup and cleanup; 1.5x with headroom is 35 s. Pass wall 10.982167834 s, 4091 empty directories removed, visited controls kept, task.view 1.720291 ms below unchanged 1000 ms bound. Incomplete unbatched sample remains separate. Linux pending; owner E-880 and expiry2026-11-26 unchanged."
+      "added": "2026-11-20",
+      "expires": "2026-12-21",
+      "reason": "T-2021: macOS arm64 Node24.21.0 at c352aade ordinary passing 29.604892584 s; Linux A-21877/A-21949 passing samples 18.893605113/23.224555804 s. No recorded test baseline exists, so report mode needs this allowance as its fallback baseline despite T4 having no tier duration budget. Cap is 1.5x worst passing sample rounded upward to milliseconds; setup/assertions/cleanup included. D72 31-day span; report policy unchanged. Evidence in T-2021 topic."
     },
     "hub/test/startup-listener-scale.test.ts::listener binds report each await while retained verdict freshness drains": {
-      "seconds": 20,
+      "seconds": 13.599,
       "owner": "E-880",
-      "added": "2026-11-19",
-      "expires": "2026-11-26",
-      "reason": "T-1952: production-scale embedded startup fixture (375 verdict wants, 1645 suites, 8163 artifacts, 4202 released lease files). Source3 local macOS arm64/Node24.21.0 passing top-level sample 9.276969 s (10.166253 s parent wall), source fingerprints recorded with the receipt; Linux is not yet measured. Coordinator decision 3337c19b projects 9.28 s at the 1.4x droplet/local ratio to about 13 s, then 1.5x headroom rounded upward to 20 s; refresh from the first passing configured-droplet receipt. Native process launch remains guarded; standing owner E-880, seven-day expiry unchanged. Duration budgets remain report-only."
+      "added": "2026-11-20",
+      "expires": "2026-12-21",
+      "reason": "T-2021: Linux A-21945/A-21952: 5.762531068/5.530942729 s; macOS arm64 Node24.21.0 at c352aade: 9.065887875 s. Only 9.3% below the normal T3 10 s budget; retain headroom. Cap is 1.5x the worst recorded passing sample, rounded upward to milliseconds, including case setup/assertions/cleanup. Native slot granted by Coordinator; serial local runs started below load 12. D72 31-day span; duration policy remains report-only. Per-identity evidence in T-2021 item topic."
     },
     "hub/test/item-summary-scale.test.ts::a planned-stage status and verdict comment permits a task view within two seconds at 1650 items": {
-      "seconds": 40,
-      "owner": "C-216",
-      "added": "2026-11-19",
-      "expires": "2026-11-26",
-      "reason": "T-2004: Coordinator af8e16c2 approved this setup-inclusive 1650-row comment/freshness case. Local macOS arm64 Node24.21.0 sample 17.509 s; 40 s projects the existing 1.4x Linux/local ratio with 1.5x headroom, rounded upward. Linux is not measured yet; refresh from its first passing configured receipt. Standing owner C-216, seven-day expiry. The 2000 ms reply bound, ordering assertions and positive native launch guard are unchanged. Remaining legacy full-layer-map CPU is tracked by T-2005."
-    },
-    "hub/test/git-maintenance.test.ts::scratch Git helper drains a held descendant writer before rejecting cancellation (5100 ms exit)": {
-      "seconds": 8.301,
-      "owner": "C-216",
-      "added": "2026-11-18",
-      "expires": "2026-11-25",
-      "reason": "T-1634: deliberate 5100 ms SIGTERM exit seam crosses fixture cleanup's 5000 ms bound. Coordinator-approved macOS arm64 local sample 5.534 s (Node v24.21.0); 1.5x headroom rounded to milliseconds. Both cases' 20/20 macOS repetitions and native exit receipts: A-21254. Linux measurement pending; renew from that sample if needed. Duration policy remains report-only."
-    },
-    "hub/test/telegram-polling-restart.test.ts::Discord fresh history forwards newest 500 of 620 once with one silent overflow line": {
-      "seconds": 8.459,
-      "owner": "C-216",
-      "added": "2026-11-18",
-      "expires": "2026-11-25",
-      "reason": "T-1641 C2: suite b2fd5616 at cc3aa5cde, A-21115, measured 5.6388497939999995 s on Linux c-8 ams3 droplet with two workers; cap is 1.5x rounded upward to milliseconds. Normal-load local macOS baseline A-21089 measured 4.360645209 s. Stress samples are excluded. All semantic assertions and the exact 500 ms responsiveness bound remain; duration policy stays report-only."
+      "seconds": 49.161,
+      "owner": "E-880",
+      "added": "2026-11-20",
+      "expires": "2026-12-21",
+      "reason": "T-2021: Linux A-21949 at 2d652a7: 32.773839674 s; macOS arm64 Node24.21.0 at c352aade: 19.924637625 s. Exceeds the normal T2 2 s budget. Cap is 1.5x the worst recorded passing sample, rounded upward to milliseconds, including case setup/assertions/cleanup. Native slot granted by Coordinator; serial local runs started below load 12. D72 31-day span; duration policy remains report-only. Per-identity evidence in T-2021 item topic."
     },
     "hub/test/login-capacity.test.ts::capacity index bounds visits across same-region rejected rows and agrees with pending fences": {
       "seconds": 12.427,
@@ -13992,11 +13978,11 @@
       "reason": "T-1879: slowest passing linux sample 67.011936269 s in A-19799-suite-d5150de3-66a9-478a-9cf3-63e9aeca55c6-all-at-92dd61b.log, head 92dd61bcf8b0d8679de8c5d21846c33d96ef8804, receipt 6418eae8-371e-41d8-9ff9-ed764d08221d:1678. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
     },
     "hub/test/suite-stage-cover.test.ts::after-stage gates require Mac and sharded Linux at one tree, retain history and advance the next stage": {
-      "seconds": 37.654,
+      "seconds": 63.17,
       "owner": "C-216",
-      "added": "2026-11-18",
-      "expires": "2026-11-25",
-      "reason": "T-1879: slowest passing linux sample 25.102328251 s in A-18031-suite-939223e6-6c21-4080-bdd0-a41c0cce118a-all-at-94f4a8c.log, head 94f4a8c6ac5d26091bde98477e744356d45748bb, receipt 0106998f-5655-43b0-9733-ae0e4c8e5f9d:720. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
+      "added": "2026-11-20",
+      "expires": "2026-11-27",
+      "reason": "T-2021: Linux A-21945/A-21952: 16.158418595/15.957606817 s; covers A-21450/A-21454: 15.869707780/32.170380917 s; macOS arm64 Node24.21.0 at c352aade: 42.113056708 s. Exceeds the normal T3 10 s budget. Cap is 1.5x the worst recorded passing sample, rounded upward to milliseconds, including case setup/assertions/cleanup. Native slot granted by Coordinator; serial local runs started below load 12. Seven-day span; duration policy remains report-only. Per-identity evidence in T-2021 item topic."
     },
     "hub/test/suite-timeouts.test.ts::verify kills a silent test tree and spoke, names the last started test and frees admission": {
       "seconds": 21.522,
