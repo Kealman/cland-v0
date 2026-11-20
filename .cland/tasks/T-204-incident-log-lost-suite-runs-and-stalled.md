@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-19T20:39:18.506Z
+updated: 2026-11-20T07:46:13.886Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -678,3 +678,7 @@ Restart #89 (2026-11-19, on coord's GO after the human's answer to ask 6ac5abf4)
 ### human · 2026-11-19T20:39:18.506Z
 
 Restart #90, rollback (2026-11-19, on coord's GO after the human's answer to ask 23379f12): on a8fc01d32 every merge batch blocked (T-1956's batch ownership capture; fix in T-2015). Hub r89 pid 34235 stopped 20:37:00Z; job cland-hub-r90 pid 73080 runs code from the worktree jobs/92748b6f/tmp/hub-5e3a2005c with the root as cwd, serving 20:37:15.995Z, gap 16 s. Binding listeners 6 ms, web listener 434 ms. Port 60228, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 20:37:16.153Z, injected 20:37:36.006Z. No tracker-storage-stalled lines. Batch 63c81cf8 (T-1890, T-1903) was not restored; coord re-enqueued both at 20:38Z. Live suite retention (T-1992) is off again on this build; on a8fc01d32 it ran one pass in 9.5 minutes (removed 24, unindexed removed 0). The worktree must stay while this hub runs.
+
+### human · 2026-11-20T07:46:13.886Z
+
+Restart #91, forward (2026-11-20, on coord's GO after the human's answer to ask f2511c79): hub r90 pid 73080 (rollback code 5e3a2005c) stopped 07:44:46Z; job cland-hub-r91 pid 37092 started from the root at 3d2de496f (dev = origin/dev), serving 07:44:58.844Z, gap 12 s. Binding listeners 4 ms, web listener 271 ms. Port 59880, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 07:44:59.310Z, injected 07:45:03.569Z. T-1856's droplet run bba8a07d still tracked after the start. .cland/run/suites 122,360 before and 122,363 after: the dev T3 search loop (T-2023/T-2024) no longer adds entries. First live retention pass 27,828 ms, removed 0 (unindexed scanned 4,096: age-floor 3,912, indexed 184). No tracker-storage-stalled lines. Rollback remains the 5e3a2005c worktree.
