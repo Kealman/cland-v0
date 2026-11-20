@@ -1,15 +1,76 @@
 // T3: prepare CLI propagates dependency child exit status; native PATH resolution and seed processes prove the install contract.
-import { fixtureEnvironment } from './fixture-environment.ts';
+import { fixtureEnvironment, scratchGitEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile, lstat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tempProject } from './harness.ts';
+import { worktreeInstall } from '../src/host/agent/worktree-install.ts';
+import { residueControl, residueChild } from './fixture-residue-control.ts';
 
 const exec = promisify(execFile);
+test('a shared clone stays clean after dependency preparation', t => residueControl(t, { native: true }).run(async c => {
+  const root = await c.root();
+  const source = join(root, 'source');
+  const checkout = join(root, 'checkout');
+  const excludesFile = join(root, 'empty-excludes');
+  await c.step('source filesystem setup', async () => {
+    await mkdir(source);
+    await writeFile(excludesFile, '');
+    await writeFile(join(source, '.gitignore'), await readFile(resolve('.gitignore')));
+  });
+  const env = scratchGitEnvironment(root, fixtureEnvironment(root, process.env), { excludesFile });
+  const git = async (cwd: string, ...args: string[]) => {
+    const completed = Promise.withResolvers<string>();
+    void completed.promise.catch(() => {});
+    const native = await residueChild(c, `Git ${args[0]} launch`, () => {
+      // cland-allow-child-env: fixtureEnvironment seals credentials and Git inputs before scratchGitEnvironment pins the disposable empty excludes file; nothing is overlaid afterwards.
+      return execFile('git', args, { cwd, env, timeout: 10_000, maxBuffer: 64 * 1024 }, (error, stdout) => {
+        if (error) completed.reject(error); else completed.resolve(stdout);
+      });
+    });
+    await native.observe(`Git ${args[0]} close`, () => native.closed);
+    const stdout = await native.observe(`Git ${args[0]} result`, () => completed.promise);
+    await native.close();
+    return stdout;
+  };
+  await c.step('shared clone checkout setup', async () => {
+    await git(source, 'init');
+    await git(source, 'add', '.gitignore');
+    await git(source, 'commit', '-m', 'Scratch ignore rules');
+    await git(root, 'clone', '--shared', '--no-checkout', source, checkout);
+    await git(checkout, 'checkout', '--detach', 'HEAD');
+  });
+  await c.step('prepared dependency status assertions', async () => {
+    assert.equal(await git(checkout, 'status', '--porcelain', '--untracked-files=all'), '');
+    await writeFile(join(checkout, 'unignored-control'), 'visible');
+    assert.equal(await git(checkout, 'status', '--porcelain', '--untracked-files=all'), '?? unignored-control\n');
+    await rm(join(checkout, 'unignored-control'));
+    await mkdir(join(source, 'node_modules'));
+    assert.equal(await worktreeInstall(source, checkout), undefined);
+    assert.ok((await lstat(join(checkout, 'node_modules'))).isSymbolicLink());
+    // No inherited info/exclude: the committed rules must cover the prepared link.
+    assert.equal(await git(checkout, 'status', '--porcelain', '--untracked-files=all'), '');
+    await rm(join(checkout, 'node_modules'));
+    await mkdir(join(checkout, 'node_modules'));
+    // verify-prepare and npm's prepare hook also write these generated directories.
+    for (const path of ['node_modules/.cland-prepare-key', 'node_modules/.package-lock.json',
+      'node_modules/playwright-core/.local-browsers/shell', '.cache/nvim/.cland-installed.json',
+      '.cache/nvim/v0.12.5/.download.lock', '.cache/nvim/v0.12.5/.download.lock.break',
+      '.cache/nvim/v0.12.5/.download.lock.123.tmp', '.cache/nvim/v0.12.5/.nvim-linux-x86_64.tar.gz.123.part',
+      '.cache/nvim/v0.12.5/.unpack-123/nvim-linux-x86_64/bin/nvim',
+      '.cache/nvim/v0.12.5/nvim-linux-x86_64/bin/nvim', 'web/dist/index.html']) {
+      await mkdir(join(checkout, path, '..'), { recursive: true });
+      await writeFile(join(checkout, path), 'prepared fixture');
+      assert.notEqual(await git(checkout, 'check-ignore', '--', path), '');
+    }
+    assert.equal(await git(checkout, 'status', '--porcelain', '--untracked-files=all'), '');
+  });
+}));
+
 test('prepare uses installed snapshot inputs and rebuilds changed or missing installs', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, 'nvim/bin'), { recursive: true });
