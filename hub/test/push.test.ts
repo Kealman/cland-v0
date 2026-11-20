@@ -16,6 +16,8 @@ import { Tracker } from '../src/tracker/tracker.ts';
 import { Store } from '../src/hub/store.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { FakeClock } from './fake-clock.ts';
+import { pruneCase, observePruneGit, withCleanupAsync } from './prune-case.ts';
+import { ownedDatabases } from './owned-tracker.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
 const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
@@ -359,44 +361,56 @@ test('push refuses pending landed merge or checkout recovery but permits a fully
   assert.equal(refs(root, territory), snapshot);
 });
 
-for (const failCleanup of [false, true]) test(`lost publication and failed confirmation preserve CLI exit 2, event and retry guidance (release failure: ${failCleanup})`, async t => {
-  const { root, territory } = await repository(t);
-  git(root, 'commit', '--allow-empty', '-qm', 'Tracker commit');
-  const dev = git(root, 'rev-parse', 'dev');
-  const bin = join(root, '.cland', 'fake-bin');
-  await fs.mkdir(bin);
-  const marker = join(bin, 'accepted'), repaired = join(bin, 'repaired');
-  const realGit = execFileSync('which', ['git'], { env: fixtureEnvironment(root, process.env), encoding: 'utf8' }).trim();
-  const quote = (s: string) => "'" + s.replaceAll("'", "'\\''") + "'";
-  await fs.writeFile(join(bin, 'git'), `#!/bin/sh
-if [ "$1" = push ] && [ ! -f ${quote(repaired)} ]; then
-  ${quote(realGit)} "$@" || exit $?
-  touch ${quote(marker)}
-  echo 'fixture reply lost after acceptance' >&2
-  exit 1
-fi
-if [ "$1" = rev-parse ] && [ "$PWD" = ${quote(territory)} ] && [ -f ${quote(marker)} ]; then
-  ${failCleanup ? `rm ${quote(join(root, '.cland', 'territory.lock'))}; mkdir ${quote(join(root, '.cland', 'territory.lock'))}` : ''}
-  echo 'fixture confirmation unavailable' >&2
-  exit 1
-fi
-exec ${quote(realGit)} "$@"
-`, { mode: 0o755 });
-  await projectHub(t, root, { PATH: `${bin}:${process.env.PATH}` });
-  const result = await cland(root, 'push');
+for (const failCleanup of [false, true]) test(`lost publication and failed confirmation preserve CLI exit 2, event and retry guidance (release failure: ${failCleanup})`, t => pruneCase(t, async (scope, step) => {
+  const { root, territory, dev } = await step('publication fixture repository setup', async () => {
+    const repo = await repository(scope.fixtures); scope.adoptRoot(repo.root);
+    git(repo.root, 'commit', '--allow-empty', '-qm', 'Tracker commit');
+    return { ...repo, dev: git(repo.root, 'rev-parse', 'dev') };
+  });
+  let accepted = false, repaired = false, confirmations = 0, lostReplies = 0;
+  let plantedLockDirectory = false;
+  const lock = join(root, '.cland/territory.lock');
+  const repairLock = async () => { if (plantedLockDirectory) { await fs.rm(lock, { recursive: true }); plantedLockDirectory = false; } };
+  scope.releaseOnClose(() => { repaired = true; });
+  scope.requireClose(repairLock);
+  observePruneGit(scope, async ([cwd, args], run) => {
+    if (args[0] === 'push' && !repaired) {
+      const stdout = await run(); // Positive actual publication precedes the lost reply.
+      accepted = true; lostReplies++;
+      throw Object.assign(new Error('fixture reply lost after acceptance'), { code: 1, stdout, stderr: 'fixture reply lost after acceptance' });
+    }
+    if (args[0] === 'rev-parse' && cwd === territory && accepted && !repaired) {
+      confirmations++;
+      if (failCleanup && confirmations === 1) await step('confirmation failure lock setup', async () => { await fs.rm(lock); await fs.mkdir(lock); plantedLockDirectory = true; });
+      throw Object.assign(new Error('fixture confirmation unavailable'), { code: 1, stdout: '', stderr: 'fixture confirmation unavailable' });
+    }
+    return run();
+  });
+  let hub: Awaited<ReturnType<typeof projectHub>> | undefined;
+  const openDatabase = ownedDatabases(scope, () => hub?.dispose());
+  await withCleanupAsync(async () => {
+  await step('publication native hub setup', async () => { hub = await projectHub(scope.resources, root, {}, { openDatabase }); });
+  const result = await step('lost publication CLI outcome', () => cland(root, 'push'));
+  assert.equal(lostReplies, 1, 'the actual publication completed before exactly one lost reply');
+  assert.ok(confirmations > 0, 'the original-argv confirmation failure positively engaged');
   assert.equal(result.code, 2, result.stderr);
   assert.match(result.stderr, /push-outcome-unknown/);
   assert.ok(result.stderr.includes(dev));
   assert.match(result.stderr, /verify territory dev and retry cland push/);
   if (failCleanup) assert.match(result.stderr, /cleanup failed:.*EISDIR/);
   assert.equal(git(territory, 'rev-parse', 'dev'), dev);
-  await flushProjectLogs(t, root);
-  const log = await fs.readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
+  await step('publication event persistence', () => flushProjectLogs(scope.resources, root));
+  const log = await step('publication event bytes', () => fs.readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8'));
   assert.match(log, /"event":"push-outcome-unknown"/);
   assert.doesNotMatch(log, /"event":"push-refused"/);
-  if (failCleanup) await fs.rm(join(root, '.cland', 'territory.lock'), { recursive: true });
-  await fs.rm(marker);
-  await fs.writeFile(repaired, 'ready');
-  ok(await cland(root, 'push'));
+  await step('publication retry lock repair', repairLock);
+  repaired = true;
+  ok(await step('repaired publication retry', () => cland(root, 'push')));
   assert.equal(git(territory, 'rev-parse', 'dev'), dev);
-});
+  }, async () => {
+    repaired = true;
+    await withCleanupAsync(() => step('original publication lock repair', repairLock), async () => {
+      if (hub) await step('original publication hub shutdown', () => hub!.dispose());
+    });
+  });
+}, true));

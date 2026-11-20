@@ -7,7 +7,7 @@ import { afterCleanup, beforeDirectories, guardDirectoryRemoval } from './proces
 import { fakeNativeGuard } from './fake-native-guard.ts';
 
 /** Item-local owner. A settled rejection never supplies a writer-close receipt. */
-export function stageCase(t: TestContext) {
+export function stageCase(t: TestContext, options: { native?: boolean } = {}) {
   const original = fixtureWork();
   const pending = new Set<Promise<unknown>>();
   const required: Array<{ close: () => Promise<void>; done: boolean }> = [];
@@ -111,7 +111,7 @@ export function stageCase(t: TestContext) {
       syncBuiltinESMExports();
     },
     run: (body: (step: FixtureStep) => Promise<void>) => original.run(async step => {
-      guard = await step(() => wait('native guard setup', () => fakeNativeGuard(undo => { restoreGuard = undo; })));
+      if (!options.native) guard = await step(() => wait('native guard setup', () => fakeNativeGuard(undo => { restoreGuard = undo; })));
       await body(step);
     }),
   };

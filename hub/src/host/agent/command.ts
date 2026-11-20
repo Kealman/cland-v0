@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { pruneCommand, scopedCommandFailure } from './prune-command.ts';
 import { MAX_LINE_BYTES } from './protocol.ts';
 export type RunResult = import('../host.ts').HostRunResult;
 /** Copy a UTF-8 byte-bounded suffix without splitting a code point. */
@@ -42,17 +43,22 @@ export function boundedCommandResult(result: RunResult): RunResult {
     code: result.code,
     ...(result.nativeAdmission ? {nativeAdmission:result.nativeAdmission} : {}),
     ...(result.claudeAdmission ? {claudeAdmission:result.claudeAdmission} : {}),
+    ...(result.nativeClose ? { nativeClose: result.nativeClose } : {}),
+    ...(result.nativeCleanup ? { nativeCleanup: result.nativeCleanup } : {}),
     stdout: result.stdout.slice(-4096),
     stderr: result.stderr.slice(-4096),
     error: `command output exceeds agent frame cap (${MAX_LINE_BYTES} bytes); stdout ${Buffer.byteLength(result.stdout)} bytes, stderr ${Buffer.byteLength(result.stderr)} bytes; native exit code ${result.code}${result.error ? `; ${result.error.slice(-4096)}` : ''}`,
   };
 }
-export const nativeCommandIncomplete = (result: Pick<RunResult,'error'|'nativeAdmission'|'claudeAdmission'>): boolean => {
+export const nativeCommandIncomplete = (result: Pick<RunResult,'error'|'nativeAdmission'|'claudeAdmission'|'nativeCleanup'>): boolean => {
+  if (result.nativeCleanup) return result.nativeCleanup === 'incomplete';
   if(result.nativeAdmission==='no-process'||result.claudeAdmission?.outcome==='refused-before-spawn')return false;
   return result.error?.includes('cleanup incomplete') === true;
 };
 export function nativeCommandFailure(result: RunResult, fallback: string): Error {
-  return Object.assign(new Error(result.error || result.stderr || fallback),nativeCommandIncomplete(result)?{code:'CLAND_NATIVE_INCOMPLETE'}:{});
+  return Object.assign(new Error(result.error || result.stderr || fallback), { stdout: result.stdout, stderr: result.stderr },
+    result.nativeClose ? { nativeClose: result.nativeClose } : {}, result.nativeCleanup ? { nativeCleanup: result.nativeCleanup } : {},
+    nativeCommandIncomplete(result)?{code:'CLAND_NATIVE_INCOMPLETE'}:{});
 }
 const PROBE_CLOSE_TIMEOUT_MS = 1000;
 
@@ -74,6 +80,12 @@ export const probeTimeout = (env: NodeJS.ProcessEnv, fallbackMs: number): number
  * Optional ninth collector bounds agent output; doctor callers keep complete output.
  */
 export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = probeTimeout(env, 20_000), inheritStdin = false, signal?: AbortSignal, encoding: BufferEncoding = 'utf8', cwd?: string, output = new CommandOutput()): Promise<RunResult> {
+  const owner = pruneCommand.getStore();
+  if (owner?.command && bin === 'git' && cwd) return owner.command(cwd, args, env);
+  if (owner && bin === 'git' && cwd) return owner.run(cwd, args, env).then(
+    stdout => ({ code: 0, stdout, stderr: '' }),
+    scopedCommandFailure,
+  );
   return new Promise((done) => {
     let error: string | undefined;
     let settled = false;

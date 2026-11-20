@@ -49,8 +49,8 @@ Add subsystem text to its file; keep this index as pointers.
 Startup listener await receipts and post-serving verdict freshness admission are
 described in the [startup reference](../docs/hub/coordinator-subscription-procedure.md).
 
-Background merge-prune shutdown joins and its bounded incomplete outcome are
-documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merge-cleanup-shutdown).
+Native Git read/writer classification, startup writer fences and bounded merge-prune shutdown
+are documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#merge-cleanup-shutdown).
 
 Conditional batch T1 reuse, receipt requirements and per-member summaries are
 documented under [queued batches](../docs/agents/tests.md#queued-merge-batches).

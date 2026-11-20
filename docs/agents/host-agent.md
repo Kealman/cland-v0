@@ -530,6 +530,17 @@ writers; unresolved native ownership reports incomplete cleanup and retains stat
 
 ### Publication admission
 
+Local Git commands entering a prune scope use the hub's conservative command
+classifier. Reads with confirmed Git2.45+ `--no-lazy-fetch` support have in-memory
+native-stop owners and no durable record. Older Git gets the same fast path after
+a current effective-config query before every read, without a repository cache;
+promisor/partial-clone keys or unknown config retain the durable writer fallback.
+The config-only query has an in-memory native owner and cannot fetch. Writers
+publish PID/birth before the committed plain-JS gate opens.
+Remote publication and its agent-owned receipts keep their existing owner. The
+whole-runtime package includes the exact `hub/bin/owned-exec.mjs` file; package
+verification and installation share that same exact-path admission rule.
+
 On hosts cland pushes the task branch on every commit and other ref moves through
 the agent's leased ref-push owner. `cland verify` and `cland task edit --status ready`
 flush that same owner first. Automatic verdict-driven ready uses the same check.

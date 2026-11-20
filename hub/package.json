@@ -10,7 +10,7 @@
     "cland": "bin/cland.ts"
   },
   "scripts": {
-    "typecheck": "node bin/typecheck.ts -p tsconfig.json",
+    "typecheck": "node bin/typecheck.ts -p tsconfig.json && node bin/typecheck.ts -p tsconfig.owned-exec.json",
     "test": "node test/run-suite.ts hub",
     "check": "npm run typecheck && npm test"
   },

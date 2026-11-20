@@ -25,7 +25,14 @@ positively controlled launch guard through cleanup.
 The two cleanup projection cases retain that same complete guard through their
 whole-case positive-close owner. The shared case-name table selects them for
 that guard instead of nesting the file-wide guard, whose restoration would
-otherwise run before the owned guard. All other cases keep fixtureNativeGuard.
+otherwise run before the owned guard. The production batch Git whitespace case
+uses the same exact-name delegation to its whole-callback owner; all remaining
+cases keep fixtureNativeGuard.
+
+The whitespace case keeps a disposable cwd and injects the complete owned Git
+launch/identity/lease/cleanup boundary. It runs the real scalar-versus-NUL output
+handling, checks all eleven diff/log calls reached that boundary, and retains
+the literal leading/trailing whitespace assertions. It never launches Git.
 
 T-1900: The ordinary landing case launches an in-process fake Claude Coordinator,
 waits for accepted role input, and makes it idle. A lead's progress note remains

@@ -1,0 +1,2398 @@
+{
+  "version": 1,
+  "sources": [
+    "hub/src/batch-candidate-ownership.ts",
+    "hub/src/homebrew.ts",
+    "hub/src/host/registry.ts",
+    "hub/src/host/task-worktrees.ts",
+    "hub/src/hub/demos.ts",
+    "hub/src/hub/dev-t3-probe.ts",
+    "hub/src/hub/dispatch.ts",
+    "hub/src/hub/merge-batch-territory.ts",
+    "hub/src/hub/merge.ts",
+    "hub/src/hub/releases.ts",
+    "hub/src/release-web.ts",
+    "hub/src/territory-publish.ts",
+    "hub/src/territory-push.ts",
+    "hub/src/territory-release.ts",
+    "hub/src/territory.ts",
+    "hub/src/tracker/epic-surfaces.ts"
+  ],
+  "calls": [
+    {
+      "file": "hub/src/batch-candidate-ownership.ts",
+      "call": "territoryGitAsync(cwd, ['rev-parse', '--git-common-dir'], false, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "--git-common-dir"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/batch-candidate-ownership.ts",
+      "call": "territoryGitAsync(cwd, ['rev-parse', 'HEAD'], false, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/batch-candidate-ownership.ts",
+      "call": "territoryGitAsync(cwd, ['rev-parse', 'HEAD^{tree}'], false, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "HEAD^{tree}"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/batch-candidate-ownership.ts",
+      "call": "territoryGitAsync(project, ['rev-parse', '--git-common-dir'], false, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "--git-common-dir"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/homebrew.ts",
+      "call": "run(root, ['commit-tree', tree, ...(before ? ['-p', before] : [])], false, `cland ${plan.version}\\n\\nSource: ${plan.url}\\nSHA256: ${plan.sha256}\\n`, env)",
+      "argv": [
+        "commit-tree",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/homebrew.ts",
+      "call": "run(root, ['fetch', '--no-auto-maintenance', '--no-tags', '--no-write-fetch-head', '--refmap=', '--', remote, before], false, undefined, env)",
+      "argv": [
+        "fetch",
+        "--no-auto-maintenance",
+        "--no-tags",
+        "--no-write-fetch-head",
+        "--refmap=",
+        "--",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/homebrew.ts",
+      "call": "run(root, ['hash-object', '-w', '--stdin'], false, formula, env)",
+      "argv": [
+        "hash-object",
+        "-w",
+        "--stdin"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/homebrew.ts",
+      "call": "run(root, ['ls-remote', '--refs', '--', remote, `refs/heads/${plan.branch}`], false, undefined, env)",
+      "argv": [
+        "ls-remote",
+        "--refs",
+        "--",
+        "fixture",
+        "refs/heads/fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/homebrew.ts",
+      "call": "run(root, ['ls-tree', '-z', tree], false, undefined, env)",
+      "argv": [
+        "ls-tree",
+        "-z",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/homebrew.ts",
+      "call": "run(root, ['mktree', '-z'], false, kept.join('\\0') + '\\0', env)",
+      "argv": [
+        "mktree",
+        "-z"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/homebrew.ts",
+      "call": "run(root, ['push', `--force-with-lease=refs/heads/${plan.branch}:${before ?? ''}`, '--', remote, `${commit}:refs/heads/${plan.branch}`], true, undefined, env)",
+      "argv": [
+        "push",
+        "--force-with-lease=refs/heads/fixture:fixture",
+        "--",
+        "fixture",
+        "fixture:refs/heads/fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/homebrew.ts",
+      "call": "run(root, ['rev-parse', '--verify', `${before}:${plan.file}`], false, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "fixture:fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/homebrew.ts",
+      "call": "run(root, ['rev-parse', '--verify', `${before}:Formula`], false, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "fixture:Formula"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/host/registry.ts",
+      "call": "territoryGitAsync(territoryPath(options.root),['bundle','create',source,'--branches','HEAD'],false,undefined,options.env)",
+      "argv": [
+        "bundle",
+        "create",
+        "fixture",
+        "--branches",
+        "HEAD"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "git(['branch','--no-track',o.branch,selected])",
+      "argv": [
+        "branch",
+        "--no-track",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "git(['check-ref-format','--branch',o.branch])",
+      "argv": [
+        "check-ref-format",
+        "--branch",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "git(['rev-parse','--verify',`refs/heads/${o.branch}`])",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "git(['rev-parse',`refs/heads/${base}`])",
+      "argv": [
+        "rev-parse",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "git(['rev-parse',`refs/heads/${o.branch}`])",
+      "argv": [
+        "rev-parse",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "git(['rev-parse',`refs/heads/${o.branch}`])",
+      "argv": [
+        "rev-parse",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "git(['rev-parse',`refs/heads/${row.branch}`])",
+      "argv": [
+        "rev-parse",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "git(['show-ref','--verify','--quiet','refs/heads/dev'])",
+      "argv": [
+        "show-ref",
+        "--verify",
+        "--quiet",
+        "refs/heads/dev"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "git(['update-ref','--no-deref','-d',`refs/heads/${o.branch}`,plan.selected])",
+      "argv": [
+        "update-ref",
+        "--no-deref",
+        "-d",
+        "refs/heads/fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "git(['update-ref','--no-deref','-d',`refs/heads/${o.branch}`,selected])",
+      "argv": [
+        "update-ref",
+        "--no-deref",
+        "-d",
+        "refs/heads/fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "git(['update-ref','--no-deref','-d',`refs/heads/${row.branch}`,tip])",
+      "argv": [
+        "update-ref",
+        "--no-deref",
+        "-d",
+        "refs/heads/fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "territoryGitAsync(territoryPath(o.project), ['rev-parse', '--verify', `refs/heads/${old.branch}`], false, undefined, o.env)",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "territoryGitAsync(territoryPath(o.project),['rev-parse',`refs/heads/${row.branch}`],false,undefined,o.env)",
+      "argv": [
+        "rev-parse",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "territoryGitAsync(territoryPath(o.project),args,false,undefined,o.env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/host/task-worktrees.ts",
+      "call": "territoryGitAsync(territoryPath(o.project),args,false,undefined,o.env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/hub/demos.ts",
+      "call": "git(args)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/hub/demos.ts",
+      "call": "territoryGitAsync(root, args, undefined, undefined, env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/hub/demos.ts",
+      "call": "this.#git(['merge-base', '--is-ancestor', head, 'dev'])",
+      "argv": ["merge-base", "--is-ancestor", "fixture", "dev"],
+      "expected": "read-only",
+      "disposition": "Literal private-wrapper read; dynamic operands do not change the command class."
+    },
+    {
+      "file": "hub/src/hub/demos.ts",
+      "call": "this.#git(['rev-parse', '--verify', `${commit ?? 'dev'}^{commit}`])",
+      "argv": ["rev-parse", "--verify", "fixture^{commit}"],
+      "expected": "read-only",
+      "disposition": "Literal private-wrapper read; dynamic operands do not change the command class."
+    },
+    {
+      "file": "hub/src/hub/dev-t3-probe.ts",
+      "call": "territoryGitAsync(candidate.cwd, ['checkout', '--detach', candidate.head], false, undefined, env)",
+      "argv": [
+        "checkout",
+        "--detach",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/hub/dev-t3-probe.ts",
+      "call": "territoryGitAsync(candidate.cwd, ['rev-parse', 'HEAD'], false, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/dev-t3-probe.ts",
+      "call": "territoryGitAsync(candidate.cwd, ['rev-parse', 'HEAD'], false, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/dev-t3-probe.ts",
+      "call": "territoryGitAsync(candidate.cwd, ['status', '--porcelain=v1', '--untracked-files=no'], false, undefined, env)",
+      "argv": [
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=no"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/dev-t3-probe.ts",
+      "call": "territoryGitAsync(root, ['clone', '--shared', '--no-checkout', '--', root, candidate.cwd], false, undefined, env)",
+      "argv": [
+        "clone",
+        "--shared",
+        "--no-checkout",
+        "--",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/hub/dev-t3-probe.ts",
+      "call": "territoryGitAsync(root, ['ls-tree', '--name-only', '-z', head, '--', file], false, undefined, env)",
+      "argv": [
+        "ls-tree",
+        "--name-only",
+        "-z",
+        "fixture",
+        "--",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/dispatch.ts",
+      "call": "run()",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/hub/dispatch.ts",
+      "call": "territoryGitAsync(territoryPath(root),['rev-parse','--verify',`refs/heads/${row.branch}`],false,undefined,this.#options.env)",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "git(['--literal-pathspecs', 'log', '-1', '--format=%H', current.base, `^${tested.base}`, '--', ...inputs])",
+      "argv": [
+        "--literal-pathspecs",
+        "log",
+        "-1",
+        "--format=%H",
+        "fixture",
+        "^fixture",
+        "--",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "git(['commit-tree', tree, '-p', head], `Batch candidate ${entry.item}\\n`)",
+      "argv": [
+        "commit-tree",
+        "fixture",
+        "-p",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "git(['diff', '--name-only', '-z', '--no-renames', tested.head, current.head, '--'])",
+      "argv": [
+        "diff",
+        "--name-only",
+        "-z",
+        "--no-renames",
+        "fixture",
+        "fixture",
+        "--"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "git(['merge-tree', '--write-tree', '--name-only', '-z', head, tip])",
+      "argv": [
+        "merge-tree",
+        "--write-tree",
+        "--name-only",
+        "-z",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "git(['rev-parse', 'refs/heads/dev'])",
+      "argv": [
+        "rev-parse",
+        "refs/heads/dev"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "git(['rev-parse', `refs/heads/${entry.branch}`])",
+      "argv": [
+        "rev-parse",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "git(args, input)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "territoryGitAsync(candidate.cwd, ['rev-parse', 'HEAD'], false, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "territoryGitAsync(root, ['rev-parse', `refs/heads/${entry.branch}`], false, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "territoryGitAsync(root, ['worktree', 'add', '--detach', candidate.cwd, candidate.head], false, undefined, env)",
+      "argv": [
+        "worktree",
+        "add",
+        "--detach",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "territoryGitAsync(root, ['worktree', 'remove', candidate.cwd], false, undefined, env)",
+      "argv": [
+        "worktree",
+        "remove",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "territoryGitAsync(root, args, false, input, env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "territoryGitAsync(root, args, false, undefined, env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/hub/merge-batch-territory.ts",
+      "call": "territoryGitAsync(root, args, false, undefined, env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/hub/merge.ts",
+      "call": "this.#git(this.tracker.root, ['diff-tree', '--no-commit-id', '--name-only', '--no-renames', '-r', '-z', result.commit, '--'], undefined, undefined, this.#env)",
+      "argv": [
+        "diff-tree",
+        "--no-commit-id",
+        "--name-only",
+        "--no-renames",
+        "-r",
+        "-z",
+        "fixture",
+        "--"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/merge.ts",
+      "call": "this.#git(this.tracker.root, ['push', territoryPath(this.tracker.root), `refs/heads/${prior.base}:refs/heads/${prior.base}`], true, undefined, this.#env)",
+      "argv": [
+        "push",
+        "fixture",
+        "refs/heads/fixture:refs/heads/fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/hub/merge.ts",
+      "call": "this.#git(this.tracker.root, ['rev-parse', `${prior.commit}^`], undefined, undefined, this.#env)",
+      "argv": [
+        "rev-parse",
+        "fixture^"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/merge.ts",
+      "call": "this.#git(this.tracker.root, ['rev-parse', `refs/heads/${prior.base}`], undefined, undefined, this.#env)",
+      "argv": [
+        "rev-parse",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/merge.ts",
+      "call": "this.#git(this.tracker.root, ['show', `${revision}:${path}`], undefined, undefined, this.#env)",
+      "argv": [
+        "show",
+        "fixture:fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/merge.ts",
+      "call": "this.#git(this.tracker.root, args, false, input, this.#env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/hub/merge.ts",
+      "call": "this.#git(this.tracker.root, args, undefined, undefined, this.#env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/hub/releases.ts",
+      "call": "territoryGitAsync(territoryPath(this.tracker.root), ['rev-parse', '--verify', `refs/heads/${item.receipt.base}`], undefined, undefined, this.#env)",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/releases.ts",
+      "call": "territoryGitAsync(this.tracker.root, ['fetch', '--no-write-fetch-head', '--no-tags', territoryPath(this.tracker.root), remoteTip], undefined, undefined, this.#env)",
+      "argv": [
+        "fetch",
+        "--no-write-fetch-head",
+        "--no-tags",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/hub/releases.ts",
+      "call": "territoryGitAsync(this.tracker.root, ['merge-base', '--is-ancestor', item.receipt.commit, tip], undefined, undefined, this.#env)",
+      "argv": [
+        "merge-base",
+        "--is-ancestor",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/hub/releases.ts",
+      "call": "territoryGitAsync(this.tracker.root, ['rev-parse', '--verify', `refs/heads/${item.receipt.base}`], undefined, undefined, this.#env)",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/release-web.ts",
+      "call": "execute(file, args, { cwd, env: { ...env, GH_HOST: 'github.com', GH_PROMPT_DISABLED: '1' }, timeout: 120_000, maxBuffer: 1024 * 1024 })",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/release-web.ts",
+      "call": "run('gh', ['api', '--paginate', `repos/${plan.repo}/releases`, '--jq', '.[].tag_name'], root, env)",
+      "argv": [
+        "api",
+        "--paginate",
+        "repos/fixture/releases",
+        "--jq",
+        ".[].tag_name"
+      ],
+      "expected": "writer",
+      "disposition": "Non-Git command from the over-inclusive local run-wrapper census; never admitted to the Git runner."
+    },
+    {
+      "file": "hub/src/release-web.ts",
+      "call": "run('gh', ['auth', 'status', '--active', '--hostname', 'github.com'], root, env)",
+      "argv": [
+        "auth",
+        "status",
+        "--active",
+        "--hostname",
+        "github.com"
+      ],
+      "expected": "writer",
+      "disposition": "Non-Git command from the over-inclusive local run-wrapper census; never admitted to the Git runner."
+    },
+    {
+      "file": "hub/src/release-web.ts",
+      "call": "run('gh', ['release', 'create', version, '--verify-tag', '--draft', '--title', version, '--notes-file', join(plan.directory, 'notes.txt'), ...repo], root, env)",
+      "argv": [
+        "release",
+        "create",
+        "fixture",
+        "--verify-tag",
+        "--draft",
+        "--title",
+        "fixture",
+        "--notes-file",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Non-Git command from the over-inclusive local run-wrapper census; never admitted to the Git runner."
+    },
+    {
+      "file": "hub/src/release-web.ts",
+      "call": "run('gh', ['release', 'download', version, '--pattern', name, '--output', receipt, '--clobber', ...repo], root, env)",
+      "argv": [
+        "release",
+        "download",
+        "fixture",
+        "--pattern",
+        "fixture",
+        "--output",
+        "fixture",
+        "--clobber",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Non-Git command from the over-inclusive local run-wrapper census; never admitted to the Git runner."
+    },
+    {
+      "file": "hub/src/release-web.ts",
+      "call": "run('gh', ['release', 'edit', version, '--draft=false', ...repo], root, env)",
+      "argv": [
+        "release",
+        "edit",
+        "fixture",
+        "--draft=false",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Non-Git command from the over-inclusive local run-wrapper census; never admitted to the Git runner."
+    },
+    {
+      "file": "hub/src/release-web.ts",
+      "call": "run('gh', ['release', 'upload', version, join(plan.directory, name), ...repo], root, env)",
+      "argv": [
+        "release",
+        "upload",
+        "fixture",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Non-Git command from the over-inclusive local run-wrapper census; never admitted to the Git runner."
+    },
+    {
+      "file": "hub/src/release-web.ts",
+      "call": "run('gh', ['release', 'view', version, '--json', 'assets,isDraft', ...repo], root, env)",
+      "argv": [
+        "release",
+        "view",
+        "fixture",
+        "--json",
+        "assets,isDraft",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Non-Git command from the over-inclusive local run-wrapper census; never admitted to the Git runner."
+    },
+    {
+      "file": "hub/src/release-web.ts",
+      "call": "run('gh', ['release', 'view', version, '--json', 'assets,isDraft', ...repo], root, env)",
+      "argv": [
+        "release",
+        "view",
+        "fixture",
+        "--json",
+        "assets,isDraft",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Non-Git command from the over-inclusive local run-wrapper census; never admitted to the Git runner."
+    },
+    {
+      "file": "hub/src/release-web.ts",
+      "call": "territoryGitAsync(root, ['archive', '--format=tar', `--output=${join(directory, 'source.tar')}`, commit], false, undefined, env)",
+      "argv": [
+        "archive",
+        "--format=tar",
+        "--output=fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['check-ref-format', '--branch', branch])",
+      "argv": [
+        "check-ref-format",
+        "--branch",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['diff-tree', '--no-commit-id', '--name-only', '--no-renames', '-r', '-z', commit])",
+      "argv": [
+        "diff-tree",
+        "--no-commit-id",
+        "--name-only",
+        "--no-renames",
+        "-r",
+        "-z",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['fetch', '--no-tags', '--no-write-fetch-head', '--refmap=', '--', github.url, oldSite])",
+      "argv": [
+        "fetch",
+        "--no-tags",
+        "--no-write-fetch-head",
+        "--refmap=",
+        "--",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['fetch', '--no-tags', '--no-write-fetch-head', territoryPath(root), territoryMain, territoryDev])",
+      "argv": [
+        "fetch",
+        "--no-tags",
+        "--no-write-fetch-head",
+        "fixture",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['ls-remote', '--refs', '--', github.url, 'refs/heads/site'])",
+      "argv": [
+        "ls-remote",
+        "--refs",
+        "--",
+        "fixture",
+        "refs/heads/site"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['merge-base', '--is-ancestor', older, newer])",
+      "argv": [
+        "merge-base",
+        "--is-ancestor",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['push', '--atomic', `--force-with-lease=refs/heads/${primary}:${receipt.oldMain}`, `--force-with-lease=refs/heads/site:${receipt.oldSite ?? ''}`, '--', github.url, `${result.main}:refs/heads/${primary}`, `${result.site}:refs/heads/site`], true)",
+      "argv": [
+        "push",
+        "--atomic",
+        "--force-with-lease=refs/heads/fixture:fixture",
+        "--force-with-lease=refs/heads/site:fixture",
+        "--",
+        "fixture",
+        "fixture:refs/heads/fixture",
+        "fixture:refs/heads/site"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['rev-list', '--reverse', '--topo-order', `${state.dev}..${source}`, '--'])",
+      "argv": [
+        "rev-list",
+        "--reverse",
+        "--topo-order",
+        "fixture..fixture",
+        "--"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['rev-parse', '--verify', `refs/heads/${branch}`])",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['rev-parse', `refs/heads/${branch}`])",
+      "argv": [
+        "rev-parse",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['show', '-s', '--format=%P', commit])",
+      "argv": [
+        "show",
+        "-s",
+        "--format=%P",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['show', '-s', '--format=%cI', source])",
+      "argv": [
+        "show",
+        "-s",
+        "--format=%cI",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['show', '-s', '--format=%s', commit])",
+      "argv": [
+        "show",
+        "-s",
+        "--format=%s",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['status', '--porcelain'])",
+      "argv": [
+        "status",
+        "--porcelain"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['status', '--porcelain'])",
+      "argv": [
+        "status",
+        "--porcelain"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['symbolic-ref', '--short', 'HEAD'])",
+      "argv": [
+        "symbolic-ref",
+        "--short",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['update-ref', 'refs/remotes/origin/dev', result.dev])",
+      "argv": [
+        "update-ref",
+        "refs/remotes/origin/dev",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['worktree', 'add', '--detach', scratch, github.main], true)",
+      "argv": [
+        "worktree",
+        "add",
+        "--detach",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(root, ['worktree', 'remove', '--force', scratch], true)",
+      "argv": [
+        "worktree",
+        "remove",
+        "--force",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(scratch, ['-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'cherry-pick', commit], true, undefined, { GIT_COMMITTER_DATE: date })",
+      "argv": [
+        "-c",
+        "core.hooksPath=",
+        "-c",
+        "commit.gpgsign=false",
+        "cherry-pick",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(scratch, ['-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'merge', '--no-edit', '--no-ff', '-m', `Publish marketing ${branch}\\n\\nItem: ${item}`, tip], true, undefined, { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date })",
+      "argv": [
+        "-c",
+        "core.hooksPath=",
+        "-c",
+        "commit.gpgsign=false",
+        "merge",
+        "--no-edit",
+        "--no-ff",
+        "-m",
+        "Publish marketing fixture\n\nItem: fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(scratch, ['checkout', '--detach', state.dev], true)",
+      "argv": [
+        "checkout",
+        "--detach",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(scratch, ['rev-parse', 'HEAD'])",
+      "argv": [
+        "rev-parse",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(scratch, ['rev-parse', 'HEAD'])",
+      "argv": [
+        "rev-parse",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(territoryPath(root), ['config', '--get', 'cland.defaultBranch'])",
+      "argv": [
+        "config",
+        "--get",
+        "cland.defaultBranch"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(territoryPath(root), ['rev-parse', '--verify', 'refs/heads/dev'])",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/dev"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(territoryPath(root), ['rev-parse', '--verify', `refs/heads/${primary}`])",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(territoryPath(root), ['rev-parse', 'refs/heads/dev'])",
+      "argv": [
+        "rev-parse",
+        "refs/heads/dev"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "run(territoryPath(root), ['rev-parse', `refs/heads/${primary}`])",
+      "argv": [
+        "rev-parse",
+        "refs/heads/fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-publish.ts",
+      "call": "runGit(cwd, args, marked, input, { ...env, ...extra })",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "execute(cwd, args, marked, input, env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "run(root, ['fetch', '--no-write-fetch-head', '--no-tags', territoryPath(root), previous])",
+      "argv": [
+        "fetch",
+        "--no-write-fetch-head",
+        "--no-tags",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "run(root, ['log', '--format=%h %s', `${dev}..${previous}`, '--'])",
+      "argv": [
+        "log",
+        "--format=%h %s",
+        "fixture..fixture",
+        "--"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "run(root, ['merge-base', '--is-ancestor', previous, dev])",
+      "argv": [
+        "merge-base",
+        "--is-ancestor",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "run(root, ['push', territoryPath(root), `${dev}:refs/heads/dev`], true)",
+      "argv": [
+        "push",
+        "fixture",
+        "fixture:refs/heads/dev"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "run(root, ['rev-parse', '--verify', 'refs/heads/dev'])",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/dev"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "run(root, ['rev-parse', '--verify', 'refs/heads/dev'])",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/dev"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "run(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'])",
+      "argv": [
+        "symbolic-ref",
+        "--quiet",
+        "--short",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "run(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'])",
+      "argv": [
+        "symbolic-ref",
+        "--quiet",
+        "--short",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "run(root, ['update-ref', 'refs/remotes/origin/dev', dev])",
+      "argv": [
+        "update-ref",
+        "refs/remotes/origin/dev",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "run(territoryPath(root), ['rev-parse', '--verify', 'refs/heads/dev'])",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/dev"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-push.ts",
+      "call": "run(territoryPath(root), ['rev-parse', '--verify', 'refs/heads/dev'])",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "refs/heads/dev"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['fetch', '--no-auto-maintenance', '--no-tags', '--no-write-fetch-head', '--refmap=', '--', github.url, prior.tag], undefined, undefined, env)",
+      "argv": [
+        "fetch",
+        "--no-auto-maintenance",
+        "--no-tags",
+        "--no-write-fetch-head",
+        "--refmap=",
+        "--",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['log', '--format=%h %s', `${state.dev}..${github.main}`, '--'], undefined, undefined, env)",
+      "argv": [
+        "log",
+        "--format=%h %s",
+        "fixture..fixture",
+        "--"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['log', '--reverse', '--format=%s%x00%(trailers:key=Item,valueonly)%x00%x1e', `${state.main}..${state.dev}`, '--'], undefined, undefined, env)",
+      "argv": [
+        "log",
+        "--reverse",
+        "--format=%s%x00%(trailers:key=Item,valueonly)%x00%x1e",
+        "fixture..fixture",
+        "--"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['ls-tree', '--name-only', state.dev, '--', '.cland/config.toml'], false, undefined, env)",
+      "argv": [
+        "ls-tree",
+        "--name-only",
+        "fixture",
+        "--",
+        ".cland/config.toml"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['ls-tree', '--name-only', state.dev, '--', 'package.json'], undefined, undefined, env)",
+      "argv": [
+        "ls-tree",
+        "--name-only",
+        "fixture",
+        "--",
+        "package.json"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['merge-base', '--is-ancestor', older, newer], undefined, undefined, env)",
+      "argv": [
+        "merge-base",
+        "--is-ancestor",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['mktag'], false, `object ${state.dev}\\ntype commit\\ntag ${name}\\ntagger ${ident}\\n\\n${notes}\\n`, env)",
+      "argv": [
+        "mktag"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['push', '--atomic', `--force-with-lease=refs/heads/${primary}:${github.main}`, `--force-with-lease=refs/tags/${name}:`, '--', github.url, `${state.dev}:refs/heads/${primary}`, `${tag}:refs/tags/${name}`], true, undefined, env)",
+      "argv": [
+        "push",
+        "--atomic",
+        "--force-with-lease=refs/heads/fixture:fixture",
+        "--force-with-lease=refs/tags/fixture:",
+        "--",
+        "fixture",
+        "fixture:refs/heads/fixture",
+        "fixture:refs/tags/fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['push', '--atomic', territoryPath(root), `${receipt.commit}:refs/heads/${primary}`, `${receipt.tag}:refs/tags/${receipt.version}`], true, undefined, env)",
+      "argv": [
+        "push",
+        "--atomic",
+        "fixture",
+        "fixture:refs/heads/fixture",
+        "fixture:refs/tags/fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['show', `${receipt.commit}:packaging/homebrew/cland.rb.in`], false, undefined, env)",
+      "argv": [
+        "show",
+        "fixture:packaging/homebrew/cland.rb.in"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['show', `${state.dev}:.cland/config.toml`], false, undefined, env)",
+      "argv": [
+        "show",
+        "fixture:.cland/config.toml"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['show', `${state.dev}:package.json`], undefined, undefined, env)",
+      "argv": [
+        "show",
+        "fixture:package.json"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['show', `${state.dev}:packaging/homebrew/cland.rb.in`], false, undefined, env)",
+      "argv": [
+        "show",
+        "fixture:packaging/homebrew/cland.rb.in"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['status', '--porcelain'], undefined, undefined, env)",
+      "argv": [
+        "status",
+        "--porcelain"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['symbolic-ref', '--quiet', 'HEAD'], undefined, undefined, env)",
+      "argv": [
+        "symbolic-ref",
+        "--quiet",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['update-ref', '--stdin'], true, commands, env)",
+      "argv": [
+        "update-ref",
+        "--stdin"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['var', 'GIT_COMMITTER_IDENT'], undefined, undefined, env)",
+      "argv": [
+        "var",
+        "GIT_COMMITTER_IDENT"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['worktree', 'add', '--detach', scratch, state.dev], true, undefined, env)",
+      "argv": [
+        "worktree",
+        "add",
+        "--detach",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['worktree', 'prune'], true, undefined, env)",
+      "argv": [
+        "worktree",
+        "prune"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(root, ['worktree', 'remove', '--force', scratch], true, undefined, env)",
+      "argv": [
+        "worktree",
+        "remove",
+        "--force",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(scratch, ['-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'rebase', '--rebase-merges', '--onto', github.main, state.main], true, undefined, env)",
+      "argv": [
+        "-c",
+        "core.hooksPath=",
+        "-c",
+        "commit.gpgsign=false",
+        "rebase",
+        "--rebase-merges",
+        "--onto",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(scratch, ['diff', '--name-only', '-z', '--diff-filter=U'], undefined, undefined, env)",
+      "argv": [
+        "diff",
+        "--name-only",
+        "-z",
+        "--diff-filter=U"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(scratch, ['rebase', '--abort'], true, undefined, env)",
+      "argv": [
+        "rebase",
+        "--abort"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "git(scratch, ['rev-parse', 'HEAD'], undefined, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['diff-files', '--name-only'], undefined, undefined, env)",
+      "argv": [
+        "diff-files",
+        "--name-only"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['fetch', '--no-auto-maintenance', '--no-tags', '--no-write-fetch-head', '--refmap=', '--', url, main], undefined, undefined, env)",
+      "argv": [
+        "fetch",
+        "--no-auto-maintenance",
+        "--no-tags",
+        "--no-write-fetch-head",
+        "--refmap=",
+        "--",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['ls-files', '--others', '--exclude-standard'], undefined, undefined, env)",
+      "argv": [
+        "ls-files",
+        "--others",
+        "--exclude-standard"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['ls-remote', '--refs', '--', url, `refs/heads/${primary}`, 'refs/tags/*'], undefined, undefined, env)",
+      "argv": [
+        "ls-remote",
+        "--refs",
+        "--",
+        "fixture",
+        "refs/heads/fixture",
+        "refs/tags/*"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['push', '--atomic', `--force-with-lease=refs/heads/dev:${territoryDev ?? ''}`, `--force-with-lease=refs/heads/${primary}:${territoryMain ?? ''}`, territory, `${receipt.main}:refs/heads/${primary}`, `${receipt.dev}:refs/heads/dev`], true, undefined, env)",
+      "argv": [
+        "push",
+        "--atomic",
+        "--force-with-lease=refs/heads/dev:fixture",
+        "--force-with-lease=refs/heads/fixture:fixture",
+        "fixture",
+        "fixture:refs/heads/fixture",
+        "fixture:refs/heads/dev"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['read-tree', '-u', '-m', receipt.dev, receipt.oldDev], true, undefined, env)",
+      "argv": [
+        "read-tree",
+        "-u",
+        "-m",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['read-tree', '-u', '-m', receipt.oldDev, receipt.dev], true, undefined, env)",
+      "argv": [
+        "read-tree",
+        "-u",
+        "-m",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['remote', 'get-url', ...(publishing ? ['--push', '--all'] : []), 'github'], undefined, undefined, env)",
+      "argv": [
+        "remote",
+        "get-url",
+        "fixture",
+        "github"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['rev-parse', '--git-path', state], undefined, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "--git-path",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['rev-parse', '--verify', '--quiet', name], undefined, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['rev-parse', ...states.flatMap(state => ['--git-path', state])], undefined, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['rev-parse', `${receipt.dev}^{tree}`], undefined, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "fixture^{tree}"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['rev-parse', `${receipt.oldDev}^{tree}`], undefined, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "fixture^{tree}"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['symbolic-ref', '--quiet', 'HEAD'], undefined, undefined, env)",
+      "argv": [
+        "symbolic-ref",
+        "--quiet",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['update-ref', '--stdin'], true, `start\\nupdate refs/heads/${primary} ${receipt.main} ${main}\\nupdate refs/heads/dev ${receipt.dev} ${dev}\\nprepare\\ncommit\\n`, env)",
+      "argv": [
+        "update-ref",
+        "--stdin"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['worktree', 'list', '--porcelain', '-z'], undefined, undefined, env)",
+      "argv": [
+        "worktree",
+        "list",
+        "--porcelain",
+        "-z"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(root, ['write-tree'], undefined, undefined, env)",
+      "argv": [
+        "write-tree"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory-release.ts",
+      "call": "run(territoryPath(root), ['config', '--get', 'cland.defaultBranch'], undefined, undefined, env)",
+      "argv": [
+        "config",
+        "--get",
+        "cland.defaultBranch"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "command!.git(cwd, args, { ...env, CLAND_TERRITORY_WRITE: marked ? '1' : '' }, input)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "git(cwd, args, undefined, undefined, env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "git(cwd, args, undefined, undefined, env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "git(root, ['read-tree', '-m', '-u', before!, target], undefined, undefined, env)",
+      "argv": [
+        "read-tree",
+        "-m",
+        "-u",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "git(root, ['read-tree', '-m', '-u', receipt.commit, before!], undefined, undefined, env)",
+      "argv": [
+        "read-tree",
+        "-m",
+        "-u",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "git(root, ['update-ref', `refs/heads/${receipt.base}`, target, current!], undefined, undefined, env)",
+      "argv": [
+        "update-ref",
+        "refs/heads/fixture",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "git(root, ['write-tree'], undefined, undefined, env)",
+      "argv": [
+        "write-tree"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "git(root, ['write-tree'], undefined, undefined, env)",
+      "argv": [
+        "write-tree"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "git(root, ['write-tree'], undefined, undefined, env)",
+      "argv": [
+        "write-tree"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(created.path, ['rev-parse', 'HEAD'], undefined, undefined, env)",
+      "argv": [
+        "rev-parse",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(path,['rev-parse','--verify','HEAD'],false,undefined,env)",
+      "argv": [
+        "rev-parse",
+        "--verify",
+        "HEAD"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['branch', '--no-track', branch, createdTip], undefined, undefined, env)",
+      "argv": [
+        "branch",
+        "--no-track",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['branch', '-D', branch], undefined, undefined, env)",
+      "argv": [
+        "branch",
+        "-D",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['commit-tree', beforeIndex, '-p', before], false, 'Merge index snapshot\\n', env)",
+      "argv": [
+        "commit-tree",
+        "fixture",
+        "-p",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['commit-tree', tree, '-p', before], false, text + '\\n', env)",
+      "argv": [
+        "commit-tree",
+        "fixture",
+        "-p",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['diff', '--name-only', '-z', 'HEAD', '--'], undefined, undefined, env)",
+      "argv": [
+        "diff",
+        "--name-only",
+        "-z",
+        "HEAD",
+        "--"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['diff', '--no-renames', '--name-only', '-z', before, tree, '--'], undefined, undefined, env)",
+      "argv": [
+        "diff",
+        "--no-renames",
+        "--name-only",
+        "-z",
+        "fixture",
+        "fixture",
+        "--"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['fetch', '--no-auto-maintenance', '--no-tags', '--no-write-fetch-head', territory, `refs/heads/${branch}`], undefined, undefined, env)",
+      "argv": [
+        "fetch",
+        "--no-auto-maintenance",
+        "--no-tags",
+        "--no-write-fetch-head",
+        "fixture",
+        "refs/heads/fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['log', '--format=%h %s', ...range, '--'], undefined, undefined, env)",
+      "argv": [
+        "log",
+        "--format=%h %s",
+        "fixture",
+        "--"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['log', '--format=%h %s', remoteTip ? `${remoteTip}..${before}` : before, '--'], undefined, undefined, env)",
+      "argv": [
+        "log",
+        "--format=%h %s",
+        "fixture",
+        "--"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['ls-files', '--others', '--exclude-standard', '-z'], undefined, undefined, env)",
+      "argv": [
+        "ls-files",
+        "--others",
+        "--exclude-standard",
+        "-z"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['merge-tree', '--write-tree', '--name-only', '-z', before, tip], undefined, undefined, env)",
+      "argv": [
+        "merge-tree",
+        "--write-tree",
+        "--name-only",
+        "-z",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['merge-tree', '--write-tree', commit, indexCommit], undefined, undefined, env)",
+      "argv": [
+        "merge-tree",
+        "--write-tree",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['push', '--porcelain', `--force-with-lease=refs/heads/${branch}:`, territory, `${createdTip}:refs/heads/${branch}`], undefined, undefined, env)",
+      "argv": [
+        "push",
+        "--porcelain",
+        "--force-with-lease=refs/heads/fixture:",
+        "fixture",
+        "fixture:refs/heads/fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['push', territoryPath(root), `refs/heads/${base}:refs/heads/${base}`], true, undefined, env)",
+      "argv": [
+        "push",
+        "fixture",
+        "refs/heads/fixture:refs/heads/fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['read-tree', '--dry-run', '-m', '-u', before, tree], undefined, undefined, env)",
+      "argv": [
+        "read-tree",
+        "--dry-run",
+        "-m",
+        "-u",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['read-tree', '-m', '-u', before, commit], undefined, undefined, env)",
+      "argv": [
+        "read-tree",
+        "-m",
+        "-u",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, createdTip], undefined, undefined, env)",
+      "argv": [
+        "update-ref",
+        "--no-deref",
+        "-d",
+        "refs/heads/fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, creationTip], undefined, undefined, env)",
+      "argv": [
+        "update-ref",
+        "--no-deref",
+        "-d",
+        "refs/heads/fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, tip], undefined, undefined, env)",
+      "argv": [
+        "update-ref",
+        "--no-deref",
+        "-d",
+        "refs/heads/fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, before, commit], undefined, undefined, env)",
+      "argv": [
+        "update-ref",
+        "refs/heads/fixture",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['update-ref', `refs/heads/${base}`, commit, before], undefined, undefined, env)",
+      "argv": [
+        "update-ref",
+        "refs/heads/fixture",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['worktree', 'list', '--porcelain', '-z'], undefined, undefined, env)",
+      "argv": [
+        "worktree",
+        "list",
+        "--porcelain",
+        "-z"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['worktree', 'prune'], undefined, undefined, env)",
+      "argv": [
+        "worktree",
+        "prune"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['write-tree'], undefined, undefined, env)",
+      "argv": [
+        "write-tree"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(root, ['write-tree'], undefined, undefined, env)",
+      "argv": [
+        "write-tree"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(territory, ['branch', '--no-track', branch, createdTip], undefined, undefined, env)",
+      "argv": [
+        "branch",
+        "--no-track",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(territory, ['config', '--unset-all', `branch.${branch}.clandLaunchBase`], undefined, undefined, env)",
+      "argv": [
+        "config",
+        "--unset-all",
+        "branch.fixture.clandLaunchBase"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(territory, ['config', '--unset-all', `branch.${branch}.clandLaunchBase`], undefined, undefined, env)",
+      "argv": [
+        "config",
+        "--unset-all",
+        "branch.fixture.clandLaunchBase"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(territory, ['config', `branch.${branch}.clandLaunchBase`, createdTip], undefined, undefined, env)",
+      "argv": [
+        "config",
+        "branch.fixture.clandLaunchBase",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(territory, ['for-each-ref', '--format=%(refname:strip=2) %(objectname)', 'refs/heads/'], undefined, undefined, env)",
+      "argv": [
+        "for-each-ref",
+        "--format=%(refname:strip=2) %(objectname)",
+        "refs/heads/"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(territory, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, createdTip], undefined, undefined, env)",
+      "argv": [
+        "update-ref",
+        "--no-deref",
+        "-d",
+        "refs/heads/fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(territory, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, launchBase], undefined, undefined, env)",
+      "argv": [
+        "update-ref",
+        "--no-deref",
+        "-d",
+        "refs/heads/fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(territoryPath(root),['worktree','add','--detach',path,head],false,undefined,env)",
+      "argv": [
+        "worktree",
+        "add",
+        "--detach",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(territoryPath(root),['worktree','list','--porcelain'],false,undefined,env)",
+      "argv": [
+        "worktree",
+        "list",
+        "--porcelain"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/territory.ts",
+      "call": "territoryGitAsync(territoryPath(root),['worktree','remove','--force',path],false,undefined,env)",
+      "argv": [
+        "worktree",
+        "remove",
+        "--force",
+        "fixture"
+      ],
+      "expected": "writer",
+      "disposition": "Writer or conservatively unsupported grammar; durable ownership retained."
+    },
+    {
+      "file": "hub/src/tracker/epic-surfaces.ts",
+      "call": "git(['merge-base', '--is-ancestor', commit, tip])",
+      "argv": [
+        "merge-base",
+        "--is-ancestor",
+        "fixture",
+        "fixture"
+      ],
+      "expected": "read-only",
+      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
+    },
+    {
+      "file": "hub/src/tracker/epic-surfaces.ts",
+      "call": "git(args)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    },
+    {
+      "file": "hub/src/tracker/epic-surfaces.ts",
+      "call": "territoryGitAsync(root, args, undefined, undefined, env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
+    }
+  ]
+}

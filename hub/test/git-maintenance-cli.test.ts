@@ -51,7 +51,7 @@ test('normal hub.stop exits the real CLI while durable handoff retains a live na
         if (observing && (type === 'PROCESSWRAP' || type === 'PIPEWRAP')) resources.push({ type, resource });
       } }).enable();
       cp.spawn = (bin, args, options) => {
-        if (args?.some(value => String(value).endsWith('/owned-exec.ts')) && args.includes('gc')) {
+        if (args?.some(value => String(value).endsWith('/owned-exec.ts') || String(value).endsWith('/owned-exec.mjs')) && args.includes('gc')) {
           observing = true;
           try {
             const child = spawn(bin, [args[0], process.execPath, ${JSON.stringify(collector)}], options);

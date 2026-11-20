@@ -9,6 +9,7 @@ import { Tracker } from '../src/tracker/tracker.ts';
 import { localHost } from '../src/host/local.ts';
 import { recordingHost } from './recording-host.ts';
 import { ensureTaskWorktree, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../src/territory.ts';
+import { pruneCase, observePruneGit } from './prune-case.ts';
 
 const human = { id: 'human', name: 'human', role: null };
 test('local baseline: root task branch, tip, worktree path and journal remain unchanged', async t => {
@@ -145,11 +146,19 @@ test('item launch calls the admitted Host rather than the worktree service defau
 });
 
 test('a concurrent territory ref is never adopted or assigned launch provenance', async t => {
-  for (const sameTip of [false, true]) await t.test(sameTip ? 'equal tip' : 'ancestor tip', async t => {
-    const { default: cp } = await import('node:child_process');
-    const { syncBuiltinESMExports } = await import('node:module');
+  for (const sameTip of [false, true]) await t.test(sameTip ? 'equal tip' : 'ancestor tip', t => pruneCase(t, async (scope, step) => {
     const { eventually } = await import('./harness.ts');
-    const root = await preparedProject(t);
+    const proceed = Promise.withResolvers<void>();
+    scope.releaseOnClose(() => proceed.resolve());
+    let root = '', held = false;
+    observePruneGit(scope, async ([cwd, args], run) => {
+      if (root && cwd === root && args[0] === 'push' && args.at(-1)?.includes('refs/heads/t/T-1-raced')) {
+        held = true;
+        await proceed.promise;
+      }
+      return run();
+    });
+    root = await step('prepared disposable project', () => preparedProject(scope.fixtures)); scope.adoptRoot(root);
     const env = fixtureEnvironment(root, process.env);
     const git = (...args: string[]) => territoryGitAsync(root, args, undefined, undefined, env);
     const remote = (...args: string[]) => territoryGitAsync(territoryPath(root), args, undefined, undefined, env);
@@ -158,23 +167,10 @@ test('a concurrent territory ref is never adopted or assigned launch provenance'
     const tip = sameTip ? await git('rev-parse', 'dev') : ancestor;
     // Transfer the writer's object without creating our target branch.
     await git('push', territoryPath(root), `${tip}:refs/heads/t/T-9-writer`);
-    const proceed = Promise.withResolvers<void>();
-    let held = false;
-    const execFile = cp.execFile;
-    t.mock.method(cp, 'execFile', (file: string, args: string[], options: import('node:child_process').ExecFileOptionsWithStringEncoding, callback: (error: import('node:child_process').ExecFileException | null, stdout: string, stderr: string) => void) => {
-      if (args[0] === 'push' && options.cwd === root) {
-        held = true;
-        // cland-allow-child-env: pass the native production options unchanged after the held publication boundary
-        void proceed.promise.then(() => execFile(file, args, options, callback));
-        return { stdin: null };
-      }
-      // cland-allow-child-env: pass the native production options unchanged for other Git calls
-      return execFile(file, args, options, callback);
-    });
-    syncBuiltinESMExports();
-    const making = ensureTaskWorktree(root, { id: 'T-1', slug: 'raced', branch: null }, undefined, undefined, env).then(() => 'unexpected success', error => String(error));
+    const making = scope.wait('original worktree creation', () => ensureTaskWorktree(root, { id: 'T-1', slug: 'raced', branch: null }, undefined, undefined, env).then(() => 'unexpected success', error => String(error)), 30_000);
     try {
       await eventually('publication held before native push', () => held || undefined);
+      assert.equal(held, true, 'the pre-publication admission hold engaged');
       await remote('branch', 't/T-1-raced', tip);
       await remote('config', 'branch.t/T-1-raced.clandLaunchBase', 'writer-owned');
       proceed.resolve();
@@ -184,9 +180,8 @@ test('a concurrent territory ref is never adopted or assigned launch provenance'
       assert.equal(await git('branch', '--list', 't/T-1-raced'), '');
     } finally {
       proceed.resolve(); await making;
-      t.mock.restoreAll(); syncBuiltinESMExports();
     }
-  });
+  }, true));
 });
 
 test('Host checkout uses its own fetched tip when another fetch replaces FETCH_HEAD', async t => {

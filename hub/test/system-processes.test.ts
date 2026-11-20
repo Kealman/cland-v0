@@ -15,6 +15,58 @@ import { processStarted, processStartedAsync } from '../src/hub/lock.ts';
 import { captureProcess, ownProcess } from './process-cleanup.ts';
 import { systemProcessProbe as probe } from './system-process-probe.ts';
 
+for (const platform of ['linux', 'darwin'] as const) test(`${platform} owned-tree stop scopes cland snapshots and retains descendant, birth and ancestor fences`, async () => {
+  await probe(`
+const options = { inspection: 'owned-tree' };
+rows = [row(1, 0, 1), row(420100, 1, 420100), row(420101, 420100, 420101),
+ ...Array.from({ length: 1000 }, (_, i) => row(430000 + i, 1, 430000 + i))];
+const parents = [];
+onChildren = () => { parents.push(rows.length); };
+let forked = false;
+onSignal = (pid, signal) => {
+ if (signal === 'SIGTERM') return false;
+ if (pid === 420100 && signal === 'SIGSTOP' && !forked) {
+  forked = true; rows.push(row(420102, 420101, 420102));
+ }
+};
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, options), true);
+assert.equal(forked, true, 'fork-to-freeze observer positively engaged');
+for (const pid of [420100, 420101, 420102]) assert.ok(signals.some(s => s.pid === pid && s.signal === 'SIGKILL'), 'every captured branch receives KILL');
+assert.equal(rows.length, 1001, 'unrelated PID1 branches stay alive');
+assert.ok(parents.length > 0, 'scoped descendant discovery engaged');
+assert.ok(listings.length > 0 && listings.every(args => args.includes('-p')), 'cland parses selected ps snapshots; native pgrep still enumerates the table');
+assert.ok(listings.every(args => args[args.indexOf('-p') + 1].split(',').map(Number).every(pid => [process.pid, 1, 420100, 420101, 420102].includes(pid))), 'unrelated rows never reach cland snapshot parsing or native-birth reads');
+assert.ok(signals.every(s => [420100, 420101, 420102].includes(s.pid)), 'no unowned signal');
+signals.length = 0;
+rows.push(row(420100, 1, 420100));
+assert.equal(await endProcess({ pid: 420100, pidStarted: start, pidIdentity: 'old-native-birth' }, () => {}, 0, undefined, options), false);
+assert.deepEqual(signals, [], 'reused native birth still refuses');
+for (const pid of [process.pid, 1]) await assert.rejects(endProcess({ pid, pidStarted: start }, () => {}, 0, undefined, options), /refusing to end this process or its ancestor/);
+assert.deepEqual(signals, [], 'caller and ancestor stay unsignalled');
+rows = [row(1, 0, 1), row(420100, 1, 420100), row(420101, 420100, 420101)];
+let changedBirth = false;
+onTable = () => {
+ const args = listings.at(-1);
+ if (!changedBirth && args[args.indexOf('-p') + 1].split(',').includes('420100')) {
+  changedBirth = true; rows[2].ticks = 90002; rows[2].micros = 200002;
+ }
+};
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, options), false);
+assert.equal(changedBirth, true, 'authoritative batched ps boundary positively changed the child birth');
+assert.deepEqual(signals, [], 'one ps snapshot remains bracketed by native births and refuses a replacement child');
+onTable = () => {};
+if (process.platform === 'linux') {
+ onStat = async pid => pid === process.pid ? 'EACCES' : undefined;
+ await assert.rejects(endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, options), /stat unavailable/);
+ assert.deepEqual(signals, [], 'unreadable native ancestry never permits signals');
+ onStat = async () => {};
+}
+rows = rows.filter(r => r.pid !== 1);
+await assert.rejects(endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, options), /cannot verify caller ancestry/);
+assert.deepEqual(signals, [], 'missing caller ancestry never grants authority');
+`, platform);
+});
+
 test('recorded macOS and procps listings parse the same identities and complete commands', () => {
   const recorded = (dialect: string) => readFileSync(new URL(`./fixtures/process-listing/${dialect}.txt`, import.meta.url), 'utf8');
   const mac = parseProcessTable(recorded('macos'));

@@ -1,4 +1,5 @@
 import { revokeBranchLeasesLocked } from '../host/branch-leases.ts';
+import { PruneProcesses } from '../prune-processes.ts';
 import { dependencyInstallBetween, dependencyInstallText } from '../dependency-install.ts';
 import type { DependencyInstall } from '../protocol.ts';
 // The Coordinator's merge gate: one queued territory operation, provenance and cached freshness, then Git and
@@ -22,9 +23,8 @@ import { ToolForbidden } from '../roles/permissions.ts';
 type LandedResult = { dependencies?: DependencyInstall; item: string; commit: string; base: string; cleanup: string; budgetLines?: string[]; followUp?: { step: string; error: string } };
 
 type MergeResult = LandedResult | { item: string; queued: number };
-// Report bound: 30 s for an ordinary Git command plus close headroom. A whole
-// prune can exceed it; its settlement retains ownership instead of authorizing disposal.
-export const MERGE_CLEANUP_STOP_MS = 35_000;
+// Cancellation and native close must fit inside serve's two-second signal budget.
+export const MERGE_CLEANUP_STOP_MS = 1500;
 export type MergeCleanupStop = { status: 'complete' } | { status: 'incomplete'; items: string[]; settled: Promise<void> };
 export class MergeCleanupIncomplete extends Error {
   readonly settled: Promise<void>;
@@ -55,12 +55,15 @@ export class TaskMerges {
   readonly #cleanupTimers = new Set<NodeJS.Timeout>();
   readonly #cleanupWork = new Map<Promise<unknown>, string>();
   #cleanupSettlement: Promise<void> | undefined;
+  readonly #prunes = new Set<PruneProcesses>();
 
   async stop(): Promise<MergeCleanupStop> {
     this.#stopped = true;
     for (const timer of this.#cleanupTimers) clearTimeout(timer);
     this.#cleanupTimers.clear();
     if (!this.#cleanupWork.size) return { status: 'complete' };
+    // Cancellation begins at stop, inside the CLI's existing two-second budget.
+    for (const owner of this.#prunes) void owner.cancel().catch(() => {});
     const settled = this.#cleanupSettlement ??= Promise.allSettled([...this.#cleanupWork.keys()]).then(() => {});
     let deadline: NodeJS.Timeout | undefined;
     try {
@@ -333,6 +336,19 @@ export class TaskMerges {
 
   async #cleanup(id: string, resumed: Resumed): Promise<string> {
     if (this.#stopped) return 'pending';
+    const owner = new PruneProcesses();
+    this.#prunes.add(owner);
+    const softLog = setTimeout(() => {
+      if (!this.#stopped) try { this.log({ event: 'merge-cleanup-slow', id, elapsedMs: 35_000 }); } catch { /* diagnostic only */ }
+    }, 35_000);
+    softLog.unref();
+    const work = owner.run(() => this.#prune(id, resumed)).finally(() => owner.settled);
+    this.#cleanupWork.set(work, id);
+    try { return await work; }
+    finally { clearTimeout(softLog); this.#prunes.delete(owner); this.#cleanupWork.delete(work); }
+  }
+
+  async #prune(id: string, resumed: Resumed): Promise<string> {
     const receipt = resumed(() => this.tracker.mergeReceipt(id));
     const pruned = receipt ? await this.worktrees.pruneMerged(id, receipt, resumed) : await this.worktrees.prune([id], resumed);
     const failure = pruned.failed[0];

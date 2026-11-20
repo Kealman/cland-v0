@@ -109,7 +109,7 @@ export function ownedMaintenanceRunner(root: string, cwd: string, gitDirectory: 
     if (signal?.aborted) { resolveResult({ code: null, stdout: '', stderr: '', error: 'cancelled' }); return; }
     const command = which(bin, env, cwd);
     if (!command) { resolveResult({ code: null, stdout: '', stderr: '', error: `missing executable: ${bin}` }); return; }
-    const child = spawn(process.execPath, [fileURLToPath(new URL('../bin/owned-exec.ts', import.meta.url)), command, ...args], { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, [fileURLToPath(new URL('../bin/owned-exec.mjs', import.meta.url)), command, ...args], { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe', 'pipe'] });
     let stdout = '', stderr = '', error: string | undefined, settled = false, closed = false;
     let owner: MaintenanceOwner | undefined;
     let signalAttempt: Promise<void> | undefined;

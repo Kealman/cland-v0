@@ -53,7 +53,7 @@ The root lives on `dev`: the Coordinator commits tracker and docs work there dir
 The D15 migration interim ended when the repository moved its root checkout and task base onto `dev` after T-59. Task work now reaches `dev` through `cland merge`; only `cland release` pushes the default branch and a release tag to `github`. `cland sync` imports collaborators' work.
 
 <!-- cland-allow-closed-wording: until fulfillment describes runtime lock ownership -->
-The module interface for later hub commands is small: `territoryPath(root)` gives the absolute bare path; `withTerritoryLock(root, () => ...)` holds synchronous or asynchronous operations exclusively across processes. A synchronous callback returns its value directly; a Promise callback keeps the lock until fulfillment or rejection and returns a Promise with the same outcome. Do not nest locks. `territoryGit(cwd, args, marked = false, input?)` runs Git without a shell, with a 30-second deadline, and returns trimmed stdout or throws; optional `input` supplies stdin (used for reachability traversal without a command-line size limit). Pass `true` only for a guarded cland operation's push to protected refs; it sets `CLAND_TERRITORY_WRITE=1` for the child. The marker is an accident guard: the local owner can set it manually or change/bypass the hook. The lock `.cland/territory.lock` uses the hub lock implementation (exclusive creation, stale-process recovery); an overlapping caller is refused with the live holder's pid unless it opts into bounded backoff: host receive waits up to 30 seconds and public lease revoke up to 32 seconds. Exhaustion retains the same refusal. `provisionTerritory(report, root)` and `undoTerritory(root, force)` acquire it themselves; `territoryProblems(root)` is read-only. `defaultBranch(root)` reads the recorded default with a `main` fallback; async hub callers may pass their already-read, lowercased Git configuration map as its second argument to avoid synchronous Git. The task worktrees add `taskBase(root)`, `ensureTaskWorktree(root, {id, slug, branch})`, `listTaskWorktrees(root)`, `commitsAhead(root, branch, base)` and `removeTaskWorktree(root, item)`. They return Promises and run Git through `territoryGitAsync` (`execFile`, awaited), so the hub's event loop never waits on Git. The two that write take the lock themselves, through `withTerritoryLockAsync`: the same lock file, taken with `acquireLockAsync` (`src/hub/lock.ts`), which awaits its `ps` probes and asks the process's own start time once. The hub queues these operations one at a time (`src/hub/worktrees.ts`), because the lock refuses a second holder instead of waiting for it. Init runs these without a hub; worktree, merge, release and sync commands call this module from the hub under the same lock (T-20 decision D2).
+The module interface for later hub commands is small: `territoryPath(root)` gives the absolute bare path; `withTerritoryLock(root, () => ...)` holds synchronous or asynchronous operations exclusively across processes. A synchronous callback returns its value directly; a Promise callback keeps the lock until fulfillment or rejection and returns a Promise with the same outcome. Do not nest locks. `territoryGit(cwd, args, marked = false, input?)` runs Git without a shell, with a 30-second deadline, and returns trimmed stdout or throws; optional `input` supplies stdin (used for reachability traversal without a command-line size limit). Pass `true` only for a guarded cland operation's push to protected refs; it sets `CLAND_TERRITORY_WRITE=1` for the child. The marker is an accident guard: the local owner can set it manually or change/bypass the hook. The lock `.cland/territory.lock` uses the hub lock implementation (exclusive creation, stale-process recovery); an overlapping caller is refused with the live holder's pid unless it opts into bounded backoff: host receive waits up to 30 seconds and public lease revoke up to 32 seconds. Exhaustion retains the same refusal. `provisionTerritory(report, root)` and `undoTerritory(root, force)` acquire it themselves; `territoryProblems(root)` is read-only. `defaultBranch(root)` reads the recorded default with a `main` fallback; async hub callers may pass their already-read, lowercased Git configuration map as its second argument to avoid synchronous Git. The task worktrees add `taskBase(root)`, `ensureTaskWorktree(root, {id, slug, branch})`, `listTaskWorktrees(root)`, `commitsAhead(root, branch, base)` and `removeTaskWorktree(root, item)`. They return Promises and run Git through `territoryGitAsync` (awaited native children), so the hub's event loop never waits on Git. The two that write take the lock themselves, through `withTerritoryLockAsync`: the same lock file, taken with `acquireLockAsync` (`src/hub/lock.ts`), which awaits its `ps` probes and asks the process's own start time once. The hub queues these operations one at a time (`src/hub/worktrees.ts`), because the lock refuses a second holder instead of waiting for it. Init runs these without a hub; worktree, merge, release and sync commands call this module from the hub under the same lock (T-20 decision D2).
 
 Merge admission and batch preparation refuse a project root whose Git repository is
 bare with `merge-bare: core.bare=true in project root <path>`. This is distinct
@@ -191,12 +191,37 @@ QA-by: qa-12 (qa-run-id)
 
 Hub shutdown cancels future background prune timers and joins retries already
 running before tracker/storage closure. `TaskMerges.stop()` returns a typed
-`complete` or `incomplete` result. Its `MERGE_CLEANUP_STOP_MS` deadline is 35
-seconds, allowing an ordinary native Git command's 30-second deadline and close
-headroom; multiple commands or a hung child can exceed it. Expiry logs
+`complete` or `incomplete` result. Its `MERGE_CLEANUP_STOP_MS` deadline is 1.5
+seconds. On hub stop, cancellation begins immediately and
+joins native close and prune settlement for up to 1.5 seconds within serve's
+existing two-second signal budget. Expiry logs
 `merge-cleanup-stop-incomplete` with outstanding item ids and returns their
 still-running `settled` promise. This is incomplete cleanup, never successful
 drainage. Diagnostic sink failures do not interrupt joins or the deadline.
+While serving, a whole prune logs `merge-cleanup-slow` after 35 seconds without
+changing its outcome. Each ordinary territory Git command keeps its 30-second
+deadline, enforced through the same owned native cancellation and close join.
+An ordinary timeout returns a `TerritoryGitError` with a structured recovery
+owner when native stop is unconfirmed. Its `recovery.retry()` retries that same
+owner and `recovery.settled` waits for positive writer settlement. A later native
+close triggers reconciliation without discarding captured descendants.
+Owned territory Git cancellation scopes cland's parsed process rows and
+native-birth reads: only the captured roots and their discovered descendants
+enter the ownership walk. Descendant discovery uses `pgrep -P`, which enumerates
+the process table natively; this remaining work is outside the parsed-row count.
+The goal is completion within the stop budget under load, rather than machine
+population independence. Caller ancestors are inspected separately as protected
+denial rows, never as discovery roots. Linux reads their parent links directly
+from proc stat using the shared native-identity grammar; other platforms use
+targeted ps. Each scoped snapshot batches its selected PIDs into one
+authoritative ps observation between native-birth brackets, without a redundant
+selector ps. Descendant discovery batches all known parents at each level.
+Missing or changed caller ancestry refuses termination. Each signal still
+requires the captured native birth and a fresh matching birth check. The
+one-second native cancellation and 1.5-second merge stop bounds are unchanged;
+other process-termination callers retain their existing full-snapshot policy.
+Probe helpers propagate structured cancellation and recovery refusals; they do
+not convert an unknown writer outcome into repository absence or a moved branch.
 
 Dispatcher/daemon shutdown checks that owner before destructive phases. An
 incomplete result retains core, adapters, tracker, storage, discovery and lock,
@@ -207,16 +232,106 @@ owner uses `joinMergeCleanup`; embedded daemon fixtures use
 `settleRetainedMergeStop` and a root-removal guard. A removed worktree path does
 not prove that its territory branch/config writes finished.
 
-Native cancellation is outside this retained-owner boundary. A hung prune Git
-child may outlive hub process exit; T-1856 tracks cancellation through owned
-native identities and exit receipts. Leftover roots and Git locks are retained,
-not silently removed by shutdown.
+Local prune commands carry an isolated async owner, including local Host worktree
+removal. Stop fences later Git admission, ends only that owner's children through
+PID and native birth, and joins their close receipts. A missing identity or
+unconfirmed close preserves the same retry owner and reports incomplete cleanup.
+Leftover roots and Git locks are reported and retained, never silently removed.
+An incomplete cancellation publishes the lock report with its selected outcome;
+a later native close may settle that same owner without replacing the outcome.
+Remote Host commands keep their existing remote ownership; the local context is
+never sent over the wire.
 
-A live hub lock holder refuses another `serve`. After `serve` exits 1, its PID
-is dead: an external supervisor (including an operator-owned `launchctl submit`
-job) may respawn it, and stale-PID recovery can reclaim `hub.lock` or
-`territory.lock` while an orphan prune still writes. Retained lock files provide
-no post-exit fence. This accepted respawn/stale-lock limitation is also T-1856.
+### Git command ownership classes
+
+`gitCommandPolicy` is the single conservative argv classifier. Known read forms
+spawn Git directly when the executable confirms `--no-lazy-fetch` support
+(upstream Git 2.45.0 or later), or an older Git confirms an ordinary repository.
+The harmless version probe uses the same owned
+native runner and its cancellation/close guarantee; concurrent callers share
+one probe cached by executable path and native file identity. Missing or rejected
+capability checks current effective config before every direct read through
+`git --no-optional-locks config --null --name-only --includes --get-regexp`.
+This fixed config-only query cannot fetch objects and runs directly with an
+in-memory native owner, without a durable record. Only a complete native-close
+no-match receipt with empty output and diagnostics permits the actual direct
+read without the unsupported option. The case-insensitive key shapes
+`remote.*.promisor`, `remote.*.partialclonefilter` and `extensions.partialclone*`
+keep durable writer ownership, regardless of their configured values. An error,
+unknown result or untracked repository redirect also keeps the owned fallback
+with original argv. There is no repository proof cache or freshness interval:
+new global and included configuration affects the next read's query. This
+preserves ordinary older-Git performance and compatibility.
+A `git-read-writer-fallback` hub log
+event names that fallback once per executable, repository and hub logger.
+
+Direct reads retain an in-memory owner for the same 30-second deadline
+and hub-stop native-close join. Capable Git uses `--no-lazy-fetch`: missing promisor
+objects fail locally rather than start an implicit fetch or write packs. See
+[Git's option documentation](https://git-scm.com/docs/git/2.45.0#Documentation/git.txt---no-lazy-fetch).
+Reads also use `--no-optional-locks` and disable
+`core.fsmonitor`; diff/log/show forms also disable external diff and textconv.
+They create no durable writer record or fsync. A read can finish before birth
+capture; its original child-close receipt then settles it. A live child with
+unconfirmed birth cannot be signalled or called stopped. Unknown writer recovery
+still runs before read admission, so read classification does not bypass a fence.
+
+| Class | Commands and supported forms |
+| --- | --- |
+| Read-only | `rev-parse`, `status`, `worktree list`; `log`, `show`, `diff`, `diff-tree`, `diff-files`; `ls-tree`, `ls-files`, `for-each-ref`, `merge-base`, `check-ref-format`, `show-ref`, `rev-list`, with the classifier's explicit read flags |
+| Conditional read | `symbolic-ref` with exactly one ref operand and only read flags; `config --get`, `--get-all`, `--get-regexp`, `--get-urlmatch` or `--list`, with supported scope/file flags |
+| Writer | Write forms of `config`/`symbolic-ref`; `branch`, `checkout`, `clone`, `fetch`, `push`, `bundle`, `archive`, `merge-tree`, `write-tree`, `read-tree` (including dry-run), `commit-tree`, `update-ref`, `hash-object`, `mktree`, `mktag`, `merge`, `rebase`, `cherry-pick`, `remote`; conservatively unsupported `ls-remote`/`var`; every unknown command or option |
+
+Supported global arguments are `-C`, `--git-dir`, `--work-tree`, `--bare`,
+`--no-pager`, `--no-lazy-fetch`, `--no-optional-locks`, `--literal-pathspecs`, and the exact config
+overrides `gc.auto=0`, `maintenance.auto=false`, `core.fsmonitor=false`. Other
+overrides remain writers. Output-file flags such as `--output` remain writers.
+The frozen source census lists literal callsite classes and explicit runtime-argv
+forwarders; its test refuses new or changed consumers without a disposition.
+
+Writers execute through committed `hub/bin/owned-exec.mjs`, with JSDoc checked by
+the hub typecheck and syntax checked by static lint. The older `.ts` entry imports
+that same gate for compatibility. The gate preserves PID/birth across execve.
+Preparation and birth binding remain in memory while the private gate is closed;
+one complete receipt in `.cland/run/git-command-owners/` is synced immediately
+before the release byte. Death before publication closes the gate without Git
+execution. Death after release leaves a record for startup recovery. A clean
+native close retires that record without a redundant close-checkpoint fsync;
+retirement is serialized against cancellation checkpoints, which cannot recreate
+retired ownership. Incomplete cleanup still checkpoints native close and captured
+descendant ownership before signalling or handing recovery to another owner.
+
+The durable writer receipt binds the root directory identity, machine, user,
+parent, child PID and native birth. The opened receipt's actual owner and private mode are checked before native
+classification; receipt files are published as 0600. Native observation is bracketed by the
+original ChildProcess's exit/signal state, including the interval when inherited
+pipes delay close. Captured descendant identities are checkpointed before signals.
+Checkpoint publication atomically replaces the file. If an opened private
+descriptor has zero links and the current path names a different regular inode,
+the reader reopens and validates the current descriptor, for at most four
+attempts. The obsolete descriptor grants no authority; wrong ownership, public
+mode, extra links or repeated replacement still fence recovery.
+Recovery snapshots, signals and receipt retirement share the territory reservation
+across processes; an already-held reservation is reused. Overlapping recovery
+cannot retire a stale snapshot while another owner is checkpointing descendants.
+
+A healthy current-process writer can publish its original-child birth and live
+admission proof under the reservation it already holds. Unrelated commands use
+that proof without re-acquiring the occupied reservation or probing a fresh PID.
+The proof expires on reservation release, original-child exit or cancellation;
+receipt birth metadata must still match exactly. Persisted-only, stale, reused,
+invalid or unconfirmed ownership still requires serialized recovery and keeps
+the admission fence for reads and writes alike. The command classifier controls
+durability and launch strategy; it does not grant recovery or signal authority.
+
+After a fast incomplete exit, startup reconciles these receipts before refreshing
+territory hooks. Every async territory mutation uses the same admission check.
+Recovery confirms native identities independently; copied or unreadable receipts
+and unconfirmed termination fence writes and remain for retry. A live retry owner
+keeps its metadata until its pending writes and native settlement join. Synchronous
+init/update do not signal from retained records: they refuse and require async
+hub startup to reconcile them. Git lock files remain untouched. A stale hub or
+territory lock therefore cannot bypass the durable Git writer fence.
 Shipped workbench autostart and stdio reconnect treat serve exit 0 and 1 through
 the same connection/retry paths; status does not restart a hub.
 

@@ -2,12 +2,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { runtimeBundle } from '../src/host/code-delivery.ts';
+import { runtimeBundle, runtimeTreePath } from '../src/host/code-delivery.ts';
 import { createHash } from 'node:crypto';
 import { VERSION } from '../src/version.ts';
 test('runtime manifest carries the hub lock, CLI, spoke and Claude mod with verified digests', async()=>{
  const bundle=await runtimeBundle(VERSION);
- for(const path of ['package.json','package-lock.json','hub/package.json','hub/bin/cland.ts','hub/bin/cland-spoke.ts','hub/mod/cland/.claude-plugin/plugin.json','hub/src/host/cland-auth.sh'])assert.ok(bundle.files.some(f=>f.path===path),path);
+ for(const path of ['package.json','package-lock.json','hub/package.json','hub/bin/cland.ts','hub/bin/cland-spoke.ts','hub/bin/owned-exec.mjs','hub/mod/cland/.claude-plugin/plugin.json','hub/src/host/cland-auth.sh'])assert.ok(bundle.files.some(f=>f.path===path),path);
+ assert.equal(runtimeTreePath('hub/bin/owned-exec.mjs'),true);
+ assert.equal(runtimeTreePath('hub/bin/unapproved.mjs'),false,'only the committed gate expands runtime admission');
  assert.equal(new Set(bundle.files.map(f=>f.path)).size,bundle.files.length);
  for(const f of bundle.files){
   assert.equal(f.sha256,createHash('sha256').update(await readFile(new URL('../../'+f.path,import.meta.url))).digest('hex'));

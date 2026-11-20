@@ -227,6 +227,17 @@ not guess that the writer ended. Committed results live in a separate directory
 and are read by exact id; startup streams only unfinished plans, without scanning
 retained result history.
 
+Local prune commands share the hub's Git ownership classifier: reads with a
+confirmed Git2.45+ `--no-lazy-fetch` capability run directly with in-memory
+native-stop ownership. Before each older-Git direct read, a non-fetching,
+in-memory owned query checks current effective config. A complete no-match
+receipt permits the read; promisor/partial-clone keys or unknown results keep durable writer
+ownership. Writers retain a durable
+pre-exec gate. Remote Host ownership remains with the agent. Whole-runtime
+delivery admits the exact committed `hub/bin/owned-exec.mjs` gate alongside its
+older `.ts` compatibility entry; unrelated `.mjs` paths remain refused by the
+shared runtime package parser.
+
 The agent's dependency closure permits three exact shared leaves,
 `shared/executor-credentials.ts`, imported only by its command-environment owner, plus the exact neutral leaves `shared/clock.ts` and `shared/fake-layout.ts`, imported only by their same-named agent wrappers. The shared leaves have Node-only dependencies; this keeps Neovim fixture closures free of hub runtime while retaining one Clock/layout policy. The exact-path and importer policy lives in `agent/package.ts` and also governs serialized installation.
 That leaf must retain a Node-only import closure. Usage aggregation lives under
@@ -270,7 +281,13 @@ Both command paths may add `nativeAdmission: 'no-process'`: the native owner
 recorded an already-aborted signal without a spawn call, a synchronous throw,
 or an error with no observed PID followed by native close. Any observed PID or
 missing close keeps ordinary failure/unknown semantics. Bounded results and
-stored settlement replies preserve this receipt. The shared incomplete-result
+stored settlement replies preserve this receipt. `HostRunResult` also permits
+`nativeClose: {code, signal}` and `nativeCleanup: complete|incomplete`.
+Local prune scopes preserve raw success and nonzero outputs, numeric exit codes,
+and these optional facts through bounded results and failure objects. Explicit
+cleanup metadata takes precedence over legacy error text; absent fields remain
+compatible with older Hosts and grant no new native authority. The local scope
+and its retry callbacks are never serialized to a remote agent. The shared incomplete-result
 classifier honors explicit native or generation non-admission before its legacy
 error-text fallback, so an executable/config/cwd path containing `cleanup incomplete`
 cannot negate positive owner proof. Untyped results retain the fallback. Claude consumes it only within

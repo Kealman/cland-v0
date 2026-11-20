@@ -1,5 +1,11 @@
 # hub/test/territory-task-branch.test.ts
 
+The concurrent-ref case observes the public owned-Git admission before the
+target publication. It positively asserts the hold engaged, then races the
+independent territory ref and keeps the exact tip/provenance assertions. Its
+whole-callback owner joins original work and every captured command owner before
+restoring the observer or removing disposable roots.
+
 T3 native Git refs and linked worktree receipts, using preparedProject and
 fixtureEnvironment (scratchGitEnvironment isolation). No real provider or harness.
 The local baseline was captured and passed before production changes: root branch,

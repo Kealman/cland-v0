@@ -1,4 +1,7 @@
 import { pgrepMembers } from './pgrep-result.ts';
+import { readFile } from 'node:fs/promises';
+import { parseLinuxStat } from './host/agent/proc-stat.ts';
+import { readLinuxStat } from './host/agent/identity.ts';
 import type { HostCapturedProcess } from './host/host.ts';
 // Bounded asynchronous termination requires verified identities; recovery CONT has an explicit exception.
 import { probeTimeout, run } from './doctor/report.ts';
@@ -43,6 +46,8 @@ export type ProcessEndOptions = {
   canSignalTargets?: (targets: SystemProcess[], snapshot: SystemProcess[]) => Promise<boolean>;
   /** A shared deadline bounds a sweep, including each OS probe. */
   deadline?: number;
+  /** Inspect only captured roots/descendants, retaining a separate caller-ancestor fence. */
+  inspection?: 'owned-tree';
 };
 function timeout(deadline?: number, env: NodeJS.ProcessEnv = process.env): number {
   const remaining = deadline === undefined ? 3000 : deadline - Date.now();
@@ -50,6 +55,9 @@ function timeout(deadline?: number, env: NodeJS.ProcessEnv = process.env): numbe
   return Math.min(probeTimeout(env, 3000), remaining);
 }
 export async function systemProcesses(resumed: Resumed = untimed, deadline?: number, pids?: number[], descendants = false, env: NodeJS.ProcessEnv = process.env, reportExited?: IdentityExited): Promise<SystemProcess[]> {
+  return processSnapshot(resumed, deadline, pids, descendants, env, reportExited);
+}
+async function processSnapshot(resumed: Resumed, deadline: number | undefined, pids: number[] | undefined, descendants: boolean, env: NodeJS.ProcessEnv, reportExited?: IdentityExited, protectedPids: number[] = []): Promise<SystemProcess[]> {
   if (pids && descendants) {
     const discoveryDeadline = Math.min(deadline ?? Infinity, Date.now() + 3000);
     const selected = new Set(pids);
@@ -67,10 +75,18 @@ export async function systemProcesses(resumed: Resumed = untimed, deadline?: num
     pids = [...selected];
   }
   // Reuse the probe runner: a wrapper's grandchildren must not keep stdout open past the deadline.
-  const selected = pids ? [...new Set([process.pid, ...pids])] : undefined;
-  const discovery = await run('ps', processTableArgs(selected), env, timeout(deadline, env));
-  if (discovery.code !== 0 || discovery.error) throw new Error('cannot inspect the OS process table: ps failed or timed out');
-  const pidsInView = parseProcessTable(discovery.stdout).map(row => row.pid);
+  // Ancestors are denial-only rows. Never discover their children: PID 1 would
+  // turn an owned-tree walk back into a whole-machine census.
+  const selected = pids ? [...new Set([process.pid, ...pids, ...protectedPids])] : undefined;
+  // An owned-tree selector already names every requested PID. Read their births
+  // first, then one authoritative batched ps, then births again. Ordinary full
+  // snapshots retain their selector discovery and its previous contract.
+  let pidsInView = selected;
+  if (!protectedPids.length || !pidsInView) {
+    const discovery = await run('ps', processTableArgs(selected), env, timeout(deadline, env));
+    if (discovery.code !== 0 || discovery.error) throw new Error('cannot inspect the OS process table: ps failed or timed out');
+    pidsInView = parseProcessTable(discovery.stdout).map(row => row.pid);
+  }
   if (!pidsInView.includes(process.pid)) throw new Error('cannot verify the OS process table format');
   // Selector discovery grants no ownership. Births must be stable on both sides
   // of the authoritative ancestry/group/command observation.
@@ -95,6 +111,40 @@ export async function systemProcesses(resumed: Resumed = untimed, deadline?: num
   });
 }
 
+/** Parent links grant no signal authority; an incomplete caller chain refuses. */
+async function callerAncestors(resumed: Resumed, deadline: number | undefined, env: NodeJS.ProcessEnv): Promise<number[]> {
+  const chain: number[] = [];
+  for (let pid = process.pid; pid > 0;) {
+    if (chain.includes(pid) || chain.length >= 64) throw new Error('cannot verify caller ancestry: cyclic or excessive parent chain');
+    chain.push(pid);
+    if (pid === 1) break;
+    if (process.platform === 'linux') {
+      const selected = pid;
+      const record = parseLinuxStat(await readLinuxStat(() => readFile(`/proc/${selected}/stat`, { encoding: 'utf8', signal: AbortSignal.timeout(timeout(deadline, env)) })));
+      if (!record || record.pid !== selected || record.parent === null || /^[ZX]/.test(record.state)) throw new Error('cannot verify caller ancestry: native parent inspection unavailable');
+      pid = record.parent;
+      continue;
+    }
+    const result = await run('ps', processTableArgs([pid]), env, timeout(deadline, env));
+    const row = resumed(() => parseProcessTable(result.stdout).find(row => row.pid === pid));
+    if (result.code !== 0 || result.error || !row) throw new Error('cannot verify caller ancestry: parent inspection unavailable');
+    pid = row.parent;
+  }
+  return chain;
+}
+function verifyCallerAncestry(rows: SystemProcess[], roots: number[]): void {
+  const seen = new Set<number>();
+  for (let pid = process.pid; pid > 0;) {
+    if (seen.has(pid)) throw new Error('cannot verify caller ancestry: cyclic parent chain');
+    if (roots.includes(pid)) throw new Error('refusing to end this process or its ancestor');
+    seen.add(pid);
+    const row = rows.find(row => row.pid === pid);
+    if (!row) throw new Error('cannot verify caller ancestry: parent changed or disappeared');
+    if (pid === 1) return;
+    pid = row.parent;
+  }
+}
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 /** Capture descendants while ancestry is intact; verify each positive PID immediately before its signal.
  * Group membership can change during an identity probe, so never signal an entire group.
@@ -104,7 +154,14 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
   const env = options.env ?? process.env;
   const observe = (entry: Record<string, unknown>) => { try { log(entry); } catch { /* observers cannot abort recovery */ } };
   if (p.pid === null) return false;
-  const rows = await systemProcesses(resumed, options.deadline, undefined, undefined, env);
+  const protectedPids = options.inspection === 'owned-tree' ? await callerAncestors(resumed, options.deadline, env) : undefined;
+  if (protectedPids?.includes(p.pid)) throw new Error('refusing to end this process or its ancestor');
+  const snapshot = async (deadline: number | undefined, roots?: number[], descendants = false, reportExited?: IdentityExited) => {
+    const current = await processSnapshot(resumed, deadline, roots, descendants, env, reportExited, protectedPids);
+    if (protectedPids) resumed(() => verifyCallerAncestry(current, roots ?? []));
+    return current;
+  };
+  const rows = await snapshot(options.deadline, protectedPids ? [p.pid] : undefined, !!protectedPids);
   const owned = new Map<number, SystemProcess>();
   const capturedStopTree = (): HostCapturedProcess[] => [...owned.values()].map(row => ({ pid: row.pid, pidStarted: row.started, pidIdentity: row.identity! }));
   const publishCaptured = () => {
@@ -196,7 +253,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
       if (incomplete) throw incomplete;
     };
     const inspect = async (deadline = options.deadline) => {
-      const current = await systemProcesses(resumed, deadline, undefined, undefined, env, pid => exited.add(pid));
+      const current = await snapshot(deadline, protectedPids ? [...owned.keys()] : undefined, !!protectedPids, pid => exited.add(pid));
       await extend(current, deadline);
       return resumed(() => {
         latest = current;
@@ -212,7 +269,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
       if (absent) return resumed(() => { latest = []; frozen.clear(); return []; });
       // Grace polls retain children born while a captured parent lives. After the
       // full-tree freeze/KILL, waiting needs only captured identities.
-      const current = await systemProcesses(resumed, options.deadline, [...owned.keys()], discoverChildren, env, pid => exited.add(pid));
+      const current = await snapshot(options.deadline, [...owned.keys()], discoverChildren, pid => exited.add(pid));
       if (discoverChildren) await extend(current, options.deadline);
       return resumed(() => {
         latest = current;
@@ -307,7 +364,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
           const before = await proof();
           if (before === 'gone') { frozen.delete(pid); continue; }
           if (before !== 'same') throw new Error('native thaw identity unavailable');
-          const current = await systemProcesses(resumed, options.deadline, undefined, undefined, env);
+          const current = await snapshot(options.deadline, protectedPids ? [...owned.keys()] : undefined, !!protectedPids);
           const target = current.find(row => row.pid === pid);
           if (!target?.identity || target.identity !== captured.identity) throw new Error('native thaw snapshot unavailable or changed');
           if (!await options.canSignalTargets([target], current)) throw new Error('thaw target outside owner scope or unavailable');

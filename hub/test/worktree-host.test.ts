@@ -6,7 +6,6 @@ import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { beforeDirectories, onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import fs from 'node:fs';
-import cp, { type ExecFileException, type ExecFileOptionsWithStringEncoding } from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 import assert from 'node:assert/strict';
 import { access, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
@@ -28,6 +27,7 @@ import { fakeHarness } from './fakes/harness.ts';
 import { preparedProject } from './prepared-project.ts';
 import { eventually, tempProject, testWaitMs } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { pruneCase, observePruneGit } from './prune-case.ts';
 
 // Exact behaviour bound for the simulated receive admission in lock-cycle regressions.
 const RECEIVE_JOIN_BOUND_MS = 100;
@@ -147,27 +147,24 @@ test('post-Git confinement precedes every install read, including an install fai
 });
 
 test('revocation after durable branch creation removes only its captured tip', async t => {
-  for (const advanced of [false, true]) await t.test(advanced ? 'concurrent writer kept' : 'unmodified branch removed', async t => {
-    const root = await preparedProject(t);
+  for (const advanced of [false, true]) await t.test(advanced ? 'concurrent writer kept' : 'unmodified branch removed', t => pruneCase(t, async (scope, step) => {
+    const proceed = Promise.withResolvers<void>();
+    scope.releaseOnClose(() => proceed.resolve());
+    let root = '', created = false, revoked = false;
+    observePruneGit(scope, async ([cwd, args], run) => {
+      const result = await run();
+      if (root && cwd === root && args[0] === 'branch' && args[1] === '--no-track') { created = true; await proceed.promise; }
+      return result;
+    });
+    root = await step('prepared disposable project', () => preparedProject(scope.fixtures)); scope.adoptRoot(root);
     const env = fixtureEnvironment(root, process.env);
     const git = (...args: string[]) => territoryGitAsync(root, args, undefined, undefined, env);
     const branch = 't/T-1-revoked';
-    const proceed = Promise.withResolvers<void>();
-    let created = false, revoked = false;
-    const execFile = cp.execFile;
-    t.mock.method(cp, 'execFile', (file: string, args: string[], options: ExecFileOptionsWithStringEncoding, callback: (err: ExecFileException | null, stdout: string, stderr: string) => void) =>
-      // cland-allow-child-env: native Git spy forwards production options unchanged at the durable branch receipt
-      execFile(file, args, options, (err, stdout, stderr) => {
-        void (async () => {
-          if (!err && options.cwd === root && args[0] === 'branch' && args[1] === '--no-track') { created = true; await proceed.promise; }
-          callback(err, stdout, stderr);
-        })();
-      }));
-    syncBuiltinESMExports();
-    const making = ensureTaskWorktree(root, { id: 'T-1', slug: 'revoked', branch: null }, undefined, () => { if (revoked) throw new Error('authority revoked'); }, env).then(() => 'unexpected success', err => String(err));
+    const making = scope.wait('original worktree creation', () => ensureTaskWorktree(root, { id: 'T-1', slug: 'revoked', branch: null }, undefined, () => { if (revoked) throw new Error('authority revoked'); }, env).then(() => 'unexpected success', err => String(err)), 30_000);
     let writerTip: string | undefined;
     try {
       await eventually('durable branch creation before authorization resumes', () => created || undefined);
+      assert.equal(created, true, 'the durable branch-result hold engaged');
       const tip = await git('rev-parse', branch);
       if (advanced) {
         writerTip = await git('commit-tree', await git('rev-parse', `${branch}^{tree}`), '-p', tip, '-m', 'Concurrent writer');
@@ -181,9 +178,8 @@ test('revocation after durable branch creation removes only its captured tip', a
       await assert.rejects(access(join(root, '.cland/worktrees/T-1')));
     } finally {
       proceed.resolve(); await making;
-      t.mock.restoreAll(); syncBuiltinESMExports();
     }
-  });
+  }, true));
 });
 
 test('an install failure after confinement retains the registered worktree and branch', async t => {

@@ -22,7 +22,7 @@
     },
     {
       "path": "hub/src/host/agent/command.ts",
-      "sha256": "85f3b075679c9ea31dea77f7e1f04cc191f928c7d9b885c5c2e73a3cf87659f4"
+      "sha256": "7fde29faedd898bf49736d8076661d9aa572bb1ea376ba7e7b21dd92f0ad846c"
     },
     {
       "path": "hub/src/host/agent/directory-owner.ts",
@@ -66,7 +66,7 @@
     },
     {
       "path": "hub/src/host/agent/identity.ts",
-      "sha256": "6d042fbe93d4b1e85fdab3bf32c0694923661de05854767c0f10343a8e4a88c6"
+      "sha256": "097112dcb2a01a5d0b58e3730e13215a7f90320b06ec7d2b722bb99d2ec43401"
     },
     {
       "path": "hub/src/host/agent/login-disk.ts",
@@ -90,7 +90,7 @@
     },
     {
       "path": "hub/src/host/agent/package.ts",
-      "sha256": "3e0e2ce34083701fd6ffcb661c50d6229a9bb47b69d61912d2e288a8a8d323dc"
+      "sha256": "5820d787d7519e622aae3ed5ab2f0557beb8215f1dc86d8fa3532ba2560e43d3"
     },
     {
       "path": "hub/src/host/agent/prepared-checkout.ts",
@@ -99,6 +99,10 @@
     {
       "path": "hub/src/host/agent/prepared.ts",
       "sha256": "e5bca7d7cb6582ae6ff78a5f2cc03d9bb766998b0dd1309e0d101c3e34996cd1"
+    },
+    {
+      "path": "hub/src/host/agent/proc-stat.ts",
+      "sha256": "b2c682c6a07c0e36e6c98bc3dcac53d72d8c5b22ee8e7fc079ecbc9165993f6b"
     },
     {
       "path": "hub/src/host/agent/process-usage.ts",
@@ -111,6 +115,10 @@
     {
       "path": "hub/src/host/agent/protocol.ts",
       "sha256": "f8095b497bbb1d247ae71fdb435d0fe8994141a7d822b5f90e86f2fccd9ef148"
+    },
+    {
+      "path": "hub/src/host/agent/prune-command.ts",
+      "sha256": "226487c0dc7d8b28c53524ad18b38c69f35869fc0fe3c6a5559b7c87f69edd2b"
     },
     {
       "path": "hub/src/host/agent/redact.ts",

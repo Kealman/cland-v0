@@ -454,6 +454,7 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  gitCommandRecovery?: NonNullable<NonNullable<Parameters<typeof serveProject>[1]>['gitCommandRecovery']>;
   /** Test-only cleanup observation; expiry must not abandon the owned late stop. */
   startupCleanup?: { clock?: Clock; timeoutMs?: number };
   createHostRegistry?: NonNullable<NonNullable<Parameters<typeof serveProject>[1]>['createHostRegistry']>;
@@ -586,6 +587,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     git: async () => null,
     gitMaintenance: async () => {},
     gitMaintenanceRecovery: async () => {},
+    gitCommandRecovery: async () => {},
     readBase: async () => null,
     hasTerritory: async () => false,
     territoryLock: async <T>(_root: string, operation: () => Promise<T>) => operation(),

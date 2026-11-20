@@ -12,7 +12,7 @@ unfixed shutdown; the final gated probe retains an independent cleanup owner.
 Never add removal retries. Five fresh-process lone runs and a sequential paired
 run with the merge recovery component file prove teardown on macOS within the
 default 10 s T3 test budget. Incomplete production shutdown retains its writer;
-fixture teardown awaits the same settlement. Native cancellation is T-1856.
+fixture teardown awaits the same settlement. Native prune cancellation is checked in prune-process-lifecycle.test.ts.
 
 The fake OpenCode session publisher writes a unique temporary file and renames
 it onto `sessions/<id>.json`; API listings exclude temporary entries. The T1

@@ -3,8 +3,17 @@ import assert from 'node:assert/strict';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import type { HarnessProcess } from '../src/adapters/contract.ts';
 import { linuxIdentity, darwinIdentities } from '../src/process-identity.ts';
+import { parseLinuxStat } from '../src/host/agent/proc-stat.ts';
 
 const boot = '11111111-2222-3333-4444-555555555555';
+test('Linux stat parent and birth share the last-parenthesis grammar and keep invalid fields unknown', () => {
+  const stat = '123 (fake Claude ) worker)) S 7 8 9 0 -1 4194304 1 2 3 4 5 6 7 8 20 0 4 0 987654321 123456 99 0\n';
+  assert.deepEqual(parseLinuxStat(stat), { pid: 123, state: 'S', parent: 7, ticks: '987654321' });
+  assert.equal(parseLinuxStat('not stat'), null);
+  assert.equal(parseLinuxStat(stat.replace('S 7 ', 'S bad '))?.parent, null);
+  assert.equal(parseLinuxStat(stat.replace('S 7 ', 'S 0 '))?.parent, 0);
+  assert.equal(parseLinuxStat(stat.replace('987654321', 'bad'))?.ticks, null);
+});
 test('Linux stat field 22 follows the last comm parenthesis, including spaces and closing parentheses', () => {
   // Fields 4 through 22 are distinct literal values: ppid7, pgrp8, ... starttime987654321.
   const stat = '123 (fake Claude ) worker)) S 7 8 9 0 -1 4194304 1 2 3 4 5 6 7 8 20 0 4 0 987654321 123456 99 0\n';

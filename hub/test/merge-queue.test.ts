@@ -4,18 +4,17 @@ import { fixtureNativeGuard } from './fake-native-guard.ts';
 const cleanupProjectionCases = [false, true].map(rejectConstructor => ({ rejectConstructor,
   name: `queue cleanup projection ${rejectConstructor ? 'joins constructor rejection with captured databases' : 'exposes retained cleanup separately from a blocked batch'}` }));
 const ownedGuardAdmissions = new Set<string>();
+const batchGitCase = 'the production batch Git adapter preserves whitespace in unknown paths';
 beforeEach(async t => {
   if (!('assert' in t)) throw new Error('native guard requires a test context');
   // These exact cases retain the same complete guard through their stronger
   // whole-case positive-close fence; nesting guards would restore out of order.
-  if (cleanupProjectionCases.some(testCase => testCase.name === t.name)) { ownedGuardAdmissions.add(t.name); return; }
+  if (t.name === batchGitCase || cleanupProjectionCases.some(testCase => testCase.name === t.name)) { ownedGuardAdmissions.add(t.name); return; }
   await fixtureNativeGuard(t);
 });
 // T2: durable merge queue admission through projectHub and its public merge/task frames.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import cp from 'node:child_process';
-import { syncBuiltinESMExports } from 'node:module';
 import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, inProcessSpoke, projectHub, tempProject, until, type ProjectHubOptions } from './harness.ts';
@@ -43,6 +42,8 @@ import { fakeNativeGuard } from './fake-native-guard.ts';
 import { afterCleanup } from './process-cleanup.ts';
 import { HubCore } from '../src/hub/core.ts';
 import { completeJournalLines } from './journal-lines.ts';
+import { PruneProcesses } from '../src/prune-processes.ts';
+import { pruneCase, fakePrune } from './prune-case.ts';
 
 async function checkoutClandFixture(cwd: string) {
   // Fake batch checkouts carry the runner that real cland candidates contain.
@@ -649,27 +650,46 @@ test('a code movement rebuild notice survives the original green result notice',
   assert.notEqual(green.id, rebuild.id, 'the suite notice cannot deduplicate the rebuild notice');
 });
 
-test('the production batch Git adapter preserves whitespace in unknown paths', async t => {
+test(batchGitCase, t => pruneCase(t, async (scope, step) => {
+  assert.ok(ownedGuardAdmissions.delete(t.name), 'file hook delegates this exact case to its whole-callback native guard');
+  const root = await step('disposable batch cwd', async () => {
+    const root = await tempProject(scope.fixtures); scope.adoptRoot(root); return root;
+  });
+  const env = fixtureEnvironment(root, process.env);
   let path = '';
-  t.mock.method(cp, 'execFile', (bin: string, args: string[], _options: cp.ExecFileOptions, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
-    assert.equal(bin, 'git');
-    if (args[0] === 'diff') callback(null, path + '\0', '');
+  let calls = 0;
+  const git = PruneProcesses.prototype.git;
+  scope.patch(PruneProcesses.prototype, 'git', async function (...call: Parameters<typeof git>) {
+    const [cwd, args] = call;
+    assert.equal(cwd, root);
+    const f = fakePrune(scope);
+    const running = scope.wait('owned fake Git result', () => Reflect.apply(git, f.owner, call));
+    await step('owned fake Git gate', () => f.started);
+    calls++;
+    let output: string;
+    if (args[0] === 'diff') {
+      assert.deepEqual(args, ['diff', '--name-only', '-z', '--no-renames', 'tested-head', 'current-head', '--']);
+      output = path + '\0';
+    }
     else {
       assert.deepEqual(args, ['--literal-pathspecs', 'log', '-1', '--format=%H', 'current', '^tested', '--', path]);
-      callback(null, 'forcing-commit\n', '');
+      output = 'forcing-commit\n';
     }
-    return { stdin: null };
+    f.child.stdout.emit('data', output);
+    f.close();
+    const result = await running;
+    await step('owned fake Git settlement', () => f.owner.settled);
+    return result;
   });
-  syncBuiltinESMExports();
-  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
-  const candidate = (base: string) => ({ base, head: `${base}-head`, tree: `${base}-tree`, cwd: '/isolated', budgetLines: [] });
+  const candidate = (base: string) => ({ base, head: `${base}-head`, tree: `${base}-tree`, cwd: root, budgetLines: [] });
   for (const unknown of [' docs/input.ts', ' README.md', '\tdocs/input.ts', '\nREADME.md', 'README.md ']) {
     path = unknown;
-    assert.equal(await batchRebuildReason('/isolated', candidate('tested'), candidate('current')), `commit forcing-commit changed batch test inputs: ${unknown}`);
+    assert.equal(await batchRebuildReason(root, candidate('tested'), candidate('current'), env), `commit forcing-commit changed batch test inputs: ${unknown}`);
   }
   path = 'docs/input.md';
-  assert.equal(await batchRebuildReason('/isolated', candidate('tested'), candidate('current')), null);
-});
+  assert.equal(await batchRebuildReason(root, candidate('tested'), candidate('current'), env), null);
+  assert.equal(calls, 11, 'all unknown paths reach native-result handling and the safe path omits log');
+}));
 
 test('scripts-only manifest changes omit the install warning from queue frames and CLI output', async t => {
   const f = await fixture(t, {}, ['package.json']);

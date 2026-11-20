@@ -4,8 +4,7 @@ import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import childProcess, { execFileSync } from 'node:child_process';
-import { syncBuiltinESMExports } from 'node:module';
+import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -15,6 +14,8 @@ import { copyPreparedProject } from './prepared-project.ts';
 import { pushDev } from '../src/territory-push.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import { heldOperations } from './lead-permissions-support.ts';
+import { observePruneGit, pruneCase } from './prune-case.ts';
+import { ownedDatabases } from './owned-tracker.ts';
 
 test('a verifier spawned while its item leaves the Lead subtree is refused and cleaned up', async t => {
   const work = heldOperations(t);
@@ -67,40 +68,49 @@ test('a verifier spawned while its item leaves the Lead subtree is refused and c
   assert.equal((await coord.call<{ item: { claim: unknown } }>('task.view', { id: item.id })).item.claim, null);
 });
 
-test('lead-1 requests verifiers and merges its scheduled item through the ordinary gate; other levels refuse', async t => {
-  const work = heldOperations(t);
-  const root = await tempProject(t);
+test('lead-1 requests verifiers and merges its scheduled item through the ordinary gate; other levels refuse', t => pruneCase(t, async (scope, step) => {
+  const work = heldOperations(scope.fixtures);
+  scope.releaseOnClose(() => { void work.close().catch(() => {}); });
+  scope.requireClose(work.close);
+  let hub: Awaited<ReturnType<typeof projectHub>> | undefined;
+  const openDatabase = ownedDatabases(scope, () => hub?.dispose());
   const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
-  await copyPreparedProject(root, 'native-territory');
-  await writeFile(join(root, 'feature.txt'), 'initial\n');
-  git(root, 'add', 'feature.txt');
-  git(root, 'commit', '-qm', 'Initial feature');
-  await pushDev(root, work => work(), () => {});
+  const root = await step('original Lead repository setup', async () => {
+    const root = await tempProject(scope.fixtures);
+    scope.adoptRoot(root);
+    await copyPreparedProject(root, 'native-territory');
+    await writeFile(join(root, 'feature.txt'), 'initial\n');
+    git(root, 'add', 'feature.txt');
+    git(root, 'commit', '-qm', 'Initial feature');
+    await pushDev(root, work => work(), () => {});
+    return root;
+  });
   let gateKind = '';
   let writeTrees = 0;
   let gate = work.gate();
-  const nativeExec = childProcess.execFile;
-  const mock = t.mock.method(childProcess, 'execFile', ((file: string, args: string[], options: unknown, callback: (...args: unknown[]) => void) => {
-    // cland-allow-child-env: native Git spy forwards product options unchanged to preserve the permission race boundary
-    return nativeExec(file, args, options as childProcess.ExecFileOptions, (...result: unknown[]) => {
-      const waiting = file === 'git' && ((gateKind === 'preparation' && args[0] === 'merge-tree' && args.includes('--name-only'))
-        || (gateKind === 'landing' && args[0] === 'write-tree' && writeTrees++ === 1)
-        || (gateKind === 'recovery' && args[0] === 'rev-parse' && args.some(a => a.endsWith('^'))));
-      if (!waiting) { callback(...result); return; }
+  const holds: string[] = [];
+  observePruneGit(scope, async ([, args], run) => {
+    const result = await run();
+    const waiting = (gateKind === 'preparation' && args[0] === 'merge-tree' && args.includes('--name-only'))
+      || (gateKind === 'landing' && args[0] === 'write-tree' && writeTrees++ === 1)
+      || (gateKind === 'recovery' && args[0] === 'rev-parse' && args.some(a => a.endsWith('^')));
+    if (waiting) {
+      holds.push(gateKind);
       gate.enter();
-      void gate.released.then(() => callback(...result));
-    });
-  }) as typeof childProcess.execFile);
-  syncBuiltinESMExports();
-  t.after(() => { mock.mock.restore(); syncBuiltinESMExports(); });
-  const { discovery, fakes } = await projectHub(t, root, {}, { harnesses: 'fake', clock: new FakeClock() });
-  const ui = await connectUi(t, discovery);
+      await gate.released;
+    }
+    return result;
+  });
+  const { discovery, fakes } = await step('original Lead hub setup', async () => {
+    hub = await projectHub(scope.resources, root, {}, { harnesses: 'fake', clock: new FakeClock(), openDatabase });
+    return hub;
+  });
+  const ui = await connectUi(scope.resources, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   // The direct verdict writer and the launched verifier each occupy a Reviewer slot.
   assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 2 })).ok, true);
-  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator' });
-  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer' });
-  t.after(async () => { await coord.close(); await rev.close(); });
+  const coord = await inProcessSpoke(scope.resources, { cwd: root, discover: true, name: 'coord', role: 'coordinator' });
+  const rev = await inProcessSpoke(scope.resources, { cwd: root, discover: true, name: 'rev', role: 'reviewer' });
   const create = async (title: string, kind = 'task', parent?: string) => (await coord.call<{ item: { id: string } }>('task.create', { ...(['task'].includes(kind) ? { size: 'M' } : {}), title, kind, parent })).item.id;
   const release = await create('Release', 'release');
   const epic = await create('Own epic', 'epic', release);
@@ -108,8 +118,7 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
   const own = await create('Own task', 'task', epic);
   const foreign = await create('Other task', 'task', other);
   const launched = await coord.call<{ process: HarnessProcessView }>('session.launch', { name: 'lead-1', role: 'lead', item: epic, harness: 'claude-code' });
-  const lead = await inProcessSpoke(t, { cwd: root, discover: true, name: 'lead-1', sessionId: launched.process.sessionId, assignRole: false });
-  t.after(() => lead.close());
+  const lead = await inProcessSpoke(scope.resources, { cwd: root, discover: true, name: 'lead-1', sessionId: launched.process.sessionId, assignRole: false });
   const stop = async (name: string) => ({ code: (await ui.request({ type: 'session.stop', session: name, as: { name: 'lead-1' } })).ok ? 0 : 1 });
   const claimed = await ui.request({ type: 'task.claim', item: own });
   assert.equal(claimed.ok, true, claimed.error);
@@ -149,7 +158,8 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
   const refs = git(root, 'show-ref');
   let preparationResult: unknown;
   const preparing = work.track(lead.call<{ ok: boolean; code: string; reason: string }>('merge', { item: own }).then(result => { preparationResult = result; return result; }));
-  await gate.entered;
+  await step('preparation result hold', () => gate.entered);
+  assert.deepEqual(holds, ['preparation'], 'the real preparation result hold engaged');
   assert.equal(preparationResult, undefined, 'the merge has not finished before reparenting');
   assert.equal((await coord.call<{ ok: boolean }>('task.link', { id: own, parent: other })).ok, true);
   gate.release();
@@ -165,7 +175,8 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
   writeTrees = 0;
   let landingResult: unknown;
   const landing = work.track(lead.call<{ ok: boolean; code: string; reason: string }>('merge', { item: own }).then(result => { landingResult = result; return result; }));
-  await gate.entered;
+  await step('landing result hold', () => gate.entered);
+  assert.deepEqual(holds, ['preparation', 'landing'], 'the real landing result hold engaged');
   assert.equal(landingResult, undefined, 'the index changed but the ref has not moved');
   assert.equal((await coord.call<{ ok: boolean }>('task.link', { id: own, parent: other })).ok, true);
   gate.release();
@@ -188,7 +199,8 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
   gateKind = 'recovery';
   gate = work.gate();
   const recovering = work.track(lead.call<{ ok: boolean; commit: string; followUp?: { error: string } }>('merge', { item: own }));
-  await gate.entered;
+  await step('recovery result hold', () => gate.entered);
+  assert.deepEqual(holds, ['preparation', 'landing', 'recovery'], 'the real recovery result hold engaged');
   assert.equal((await coord.call<{ ok: boolean }>('task.link', { id: own, parent: other })).ok, true);
   gate.release();
   const recovery = await recovering;
@@ -208,4 +220,4 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
     assert.equal(denied.ok, false);
     assert.match(denied.error!, /root level.*Coordinator/);
   }
-});
+}, true));

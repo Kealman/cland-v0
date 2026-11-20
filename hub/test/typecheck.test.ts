@@ -4,22 +4,23 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, symlink, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { fixtureSource, sourceFixtureFiles } from './source-fixture.ts';
+import { tempProject } from './harness.ts';
+import { pruneCase } from './prune-case.ts';
 
 const source = fileURLToPath(new URL('../../', import.meta.url));
 const require = createRequire(import.meta.url);
 const modules = dirname(dirname(require.resolve('typescript/package.json')));
 
-test('typecheck resolves pinned compilers in roots and linked worktrees', async t => {
-  const root = await mkdtemp(join(tmpdir(), 'cland-typecheck-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
+test('typecheck resolves pinned compilers in roots and linked worktrees', t => pruneCase(t, async (scope, step) => {
+  const { root, env, manifest } = await step('complete compiler fixture source setup', async () => {
+  const root = await tempProject(scope.fixtures, 'cland-typecheck-'); scope.adoptRoot(root);
   const env = fixtureEnvironment(root, process.env);
   await mkdir(env.HOME!, { recursive: true });
   // Keep the real workspace scripts, launcher and configs. Compiler resolution
@@ -49,7 +50,7 @@ test('typecheck resolves pinned compilers in roots and linked worktrees', async 
     }
   }
   // The web token guard compares the shipped palette at this runtime-loaded path.
-  assets.push('nvim/lua/cland/hl.lua');
+  assets.push('nvim/lua/cland/hl.lua', 'hub/bin/owned-exec.mjs');
   const generated = ['hub/src/fixture.ts', 'nvim/bin/fixture.ts', 'shared/wire/fixture.ts'];
   const read = fixtureSource(source);
   const readSource = async (file: string) => file === 'shared/wire/fixture.ts'
@@ -62,8 +63,12 @@ test('typecheck resolves pinned compilers in roots and linked worktrees', async 
     if (assets.includes(path)) await cp(join(source, path), join(root, path));
     else await writeFile(join(root, path), (await readSource(path))!);
   }
+  assert.equal(existsSync(join(root, 'hub/bin/owned-exec.mjs')), true, 'the real owned-gate compiler input is copied');
+  return { root, env, manifest };
+  });
   // cland-allow-child-env: fixtureEnvironment above seals scratch root; env HOME is provisioned for the compiler fixture
   const git = (...args: string[]) => execFileSync('git', args, { cwd: root, env, encoding: 'utf8', timeout: 30_000 });
+  const worktree = await step('complete compiler fixture Git setup', async () => {
   git('init', '-q');
   git('add', 'package.json', 'hub', 'nvim', 'shared', 'test-support', ...manifest.workspaces);
   git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Typecheck fixture');
@@ -71,19 +76,21 @@ test('typecheck resolves pinned compilers in roots and linked worktrees', async 
   const worktree = join(root, '.cland', 'worktrees', 'T-1');
   git('worktree', 'add', '--detach', worktree, 'HEAD');
   assert.equal(existsSync(join(worktree, 'node_modules')), false);
+  return worktree;
+  });
   const check = (cwd: string, ...args: string[]) => {
     // cland-allow-child-env: fixtureEnvironment above seals scratch root; linked cwd uses the same owned HOME and pinned dependencies
     const result = spawnSync('npm', ['run', 'typecheck', ...args], { cwd, env, encoding: 'utf8', timeout: 60_000 });
     assert.equal(result.status, 0, `${cwd}\n${result.error ?? ''}\n${result.stdout}\n${result.stderr}`);
     return result.stdout;
   };
-  check(root);
-  check(worktree);
+  await step('root pinned compiler check', async () => check(root));
+  await step('inherited worktree pinned compiler check', async () => check(worktree));
   // The two aliases share a bin name: prove this is 7, while API imports stay 5.9.
-  assert.match(check(worktree, '--workspace', 'hub', '--', '--version'), /Version 7\.0\.2/);
+  assert.match(await step('inherited worktree compiler version', async () => check(worktree, '--workspace', 'hub', '--', '--version')), /Version 7\.0\.2/);
   const api = createRequire(join(worktree, 'hub', 'package.json'))('typescript');
   assert.equal(api.version, '5.9.3');
   assert.equal(typeof api.createProgram, 'function');
   await symlink(modules, join(worktree, 'node_modules'), 'dir');
-  check(worktree);
-});
+  await step('local worktree pinned compiler check', async () => check(worktree));
+}, true));

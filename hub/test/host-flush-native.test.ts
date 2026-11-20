@@ -136,7 +136,7 @@ test('snapshot admission rejects a planted parent symlink and cleanup preserves 
  const git=(cwd:string,args:string[])=>territoryGitAsync(cwd,args,false,undefined,fixtureEnvironment(root,env,{}));
  await mkdir(join(root,'.cland'),{recursive:true});await git(root,['init','-b','dev']);await git(root,['commit','--allow-empty','-m','source']);await git(root,['clone','--bare',root,territoryPath(root)]);
  const {hostVerifyWorktree,removeHostVerifyWorktree,validateHostVerifyWorktree}=await import('../src/territory.ts');const {randomUUID}=await import('node:crypto');
- const head=await git(root,['rev-parse','HEAD']);const base=join(root,'.cland','run','host-verify'),outside=join(root,'outside');await mkdir(join(root,'.cland','run'));await mkdir(outside);await symlink(outside,base);
+ const head=await git(root,['rev-parse','HEAD']);const base=join(root,'.cland','run','host-verify'),outside=join(root,'outside');await mkdir(join(root,'.cland','run'),{recursive:true});await mkdir(outside);await symlink(outside,base);
  const path=join(base,randomUUID());await assert.rejects(hostVerifyWorktree(root,path,head,env),/symlink/);await assert.rejects(stat(join(outside,path.split('/').at(-1)!)),{code:'ENOENT'});
  await unlink(base);const receipt=await hostVerifyWorktree(root,path,head,env);
  await validateHostVerifyWorktree(root,path,receipt,env);

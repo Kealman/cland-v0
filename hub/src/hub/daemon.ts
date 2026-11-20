@@ -23,6 +23,7 @@ import { PollerLease, nativePollerProcesses, type PollerProcesses } from '../rem
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import { createWebEdge, type WebEdge } from './web-edge.ts';
 import { realClock, type Clock, type ClockTimer } from './clock.ts';
+import { gitReadLog } from '../git-read-capability.ts';
 // The hub as a project's daemon: the project's lock taken first, `.cland/` prepared, the store opened on
 // `hub.db`, the WebSocket edge for spokes and the Unix socket edge for the UI bound, and the discovery file
 // written last — a client that reads `hub.json` finds a hub that answers. Shutdown runs it backwards: the
@@ -67,6 +68,7 @@ import { maintainProjectGit } from '../git-maintenance.ts';
 import { MaintenanceRecoveryRequired, maintenanceRecoveryReporter, readMaintenanceOwner } from '../git-maintenance-owner.ts';
 import { refreshTerritoryHook, withTerritoryLockAsync } from '../territory.ts';
 import { MergeCleanupIncomplete } from './merge.ts';
+import { recoverGitCommands } from '../git-command-owner.ts';
 
 /**
  * Whether the hub binds its listeners (the WebSocket for spokes, the Unix socket for the UI and the CLI):
@@ -94,7 +96,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { createHostRegistry?: typeof projectSshHosts; prepareLogin?: import('./dispatch.ts').DispatcherOptions['prepareLogin']; runLoginSignIn?: import('./dispatch.ts').DispatcherOptions['runLoginSignIn']; createHost?: import('./dispatch.ts').DispatcherOptions['createHost']; uploadOpen?: typeof import('node:fs/promises').open; uploadAllocate?: (size: number) => Buffer; gatewayMessenger?: MessengerFactory; gatewayState?: RemoteStates; gatewayProcesses?: PollerProcesses; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; stageTree?: (head: string) => Promise<string | null>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; lockIdentity?: import('./lock.ts').LockHostIdentity; processes?: LockProcessTable; droplet?: DropletDependencies; hostConfigurations?: Readonly<Record<string, import('../host/registry.ts').HostConfiguration>>; hosts?: readonly import('../host/host.ts').Host[]; adapters?: AdapterFactory[]; transportClock?: Clock; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { gitCommandRecovery?: typeof recoverGitCommands; createHostRegistry?: typeof projectSshHosts; prepareLogin?: import('./dispatch.ts').DispatcherOptions['prepareLogin']; runLoginSignIn?: import('./dispatch.ts').DispatcherOptions['runLoginSignIn']; createHost?: import('./dispatch.ts').DispatcherOptions['createHost']; uploadOpen?: typeof import('node:fs/promises').open; uploadAllocate?: (size: number) => Buffer; gatewayMessenger?: MessengerFactory; gatewayState?: RemoteStates; gatewayProcesses?: PollerProcesses; gatewayRemotes?: readonly Remote[]; gitMaintenanceRecovery?: (root: string, env: NodeJS.ProcessEnv) => Promise<void>; gitMaintenance?: typeof maintainProjectGit; artifactOpen?: typeof import('node:fs/promises').open; priorityProbe?: () => number; devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository; publishRelease?: import('./dispatch.ts').DispatcherOptions['publishRelease']; batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; stageTree?: (head: string) => Promise<string | null>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; lockIdentity?: import('./lock.ts').LockHostIdentity; processes?: LockProcessTable; droplet?: DropletDependencies; hostConfigurations?: Readonly<Record<string, import('../host/registry.ts').HostConfiguration>>; hosts?: readonly import('../host/host.ts').Host[]; adapters?: AdapterFactory[]; transportClock?: Clock; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const launchEnv = options.env ?? process.env;
@@ -134,6 +136,7 @@ export async function serveProject(root: string, options: { createHostRegistry?:
       return secrets;
     };
     remoteSecrets = resolveRemoteSecrets();
+    await (options.gitCommandRecovery ?? recoverGitCommands)(root, launchEnv);
     await refreshTerritoryHook(root, options.territoryLock);
     secret = ensureSkeleton(l);
     // The serving owner creates the anchor once, before background recovery.
@@ -147,6 +150,7 @@ export async function serveProject(root: string, options: { createHostRegistry?:
   // closure every part of the hub logs through, so a domain event is journalled and recorded by being logged
   const fatalLog = jsonLinesLog(line => process.stderr.write(line));
   let log: LogFn = options.log ?? fatalLog;
+  return gitReadLog.run(entry => log(entry), async () => {
   const requestGuard = new RequestGuard({ log: entry => log(entry) });
   // Node's file-backed stderr writes synchronously. Production request logs go to a separate async queue;
   // stderr is reserved for a failed logging sink, startup diagnostics and other fatal errors.
@@ -821,4 +825,5 @@ export async function serveProject(root: string, options: { createHostRegistry?:
     log({ event: 'orphan-sweep-completed', ended: [...ended, ...fixtures].map(p => p.process.pid) });
   }).catch(err => log({ event: 'orphan-sweep-failed', reason: err instanceof Error ? err.message : 'OS process inspection failed; unverified candidates were preserved' }));
   return { layout: l, discovery, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; }, get cleanupIncomplete() { return mergeCleanupRetained; } };
+  });
 }

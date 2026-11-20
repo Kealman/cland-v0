@@ -1,5 +1,21 @@
 # hub/test/system-processes.test.ts
 
+The Linux/Darwin owned-tree stop controls place 1,000 unrelated branches under
+PID1. Every selected ps PID parsed by cland must belong to the captured tree or
+protected caller ancestry; no full-table ps selector is allowed. The parsed
+rows and native-birth reads are scoped, while descendant discovery uses
+`pgrep -P`, which enumerates the process table natively outside this counter.
+A child forked during STOP must be captured, frozen and killed. Separate
+controls retain reused-birth refusal,
+self/ancestor refusal, and incomplete termination when caller ancestry is
+unavailable, with no unowned signals. The public default snapshot policy stays
+unchanged for other termination callers.
+The scoped authoritative ps is a single batched observation between native-birth
+reads. A positive mutation at that exact boundary changes a child's birth and
+requires refusal without a signal. Linux ancestry reads use the shared stat
+parser; an EACCES control must refuse rather than spawn fallback ancestry probes
+or permit signalling. The existing full-snapshot controls retain their defaults.
+
 The pgrep-stderr inspection probes seed a lease before starting any hub, so they
 create their scratch `.cland/run` anchor explicitly. The production lease writer
 creates only child directories beneath that existing anchor.

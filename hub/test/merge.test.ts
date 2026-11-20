@@ -10,6 +10,8 @@ import { join } from 'node:path';
 import { cland, eventually, inProcessSpoke, nativeProjectHub, tempProject } from './harness.ts';
 import { parseItem } from '../src/tracker/item.ts';
 import { git, ok, json, project, task, review } from './merge-native-support.ts';
+import { pruneCase, observePruneGit, withCleanupAsync } from './prune-case.ts';
+import { ownedDatabases } from './owned-tracker.ts';
 
 
 test('a current hub review lands one squash commit in the root and territory, closes the item and topic, and removes its worktree and branch', async (t) => {
@@ -98,30 +100,43 @@ test('CLI reopen of a landed task refuses with a follow-up path, then push succe
   assert.equal(await readFile(join(worktree.path, 'parser.txt'), 'utf8'), 'finished\n');
 });
 
-test('CLI reopen preserves a landed task when Git cannot inspect its receipt', async t => {
-  const bin = await tempProject(t, 'cland-reopen-git-');
-  const unavailable = join(bin, 'unavailable');
-  const realGit = execFileSync('which', ['git'], { env: fixtureEnvironment(bin, process.env), encoding: 'utf8' }).trim();
-  const quote = (s: string) => "'" + s.replaceAll("'", "'\\''") + "'";
-  await writeFile(join(bin, 'git'), `#!/bin/sh
-if [ "$1" = show ] && [ -f ${quote(unavailable)} ]; then
-  echo 'fixture landing inspection unavailable' >&2
-  exit 3
-fi
-exec ${quote(realGit)} "$@"
-`, { mode: 0o755 });
-  const { root, rev } = await project(t, { PATH: `${bin}:${process.env.PATH}` });
-  const work = await task(root);
-  await review(rev, work.id);
-  ok(await cland(root, 'merge', work.id));
-  await writeFile(unavailable, 'fail Git inspection\n');
-  const reopened = await cland(root, 'task', 'edit', work.id, '--state', 'open');
+test('CLI reopen preserves a landed task when Git cannot inspect its receipt', t => pruneCase(t, async (scope, step) => {
+  let unavailable = false, inspections = 0;
+  scope.releaseOnClose(() => { unavailable = false; });
+  observePruneGit(scope, async ([, args], run) => {
+    if (unavailable && args[0] === 'show') {
+      inspections++;
+      throw Object.assign(new Error('fixture landing inspection unavailable'), { code: 3, stdout: '', stderr: 'fixture landing inspection unavailable' });
+    }
+    return run();
+  });
+  let hub: Awaited<ReturnType<typeof nativeProjectHub>> | undefined;
+  const openDatabase = ownedDatabases(scope, () => hub?.dispose());
+  await withCleanupAsync(async () => {
+  const { root, work } = await step('complete landing fixture setup', async () => {
+    const serve: typeof nativeProjectHub = async (_t, root, env) => {
+      hub = await nativeProjectHub(scope.resources, root, env, { harnesses: 'fake', openDatabase }); return hub;
+    };
+    const projectFixture = await project(scope.fixtures, {}, serve);
+    scope.adoptRoot(projectFixture.root);
+    const work = await task(projectFixture.root);
+    await review(projectFixture.rev, work.id);
+    ok(await cland(projectFixture.root, 'merge', work.id));
+    return { ...projectFixture, work };
+  });
+  unavailable = true;
+  const reopened = await step('reopen observes unavailable native inspection', () => cland(root, 'task', 'edit', work.id, '--state', 'open'));
+  assert.ok(inspections > 0, 'the original-argv inspection failure positively engaged');
   assert.notEqual(reopened.code, 0);
   assert.match(reopened.stderr, /fixture landing inspection unavailable/);
-  const view = json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
+  const view = json<{ item: { state: string } }>(await step('preserved landed item receipt', () => cland(root, 'task', 'view', work.id, '--json'))).item;
   assert.equal(view.state, 'closed');
   assert.equal(existsSync(work.path), false);
-});
+  }, async () => {
+    unavailable = false;
+    if (hub) await step('original reopen hub shutdown', () => hub!.dispose());
+  });
+}, true));
 
 test('CLI merge removes a closed landed task stale worktree when dev contains its changed branch', async t => {
   const { root, rev } = await project(t);

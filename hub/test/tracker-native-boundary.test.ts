@@ -1,3 +1,4 @@
+// T3 lifecycle: native Git birth, gated admission, close and rollback under territory reservations.
 // T-77 extends T-70/T-75 at the native boundary: tracker reads/mutations, serving-time scans,
 // and the shared Sessions launch layer. T-78 covers territory requests; native adapters remain T-79.
 import { releaseCover } from './release-support.ts';
@@ -5,29 +6,68 @@ import { onCleanup } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import cp, { type ExecFileException, type ExecFileOptionsWithStringEncoding } from 'node:child_process';
+import cp from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 import { WebSocket } from 'ws';
 import { join } from 'node:path';
-import { Tracker, type TrackerFiles } from '../src/tracker/tracker.ts';
+import { Tracker } from '../src/tracker/tracker.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import type { HarnessAdapter } from '../src/adapters/contract.ts';
 import { connectWsUi, eventually, frameClient, startHub, tempProject, TEST_SECRET } from './harness.ts';
-import { copyPreparedProject } from './prepared-project.ts';
-import { removeTaskWorktree, territoryGitAsync } from '../src/territory.ts';
-import { fixedRoles } from '../src/roles/config.ts';
+import { removeTaskWorktree, territoryGitAsync, withTerritoryReservation, TerritoryGitError } from '../src/territory.ts';
+import { territoryLockHeld } from '../src/territory-lock-context.ts';
+import { preparedProject } from './prepared-project.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import type { GitCommandRecord } from '../src/git-command-owner.ts';
+import { pruneCase, observePruneGit } from './prune-case.ts';
+import { territoryHub } from './territory-hub-fixture.ts';
+import type { stageCase } from './stage-case-fixture.ts';
 
-async function territoryHub(t: TestContext, log?: (entry: Record<string, unknown>) => void, files?: TrackerFiles) {
-  const root = await tempProject(t, 'cland-territory-native-');
-  const git = (...args: string[]) => territoryGitAsync(root, args);
-  await copyPreparedProject(root, 'native-territory');
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), ...(files ? { files } : {}) });
-  const hub = await startHub({ tracker, roles: fixedRoles(), ...(log ? { log } : {}) });
-  onCleanup(t, () => hub.close());
-  onCleanup(t, () => tracker.stop());
-  const ui = await connectWsUi(t, hub);
-  return { root, tracker, ui, git, hub };
+function holdOwnedGit(scope: ReturnType<typeof stageCase>, root: string, select: (args: readonly string[]) => boolean) {
+  const reached = Promise.withResolvers<void>();
+  let release = () => {}, captured: cp.ChildProcess | undefined, launches = 0;
+  scope.releaseOnClose(() => release());
+  const spawn = cp.spawn;
+  scope.patch(cp, 'spawn', (file: string, args: readonly string[], options: cp.SpawnOptions) => {
+    // cland-allow-child-env: the lifecycle observer forwards sealed production options unchanged
+    const child = spawn(file, args, options);
+    if (options.cwd === root && /\/owned-exec\.(?:ts|mjs)$/.test(args[0] ?? '')) {
+      launches++;
+      if (!captured && select(args)) {
+        assert.equal(territoryLockHeld(root), true, 'the native birth is admitted under the existing reservation');
+        captured = child;
+        const gate = child.stdio[3] as NodeJS.WritableStream;
+        const end = gate.end;
+        scope.patch(gate, 'end', function (...values: unknown[]) {
+          release = () => { if (!Reflect.get(gate, 'destroyed')) Reflect.apply(end, gate, values); };
+          reached.resolve();
+          return gate;
+        });
+      }
+    }
+    return child;
+  });
+  return { release: () => release(), launches: () => launches, receipt: async () => {
+    await reached.promise;
+    return eventually('released record for captured child', async () => {
+      const entries = await fs.promises.opendir(join(root, '.cland/run/git-command-owners'));
+      let count = 0;
+      for await (const entry of entries) {
+        assert.ok(++count <= 4, 'bounded fixture receipt census');
+        if (!entry.name.endsWith('.json')) continue;
+        const path = join(root, '.cland/run/git-command-owners', entry.name);
+        const bytes = await fs.promises.readFile(path, 'utf8');
+        const row = JSON.parse(bytes) as GitCommandRecord;
+        if (row.child && row.child.pid === captured?.pid && row.released) {
+          assert.ok(row.child.pidStarted && row.child.pidIdentity);
+          assert.equal(row.phase, 'running');
+          return { row, path, bytes };
+        }
+      }
+      return undefined;
+    });
+  } };
 }
 
 async function guarded(work: () => Promise<void>): Promise<void> {
@@ -116,7 +156,7 @@ test('worktree claim, listing and prune cross no synchronous native boundary', a
     ]) {
       const result = await ui.request(frame, 30_000);
       assert.equal(result.ok, true, `${frame.type}: ${String(result.error)}`);
-      if (frame.type === 'task.claim') assert.ok((result.value as { worktree?: unknown }).worktree);
+      if (frame.type === 'task.claim') assert.ok((result.value as { worktree?: unknown }).worktree, JSON.stringify(result.value));
       if (frame.type === 'worktree.prune') assert.deepEqual((result.value as { failed: unknown[] }).failed, []);
     }
   });
@@ -243,39 +283,99 @@ test('a parent swapped to a symlink during the initial path check refuses worktr
   assert.equal(await git('branch', '--list', 't/T-1-confined'), '');
 });
 
-test('merge waits for an admitted verdict write and refuses its latest not-clear result', async t => {
+test('live owned Git admission under its reservation keeps unrelated commands admitted', t => pruneCase(t, async (scope, step) => {
+  observePruneGit(scope, async (_call, run) => run());
+  const root = await step('prepared disposable admission root', () => preparedProject(scope.fixtures)); scope.adoptRoot(root);
+  const env = fixtureEnvironment(root, process.env);
+  const git = (...args: string[]) => territoryGitAsync(root, args, false, undefined, env);
+  const before = await git('rev-parse', 'dev');
+  const gate = holdOwnedGit(scope, root, args => args.includes('refs/heads/t/held'));
+  let joined = false;
+  let original: Promise<string> | undefined, recordPath = '', originalBytes = '';
+  scope.requireClose(async () => { assert.equal(joined, true, 'the original command and reservation joined before cleanup'); });
+  try {
+    original = withTerritoryReservation(root, () => git('update-ref', 'refs/heads/t/held', before));
+    void original.catch(() => {}); // The original is joined in finally, including the red path.
+    const { row, path, bytes } = await step('exact native admission receipt', () => gate.receipt());
+    recordPath = path; originalBytes = bytes;
+    assert.equal(await git('rev-parse', 'dev'), before, 'a healthy original owner does not force read recovery');
+    for (const field of ['pidStarted', 'pidIdentity'] as const) {
+      await fs.promises.writeFile(recordPath, JSON.stringify({ ...row, child: { ...row.child, [field]: 'stale-or-reused-birth' } }));
+      const started = gate.launches();
+      await step('stale native proof keeps write fencing', () => assert.rejects(git('update-ref', 'refs/heads/t/fenced', before), error => error instanceof TerritoryGitError && error.code === 'CLAND_GIT_RECOVERY_REQUIRED'));
+      assert.equal(gate.launches(), started, 'a matching pid with mismatched birth never admits a native writer');
+    }
+    await fs.promises.writeFile(recordPath, originalBytes);
+    await git('update-ref', 'refs/heads/t/admitted', before);
+  } finally {
+    if (recordPath) await fs.promises.writeFile(recordPath, originalBytes);
+    gate.release();
+    const result = await Promise.allSettled(original ? [original] : []);
+    joined = result.length === 1 && result[0]!.status === 'fulfilled';
+  }
+  assert.equal(await git('rev-parse', 'refs/heads/t/admitted'), before, 'normal writes also avoid a read-only bypass');
+}, true));
+
+test('merge waits for an admitted verdict write and refuses its latest not-clear result', t => pruneCase(t, async (scope, step) => {
   const reached = Promise.withResolvers<void>(), proceed = Promise.withResolvers<void>();
+  const nativeRead = Promise.withResolvers<void>(), releaseRead = Promise.withResolvers<void>();
+  let mergingStarted = false, readHeld = false;
+  scope.releaseOnClose(() => proceed.resolve());
+  scope.releaseOnClose(() => releaseRead.resolve());
+  observePruneGit(scope, async (_call, run) => {
+    const result = await run();
+    if (mergingStarted && !readHeld && territoryLockHeld(root)) {
+      readHeld = true; nativeRead.resolve(); await releaseRead.promise;
+    }
+    return result;
+  });
   let hold = false;
-  onCleanup(t, () => proceed.resolve());
-  const { root, ui, tracker, git } = await territoryHub(t, undefined, {
+  const { root, ui, tracker, git, env } = await step('owned verdict-write hub setup', () => territoryHub(scope.fixtures, undefined, {
     ...fs.promises,
     rename: async (from, to) => {
       if (hold && String(to).includes('T-1-')) { hold = false; reached.resolve(); await proceed.promise; }
       return fs.promises.rename(from, to);
     },
-  });
+  }, scope));
   await ui.request({ size: 'M', type: 'task.create', title: 'Latest verdict', kind: 'task' });
   await ui.request({ type: 'task.claim', item: 'T-1' });
-  await territoryGitAsync(join(root, '.cland', 'worktrees', 'T-1'), ['commit', '--allow-empty', '-qm', 'Reviewed']);
+  await territoryGitAsync(join(root, '.cland', 'worktrees', 'T-1'), ['commit', '--allow-empty', '-qm', 'Reviewed'], false, undefined, env);
   const reviewer = { id: 'native-reviewer', name: 'rev', role: 'reviewer' };
   await tracker.comment(reviewer, 'T-1', '', { verdict: 'review', scope: 'full', result: 'clear', run: 'clear-before-wait' });
   await tracker.refreshFreshness();
   const before = await git('rev-parse', 'dev');
+  const reading = Promise.withResolvers<void>();
+  const view = tracker.viewAsync;
+  scope.patch(tracker, 'viewAsync', function (this: Tracker, ...args: Parameters<typeof view>) {
+    const result = Reflect.apply(view, this, args);
+    if (mergingStarted && territoryLockHeld(root)) reading.resolve();
+    return result;
+  });
   hold = true;
   const writing = tracker.comment(reviewer, 'T-1', '', { verdict: 'review', scope: 'full', result: 'not clear', run: 'not-clear-during-wait' });
-  await reached.promise;
-  let answered = false;
-  const merging = ui.request({ type: 'merge', item: 'T-1' }, 30_000).then(r => { answered = true; return r; });
-  await eventually('merge holds territory lock', async () => fs.promises.access(join(root, '.cland', 'territory.lock')).then(() => true, () => undefined));
-  assert.equal(answered, false);
-  assert.equal(await git('rev-parse', 'dev'), before);
-  proceed.resolve();
-  await writing;
-  const refused = await merging;
-  assert.equal(refused.ok, false);
-  assert.equal((refused as { code?: string }).code, 'review-not-clear');
-  assert.equal(await git('rev-parse', 'dev'), before);
-});
+  void writing.catch(() => {});
+  let merging: ReturnType<typeof ui.request> | undefined;
+  try {
+    await step('admitted verdict write held', () => reached.promise);
+    let answered = false;
+    mergingStarted = true;
+    merging = ui.request({ type: 'merge', item: 'T-1' }, 30_000).then(r => { answered = true; return r; });
+    void merging.catch(() => {});
+    await step('healthy native merge read result', () => nativeRead.promise);
+    assert.equal(readHeld, true, 'the real native read result hold engaged');
+    assert.equal(answered, false);
+    assert.equal(await git('rev-parse', 'dev'), before);
+    releaseRead.resolve();
+    await step('merge view enters behind admitted write', () => reading.promise);
+    assert.equal(answered, false);
+    proceed.resolve();
+    await writing;
+    const refused = await merging;
+    assert.equal(refused.ok, false);
+    assert.equal((refused as { code?: string }).code, 'review-not-clear');
+    assert.equal(await git('rev-parse', 'dev'), before);
+  } finally { releaseRead.resolve(); proceed.resolve(); await Promise.allSettled(merging ? [writing, merging] : [writing]); }
+}, true));
 
 test('an item reopened during the final path check keeps its worktree and branch', async t => {
   let watch = false, prepared = false;
@@ -455,43 +555,41 @@ test('creation rollback preserves a branch advanced during confinement verificat
 });
 
 test('cached rollback listings preserve later commits and dirty work', async t => {
-  for (const [existing, dirty] of [[false, false], [false, true], [true, false], [true, true]]) await t.test(`${existing ? 'existing' : 'new'} branch: ${dirty ? 'dirty worktree' : 'clean worktree restored'}`, async t => {
-    const { root, ui, git } = await territoryHub(t);
+  for (const [existing, dirty] of [[false, false], [false, true], [true, false], [true, true]]) await t.test(`${existing ? 'existing' : 'new'} branch: ${dirty ? 'dirty worktree' : 'clean worktree restored'}`, t => pruneCase(t, async (scope, step) => {
+    const scanned = Promise.withResolvers<void>(), swapped = Promise.withResolvers<void>();
+    const listed = Promise.withResolvers<void>(), advanced = Promise.withResolvers<void>();
+    scope.releaseOnClose(() => { swapped.resolve(); advanced.resolve(); });
+    let escaped = false, held = false;
+    observePruneGit(scope, async ([, args], run) => {
+      const result = await run();
+      if (escaped && args[0] === 'worktree' && args[1] === 'list' && !held) { held = true; listed.resolve(); await advanced.promise; }
+      return result;
+    });
+    const { root, ui, git, env } = await step('owned territory hub setup', () => territoryHub(scope.fixtures, undefined, undefined, scope));
     const branch = 't/T-1-cached-listing';
     if (existing) await git('branch', branch);
     await ui.request({ size: 'M', type: 'task.create', title: 'Cached listing', kind: 'task' });
-    const outside = await tempProject(t, 'cland-cached-listing-');
+    const outside = await tempProject(scope.fixtures, 'cland-cached-listing-'); scope.adoptRoot(outside);
     const parent = join(root, '.cland', 'worktrees'), path = join(parent, 'T-1');
     await fs.promises.mkdir(parent);
-    const scanned = Promise.withResolvers<void>(), swapped = Promise.withResolvers<void>();
-    const listed = Promise.withResolvers<void>(), advanced = Promise.withResolvers<void>();
-    const lstat = fs.promises.lstat, execFile = cp.execFile;
-    let scans = 0, escaped = false, held = false;
-    t.mock.method(fs.promises, 'lstat', async (...args: Parameters<typeof lstat>) => {
+    const lstat = fs.promises.lstat;
+    let scans = 0;
+    scope.patch(fs.promises, 'lstat', async (...args: Parameters<typeof lstat>) => {
       try { return await lstat(...args); }
       catch (err) {
         if (args[0] === path && ++scans === 3) { scanned.resolve(); await swapped.promise; }
         throw err;
       }
     });
-    t.mock.method(cp, 'execFile', (file: string, args: string[], options: ExecFileOptionsWithStringEncoding, callback: (err: ExecFileException | null, stdout: string, stderr: string) => void) =>
-      // cland-allow-child-env: native Git spy forwards product options unchanged so the held listing boundary remains observable
-      execFile(file, args, options, (err, stdout, stderr) => {
-        void (async () => {
-          if (escaped && args[0] === 'worktree' && args[1] === 'list' && !held) { held = true; listed.resolve(); await advanced.promise; }
-          callback(err, stdout, stderr);
-        })();
-      }));
-    syncBuiltinESMExports();
-    onCleanup(t, () => swapped.resolve()); onCleanup(t, () => advanced.resolve()); onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
-    const claiming = ui.request({ type: 'task.claim', item: 'T-1' }, 30_000);
-    await scanned.promise;
+    const claiming = scope.wait('original claim result', () => ui.request({ type: 'task.claim', item: 'T-1' }, 30_000), 30_000);
+    await step('initial missing-path scan', () => scanned.promise);
     await fs.promises.rm(parent, { recursive: true });
     await fs.promises.symlink(outside, parent);
     escaped = true;
     swapped.resolve();
-    await listed.promise;
-    await territoryGitAsync(path, ['commit', '--allow-empty', '-qm', 'Writer after listing']);
+    await step('completed cached listing hold', () => listed.promise);
+    assert.equal(held, true, 'the completed listing result hold engaged');
+    await territoryGitAsync(path, ['commit', '--allow-empty', '-qm', 'Writer after listing'], false, undefined, env);
     const writerTip = await git('rev-parse', `refs/heads/${branch}`);
     if (dirty) await fs.promises.writeFile(join(path, 'writer.txt'), 'uncommitted after listing\n');
     advanced.resolve();
@@ -503,72 +601,70 @@ test('cached rollback listings preserve later commits and dirty work', async t =
     assert.ok(outcome.reason.includes(branch));
     assert.ok(outcome.reason.includes(join(outside, 'T-1')));
     assert.equal(await git('rev-parse', `refs/heads/${branch}`), writerTip);
-    assert.equal(await territoryGitAsync(path, ['rev-parse', 'HEAD']), writerTip);
+    assert.equal(await territoryGitAsync(path, ['rev-parse', 'HEAD'], false, undefined, env), writerTip);
     if (dirty) assert.equal(await fs.promises.readFile(join(path, 'writer.txt'), 'utf8'), 'uncommitted after listing\n');
     assert.match(await git('worktree', 'list', '--porcelain'), new RegExp(outside));
-  });
+  }, true));
 });
 
 test('detached cleanup recovery always preserves escaped worktrees', async t => {
-  for (const at of ['confinement', 'cached listing']) await t.test(at, async t => {
-    const { root, ui, git } = await territoryHub(t);
+  for (const at of ['confinement', 'cached listing']) await t.test(at, t => pruneCase(t, async (scope, step) => {
+    const scanned = Promise.withResolvers<void>(), swapped = Promise.withResolvers<void>();
+    const verifying = Promise.withResolvers<void>(), advanced = Promise.withResolvers<void>();
+    scope.releaseOnClose(() => { swapped.resolve(); advanced.resolve(); });
+    let escaped = false, held = false;
+    observePruneGit(scope, async ([, args], run) => {
+      const result = await run();
+      if (at === 'cached listing' && escaped && args[0] === 'worktree' && args[1] === 'list' && !held) { held = true; verifying.resolve(); await advanced.promise; }
+      return result;
+    });
+    const { root, ui, git, env } = await step('owned territory hub setup', () => territoryHub(scope.fixtures, undefined, undefined, scope));
     const branch = 't/T-1-detached-recovery';
     await ui.request({ size: 'M', type: 'task.create', title: 'Detached recovery', kind: 'task' });
     await ui.request({ type: 'task.claim', item: 'T-1' });
     const tip = await git('rev-parse', `refs/heads/${branch}`);
-    const outside = await tempProject(t, 'cland-detached-recovery-');
+    const outside = await tempProject(scope.fixtures, 'cland-detached-recovery-'); scope.adoptRoot(outside);
     const parent = join(root, '.cland', 'worktrees'), path = join(parent, 'T-1');
-    const scanned = Promise.withResolvers<void>(), swapped = Promise.withResolvers<void>();
-    const verifying = Promise.withResolvers<void>(), advanced = Promise.withResolvers<void>();
-    const lstat = fs.promises.lstat, realpath = fs.promises.realpath, execFile = cp.execFile;
-    let checks = 0, escaped = false, held = false;
-    t.mock.method(fs.promises, 'lstat', async (...args: Parameters<typeof lstat>) => {
+    const lstat = fs.promises.lstat, realpath = fs.promises.realpath;
+    let checks = 0;
+    scope.patch(fs.promises, 'lstat', async (...args: Parameters<typeof lstat>) => {
       try { return await lstat(...args); }
       catch (err) {
         if (args[0] === path && checks === 2) { scanned.resolve(); await swapped.promise; }
         throw err;
       }
     });
-    t.mock.method(fs.promises, 'realpath', async (...args: Parameters<typeof realpath>) => {
+    scope.patch(fs.promises, 'realpath', async (...args: Parameters<typeof realpath>) => {
       const actual = await realpath(...args);
       if (at === 'confinement' && escaped && args[0] === path && !held) { held = true; verifying.resolve(); await advanced.promise; }
       return actual;
     });
-    t.mock.method(cp, 'execFile', (file: string, args: string[], options: ExecFileOptionsWithStringEncoding, callback: (err: ExecFileException | null, stdout: string, stderr: string) => void) =>
-      // cland-allow-child-env: native Git spy forwards product options unchanged so the held listing boundary remains observable
-      execFile(file, args, options, (err, stdout, stderr) => {
-        void (async () => {
-          if (at === 'cached listing' && escaped && args[0] === 'worktree' && args[1] === 'list' && !held) { held = true; verifying.resolve(); await advanced.promise; }
-          callback(err, stdout, stderr);
-        })();
-      }));
-    syncBuiltinESMExports();
-    onCleanup(t, () => swapped.resolve()); onCleanup(t, () => advanced.resolve()); onCleanup(t, () => t.mock.restoreAll()); onCleanup(t, () => syncBuiltinESMExports());
-    const removing = assert.rejects(removeTaskWorktree(root, 'T-1', async () => {
+    const removing = scope.wait('original detached removal result', () => assert.rejects(removeTaskWorktree(root, 'T-1', async () => {
       if (++checks === 2) await git('update-ref', '-d', `refs/heads/${branch}`, tip);
-    }, { branch, tip }), err => {
+    }, { branch, tip }, work => work(), env), err => {
       assert.ok(err instanceof Error);
       assert.match(err.message, /created worktree failed confinement.*kept escaped detached worktree/);
       assert.ok(err.message.includes(join(outside, 'T-1')));
       assert.ok(err.message.includes(writerTip));
       return true;
-    });
-    await scanned.promise;
+    }), 30_000);
+    await step('initial detached missing-path scan', () => scanned.promise);
     await fs.promises.rm(parent, { recursive: true });
     await fs.promises.symlink(outside, parent);
     escaped = true;
     swapped.resolve();
-    await verifying.promise;
-    await territoryGitAsync(path, ['commit', '--allow-empty', '-qm', 'Detached writer']);
-    const writerTip = await territoryGitAsync(path, ['rev-parse', 'HEAD']);
+    await step('detached cleanup hold', () => verifying.promise);
+    assert.equal(held, true, 'the selected confinement or completed-listing hold engaged');
+    await territoryGitAsync(path, ['commit', '--allow-empty', '-qm', 'Detached writer'], false, undefined, env);
+    const writerTip = await territoryGitAsync(path, ['rev-parse', 'HEAD'], false, undefined, env);
     if (at === 'confinement') await fs.promises.writeFile(join(path, 'writer.txt'), 'uncommitted detached work\n');
     advanced.resolve();
     await removing;
-    assert.equal(await territoryGitAsync(path, ['rev-parse', 'HEAD']), writerTip);
+    assert.equal(await territoryGitAsync(path, ['rev-parse', 'HEAD'], false, undefined, env), writerTip);
     if (at === 'confinement') assert.equal(await fs.promises.readFile(join(path, 'writer.txt'), 'utf8'), 'uncommitted detached work\n');
     assert.equal(await git('branch', '--list', branch), '');
     assert.match(await git('worktree', 'list', '--porcelain'), new RegExp(outside));
-  });
+  }, true));
 });
 
 test('an alias moved inside while a sibling final realpath awaits keeps the worktree and branch', async t => {

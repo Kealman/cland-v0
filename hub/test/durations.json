@@ -13091,6 +13091,13 @@
     "hub/test/verification-tier-receipts.test.ts::uploaded writer atomically publishes ordered native exits": 0.002693
   },
   "allow": {
+    "hub/test/prune-process-lifecycle.test.ts::hub crash after durable writer release is reconciled by restart before territory admission": {
+      "seconds": 9.2,
+      "owner": "C-216",
+      "added": "2026-11-20",
+      "expires": "2026-11-27",
+      "reason": "T-1856: Linux run 55350ca8-e66d-413d-98d1-296c134f0246 (A-22163) passed the base crash/restart case in 6.129459449 s; worst loaded repetition was 6.514765656 s. The 9.2 s cap rounds 1.5x the base upward and covers those loaded samples for durable writer release, hub crash, restart and recovery. Native stop and merge stop budgets are unchanged."
+    },
     "hub/test/fake-claude-cleanup.test.ts::orphan sweep joins a fake Claude session after its fixture worker is killed": {
       "seconds": 7.639,
       "owner": "C-216",

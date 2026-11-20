@@ -82,7 +82,7 @@ export class MergeFacts {
   };
 }
 
-export async function componentProject(t: TestContext, options: { start?: typeof startHub; facts?: MergeFacts; git?: (git: Git) => Git; sink?: (record: Record<string, unknown>) => void } = {}) {
+export async function componentProject(t: TestContext, options: { ownStop?: (stop: () => Promise<void>) => void; start?: typeof startHub; facts?: MergeFacts; git?: (git: Git) => Git; sink?: (record: Record<string, unknown>) => void } = {}) {
   const root = await tempProject(t, 'cland-merge-component-');
   const facts = options.facts ?? new MergeFacts(), clock = new FakeClock(), tips = manualTips();
   const db = join(root, '.cland/hub.db');
@@ -104,6 +104,7 @@ export async function componentProject(t: TestContext, options: { start?: typeof
     if (errors.length === 1) throw errors[0];
     if (errors.length) throw new AggregateError(errors, 'component fixture cleanup failed');
   })().catch(error => { stopping = undefined; throw error; });
+  options.ownStop?.(stop);
   beforeDirectories(t, stop);
   try {
     const tracker = ownedTracker = new Tracker({ root, db, clock, openDatabase, git: options.git?.(facts.git) ?? facts.git, readBase: async () => 'dev', scheduleTips: tips.scheduleTips });

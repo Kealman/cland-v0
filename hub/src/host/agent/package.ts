@@ -20,7 +20,7 @@ export function agentSourceImportAllowed(importer:string,target:string):boolean 
 }
 /** Whole runtime source policy is shared by installer and package verification. */
 export function runtimeTreePath(p:string):boolean {
- return !p.split('/').some(s=>s==='..'||s==='.'||s==='') && /^(?:hub\/bin\/cland|package(?:-lock)?\.json|hub\/package\.json|(?:hub\/(?:src|bin|mod\/cland)|shared)\/[A-Za-z0-9_./-]+\.(?:ts|js|json|sh|md))$/.test(p);
+ return !p.split('/').some(s=>s==='..'||s==='.'||s==='') && /^(?:hub\/bin\/cland|hub\/bin\/owned-exec\.mjs|package(?:-lock)?\.json|hub\/package\.json|(?:hub\/(?:src|bin|mod\/cland)|shared)\/[A-Za-z0-9_./-]+\.(?:ts|js|json|sh|md))$/.test(p);
 }
 export async function readAgentManifest(root:string) {
  try{return JSON.parse(await readFile(join(root,'runtime-manifest.json'),'utf8'));}

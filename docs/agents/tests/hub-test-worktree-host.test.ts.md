@@ -1,5 +1,10 @@
 # hub/test/worktree-host.test.ts
 
+The durable branch-revocation case holds the public owned-Git result only after
+native completion. A positive hold check precedes revocation or the concurrent
+writer. The original captured-tip/removal assertions remain, with command owners
+and whole-callback work joined before observer restoration and root cleanup.
+
 T3 native Git plus recording local Host. Use preparedProject and fixtureEnvironment
 for disposable repository, HOME, Git and credential isolation. The recording Host
 checks territory-lock exclusion inside every operation, delegates to local Host,

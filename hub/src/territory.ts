@@ -1,11 +1,14 @@
 import { fileOperations } from './host/agent/files.ts';
+import { pruneCommand } from './host/agent/prune-command.ts';
+import { PruneProcesses, type GitCommandRecovery } from './prune-processes.ts';
+import { recoverGitCommands, assertNoGitCommandRecovery } from './git-command-owner.ts';
 import { TerritoryBusy, territoryLockContext } from './territory-lock-context.ts';
-import type { Host } from './host/host.ts';
+import type { Host, HostRunResult } from './host/host.ts';
 import { removeWorktreeWithFixtures } from './fixture-processes.ts';
 import { requireMergeTestLint } from './merge-test-lint.ts';
 import { parseItemReference } from './tracker/prefixes.ts';
 // The territory's Git commands live here. Init needs no hub; later hub operations use the same lock and runner.
-import { execFile, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { access, lstat, mkdir, realpath, stat, readFile, unlink, readdir, rmdir } from 'node:fs/promises';
 import { dirname, join, resolve, relative, isAbsolute, sep } from 'node:path';
@@ -48,6 +51,7 @@ export function defaultBranch(root: string, config?: ReadonlyMap<string, string>
 export function withTerritoryLock<T>(root: string, operation: () => Promise<T>): Promise<T>;
 export function withTerritoryLock<T>(root: string, operation: () => T): T;
 export function withTerritoryLock<T>(root: string, operation: () => T | Promise<T>): T | Promise<T> {
+  assertNoGitCommandRecovery(root);
   const path = lockPath(root);
   const link = symlinkOnPath(root, path);
   if (link !== null) throw new Error(`territory lock: refusing symlink ${link}`);
@@ -90,6 +94,15 @@ async function symlinkOnPathAsync(root: string, path: string, resumed: <R>(work:
  * Public lease revoke and host receive opt into the lock module's bounded backoff; no release-notification API exists.
  */
 export async function withTerritoryLockAsync<T>(root: string, operation: () => Promise<T>, resumed: <R>(work: () => R) => R = work => work(), waitMs = 0): Promise<T> {
+  return withTerritoryReservation(root, async () => {
+    await recoverGitCommands(root);
+    await recoverMaintenanceOwner(root);
+    return operation();
+  }, resumed, waitMs);
+}
+
+/** The same reservation, without recursively invoking its admission recoverers. */
+export async function withTerritoryReservation<T>(root: string, operation: () => Promise<T>, resumed: <R>(work: () => R) => R = work => work(), waitMs = 0): Promise<T> {
   if (!Number.isFinite(waitMs) || waitMs < 0 || waitMs > 60_000) throw new Error('territory lock wait must be between 0 and 60000 ms');
   const path = lockPath(root);
   const link = await symlinkOnPathAsync(root, path, resumed);
@@ -109,7 +122,7 @@ export async function withTerritoryLockAsync<T>(root: string, operation: () => P
     throw err;
   }
   const owner = { root: resolve(root), active: true };
-  return withCleanupAsync(async () => { await recoverMaintenanceOwner(root); return territoryLockContext.run(owner, operation); }, async () => { owner.active = false; await lock.release(); }, resumed);
+  return withCleanupAsync(() => territoryLockContext.run(owner, operation), async () => { owner.active = false; await lock.release(); }, resumed);
 }
 
 export const TERRITORY_HOOK = `#!/bin/sh
@@ -373,13 +386,18 @@ export function territoryProblems(root: string): string[] | null {
 }
 
 // ---------------------------------------------------------------- task worktrees (T-58, decisions D3, D7)
-// Called from the hub's request path, so every Git command here is awaited (`execFile`), never `spawnSync`: a claim
+// Called from the hub's request path, so every Git command here awaits its owned native runner: a claim
 // or a listing never holds the hub's event loop. The hub runs them one at a time (`src/hub/worktrees.ts`); the
 // writes also hold the territory lock against other processes, taken without blocking (`withTerritoryLockAsync`).
 
 /** `territoryGit`, awaited: trimmed scalar stdout, byte-preserving -z/--null streams,
  * or a rejection naming the command and Git's message. */
 export class TerritoryGitError extends Error {
+  declare readonly stderr?: string;
+  declare readonly nativeClose?: HostRunResult['nativeClose'];
+  declare readonly nativeCleanup?: HostRunResult['nativeCleanup'];
+  declare readonly nativeAdmission?: HostRunResult['nativeAdmission'];
+  declare readonly recovery?: GitCommandRecovery;
   readonly stdout: string;
   readonly code: number | string | null | undefined;
   constructor(message: string, stdout: string, code: number | string | null | undefined) { super(message); this.stdout = stdout; this.code = code; }
@@ -393,17 +411,28 @@ export function mergeConflictFiles(stdout: string): string[] {
 }
 
 export function territoryGitAsync(cwd: string, args: string[], marked = false, input?: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
-  return new Promise((resolvePromise, reject) => {
-    const child = execFile('git', args, { cwd, encoding: 'utf8', timeout: 30_000, maxBuffer: 16 * 1024 * 1024, env: { ...env, CLAND_TERRITORY_WRITE: marked ? '1' : '' } }, (err, stdout, stderr) => {
-      if (err) reject(new TerritoryGitError(`git ${args.join(' ')}: ${String(stderr).trim() || err.message}`, String(stdout), err.code));
-      else resolvePromise(args.includes('-z') || args.includes('--null') ? String(stdout) : String(stdout).trim());
-    });
-    child.stdin?.on('error', () => {}); // an early Git refusal can close stdin before the input is consumed
-    child.stdin?.end(input);
+  const owner = pruneCommand.getStore();
+  const command = owner ? undefined : new PruneProcesses();
+  const work = owner ? owner.run(cwd, args, { ...env, CLAND_TERRITORY_WRITE: marked ? '1' : '' }, input)
+    : command!.run(() => command!.git(cwd, args, { ...env, CLAND_TERRITORY_WRITE: marked ? '1' : '' }, input));
+  return work.catch(error => {
+    throw Object.assign(new TerritoryGitError(`git ${args.join(' ')}: ${error.message}`, error.stdout ?? '', error.code),
+      { stderr: error.stderr ?? '' }, error.nativeClose ? { nativeClose: error.nativeClose } : {},
+      error.nativeCleanup ? { nativeCleanup: error.nativeCleanup } : {}, error.nativeAdmission ? { nativeAdmission: error.nativeAdmission } : {}, error.recovery ? { recovery: error.recovery } : {});
   });
 }
 
-const maybeGitAsync = (cwd: string, args: string[], env: NodeJS.ProcessEnv = process.env, git: typeof territoryGitAsync = territoryGitAsync): Promise<string | null> => git(cwd, args, undefined, undefined, env).catch(() => null);
+/** Unknown writer settlement is never ordinary Git absence or a moved branch. */
+export function isTerritoryGitCancellation(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const facts = error as { code?: unknown; nativeCleanup?: unknown };
+  return facts.nativeCleanup === 'incomplete' || typeof facts.code === 'string'
+    && ['CLAND_GIT_CANCELLED', 'CLAND_GIT_INCOMPLETE', 'CLAND_GIT_RECOVERY_REQUIRED'].includes(facts.code);
+}
+const maybeGitAsync = (cwd: string, args: string[], env: NodeJS.ProcessEnv = process.env, git: typeof territoryGitAsync = territoryGitAsync): Promise<string | null> => git(cwd, args, undefined, undefined, env).catch(error => {
+  if (isTerritoryGitCancellation(error)) throw error;
+  return null;
+});
 const refAsync = (cwd: string, name: string, env: NodeJS.ProcessEnv = process.env, git: typeof territoryGitAsync = territoryGitAsync): Promise<string | null> => maybeGitAsync(cwd, ['rev-parse', '--verify', '--quiet', name], env, git);
 
 export const worktreesPath = (root: string): string => join(root, '.cland', 'worktrees');
@@ -741,6 +770,7 @@ export async function removeTaskWorktree(root: string, item: string, check: Work
           // --no-deref protects against a hand-replaced symbolic task ref; the old SHA is a compare-and-swap.
           await territoryGitAsync(root, ['update-ref', '--no-deref', '-d', `refs/heads/${branch}`, tip], undefined, undefined, env);
         } catch (err) {
+          if (isTerritoryGitCancellation(err)) throw err;
           const current = await refAsync(root, `refs/heads/${branch}`, env);
           if (current !== tip) {
             // A writer moved the ref after the pre-removal check: preserve its branch and put its worktree back.

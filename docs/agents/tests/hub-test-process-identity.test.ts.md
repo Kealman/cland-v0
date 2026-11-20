@@ -13,6 +13,10 @@ Pending launch restart: [name reservation](hub-test-name-reservation.test.ts.md)
 A literal full-field Linux stat fixture includes spaces and closing parentheses
 in comm; field22 must be the fixed expected start ticks. Optional failure
 observers distinguish boot-id validation, stat layout/PID and field22.
+The same pure stat grammar also supplies parent links for scoped Linux
+cancellation ancestry. A literal parent7/known-ticks case and invalid-parent,
+parent0 and invalid-ticks controls keep these fields distinct; extracting a
+parent grants no native signal ownership. Agent packaging includes that parser.
 The previous three-argument parser, nullable single-PID reader and Map return
 shapes remain usable; observers cannot grant identity or throw into control flow.
 
