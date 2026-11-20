@@ -3,7 +3,7 @@ id: T-1892
 kind: task
 title: macOS full cover at epic close; Linux per stage
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1680
 branch: t/T-1892-macos-full-cover-at-epic-close-linux-per
 created: 2026-11-16T07:29:45.299Z
-updated: 2026-11-20T18:19:53.607Z
+updated: 2026-11-20T20:36:21.734Z
 ---
 
 ## Summary
@@ -30,12 +30,16 @@ changes T-469 (2026-10-16) stage-gate contract. The human approved this change o
 ## Acceptance criteria
 
 - [x] C1. An after-stage gate closes on a green sharded Linux cover and, when the plan names one, a green macOS targeted run (test).
-  - done: impl-1892 · 2026-11-20T18:09:50.571Z
+  - done: impl-1892 · 2026-11-20T18:54:55.885Z
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1892-final · 2026-11-20T20:36:21.218Z · commit 2baa101846c3f7666b38afa600eaa1ba209108c2
 - [x] C2. The epic DoD gate still requires a green macOS full cover at the DoD tree (test).
   - done: impl-1892 · 2026-11-20T18:09:51.053Z
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1892-final · 2026-11-20T20:36:21.218Z · commit 2baa101846c3f7666b38afa600eaa1ba209108c2
 - [x] C3. running.md and the plan-epic and qa skills state the new gate (docs check).
   - done: impl-1892 · 2026-11-20T18:09:51.624Z
   - verified: rev-40 [reviewer] · run rev-40-20261120-1892-source · 2026-11-20T18:19:53.607Z · commit efb8cab095b54814c72da2bab038a0a5406045ca
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1892-source2 · 2026-11-20T18:57:42.573Z · commit 2baa101846c3f7666b38afa600eaa1ba209108c2
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1892-final · 2026-11-20T20:36:21.218Z · commit 2baa101846c3f7666b38afa600eaa1ba209108c2
 
 ## Dependencies
 
@@ -69,3 +73,48 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear: Standards0 findings; Spec0 findings. Linux-only after-stage cover, optional same-tree exact-path targeted macOS evidence, per-stage union pinning and exact executable plan/producer receipt validation reviewed. Full Mac map excludes targeted receipts; epic DoD close requires full Mac at accepted DoD tree. Plan changes invalidate closure hash; old closure/request shapes retained. C3 matching docs/help/frozen bytes/skills (with change records) verified. C1/C2 run-dependent marks remain pending ordinary configured verify plus Coordinator-required full all from this worktree at unchanged head. A-22209 selected local macOS Node24.21 proof is partial; disclosed12.42 load native rerun and earlier failures retained, no timing claim. Reviewer ran no tests/native/browser. Artifact records source review.
 
 Criteria: C3 verified.
+
+### rev-40 · 2026-11-20T18:40:36.923Z
+
+verdict: review
+result: not clear
+by: rev-40 [reviewer]
+run: rev-40-20261120-1892-evidence1
+commit: efb8cab095b54814c72da2bab038a0a5406045ca
+scope: evidence
+findings: [{"severity":"medium","text":"Stage-settlement consumer still waits for stage.state=open after a settled Linux cover, then adds Mac to close it. Linux-only closure makes that predicate impossible; A-22226 times out. Migrate setup/trigger to new policy while retaining pushed summary and fresh-snapshot equality assertions.","file":"hub/test/item-summary.test.ts","line":285}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full configured evidence not clear. A-22226/runf5e896c1-1874-482b-a7ab-4adb5ad492be fails at exact reviewed efb8cab095b54814c72da2bab038a0a5406045ca/tree2120149dfd87de13bb0754355d9821e031b0ff63. Actual output: 'linux cover is settled before observing the missing platform: not within 30000 ms'. Source item-summary.test.ts:280–292 supplies Linux then waits for open before adding Mac; this is a missed rule20 consumer of superseded two-platform closure. Retain its event-before-trigger and pushed-row/snapshot assertions while migrating boundary. C1 failed; C2 final remains pending, C3 source docs proof retained. T0/T1 exit0; T2 exit1; T3/Web unexecuted, T4 unexecuted. Producer header reports2023? No: aggregate6395 tests/6393pass/1fail/1skip; completed-before-interruption inventory6415/6408pass/1fail/6skip is separately scoped and not conflated. Linux c-8 ams3 Node24.21 workers2; browser binary/version null; Mac-only selector case skipped, not coverage. Noncached, host check at admitted tree not repeated remotely, budget advisories report-only. Fresh source review required after consumer correction; Reviewer ran no tests/browser.
+
+Criteria: C1 failed (Missed item-summary settlement consumer still requires Mac after Linux and times out in configured full verify.).
+
+### rev-40 · 2026-11-20T18:57:42.573Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261120-1892-source2
+commit: 2baa101846c3f7666b38afa600eaa1ba209108c2
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear after the narrow consumer correction. Standards: no findings; Spec: no findings. item-summary now observes settled uncovered/open state before arming the observer and supplying Linux; pushed rollup, closed-stage counts and independent snapshot assertions remain. T3 suite-close now expects actual host-platform Linux completion/missing-Linux provenance; transfer/union/cleanup assertions remain. Reviewed A-22236 sweep dispositions and matching per-file guide. Production/docs implementation remains the prior reviewed design; C3 reverified at this head. C1/C2 run-dependent evidence remains pending the Coordinator-required full verify all retry. A-22226 remains failed evidence; selected local macOS checks are not a configured pass. Reviewer ran no tests/native/browser.
+
+Criteria: C3 verified.
+
+### rev-40 · 2026-11-20T20:36:21.218Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261120-1892-final
+commit: 2baa101846c3f7666b38afa600eaa1ba209108c2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, no findings. A-22259/run283d5414 binds reviewed head/canonical treebf227ef0ada8695824dcd66066a624b2351d747d; read-only tree comparison confirms only excluded tracker/rulebook paths differ. C1 positive finishes: exact targeted Mac union/receipt9134; publication landing+optional target/full/wrong-tree/wrong-path closure control28543; native-fixture Linux-only stage closure45348. Corrected item-summary settlement21655 and T3 suite-close union/summary44246 pass. C2 epic DoD missing/targeted/wrong-tree refusals and full-Mac acceptance16120 pass. C3 current-head source2 docs proof retained. Local-Mac MCP selector is skipped on Linux, not passed; unchanged selector has retained selected local Mac preview evidence A-22209, while completion/closure controls above use explicit simulated receipts. Configured full T0/T1/T2/T3/Web exit0,9307tests9294pass13skip0fail/cancel; T4 unexecuted. Twelve other skips are platform/prerequisite cases; repeated selector load-gate skip rows are not extra base skips. Noncached Linuxx64 c-8ams3 Node24.21.0 Nvim0.12.5; Web Headless Shell1248/CfT156.0.8078.4. Host gate not repeated remotely; budgets/lint report-only, no performance clearance. A-22226 remains failed old-head evidence. Reviewer ran no tests/native/browser.
+
+Criteria: C1 verified, C2 verified, C3 verified.

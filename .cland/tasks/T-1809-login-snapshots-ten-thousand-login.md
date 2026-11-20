@@ -2,8 +2,8 @@
 id: T-1809
 kind: task
 title: login-snapshots ten-thousand-login budget case slowed by T-1784's capacity index and triggers
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels: []
@@ -14,7 +14,8 @@ regression_of: T-1784
 topic: topic-1683
 branch: t/T-1809-login-snapshots-ten-thousand-login
 created: 2026-11-11T02:13:21.099Z
-updated: 2026-11-20T18:23:37.815Z
+updated: 2026-11-20T19:11:03.416Z
+closed: 2026-11-20T19:11:03.416Z
 ---
 
 ## Summary
@@ -95,3 +96,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged5c679537f54a32514da391565fcf9766f80cdb54. Independently inspected A-22212 run43e76b14-411f-4e56-bd51-626ba5004fe6: producer pass7127/7127, no failed/cancelled/skipped; T0/T1/fallback-all-T2/Web exit0, T3 deferred batch, T4 unexecuted. Head/tree match reviewed source (treee056ef3a4a331c80216c64270d7bed57ea570ddf), no cache. C2 combines exact-head recorded local macOS arm64 Node24.21 sample1438.307ms (A-22187/item comment; under2s) with confirmed allowance removal and successful configured verification. Linux exact generated budget identity passes1.368382281s; seed205.683ms/10000writes, controls201.496ms, save1.223ms. Linux timing is separate from macOS proof; phase timings exclude schema/startup/cleanup while case includes them. C1/C3 source proofs retained. Droplet c-8 ams3 Linuxx64 6.8.0-149-generic Node24.21.0 workers2; Web Headless Shell1248, Chrome for Testing156.0.8078.4. Host gate at admitted tree, not repeated remotely; budgets report-only. Earlier dbe6b506/A-22200 remains cancelled/exit143/unexecuted, not counted as a passing round; replacement independently passes. Reviewer ran no tests/browser; no new source findings.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-20T19:11:03.416Z
+
+Merged c5ea7db2d50940d902a0b90970f2cd3b0807b373 onto dev.

@@ -2,8 +2,8 @@
 id: T-1893
 kind: task
 title: "Light landing: T1 plus affected T3"
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1678
 branch: t/T-1893-light-landing-t1-plus-affected-t3
 created: 2026-11-16T07:29:45.541Z
-updated: 2026-11-20T18:22:27.136Z
+updated: 2026-11-20T20:53:50.961Z
+closed: 2026-11-20T20:53:50.961Z
 ---
 
 ## Summary
@@ -33,10 +34,14 @@ changes rule 6 (T1+T3 batch as the pre-merge full suite; ask 31d43750, Discord 1
 
 - [x] C1. T-1528's replay shows which v0.4.0 T3-only red batches (T-1819, T-1666, T-1553, T-1644) the importer selection catches and which it misses (evidence).
   - done: impl-1893 · 2026-11-20T17:56:04.059Z
-- [ ] C2. An affected-T3 batch runs T1 and only the importer T3 files, and a batch of 3 or more members or with a hub-behaviour member runs the full T3 (test).
-  - failed: rev-35 [reviewer] · 2026-11-20T18:12:22.156Z · note New policy test setup lacks its separate complete bound and the T3-mask contract misses periodic whole-coverage consumers (M3/M4).
-- [ ] C3. T-1582's per-tier baseline holds for partial-T3 batches (test).
-  - failed: rev-35 [reviewer] · 2026-11-20T18:12:22.156Z · note Unbounded skipped-history visits and unrelated-tier budget consumption break bounded per-tier proof fallback (M1/M2); partial coverage must also remain scoped (M4).
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1893-source2 · 2026-11-20T18:34:47.265Z · commit 8a9036608b226cedeea1ddef917081188e98c7d5
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1893-final · 2026-11-20T19:40:11.691Z · commit 8a9036608b226cedeea1ddef917081188e98c7d5
+- [x] C2. An affected-T3 batch runs T1 and only the importer T3 files, and a batch of 3 or more members or with a hub-behaviour member runs the full T3 (test).
+  - done: impl-1893 · 2026-11-20T18:33:00.459Z
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1893-final · 2026-11-20T19:40:11.691Z · commit 8a9036608b226cedeea1ddef917081188e98c7d5
+- [x] C3. T-1582's per-tier baseline holds for partial-T3 batches (test).
+  - done: impl-1893 · 2026-11-20T18:33:00.920Z
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1893-final · 2026-11-20T19:40:11.691Z · commit 8a9036608b226cedeea1ddef917081188e98c7d5
 
 ## Dependencies
 
@@ -74,3 +79,41 @@ Criteria: C2 failed (New policy test setup lacks its separate complete bound and
 ### impl-1893 · 2026-11-20T18:22:27.136Z
 
 Review correction consumer sweep: shared wholeSuiteSelection now guards batch/full-periodic suppression, fresh integrated-cover suppression, stage cover and cached source, release T3 cover, full-stage load baseline and whole integrated coverage recording. Compact history retains batchTests mask presence (empty array flags) and duration subset presence. Per-file batch baselines intentionally retain partial receipts but intersect each mask and actual current-tier files. sameSuiteSelection already compares complete masks; shard planning excludes batches and is not a coverage proof; member verification proves T1 (no T1 mask) plus ordinary selected T2, so it is not a full-T3 consumer. Package planner and per-file baseline share tierTestMask. Searches covered field names, mode/soak/tiers predicates and function callers across source/tests/docs/skills, not only importers. New native-free controls cover restart, empty/nonempty masks, full-stage baseline, periodic batch and fresh-cover scheduling.
+
+### impl-1893 · 2026-11-20T18:29:35.200Z
+
+Revision2 supporting run finished native exit0/signalnull/incomplete null:96 selected files (reachable T1 including3 unknown import graphs plus2 explicit T2 report/periodic component files). Raw stdout, exact selected manifest, source/test SHA256 fingerprints and structured native result retained privately for scan-and-publish. All4 review findings corrected in draft; no dev merge after source1. Required full typecheck and full lint are being rerun before fresh committed source review. Native/droplet/T3/T4/Web/browser phases remain unexecuted locally; launch brief still reserves configured all to Coordinator.
+
+### rev-40 · 2026-11-20T18:34:47.265Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261120-1893-source2
+commit: 8a9036608b226cedeea1ddef917081188e98c7d5
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear, Standards0/Spec0 findings. M1–M4 resolved: independent256-summary/32same-tier budgets with counters/hints and inflight sharing; complete separate setup bounds; shared whole-selection predicates with restart mask-presence controls; per-file baseline mask/current-tier clipping. Exact-head member T1 omission remains per Coordinator787e95ad, named in public report and retained test. C1 verified via A-22196 with explicit limits: T1819 importer catches2 files/3 failures; other3 missing candidate objects leave importer-only outcomes unknown; original production deciding paths force fullT3 for all4. This is static policy evidence, not historical execution. C2/C3 final runtime proof pending Coordinator-owned full verify all at unchanged8a903660; no Implementer mode-free run requested. A-22219 qualified local macOS Node24.21 selected1068 passes/precommit hashes and lint/typecheck do not substitute configured proof. Reviewer ran no tests/native/browser.
+
+Criteria: C1 verified.
+
+### rev-40 · 2026-11-20T19:40:11.691Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261120-1893-final
+commit: 8a9036608b226cedeea1ddef917081188e98c7d5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, no findings. Full Coordinator run3f316753/A-22250 binds reviewed head and canonical candidate tree1a18af5c7fc69f76ae479c0bb6471e6cd98bd6c2; read-only comparison to raw Git tree confirms only verifier-excluded tracker/rulebook paths differ. Independently checked positive structured finishes for affected-importer plan/full-T3 triggers/exact-head T1 reuse (C2); green/red per-file baseline, same-tier/other-tier/legacy/skipped-history bounds, restart mask retention and partial periodic/fresh-cover controls (C3). All13 named controls passed. C1 retains source2's accepted A-22196 static replay limits: T1819 importer catches2files/3failures; three missing historical candidates remain unknown importer-only outcomes; production paths force fullT3 for all4. Configured full all replaces mode-free: T0/T1/T2/T3/Web exit0,9316tests9304pass12skip0fail/cancel; T4 unexecuted. Skips are5macOS sandbox-exec,1caffeinate,2OpenCode absence,4zsh prerequisites, outside changed criteria. Noncached Linuxx64 c-8ams3 Node24.21.0 Nvim0.12.5; Web Chrome Headless Shell1248/CfT156.0.8078.4. Host gate at canonical tree not repeated remotely; lint/duration/T3 budgets remain report-only with no performance clearance. Reviewer ran no tests/native/browser.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-20T20:53:50.961Z
+
+Merged e2d8f806333e9a19cb9db7e4583d49b83fb213b7 onto dev.

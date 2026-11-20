@@ -3,17 +3,18 @@ id: T-1896
 kind: task
 title: Shard batches; cut the full run toward 15 min
 state: open
-status: planned
+status: in progress
 size: M
+criterion_seq: 3
 labels:
   - retro-improvement
 assignee: null
 parent: E-1888
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1688
+branch: t/T-1896-shard-batches-cut-the-full-run-toward-15
 created: 2026-11-16T07:29:46.101Z
-updated: 2026-11-20T17:33:54.702Z
+updated: 2026-11-20T20:54:49.645Z
 ---
 
 ## Summary
@@ -30,8 +31,13 @@ cost: more droplets per run under the $14/day cap (human's cap). The human appro
 
 - [ ] C1. A batch run shards across `verification.shards` machines and lands only when all shards are green (test).
 - [ ] C2. An artifact gives the per-phase wall time and the 20 slowest files of five covers and five batches, and the shard count that reaches 15 min or less (evidence).
-- [ ] C3. With that shard count, green covers and batches have a median of 20 min or less over one day (evidence).
 
 ## Dependencies
 
 none; suites.ts
+
+## Comments
+
+### coord · 2026-11-20T20:54:27.145Z
+
+C3 (one-day median at or under 20 min) moved to T-2042 on 2026-11-20. It's post-landing evidence and can't gate the merge. T-1896 keeps C1 (sharded batches land only when all shards are green) and C2 (shard-count sizing artifact from existing covers and batches).
