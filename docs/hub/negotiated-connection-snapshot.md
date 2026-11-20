@@ -58,6 +58,16 @@ after that marker; `subscribe` is idempotent. With `snapshot` alone the existing
 subscription request still enables subsequent events. The [connection events filter](connection-events-filter.md#connection-events-filter) can be replaced on the same connection. A `subscribe` received
 during snapshot preparation takes effect after the snapshot transaction finishes.
 
+Unnumbered local clients receive current `presence`, `remote.state` and
+`hosts.state` replacements when their first model subscription is registered.
+This closes the gap between the facts sent with hello and a later `subscribe`:
+a publication in that gap must not leave the client with an older projection.
+Registration and capture are synchronous; publications triggered while sending
+the replacements are held and drained afterwards. Repeated subscriptions do not
+replay those facts. Numbered and host-scoped clients keep their existing flow.
+Other model domains are initialized by explicit reads or the negotiated snapshot;
+subscription does not replay messages or retained event history.
+
 | Domain | Value | Maximum UTF-8 JSON frame bytes |
 | --- | --- | --- |
 | `tracker` | `levels`, `ladder`, kind `prefixes` | 65,536 |

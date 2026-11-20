@@ -3,6 +3,77 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { projectHub, tempProject, connectSocket } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
+import { createHubBase } from '../src/hub/server.ts';
+import { suiteCase } from './suite-case-fixture.ts';
+import { fenceFixtureCleanup } from './process-cleanup.ts';
+
+for (const publication of ['none','registration','replay'] as const) test(`legacy subscription replaces hello facts and orders publications during ${publication}`, t => {
+  fenceFixtureCleanup(t);
+  return suiteCase(t, async ({fixtures,step,setup}) => {
+  const clock = new FakeClock();
+  let closeConversation = async () => {};
+  let closeHub = async () => {};
+  fixtures.after(async () => { await closeConversation(); await closeHub(); });
+  // Register directory removal on the outer fenced owner, not the proxy's
+  // ancillary hooks: a failed close must stop before directory/guard release.
+  const {root} = await setup(async () => ({root:await tempProject(t)}));
+  const hub = await step('in-memory hub acquisition', async () => {
+    const owned = createHubBase({secret:'fixture',clock,env:fixtureEnvironment(root,process.env)});
+    closeHub = () => owned.close();
+    return owned;
+  });
+  const received: import('../src/protocol.ts').HubFrame[]=[];
+  let replaying=false;
+  let publishNewer = () => {};
+  const legacy=await step('legacy conversation acquisition', async () => {
+    const owned=hub.dispatcher.open({send:frame=>{
+    received.push(structuredClone(frame));
+    if(publication==='replay'&&replaying&&frame.type==='presence') {
+      replaying=false;
+      publishNewer();
+    }
+    },close:()=>{},isOpen:()=>true},{edge:'socket',authenticated:true});
+    closeConversation = async () => { owned.closed(); await owned.drainUploads(); };
+    return owned;
+  });
+  await step('replacement and ordered publication assertions', async () => {
+  const pool: import('../src/protocol.ts').HostsStatePool = { name: 'agents', provider: 'fake', region: 'fake-1', hostCount: 1,
+    maxHosts: 2, slotsUsed: 0, slotsTotal: 8, logins: {claude:{inUse:0,usable:0,signedOut:0},codex:{inUse:0,usable:0,signedOut:0},opencode:{inUse:0,usable:0,signedOut:0}}, alert: null,
+    hosts: [{ id: 'host-ready', size: 'fake', region: 'fake-1', state: 'cloning',
+      created: clock.now().toISOString(), sessions: [], priceHourly: 0, spendToday: 0 }] };
+  hub.core.useHostsState(() => [pool]);
+  publishNewer = () => hub.core.publishHostsState([{...pool,hosts:[{...pool.hosts[0]!,state:'unreachable'}]}]);
+  let sessions: import('../src/protocol.ts').Presence[]=[];
+  t.mock.method(hub.core,'presence',()=>sessions);
+  const remote: import('../src/protocol.ts').RemoteStateRow={messenger:'telegram',enabled:true,connection:'offline',offlineSince:null,pairedName:null,mute:false,outboxDepth:0,lastError:null};
+  hub.core.useRemoteState(()=>[remote]);
+  legacy.receive(JSON.stringify({type:'hello',protocol:2,client:'ui'}));
+  assert.deepEqual(received.find(frame=>frame.type==='hosts.state'),{type:'hosts.state',pools:[pool]});
+  pool.hosts[0]!.state='ready';
+  hub.core.publishHostsState(hub.core.hostsState());
+  remote.connection='connected';hub.core.publishRemoteState([remote]);
+  sessions=[{name:'worker',sessionId:'worker-id',cwd:'/fixture',role:null,status:null,connectedAt:clock.now().toISOString(),state:'idle'}];
+  received.length=0;
+  if(publication==='registration') {
+    const subscribe=hub.core.subscribeClient.bind(hub.core);
+    t.mock.method(hub.core,'subscribeClient',(...args:Parameters<typeof subscribe>)=>{
+      const stop=subscribe(...args);
+      hub.core.publishHostsState([{...pool,hosts:[{...pool.hosts[0]!,state:'unreachable'}]}]);
+      return stop;
+    });
+  }
+  replaying=true;
+  legacy.receive(JSON.stringify({type:'subscribe',id:'sub'}));
+  assert.deepEqual(received.find(frame=>frame.type==='presence'),{type:'presence',sessions:sessions.map(row=>({...row,layer:'watch'}))});
+  assert.deepEqual(received.find(frame=>frame.type==='remote.state'),{type:'remote.state',remotes:[remote]});
+  assert.deepEqual(received.find(frame=>frame.type==='hosts.state'),{type:'hosts.state',pools:[pool]});
+  assert.deepEqual(received.filter(frame=>frame.type==='hosts.state').map(frame=>frame.pools[0]!.hosts[0]!.state),publication==='none'?['ready']:['ready','unreachable']);
+  received.length=0;
+  legacy.receive(JSON.stringify({type:'subscribe',id:'again'}));
+  assert.deepEqual(received.map(frame=>frame.type),['result'],'repeated subscription replays nothing');
+  });
+  });
+});
 
 test('hosts state connects with empty pools on previous and featured wire shapes', async t => {
   const root = await tempProject(t);

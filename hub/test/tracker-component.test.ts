@@ -308,6 +308,9 @@ test('a subscribed UI hears a `task` event on every index change; task.list carr
   assert.equal((await s.next()).type, 'remote.state');
   assert.deepEqual(await s.next(), { type: 'hosts.state', pools: [] });
   s.send({ type: 'subscribe', id: 's1' });
+  assert.deepEqual(await s.next(), { type: 'presence', sessions: [] });
+  assert.equal((await s.next()).type, 'remote.state');
+  assert.deepEqual(await s.next(), { type: 'hosts.state', pools: [] });
   assert.deepEqual(await s.next(), { type: 'result', id: 's1', ok: true, value: { subscribed: true } });
   type TaskEvent = { type: 'task'; id: string; item: (Summary & { verdicts: Array<{ verdict: string; result: string; run: string }> }) | null };
   const nextTask = async (): Promise<TaskEvent> => {

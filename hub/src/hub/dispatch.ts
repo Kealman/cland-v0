@@ -1429,6 +1429,16 @@ export class Dispatcher {
     };
     const subscribeModel = () => {
       if (done || unsubscribe || preparingSnapshot) return;
+      // Legacy hello and subscribe are separate requests. Capture replacement
+      // facts and register synchronously, then hold reentrant publications until
+      // the replacements are sent. Numbered clients use snapshot/resume instead.
+      const replay: HubFrame[] = !hostId && !features.includes('numbered-deltas') ? [
+        { type: 'presence', sessions: core.presence() },
+        { type: 'remote.state', remotes: core.remoteState() },
+        { type: 'hosts.state', pools: core.hostsState() },
+      ] : [];
+      const wasHolding = holdingModel;
+      if (replay.length) holdingModel = true;
       const generation = modelGeneration;
       unsubscribe = core.subscribeClient(features, (frame, serialized) => {
         // Fan-out may have captured this callback before a reentrant resume replaced it.
@@ -1436,6 +1446,8 @@ export class Dispatcher {
         if (holdingModel) heldModel.push({ frame, serialized });
         else sendModel(frame, serialized);
       });
+      try { for (const frame of replay) peer.send(frame); }
+      finally { if (replay.length && !wasHolding) releaseModel(); }
     };
     const releaseModel = () => {
       // Keep holding during drain: a synchronous peer can itself publish a new delta.

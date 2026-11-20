@@ -21,3 +21,11 @@ See the exact QA commands in
 The fixture joins daemon, transport, agent, watchdog and asynchronous writers
 before directory removal. A launch acknowledgement alone proves no outage or
 recovery. Source-head changes require this native file to run again at that head.
+
+The ready wait follows CLI creation, which already joins the clone. A held-clone
+probe for T-1873 showed that slow cloning delays CLI completion. The lost ready
+frame instead came from a publication between legacy hello and subscribe.
+The regression in `hosts-state.test.ts` holds that boundary without native
+processes, checks all three hello models, and injects a publication during replay
+to prove replacement-before-delta ordering. Keep the native outage and scratch
+restore assertions and their timeout diagnostics exact.

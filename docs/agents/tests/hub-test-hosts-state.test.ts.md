@@ -10,6 +10,21 @@ or pool runtime before SQLite storage closes.
 - `hosts state connects with empty pools on previous and featured wire shapes`
   sends literal protocol-2 hellos, checks the empty standalone frame and optional
   sessions.hosts snapshot field. Keep the old request/result flow usable.
+- `legacy subscription replaces hello facts and orders publications during none`,
+  `registration` and `replay` use the in-memory dispatcher with a fake clock.
+  Change presence, remote and host facts after hello and before subscribe;
+  assert all three current replacements and idempotent subsequent subscriptions.
+  Inject a newer host publication at registration or during replacement delivery
+  and retain the exact ready-then-unreachable ordering assertion. No native
+  process or wall-clock readiness wait is needed at this seam.
+  `suiteCase` enrolls the original callback before root acquisition, bounds each
+  setup/body step, joins the conversation before the hub, and retains its
+  positively controlled native-launch guard through successful resource and
+  directory cleanup. Each callback first fences the outer cleanup context and
+  registers its root on that same context, rather than the proxy's ancillary
+  hooks. A rejected close then stops before directory removal or guard release;
+  settled work alone cannot authorize either. Capture acquired close owners
+  before returning each step. The shared `suiteCase` helper is unchanged here.
 - `host projection allows only public facts and coalesces changes within one second`
   asserts the literal public host allowlist, weighted usage, and no native identity;
   999 ms has no second publication and 1000 ms carries the changed provision state.
@@ -29,6 +44,8 @@ The connect request is not a publication subscription: legacy clients send
 subscribe; featured clients negotiate numbered deltas. Snapshot and connect reads
 use the cached projection and perform no provider or history I/O. These targeted
 receipts are component evidence, not a suite pass. Stage QA runs on integrated dev.
+The first unnumbered subscription replaces the three hello facts so a publication
+between hello and subscribe cannot strand the client on its old projection.
 
 Review regressions retain the production boundaries: `pre-acquisition and confirmed
 machine deletion never accrue live spend` checks positive machine receipts;
