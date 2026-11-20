@@ -3,7 +3,7 @@ id: T-1856
 kind: task
 title: Hub stop cannot cancel a hung worktree prune git; it can outlive the hub
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1664
 branch: t/T-1856-hub-stop-cannot-cancel-a-hung-worktree
 created: 2026-11-14T10:12:33.598Z
-updated: 2026-11-20T13:53:57.709Z
+updated: 2026-11-20T14:41:49.356Z
 ---
 
 ## Summary
@@ -27,9 +27,11 @@ At a hard bound after the soft log, hub stop terminates only the prune's own nat
 ## Acceptance criteria
 
 - [x] C1. A hung owned prune git is terminated at the hard bound through its native identity, its close is joined, and no territory write happens after cancellation (test).
-  - done: impl-1856 · 2026-11-20T12:36:29.410Z
+  - done: impl-1856 · 2026-11-20T14:07:19.581Z
+  - verified: rev-35 [reviewer] · run rev-35-1856-evidence-7 · 2026-11-20T14:41:49.175Z · commit 1ca17ce0599de3a5b41367e1ad703d4dec2c34f7
 - [x] C2. A process the prune doesn't own is never signalled, and an unconfirmed native stop reports incompleteness with a usable retry owner (test).
   - done: impl-1856 · 2026-11-20T07:16:36.488Z
+  - verified: rev-35 [reviewer] · run rev-35-1856-evidence-7 · 2026-11-20T14:41:49.175Z · commit 1ca17ce0599de3a5b41367e1ad703d4dec2c34f7
 
 ## Comments
 
@@ -501,3 +503,46 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source16 clear atabb90ce0cc51b58a8dca46e195d9c88ebd8af004/tree83762dfb; no findings/lows. A-22160 records Standards/Spec. M19: contained Linux proc ancestry replaces serialps, shared pure stat parser preserves identity outputs/failure/exit behavior; scoped ps is one batched authoritative observation between unchanged birth brackets; default snapshots unchanged. Fresh per-signal checks, reservation/checkpoint/freeze/latefork/self-ancestor/reuse/unknown/retry/close retained. Closure parser/identity hashes independently match. M26: real red23ps>18, new per-kind/total probe caps include MacPerl; shared-parser rows distinct from rawlines, bounded64KiB observer marks overflow, no header/population claim. Matching guides/census and priorM23–25 intact;1000/1500ms budgets unchanged, Linux<500ms is evidence target. A-22159 committed-head1954T1/234files, production-identical61process cases, finaltypecheck/lint0 reported/0refusals/131report-only. Exact-head Mac gate67pairedIDs:base6+all6identities5/5, original native assertions reached; five base native-end273–320ms,15–16ps/6pgrep/19Perl,0truncation/omission. Perl Maconly; no Linux timing inferred. Whole-case repeat seconds exist/native-end repeat traces missingT-2027. Old48cd29e3 and all prior reds remain failed. C1/C2done/unverified;no criterion verified. Holdreleased for exact-head Coordinator fullLinux and per-step margin audit; no ready/merge claim or Reviewer runtime/edit/check/submission.
+
+### rev-35 · 2026-11-20T13:58:08.664Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1856-evidence-6
+commit: abb90ce0cc51b58a8dca46e195d9c88ebd8af004
+scope: evidence
+findings: [{"severity":"medium","text":"M27 only: all tests pass, but the producing full run exits1 on the enforced new-case budget for the crash/restart identity: base6.129459449s>5s. Add only the exact approved duration allowance per Coordinator46aaa65c, retain prior exit1 and all samples, then fresh narrow source and new-head mode-free green before final C1/C2 verification.","file":"hub/test/prune-process-lifecycle.test.ts","line":22}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear only for M27 budget at source16abb90ce0cc51b58a8dca46e195d9c88ebd8af004; producing55350ca8/A-22163 remains failed/exit1. A-22164 records all functional passes and actual refusal at49380: exact crash6.129s>5s; base6.129459449,loadedworst6.514765656. Native6identities each base1+load5, all original assertions reached. Five base native.end508.914–719.594ms,allreturntrue;11–12ps/6pgrep/0Perl,max12parsedrows,no truncation/omission. Coordinator46aaa65c explicitly accepts margin below unchanged1000/1500ms and moves further<500target toT-2031; source17exact9.2-ish C-216allowance approved, then narrowreview/newheadmodefreegreen. Counts10211pairedIDs;8741ordinarypass/9skip,270loadpass,0testfail/cancel; combined9011pass/9skip. T0/all234T1/441T2 and246HubT3finish; HubT3exits1 budget,27NeovimT3/55Web/18T4unexecuted. Accepted priorHubT3 evidence isn't missing-phase proof. Canonical6e830645/exacthead/Linuxc8sfo2 Node24.21/Nvim0.12.5,cachednull/browsernull;accountingnotwall. Prior reds retained. C1failed onlyM27,C2done/unverified,no partial verification,holdreleased for authorizedsource17; enqueueholdpairedcovers retained. No Reviewer runtime/edit/check/submission.
+
+Criteria: C1 failed (M27 only: mandatory run55350ca8 exits1 on the exact crash/restart duration budget6.129s>5s despite all test passes; apply approved exact-case allowance and obtain source17green before final verification.).
+
+### rev-35 · 2026-11-20T14:12:13.827Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1856-source-17
+commit: 1ca17ce0599de3a5b41367e1ad703d4dec2c34f7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source17 narrow correction clear: A-22166. Only the approved exact crash/restart allowance changes (9.2 s, open standing C-216, Nov20–27); parsed manifest outside that stanza and entire hub/src subtree match source16. Reason separates 6.129459449 s base from 6.514765656 s loaded maximum. Required matching-file/local-check footers and checker replay read in A-22165; replay is not runtime coverage. M27 source correction resolved. Prior55350ca8/A-22163 remains exit1 solely for its enforced duration refusal; its six native identities each pass base+5 and its 246 Hub T3 scope is accepted for unchanged production under Coordinator46aaa65c. No missing phase is promoted. C1/C2 remain done but unverified pending actual same-head mode-free green evidence. Native1000ms/merge1500ms unchanged; further margin work remains T-2031. Enqueue hold for paired stage covers remains with Coordinator.
+
+### rev-35 · 2026-11-20T14:41:49.175Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1856-evidence-7
+commit: 1ca17ce0599de3a5b41367e1ad703d4dec2c34f7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear: a8512ee6/A-22167 passed at reviewed source17 1ca17ce0599de3a5b41367e1ad703d4dec2c34f7. A-22168 audit, with A-22169 clarifying cached:null means no inferred cache status. Independently counted 8432 unique paired producer identities: 7241 ordinary test passes, 741 passing file envelopes, plus225 passing load test/file pairs; no failure/cancel/skip/unknown. All six native prune identities pass once, crash3.710174651s; five native traces complete/resulttrue at277.522–323.212ms. Stop/deadline confirmed/unconfirmed controls and nested-probe/launch-failure retry-owner controls each pass base+5. Verified C1 and C2. Actual scope all234T1/441T2/55Web +11changedHubT3; remaining262T3/18T4 unexecuted here. Prior55350ca8 stays budget-red with accepted unchanged-production functional/load evidence; no new native repetitions inferred. M27 fresh-green condition met. Report-only advisories remain advisory; no additional allowance adopted. T-2031 margin work, integrated batchT3 and Coordinator's paired-cover enqueue hold remain. Reviewer ran no project checks or experiments.
+
+Criteria: C1 verified, C2 verified.
