@@ -1,5 +1,24 @@
 # hub/test/merge-batches.test.ts
 
+Light landing uses fake Suites admission through selection transport and both
+package planners. It excludes an unrelated T3 file, retains unproved T1, and proves
+full T3 for three waiting entries or a deleted production path. The
+member-delta boundary also forces full T3 when production changes cancel out of
+the aggregate candidate paths. The regression was observed red before that fix.
+The named policy also covers verifier configuration. A positive native launch guard
+owns setup, body and joined cleanup; each new callback separately bounds its
+complete file/history setup before its behavior. The light-member control
+proves exact-head T1 omission and the report's coverage source. Per-file baseline controls retain older
+unrelated green T3 proof and fence older green proof after a newer red receipt;
+the existing tier-migration controls remain. No native worker executes here.
+Fake histories contain 40 same-tier or other-tier receipts and 400 skipped
+summaries. Controls count durable reads and check the producer's actual summary
+and same-tier receipt counters against 256/32 independently. Other-tier receipts
+preserve the older T3 proof; a file beyond either budget stays unknown and repeats.
+Partial rows cannot lend identities outside their mask or replace a whole-stage
+load baseline. Full per-file provenance is omitted from the
+startup projection while distinct source ids keep receipts retained.
+
 Filed flaky acceptance uses five hub-admitted failing-file rounds on the same
 head/tree with fake executor receipts. The scripted machine emits an empty log
 before each completion so the fixture respects append-only log offsets. An

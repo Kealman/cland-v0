@@ -1,5 +1,6 @@
 import type { SuiteJob } from './hub/suites.ts';
 import { completeTierPlanReason } from './verification-tier-receipts.ts';
+import { wholeSuiteSelection } from './suite-completeness.ts';
 
 export const DEV_T3_BACKSTOP_MS = 24 * 60 * 60 * 1000;
 
@@ -9,7 +10,7 @@ export function fullPeriodicDevT3Cover(job: SuiteJob): boolean {
     || !job.tree || job.state !== 'finished' || !job.reported || !job.artifact
     || job.outcome?.code !== 0 || job.outcome.notRun || job.cached || job.cancelled || job.requesterDied
     || job.parentRun || job.batch || job.devT3Probe || job.webPhase || job.shards?.length
-    || job.selection?.mode !== 'full' || job.selection.tests || job.selection.nvimTests || job.selection.shard
+    || !wholeSuiteSelection(job.selection)
     || job.selection.web === 'none' || !job.selection.tiers?.includes('T2') || !job.selection.tiers.includes('T3')) return false;
   const plan = job.commands?.plan;
   return Boolean(plan && ['check', 'T2', 'T3', 'Web'].every(name => plan.some(step => step.name === name))
@@ -22,7 +23,7 @@ export function batchDevT3Cover(job: SuiteJob, tree: string): { batch: string; r
     || job.parentRun || job.devT3Probe || job.mode !== 'all' || job.state !== 'finished'
     || !job.reported || !job.artifact || job.outcome?.code !== 0 || job.outcome.notRun
     || job.cached || job.cancelled || job.requesterDied || job.webPhase || job.shards?.length
-    || job.selection?.mode !== 'full' || job.selection.tests || job.selection.nvimTests || job.selection.shard
+    || !wholeSuiteSelection(job.selection)
     || !job.selection.tiers?.includes('T3')) return null;
   const plan = job.commands?.plan;
   if (!plan?.some(step => step.name === 'check') || !plan.some(step => step.name === 'T3') || completeTierPlanReason(job)) return null;

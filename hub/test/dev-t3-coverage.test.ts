@@ -18,6 +18,18 @@ test('a complete batch covers the identical dev tree without commit ancestry', (
   assert.deepEqual(batchDevT3Cover(cover(), 'tree'), { batch: 'batch', run: 'run' });
 });
 
+test('importer masks never supply full batch or periodic coverage', () => {
+  for (const files of [[], ['hub/test/affected.test.ts']]) {
+    const batch = cover();
+    batch.selection!.batchTests = { T3: files };
+    assert.equal(batchDevT3Cover(batch, 'tree'), null);
+    const daily = periodic();
+    daily.selection!.batchTests = { T3: files };
+    assert.equal(fullPeriodicDevT3Cover(daily), false);
+  }
+  assert.ok(batchDevT3Cover(cover(), 'tree'), 'previous wire shape retains full coverage');
+});
+
 test('omitted batch T1 requires named proofs for every pinned member', () => {
   const job = cover();
   job.batch!.members = [{ item: 'T-1', head: 'head' }] as NonNullable<SuiteJob['batch']>['members'];

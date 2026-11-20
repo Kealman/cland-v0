@@ -10,7 +10,9 @@ import { batchDevT3Cover, fullPeriodicDevT3Cover, DEV_T3_BACKSTOP_MS } from '../
 import { parseTierReceipts, tierReceipt, type TierReceipt } from '../verification-tier-receipts.ts';
 
 import { suiteRecoveryState, isolatedUnavailableReport, isolatedSuiteProcessOwned, isolatedSuiteEvidencePath, outsideSuitePath, sealSuiteJob } from './suite-isolation.ts';
-import { batchInteractionSelection } from '../suite-interactions.ts';
+import { lightBatchSelection, LIGHT_BATCH_POLICY } from '../batch-selection.ts';
+import { wholeSuiteSelection, tierTestMask } from '../suite-completeness.ts';
+import { batchInteractionSelection, batchMemberPaths } from '../suite-interactions.ts';
 import { appendSuiteProvenance } from '../suite-provenance.ts';
 import { machineAccounting } from '../suite-accounting.ts';
 export { machineAccounting } from '../suite-accounting.ts';
@@ -111,6 +113,8 @@ export type SuiteJob = {
   loadProofs?: string[];
   timingIdentities?: string[];
   batchBaselineRuns?: Partial<Record<TierPlan[number]['tier'], string | null>>;
+  batchBaselineFileRuns?: Record<string, string>;
+  batchBaselineSourceRuns?: string[];
   selection?: SuiteSelection;
   integrated?: boolean;
   queued?: string; priority?: number; item?: string | null;
@@ -217,7 +221,7 @@ export function releaseT3Cover(store: Store, tree: string): { run: string; head:
     && ['dev-t3', 'soak', 'stage', 'release'].includes(job.occasion ?? '')
     && job.state === 'finished' && job.reported && job.artifact && store.resolveArtifact(job.artifact) && job.outcome?.code === 0
     && !job.cached && !job.cancelled && !job.requesterDied && !job.batch?.diagnostic
-    && job.selection?.mode === 'full' && !job.selection.tests && !job.selection.nvimTests && !job.selection.shard
+    && wholeSuiteSelection(job.selection)
     && (job.selection.tiers?.includes('T3') ?? job.selection.soak === true));
   return job ? { run: job.id, head: job.head } : null;
 }
@@ -279,6 +283,9 @@ export class Suites {
   readonly #humans = new Map<object, HumanSlot>();
   readonly #savedJobs = new Map<string, string>();
   readonly #summaries = new Set<string>();
+  readonly #batchBaselineWork = new Map<string, Promise<{ selection: NonNullable<SuiteSelection['loadGateBaseline']>; runs: NonNullable<SuiteJob['batchBaselineRuns']>; fileRuns: Record<string, string> }>>();
+  readonly #batchBaselineStates = new Map<string, string>();
+  #batchBaselineVersion = 0;
   #savedActive = '';
   #lastQueue = '';
   readonly #local: LocalExecutor;
@@ -448,6 +455,7 @@ export class Suites {
     const active = JSON.stringify(this.#jobs.filter(current => current.state !== 'finished'));
     this.#store.transaction(() => {
       for (const current of changed) {
+        this.#baselineCheckpoint(current);
         if (current.state !== 'finished') continue;
         const value = JSON.stringify({ position: this.#order.get(current.id), job: current });
         const digest = createHash('sha256').update(value).digest('hex');
@@ -465,6 +473,7 @@ export class Suites {
     this.#options.log?.({ event: 'verification-checkpoint', jobs: changed.length });
   };
   #remember(job: SuiteJob, announce: boolean): void {
+    this.#baselineCheckpoint(job);
     this.#stageJobs.set(job.id, job);
     this.#stageReceipts = undefined;
     this.#rawCoverage.remember(job);
@@ -473,7 +482,7 @@ export class Suites {
       this.#retentionParents.set(shard.id, job.id);
       if (this.#store.meta(`suite-retired:${shard.id}`) !== '1') this.#retention.remember({ ...shard, sequence: job.sequence ?? 0, occasion: `${job.occasion ?? 'task'}:${shard.shardName ?? 'shard'}` });
     }
-    for (const id of [job.cached?.run, job.devT3?.previousGreenRun, ...Object.values(job.batchBaselineRuns ?? {})]) if (id) this.#retentionReferences.add(id);
+    for (const id of [job.cached?.run, job.devT3?.previousGreenRun, ...Object.values(job.batchBaselineRuns ?? {}), ...job.batchBaselineSourceRuns ?? [], ...Object.values(job.batchBaselineFileRuns ?? {})]) if (id) this.#retentionReferences.add(id);
     if (job.cover) this.#retentionReferences.add(job.id);
     for (const id of job.flaky?.runs ?? []) this.#retentionReferences.add(id);
     if (!this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
@@ -539,9 +548,10 @@ export class Suites {
     return include ? [...this.#stageReceipts.filter(cover => cover.id !== include.id), ...this.#stageReceipt(include, true)] : this.#stageReceipts;
   }
   #stageReceipt(job: Readonly<SuiteJob>, include = false): StageCover[] {
-    if (!job.integrated || job.branch !== 'dev' || !job.tree || !job.selection?.soak || job.selection.mode !== 'full' || !greenWithReceipt(job, this.#clock.now().getTime()) || job.cancelled || job.requesterDied || !job.reported && !include) return [];
-    if (job.executor === 'local' && job.platform?.os === 'darwin') return [{ id: job.id, head: job.head, tree: job.tree, platform: 'macOS' }];
+    if (!job.integrated || job.branch !== 'dev' || !job.tree || !job.selection?.soak || !wholeSuiteSelection(job.selection) || !greenWithReceipt(job, this.#clock.now().getTime()) || job.cancelled || job.requesterDied || !job.reported && !include) return [];
     const source = job.cached ? this.#stageJobs.get(job.cached.run) : job;
+    if (!source || !wholeSuiteSelection(source.selection)) return [];
+    if (job.executor === 'local' && job.platform?.os === 'darwin') return [{ id: job.id, head: job.head, tree: job.tree, platform: 'macOS' }];
     if (job.executor === 'droplet' && source?.occasion === 'stage' && job.platform?.os === 'linux'
       && (source.shards ? source.shards.length >= 2 && source.shards.every(shard => (shard.outcome?.code === 0 || job.cover?.receipt && shard.outcome?.code === 1) && shard.platform?.os === 'linux') : !!source.shardingSkipped)) {
       return [{ id: job.id, head: job.head, tree: job.tree, platform: 'Linux droplet' }];
@@ -708,6 +718,8 @@ export class Suites {
         ...(nvimTests?.length ? { nvimTests } : {}) }
       : runner ? occasionSelection(admitted, input.occasion, config?.merge.batchTiers) : admitted;
     if (runner && input.batch && !input.batch.diagnostic && !pinned) selection = await batchInteractionSelection(input.cwd, selection, input.batch.members.map(member => member.head), async (...args) => { if (!this.#candidate.git) throw new Error('candidate Git delta boundary unavailable'); return this.#candidate.git(input.cwd, args); }, undefined, config?.merge.batchInteraction ?? 'report');
+    if (runner && input.batch && !input.batch.diagnostic && !pinned) selection = await lightBatchSelection(input.cwd, selection, input.batch.waiting ?? input.batch.members.length,
+      () => batchMemberPaths(input.batch!.members.map(member => member.head), async (...args) => { if (!this.#candidate.git) throw new Error('candidate Git delta boundary unavailable'); return this.#candidate.git(input.cwd, args); }));
     const commandSelection = runner || !commands.tiers ? selection : occasionSelection(taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, config?.merge.queue ?? false), input.occasion, config?.merge.batchTiers);
     if (!runner && commands.tiers && commandSelection.tiers) selection = { ...selection, tiers: commandSelection.tiers };
     let batchT1 = pinned?.batchT1;
@@ -761,11 +773,13 @@ export class Suites {
       }
     }
     let batchBaselineRuns = pinned?.batchBaselineRuns;
+    let batchBaselineFileRuns = pinned?.batchBaselineFileRuns;
     if (runner && input.occasion === 'batch' && !files) {
       if (!pinned) {
         const baseline = await this.#batchIdentities(tierPlan);
         selection.loadGateBaseline = baseline.selection;
         batchBaselineRuns = baseline.runs;
+        batchBaselineFileRuns = baseline.fileRuns;
       }
       selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
     }
@@ -793,7 +807,7 @@ export class Suites {
 
     // Older candidate runners and fixture packages remain usable. Coverage is
     // recorded only by a capable runner on a clean integrated full dev run.
-    if (input.integrated && branch === 'dev' && tree && selection.mode === 'full' && !selection.shard && !cached && runner?.reduceCoverage) selection.recordCoverage = { head, tree, run: id };
+    if (input.integrated && branch === 'dev' && tree && wholeSuiteSelection(selection) && !cached && runner?.reduceCoverage) selection.recordCoverage = { head, tree, run: id };
     authorize();
     const workerPolicy = config ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(this.#root, 'local', this.#env)).workers, droplet: (await suiteLimits(this.#root, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;
@@ -801,6 +815,10 @@ export class Suites {
     const {source: hostSource, ...jobInput}=input;
     const job: SuiteJob = { ...(hostSource?{hostSource}:{}), ...jobInput, ...(input.occasion === 'dev-t3' ? { devT3: { previousGreenHead: previousGreen?.head ?? null, previousGreenRun: previousGreen?.id ?? null } } : {}), commands, ...((input.occasion === 'soak' || input.occasion === 'dev-t3') && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (batchBaselineRuns) job.batchBaselineRuns = batchBaselineRuns;
+    if (batchBaselineFileRuns) {
+      job.batchBaselineFileRuns = batchBaselineFileRuns;
+      job.batchBaselineSourceRuns = [...new Set(Object.values(batchBaselineFileRuns))];
+    }
     if (batchT1) job.batchT1 = batchT1;
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
@@ -990,26 +1008,62 @@ export class Suites {
     }
     return [...known].sort();
   }
-  async #batchIdentities(plan: TierPlan): Promise<{ selection: NonNullable<SuiteSelection['loadGateBaseline']>; runs: NonNullable<SuiteJob['batchBaselineRuns']> }> {
+  #baselineCheckpoint(job: SuiteJob): void {
+    const state = JSON.stringify([job.reported, job.outcome?.code, job.outcome?.notRun, job.cancelled, job.requesterDied,
+      job.occasion, job.integrated, job.branch, job.selection?.mode, job.selection?.tiers, Boolean(job.batch?.diagnostic), Object.keys(job.selection?.batchTests ?? {}).sort()]);
+    if (this.#batchBaselineStates.get(job.id) === state) return;
+    this.#batchBaselineStates.set(job.id, state);
+    this.#batchBaselineVersion++;
+  }
+  async #batchIdentities(plan: TierPlan): Promise<{ selection: NonNullable<SuiteSelection['loadGateBaseline']>; runs: NonNullable<SuiteJob['batchBaselineRuns']>; fileRuns: Record<string, string> }> {
+    const key = JSON.stringify([this.#batchBaselineVersion, plan.map(row => [row.tier, row.files])]);
+    let pending = this.#batchBaselineWork.get(key);
+    if (!pending) {
+      pending = this.#readBatchIdentities(plan);
+      this.#batchBaselineWork.set(key, pending);
+      const admitted = pending;
+      void pending.finally(() => { if (this.#batchBaselineWork.get(key) === admitted) this.#batchBaselineWork.delete(key); }).catch(() => {});
+    }
+    return pending;
+  }
+  async #readBatchIdentities(plan: TierPlan): Promise<{ selection: NonNullable<SuiteSelection['loadGateBaseline']>; runs: NonNullable<SuiteJob['batchBaselineRuns']>; fileRuns: Record<string, string> }> {
     const runs: Partial<Record<TierPlan[number]['tier'], string | null>> = {};
+    const fileRuns: Record<string, string> = {};
     const tests = new Set<string>();
     for (const row of plan) {
-      const summary = this.#jobs.findLast(job =>
-        (job.occasion === 'stage' && job.integrated && job.branch === 'dev' || job.occasion === 'batch' && job.batch && !job.batch.diagnostic)
-        && job.selection?.mode === 'full' && !job.cached && !job.cancelled && !job.requesterDied
-        && job.reported && job.outcome?.code === 0 && !job.outcome.notRun
-        && this.#full(job).tierPlan?.some(prior => prior.tier === row.tier && prior.files.length));
-      runs[row.tier] = summary?.id ?? null;
-      if (!summary) continue;
-      const receipt = await this.#receiptIdentities(summary);
-      const files = new Set(this.#full(summary).tierPlan!.filter(prior => prior.tier === row.tier).flatMap(prior => prior.files).filter(file => row.files.includes(file)));
-      for (const identity of receipt.tests) if (files.has(identity.split('::')[0]!)) tests.add(identity);
+      runs[row.tier] = null;
+      const remaining = new Set(row.files);
+      let receipts = 0, summaries = 0;
+      for (let index = this.#jobs.length - 1; index >= 0 && remaining.size; index--) {
+        if (summaries >= LIGHT_BATCH_POLICY.baselineSummaryLimit || receipts >= LIGHT_BATCH_POLICY.baselineReceiptLimit) break;
+        summaries++;
+        const summary = this.#jobs[index]!;
+        if (!(summary.occasion === 'stage' && summary.integrated && summary.branch === 'dev' || summary.occasion === 'batch' && summary.batch && !summary.batch.diagnostic)
+          || summary.selection?.mode !== 'full' || summary.cached || summary.cancelled || summary.requesterDied
+          || !summary.reported || !summary.outcome || summary.outcome.notRun) continue;
+        if (row.tier !== 'Web' && summary.selection.tiers && !summary.selection.tiers.includes(row.tier)) continue;
+        const full = this.#full(summary);
+        const priorFiles = (full.tierPlan ?? []).filter(prior => prior.tier === row.tier).flatMap(prior => prior.files);
+        if (!priorFiles.length) continue;
+        receipts++;
+        const mask = tierTestMask(full.selection, row.tier);
+        const files = new Set(priorFiles.filter(file => remaining.has(file) && (!mask || mask.includes(file))));
+        if (!files.size) continue;
+        runs[row.tier] ??= summary.id;
+        // A later red receipt fences this file; never resurrect its older proof.
+        for (const file of files) { remaining.delete(file); fileRuns[file] = summary.id; }
+        if (summary.outcome!.code !== 0) continue;
+        const receipt = await this.#receiptIdentities(summary);
+        for (const identity of receipt.tests) if (files.has(identity.split('::')[0]!)) tests.add(identity);
+        if (!remaining.size) break;
+      }
+      this.#options.log?.({ event: 'batch-baseline-scan', tier: row.tier, summaries, receipts, unresolvedFiles: remaining.size });
     }
-    return { selection: { run: null, tests: [...tests].sort() }, runs };
+    return { selection: { run: null, tests: [...tests].sort() }, runs, fileRuns };
   }
   async #stageIdentities(occasion: VerifyOccasion = 'stage'): Promise<NonNullable<SuiteSelection['loadGateBaseline']>> {
     const summary = this.#jobs.findLast(job => job.occasion === occasion && job.integrated && job.branch === 'dev'
-      && job.selection?.mode === 'full' && !job.cached && !job.cancelled && !job.requesterDied
+      && wholeSuiteSelection(job.selection) && !job.cached && !job.cancelled && !job.requesterDied
       && job.reported && job.outcome?.code === 0);
     if (!summary) return { run: null, tests: [] };
     return this.#receiptIdentities(summary);
@@ -1511,7 +1565,7 @@ export class Suites {
           || !this.#store.resolveArtifact(cover.artifact) || cover.outcome?.code !== 0 || cover.outcome.notRun
           || cover.cached || cover.cancelled || cover.requesterDied || cover.webPhase
           || cover.shards?.some(shard => shard.outcome?.code !== 0 || shard.outcome.notRun || shard.webPhase)
-          || cover.selection?.mode !== 'full' || cover.selection.tests || cover.selection.nvimTests || cover.selection.shard
+          || !wholeSuiteSelection(cover.selection)
           || !(cover.selection.tiers?.includes('T3') ?? true)) continue;
         if (cover.head !== candidate.head && !await this.#candidate.isAncestor?.(this.#root, candidate.head, cover.head)) continue;
         this.#store.setMeta('dev-t3-attempt', String(now));

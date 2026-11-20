@@ -54,6 +54,11 @@ are documented under [merge cleanup](../docs/hub/cland-init-and-cland-update.md#
 
 Conditional batch T1 reuse, receipt requirements and per-member summaries are
 documented under [queued batches](../docs/agents/tests.md#queued-merge-batches).
+Configured T3 uses affected importers for light batches, with conservative full
+triggers and per-file baseline receipts described there. Configured size and wait
+remain unchanged; inherited configuration and non-cland runners retain their plans.
+Partial masks never establish full periodic, stage or release coverage. Light
+batches retain existing exact-head member T1 omission and report that coverage source.
 
 After terminal batch receipts, candidate cleanup failures retain a separate
 guarded obligation, visible with its path, last error and retry time in merge

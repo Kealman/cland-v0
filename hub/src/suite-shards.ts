@@ -9,6 +9,7 @@ import { touchesMachineResources } from './test-lint.ts';
 import { suiteLimits } from './suite-limits.ts';
 import type { SuiteMode, SuiteSelection } from './suite-selection.ts';
 import { HUB_SMOKE, NVIM_SMOKE, WEB_SMOKE } from './suite-selection.ts';
+import { tierTestMask } from './suite-completeness.ts';
 import { DURATION_MANIFEST, durationOwners, lintDurationManifest, parseDurationManifest, readDurationManifest, type DurationManifest } from './suite-durations.ts';
 import { QUARANTINE_MANIFEST, lintQuarantineManifest, readQuarantineManifest } from './suite-quarantine.ts';
 import { lintDurationIdentities } from './suite-test-identities.ts';
@@ -268,7 +269,8 @@ export async function packageShards(cwd: string, mode: SuiteMode, selection?: { 
       const files: string[] = [];
       for await (const file of glob(phase.targets, { cwd })) {
         const tier = assignments?.get(file);
-        if (tier !== 'T2' || !coverage.batchTests.T2 || coverage.batchTests.T2.includes(file)) files.push(file);
+        const mask = tierTestMask(coverage, tier ?? '');
+        if (!mask || mask.includes(file)) files.push(file);
       }
       phase.targets = files;
     }

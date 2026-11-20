@@ -1636,16 +1636,30 @@ T1, and configurations without T1 stay unchanged. Cache hits
 require matching same-tree source receipts, even from another head or item. Missing, stale, partial and
 unavailable receipts retain T1 for the whole batch. The durable summary in each
 member topic says `T1 skipped`, naming each member run and head, or explains
-`T1 retained`. T0 and configured T3 remain; Web runs after the configured tiers
+`T1 retained`. T0 remains; configured T3 uses candidate-delta importers for
+fewer than three waiting members, including unknown graphs conservatively.
+Production changes under hub/src/, hub/bin/ or shared/ (deletions included),
+verifier helpers/configuration and unavailable selection inputs retain full T3.
+The named policy is `LIGHT_BATCH_POLICY` in hub/src/batch-selection.ts; configured
+batch size/wait and non-cland commands are unchanged. Web runs after the configured tiers
 when T1 is absent. Older persisted jobs without a decision render legacy/unknown.
 Tier metadata is additive: verifies made before the updated producing runner
 are missing evidence and keep T1. No log text establishes eligibility. See
 [structured tier receipts](verification-tier-receipts.md).
 When T3 is selected,
-identities absent from the latest green batch or stage receipt that ran T3 get five
-repetitions. Baselines are pinned per planned tier; a green T1-only batch supplies
-no T3 receipt and cannot supersede it. Failed, cancelled, cached, unreported and
-diagnostic runs are excluded. Missing tier evidence treats all its identities as new.
+identities absent from the latest per-file same-tier green batch or stage receipt
+get five repetitions. A partial T3 batch preserves older proofs for other files;
+a newer red file receipt fences older green proof. A T1-only batch supplies no
+T3 proof. Cancelled, cached, unreported and diagnostic runs are excluded.
+Missing evidence treats identities as new. `batchBaselineFileRuns` retains
+per-file receipt ids; the per-tier summary names its newest contributing receipt.
+Light batches retain the same exact-head T1 omission as full batches. Their
+report names T1 coverage from member verifies, batch runtime or no configured T1.
+Each tier's baseline scan has independent caps of 256 summary visits and 32
+same-tier receipts; other-tier hints skip hydration, and beyond-budget proof is
+unknown. Partial masks survive compact history as presence flags. They cannot
+suppress periodic dev T3, supply a full-stage baseline or count as stage/release
+coverage; per-file baselines use only the mask's selected files.
 The batch summary names baseline runs per tier and distinct identities with
 positive five-repetition success/quarantine receipts. Skips are excluded;
 started or legacy failed identities without positive completion make the total

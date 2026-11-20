@@ -296,7 +296,7 @@ Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the c
 | Run kind | Plan after T0 |
 | --- | --- |
 | Queue-enabled task, no mode | All T1, selected T2; fallback is all T2 in both packages; added/changed T3/T4 files and mapped T4 guards once |
-| Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; T1 omitted with complete exact-head member receipts), plus Web after T1 (after configured tiers without T1) for web/ diffs; five repetitions of T3 identities absent from the latest green batch or stage receipt that ran T3 |
+| Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; T1 omitted with complete exact-head member receipts), plus Web after T1 (after configured tiers without T1) for web/ diffs; affected T3 importers unless a full trigger applies; five repetitions of identities lacking per-file same-tier green proof |
 | Ordinary integrated `dev` or explicit `all` | T1–T3 |
 | Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
 | Periodic dev (`dev-t3`) | T2 and T3, one droplet; no load repetitions |
@@ -319,6 +319,16 @@ uses the same mode-free selection. Unchanged T3 smoke files are filtered out of 
 
 `[merge] batch_tiers` selects a nonempty set of T1–T4 tiers for each batch.
 Its default is `["T1", "T3"]`; generated or inherited configuration can override it.
+For cland runners, configured T3 selects only candidate-delta importers (including
+changed tests and unknown import graphs) when fewer than three members wait.
+Pinned member-to-candidate deltas are unioned with the candidate-to-dev paths:
+members cannot cancel a production change out of the full-T3 trigger.
+Three waiting members, production changes under `hub/src/`, `hub/bin/` or
+`shared/` (including deletions), verifier helpers/configuration, or unavailable
+selection inputs retain full T3. The named `LIGHT_BATCH_POLICY` in
+`hub/src/batch-selection.ts` owns the triggers. The T2/Web sibling report and
+its execution switch stay independent. Old persisted selections without a T3
+mask retain full T3. Configured batch size/wait and non-cland commands are unchanged.
 When another configured runtime tier remains and every pinned member has a
 complete green mode-free T0–T2 producer receipt at its exact head, the batch omits
 T1. Missing, stale, partial or unavailable receipts retain configured T1 for the
@@ -598,7 +608,21 @@ checks immutable merged-tree lint and duration budgets, and verifies a detached
 candidate with the hub-owned `batch` occasion. That run selects
 T0 first through the candidate's resolved `[verification] check` command, then
 `[merge] batch_tiers` (default T1 and T3), with five load repetitions only for T3
-identities absent from the latest green batch or stage receipt that actually ran T3.
+identities absent from the latest per-file, same-tier green batch or stage receipt.
+A newer partial receipt cannot erase another file's older proof. A newer red
+receipt fences older proof for its files. Cancelled, cached, diagnostic and
+unreported runs supply no baseline. Tier migration never borrows another tier's
+identity. Internal `batchBaselineFileRuns` records each selected receipt; the
+per-tier summary names the newest contributing receipt, with older per-file
+fallbacks retained in the job. Unknown files repeat five times.
+The admission scan visits at most 256 summaries per planned tier and consumes
+at most 32 receipts that actually contain that tier. Known other-tier summary
+hints skip hydration and do not spend the receipt budget. It stops once every
+planned file is resolved; proof beyond either budget stays unknown and repeats.
+Concurrent callers share one in-flight scan per plan. Producer diagnostics name
+actual summary visits, same-tier receipts and unresolved files. Full file
+provenance stays outside compact startup history; distinct source run ids retain
+the receipts, and compact mask-presence flags preserve partial coverage.
 Before pinning that plan, the hub checks each member's latest verify. Only a green
 mode-free verify at the exact pinned head with complete producer-owned structured T0–T2 command
 receipts permits omitting T1. A cache hit needs a complete same-tree source receipt, including from another head or item;
@@ -608,9 +632,16 @@ batch. The summary says `T1 skipped` and lists every member run and head, or
 internal decision survives restart and full-plan confirmation; old persisted
 jobs without it render legacy/unavailable. T3 and T0 remain in their configured
 plans, and Web follows configured tiers when T1 is omitted.
+This exact-head T1 omission applies equally to light and full-T3 batches. Light
+reports name `T1 coverage: exact-head member verifies`, `batch runtime` or
+`not configured`; affected T3 does not require duplicate T1 execution.
 The baseline is selected separately for each planned tier; a newer T1-only batch
-cannot replace the T3 baseline. Failed, cancelled, cached, unreported and diagnostic
-runs supply no baseline. With no qualifying receipt, that tier's identities are new.
+cannot replace the T3 baseline. A red receipt fences its selected files' older
+proof; cancelled, cached, unreported and diagnostic runs supply none. With no
+qualifying receipt, that tier's identities are new. A partial mask supplies only
+its selected file identities, never a full-stage load baseline, stage or release
+cover, or periodic-dev suppression proof. Older unmasked selections retain their
+whole-coverage eligibility when the other producer receipts qualify.
 The Agents batch summary names each tier's baseline run (`none` when absent) and
 counts distinct identities with positive five-repetition success or quarantine
 receipts. Skipped identities are excluded. Started identities without positive

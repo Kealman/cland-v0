@@ -1,5 +1,10 @@
 # hub/test/suite-persistence.test.ts
 
+The masked-stage case uses stageCase with a complete setup bound before its
+separate behavior bound. Positive unmasked stage/release controls precede empty
+and nonempty T3-mask refusals across reopen. Compact history preserves mask
+presence as empty arrays, retaining partial authority without the file inventory.
+
 The 5,000-job stage-cover case retains the SHA-256 oracle recorded before the
 index change, counts actual job-iterator yields across thirty reads, and reopens the store
 to retain equality. A separate stopped-store prune removes a receipt, then

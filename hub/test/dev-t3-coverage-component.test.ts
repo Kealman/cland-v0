@@ -29,52 +29,59 @@ function fullSelection(job: Pick<SuiteJob, 'selection'>) {
   assert.notEqual(job.selection?.web, 'none', 'full periodic selection retains Web');
 }
 
-for (const scenario of ['batch', 'member-T1', 'legacy', 'different-tree', 'backstop', 'unchanged', 'phase-offset', 'unproven-baseline'] as const) {
+for (const scenario of ['batch', 'member-T1', 'partial-batch', 'partial-fresh-cover', 'legacy', 'different-tree', 'backstop', 'unchanged', 'phase-offset', 'unproven-baseline'] as const) {
   test(`periodic batch-tree coverage and daily full-run backstop: ${scenario}`, async t => {
     const owner = stageCase(t);
     await owner.wait('whole callback', () => owner.run(async step => {
       const wait = <T>(name: string, start: () => Promise<T>) => step(() => owner.wait(name, start));
-      const notices: string[] = [];
-      const fixture = await wait('fixture setup', () => suiteUnit(owner.fixtures, { machineReceiptsOnly: true,
-        onSoakNotice: (_id, text) => { notices.push(text); },
-      }, 'dev_t3_every="8h"'));
-      owner.adoptRoot(fixture.root);
-      // Restore semantic mocks only after suiteUnit has stopped and removed its root.
-      owner.fixtures.after(() => t.mock.restoreAll());
-      fixture.candidate.branch = 'dev';
-      fixture.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: fixture.candidate.head };
-      await wait('initial scheduler tick', () => fixture.tick());
-      await wait('initial scheduler settlement', () => fixture.suites.settled());
-      const started = fixture.clock.now().getTime();
-      const submission = await wait('semantic cover submission', () => fixture.launch({ mode: 'all', executor: 'local', occasion: 'stage', integrated: true }));
-      await wait('semantic execution receipt', () => fixture.when(() => fixture.delivered.has(submission.id) ? true : undefined));
-      if (scenario === 'phase-offset') fixture.clock.block(HOUR);
-      await wait('durable cover result', () => fixture.finish(submission.id));
-      let jobs = await wait('durable job read', () => fixture.jobs());
-      const saved = jobs.find(job => job.id === submission.id)!;
-      if (scenario === 'unchanged') fullPeriodic(saved);
-      else if (scenario === 'phase-offset') {
-        fullPeriodic(saved);
-        fixture.candidate.tree = 'changed-tree';
-        fixture.candidate.head = 'changed-head';
-        fixture.candidate.selection.fetchedDev = fixture.candidate.head;
-        const next = await wait('changed-tree semantic batch', () => fixture.launch({ mode: 'all', executor: 'local', occasion: 'stage', integrated: true }));
-        await wait('changed-tree execution', () => fixture.when(() => fixture.delivered.has(next.id) ? true : undefined));
-        await wait('changed-tree durable result', () => fixture.finish(next.id));
-        jobs = await wait('durable changed-tree jobs', () => fixture.jobs());
-        jobs[jobs.findIndex(job => job.id === saved.id)] = saved;
-        batch(jobs.find(job => job.id === next.id)!);
-      } else {
-        batch(saved);
-        if (scenario === 'member-T1') {
-          saved.commands!.plan = saved.commands!.plan!.filter(step => step.name !== 'T1');
-          saved.selection!.tiers = ['T3'];
-          saved.batchT1 = { skipped: true, members: [{ item: 'T-1', head: 'member-head', run: 'member-proof' }] };
-          saved.tierReceipts = saved.commands!.plan.map(step => tierReceipt(saved, step, 0));
+      const { notices, fixture, started, saved, jobs } = await wait('complete scenario setup', async () => {
+        const notices: string[] = [];
+        const fixture = await wait('fixture setup', () => suiteUnit(owner.fixtures, { machineReceiptsOnly: true,
+          onSoakNotice: (_id, text) => { notices.push(text); },
+        }, 'dev_t3_every="8h"'));
+        owner.adoptRoot(fixture.root);
+        // Restore semantic mocks only after suiteUnit has stopped and removed its root.
+        owner.fixtures.after(() => t.mock.restoreAll());
+        fixture.candidate.branch = 'dev';
+        fixture.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: fixture.candidate.head };
+        await wait('initial scheduler tick', () => fixture.tick());
+        await wait('initial scheduler settlement', () => fixture.suites.settled());
+        const started = fixture.clock.now().getTime();
+        const submission = await wait('semantic cover submission', () => fixture.launch({ mode: 'all', executor: 'local', occasion: 'stage', integrated: true }));
+        await wait('semantic execution receipt', () => fixture.when(() => fixture.delivered.has(submission.id) ? true : undefined));
+        if (scenario === 'phase-offset') fixture.clock.block(HOUR);
+        await wait('durable cover result', () => fixture.finish(submission.id));
+        let jobs = await wait('durable job read', () => fixture.jobs());
+        const saved = jobs.find(job => job.id === submission.id)!;
+        if (scenario === 'unchanged') fullPeriodic(saved);
+        else if (scenario === 'phase-offset') {
+          fullPeriodic(saved);
+          fixture.candidate.tree = 'changed-tree';
+          fixture.candidate.head = 'changed-head';
+          fixture.candidate.selection.fetchedDev = fixture.candidate.head;
+          const next = await wait('changed-tree semantic batch', () => fixture.launch({ mode: 'all', executor: 'local', occasion: 'stage', integrated: true }));
+          await wait('changed-tree execution', () => fixture.when(() => fixture.delivered.has(next.id) ? true : undefined));
+          await wait('changed-tree durable result', () => fixture.finish(next.id));
+          jobs = await wait('durable changed-tree jobs', () => fixture.jobs());
+          jobs[jobs.findIndex(job => job.id === saved.id)] = saved;
+          batch(jobs.find(job => job.id === next.id)!);
+        } else if (scenario === 'partial-fresh-cover') {
+          saved.selection!.batchTests = { T3: ['hub/test/affected.test.ts'] };
+          saved.completedAt = saved.finished = new Date(started + 7.5 * HOUR).toISOString();
+        } else {
+          batch(saved);
+          if (scenario === 'partial-batch') saved.selection!.batchTests = { T3: ['hub/test/affected.test.ts'] };
+          if (scenario === 'member-T1') {
+            saved.commands!.plan = saved.commands!.plan!.filter(step => step.name !== 'T1');
+            saved.selection!.tiers = ['T3'];
+            saved.batchT1 = { skipped: true, members: [{ item: 'T-1', head: 'member-head', run: 'member-proof' }] };
+            saved.tierReceipts = saved.commands!.plan.map(step => tierReceipt(saved, step, 0));
+          }
+          if (scenario === 'legacy') delete saved.tierReceipts;
+          if (scenario === 'different-tree') saved.tree = 'different';
         }
-        if (scenario === 'legacy') delete saved.tierReceipts;
-        if (scenario === 'different-tree') saved.tree = 'different';
-      }
+        return { notices, fixture, started, saved, jobs };
+      });
       const at = async (target: number, seed?: SuiteJob[]) => {
         fixture.clock.block(target - fixture.clock.now().getTime() - 1000);
         await wait('scheduler reopen', () => fixture.reopen(seed));

@@ -390,6 +390,34 @@ for (const mode of ['finished', 'message', 'cached']) test(`archived ${mode} tim
 });
 
 
+test('masked stage receipts stay partial through compact history and restart', t => {
+  const owner = stageCase(t);
+  return owner.run(async step => {
+    const { f, base } = await owner.wait('complete masked-stage setup', () => step(async () => {
+      const f = await fixture(owner.fixtures, 1, true, { owner, job: { executor: 'local', mode: 'all', branch: 'dev', integrated: true, tree: 'tree', occasion: 'stage',
+        platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'fixture' }, selection: { mode: 'full', files: [], reason: 'stage', soak: true } } });
+      const base = JSON.parse(f.store.suiteJob('0')!) as { position: number; job: SuiteJob };
+      const artifact = f.store.registerArtifact(id => ({ id, title: 'receipt', kind: 'file', path: join(f.root, 'receipt.log'), creator: 'hub', time: f.clock.now().toISOString(), topic: 'topic', status: 'shared' }), () => {});
+      base.job.artifact = artifact.id;
+      f.store.setMeta('suite-job:0', JSON.stringify(base));
+      await f.reopen();
+      return { f, base };
+    }));
+    await owner.wait('masked-stage coverage behavior', () => step(async () => {
+      assert.equal(f.suites.stageCovers().length, 1);
+      assert.ok(releaseT3Cover(f.store, 'tree'), 'previous wire shape retains its whole cover');
+      for (const files of [[], ['hub/test/affected.test.ts']]) {
+        f.store.setMeta('suite-job:0', JSON.stringify({ ...base, job: { ...base.job, selection: { ...base.job.selection!, batchTests: { T3: files } } } }));
+        await f.reopen();
+        assert.deepEqual(f.suites.stageCovers(), []);
+        assert.equal(releaseT3Cover(f.store, 'tree'), null);
+        const summary = JSON.parse(f.store.suiteJobSummaries()[0]!).job;
+        assert.deepEqual(summary.selection.batchTests, { T3: [] }, 'compact history retains presence without file inventory');
+      }
+    }));
+  });
+});
+
 test('summary release eligibility preserves legacy soak booleans and selected-test presence', async t => {
   const f = await fixture(t, 0, true);
   const artifact = f.store.registerArtifact(id => ({ id, title: 'receipt', kind: 'file', path: join(f.root, 'receipt.log'), creator: 'hub', time: f.clock.now().toISOString(), topic: 'topic', status: 'shared' }), () => {});

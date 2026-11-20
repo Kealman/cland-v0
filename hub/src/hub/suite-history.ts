@@ -1,12 +1,14 @@
 // One projection for legacy backfill and new checkpoints. These scheduler facts
 // are never written back as full receipts. Plans remain in suite-job:<id>.
-const omitted = ['config', 'tierPlan', 'loadProofs', 'timingIdentities', 'selection', 'lease', 'shards'];
+const omitted = ['config', 'tierPlan', 'loadProofs', 'timingIdentities', 'selection', 'lease', 'shards', 'batchBaselineFileRuns'];
 const paths = (prefix: string) => omitted.map(key => `'${prefix}.${key}'`).join(', ');
 const selection = (value: string, path: string) => `case when json_type(${value}, '${path}') = 'object' then json_object(
   'mode', json_extract(${value}, '${path}.mode'),
   'soak', json(${value} -> '${path}.soak'),
   'loadGate', json(${value} -> '${path}.loadGate'),
   'tiers', json_extract(${value}, '${path}.tiers'),
+  'batchTests', case when json_type(${value}, '${path}.batchTests') = 'object' then json((select json_group_object(mask.key, json('[]')) from json_each(${value}, '${path}.batchTests') mask)) end,
+  'durationCheck', case when json_type(${value}, '${path}.durationCheck') = 'object' then json('{}') end,
   'tests', case when json_type(${value}, '${path}.tests') is not null then json('[]') end,
   'nvimTests', case when json_type(${value}, '${path}.nvimTests') is not null then json('[]') end,
   'shard', case when json_type(${value}, '${path}.shard') is not null then json('{}') end

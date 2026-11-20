@@ -8,3 +8,5 @@ Ordered same-command interruption recovery uses the member-verification checker.
 Full periodic baseline credit separately requires integrated dev, full unsharded
 T2/T3/Web selection and complete producer proof for T0/T2/T3/Web. Missing,
 legacy, subset and diagnostic records never extend the daily deadline.
+Empty and nonempty importer masks cannot provide either full batch suppression
+or full periodic coverage. Previous unmasked wire shapes retain eligibility.

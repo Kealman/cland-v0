@@ -249,7 +249,7 @@ export class MergeBatches {
       const prior = this.suites.findRun(job => job.batch?.id === batch!.id && !job.batch.diagnostic);
       if (!prior) await this.boundary.checkout(batch.candidate);
       const run = prior ?? await this.suites.start({ mode: 'all', cwd: batch.candidate.cwd, topic: 'agents', to: [],
-        actor: null, occasion: 'batch', batch: { id: batch.id, members: batch.members }, ...(batch.planFrom ? { batchPlanFrom: batch.planFrom } : {}), priority: 0, fresh: true }, () => {});
+        actor: null, occasion: 'batch', batch: { id: batch.id, members: batch.members, waiting: this.boundary.entries().length }, ...(batch.planFrom ? { batchPlanFrom: batch.planFrom } : {}), priority: 0, fresh: true }, () => {});
       if (!('id' in run)) throw new Error('batch needs an admitted suite');
       batch.run = run.id; this.#save(batch);
     }
@@ -269,6 +269,10 @@ export class MergeBatches {
       const baselines = runs ? Object.entries(runs).map(([tier, run]) => `${tier}=${run ?? 'none'}`).join(', ') : `legacy=${baseline?.run ?? 'unavailable'}`;
       const repeated = loadGateCompletionSummary(evidence.log);
       steps.unshift(batchT1Summary(evidence.job.batchT1));
+      const t1Coverage = evidence.job.batchT1?.skipped ? 'exact-head member verifies' : evidence.job.selection?.tiers?.includes('T1') ? 'batch runtime' : 'not configured';
+      if (evidence.job.selection?.tiers?.includes('T3')) steps.unshift(evidence.job.selection.batchTests?.T3
+        ? `T3 affected importers: ${evidence.job.selection.batchTests.T3.length} files; T1 coverage: ${t1Coverage}; remaining T3 deferred to integrated occasions`
+        : 'T3 full selection');
       this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs == null ? 'unavailable' : job.runMs + ' ms'}; exit ${job.outcome.code}; batch interaction ${JSON.stringify(batchInteractionSummary(evidence.job.selection?.batchInteraction))}; load gate baselines ${baselines}; repeated identities ${repeated.unknown ? 'unknown' : repeated.complete} (confirmed complete ${repeated.complete}; completion unknown ${repeated.unknown}); log ${log?.id ?? 'unavailable'}: ${log?.path ?? 'unavailable'}\n${steps.join('\n')}\n${batch.candidate.budgetLines.join('\n')}`);
       if (batch.confirmation) this.boundary.report(batch,
         `Diagnosis confirmation of ${batch.confirmation.original}: skipped files (no execution receipt): ${skippedFilesText(batch.confirmation.skipped)}; covering run ${job.id}; tree ${job.tree}; exit ${job.outcome.code}; ${original.result === 'green' ? 'full plan green' : original.result}\n${failureText(batchFailures(evidence.log, evidence.job))}`, 'confirmation');

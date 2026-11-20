@@ -1,5 +1,10 @@
 # hub/test/dev-t3-coverage-component.test.ts
 
+Complete scenario setup has its own owned bound before scheduler behavior.
+Partial batch and fresh integrated-cover scenarios retain their masks across
+reopen and must admit a full periodic run. The fresh-cover case uses a synthetic
+completion relative to the fixture's shared clock; it makes no latency claim.
+
 T2 exercises Suites with suiteUnit's semantic executors and a FakeClock inside
 stageCase's whole-callback normal/signal owner. Every asynchronous step is
 fenced, fixture roots are adopted before later work, and the positively

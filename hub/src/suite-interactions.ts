@@ -7,6 +7,13 @@ const paths = (output: string) => output.split('\0').filter(Boolean);
 
 export { importingTests, importingTestsFromSource } from './suite-import-graph.ts';
 
+/** The same pinned sibling delta feeds interaction reports and landing policy. */
+export async function batchMemberPaths(heads: readonly string[], git: Git): Promise<string[]> {
+  const changed = new Set<string>();
+  for (const head of heads) for (const file of paths(await git('diff', '--name-only', '-z', '--no-renames', head, 'HEAD'))) changed.add(file);
+  return [...changed].sort();
+}
+
 function add(selection: SuiteSelection, tests: string[], reason: string, tiers: ReadonlyMap<string, string>): SuiteSelection {
   if (!tests.length) return selection;
   const hub = tests.filter(file => file.startsWith('hub/'));
@@ -36,8 +43,7 @@ export async function batchInteractionSelection(cwd: string, selection: SuiteSel
       reason: `${selection.reason}; batch interaction report only: ${applied.reason}` };
   };
   try {
-    const changed = new Set<string>();
-    for (const head of heads) for (const file of paths(await git('diff', '--name-only', '-z', '--no-renames', head, 'HEAD'))) changed.add(file);
+    const changed = new Set(await batchMemberPaths(heads, git));
     if (!changed.size) { t3 = { mode: 'report', files: [], reason: 'no sibling delta' }; return finish(selection, [], []); }
     const assignments = await readTierAssignments(cwd);
     if (!assignments) throw new Error('tier assignments unavailable');

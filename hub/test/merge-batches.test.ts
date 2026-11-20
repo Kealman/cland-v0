@@ -34,6 +34,7 @@ import { CandidateOwnershipUnavailable, captureCandidateOwnership, requireCandid
 import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
 import { tempProject } from './harness.ts';
 import { dependencyInstall } from '../src/dependency-install.ts';
+import { fullBatchReason } from '../src/batch-selection.ts';
 
 /** Enroll before acquisition; even late fixture hooks must join the whole body. */
 function joinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep) => Promise<void>) {
@@ -148,6 +149,115 @@ async function fixture(t: Parameters<typeof suiteUnit>[0], options: Parameters<t
 const failureLog = 'suite test failures [{"file":"hub/test/example.test.ts","name":"rejects stale input"}]\n# tests 1\n# fail 1\n';
 const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/example.test.ts","name":"rejects stale input","at":1,"nesting":0,"outcome":"pass","seconds":0.01}\nsuite test failures []\n# tests 1\n# pass 1\n';
 
+test('light batch plans only affected T3 importers across both packages', t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const { f, unit, affected, other, nvim } = await step(() => setup('complete light setup', async () => {
+    const f = await suiteUnit(fixtures);
+    const unit = 'hub/test/unit.test.ts', affected = 'hub/test/affected.test.ts', other = 'hub/test/other.test.ts', nvim = 'nvim/test/affected.test.ts';
+    const sources = { [unit]: '', [affected]: 'import "../../web/src/model.ts";', [other]: '', [nvim]: 'import "../../web/src/model.ts";', 'web/src/model.ts': 'export const value = 1;' };
+    for (const [file, source] of Object.entries(sources)) { await mkdir(join(f.root, file, '..'), { recursive: true }); await writeFile(join(f.root, file), source); }
+    await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [unit]: 'T1', [affected]: 'T3', [other]: 'T3', [nvim]: 'T3' } }));
+    f.candidate.selection = { mode: 'full', files: ['web/src/model.ts'], reason: 'candidate delta' };
+    return { f, unit, affected, other, nvim };
+  }));
+  await step(() => setup('light behavior', async () => {
+    const result = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true, occasion: 'batch', batch: { id: 'light', members: [] } }, () => {});
+    assert.ok('dryRun' in result);
+    const selection = selectionFromEnv(selectionTransport(result.selection, join(f.root, 'selection.json')).env)!;
+    const phases = await packageShards(f.root, selection.mode, undefined, selection, { workers: 1 });
+    assert.deepEqual(phases.flatMap(phase => phase.targets).sort(), [unit, affected, nvim].sort());
+    const { batchTests: _newMask, ...legacy } = selection;
+    const oldPlan = await packageShards(f.root, legacy.mode, undefined, legacy, { workers: 1 });
+    assert.deepEqual(oldPlan.flatMap(phase => phase.targets).sort(), [unit, affected, other, nvim].sort(), 'previous wire shape retains full T3');
+    for (const trigger of ['waiting', 'production'] as const) {
+      if (trigger === 'production') f.candidate.selection.files = ['hub/src/deleted.ts'];
+      const full = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true, occasion: 'batch', batch: { id: trigger, waiting: trigger === 'waiting' ? 3 : 1, members: [] } }, () => {});
+      assert.ok('dryRun' in full);
+      const planned = await packageShards(f.root, full.selection.mode, undefined, full.selection, { workers: 1 });
+      assert.deepEqual(planned.flatMap(phase => phase.targets).sort(), [unit, affected, other, nvim].sort());
+    }
+    f.candidate.selection.files = ['web/src/model.ts'];
+    await writeFile(join(f.root, other), 'eval("loadUnknown()");');
+    const unknown = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true, occasion: 'batch', batch: { id: 'unknown', members: [] } }, () => {});
+    assert.ok('dryRun' in unknown);
+    assert.ok(unknown.selection.batchTests?.T3?.includes(other), 'unknown graph retains its file');
+    f.git(async () => 'hub/src/cancelled-member-change.ts\0');
+    const cancelledDelta = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true, occasion: 'batch', batch: { id: 'cancelled-delta', members: [{ item: 'T-1', branch: 't/1', head: '1'.repeat(40), verdictBase: 'dev', enqueued: f.clock.now().toISOString(), by: { id: 'coord', name: 'coord', role: 'coordinator' } }] } }, () => {});
+    assert.ok('dryRun' in cancelledDelta);
+    assert.equal(cancelledDelta.selection.batchTests?.T3, undefined, 'a member production delta forces full T3 even when absent from aggregate paths');
+  }));
+}));
+
+test('full T3 triggers include waiting members, deleted production paths and verifier configuration', () => {
+  assert.equal(fullBatchReason(['web/src/model.ts'], 2), null);
+  assert.match(fullBatchReason(['docs/change.md'], 3)!, /three waiting/);
+  for (const path of ['hub/src/deleted.ts', 'hub/bin/cland.ts', 'shared/wire/index.ts', 'hub/test/run-suite.ts', '.cland/config.toml']) assert.ok(fullBatchReason([path], 1), path);
+  assert.equal(fullBatchReason(['hub/src/hub/worktrees.test.ts'], 1), null);
+});
+
+for (const red of [false, true]) test(`partial T3 baseline preserves unrelated proof and ${red ? 'fences red' : 'uses green'} file receipts`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const { f, a, b } = await step(() => setup('complete baseline setup', async () => {
+    const f = await suiteUnit(fixtures);
+    const a = 'hub/test/a.test.ts', b = 'hub/test/b.test.ts';
+    for (const file of [a, b]) await writeFile(join(f.root, file), '');
+    await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [a]: 'T3', [b]: 'T3' } }));
+    const seed = await f.launch(); await f.finish(seed.id);
+    const original = (await f.suites.receipt(seed.id)).job;
+    const row = (files: string[]) => ({ tier: 'T3' as const, files, tests: files.length, seconds: 0.01, projectedWall: 0.01, workers: 1, missing: 0 });
+    const older = { ...original, id: 'older-full', sequence: 1, occasion: 'stage' as const, branch: 'dev', integrated: true, selection: { mode: 'full' as const, files: [], reason: 'stage' }, tierPlan: [row([a, b])], timingIdentities: [`${a}::known`, `${b}::known`] };
+    const newer = { ...older, id: 'newer-partial', sequence: 2, occasion: 'batch' as const, batch: { id: 'prior', members: [] }, selection: { ...older.selection, batchTests: { T3: [a] } }, tierPlan: [row([a, b])], timingIdentities: [`${a}::known`, `${b}::phantom`], outcome: { ...original.outcome!, code: red ? 1 : 0 } };
+    const { batch: _batch, ...stageRecord } = newer;
+    const partialStage = { ...stageRecord, id: 'partial-stage', sequence: 3, occasion: 'stage' as const };
+    await f.reopen([older, newer, partialStage]);
+    return { f, a, b };
+  }));
+  await step(() => setup('baseline behavior', async () => {
+    const result = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true, occasion: 'batch', batch: { id: 'next', members: [] } }, () => {});
+    assert.ok('dryRun' in result);
+    assert.equal(loadGateRepetitions(`${b}::known`, result.selection, {}), 0);
+    assert.equal(loadGateRepetitions(`${a}::known`, result.selection, {}), red ? 5 : 0);
+    assert.equal(loadGateRepetitions(`${b}::phantom`, result.selection, {}), 5, 'partial files never lend whole-plan identities');
+    f.candidate.branch = 'dev';
+    f.candidate.selection = { mode: 'full', files: [], reason: 'stage', fetchedDev: f.candidate.head };
+    const stage = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true, integrated: true, occasion: 'stage' }, () => {});
+    assert.ok('dryRun' in stage);
+    assert.equal(stage.selection.loadGateBaseline?.run, 'older-full', 'only the whole stage receipt supplies the full-stage baseline');
+  }));
+}));
+
+for (const history of ['same-tier', 'other-tier', 'other-tier-legacy', 'skipped'] as const) test(`partial baseline history bounds ${history} visits independently of tier receipts`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const { f, a, b } = await step(() => setup('complete history setup', async () => {
+    const f = await suiteUnit(fixtures);
+    const a = 'hub/test/a.test.ts', b = 'hub/test/b.test.ts';
+    for (const file of [a, b]) await writeFile(join(f.root, file), '');
+    await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [a]: 'T3', [b]: 'T3' } }));
+    const seed = await f.launch(); await f.finish(seed.id);
+    const original = (await f.suites.receipt(seed.id)).job;
+    const prior = { ...original, occasion: 'batch' as const, batch: { id: 'prior', members: [] }, selection: { mode: 'full' as const, files: [], reason: 'prior' }, tierPlan: [{ tier: 'T3' as const, files: [a], tests: 1, seconds: 0.01, projectedWall: 0.01, workers: 1, missing: 0 }], timingIdentities: [`${a}::known`] };
+    const oldest = { ...prior, id: 'oldest', sequence: 0, tierPlan: [{ ...prior.tierPlan[0]!, files: [a, b] }], timingIdentities: [`${a}::known`, `${b}::known`] };
+    const { occasion: _occasion, batch: _batch, ...ordinary } = prior;
+    await f.reopen([oldest, ...Array.from({ length: history === 'skipped' ? 400 : 40 }, (_, index) => ({ ...(history === 'skipped' ? ordinary : prior), id: `prior-${index}`, sequence: index + 1,
+      ...(history.startsWith('other-tier') ? { selection: { ...prior.selection, ...(history === 'other-tier' ? { tiers: ['T1' as const] } : {}) }, tierPlan: [{ ...prior.tierPlan[0]!, tier: 'T1' as const }] } : {}),
+      ...(history === 'skipped' ? { integrated: false } : {}),
+    }))]);
+    return { f, a, b };
+  }));
+  await step(() => setup('history behavior', async () => {
+    const nativeRead = f.store.suiteJob.bind(f.store);
+    let reads = 0;
+    t.mock.method(f.store, 'suiteJob', (...args: Parameters<typeof nativeRead>) => { reads++; return nativeRead(...args); });
+    const result = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true, occasion: 'batch', batch: { id: 'next', members: [] } }, () => {});
+    assert.ok('dryRun' in result);
+    assert.ok(reads <= (history === 'other-tier-legacy' ? 44 : 34), `receipt reads ${reads} exceed the bounded history scan plus selected receipt`);
+    assert.equal(loadGateRepetitions(`${a}::known`, result.selection, {}), history === 'skipped' ? 5 : 0);
+    assert.equal(loadGateRepetitions(`${b}::known`, result.selection, {}), history.startsWith('other-tier') ? 0 : 5);
+    const scan = f.logs.findLast(event => event.event === 'batch-baseline-scan' && event.tier === 'T3');
+    assert.ok(scan, 'the producer records actual summary and same-tier receipt visits');
+    assert.ok(Number(scan.summaries) <= 256 && Number(scan.receipts) <= 32);
+    if (history.startsWith('other-tier')) assert.equal(scan.receipts, 1);
+    if (history === 'skipped') { assert.equal(scan.summaries, 256); assert.equal(scan.receipts, 0); }
+  }));
+}));
+
 test('a filed batch failure lands only after five hub reruns retain same-tree receipts', t => suiteCase(t, async ({ setup, step }) => {
   const { f, runner, landed } = await setup(fixtures => fixture(fixtures, { flakyOwners: () => ({ 'hub/test/example.test.ts::rejects stale input': 'T-4' }) }, t));
   await step("runner.tick()", () => runner.tick());
@@ -195,6 +305,35 @@ async function memberVerifies(state: Awaited<ReturnType<typeof fixture>>, step: 
   }
   return runs;
 }
+
+test('light batches retain exact-head member T1 coverage and report its source', t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const { state, processFile } = await step(() => setup('complete light member setup', async () => {
+    const state = await fixture(fixtures);
+    state.entries.splice(1);
+    const processFile = 'hub/test/affected.test.ts';
+    await mkdir(join(state.f.root, 'nvim/src'), { recursive: true });
+    await writeFile(join(state.f.root, 'nvim/src/model.ts'), 'export const value = 1;');
+    await writeFile(join(state.f.root, processFile), 'import "../../nvim/src/model.ts";');
+    await writeFile(join(state.f.root, 'hub/test/unit.test.ts'), '');
+    await writeFile(join(state.f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [processFile]: 'T3', 'hub/test/unit.test.ts': 'T1' } }));
+    state.f.candidate.selection = { mode: 'full', files: ['nvim/src/model.ts'], reason: 'light member' };
+    await memberVerifies(state, step);
+    await state.reopen();
+    await state.f.clock.advance(600_000);
+    return { state, processFile };
+  }));
+  await step(() => setup('light member behavior', async () => {
+    await state.runner.tick();
+    const run = state.runner.snapshot()!.run!;
+    await state.f.finish(run, 0, t0Green + 'tier T3: exit 0; duration 1 s; output tail: passed\n' + passLog);
+    const job = (await state.f.suites.receipt(run)).job;
+    assert.equal(job.batchT1?.skipped, true);
+    assert.deepEqual(job.selection?.tiers, ['T3']);
+    assert.deepEqual(job.selection?.batchTests?.T3, [processFile]);
+    await state.runner.tick();
+    assert.ok(state.reports.some(text => text.includes('T1 coverage: exact-head member verifies')));
+  }));
+}));
 
 test('batch skips T1 with complete exact-head member verifies and names every receipt', t => guardedMemberCase(t, async (fixtures, step, setup) => {
   const state = await step(() => setup('fixture setup', () => fixture(fixtures)));
@@ -2096,8 +2235,8 @@ for (const source of ['stage', 'batch'] as const) test(`batch retains the latest
       selection: { mode: 'full' as const, files: [], reason: 'recorded stage' }, tierPlan: [row('T1', unit), row('T3', process)], timingIdentities: [`${unit}::old`, `${process}::old`] };
     const batch = { ...stage, id: 'green-T3-batch', sequence: 2, occasion: 'batch' as const, batch: { id: 'prior', members: [] }, timingIdentities: [`${process}::old`, `${process}::batch addition`] };
     const narrow = { ...batch, id: 'newer-T1-only', sequence: 3, tierPlan: [{ ...row('T1', unit), files: [unit, moved] }], timingIdentities: [`${unit}::new`, `${moved}::moved from T1`] };
-    const red = { ...batch, id: 'red-T3', sequence: 4, outcome: { ...original.outcome!, code: 1 } };
-    await f.reopen([stage, ...(source === 'batch' ? [batch] : []), narrow, red]);
+    // Red per-file fencing is covered separately; this case isolates tier migration.
+    await f.reopen([stage, ...(source === 'batch' ? [batch] : []), narrow]);
     await state.reopen();
     await state.runner.tick();
     const job = (await f.jobs()).at(-1)!;
