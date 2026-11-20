@@ -16,7 +16,7 @@ import { machineAccounting } from '../suite-accounting.ts';
 export { machineAccounting } from '../suite-accounting.ts';
 import { suiteAuthor } from './suite-author.ts';
 import { missingDependencyHint } from '../dependency-install.ts';
-import { pinVerificationPlan, verificationSteps, verificationInterrupted } from '../verification-plan.ts';
+import { pinVerificationPlan, verificationSteps, verificationInterrupted, verificationStepResults } from '../verification-plan.ts';
 import { loadProofIdentities, skipT4LoadRepetitions, soakDeadlinePlan, soakCalibration, soakExecutionSeconds } from '../suite-load-gate-plan.ts';
 import { suiteProgress, progressLines } from '../suite-progress.ts';
 import { tierExecution, executionLines } from '../suite-execution.ts';
@@ -53,8 +53,10 @@ import { idNumber } from '../tracker/item.ts';
 import { diagnosticTestFile, taskSuiteSelection, describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 import { parseCoverageMap, mergeCoverageFiles } from '../suite-coverage.ts';
 import { VerificationWait } from './verification-wait.ts';
-import { classifyCover, deriveCover, incompleteCollection, recentCovers } from './suite-cover.ts';
-import { quarantineResults, quarantineSummary, suiteTestFailures } from '../suite-quarantine.ts';
+import { classifyCover, deriveCover, greenWithReceipt, incompleteCollection, recentCovers } from './suite-cover.ts';
+import { flakyQuarantineManifest, quarantineIdentityReason, quarantineResults, quarantineSummary, suiteTestFailures } from '../suite-quarantine.ts';
+import { flakyRerunCommands, passingFlakyRepeat } from './batch-flakes.ts';
+import { failingTests } from './shared-defects.ts';
 import { suiteAdmissionTimeouts } from '../test-admission-outcome.ts';
 import { machineHealthFromLog, type MachineHealth, type ShardMachineHealth } from '../executor/droplet/health.ts';
 import { occasionSelection } from '../verification-occasion.ts';
@@ -65,6 +67,7 @@ export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteAdmission = { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] };
 export type TestSlotWaiter = { id: string; sessionId: string; cover: string };
 export type SuiteJob = {
+  flaky?: { owners: Record<string, string>; runs: string[]; commands?: import('../verification-commands.ts').VerificationCommands; rejected?: string };
   tierReceipts?: TierReceipt[];
   batchT1?: BatchT1;
   webPhase?: WebPhaseUnavailable;
@@ -122,7 +125,7 @@ export type StageCover = { id: string; head: string; tree: string; platform: Sta
 const verifyResult = (job: SuiteJob): VerifyResult => ({ ...(job.webPhase ? { webPhase: job.webPhase } : {}), executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome?.notRun ? 'unavailable' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 // A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
-export type SuiteSchedulerOptions = { suiteRetentionMinAgeDays?:number; suiteRetentionPassLimit?:number; runReferenced?: (id: string) => boolean; stageJobs?: (jobs: readonly SuiteJob[]) => Iterable<Readonly<SuiteJob>>; onTestSlotAvailable?: (waiter: TestSlotWaiter) => void; taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { flakyOwners?: (identities: string[]) => Record<string, string>; suiteRetentionMinAgeDays?:number; suiteRetentionPassLimit?:number; runReferenced?: (id: string) => boolean; stageJobs?: (jobs: readonly SuiteJob[]) => Iterable<Readonly<SuiteJob>>; onTestSlotAvailable?: (waiter: TestSlotWaiter) => void; taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
@@ -235,6 +238,9 @@ export class Suites {
   readonly #jobs: SuiteJob[];
   readonly #stageJobs = new Map<string, SuiteJob>();
   #stageReceipts: StageCover[] | undefined;
+  #stageReceiptExpiry = Infinity;
+  #stageExpiryJobs = new Map<string, number>();
+  #expiredStageJobs = new Set<string>();
   #stagePlatforms = new Map<string, Record<StagePlatform, number>>();
   #stageById = new Map<string, StageCover>();
   readonly #rawCoverage: RawCoverageSweep;
@@ -469,6 +475,7 @@ export class Suites {
     }
     for (const id of [job.cached?.run, job.devT3?.previousGreenRun, ...Object.values(job.batchBaselineRuns ?? {})]) if (id) this.#retentionReferences.add(id);
     if (job.cover) this.#retentionReferences.add(job.id);
+    for (const id of job.flaky?.runs ?? []) this.#retentionReferences.add(id);
     if (!this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
     // A successful report checkpoints the log artifact across async I/O. Publish its
     // terminal card once with that artifact, or once the blocking error is persisted.
@@ -501,12 +508,30 @@ export class Suites {
     return job ? verifyResult(job) : null;
   }
   /** Completed integrated full receipts, never a cache label borrowed from another platform. */
+  #expireStageEvidence(): void {
+    const now = this.#clock.now().getTime();
+    if (now < this.#stageReceiptExpiry) return;
+    for (const [id, expires] of this.#stageExpiryJobs) if (expires <= now) {
+      this.#expiredStageJobs.add(id); this.#stageExpiryJobs.delete(id);
+    }
+    this.#stageReceipts = undefined;
+    this.#stageReceiptExpiry = Infinity;
+    for (const expires of this.#stageExpiryJobs.values()) this.#stageReceiptExpiry = Math.min(this.#stageReceiptExpiry, expires);
+  }
   stageCovers(include?: Readonly<SuiteJob>): StageCover[] {
+    this.#expireStageEvidence();
     if (!this.#stageReceipts) {
       this.#stageReceipts = [];
+      this.#stageReceiptExpiry = Infinity;
+      this.#stageExpiryJobs.clear();
       this.#stagePlatforms.clear(); this.#stageById.clear();
       for (const job of this.#options.stageJobs?.(this.#jobs) ?? this.#jobs) for (const cover of this.#stageReceipt(job)) {
         this.#stageReceipts.push(cover); this.#stageById.set(cover.id, cover);
+        for (const entry of Object.values(job.cover?.receipt?.manifest.tests ?? {})) {
+          const expires = Date.parse(entry.expires);
+          this.#stageReceiptExpiry = Math.min(this.#stageReceiptExpiry, expires);
+          this.#stageExpiryJobs.set(job.id, Math.min(this.#stageExpiryJobs.get(job.id) ?? Infinity, expires));
+        }
         const platforms = this.#stagePlatforms.get(cover.tree) ?? { 'Linux droplet': 0, macOS: 0 };
         platforms[cover.platform]++; this.#stagePlatforms.set(cover.tree, platforms);
       }
@@ -514,11 +539,11 @@ export class Suites {
     return include ? [...this.#stageReceipts.filter(cover => cover.id !== include.id), ...this.#stageReceipt(include, true)] : this.#stageReceipts;
   }
   #stageReceipt(job: Readonly<SuiteJob>, include = false): StageCover[] {
-    if (!job.integrated || job.branch !== 'dev' || !job.tree || !job.selection?.soak || job.selection.mode !== 'full' || job.outcome?.code !== 0 || job.cancelled || job.requesterDied || !job.reported && !include) return [];
+    if (!job.integrated || job.branch !== 'dev' || !job.tree || !job.selection?.soak || job.selection.mode !== 'full' || !greenWithReceipt(job, this.#clock.now().getTime()) || job.cancelled || job.requesterDied || !job.reported && !include) return [];
     if (job.executor === 'local' && job.platform?.os === 'darwin') return [{ id: job.id, head: job.head, tree: job.tree, platform: 'macOS' }];
     const source = job.cached ? this.#stageJobs.get(job.cached.run) : job;
     if (job.executor === 'droplet' && source?.occasion === 'stage' && job.platform?.os === 'linux'
-      && (source.shards ? source.shards.length >= 2 && source.shards.every(shard => shard.outcome?.code === 0 && shard.platform?.os === 'linux') : !!source.shardingSkipped)) {
+      && (source.shards ? source.shards.length >= 2 && source.shards.every(shard => (shard.outcome?.code === 0 || job.cover?.receipt && shard.outcome?.code === 1) && shard.platform?.os === 'linux') : !!source.shardingSkipped)) {
       return [{ id: job.id, head: job.head, tree: job.tree, platform: 'Linux droplet' }];
     }
     return [];
@@ -624,7 +649,7 @@ export class Suites {
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void, onAdmitted?: (admission: SuiteAdmission) => void): Promise<SuiteAdmission | SuiteDryRun> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void, onAdmitted?: (admission: SuiteAdmission) => void, inspect = true, repeatCommands?: import('../verification-commands.ts').VerificationCommands, repeatSoak = false): Promise<SuiteAdmission | SuiteDryRun> {
     if (input.batchPlanFrom && (!input.batch || input.batch.diagnostic || input.occasion !== 'batch')) throw new Error('pinned batch plan requires a full batch confirmation');
     const pinned = input.batchPlanFrom ? (await this.receipt(input.batchPlanFrom)).job : undefined;
     const config = this.#options.projectConfig?.();
@@ -646,7 +671,7 @@ export class Suites {
     // Validate the candidate as before; only the hub owns execution policy.
     if (input.cwd !== this.#root) await suiteLimits(input.cwd, executor, this.#env);
     const limits = config ? { testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers } : await suiteLimits(this.#root, executor, this.#env);
-    let commands = pinned ? structuredClone(recordedCommands(pinned)) : await verificationCommands(input.cwd, this.#root, this.#env);
+    let commands = repeatCommands ? structuredClone(repeatCommands) : pinned ? structuredClone(recordedCommands(pinned)) : await verificationCommands(input.cwd, this.#root, this.#env);
     const runner = await clandRunner(input.cwd);
     if (!runner && (input.mode === 'hub' || input.mode === 'nvim')) throw new Error("hub and nvim are cland's own suite phases; this project's test runs in full: cland verify");
     const workers = input.workers ?? limits.workers;
@@ -691,7 +716,12 @@ export class Suites {
       batchT1 = (config?.merge.batchTiers ?? ['T1', 'T3']).length === 1 ? { skipped: false, members: [], reason: 'T1 is the sole configured runtime tier' } : await this.#batchT1(input.batch.members);
       selection = { ...selection, tiers: batchT1.skipped ? selection.tiers.filter(tier => tier !== 'T1') : selection.tiers };
     }
-    if (pinned) selection = structuredClone(pinned.selection ?? selection);
+    if (repeatCommands) {
+      const plan = verificationSteps(repeatCommands);
+      selection = { ...selection, soak: repeatSoak || plan.some(step => step.name === 'T4'),
+        ...(repeatCommands.tiers ? { tiers: plan.flatMap(step => ['T1', 'T2', 'T3', 'T4'].includes(step.name) ? [step.name as 'T1' | 'T2' | 'T3' | 'T4'] : []) } : {}) };
+    }
+    else if (pinned) selection = structuredClone(pinned.selection ?? selection);
     else commands = pinVerificationPlan(commands, { branch, mode: input.mode, ...(input.occasion ? { occasion: input.occasion } : {}), selection, queueEnabled: config?.merge.queue ?? false });
     if (diagnosticSteps?.length) {
       const plan = verificationSteps(commands).filter(step => diagnosticSteps.includes(step.name) || Boolean(files?.length));
@@ -827,7 +857,7 @@ export class Suites {
     // Socket/RPC callers can acknowledge the durable checkpoint without changing
     // start()'s scheduler-completion contract for in-process callers.
     onAdmitted?.({ id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) });
-    await this.#check();
+    if (inspect) await this.#check();
     return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
   }
   #existingSubmission(input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion' | 'devT3Probe'> & { executor?: ExecutorKind; size?: string; workers?: number }, head: string, authorize: () => void): { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | null {
@@ -1553,6 +1583,12 @@ export class Suites {
     return this.#checking;
   }
   async #tick(): Promise<void> {
+    this.#expireStageEvidence();
+    for (const id of this.#expiredStageJobs) {
+      const job = this.#stageJobs.get(id);
+      if (job) this.#options.onJob?.(job);
+      this.#expiredStageJobs.delete(id);
+    }
     // Durable slots feed the next published ETA; the sweep must not extend a tick.
     this.#refreshLeases();
     await this.#reaping;
@@ -1950,6 +1986,8 @@ export class Suites {
         const cover = deriveCover(job, await logEvidence());
         if (cover) job.cover = cover;
       }
+      if (!await this.#flakyReceipt(job, await logEvidence())) return;
+      if (job.cover?.receipt || job.flaky?.rejected) evidence = undefined;
       if (job.integrated && !job.cached && job.outcome.code === 0 && job.selection?.loadGateRerun && !job.selection.loadGateRerun.passed) {
         job.selection.loadGateRerun.passed = [...new Set(timingReceipts(await logEvidence()).filter(test => test.outcome === 'pass').map(test => `${test.file}::${test.name}`))].sort();
       }
@@ -1983,6 +2021,64 @@ export class Suites {
       if (job.cleaned && /^forbidden:/.test(job.error)) job.reportFailedPermanently = true;
       this.#save(job);
     }
+  }
+  /** Reuse batch failing-file jobs through normal admission, leases and spend caps.
+   * Each round is checkpointed before the next one; report retries never add rounds. */
+  async #flakyReceipt(job: SuiteJob, log: string): Promise<boolean> {
+    if ((!job.integrated && !job.batch) || job.parentRun || job.batch?.diagnostic || job.cached
+      || job.cancelled || job.requesterDied || job.timedOut || job.outcome?.code !== 1 || !job.tree
+      || job.cover?.receipt || job.flaky?.rejected) return true;
+    const failures = suiteTestFailures(log) === null ? null : failingTests(log);
+    if (!failures?.length || job.webPhase || job.outcome.notRun) return true;
+    if (suiteAdmissionTimeouts(log).length || suiteInfrastructureCauses(job).length
+      || /^duration budget:/m.test(log)
+      || verificationStepResults(log, job).some(step => !step.superseded && step.code !== 0 && (step.name === 'check' || step.code !== 1))
+      || job.tierPlan?.length && tierExecution(job.tierPlan, log).some(row => row.unexecuted.length || row.incomplete.length)) return true;
+    if (!job.flaky) {
+      const owners = this.#options.flakyOwners?.(failures) ?? {};
+      if (failures.some(identity => !owners[identity])) return true;
+      const commands = flakyRerunCommands(job);
+      job.flaky = { owners, runs: [], ...(commands ? { commands } : { rejected: 'original command/step receipts unavailable' }) }; this.#save(job);
+      if (!commands) return true;
+    }
+    const reject = (reason: string) => { job.flaky!.rejected = reason; this.#save(job); return true; };
+    if (!job.flaky.commands || JSON.stringify(flakyRerunCommands(job)) !== JSON.stringify(job.flaky.commands)) return reject('original command/step binding unavailable or changed');
+    if (await this.#candidate.tree(job.cwd, job.head) !== job.tree) return reject('candidate tree changed');
+    const round = job.flaky.runs.length;
+    if (round < 5) {
+      const key = `flaky-${job.id}-${round}`;
+      let repeat = this.findRun(run => run.batch?.diagnostic?.key === key);
+      if (!repeat) {
+        const admitted = await this.#start({ mode: 'all', cwd: job.cwd, topic: job.topic, to: job.to,
+          actor: { name: 'hub', sessionId: key, shell: true },
+          executor: job.executor, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), fresh: true, ...(job.priority !== undefined ? { priority: job.priority } : {}),
+          batch: { id: job.batch?.id ?? job.id, members: job.batch?.members ?? [], diagnostic: { key, files: [...new Set(failures.map(identity => identity.split('::')[0]!))] } } }, () => {}, undefined, false, job.flaky.commands, Boolean(job.selection?.soak));
+        if (!('id' in admitted)) return reject('rerun not admitted');
+        repeat = this.findRun(run => run.id === admitted.id);
+      }
+      if (!repeat?.reported) return false;
+      const evidence = await this.receipt(repeat.id);
+      if (repeat.head !== job.head || !passingFlakyRepeat(failures, { job }, evidence, job.flaky.commands)) return reject(`rerun ${repeat.id} did not prove every identity passing at the original command/step`);
+      job.flaky.runs.push(repeat.id); this.#save(job);
+      if (job.flaky.runs.length < 5) return this.#flakyReceipt(job, log);
+    }
+    const owners = this.#options.flakyOwners?.(failures) ?? {};
+    if (failures.some(identity => owners[identity] !== job.flaky!.owners[identity])) return reject('filed flaky owner changed');
+    const outsideScope = failures.map(quarantineIdentityReason).find(reason => reason !== null);
+    if (outsideScope) {
+      reject(outsideScope);
+      await appendFile(job.log, `\nsuite flaky receipt refusal ${JSON.stringify({ run: job.id, tree: job.tree, reason: outsideScope })}\n`);
+      return true;
+    }
+    const manifest = flakyQuarantineManifest(owners, job.id, this.#clock.now().getTime());
+    const receipt = { run: job.id, tree: job.tree, runs: [...job.flaky.runs], manifest };
+    // Publish evidence before allowing stage admission. Native result.json is untouched.
+    await writeFile(join(dirname(job.log), 'quarantine.json.tmp'), JSON.stringify(manifest), { mode: 0o600 });
+    await rename(join(dirname(job.log), 'quarantine.json.tmp'), join(dirname(job.log), 'quarantine.json'));
+    await appendFile(job.log, `\nsuite green-with-receipt ${JSON.stringify(receipt)}\n`);
+    job.cover = { status: 'green', cause: null, tests: failures, receipt };
+    this.#save(job);
+    return true;
   }
   async #collectLog(job: SuiteJob): Promise<void> {
     if (job.remoteLogStart === undefined) return;

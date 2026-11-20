@@ -1097,6 +1097,7 @@ export type CoverCause = 'test-failure' | 'budget' | 'load-flake' | 'cancel-head
 
 // hub/src/protocol.ts
 export type CoverRecord = { status: 'green' | 'red' | 'cancelled'; cause: CoverCause | null; tests: string[];
+  receipt?: { run: string; tree: string; runs: string[]; manifest: { version: 1; tests: Record<string, { owner: string; reason: string; added: string; expires: string }> } };
   derivedCause?: CoverCause | null; classification?: { note: string; by: string; at: string } };
 
 // hub/src/protocol.ts

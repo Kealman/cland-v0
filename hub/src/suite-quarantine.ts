@@ -3,10 +3,39 @@ import { join } from 'node:path';
 import type { AdmissionTimeoutReceipt } from './test-admission-outcome.ts';
 
 export const QUARANTINE_MANIFEST = 'hub/test/quarantine.json';
+
+/** The runner and automatic evidence share one supported identity grammar. */
+export function quarantineIdentityReason(identity: string): string | null {
+  if (identity.startsWith('web/')) return 'Web identity outside quarantine scope';
+  const file = identity.split('::')[0]!;
+  return /^(?:hub|nvim)\/(?:test|src)\/[^:]+\.test\.ts::\S.*$/.test(identity)
+    && !file.includes('\\') && !file.split('/').some(part => !part || part === '.' || part === '..')
+    ? null : `invalid quarantine: ${identity}`;
+}
 export type QuarantineEntry = { owner: string; reason: string; added: string; expires: string };
 export type QuarantineManifest = { version: 1; tests: Record<string, QuarantineEntry> };
 export type QuarantineResult = { file: string; name: string; outcome: 'pass' | 'fail' | 'skip'; entry: QuarantineEntry };
 export type TestFailure = { file: string; name: string };
+/** A reference is a complete inline-code span or a complete trimmed line. */
+export function flakyIdentityOwners(identities: string[], items: Iterable<{ id: string; state: string; labels: string[]; body: string }>): Record<string, string> {
+  const wanted = new Set(identities), owners: Record<string, string> = {};
+  for (const item of items) {
+    if (item.state !== 'open' || !item.labels.includes('flaky')) continue;
+    const references = [...item.body.matchAll(/`([^`\n]+)`/g)].map(match => match[1]!);
+    references.push(...item.body.split('\n').map(line => line.trim()));
+    for (const reference of references) if (wanted.has(reference)) owners[reference] ??= item.id;
+  }
+  return owners;
+}
+
+export function flakyQuarantineManifest(owners: Record<string, string>, run: string, now: number): QuarantineManifest {
+  const added = new Date(now).toISOString().slice(0, 10);
+  const expires = new Date(Date.parse(added) + 7 * 86400000).toISOString().slice(0, 10);
+  const manifest: QuarantineManifest = { version: 1, tests: Object.fromEntries(Object.entries(owners).map(([identity, owner]) => [identity,
+    { owner, added, expires, reason: `Filed flaky identity; hub rerun 5/5 at the same tree; original run ${run}.` }])) };
+  lintQuarantineManifest(manifest, now);
+  return manifest;
+}
 export type QuarantineReceipt = { complete: boolean; cancelled: number; failures: TestFailure[]; results: QuarantineResult[]; excused: number; admissionTimeouts?: AdmissionTimeoutReceipt[] };
 
 /** Quarantine excuses assertions, while runner policy failures stay fatal. */
@@ -75,8 +104,7 @@ export function lintQuarantineManifest(manifest: unknown, now = Date.now()): ass
   if (!object(manifest) || manifest.version !== 1 || !object(manifest.tests)) throw new Error(`invalid quarantine manifest: ${QUARANTINE_MANIFEST}`);
   const date = (value: unknown): number => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value ? Date.parse(value) : NaN;
   for (const [key, entry] of Object.entries(manifest.tests)) {
-    const file = key.split('::')[0]!;
-    if (!/^(?:hub|nvim)\/(?:test|src)\/[^:]+\.test\.ts::\S.*$/.test(key) || file.includes('\\') || file.split('/').some(part => !part || part === '.' || part === '..') || !object(entry)) throw new Error(`invalid quarantine: ${key}`);
+    if (quarantineIdentityReason(key) || !object(entry)) throw new Error(`invalid quarantine: ${key}`);
     if (typeof entry.owner !== 'string' || !/^T-[1-9]\d*$/.test(entry.owner)) throw new Error(`quarantine needs an owner ticket: ${key}`);
     if (typeof entry.reason !== 'string' || !entry.reason.trim() || /\bTODO\b/i.test(entry.reason)) throw new Error(`quarantine needs a non-TODO reason: ${key}`);
     const added = date(entry.added), expires = date(entry.expires);

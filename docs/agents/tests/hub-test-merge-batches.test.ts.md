@@ -1,5 +1,24 @@
 # hub/test/merge-batches.test.ts
 
+Filed flaky acceptance uses five hub-admitted failing-file rounds on the same
+head/tree with fake executor receipts. The scripted machine emits an empty log
+before each completion so the fixture respects append-only log offsets. An
+unfiled original stays red after passing file repeats. Confirmation/inventory
+controls use a unique omission; they retain their full-plan assertions without
+relying on the removed single-green flaky excuse.
+
+The filed/unfiled controls and reworked inventory/confirmation callers now use
+`flakyReceiptCase` around unchanged `suiteCase`: its fenced outer cleanup and
+root ownership exist before setup, body steps are
+fenced and named, and the positive native-launch guard remains through joined
+cleanup. Original and repeat native tier receipts bind the failed command and
+step; a green process exit or progress row alone supplies no such authority.
+Resource closers must positively finish before the outer root, manually patched
+executor seams or native guard can be released. Failed closes are retryable;
+pre-constructor SQLite capture also owns failed Store initialization.
+The filed Web batch control retains five passing repeats, the named
+`Web identity outside quarantine scope` refusal and the final no-landing assertion.
+
 Post-landing cleanup failures use fake process-table readers through
 `removeWorktreeWithFixtures`, under the positively controlled native launch guard.
 Completed member receipts stay landed; guarded removal is never invoked while

@@ -202,6 +202,10 @@ duration budgets, tier accounting and quarantine, including cases registered by
 imported helpers. Source locations remain in diagnostics. Older reporter events
 without `entryFile` keep source-file attribution.
 
+Filed flaky cover and batch failures can carry five same-tree hub rerun receipts;
+see [flaky receipts and quarantine](../docs/agents/tests.md#test-placement-and-review)
+for executor admission, stage acceptance and evidence manifest ownership.
+
 `npm run test:tiers` and the Coordinator heartbeat report dated duration
 allowances expiring within five days, including the UTC expiry and owner.
 The warning is report-only; the existing expired-manifest refusal still applies.

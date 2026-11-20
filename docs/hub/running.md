@@ -1918,13 +1918,34 @@ pre-V1 exclusion; it does not enable production free-shard overlap yet.
 Logs and suite reports include each shard's wall time, resource, workers and
 machine wait, plus the hub queue wait and total suite/compatibility wait.
 
+Integrated covers and batches with only filed hub/nvim `flaky` identities can acquire
+green-with-receipt evidence after five passing same-head/tree hub reruns. The
+hub uses ordinary batch failing-file admission on the original executor, under
+normal capacity and spend caps. Reruns pin the original recorded prepare/check
+and failed runtime step commands, including T4; acceptance requires complete
+producer receipts at those exact steps, commands, run ids and tree. Missing
+legacy command/step bindings grant no authority. Any unfiled identity, rerun non-pass, T0 failure
+or incomplete execution keeps the run red. Tracker references are exact inline
+code spans or whole trimmed lines in an open flaky-labelled item's body.
+The native result stays unchanged. Stage acceptance binds the receipt to its
+original tree and retains the two-platform, full-selection and QA requirements.
+The hub writes a version-1 manifest into the run's durable evidence and receipt;
+the Coordinator lands tracked entries separately. Evidence and tracked manifests
+share `lintQuarantineManifest`. Retained stage and batch admission also invoke
+it; expired entries invalidate stage projections, including cached projections
+and reopen.
+
+A filed Web failure stays red even after five passing reruns, with the reason
+`Web identity outside quarantine scope`. The hub attempts no manifest entry;
+the Web runner does not implement quarantine.
+
 `hub/test/quarantine.json` lists exact top-level `file::test` identities (including
 their subtests) with `owner` (`T-n`), a non-TODO `reason`, and UTC `added` and
 `expires` dates. Expiry is exclusive at midnight, after addition and no more than
 seven days later. Verify/merge admission and package runners refuse expired or
-invalid entries by name. Only the Coordinator adds entries after two known-flake
-failure receipts from different runs and 5/5 isolated green repetitions, recorded
-in the owner ticket. See [the manifest example and evidence rule](../agents/tests.md).
+invalid entries by name. The Coordinator adds tracked entries from the hub's
+filed-identity 5/5 receipt, recorded in the owner ticket. See
+[the manifest example and evidence rule](../agents/tests.md).
 
 Quarantined tests still execute in task, integrated, close and release runs,
 including new-test load repetitions. A complete, accounted test failure is
@@ -2878,7 +2899,8 @@ uncertain input stays fenced.
 
 A single recent-green load-gate repetition failure in an integrated or occasion
 macOS cover can receive one automatic advisory rerun. Keep both receipts and the
-flaky-rerun finding; a passing rerun never changes the original red cover. Recent
+flaky-rerun finding; that advisory pass alone leaves the original cover red. The
+separate filed-identity five-round receipt can excuse its assertion failures. Recent
 means the last five completed covers within seven days with explicit pass evidence.
 Report the executed prefix and named unexecuted tail, as described in
 `docs/agents/tests.md#macos-cover-load-gate-reruns-report-mode`. Task runs are

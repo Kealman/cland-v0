@@ -14,7 +14,7 @@ import type { Clock, ClockTimer } from './clock.ts';
 import type { Suites, SuiteJob } from './suites.ts';
 import { failingTests } from './shared-defects.ts';
 import type { TopicNotice } from './core.ts';
-import { recordBatchFlakes } from './batch-flakes.ts';
+import { greenWithReceipt } from './suite-cover.ts';
 import { verificationStepLabel, verificationStepResults, verificationInterrupted, type VerificationStep } from '../verification-plan.ts';
 import { MergeError, MergeLintReadError } from '../merge.ts';
 import type { LogFn } from '../log.ts';
@@ -285,7 +285,7 @@ export class MergeBatches {
       return;
     }
     let candidate: BatchCandidate | undefined = batch.candidate;
-    if (job.outcome.code !== 0) {
+    if (!greenWithReceipt(job, this.clock.now().getTime())) {
       if (batch.members.length === 1) {
         this.boundary.drop(batch.members[0]!, `merge-bisected: ${failureText(batchFailures(evidence.log, evidence.job))}`);
         await this.#cleanup(batch); this.#save(null); return;
@@ -525,7 +525,7 @@ export class MergeBatches {
       if (!repeat) { repeat = { key: 'repeat', candidate: batch.candidate! }; diagnosis.jobs.push(repeat); this.#save(batch); }
       if (!await this.#fileJob(batch, repeat)) return;
       const testFailures = diagnosis.failures.filter(identity => !diagnosis.steps?.some(step => verificationStepLabel(step) === identity));
-      if (repeat.result === 'green' && (!testFailures.length || recordBatchFlakes(this.store, batch.id, testFailures, await this.suites.receipt(batch.run!), await this.suites.receipt(repeat.run!), notice => this.boundary.notice(notice)))) {
+      if (repeat.result === 'green' && !testFailures.length) {
         diagnosis.selected = diagnosis.jobs.indexOf(repeat);
         if (!diagnosis.reported) {
           this.boundary.report(batch, `batch ${batch.id}: flaky failing files; selected tree ${repeat.candidate.tree}; full-plan confirmation required\n${this.#fileReport(diagnosis)}`);

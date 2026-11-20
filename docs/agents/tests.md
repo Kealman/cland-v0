@@ -701,8 +701,10 @@ red batch of one refuses its member with `merge-bisected`, naming the failed
 tests or T0/Web. Larger red batches rerun only the failing files or failed T0/Web step on each leave-one-out
 tree, pinned to the original integration base. A unique green removal refuses
 that member and selects the green tree for the others. Otherwise those files
-rerun once on the original batch tree: completed passing receipts for every
-original failure select that tree, while red or incomplete proof refuses every
+rerun once on the original batch tree for diagnosis. A passing test retry alone
+does not excuse an unfiled original failure; the filed-identity five-round rule
+below governs that outcome. T0/Web step-only passing diagnostics can still
+select a tree for full-plan confirmation. Red or incomplete proof refuses every
 member with `merge-bisect-unresolved` and sends the Coordinator one evidence
 notice. File jobs retain their run, tree, log, seconds and provider cost, use the
 same queue, and supply no full-suite cache proof.
@@ -743,12 +745,24 @@ valid allowance under the budget rules before retrying. The supervising Lead or
 Coordinator submits the repaired item through the gate again. The merge skill
 has the command and refusal workflow.
 
-Executed passing identities on a green batch-tree rerun record a flake
-observation with both failure and green receipts. Two different batches produce
-one quarantine question to the Coordinator carrying those receipts. The
-Coordinator still needs five isolated greens, an owner item, a non-TODO reason
-and an expiry within seven days before editing `quarantine.json`; the hub never
-edits it. The merge queue remains opt-in for other projects; this repository enables it together with the T0–T2 task protocol.
+An integrated cover or merge batch can finish green with a flaky-identity receipt
+only when every assertion failure is a hub/nvim identity filed in an open `flaky` item and passes
+five hub-admitted failing-file reruns at the original head and tree. Admission
+pins the original recorded prepare/check and failed runtime commands/steps,
+including T4. Each green requires matching complete producer tier receipts;
+missing legacy metadata or another command, step, run or tree grants no excuse.
+The item's body references the complete `file::case` in an inline code span or on its own
+trimmed line; prefix and substring matches grant no excuse. A failure in any
+round, missing pass, skip, cancellation, changed tree or unfiled failure leaves
+the original run red. T0 failures and incomplete execution cannot be excused.
+Reruns reuse batch diagnosis admission on the run's executor and retain normal
+capacity and spend caps. Native exits and timings stay recorded; the cover adds
+an optional `receipt` with original run/tree, five run ids and a version-1
+quarantine manifest. Stage admission accepts that receipt only for its own tree
+and still requires the existing platform, full-selection and QA proofs.
+Web identities stay red even after five passing reruns, with the named reason
+`Web identity outside quarantine scope`. No manifest entry is attempted: the
+Web runner does not implement quarantine.
 
 ### Named T3 scenarios
 
@@ -1698,7 +1712,7 @@ the live machine's suite locks from a test or probe.
 
 An ownerless manual lock stays held. The wait message names the lock's `rmdir` command; use it only after verifying that no suite using that lock is running. `CLAND_TEST_SKIP_LOCK=1` is for isolated CI jobs.
 
-`hub/test/quarantine.json` quarantines an exact top-level `file::test` identity
+`hub/test/quarantine.json` quarantines an exact top-level hub/nvim `file::test` identity
 (including its subtests), without skipping it. Task, integrated, close and release
 runs execute it normally. The result's **Quarantine** section lists passes,
 failures and skips with the owner and expiry. Raw Node counts and diagnostics
@@ -1707,17 +1721,24 @@ or become a shared-defect candidate. Other failures, process crashes, cancellati
 duration budgets and incomplete reporter receipts still fail normally. New-test
 load repetitions also run, with quarantined failures reported separately.
 
-Only the Coordinator adds an entry, after two known-flake failure receipts from
-different runs and five isolated green repetitions. Record those run/artifact
-references and the isolated proof in the owner ticket. The manifest starts empty:
+The hub writes automatic entries into `quarantine.json` beside the original
+run's durable evidence, also retaining them in its receipt and log. It never
+edits the candidate or tracked `hub/test/quarantine.json`: that would change the
+tested tree. The Coordinator lands tracked entries from the receipt as an
+ordinary dev commit. Both locations use `lintQuarantineManifest`, including
+expiry refusal. Retained batch/stage admission reuses that lint;
+stage projections invalidate at expiry, including cached projections and reopen.
+Old receipt metadata without the pinned producer command/step binding cannot
+authorize a green. Each entry names its open flaky owner item, a reason and UTC
+dates at most seven days apart. Example:
 
 ```json
 {
   "version": 1,
   "tests": {
     "hub/test/example.test.ts::known flake": {
-      "owner": "E-123",
-      "reason": "Two independent flaky runs; isolated 5/5 green (evidence in T-123).",
+      "owner": "T-123",
+      "reason": "Filed flaky identity; hub rerun 5/5 at the same tree; original run recorded in T-123.",
       "added": "2026-10-16",
       "expires": "2026-10-23"
     }
@@ -2647,8 +2668,9 @@ admission reads at most five existing full records, never historical logs.
 The runner retains the original failure and the single rerun receipt with head,
 platform and repetition index. Its log names green phases, the phase green apart
 from the repetition, and unexecuted phases. It states: "eligible on executed prefix
-only; later phases unexecuted, cover result unchanged". The original cover remains
-red even if the rerun passes; the identity remains a flaky-rerun filing finding.
+only; later phases unexecuted, cover result unchanged". That advisory rerun alone
+leaves the original cover red; the identity remains a flaky-rerun filing finding.
+The separate filed-identity five-round rule requires complete base execution.
 No rerun becomes an original load proof or recent green. This rollout's known
 limitation is that the existing runner stops at the failing phase. A future enforce
 item must continue remaining phases after a successful rerun or rerun the cover

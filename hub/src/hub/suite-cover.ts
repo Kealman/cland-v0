@@ -2,6 +2,21 @@ import type { CoverRecord, CoverStatus } from '../protocol.ts';
 import type { SuiteJob } from './suites.ts';
 import { failingTests } from './shared-defects.ts';
 import { isFileStartupStall } from '../file-startup-watchdog.ts';
+import { lintQuarantineManifest } from '../suite-quarantine.ts';
+import { flakyRerunCommands } from './batch-flakes.ts';
+
+/** Legacy greens retain their wire shape; excused greens require their own tree. */
+export function greenWithReceipt(job: Pick<SuiteJob, 'id' | 'head' | 'tree' | 'outcome' | 'cover' | 'flaky' | 'commands' | 'tierReceipts' | 'shards'>, now: number): boolean {
+  const receipt = job.cover?.receipt;
+  if (receipt) {
+    try { lintQuarantineManifest(receipt.manifest, now); } catch { return false; }
+  }
+  return job.outcome?.code === 0 || !!(job.outcome?.code === 1 && job.cover?.status === 'green'
+    && receipt?.run === job.id && receipt.tree === job.tree && receipt.runs.length === 5
+    && new Set(receipt.runs).size === 5 && !receipt.runs.includes(job.id) && Object.keys(receipt.manifest.tests).length
+    && job.flaky?.commands && JSON.stringify(flakyRerunCommands(job)) === JSON.stringify(job.flaky.commands)
+    && JSON.stringify(job.flaky.runs) === JSON.stringify(receipt.runs));
+}
 
 /** Existing non-pass outcomes can name incomplete collection separately from execution. */
 export const incompleteCollection = (job: Pick<SuiteJob, 'outcome'>): boolean => job.outcome?.code !== 0 && job.outcome?.cause.startsWith('incomplete:') === true;

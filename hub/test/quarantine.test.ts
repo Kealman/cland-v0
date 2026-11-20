@@ -1,11 +1,31 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { lintQuarantineManifest, recordQuarantineResults, type QuarantineHistory, type QuarantineResult } from '../src/suite-quarantine.ts';
+import { flakyIdentityOwners, flakyQuarantineManifest, lintQuarantineManifest, recordQuarantineResults, type QuarantineHistory, type QuarantineResult } from '../src/suite-quarantine.ts';
 import { Readable } from 'node:stream';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import Reporter from './quarantine-reporter.ts';
+
+test('only exact identities filed in open flaky items can receive dated quarantine evidence', () => {
+  const identity = 'hub/test/example.test.ts::known flake';
+  const items = [
+    { id: 'T-1', state: 'open', labels: ['flaky'], body: `Failure: \`${identity} extra\`` },
+    { id: 'T-2', state: 'closed', labels: ['flaky'], body: `\`${identity}\`` },
+    { id: 'T-3', state: 'open', labels: [], body: `\`${identity}\`` },
+  ];
+  assert.deepEqual(flakyIdentityOwners([identity], items), {});
+  items.push({ id: 'T-4', state: 'open', labels: ['flaky'], body: `Failure: \`${identity}\`` });
+  const owners = flakyIdentityOwners([identity], items);
+  assert.deepEqual(owners, { [identity]: 'T-4' });
+  const now = Date.parse('2026-11-20T12:00:00Z');
+  const manifest = flakyQuarantineManifest(owners, 'failed-run', now);
+  assert.equal(manifest.tests[identity]!.owner, 'T-4');
+  assert.equal(manifest.tests[identity]!.added, '2026-11-20');
+  assert.equal(manifest.tests[identity]!.expires, '2026-11-27');
+  assert.doesNotThrow(() => lintQuarantineManifest(manifest, now));
+  assert.throws(() => lintQuarantineManifest(manifest, Date.parse('2026-11-27')), /expired quarantine/);
+});
 
 test('receipt publication preserves the previous file when staging fails and publishes complete JSON on flush', async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-receipt-'));

@@ -60,7 +60,7 @@ export async function describe(s: HubStatus): Promise<string> {
   if (s.coordinator !== undefined) lines.push(s.coordinator ? `coordinator: ${s.coordinator}` : 'no coordinator');
   if (s.covers) {
     lines.push(`covers: ${s.covers.length}`);
-    for (const run of s.covers) lines.push(`  ${run.id} · ${run.cover.status} · ${run.cover.cause ?? 'none'} · head ${run.head}${run.cover.classification ? ` · derived ${run.cover.derivedCause}; ${run.cover.classification.note}` : ''}`);
+    for (const run of s.covers) lines.push(`  ${run.id} · ${run.cover.receipt ? 'green-with-receipt (5/5)' : run.cover.status} · ${run.cover.cause ?? 'none'} · head ${run.head}${run.cover.classification ? ` · derived ${run.cover.derivedCause}; ${run.cover.classification.note}` : ''}`);
   }
   if (s.requests) {
     const last = s.requests.lastSlow;

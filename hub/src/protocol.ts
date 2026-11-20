@@ -913,6 +913,7 @@ export type RoleList = {
 
 export type CoverCause = 'test-failure' | 'budget' | 'load-flake' | 'cancel-head' | 'cancel-requester' | 'timeout';
 export type CoverRecord = { status: 'green' | 'red' | 'cancelled'; cause: CoverCause | null; tests: string[];
+  receipt?: { run: string; tree: string; runs: string[]; manifest: import('./suite-quarantine.ts').QuarantineManifest };
   derivedCause?: CoverCause | null; classification?: { note: string; by: string; at: string } };
 export type CoverStatus = { id: string; head: string; branch: string; completedAt: string | null; cover: CoverRecord };
 

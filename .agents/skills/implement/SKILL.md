@@ -104,6 +104,15 @@ full matching coverage on the effective executor/OS, including configured defaul
 a local macOS stage receipt cannot satisfy a droplet release request. See
 `docs/agents/tests.md` for receipt identity and provenance.
 
+<!-- cland-workflow-change: T-1891 document filed flaky rerun receipt ownership -->
+The hub may excuse a filed flaky hub/nvim cover or batch identity only after five
+same-tree passing reruns through normal executor admission. Keep the original
+native failure in reports and name the green-with-receipt evidence. The hub
+writes the quarantine manifest into durable run evidence; the Coordinator lands
+tracked entries separately. Filed Web failures remain red after five passing
+reruns (`Web identity outside quarantine scope`), without a manifest entry.
+See [test policy](../../../docs/agents/tests.md).
+
 ## Verifier request procedure
 
 - Inspect request outcomes: `resolvedTo` names the verifier; `queued` waiting for a free verifier means the hub will deliver automatically and notify you. Wait instead of resending. If no verifier is live, report the staffing blocker to your lead; a refusal notice names the retry rule.

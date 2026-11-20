@@ -21,20 +21,25 @@ import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { syntheticProviderEnvironment } from './synthetic-provider.ts';
+import { ownedDatabases } from './owned-tracker.ts';
 
-export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions & { machineReceiptsOnly?: boolean; onRoot?: (root: string) => void } = {}, source = '', accounting = false) {
+export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions & { machineReceiptsOnly?: boolean; onRoot?: (root: string) => void; deferRootRemoval?: boolean; openDatabase?: ConstructorParameters<typeof Store>[1] } = {}, source = '', accounting = false) {
   // Register partial acquisition cleanup before the first await; whole-case callers
   // collect this hook and join setup/body continuations before invoking it.
   const partial: Array<() => void | Promise<void>> = [];
+  const confirmed = new Set<() => void | Promise<void>>();
+  const closeSteps = async (steps: Array<() => void | Promise<void>>) => {
+    for (const close of steps) if (!confirmed.has(close)) { await close(); confirmed.add(close); }
+  };
   let completeClose: (() => Promise<void>) | undefined;
   t.after(async () => {
     if (completeClose) return completeClose();
     // A failed resource join retains every earlier owner, including the root.
-    for (const close of partial.toReversed()) await close();
+    await closeSteps(partial.toReversed());
   });
   const root = await mkdtemp(join(tmpdir(), 'suite-unit-'));
   options.onRoot?.(root);
-  partial.push(() => rm(root, { recursive: true, force: true }));
+  if (!options.deferRootRemoval) partial.push(() => rm(root, { recursive: true, force: true }));
   await verificationFixture(root);
   const clock = new FakeClock();
   const token = 'cland-test-suite-unit-token';
@@ -101,7 +106,10 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     });
   }
   const database = join(root, 'hub.db');
-  let store = new Store(database);
+  // Capture the native connection before Store schema construction can throw.
+  let closeDatabases!: () => Promise<void>;
+  const open = ownedDatabases({ requireClose: close => { closeDatabases = close; partial.push(close); } });
+  let store = new Store(database, path => open(path, options.openDatabase));
   partial.push(() => store.close());
   const watchStore = () => {
     const save = store.setMeta.bind(store);
@@ -138,19 +146,22 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   const releases = new Set<() => void>();
   const submissions = new Set<Promise<unknown>>();
   let closing: Promise<void> | undefined;
-  const close = () => closing ??= (async () => {
+  const finalSteps = [async () => {
     // Gates can outlive a failed pre-release assertion. Release them before
     // draining admission; closing the store/root must follow that completion.
     for (const release of releases) release();
     releases.clear();
     await Promise.allSettled(submissions);
     await suites.settled();
-    await suites.close();
-    store.close();
+  }, () => suites.close(), () => store.close(), closeDatabases, async () => {
     if (process.env.CLAND_TEST_REMOTE_CENSUS) t.diagnostic(`remote census: ${api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length} droplets; 0 initial daemon starts`);
     await api.close();
-    await rm(root, { recursive: true, force: true });
-  })();
+  }, async () => { if (!options.deferRootRemoval) await rm(root, { recursive: true, force: true }); }];
+  const close = () => {
+    const attempt = closing ??= closeSteps(finalSteps);
+    void attempt.catch(() => { if (closing === attempt) closing = undefined; });
+    return attempt;
+  };
   completeClose = close;
   async function when<T>(read: () => T | undefined): Promise<T> {
     for (;;) { const notification = changed.promise; const value = read(); if (value !== undefined) return value; await notification; }
@@ -184,7 +195,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     return status(id);
   }
   async function reopen(jobs?: SuiteJob[]) {
-    await suites.close(); store.close(); store = new Store(database); watchStore();
+    await suites.close(); store.close(); store = new Store(database, path => open(path, options.openDatabase)); watchStore();
     if (jobs) store.transaction(() => {
       // Explicit seeds replace the entire history; an ordinary reopen retains it.
       for (const text of store.suiteJobHistory()) {
