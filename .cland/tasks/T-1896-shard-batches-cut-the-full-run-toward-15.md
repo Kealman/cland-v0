@@ -3,7 +3,7 @@ id: T-1896
 kind: task
 title: Shard batches; cut the full run toward 15 min
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - retro-improvement
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T07:29:46.101Z
-updated: 2026-11-16T07:29:46.101Z
+updated: 2026-11-20T17:33:54.702Z
 ---
 
 ## Summary

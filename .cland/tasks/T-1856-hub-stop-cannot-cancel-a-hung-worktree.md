@@ -2,8 +2,8 @@
 id: T-1856
 kind: task
 title: Hub stop cannot cancel a hung worktree prune git; it can outlive the hub
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels: []
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-1664
 branch: t/T-1856-hub-stop-cannot-cancel-a-hung-worktree
 created: 2026-11-14T10:12:33.598Z
-updated: 2026-11-20T14:41:49.356Z
+updated: 2026-11-20T18:24:50.577Z
+closed: 2026-11-20T18:24:50.577Z
 ---
 
 ## Summary
@@ -546,3 +547,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear: a8512ee6/A-22167 passed at reviewed source17 1ca17ce0599de3a5b41367e1ad703d4dec2c34f7. A-22168 audit, with A-22169 clarifying cached:null means no inferred cache status. Independently counted 8432 unique paired producer identities: 7241 ordinary test passes, 741 passing file envelopes, plus225 passing load test/file pairs; no failure/cancel/skip/unknown. All six native prune identities pass once, crash3.710174651s; five native traces complete/resulttrue at277.522–323.212ms. Stop/deadline confirmed/unconfirmed controls and nested-probe/launch-failure retry-owner controls each pass base+5. Verified C1 and C2. Actual scope all234T1/441T2/55Web +11changedHubT3; remaining262T3/18T4 unexecuted here. Prior55350ca8 stays budget-red with accepted unchanged-production functional/load evidence; no new native repetitions inferred. M27 fresh-green condition met. Report-only advisories remain advisory; no additional allowance adopted. T-2031 margin work, integrated batchT3 and Coordinator's paired-cover enqueue hold remain. Reviewer ran no project checks or experiments.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-20T18:24:50.577Z
+
+Merged cf15fe685323f69ab13821a284b401e4b71a6a18 onto dev.
