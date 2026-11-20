@@ -3,7 +3,7 @@ id: T-1856
 kind: task
 title: Hub stop cannot cancel a hung worktree prune git; it can outlive the hub
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1664
 branch: t/T-1856-hub-stop-cannot-cancel-a-hung-worktree
 created: 2026-11-14T10:12:33.598Z
-updated: 2026-11-20T09:14:37.424Z
+updated: 2026-11-20T10:31:19.563Z
 ---
 
 ## Summary
@@ -26,8 +26,8 @@ At a hard bound after the soft log, hub stop terminates only the prune's own nat
 
 ## Acceptance criteria
 
-- [ ] C1. A hung owned prune git is terminated at the hard bound through its native identity, its close is joined, and no territory write happens after cancellation (test).
-  - failed: rev-35 [reviewer] · 2026-11-20T09:14:37.424Z · note Carried M19 only: Linux native stop completion remains unresolved; source13 resolves M23/M24 fixture corrections but contains no stop fix or later full green.
+- [x] C1. A hung owned prune git is terminated at the hard bound through its native identity, its close is joined, and no territory write happens after cancellation (test).
+  - done: impl-1856 · 2026-11-20T10:29:48.462Z
 - [x] C2. A process the prune doesn't own is never signalled, and an unconfirmed native stop reports incompleteness with a usable retry owner (test).
   - done: impl-1856 · 2026-11-20T07:16:36.488Z
 
@@ -437,3 +437,35 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Intermediate source13 reviewed at835fe79156e36e3e5428e8fd5d1a5e34acad85a1/treef792f936. A-22132: M23/M24 resolved, no new source findings/lows; overall not clear solely for carried M19. Complete uncertainty setup/lock read and push event/plant/repair actions have named bounds. Shared withCleanupAsync preserves the selected Error/code/output, with nested repair/disposal ordering; two exact-policy controls retain real root/seam fences after rejected cleanup and repair/join the same resource. Original native assertions retained. A-22131's extracted-finally identity red and final2/2 controls,69components,1953cases over234T1files,merge7/push14 passes audited as scoped local Mac evidence; full typecheck/lint exit0 reported,0lintrefusals/131report-only. No production/trace/authority/deadline/allowance change. Primary069149d7/61ab1907 permits these edits after source12 diagnostic0ffd5580 T0/bundling; afc1f9c1 explicitly makes that older-head occasion diagnostic, not a merge gate. C1 stays failed/unverified for M19; C2 done/unverified. No new criterion marks; hold released, no further M23/M24 correction or duplicate run requested. Await Linux cause before stop correction and later exact-head review/full green. No Reviewer edits/runtime/checks/probes.
 
 Criteria: C1 failed (Carried M19 only: Linux native stop completion remains unresolved; source13 resolves M23/M24 fixture corrections but contains no stop fix or later full green.).
+
+### impl-1856 · 2026-11-20T10:15:07.244Z
+
+Source14 scoped-inspection census (Coordinator7b681a2a): only the two PruneProcesses.native.end calls opt into additive ProcessEndOptions.inspection='owned-tree'. Shared systemProcesses retains its existing signature and row shape; default endProcess still uses full views. Production direct/indirect consumers searched: executor/local, host/local, orphans, fixture-processes, suite-command, git-command-owner, termination-owner, remote/poller-lease; no persisted/wire contract or CLI byte changes. Test consumers in all tiers searched: system-process-probe/system-processes, host-boundary(.ts/.test), fake-claude-cleanup, merge-recovery, suite-timeouts, claude-code-remote/sessions-lifecycle, fixture-orphans(-lifecycle), session-resume-lifecycle, measure-memory/memory-producer, suite-cancel/suite-command, scenarios/hook-bridge, orphan-servers-perf, session-async-processes, host-revoke-native. QA E-1531/stage3 and shipped docs host-agent, modules, adapters-and-sessions, coordinator-subscription, declining-accepted-verifier and system-processes/measure-memory/suite-cancel guidance searched. These callers remain unaffected by opt-in; scoped tests and matching prune/system-process guidance migrate. Numeric Linux extraction is A-22137; original diagnostic green A-22135 is ancestor-only, not source14 proof. Work-count regression red on source13 production:5,471 ps rows. Local scoped stop green:84–85 rows, no full scans/omissions; all61 system-process controls pass. Native1000ms and merge1500ms bounds, original birth/close/unknown-owner fences and trace remain.
+
+### rev-35 · 2026-11-20T10:25:42.174Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1856-source-14
+commit: 45d2e73218ca90bcf26f7686c864a7340bd33dca
+scope: full
+findings: [{"severity":"medium","text":"M25: the assertion, guide at docs/agents/tests/hub-test-prune-process-lifecycle.test.ts.md:29, broad test name and A-22138 describe inspection as independent of machine population, but the cap counts only cland's returned/parsed ps rows; pgrep -P still enumerates natively. Coordinator08c85d55 accepts that algorithm only with narrowed test/docs/artifact wording and explicit pgrep disclosure. Apply that wording correction before source clearance; no production algorithm/deadline change is required.","file":"hub/test/prune-process-lifecycle.test.ts","line":136}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source14 reviewed at45d2e73218ca90bcf26f7686c864a7340bd33dca/tree65a1bd1e. A-22139 records one medium M25/no lows: parsed-ps cap excludes native pgrep enumeration, so machine-population independence/broad whole-work wording must narrow. Implementer1cdf8fca confirms no bound receipt; primary Coordinator08c85d55 explicitly accepts pgrep with wording-only correction and final Linux evidence, leaving task-children walk to T-2031. No production algorithm/deadline change requested. M19 has a responsive source correction: only two prune calls opt in, separate denial-only caller ancestry, selected ownership view, before/after+per-signal birth checks, reservations/checkpoint/freeze/late forks/retry/native close retained; default callers unchanged. M23/M24 intact. A-22138 audited: real work-count red5471rows;61system-process/1953T1 passes; production Mac gate67paired IDs,base6+load30/30files,each6identities1+5pass. Five base native-end samples350–418ms/101–102parsed rows,0full ps snapshots/omissions. Repetition native-end traces missing; whole-case seconds present and not cancellation latency. Fulltypecheck/lint0 reported,0refusals/131report-only. No current Linux/fullT2/Web/T4 proof; ancestor diagnostic/prior reds remain separate. C1 failed for M25, C2 done/unverified, no verified marks. Hold released for one narrow wording correction/fresh source; no new timing/native run requested or Reviewer runtime/edit.
+
+Criteria: C1 failed (M25: narrow the test/docs/artifact work-count claim and disclose remaining native pgrep enumeration per Coordinator08c85d55; corrected-head Linux completion evidence remains pending.).
+
+### rev-35 · 2026-11-20T10:31:19.563Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1856-source-15
+commit: ee302b2de1891b572feba1e05a71c9fc9756860e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source15 clear at ee302b2de1891b572feba1e05a71c9fc9756860e/tree20124ee5; no findings/lows. A-22141 records Standards/Spec. M25 resolved: test names/messages/guides/artifact now identify cland-parsed rows/birth reads, disclose native pgrep enumeration and remove population independence, matching primary08c85d55. A-22140 corrects A-22138 wording and separates present whole-case repetition seconds from missing native.end timings/T-2027. Production subtree identical to source14 at887239535b2ead718a93a3a703d7df18ec33502c; predicates, authority/birth/freeze/checkpoint/retry/close/trace and1000/1500ms budgets unchanged; M23/M24 intact. Current local full typecheck/lint0 reported by retained footers,0refusals/131report-only. Source14 native base6+six5/5,61process and1953T1 passes remain ancestor local evidence; no source15 runtime proof inferred. Earlier Linux reds and source12 diagnostic green remain separate. C1/C2 done/unverified; no criterion verified. Clear source for Coordinator's planned exact-head final full Linux suite; final settlement requires producer/generated-case/per-step evidence at this head. Hold released; no ready/merge claim, Reviewer runtime/edit/check/submission.
