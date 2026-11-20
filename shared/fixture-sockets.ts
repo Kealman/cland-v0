@@ -5,6 +5,7 @@ import { opendir } from 'node:fs/promises';
 
 import { fakeStorageDirectory as socketDirectory, ignoreFixtureStorage } from './fake-layout.ts';
 import { FIXTURE_HOST_SOCKET_ROOT, FIXTURE_OWNED_ROOT } from './fixture-roots.ts';
+import { invalidateAliasClosure, recordAliasClosure } from './fixture-alias-closure.ts';
 const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const optedInRoots = new Map<string, {device:number;inode:number}>();
 
@@ -77,6 +78,7 @@ export function fixtureSocketPath(root: string, endpoint: string): string {
   try { mkdirSync(directory, { mode: 0o700 }); }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
   privateDirectory(directory);
+  invalidateAliasClosure(directory);
   ignoreFixtureStorage(directory);
   const record = join(directory, 'alias');
   let alias: string;
@@ -132,6 +134,7 @@ export async function removeFixtureSockets(root: string): Promise<void> {
       validAlias(alias);
       try {
         if (readlinkSync(alias) !== directory) throw new Error('fixture socket alias ownership changed');
+        recordAliasClosure(alias, directory);
         unlinkSync(alias);
       } catch (error) { if (!missing(error)) throw error; }
       unlinkSync(record);
