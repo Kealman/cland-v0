@@ -1,6 +1,6 @@
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { sessionShell, sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
-import { verificationFixture, type FixtureStack } from './verification-fixture.ts';
+import { verificationFixture, type FixtureStack as VerificationStack } from './verification-fixture.ts';
 import type { SuiteCandidate } from '../src/hub/suite-candidate.ts';
 import type { DurationBudgetContext } from '../src/suite-duration-budget.ts';
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
@@ -14,7 +14,7 @@ import { parseArgs, promisify } from 'node:util';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { availableParallelism, loadavg } from 'node:os';
-import { cland, eventually, inProcessSpoke, spawnSpoke, projectHub, startDaemon, tempProject, testWaitMs } from './harness.ts';
+import { cland, eventually, inProcessSpoke, spawnSpoke, projectHub, startDaemon, tempProject, testWaitMs, type ProjectHubOptions } from './harness.ts';
 import { beforeDirectories, cleanupProcesses, ownProcess, onCleanup } from './process-cleanup.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { prepareKey, keyHash } from '../src/executor/droplet/prepare.ts';
@@ -24,6 +24,7 @@ import { scratchGitEnvironment } from './fixture-environment.ts';
 import { fixtureGuard } from './fixture-guard.ts';
 
 const exec = promisify(execFile);
+type FixtureStack = VerificationStack & Pick<ProjectHubOptions, 'openDatabase'>;
 const token = 'cland-test-remote-suite-token';
 
 /** Failure budgets for real SSH/worker receipts, scaled by runnable work per CPU.
@@ -150,6 +151,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
   const gitEnv = scratchGitConfig ? scratchGitEnvironment(root, sealed, scratchGitConfig) : sealed;
   const env = syntheticProviderEnvironment(gitEnv, scripted ? scriptedProvider : syntheticProvider, dependencies.api) as Record<string, string> & { PATH: string };
   const probes = {
+    ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}),
     syntheticProvider: scriptedProvider,
     // Scripted hubs cannot inspect historical Git objects without explicit repository facts.
     devT3Repository: options.devT3Repository ?? { contains: async () => { assert.fail('no scripted historical file fact'); }, identity: async () => null, checkout: async () => { assert.fail('no scripted historical checkout fact'); }, remove: async () => {} },
