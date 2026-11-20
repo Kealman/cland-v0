@@ -269,6 +269,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #bridges = new Map<string, { send: (frame: InjectFrame) => boolean; generation: string | null }>();
   readonly #pending = new Map<string, Pending>();
   readonly #prompts = new Map<string, Map<string, Prompt>>();
+  readonly #modInputs = new Map<string, Set<string>>();
   readonly #approvalWaits = new Map<string, { key: string; agent: string | undefined; prompt: string | undefined; tool: string | undefined; command: string | undefined }>();
   /** Running totals and the last usage the mod reported, by session id. */
   readonly #usage = new Map<string, SessionUsage>();
@@ -827,7 +828,19 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const watched = p && this.#watched.get(p.sessionId);
     if (watched && typeof payload.session_id === 'string' && payload.session_id) watched.harnessSessionId = payload.session_id;
     const meaning = interpret(event, payload);
-    if (p && stateCurrent) {
+    if (p && event === 'mod-turn-start' && meaning.confirms?.length) {
+      const inputs = this.#modInputs.get(p.sessionId) ?? new Set<string>();
+      this.#modInputs.set(p.sessionId, inputs);
+      for (const id of meaning.confirms) inputs.add(id);
+      while (inputs.size > PROMPT_HISTORY_LIMIT) inputs.delete(inputs.values().next().value!);
+    }
+    // An async UserPromptSubmit child may not even start until after the mod
+    // completed this input. Its process-start timestamp cannot order that event.
+    // Keep its confirmations, but let the already-observed mod own the state.
+    const duplicateNativeStart = p && event === 'turn-start' && meaning.confirms?.length
+      && meaning.confirms.every(id => this.#modInputs.get(p.sessionId)?.has(id));
+    if (duplicateNativeStart) delete meaning.state;
+    if (p && stateCurrent && !duplicateNativeStart) {
       const pending = this.#approvalWaits.get(p.sessionId);
       const agent = typeof payload.agent_id === 'string' ? payload.agent_id : undefined;
       const prompt = typeof payload.prompt_id === 'string' ? payload.prompt_id : undefined;
@@ -927,6 +940,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#clearMissing(sessionId);
     for (const prompt of this.#prompts.get(sessionId)?.values() ?? []) prompt.resolve?.([]);
     this.#prompts.delete(sessionId);
+    this.#modInputs.delete(sessionId);
     this.#approvalWaits.delete(sessionId);
     const watched = this.#watched.get(sessionId);
     if (watched) this.#directoryState.watched.delete(watched);
@@ -1352,6 +1366,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#bridges.clear();
     for (const prompts of this.#prompts.values()) for (const prompt of prompts.values()) prompt.resolve?.([]);
     this.#prompts.clear();
+    this.#modInputs.clear();
     this.#approvalWaits.clear();
     if (this.#timer) this.#clock.clearInterval(this.#timer);
     this.#timer = null;
@@ -1382,6 +1397,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#bridges.clear();
     for (const prompts of this.#prompts.values()) for (const prompt of prompts.values()) prompt.resolve?.([]);
     this.#prompts.clear();
+    this.#modInputs.clear();
     this.#approvalWaits.clear();
     if (this.#timer) this.#clock.clearInterval(this.#timer);
     this.#timer = null;

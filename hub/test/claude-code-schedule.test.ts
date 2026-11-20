@@ -527,6 +527,46 @@ test('hub-launched Claude disables auto-update in both the filtered CLI environm
   assert.equal(settings.env.DISABLE_AUTOUPDATER, '1', 'the supervised background harness does not inherit CLI env');
 });
 
+test('Claude completed mod turn stays idle when its held native start hook arrives late', async t => {
+  const scope = cleanupProof(t);
+  await scope.run(async step => {
+  const work = <T>(name: string, run: () => Promise<T>) => scope.wait(name, () => step(run));
+  const f = await work('held-hook fixture setup', () => component(scope.fixtures));
+  scope.adoptRoot(f.root);
+  const { hub, ui, owner } = await work('held-hook hub setup', () => f.open(true));
+  const launched = await work('held-hook launch setup', () => ui.request({ type: 'session.launch', harness: 'claude-code', name: 'coord', role: 'coordinator' }));
+  assert.equal(launched.ok, true, launched.error);
+  const p = (launched.value as { process: HarnessProcess }).process;
+  const args = f.native.calls.find(call => call.args[0] === '--bg')!.args;
+  const settings = JSON.parse(await work('held-hook settings setup', () => readFile(args[args.indexOf('--settings') + 1]!, 'utf8')));
+  await work('held-hook spoke setup', () => owner!.spoke({ cwd: f.root, discover: true, name: p.name, assignRole: false, sessionId: p.sessionId, launchToken: settings.env.CLAND_LAUNCH_TOKEN, launchId: settings.env.CLAND_LAUNCH_ID }));
+  const bridge = await work('held-hook bridge setup', () => owner!.client(hub));
+  const launch = (await work('held-hook launch identity', () => f.identity(p))).launchId;
+  assert.equal((await work('held-hook bridge admission', () => bridge.request({ type: 'session.bridge', session: p.name, launch }))).ok, true);
+  const clause = await work('held-hook clause receipt', () => owner!.frame(bridge, frame => frame.type === 'inject')) as InjectFrame;
+  const signal = async (event: string, payload: object) => {
+    const result = await work('held-hook '+event+' application', () => ui.request({ type: 'session.signal', session: p.name, launch, event, at: f.clock.now().getTime(), payload }));
+    assert.equal(result.ok, true, result.error);
+  };
+  // Hold the asynchronous UserPromptSubmit child before it starts. Its native
+  // timeOrigin will be later than the in-process mod's completion timestamp.
+  const held = () => signal('turn-start', { ids: [clause.message] });
+  await signal('mod-turn-start', { text: clause.text });
+  await work('held-hook completion clock', () => f.clock.advance(1));
+  await signal('mod-turn-complete', {});
+  await work('held-hook release clock', () => f.clock.advance(1));
+  await held();
+  const sent = await work('held-hook next input', () => ui.request({ type: 'topic.send', topic: 'general', to: [p.name], text: 'after the completed held-hook turn' }));
+  assert.equal(sent.ok, true, sent.error);
+  const id = (sent.value as { message: Message }).message.id;
+  const input = await work('held-hook next exact input receipt', () => owner!.frame(bridge, frame => frame.type === 'inject' && frame.message === id));
+  assert.equal(input.message, id, 'the next durable input reaches the existing bridge');
+  await signal('turn-start', { ids: [id] });
+  const listed = await work('native-only input state receipt', () => ui.request({ type: 'session.list' }));
+  assert.equal((listed.value as {processes:Array<{sessionId:string;state:string}>}).processes.find(row=>row.sessionId===p.sessionId)!.state,'busy','a native-only input still establishes busy');
+  });
+});
+
 test('Claude re-exec bridge acknowledgement without a model turn remains unconfirmed', async t => {
   const f = await component(t);
   const { hub, ui } = await f.open();

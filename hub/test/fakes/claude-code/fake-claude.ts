@@ -53,6 +53,7 @@
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, watch, writeFileSync } from 'node:fs';
+import { claudeHookReceiptPath, type ClaudeHookClose } from '../../claude-hook-receipt.ts';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -275,32 +276,50 @@ async function runSession(id: string): Promise<number> {
   const drainPosts = async () => { while (posts.size) await Promise.all([...posts]); };
   const runHooks = async (event: string, payload: Record<string, unknown>) => {
     if (stopping && event !== 'SessionEnd') return;
+    const observedPrompt = promptId;
     const background: Array<Promise<void>> = [];
     for (const entry of hooksOf(event)) {
       for (const h of entry.hooks) {
         if (stopping && event !== 'SessionEnd') return;
         if (h.type !== 'command') continue;
-        const run = new Promise<void>((resolve) => {
+        const run = (async () => {
+          const hold = env.FAKE_CLAUDE_START_HOLD;
+          if (event === 'UserPromptSubmit' && hold && existsSync(hold)
+            && String(payload.prompt).includes(readFileSync(hold,'utf8'))) {
+            await new Promise<void>(resolve => {
+              const released = () => { if (!existsSync(hold)) { watcher.close(); resolve(); } };
+              const watcher = watch(hold, released);
+              writeFileSync(hold+'.started', JSON.stringify({promptId:observedPrompt,job:id}));
+              released();
+            });
+          }
+          await new Promise<void>((resolve) => {
           // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
           const child = spawn('sh', ['-c', h.command], { cwd: job.cwd, env, stdio: ['pipe', 'ignore', 'pipe'] });
           let err = '';
+          let spawnError: string | null = null;
           child.stderr.on('data', (c: Buffer) => (err += String(c)));
-          child.on('close', (code) => {
+          child.on('close', (code, signal) => {
             if (code !== 0 || err) log(`hook ${event} exited ${code}: ${err.trim()}`);
+            if(hold&&observedPrompt) {
+              const receipt: ClaudeHookClose = {job:id,promptId:observedPrompt,event,pid:child.pid,code,signal,spawnError};
+              writeFileSync(claudeHookReceiptPath(hold,event,observedPrompt),JSON.stringify(receipt));
+            }
             resolve();
           });
-          child.on('error', () => resolve());
+          child.on('error', error => { spawnError=error.message; });
           // A hook may exit without reading its payload. Its exit code still decides the hook outcome.
           child.stdin.on('error', () => {});
-          child.stdin.end(JSON.stringify({ session_id: job.sessionId, prompt_id: promptId, hook_event_name: event, cwd: job.cwd, ...payload }));
-        });
+          child.stdin.end(JSON.stringify({ session_id: job.sessionId, prompt_id: observedPrompt, hook_event_name: event, cwd: job.cwd, ...payload }));
+          });
+        })();
         if (awaitSignals) { posts.add(run); void run.then(() => posts.delete(run), () => posts.delete(run)); }
         if (!h.async) await run;
         else background.push(run);
       }
     }
     // when the event's background hooks have all exited (each `cland hook` waits for the hub's answer)
-    const done = Promise.all(background).then(() => log(`hooks ${event} done`));
+    const done = Promise.all(background).then(() => log(`hooks ${event} done${observedPrompt ? ' '+observedPrompt : ''}`));
     if (awaitSignals) await done;
   };
 

@@ -2,6 +2,13 @@
 
 Read the matching [subsystem reference](../../../hub/README.md) alongside these notes.
 
+Claude's mod observes envelope-bearing turns inside the harness. A native
+`UserPromptSubmit` hook for an envelope already seen by the mod keeps its
+delivery confirmation but does not update state: its asynchronous child may
+start after the mod has completed that turn. Remember at most 64 envelope IDs
+per watched session and discard them on unwatch or close. Native-only inputs
+and hooks without envelope IDs retain their state signals.
+
 Claude Code's managed Bash `PreToolUse` guard refuses computed rm/rmdir targets
 (command substitutions, named variables, xargs and unquoted globs) before native approval stalls
 the session. Read its reason, print the path if needed, and retry with every path
