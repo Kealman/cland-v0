@@ -41,16 +41,6 @@
     },
     {
       "file": "hub/src/batch-candidate-ownership.ts",
-      "call": "territoryGitAsync(cwd, ['rev-parse', 'HEAD^{tree}'], false, undefined, env)",
-      "argv": [
-        "rev-parse",
-        "HEAD^{tree}"
-      ],
-      "expected": "read-only",
-      "disposition": "Read grammar; optional index writes and external diff helpers disabled."
-    },
-    {
-      "file": "hub/src/batch-candidate-ownership.ts",
       "call": "territoryGitAsync(project, ['rev-parse', '--git-common-dir'], false, undefined, env)",
       "argv": [
         "rev-parse",
