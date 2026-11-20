@@ -19,6 +19,14 @@ This T3 file runs real headless Neovim and owned fixture hubs. Run it serially i
 the native slot, with logs outside the source tree. Sandbox cases may skip when
 the platform lacks sandbox-exec; report those skips separately.
 
+The wrapper pid-file observation uses `eventually` and `testWaitMs` from
+`hub/test/until.ts`: its named setup bound inherits `CLAND_TEST_WAIT_MS` and
+`CLAND_TEST_LOAD_FACTOR` (including the droplet default). The timeout case keeps
+its exact BLOCKED, exit 2 and process-group-gone assertions; setup headroom does
+not change the product's two-second deadline. To reproduce the old fixed-bound
+failure, hold publication of the wrapper-written pid until 10.5 seconds after
+the pid observer starts, then publish it and join the writer before teardown.
+
 The five new receipt/tamper callbacks enter receiptFixtureCase before acquisition.
 Their proxy owns normal/signal teardown and guards each late root. Tamper directory,
 script and wrapper setup have named bounds. The original QA run is enrolled before

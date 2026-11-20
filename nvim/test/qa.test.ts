@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { qa } from './qa-runner.ts';
+import { eventually, testWaitMs } from '../../hub/test/until.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { accountFixtureEnvironment } from '../../hub/test/account-fixture-env.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
@@ -62,12 +63,10 @@ async function pidWrapper(dir: string): Promise<{ wrapper: string; pid: () => Pr
   return {
     wrapper,
     pid: async () => {
-      for (let i = 0; i < 200; i++) {
+      return await eventually('the Neovim wrapper wrote its pid', async () => {
         const pid = Number((await readFile(pidFile, 'utf8').catch(() => '')).trim());
-        if (pid > 0) return pid;
-        await new Promise((r) => setTimeout(r, 50));
-      }
-      throw new Error('the Neovim wrapper never wrote its pid');
+        return pid > 0 ? pid : undefined;
+      }, { timeoutMs: testWaitMs() });
     },
   };
 }
