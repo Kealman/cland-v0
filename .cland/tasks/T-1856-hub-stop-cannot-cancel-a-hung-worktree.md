@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1664
 branch: t/T-1856-hub-stop-cannot-cancel-a-hung-worktree
 created: 2026-11-14T10:12:33.598Z
-updated: 2026-11-20T10:31:19.563Z
+updated: 2026-11-20T12:43:04.984Z
 ---
 
 ## Summary
@@ -27,7 +27,7 @@ At a hard bound after the soft log, hub stop terminates only the prune's own nat
 ## Acceptance criteria
 
 - [x] C1. A hung owned prune git is terminated at the hard bound through its native identity, its close is joined, and no territory write happens after cancellation (test).
-  - done: impl-1856 · 2026-11-20T10:29:48.462Z
+  - done: impl-1856 · 2026-11-20T12:36:29.410Z
 - [x] C2. A process the prune doesn't own is never signalled, and an unconfirmed native stop reports incompleteness with a usable retry owner (test).
   - done: impl-1856 · 2026-11-20T07:16:36.488Z
 
@@ -469,3 +469,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source15 clear at ee302b2de1891b572feba1e05a71c9fc9756860e/tree20124ee5; no findings/lows. A-22141 records Standards/Spec. M25 resolved: test names/messages/guides/artifact now identify cland-parsed rows/birth reads, disclose native pgrep enumeration and remove population independence, matching primary08c85d55. A-22140 corrects A-22138 wording and separates present whole-case repetition seconds from missing native.end timings/T-2027. Production subtree identical to source14 at887239535b2ead718a93a3a703d7df18ec33502c; predicates, authority/birth/freeze/checkpoint/retry/close/trace and1000/1500ms budgets unchanged; M23/M24 intact. Current local full typecheck/lint0 reported by retained footers,0refusals/131report-only. Source14 native base6+six5/5,61process and1953T1 passes remain ancestor local evidence; no source15 runtime proof inferred. Earlier Linux reds and source12 diagnostic green remain separate. C1/C2 done/unverified; no criterion verified. Clear source for Coordinator's planned exact-head final full Linux suite; final settlement requires producer/generated-case/per-step evidence at this head. Hold released; no ready/merge claim, Reviewer runtime/edit/check/submission.
+
+### rev-35 · 2026-11-20T12:20:07.235Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1856-evidence-5
+commit: ee302b2de1891b572feba1e05a71c9fc9756860e
+scope: evidence
+findings: [{"severity":"medium","text":"M26: all five Linux base routes and all25 loaded repetitions fail the fixed128 ps-line/row cap. Base counters are204/203/203/203/181, unlike Mac101–102; the last is partial after a timed-out probe. Count spawn work and justify the platform/view-dependent row accounting per Coordinator30cc850d, retaining lifecycle assertions rather than treating this failed run as clear.","file":"hub/test/prune-process-lifecycle.test.ts","line":136},{"severity":"medium","text":"M19 remains in runtime: base native.end uses28–30 ps spawns plus6pgrep calls, including10 initial serial caller-ancestor probes. Four native ends take685–814ms; legacy-ordinary throws a ps inspection timeout at1008ms before later merge-stop settlement. Batch/remove the serial probe cost under unchanged1000/1500ms budgets and obtain fresh exact-head Linux proof, as Coordinator30cc850d directs.","file":"hub/src/system-processes.ts","line":113}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Final evidence not clear at source15ee302b2de1891b572feba1e05a71c9fc9756860e; producing48cd29e3/A-22155 failed exit1. A-22157 audits two medium findings/no lows: M26 platform/view-dependent ps-line cap fails5base+25load; M19 expensive28–30ps+6pgrep probes,10initial serial ancestor queries, four native ends685–814ms and legacy-ordinary native.end throws 'cannot inspect the OS process table: ps failed or timed out' at1008.057ms then merge settles complete1010.793ms. All30reach row assertion after complete/settled checks; later lock/KILL/unowned/no-later-write assertions unreached, no partial verification. Counter includes repeated stdout lines; actual snapshots already batch11/12-row views. Source16 authorized by Coordinator30cc850d, no extra pause on immutable evidence audit. Counts:10200pairedIDs; ordinary8735pass/5fail/9skip; separately240loadpass/25fail; completedcombined8975pass/30fail/9skip, not30ordinary. T0/all234T1/441T2 pass;246HubT3 finish failed;27NeovimT3/55Web/18T4 unexecuted, browsernull. Provenance exacthead/canonicalec065e40, Linuxc8sfo2 Node24.21/Nvim0.12.5, cached:null; accounting notwall/advisories report-only. C1failed,C2done/unverified,holdreleased. Prior reds/ancestor diagnostic/Mac gate remain separate; fresh source then exact-head full run needed. No Reviewer runtime/edit/check/probe.
+
+Criteria: C1 failed (Same-head full Linux48cd29e3 failed all5 stop routes in base and25load repetitions on the128 row cap; serial probe cost remains, with one base native.end ps timeout at1008ms before later complete settlement.).
+
+### impl-1856 · 2026-11-20T12:23:44.420Z
+
+Source16 census addendum (Coordinator58d9b207): Linux stat parent and birth share one pure proc-stat parser, preserving linuxIdentity return/error/exit behavior. New parser direct consumers: host/agent/identity, system-processes, process-identity tests. Transitive production identity consumers searched: process-identity; hub/lock-identity and suite-isolation; executor/droplet/watchdog and executor/local; suite-lock; adapters/sessions, processes, claude-code-local; host/agent/native; host/local; stdio-writers; remote/poller-lease; git-command-owner; termination-owner; orphans; suite-command; fixture-processes; prune-processes. All default endProcess/systemProcesses paths retain their discovery contract; only owned-tree snapshots omit redundant selector ps. Host agent closure regenerated for the new pure module and changed identity module. Identity/OS/cleanup/native tests across every tier, persisted watchdog/lease readers, harness fixtures and QA E-1284,E-1531 stages1–3,E-1538 stages1–2 searched; no wire/stored record/CLI/help format changes. Shared stat grammar retains prior tick and PID validation and adds denial-only parent extraction; full T1 and scoped native controls will cover identity compatibility and ancestry refusal. Native observer now distinguishes raw stdout lines from actual shared-parser snapshot rows and records all probe spawns; Linux203–204 is an aggregate over repeated probes, not a per-round count. Run48cd29e3 stays failed, including the legacy-ordinary1008.057ms native ps timeout.
+
+### rev-35 · 2026-11-20T12:43:04.984Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1856-source-16
+commit: abb90ce0cc51b58a8dca46e195d9c88ebd8af004
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source16 clear atabb90ce0cc51b58a8dca46e195d9c88ebd8af004/tree83762dfb; no findings/lows. A-22160 records Standards/Spec. M19: contained Linux proc ancestry replaces serialps, shared pure stat parser preserves identity outputs/failure/exit behavior; scoped ps is one batched authoritative observation between unchanged birth brackets; default snapshots unchanged. Fresh per-signal checks, reservation/checkpoint/freeze/latefork/self-ancestor/reuse/unknown/retry/close retained. Closure parser/identity hashes independently match. M26: real red23ps>18, new per-kind/total probe caps include MacPerl; shared-parser rows distinct from rawlines, bounded64KiB observer marks overflow, no header/population claim. Matching guides/census and priorM23–25 intact;1000/1500ms budgets unchanged, Linux<500ms is evidence target. A-22159 committed-head1954T1/234files, production-identical61process cases, finaltypecheck/lint0 reported/0refusals/131report-only. Exact-head Mac gate67pairedIDs:base6+all6identities5/5, original native assertions reached; five base native-end273–320ms,15–16ps/6pgrep/19Perl,0truncation/omission. Perl Maconly; no Linux timing inferred. Whole-case repeat seconds exist/native-end repeat traces missingT-2027. Old48cd29e3 and all prior reds remain failed. C1/C2done/unverified;no criterion verified. Holdreleased for exact-head Coordinator fullLinux and per-step margin audit; no ready/merge claim or Reviewer runtime/edit/check/submission.
