@@ -18,10 +18,20 @@ export function remoteRedactor(secrets: readonly string[] = []): RemoteRedactor 
     for (const value of secrets) if (value) values.add(value);
     const exact = [...values].sort((a, b) => b.length - a.length).map(value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     registeredPattern = exact.length ? new RegExp(exact.join('|'), 'gi') : undefined;
+    // Incomplete captures keep no quoted credential bytes, even when an
+    // escape or closing delimiter has not arrived before the line/EOF bound.
+    const quotedValue = String.raw`"(?:\\[^\r\n]?|[^"\\\r\n])*(?:"|(?=[\r\n]|$))|'(?:\\[^\r\n]?|[^'\\\r\n])*(?:'|(?=[\r\n]|$))`;
+    const escapedQuotedValue = String.raw`\\"(?:\\(?!")|[^\\\r\n])*(?:\\"|(?=[\r\n]|$))|\\'(?:\\(?!')|[^\\\r\n])*(?:\\'|(?=[\r\n]|$))`;
     // Full credential contexts win before exact values at the same position.
     pattern = new RegExp([
       String.raw`\b[a-z][a-z0-9+.-]*:\/\/\S+`,
       String.raw`\bbearer\s+\S+`,
+      // Header values may contain schemes with quoted parameter lists. An
+      // outer curl/string quote bounds the header; otherwise retain no tail.
+      // Empty/bare-scheme lines also own the next whitespace-separated token.
+      String.raw`\bauthorization[ \t]*[:=][ \t]*(?:[^\s"']+[ \t]*)?(?:\r\n|\r|\n)\s*(?:${escapedQuotedValue}|${quotedValue}|[^\s"']+)`,
+      String.raw`(?<=(['"]))\bauthorization[ \t]*[:=][ \t]*(?:\\.|(?!\1)[^\r\n])*(?=\1)`,
+      String.raw`\bauthorization[ \t]*[:=][ \t]*(?:${quotedValue}|[^\r\n]*)`,
       String.raw`\b(?:[a-z_]*token|[a-z_]*key|secret|authorization)\s*[:=]\s*(?:"[^"]*"|'[^']*'|\S+)`,
       ...exact,
     ].join('|'), 'gi');

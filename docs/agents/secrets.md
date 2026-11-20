@@ -98,6 +98,14 @@ receipts are documented in [child environment tests](tests/hub-test-secrets-envi
 Keep one `remoteRedactor()` per project hub. Startup and reload call
 `validateAndRegisterSecrets(secrets, remoteOutput)` before provider setup;
 reuse that registry across rotation so old in-flight errors remain masked.
+Authorization assignments mask the entire header value without enumerating
+schemes, including parameter lists. A closing outer or value quote bounds a
+quoted header; an unquoted value is masked through the end of its line.
+An empty or single-word remainder also masks following whitespace and the next
+token, including a credential wrapped onto the next line. Complete header
+values preserve the following line.
+LF, CRLF and CR delimit header lines. An incomplete quoted continuation,
+including a dangling escape, stays masked through its line or output end.
 The callable form bounds diagnostics; `.text` retains full artifact text and
 redacts complete JSON lines (including prefixed suite timing records) through
 decoded strings before re-serializing them, including root JSON strings and

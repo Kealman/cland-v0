@@ -48,6 +48,12 @@ and notice before consuming its cursor, so restart does not replay the kick.
 `src/remote/redact.ts` exports `remoteRedactor(secrets)`, a project-owned mutable
 registry. Its callable form masks registered values and conservative URL, Bearer
 and token/key contexts, flattens diagnostics and caps them at 500 characters.
+Authorization assignments mask the whole value through the line end, or its
+closing outer/value quote, so parameterized schemes need no scheme allowlist.
+Empty or bare-word remainders extend through whitespace and the next token;
+complete one-line values preserve the following line.
+LF, CRLF and CR are recognized line endings; incomplete quoted continuations
+and dangling escapes remain masked through the line or output end.
 `.text(text)` masks full documents while preserving whitespace and length apart
 from replacements; `.value(record)` masks nested JSON string values for journal records while
 preserving schema keys. `redactFrame(frame, policy)` masks content fields and

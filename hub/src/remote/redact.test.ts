@@ -2,6 +2,86 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { remoteRedactor } from './redact.ts';
 
+for (const [label, header] of [
+  ['bearer', 'Authorization: Bearer synthetic-fixture-value'],
+  ['basic assignment', 'authorization=Basic synthetic-fixture-value'],
+  ['token scheme', 'Authorization: Token synthetic-fixture-value'],
+  ['digest parameters', 'Authorization: Digest username="synthetic-user", response="synthetic-response"'],
+  ['oauth parameters', 'Authorization: OAuth realm="synthetic-realm", signature="synthetic-signature"'],
+  ['unknown scheme', 'Authorization: Custom synthetic-fixture-value'],
+  ['mixed case and tab', 'Authorization: bEaReR\tsynthetic-fixture-value'],
+  ['wrapped scheme', 'Authorization: Bearer\nsynthetic-fixture-value'],
+  ['empty line remainder', 'Authorization:\nsynthetic-fixture-value'],
+  ['wrapped quoted value', 'Authorization: Bearer\n"synthetic-fixture-value"'],
+  ['empty remainder quoted value', 'Authorization:\n"Custom synthetic value"'],
+  ['wrapped CRLF whitespace', 'Authorization: Custom\r\n\n\tsynthetic-fixture-value'],
+]) {
+  test(`authorization whole value redaction: ${label}`, () => {
+    const redact = remoteRedactor();
+    const escaped = header!.replaceAll('"', '\\"');
+    for (const [input, expected] of [
+      [header, '[redacted]'],
+      [`curl -H '${header}' tail`, "curl -H '[redacted]' tail"],
+      [`curl -H "${escaped}" tail`, 'curl -H "[redacted]" tail'],
+      [`before\n${header}\nafter`, 'before\n[redacted]\nafter'],
+    ]) {
+      assert.ok(input!.includes('synthetic'), 'positive control: synthetic value is present');
+      assert.equal(redact.text(input!), expected);
+      assert.equal(redact(input!), expected!.replace(/\n/g, ' '));
+      assert.deepEqual(redact.value({ detail: [input], ok: true }), { detail: [expected], ok: true });
+    }
+    const record = { detail: header, ok: true };
+    assert.deepEqual(JSON.parse(redact.text(JSON.stringify(record))), { detail: '[redacted]', ok: true });
+    assert.deepEqual(JSON.parse(redact(JSON.stringify(record))), { detail: '[redacted]', ok: true });
+  });
+}
+
+test('quoted authorization values retain the following text', () => {
+  const redact = remoteRedactor();
+  for (const quote of ['"', "'"]) {
+    const input = `Authorization: ${quote}Custom synthetic value${quote} tail`;
+    assert.equal(redact.text(input), '[redacted] tail');
+    assert.equal(redact(input), '[redacted] tail');
+    assert.deepEqual(redact.value({ detail: input }), { detail: '[redacted] tail' });
+  }
+});
+
+test('complete authorization lines retain the following line', () => {
+  const redact = remoteRedactor();
+  const input = 'Authorization: Custom synthetic-fixture-value\nfollowing line';
+  assert.equal(redact.text(input), '[redacted]\nfollowing line');
+  assert.equal(redact(input), '[redacted] following line');
+  assert.deepEqual(redact.value({ detail: input }), { detail: '[redacted]\nfollowing line' });
+});
+
+test('quoted continuation units retain text after their closing quote', () => {
+  const redact = remoteRedactor();
+  for (const quote of ['"', "'"]) {
+    const input = `Authorization: Custom\n${quote}synthetic quoted value${quote} tail`;
+    assert.equal(redact.text(input), '[redacted] tail');
+    assert.equal(redact(input), '[redacted] tail');
+    assert.deepEqual(redact.value({ detail: input }), { detail: '[redacted] tail' });
+    assert.deepEqual(JSON.parse(redact.text(JSON.stringify({ detail: input }))), { detail: '[redacted] tail' });
+  }
+});
+
+for (const [ending, label] of [['\n', 'LF'], ['\r', 'CR'], ['\r\n', 'CRLF']]) {
+  test(`authorization continuations mask incomplete quotes and escapes: ${label}`, () => {
+    const redact = remoteRedactor();
+    for (const remainder of ['', 'Bearer']) {
+      for (const credential of ['synthetic-value', '"synthetic-unclosed', "'synthetic-unclosed", '"synthetic-dangling\\', "'synthetic-dangling\\", '\\"synthetic-unclosed', "\\'synthetic-unclosed"]) {
+        const input = `Authorization: ${remainder}${ending}${credential}`;
+        assert.ok(input.includes('synthetic'), 'positive control: synthetic credential present');
+        assert.equal(redact.text(input), '[redacted]');
+        assert.equal(redact(input), '[redacted]');
+        assert.deepEqual(redact.value({ detail: input }), { detail: '[redacted]' });
+        assert.deepEqual(JSON.parse(redact.text(JSON.stringify({ detail: input }))), { detail: '[redacted]' });
+      }
+    }
+    assert.equal(redact.text(`Authorization: Custom synthetic-value${ending}following line`), `[redacted]${ending}following line`);
+  });
+}
+
 test('remote redaction replaces overlapping registered secrets once without rewriting markers', () => {
   const redact = remoteRedactor(['', 'redact', 'fixture[secret]', 'fixture', 'fixture[secret]']);
   assert.equal(redact('failure fixture[secret] redact fixture'), 'failure [redacted] [redacted] [redacted]');

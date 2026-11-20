@@ -122,7 +122,7 @@
     },
     {
       "path": "hub/src/host/agent/redact.ts",
-      "sha256": "e4f37a1f534aafb656141f1a01a02526d9e1cc954b23872e687316233a14cfd6"
+      "sha256": "89bab1dd59574fb859434fc757bc6e6c4782f6a83a7a793a967b8248943486b1"
     },
     {
       "path": "hub/src/host/agent/ref-push-worker.ts",
