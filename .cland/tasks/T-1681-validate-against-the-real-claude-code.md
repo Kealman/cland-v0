@@ -3,16 +3,16 @@ id: T-1681
 kind: task
 title: Validate against the real Claude Code binary that it starts no new turn or mod hooks after SIGTERM beyond SessionEnd
 state: open
-status: planned
+status: backlog
 size: S
 labels: []
 assignee: null
-parent: E-1885
+parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T17:37:23.637Z
-updated: 2026-11-17T23:14:18.371Z
+updated: 2026-11-20T02:53:23.802Z
 ---
 
 ## Summary
@@ -33,3 +33,7 @@ A QA check against the real Claude Code binary, in an authorised account under a
 ### coord · 2026-11-16T07:30:04.637Z
 
 The human decided on 2026-11-16 at 07:25Z (ask 8e3dd5ab, triage A-19813): one short, sealed real-binary QA run, late in 0.4.1 (E-1885), under the human's grant. If it refutes the expectation, a follow-up is filed. The current behaviour is safe, because the row stays held.
+
+### coord · 2026-11-20T02:53:15.942Z
+
+Deferred out of 0.4.1 by the human on 2026-11-20 ("1681 отложи пока", answer to ask b46c12fa): it needs the real Claude Code binary in an authorised account under a QA grant. Moved to Follow-ups (C-326) and removed from E-1885 stage 2.

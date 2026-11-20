@@ -2,8 +2,8 @@
 id: T-1695
 kind: task
 title: "host-survival-native: the Claude spoke's persisted response misses its 15 s window after master loss under load"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -15,7 +15,8 @@ regression_of: T-1686
 topic: topic-1663
 branch: t/T-1695-host-survival-native-the-claude-spoke-s
 created: 2026-11-05T19:05:01.746Z
-updated: 2026-11-19T20:31:20.197Z
+updated: 2026-11-20T00:08:04.686Z
+closed: 2026-11-20T00:08:04.686Z
 ---
 
 ## Summary
@@ -35,8 +36,10 @@ Fix it in the product. If the 15 s is not a real guarantee, derive the bound fro
 
 - [x] C1. The cause is named with a reproduction under CPU load or a deterministic held-bridge test (red before the fix).
   - done: impl-1695 · 2026-11-19T19:25:05.512Z
-- [ ] C2. After the fix, `host-survival-native` passes 10/10 under CPU load 12–15 on macOS, run in a Coordinator-announced quiet window. On Linux, the native file passes in the configured droplet verification, with its exact platform and repetition count reported (test).
-  - failed: rev-36 [reviewer] · 2026-11-19T19:40:01.445Z · note Changed validation callbacks lack whole-caller setup/cancellation joins and the held native-hook oracle can pass without positive processing/close proof; failure diagnostics can replace the primary response error. Loaded macOS and configured Linux evidence remain outstanding.
+  - verified: rev-36 [reviewer] · run rev-36-1695-final-1 · 2026-11-19T23:12:19.271Z · commit da821d9d80f213b00c7a9001ed55801308ede4e2
+- [x] C2. After the fix, `host-survival-native` passes 10/10 under CPU load 12–15 on macOS, run in a Coordinator-announced quiet window. On Linux, the native file passes in the configured droplet verification, with its exact platform and repetition count reported (test).
+  - done: impl-1695 · 2026-11-19T23:06:55.811Z
+  - verified: rev-36 [reviewer] · run rev-36-1695-final-1 · 2026-11-19T23:12:19.271Z · commit da821d9d80f213b00c7a9001ed55801308ede4e2
 
 ## Comments
 
@@ -97,3 +100,34 @@ Focused51/51=50T2schedule+1T1receipt, final full typecheck/lint0. Earlier lint o
 ### impl-1695 · 2026-11-19T20:31:20.197Z
 
 Configured exact reviewed-head run 533c7a41-c90e-42a7-8151-175eb462fae0 passed, A-21898: da821d9d80f213b00c7a9001ed55801308ede4e2, canonical verification tree bd19693ff8dd88fdb084c0579628e545081e406c, uncached Linux x64 6.8.0-149-generic droplet c-8 ams3, Node24.21.0/Nvim0.12.5, lifetime1352s/cost$0.0939/workers2. Hub aggregate7025/7025 with zero failures/cancellations/skips/TODO; T0/allT1/fallback allT2 both packages/changed nativeT3 once/Web complete. RemainingT3 deferred; T4 unexecuted. Browser HeadlessShell1248 at /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell, Chrome for Testing156.0.8078.4. Native generated survival case1/1/no repetitions,41.18s; independent structured processing/native-close receipts retained in A-21898 for exact job/prompt/input, both closecode0/signalnull/spawnErrornull. All advisory budgets/lints remain report-only. Source clear A-21893 stands; C2 Linux portion complete, macOS10/10 CPU load12-15 campaign still unexecuted pending Coordinator window. No ready claim or configured resubmit.
+
+### rev-36 · 2026-11-19T23:12:19.271Z
+
+verdict: review
+result: clear
+by: rev-36 [reviewer]
+run: rev-36-1695-final-1
+commit: da821d9d80f213b00c7a9001ed55801308ede4e2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final combined evidence CLEAR at unchanged da821d9d80f213b00c7a9001ed55801308ede4e2 / Git tree347b1516959d032488faff5e10a9105c93e522a3, source2/A-21893, clean. A-21942 records the independent ten-run macOS audit and prior full Linux audit. Standards0/Spec0 outstanding findings; C1/C2 verified here, QA none/after-stage.
+
+C1: the late asynchronous native start has a newer process timestamp after the same mod input already completed, falsely returning Claude to busy and queuing the next input. Bounded envelope-based duplicate suppression preserves idle/approval ownership while retaining confirmations/native-only behavior. A-21872/A-21879 retain deterministic pre-fix T2 'no frame matched within 5000ms' and behaviorally unfixed native 'persisted spoke response cc tunnel: not within 15000 ms'. Native counterfactual had bookkeeping present and suppression disabled, not pristine old source; earlier setup-incomplete and mixed-green epochs remain labelled. Source2 corrected the ownership, processing/native-close oracle and diagnostics; final positive receipts below validate that reviewed source.
+
+C2 macOS: A-21940 has exactly ten required generated-case executions, each native invocation code0/signal:null/spawnError:null, one shipped-reporter pass and TAP1/1 with0fail/cancel/skip/todo. Independently cross-checked all per-run/aggregate/TAP/reporter records and all20 prompt-bound Stop/turn-end plus UserPromptSubmit/turn-start processing/native-close receipts: exact session/input/job/prompt match per run, positive unique PIDs, code0/signal:null/spawnError:null. Ten distinct identities/twenty native PIDs, no retries/error rounds, caps/oversized or missing captures. Four before/after source hashes independently match committed adapter/native-test/fake/helper bytes; detached clean head and cleanup receipt retained, not per-worker dependency hashes.
+
+Independently read Coordinator bd57458d quiet-window grant and e1bfa02b scope:12–15 is measured at each repetition START with full per-run extrema reported. All starts12.51220703125–14.07470703125; narrower12.5–14.1 band satisfied. Per-run min/max recomputed exactly; in-run dip11.876953125 and peak18.865234375 explicitly retained, NOT continuous12–15 exposure. All817 samples match, full campaign4.4365234375–19.77294921875 includes calibration/waits. OS1-minute load average, not CPU percentage. darwin/arm64 Node24.21.0; macOS kernel/release unrecorded; no browser or real provider/account service. Invocation sum460848.39725ms includes setup/real20s outage/behavior/cleanup/capture, excludes calibration/inter-run waits, not response latency. Original15s assertion unchanged.
+
+All27 generator observed starts/close records match by PID, code:null/signal:SIGTERM/no error; no generator counted as a test. Controller/in-flight work and native handles joined before campaign-finished23:02:14.349Z. Last native close23:02:14.281Z. Cleanup receipt reports runner exit0, same head/empty status, successful detached checkout removal/positive absence23:03:09.292Z. Native close is not a separately captured OS-reap timestamp or machine-wide census. Original worktree remains pinned/clean. Private/runner redactions and limited source/runtime hashes remain explicit.
+
+Linux C2 is unchanged configured533c7a41/A-21898: task.view finished/passed,7025ordinary passes+10separate load passes,731 complete files=234T1+441T2+1nativeT3+55Web, zero failures/cancel/skips. Required native case35999/timing36000 passes once, no native repetitions; diagnostics36002–36003 bind exact session/input/job/prompt, StopPID34243 and UserPromptSubmitPID34261 close0/signal:null/spawnError:null with independent processing. Exact T1receipt and T2held-start cases each have one ordinary plus5distinct load passes. T0host71.028s only; T1/T2/T3/Web exit0. Other271T3 deferred/18T4 unexecuted. Uncached runtime treebd19693ff8dd88fdb084c0579628e545081e406c, distinct Git tree; dropletc-8ams3 cland-v0-eb9588e0, Linuxx64 6.8.0-149-generic, Node24.21/Nvim0.12.5, workers2. Web HeadlessShell1248, Google Chrome for Testing156.0.8078.4; exact binary inA-21942/A-21898:38614. Machine1352293ms/$0.09390923611111111 is accounting, not suite wall. Advisories report-only. No macOS full-suite/Web or Linux10/10 claim.
+
+Earlier reds/incomplete/mixed/unloaded evidence stays additive inA-21872/A-21879/A-21890; A-21900 was partial Linux evidence awaiting this campaign. No epoch retroactively green. Hold released by verdict; no source edit or extra run requested. Reviewer read-only task/history/Git/source/complete-evidence inspection only; no edits/tests/probes/scans/generators/native/browser/delegation.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-20T00:08:04.686Z
+
+Merged c352aade521e49d98875af1f557db8a200db457f onto dev.
