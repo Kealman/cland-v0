@@ -65,7 +65,7 @@ export async function prepareExistingLoginSignIn(o:{logins:LoginRecords;name:str
  })();}};
 }
 
-export type LoginAddInput = {harness: Login['harness']; kind?: 'disk'|'key'; name?: string; account?: string; pool?: string};
+export type LoginAddInput = {harness: Login['harness']; kind?: 'disk'|'key'; name?: string; account?: string; pool?: string; expectedTerms?: import('./paid-terms.ts').ExpectedPaidTerms};
 export type LoginSignIn = {name: string; path: string; complete(code: number|null): Promise<Login>;interrupt?:()=>Promise<Login>};
 const quote = (s:string) => "'"+s.replaceAll("'", "'\\''")+"'";
 /** Reserve the creating row before any asynchronous host or provider effect. */

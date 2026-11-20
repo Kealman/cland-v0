@@ -58,13 +58,22 @@ export function stageCase(t: TestContext) {
     return bound('cleanup', attempt);
   };
   beforeDirectories(t, close);
+  // Fence admission in the abort dispatch itself; normal hooks may run later.
+  // close retains the original producer and required close receipts on failure.
+  const signal = t.signal;
+  const abort = () => { void close().catch(() => {}); };
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) abort();
   const restore = async () => {
     if (restored) return;
     if (!confirmed() || !cleanupSettled) throw new Error('stage resource close unconfirmed; seams and native guard retained');
     for (const undo of restorations.reverse()) undo();
     try { guard?.verify(); } finally { restoreGuard?.(); restored = true; }
   };
-  afterCleanup(t, restore);
+  afterCleanup(t, async () => {
+    await restore();
+    signal?.removeEventListener('abort', abort);
+  });
   const requireClose = (close: () => Promise<void>) => {
     if (joined) throw new Error('resource acquisition after original-work join');
     required.push({ close, done: false });

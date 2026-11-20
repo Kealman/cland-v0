@@ -31,7 +31,7 @@ async function finishPool(o: SetupOptions, chosen: { role: string; launch: { har
   const builder = config.verification.droplet.prepare_size;
   // docs/hub/running.md: c-8 costs $0.25/hour and c-16 $0.50/hour.
   const builderPrice = builder === 'c-8' ? '0.25' : builder === 'c-16' ? '0.50' : null;
-  // Interactive setup assumes one human owns config. Admission pinning is T-1858.
+  // Admission validates these terms against the configuration captured for the effect.
   const changedTerms = async (): Promise<string | undefined> => {
     try {
       const latest = parseConfig(await o.machine.read('config.toml') ?? '', basename(o.root), o.env);
@@ -56,7 +56,7 @@ async function finishPool(o: SetupOptions, chosen: { role: string; launch: { har
       const change = await changedTerms();
       if (change) { lines.push({ name: 'agent hosts image', verdict: 'open', detail: change, fix: image }); }
       else {
-      const result = (await client.preparePool?.('agents'))?.find(row => row.pool === 'agents');
+      const result = (await client.preparePool?.('agents', { pool: document, builder: { prepare_size: config.verification.droplet.prepare_size, regions: config.verification.droplet.regions, image: config.verification.droplet.image } }))?.find(row => row.pool === 'agents');
       if (!result || !['prepared', 'current'].includes(result.state)) throw Error('no image receipt');
       lines.push({ name: 'agent hosts image', verdict: 'done', detail: `agents: ${result.state}` });
       }
@@ -77,7 +77,7 @@ async function finishPool(o: SetupOptions, chosen: { role: string; launch: { har
       if (!o.machine.addLogin) throw Error('terminal login unavailable');
       const change = await changedTerms();
       if (change) { lines.push({ name: `agent hosts ${harness} login`, verdict: 'open', detail: change, fix: command }); continue; }
-      const code = await o.machine.addLogin({ harness: harness as 'codex' | 'claude-code' | 'opencode', pool: 'agents', ...(account ? { account } : {}) }, admitted => { name = admitted; }, o.json ? { stdout: 'stderr' } : undefined);
+      const code = await o.machine.addLogin({ harness: harness as 'codex' | 'claude-code' | 'opencode', pool: 'agents', expectedTerms: { pool: document }, ...(account ? { account } : {}) }, admitted => { name = admitted; }, o.json ? { stdout: 'stderr' } : undefined);
       const row = name ? await client.login?.(name) : undefined;
       if (code !== 0 || row?.state !== 'ready' || row.harness !== harness || row.kind !== 'disk' || row.provider !== document.provider || row.region !== document.region || account && row.account !== account) throw Error('sign-in incomplete');
       lines.push({ name: `agent hosts ${harness} login`, verdict: 'done', detail: `${name}: ready` });
@@ -130,7 +130,7 @@ export const hosts: SetupStep = async options => {
     if (document.size !== DECLARED_DEFAULT.size || document.provider !== 'digitalocean') return [{ name, verdict: 'open', detail: 'no recorded price for this pool; configure manually', fix }];
     if (!pool && !await prompter.confirm(`Create agents: ${document.size}, min_hosts = ${document.min_hosts}, declared $${DECLARED_DEFAULT.hourly}/h (spec, ${DECLARED_DEFAULT.date}); always-on host?`, false)) return [{ name, verdict: 'open', detail: 'pool confirmation declined', fix }];
     if (!client.configure || !client.placeRole || !client.reload) return [{ name, verdict: 'open', detail: 'hub configuration unavailable', fix }];
-    if (!pool) for (const [key, value] of Object.entries(document)) await client.configure(`hosts.agents.${key}`, value);
+    if (!pool) for (const [key, value] of Object.entries(document)) await client.configure(`hosts.agents.${key}`, value, { value: key === 'provider' ? null : defaultPool[key] });
     for (const role of chosen) if (roles.get(role)?.launch.pool !== 'agents') await client.placeRole(role, 'agents');
     await client.reload();
     return [{ name, verdict: 'done', detail: `agents configured; roles ${chosen.join(', ')}; token fingerprint ${provider.fingerprint}` }, ...await finishPool(options, chosen.map(role => roles.get(role)!), document)];

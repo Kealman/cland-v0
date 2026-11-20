@@ -15,6 +15,20 @@ See [pool configuration](../../../docs/hub/host-providers.md#pool-configuration)
 Pool names use `host/pool-name.ts`: 1–64 ASCII letters, digits and hyphens,
 starting with a letter or digit; config reading rejects underscores.
 
+Consenting clients send `expectedTerms: { pool, builder? }` on `host.prepare`
+and `login.add`. `pool` is the normalized `hostPoolDocument` projection;
+preparation's builder is `{ prepare_size, regions, image }`. Owners validate
+before effects against the config captured for those effects, including queued
+image preparation. `config.set` accepts `expected: { value }` (null means absent)
+and compares it against the raw TOML value inside the serialized writer.
+Omitting expectations preserves existing callers. The paid-consent guarantee
+requires a newer CLI connected to the same install's restarted hub. An older
+running hub ignores the additive fields and retains the race between setup's
+post-consent re-read and the paid effect. Restart the hub after upgrading
+(`cland hub stop; cland hub start`). Setup keeps the client re-read as mitigation.
+T-2020 tracks feature advertisement and refusing paid offers against a hub
+without enforcement.
+
 Pool image preparation, creation, inventory and destruction (`cland host prepare [pool]`,
 `cland host create [pool]`, `cland host list`, `cland host destroy <id>`) are restricted to the local human CLI or Neovim, like host revocation. Implementers
 prove it in disposable sealed fixtures, never by preparing the live project.

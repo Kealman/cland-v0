@@ -10,6 +10,66 @@ import { projectHub, tempProject } from './harness.ts';
 import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 import { realClock } from '../src/hub/clock.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { fenceFixtureCleanup } from './process-cleanup.ts';
+
+for (const rejectedClose of [false, true]) test(`stage case TestContext abort fences held writer with ${rejectedClose ? 'rejected then confirmed' : 'confirmed'} resource close`, async t => {
+  const supervisor = stageCase(t);
+  await supervisor.run(async () => {
+    const abort = new AbortController(), hooks: Array<() => unknown> = [];
+    const context = { name: 'controlled stage abort', signal: abort.signal, after: (hook: () => unknown) => { hooks.push(hook); } } as unknown as TestContext;
+    const dispose = async () => {
+      const failures: unknown[] = [];
+      for (const hook of hooks) try { await hook(); } catch (error) { failures.push(error); }
+      if (failures.length) throw new AggregateError(failures, 'controlled stage cleanup rejected');
+    };
+    fenceFixtureCleanup(context);
+    const nested = stageCase(context), outerBoundary = supervisor.nativeBoundary();
+    const entered = Promise.withResolvers<string>(), release = Promise.withResolvers<void>();
+    const seam = { active: true };
+    let running: Promise<void> | undefined, wrote = false, nextAdmitted = false, closed = false, refuse = rejectedClose;
+    supervisor.releaseOnClose(() => { refuse = false; release.resolve(); });
+    supervisor.requireClose(async () => {
+      refuse = false; release.resolve(); await running?.catch(() => {});
+      await nested.close(); await dispose();
+    });
+    nested.requireClose(async () => {
+      assert.equal(wrote, true, 'resource close follows the original held write');
+      if (refuse) throw new Error('controlled stage resource close refusal');
+      closed = true;
+    });
+    running = nested.run(async step => {
+      const root = await nested.wait('held writer root setup', () => step(async () => {
+        const root = await tempProject(nested.fixtures); nested.adoptRoot(root); return root;
+      }));
+      nested.patch(seam, 'active', false);
+      await step(async () => {
+        entered.resolve(root); await release.promise;
+        await writeFile(join(root, 'held-writer'), 'complete'); wrote = true;
+      });
+      await step(async () => { nextAdmitted = true; await writeFile(join(root, 'forbidden-next'), 'must not run'); });
+    });
+    const rejected = assert.rejects(running, /fixture work admission closed/); void rejected.catch(() => {});
+    const root = await supervisor.wait('held writer entered', () => entered.promise);
+    const heldBoundary = nested.nativeBoundary();
+    abort.abort(new Error('controlled TestContext abort'));
+    assert.throws(() => nested.run(async () => {}), /fixture work admission closed/, 'abort fences new admission synchronously before normal hooks');
+    const disposing = dispose(); void disposing.catch(() => {});
+    assert.equal((await stat(root)).isDirectory(), true, 'real cleanup retains the root while its writer is held');
+    assert.equal(nested.nativeBoundary(), heldBoundary); assert.equal(seam.active, false); assert.equal(closed, false);
+    release.resolve(); await rejected;
+    if (rejectedClose) {
+      await assert.rejects(disposing, /controlled stage cleanup rejected/);
+      await assert.rejects(nested.restore(), /resource close unconfirmed/);
+      assert.equal((await stat(root)).isDirectory(), true);
+      assert.equal(nested.nativeBoundary(), heldBoundary); assert.equal(seam.active, false); assert.equal(closed, false);
+      refuse = false; await nested.close(); await dispose();
+    } else await disposing;
+    assert.equal(wrote, true); assert.equal(nextAdmitted, false); assert.equal(closed, true);
+    await assert.rejects(stat(root), { code: 'ENOENT' });
+    assert.equal(seam.active, true); assert.equal(nested.nativeBoundary(), outerBoundary);
+  });
+});
 
 test('whole-case cleanup is registered before admission and adopted roots retain its join guard', async t => {
   let sharedClose: (() => Promise<unknown>) | undefined;

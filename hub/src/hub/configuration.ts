@@ -174,12 +174,12 @@ export class ProjectConfiguration implements RolesSource {
     this.#work = work.catch(() => {});
     return work;
   }
-  set(key: string, value: unknown, resumed: Resumed, authorize: () => void): Promise<ConfigSetResult> {
+  set(key: string, value: unknown, resumed: Resumed, authorize: () => void, expected?: { value: unknown }): Promise<ConfigSetResult> {
     const work = this.#work.then(async () => {
       const readback = resumed(() => {
         authorize();
         if (this.#stopped) throw new Error('hub is stopping');
-        return setConfigValue(this.layout.root, this.layout.config, key, value, this.env);
+        return setConfigValue(this.layout.root, this.layout.config, key, value, this.env, expected);
       });
       const startup = STARTUP_FIELDS.some(field => key.startsWith(`${field === 'name' ? 'project' : field}.`))
         || key === 'plan.qa_default'

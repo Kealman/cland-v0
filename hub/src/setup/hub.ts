@@ -10,7 +10,7 @@ import type { LoginMetadataRow } from '../protocol.ts';
 export type SetupHub = {
   signinStatus?(): Promise<{ mode?: 'single' | 'users'; users: Array<{ id: string; name: string; state: string; passkeyRegistered?: boolean }> }>;
   signinUsers?(): Promise<{ user: { id: string; name: string }; url?: string }>;
-  preparePool?(pool: string): Promise<{ pool: string; state: string }[]>;
+  preparePool?(pool: string, expectedTerms?: import('../host/paid-terms.ts').ExpectedPaidTerms): Promise<{ pool: string; state: string }[]>;
   login?(name: string): Promise<LoginMetadataRow | ListedLogin | undefined>;
   providers?(provider: 'digitalocean'): Promise<{ providers: { provider: string; present: boolean; fingerprint: string | null }[] }>;
   hostStatus?(): Promise<{ pools: { name: string; capacity: Record<string, number> }[]; roleLogins?: Record<string, boolean> }>;
@@ -19,7 +19,7 @@ export type SetupHub = {
   remotes?(timeoutMs?: number): Promise<RemoteStatusResult>;
   pairings?(): Promise<InboxPairing[]>;
   approve?(messenger: RemoteVia, code: string): Promise<Pairing>;
-  configure?(key: string, value: unknown): Promise<void>;
+  configure?(key: string, value: unknown, expected?: { value: unknown }): Promise<void>;
   reload?(): Promise<void>;
   running(): Promise<{ pid: number } | null>;
   start(): Promise<{ pid: number }>;
@@ -46,7 +46,7 @@ export function setupHub(root: string, env: NodeJS.ProcessEnv): SetupHub {
     signinStatus: async () => await request({ type: 'user.list', setup: true }) as Awaited<ReturnType<NonNullable<SetupHub['signinStatus']>>>,
     signinUsers: async () => await request({ type: 'auth.mode', mode: 'users' }, 60_000) as Awaited<ReturnType<NonNullable<SetupHub['signinUsers']>>>,
     running,
-    preparePool: async pool => await request({ type: 'host.prepare', pool }, 1_200_000) as { pool: string; state: string }[],
+    preparePool: async (pool, expectedTerms) => await request({ type: 'host.prepare', pool, ...(expectedTerms ? { expectedTerms } : {}) }, 1_200_000) as { pool: string; state: string }[],
     // Older hubs ignore the additive filter and return the previous full array.
     login: async name => (await request({ type: 'login.list', name }) as (LoginMetadataRow | ListedLogin)[]).find(row => row.name === name),
     providers: async provider => await request({ type: 'host.providers', provider }) as { providers: { provider: string; present: boolean; fingerprint: string | null }[] },
@@ -55,8 +55,8 @@ export function setupHub(root: string, env: NodeJS.ProcessEnv): SetupHub {
     remotes: async timeoutMs => await request({ type: 'remote.status' }, timeoutMs ?? 3000) as RemoteStatusResult,
     pairings: async () => (await request({ type: 'inbox.list' }) as Inbox).pairings ?? [],
     approve: async (messenger, code) => (await request({ type: 'pairing.approve', messenger, code }) as { pairing: Pairing }).pairing,
-    async configure(key, value) {
-      const result = await request({ type: 'config.set', key, value }, 60_000) as { applies: string };
+    async configure(key, value, expected) {
+      const result = await request({ type: 'config.set', key, value, ...(expected ? { expected } : {}) }, 60_000) as { applies: string };
       if (result.applies !== 'now') throw new Error('configuration saved but not applied; run cland hub reload');
     },
     async reload() { await request({ type: 'hub.reload' }, 60_000); },

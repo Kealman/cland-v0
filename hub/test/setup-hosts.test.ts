@@ -218,7 +218,7 @@ for (const code of [0, 1, 130]) test(`T1831 C2 C4 terminal login exit ${code} re
   o.hub!.hostStatus = async () => ({ pools: [], roleLogins: { implementer: false, reviewer: false } });
   o.hub!.login = async () => signedIn ? { name: 'codex-1', harness: 'codex', kind: 'disk', provider: 'fake', region: 'lon1', state: code === 0 ? 'ready' : 'signed-out' } as never : undefined;
   o.prompter.confirm = async (q, def) => { assert.equal(def, false); return q.startsWith('cland login add'); };
-  o.machine.addLogin = async (input, admitted) => { assert.deepEqual(input, { harness: 'codex', pool: 'agents' }); admitted('codex-1'); runs++; signedIn = true; return code; };
+  o.machine.addLogin = async (input, admitted) => { assert.deepEqual(input, { harness: 'codex', pool: 'agents', expectedTerms: { pool: (await import('../src/host/pools.ts')).hostPoolsDocument(parseConfig(await o.machine.read('config.toml') ?? '', 'unused', {}).hosts).agents } }); admitted('codex-1'); runs++; signedIn = true; return code; };
   const lines = await hosts(o), login = lines.find(l => l.name === 'agent hosts codex login')!;
   assert.equal(runs, 1, 'shared harness needs one login');
   assert.equal(login.verdict, code === 0 ? 'done' : 'open');
@@ -294,7 +294,7 @@ for (const code of [0, 1, 130]) test(`T1831 socket sign-in ${code} persists logi
   const failures: unknown[] = [];
   o.machine.addLogin = async (input, admitted) => {
     try {
-    assert.deepEqual(input, { harness: 'codex', pool: 'agents' });
+    assert.deepEqual(input, { harness: 'codex', pool: 'agents', expectedTerms: { pool: (await import('../src/host/pools.ts')).hostPoolsDocument(parseConfig(await o.machine.read('config.toml') ?? '', 'unused', {}).hosts).agents } });
     const terminal = await connectUi(t, hub.discovery, 'cli');
     const plan = await terminal.request({ type: 'login.add', harness: 'codex', pool: 'agents', name: 'codex-1' });
     assert.equal(plan.ok, true, plan.error);

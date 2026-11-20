@@ -3,7 +3,7 @@ import { isClientRequest } from '../src/protocol.ts';
 import { parse } from 'smol-toml';
 import { preservedConfig } from './config-preservation.ts';
 import { defaultConfig, renderConfig, parseConfig } from '../src/init/config.ts';
-import { poolSnapshotStorage } from '../src/host/provider/pool-image.ts';
+import { poolSnapshotStorage, preparePools } from '../src/host/provider/pool-image.ts';
 import { readHostPools } from '../src/host/transport-config.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { FakeHostProvider } from '../src/host/provider/fake.ts';
@@ -12,7 +12,54 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tempProject, projectHub, cland } from './harness.ts';
+import { tempProject, projectHub, cland, connectUi } from './harness.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { ownedDatabases } from './owned-tracker.ts';
+
+test('consenting client refuses stale prepare and login frames with no machine or login', async t => {
+  const owner = stageCase(t);
+  await owner.run(async step => {
+  const root = await owner.wait('root setup', () => step(async () => {
+    const root = await tempProject(owner.fixtures); owner.adoptRoot(root); return root;
+  }));
+  await owner.wait('config setup', () => step(async () => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    await writeFile(join(root, '.cland/config.toml'), `# managed by cland 0.4.0\n[verification]\nlock_path=${JSON.stringify(join(root, 'suite.lock'))}\n[hosts.agents]\nprovider="fake"\nmin_hosts=0\nregion="fake-1"\n`);
+  }));
+  let hub: Awaited<ReturnType<typeof projectHub>> | undefined;
+  const openDatabase = ownedDatabases(owner, () => hub?.stop());
+  await owner.wait('hub setup', () => step(async () => {
+    hub = await projectHub(owner.resources, root, { CLAND_FAKE_HOST_ROOT: root }, { openDatabase });
+  }));
+  const client = await owner.wait('client setup', () => step(() => connectUi(owner.resources, hub!.discovery, 'cli')));
+  for (const type of ['host.prepare', 'login.add']) {
+    const result = await owner.wait('stale paid admission', () => step(() => client.request({ type, pool: 'agents', harness: 'codex', expectedTerms: { pool: { provider: 'fake', region: 'old' } } })));
+    assert.equal(result.ok, false);
+    assert.match(String(result.error), /paid terms changed; current terms:.*fake-1/);
+  }
+  assert.deepEqual((await owner.wait('empty host inventory receipt', () => step(() => client.request({ type: 'host.list' })))).value, []);
+  assert.deepEqual((await owner.wait('empty login inventory receipt', () => step(() => client.request({ type: 'login.list' })))).value, []);
+  const before = await owner.wait('config prior-value setup', () => step(() => readFile(join(root, '.cland/config.toml'), 'utf8')));
+  const stale = await owner.wait('stale config admission', () => step(() => client.request({ type: 'config.set', key: 'hosts.agents.region', value: 'fake-2', expected: { value: 'old' } })));
+  assert.equal(stale.ok, false); assert.match(String(stale.error), /current value: "fake-1"/);
+  assert.equal(await owner.wait('unchanged config receipt', () => step(() => readFile(join(root, '.cland/config.toml'), 'utf8'))), before);
+  });
+});
+
+test('pool prepare refuses stale paid terms before creating an image', async t => {
+  const owner = stageCase(t);
+  await owner.run(async step => {
+  const root = await owner.wait('root setup', () => step(async () => {
+    const root = await tempProject(owner.fixtures); owner.adoptRoot(root); return root;
+  }));
+  await owner.wait('pool fixture config setup', () => step(async () => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    await writeFile(join(root, '.cland/config.toml'), '[hosts.agents]\nprovider="fake"\nregion="fake-1"\n');
+  }));
+  await owner.wait('stale pool preparation', () => step(() => assert.rejects(preparePools(root, 'agents', fixtureEnvironment(root, {}, { CLAND_FAKE_HOST_ROOT: root }), { pool: { provider: 'fake', region: 'old' } }), /paid terms changed; current terms:.*fake-1/)));
+  await owner.wait('image absence receipt', () => step(() => assert.rejects(readFile(join(root, '.cland/run/hosts/agents-image.json')), { code: 'ENOENT' })));
+  });
+});
 
 test('pool prepare CLI publishes an image and then reports current', async t => {
   const root = await tempProject(t);

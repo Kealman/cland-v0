@@ -306,6 +306,12 @@ connections and web/remotes cannot. `cland host prepare [pool]` prepares one poo
 or every configured pool. Unknown names report the configured choices. A running
 hub with this frame is required; older hubs return their unsupported-frame error.
 
+Consenting setup clients attach optional expected pool and builder terms.
+Admission compares them against the captured configuration used for the build;
+changed terms refuse with current terms and start nothing. Manual clients that
+omit expectations retain pool-name selection. Pool config writes can carry an
+expected prior value; stale writes refuse before publishing config bytes.
+
 Pool names use 1–64 ASCII letters, digits and hyphens, starting with a letter
 or digit. Config reading refuses other names (including underscores) and names
 the allowed characters. Snapshot storage, provider tags, key identities and

@@ -162,9 +162,17 @@ comparison, including absent/stale/current states, without provider calls.
 
 Immediately after a paid yes, setup re-reads the displayed pool and builder
 terms. A change leaves the action `open`, naming the changed term and exact
-command, and starts nothing. Interactive setup assumes one human owns the
-project configuration during the run. The remaining gap between this re-read
-and the hub effect, and shared admission pinning/CAS, are tracked in T-1858.
+command, and starts nothing. Setup also sends the confirmed pool terms to
+`host.prepare` and `login.add`; preparation includes the builder size, regions
+and image. The admission owner compares them with the captured configuration
+used by the effect. A mismatch refuses with the current terms before creating
+an image, machine or login. Setup pool writes compare the prior value before
+publishing; a stale prior value refuses without writing. Requests that omit
+these optional expectations retain the existing manual behaviour. This guarantee
+requires the same install's restarted hub. An older running hub ignores the
+expectations, leaving a race after the local re-read. After upgrading, restart
+with `cland hub stop; cland hub start` before accepting paid offers. Feature
+advertisement and refusal against older hubs are tracked by T-2020.
 
 ### Discord in setup
 

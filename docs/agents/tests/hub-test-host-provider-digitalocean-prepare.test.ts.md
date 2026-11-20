@@ -1,5 +1,21 @@
 # hub/test/host-provider-digitalocean-prepare.test.ts
 
+The captured-effect case separately bounds the original config read/parse/import/
+write sequence as `captured config change setup`, returning the old parsed
+configuration for the later effect. Its durable image receipt read is also
+bounded; final builder-size and target-region assertions remain unchanged.
+
+The captured-config addition uses stageCase before setup and body. Its fake API
+uses a pre-owned root and scripted transport, so it acquires no listener or
+separate root inside its constructor. Required admission/API cleanup runs before
+root disposal and native guard restoration. A schema-rejection control captures
+the native DB inside the failing constructor and checks positive close afterward.
+
+Captured preparation config is passed through the provider's serialized owner
+to the executor. A fake API regression changes the on-disk builder and target
+region after capture, then asserts the actual create body's builder size and
+the durable snapshot's original target region. No real DigitalOcean calls.
+
 T2, in-process scripted DigitalOcean API and scripted machine, fake clock and
 disposable roots. No provider network, droplets, native harness or browser.
 Run `node --test hub/test/host-provider-digitalocean-prepare.test.ts`.

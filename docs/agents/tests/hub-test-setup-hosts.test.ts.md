@@ -48,8 +48,9 @@ while the unfiltered array retains all 129. The legacy
 stub returns the previous full array despite the name filter. Account-path
 assertions keep HOME/CLAUDE_CONFIG_DIR/CODEX_HOME under the disposable root.
 Held paid confirmations mutate builder or pool terms; the post-yes re-read leaves
-open with the exact command and zero prepare/login effects. T-1858 owns the
-remaining shared-admission race; this file proves only the local re-read bar.
+open with the exact command and zero prepare/login effects. Setup forwards the
+confirmed normalized pool terms to login admission. Owner refusal regressions
+live in host-prepare and login-host-pin; this file preserves the local re-read.
 
 Run this file alone under the assigned preservation slot. Capture sorted-name
 inventories of /private/tmp hc-*, ct-* and cland-h-* before and after; hashes and

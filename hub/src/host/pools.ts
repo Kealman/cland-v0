@@ -68,11 +68,14 @@ function parseHostPools(hosts: unknown): HostPools {
   return { pools, relaunchAfterSignIn, harnesses: Object.fromEntries(Object.entries(pins).sort(([a], [b]) => a.localeCompare(b))) as HarnessPins, dailySpendUsd, lease, leaseMs, ...(weights === undefined ? {} : { weights }) };
 }
 
+export function hostPoolDocument(p: HostPool): Record<string, unknown> {
+  return { provider: p.provider, size: p.size, region: p.region, transport: p.transport, slots: p.slots, min_hosts: p.minHosts, max_hosts: p.maxHosts, idle_stop: p.idleStop, spread: p.spread };
+}
 export function hostPoolsDocument(hosts: HostPools): Record<string, unknown> {
   return { ...(hosts.relaunchAfterSignIn ? { relaunch_after_signin: true } : {}), daily_spend_usd: hosts.dailySpendUsd, lease: hosts.lease,
     ...(Object.keys(hosts.harnesses).length ? { harnesses: hosts.harnesses } : {}),
     ...(hosts.weights === undefined ? {} : { weights: hosts.weights }),
-    ...Object.fromEntries(Object.entries(hosts.pools).map(([name, p]) => [name, { provider: p.provider, size: p.size, region: p.region, transport: p.transport, slots: p.slots, min_hosts: p.minHosts, max_hosts: p.maxHosts, idle_stop: p.idleStop, spread: p.spread }])) };
+    ...Object.fromEntries(Object.entries(hosts.pools).map(([name, p]) => [name, hostPoolDocument(p)])) };
 }
 
 /** Shared default selection for provisioning and its result observer. */

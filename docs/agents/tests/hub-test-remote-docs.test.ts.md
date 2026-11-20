@@ -1,5 +1,12 @@
 # hub/test/remote-docs.test.ts
 
+The README remote-vocabulary case reads the expanded hub index through
+shared/hub-reference.ts and then slices by subsystem headings. Repeating a
+setup-guide pointer can pull the second whole guide into the remote section.
+T-1858's failed full run retained all 18 unexpected command/flag diagnostics;
+removing the duplicate pointer fixed the unchanged assertion. Keep index
+pointers singular; help exports and the allowed vocabulary were not loosened.
+
 The same wrapper imports `site/test/users-docs.test.ts`: source-only checks for
 the Features links, all users-page headings, command/flag/config vocabulary with
 invented controls, the scoped multi-user web section's exact controls, the

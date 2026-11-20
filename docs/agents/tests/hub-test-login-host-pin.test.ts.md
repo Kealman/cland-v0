@@ -1,5 +1,13 @@
 # hub/test/login-host-pin.test.ts
 
+The stale-terms addition uses stageCase around the whole callback. Its root is
+owned before fixture setup, whose resources context captures DB/lease close;
+cleanup confirms DatabaseSync.isOpen is false before releasing the native guard.
+
+Stale expected pool terms refuse before login reservation and host acquisition.
+The in-memory records retain an empty login inventory; a counted create seam
+stays at zero. Existing tests preserve requests without expected terms.
+
 T2: injected sign-in runner and in-memory host records with FakeClock. Tests prove
 the host is pinned before the sign-in runner begins, stays pinned through its
 completion, and releases on success, failure or disconnect. The lifecycle case

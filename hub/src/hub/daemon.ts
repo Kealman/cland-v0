@@ -470,7 +470,7 @@ export async function serveProject(root: string, options: { createHostRegistry?:
           return web.link(qr, userId);
         },
         reload: resumed => roles.reload(resumed),
-        setConfig: (key, value, resumed, authorize) => roles.set(key, value, resumed, authorize),
+        setConfig: (key, value, resumed, authorize, expected) => roles.set(key, value, resumed, authorize, expected),
         switchExecutor: (executor, workers, resumed, authorize) => roles.switchExecutor(executor, workers, resumed, authorize),
         setRoleLaunch: (role, fields, resumed, authorize) => roles.setRoleLaunch(role, fields, resumed, authorize),
         flushLogs: async () => { await journal.flush(); await processJournal?.flush(); await options.flushLog?.(); },

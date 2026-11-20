@@ -148,6 +148,8 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
   With no reachable hub, config single mode skips and users mode stays open
   with hub-start guidance.
   Optional agent pools, image builds and first terminal logins, each paid action on a separate default-No confirmation.
+  Setup carries confirmed terms into admission and compares prior pool values
+  on writes; changed terms refuse before paid work.
   offers agent hosts after remotes and before the Aide, default No; `--yes` skips
   untouched hosts. Missing role pools stay open (exit 1), with the role, pool and
   configure-or-local repair commands; doctor warns with the same fix.

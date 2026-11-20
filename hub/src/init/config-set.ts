@@ -38,9 +38,9 @@ function tableAt(doc: Table, parts: string[]): Table {
 }
 
 /** Validate and atomically replace only a managed config; return the value the hub reads back. */
-export function setConfigValue(root: string, path: string, key: string, value: unknown, env: NodeJS.ProcessEnv): unknown {
+export function setConfigValue(root: string, path: string, key: string, value: unknown, env: NodeJS.ProcessEnv, expected?: { value: unknown }): unknown {
   if (key === 'auth.mode') throw new Error('use cland auth mode users or cland auth reset to change auth.mode');
-  return writeConfigValue(root, path, key, value, env);
+  return prepareConfigValue(root, path, key, value, env, expected)();
 }
 
 /** One validated file replacement for an operational settings change. */
@@ -53,16 +53,12 @@ export function prepareAuthMode(root: string, path: string, mode: 'single' | 'us
   return prepareConfigValue(root, path, 'auth.mode', mode, env);
 }
 
-function writeConfigValue(root: string, path: string, key: string, value: unknown, env: NodeJS.ProcessEnv): unknown {
-  return prepareConfigValue(root, path, key, value, env)();
-}
-
-function prepareConfigValue(root: string, path: string, key: string, value: unknown, env: NodeJS.ProcessEnv): () => unknown {
-  const commit = prepareConfigValues(root, path, { [key]: value }, env);
+function prepareConfigValue(root: string, path: string, key: string, value: unknown, env: NodeJS.ProcessEnv, expected?: { value: unknown }): () => unknown {
+  const commit = prepareConfigValues(root, path, { [key]: value }, env, expected ? { [key]: expected } : undefined);
   return () => commit()[key];
 }
 
-function prepareConfigValues(root: string, path: string, values: Record<string, unknown>, env: NodeJS.ProcessEnv): () => Record<string, unknown> {
+function prepareConfigValues(root: string, path: string, values: Record<string, unknown>, env: NodeJS.ProcessEnv, expected?: Record<string, { value: unknown }>): () => Record<string, unknown> {
   const known = configKeys();
   for (const key of Object.keys(values)) {
     let poolKey = false;
@@ -89,6 +85,11 @@ function prepareConfigValues(root: string, path: string, values: Record<string, 
   for (const [key, value] of Object.entries(values)) {
     const parts = key.split('.');
     const field = parts.pop()!;
+    const prior = expected?.[key];
+    if (prior) {
+      const current = tableAt(doc, parts)[field] ?? null;
+      if (JSON.stringify(current) !== JSON.stringify(prior.value)) throw new Error(`${key} changed; current value: ${JSON.stringify(current)}`);
+    }
     tableAt(doc, parts)[field] = value;
   }
   const candidate = parseConfig(stringify(doc), name, env, { strict: true });

@@ -162,7 +162,7 @@ export type Control = {
   status: () => Omit<HubStatus, 'sessions'>;
   stop: () => void;
   reload?: (resumed?: import('./budget.ts').Resumed) => Promise<import('./configuration.ts').ConfigReloadResult>;
-  setConfig?: (key: string, value: unknown, resumed: import('./budget.ts').Resumed, authorize: () => void) => Promise<import('./configuration.ts').ConfigSetResult>;
+  setConfig?: (key: string, value: unknown, resumed: import('./budget.ts').Resumed, authorize: () => void, expected?: { value: unknown }) => Promise<import('./configuration.ts').ConfigSetResult>;
   switchExecutor?: (executor: 'local' | 'droplet', workers: number | undefined, resumed: import('./budget.ts').Resumed, authorize: () => void) => Promise<unknown>;
   setRoleLaunch?: (role: string, fields: import('../roles/launch.ts').LaunchFields, resumed: import('./budget.ts').Resumed, authorize: () => void) => Promise<import('../roles/launch.ts').RoleLaunchResult>;
   flushLogs?: () => Promise<void>;
@@ -631,9 +631,9 @@ export class Dispatcher {
     });
   }
 
-  #createPoolHost(pool?: string, authorize: () => void = () => {}, demand?:()=>readonly import('../host/login-binding.ts').ProvisionLoginDemand[]): ReturnType<typeof createHost> {
+  #createPoolHost(pool?: string, authorize: () => void = () => {}, demand?:()=>readonly import('../host/login-binding.ts').ProvisionLoginDemand[], settings?: import('../host/pools.ts').HostPool): ReturnType<typeof createHost> {
     if (this.#closed || !this.hostOwner || !this.#options.control) return Promise.reject(new Error('host runtime unavailable'));
-    const work = (this.#options.createHost ?? createHost)({...(demand?{onConnecting:(record,signal)=>this.#sessions!.provisionLogins(record,demand(),signal)}:{}),onBootFailure:record=>this.#log({event:'host-boot-failed',host:record.id,pool:record.pool,reason:record.reason ?? 'boot failed'}),inUse:id=>this.#sessions?.hostInUse(id) ?? false,clock:this.core.clock,root:this.#options.control.status().root,pool,env:this.#options.env ?? process.env,signal:this.#hostProvisionAbort.signal,...(this.#options.registerHostSecrets ? {registerSecrets:this.#options.registerHostSecrets} : {}),records:this.core.store.hosts,owner:this.hostOwner,admit:(name,prepared)=>{
+    const work = (this.#options.createHost ?? createHost)({...(settings?{settings}:{}),...(demand?{onConnecting:(record,signal)=>this.#sessions!.provisionLogins(record,demand(),signal)}:{}),onBootFailure:record=>this.#log({event:'host-boot-failed',host:record.id,pool:record.pool,reason:record.reason ?? 'boot failed'}),inUse:id=>this.#sessions?.hostInUse(id) ?? false,clock:this.core.clock,root:this.#options.control.status().root,pool,env:this.#options.env ?? process.env,signal:this.#hostProvisionAbort.signal,...(this.#options.registerHostSecrets ? {registerSecrets:this.#options.registerHostSecrets} : {}),records:this.core.store.hosts,owner:this.hostOwner,admit:(name,prepared)=>{
       try { authorize();
       if(this.#closed)throw new Error('host provisioning stopped');
       const pool=this.#options.projectConfig?.().hosts.pools[name];
@@ -684,7 +684,8 @@ export class Dispatcher {
 
   #prepareLogin(input:LoginAddInput&{signin?:boolean},signal?:AbortSignal){
     const core=this.core,root=this.#options.control!.status().root,env=this.#options.env??process.env;
-    return (this.#options.prepareLogin??preparePoolLogin)({afterSignIn:async(host,harness)=>{if(!this.#sessions)throw Error('session runtime unavailable');await this.#sessions.relaunchAfterSignIn(host,harness);},root,env,pools:this.#options.projectConfig!().hosts.pools,records:core.store.hosts,hosts:this.hostOwner!.hosts,clock:core.clock,signal:signal?AbortSignal.any([signal,this.#hostProvisionAbort.signal]):this.#hostProvisionAbort.signal,createHost:pool=>this.#createPoolHost(pool),...(this.loginSnapshots?{snapshots:this.loginSnapshots}:{}),pinHost:id=>{
+    const captured = this.#options.projectConfig!().hosts.pools;
+    return (this.#options.prepareLogin??preparePoolLogin)({afterSignIn:async(host,harness)=>{if(!this.#sessions)throw Error('session runtime unavailable');await this.#sessions.relaunchAfterSignIn(host,harness);},root,env,pools:captured,records:core.store.hosts,hosts:this.hostOwner!.hosts,clock:core.clock,signal:signal?AbortSignal.any([signal,this.#hostProvisionAbort.signal]):this.#hostProvisionAbort.signal,createHost:pool=>this.#createPoolHost(pool,undefined,undefined,input.expectedTerms?captured[pool]:undefined),...(this.loginSnapshots?{snapshots:this.loginSnapshots}:{}),pinHost:id=>{
       this.#loginPins.set(id,(this.#loginPins.get(id)??0)+1);
       let released=false;
       return ()=>{if(released)return;released=true;const n=this.#loginPins.get(id)!-1;if(n)this.#loginPins.set(id,n);else this.#loginPins.delete(id);};
@@ -2319,7 +2320,7 @@ export class Dispatcher {
                 if(!this.#cardSignIn)throw Error('card sign-in runtime unavailable');
                 const row=frame.type==='login.signin'?core.store.hosts.logins.get(frame.name):null;
                 if(frame.type==='login.signin'&&!row)throw Error('unknown login: '+frame.name);
-                const input=frame.type==='login.signin'?{name:frame.name,harness:row!.harness,signin:true}:{harness:frame.harness,...(frame.kind!==undefined?{kind:frame.kind}:{}),...(frame.name!==undefined?{name:frame.name}:{}),...(frame.account!==undefined?{account:frame.account}:{}),...(frame.pool!==undefined?{pool:frame.pool}:{})};
+                const input=frame.type==='login.signin'?{name:frame.name,harness:row!.harness,signin:true}:{harness:frame.harness,...(frame.kind!==undefined?{kind:frame.kind}:{}),...(frame.name!==undefined?{name:frame.name}:{}),...(frame.account!==undefined?{account:frame.account}:{}),...(frame.pool!==undefined?{pool:frame.pool}:{}),...(frame.expectedTerms?{expectedTerms:frame.expectedTerms}:{})};
                 return later(frame.type,this.#cardSignIn.start(input).then(value=>({type:'result',id:frame.id,ok:true,value} as HubFrame),error=>Dispatcher.#failure(frame.id,error)));
               }
               if(frame.type==='login.add'&&frame.kind==='key') {
@@ -2383,7 +2384,7 @@ export class Dispatcher {
               if (this.#closed) throw new Error('host preparation stopped');
               const root = this.#options.control?.status().root;
               if (!root) throw new Error('project root unavailable');
-              const preparation = preparePools(root, frame.pool, this.#options.env ?? process.env);
+              const preparation = preparePools(root, frame.pool, this.#options.env ?? process.env, frame.expectedTerms);
               this.#poolPrepares.add(preparation);
               void preparation.finally(() => this.#poolPrepares.delete(preparation)).catch(() => {});
               return later(frame.type, preparation.then(value => ({ type: 'result', id: frame.id, ok: true, value } as HubFrame), err => Dispatcher.#failure(frame.id, err)));
@@ -2934,7 +2935,7 @@ export class Dispatcher {
           const set = this.#options.control?.setConfig;
           if (!set) return peer.send(Dispatcher.#failure(frame.id, new Error('config editing is unavailable')));
           const resumed = this.#guard.resumer(frame.type, client);
-          return later(frame.type, set(frame.key, frame.value, resumed, authorize).then(
+          return later(frame.type, set(frame.key, frame.value, resumed, authorize, frame.expected).then(
             value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value })),
             error => resumed(() => Dispatcher.#failure(frame.id, error)),
           ));

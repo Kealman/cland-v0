@@ -352,7 +352,7 @@ export class DigitalOceanHostProvider implements HostProvider {
     if (!validPool(options.pool)) return { state: 'failed', reason: 'run cland host prepare with a configured pool' };
     const executor = new DropletExecutor(this.#options.root, undefined, () => {}, this.#options.env, undefined, { ...this.#options.dependencies, api: this.#api, clock: this.#clock });
     try {
-      const result = await executor.preparePool(options.pool, options.key);
+      const result = await executor.preparePool(options.pool, options.key, options.config);
       return { state: result.state, summary: result.summary };
     } catch { return { state: 'failed', reason: 'DigitalOcean pool image preparation failed; recovery retained' }; }
     finally { await executor.close(); }

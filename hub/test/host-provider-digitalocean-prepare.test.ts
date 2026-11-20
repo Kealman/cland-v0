@@ -6,6 +6,51 @@ import { DigitalOceanHostProvider } from '../src/host/provider/digitalocean.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { FakeClock } from './fake-clock.ts';
 import { admissionCloseContract } from './host-admission-close-contract.ts';
+import { parseConfig } from '../src/init/config.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { tempProject } from './harness.ts';
+import { DatabaseSync } from 'node:sqlite';
+import { fixtureEnvironment } from './fixture-environment.ts';
+
+test('admission fixture closes its captured database when lease schema construction rejects', async t => {
+  const owner = stageCase(t);
+  let database: DatabaseSync | undefined;
+  owner.fixtures.after(() => { assert.ok(database); assert.equal(database.isOpen, false); });
+  await owner.run(async step => {
+    const root = await owner.wait('root setup', () => step(async () => {
+      const root = await tempProject(owner.fixtures); owner.adoptRoot(root); return root;
+    }));
+    const failure = new Error('controlled lease schema failure');
+    owner.patch(DatabaseSync.prototype, 'exec', function(this: DatabaseSync) { database = this; throw failure; });
+    assert.throws(() => admissionFixture(owner.resources, root, fixtureEnvironment(root, {}), new FakeClock()), error => error === failure);
+    assert.ok(database?.isOpen, 'the acquired DB is captured before the constructor returns');
+  });
+});
+
+test('digitalocean image effect uses captured pool and builder terms after config changes', async t => {
+  const owner = stageCase(t);
+  await owner.run(async step => {
+  const root = await owner.wait('root setup', () => step(async () => {
+    const root = await tempProject(owner.fixtures); owner.adoptRoot(root); return root;
+  }));
+  const f = await owner.wait('scripted provider setup', () => step(() => fixture(owner.resources, root)));
+  const path = f.join(f.root, '.cland/config.toml');
+  const config = await owner.wait('captured config change setup', () => step(async () => {
+    const source = await f.readFile(path, 'utf8');
+    const config = parseConfig(source, 'contract', f.env);
+    const { writeFile } = await import('node:fs/promises');
+    await writeFile(path, source.replace('prepare_size="c-8"', 'prepare_size="c-16"').replace('region="fra1"', 'region="ams3"'));
+    return config;
+  }));
+  const result = await owner.wait('captured preparation effect', () => step(() => f.drive(f.machine, f.provider.prepare({ pool: 'agents', key: f.key, config }))));
+  assert.equal(result.state, 'prepared', JSON.stringify(result));
+  const create = f.api.requests.find(r => r.method === 'POST' && r.path === '/v2/droplets')!;
+  assert.equal(create.body!.size, 'c-8');
+  const snapshot = await owner.wait('captured image receipt', () => step(async () => JSON.parse(await f.readFile(f.join(f.root, '.cland/run/hosts/agents-image.json'), 'utf8'))));
+  assert.ok(snapshot.regions.includes('fra1'));
+  assert.equal(snapshot.regions.includes('ams3'), false);
+  });
+});
 
 test('digitalocean preparation fixture drains queued issuance before storage and root disposal',async t=>{
  await admissionCloseContract(t,fixture);
@@ -26,7 +71,7 @@ test('digitalocean production create names the missing host lease watchdog and s
   assert.equal(api.requests.length, 0);
 });
 
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, stateRoot?: string) {
   const { mkdir, writeFile, readFile } = await import('node:fs/promises');
   const { join } = await import('node:path');
   const { fixtureEnvironment } = await import('./fixture-environment.ts');
@@ -34,7 +79,7 @@ async function fixture(t: TestContext) {
   const { drive } = await import('./remote-clock.ts');
   const { poolImageKey } = await import('../src/host/provider/pool-image.ts');
   const clock = new FakeClock();
-  const api = await fakeDigitalOcean('pool-sentinel', { machine: 'scripted', clock });
+  const api = await fakeDigitalOcean('pool-sentinel', { machine: 'scripted', clock, ...(stateRoot ? { stateRoot } : {}) });
   ownAdmissionApi(t,api);
   api.account.droplet_limit = 10;
   const root = api.stateRoot;

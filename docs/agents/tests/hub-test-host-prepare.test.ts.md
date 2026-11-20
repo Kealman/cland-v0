@@ -1,5 +1,20 @@
 # hub/test/host-prepare.test.ts
 
+The two paid-terms additions enroll stageCase before root/setup/body work. Its
+positive native guard stays through required projectHub/client/database closure
+and root disposal. projectHub uses the resources context for partial startup;
+ownedDatabases captures native connections before higher-level construction.
+The stale direct preparation case separately bounds its exact mkdir/config
+write setup under `pool fixture config setup`, before the behaviour wait.
+The socket case separately bounds pre-CAS config capture and each final metadata/
+byte receipt. The direct preparation case bounds the absent-image receipt too.
+
+Stale expected paid terms are refused through both the preparation owner and
+real CLI socket frames for host.prepare/login.add. Assert empty machine/login
+inventories and no image file. The same socket proves stale config.set leaves
+the exact TOML bytes unchanged. Legacy requests omit expectations in the
+existing CLI preparation cases.
+
 T2, in-process `projectHub` and real CLI entry point. No provider network, native
 host, GUI browser or harness binary. Every root and CLI environment uses the
 shared fixture seal. Run `node --test hub/test/host-prepare.test.ts` on supported

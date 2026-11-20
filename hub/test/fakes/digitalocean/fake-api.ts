@@ -21,7 +21,7 @@ import { join } from 'node:path';
 import type { BlockVolume, BlockVolumeSnapshot, Action, SnapshotImage, Droplet, Key, Region, Size } from '../../../src/executor/droplet/api.ts';
 
 /** Provider boundary: never retains Authorization in its request log. */
-export async function fakeDigitalOcean(token: string, options: { machine?: 'scripted' | 'process'; transport?: 'http' | 'scripted'; clock?: Clock; requestsPerMinute?: number; testContext?: TestContext } = {}) {
+export async function fakeDigitalOcean(token: string, options: { machine?: 'scripted' | 'process'; transport?: 'http' | 'scripted'; clock?: Clock; requestsPerMinute?: number; testContext?: TestContext; stateRoot?: string } = {}) {
   const limit = options.requestsPerMinute ?? 100000;
   declareDigitalOceanEndpoint('http://127.0.0.1/v2', limit);
   const clock = options.clock ?? realClock;
@@ -30,7 +30,8 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   const waits = scripted && clock instanceof FakeClock ? remoteWaits(clock) : undefined;
   // Intentional provider delays yield ownership; native publication hooks do not.
   const wait = waits?.wait ?? ((ms: number) => pause(ms, clock));
-  const stateRoot = await realpath(await mkdtemp(join(tmpdir(), 'cland-fake-do-')));
+  if (options.stateRoot && (!scripted || options.transport === 'http')) throw new Error('owned stateRoot requires scripted machine and transport');
+  const stateRoot = options.stateRoot ?? await realpath(await mkdtemp(join(tmpdir(), 'cland-fake-do-')));
   let retainRoot = false;
   if (options.testContext) ownDirectory(options.testContext, stateRoot, { beforeRemove: async () => { if (!closing || retainRoot) throw new Error('fake API owner incomplete; root retained'); await closing; } });
   writeFileSync(join(stateRoot, EXECUTOR_TRANSPORT_MARKER), stateRoot);

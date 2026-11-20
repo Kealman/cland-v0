@@ -23,6 +23,18 @@ import { prepareAuthMode, setConfigValue } from '../src/init/config-set.ts';
 import { Report } from '../src/init/files.ts';
 import { parse, stringify } from 'smol-toml';
 
+test('pool config compare-and-set refuses stale prior bytes without writing', t => {
+  const root = mkdtempSync(join(tmpdir(), 'pool-cas-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  const source = renderConfig(defaultConfig('CAS'));
+  writeFileSync(path, source);
+  assert.throws(() => setConfigValue(root, path, 'hosts.agents.provider', 'fake', {}, { value: 'digitalocean' }), /current.*null/);
+  assert.equal(readFileSync(path, 'utf8'), source);
+  assert.equal(setConfigValue(root, path, 'hosts.agents.provider', 'fake', {}, { value: null }), 'fake');
+});
+
 test('init renders remote and speech defaults and update adds them while preserving existing settings', t => {
   const root = mkdtempSync(join(tmpdir(), 'cland-remote-config-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));

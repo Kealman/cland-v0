@@ -3,6 +3,28 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readHostPools } from '../src/host/transport-config.ts';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
+import { assertPaidTerms, paidTerms } from '../src/host/paid-terms.ts';
+import { isClientRequest } from '../src/protocol.ts';
+
+test('paid admission frames preserve legacy requests and reject malformed expectations', () => {
+  for (const type of ['host.prepare', 'login.add']) {
+    const frame = { type, id: 'test', pool: 'agents', harness: 'codex' };
+    assert.equal(isClientRequest(frame), true);
+    assert.equal(isClientRequest({ ...frame, expectedTerms: { pool: { provider: 'fake' } } }), true);
+    for (const expectedTerms of [null, [], {}, { pool: [] }, { pool: {}, builder: { regions: 'lon1' } }]) assert.equal(isClientRequest({ ...frame, expectedTerms }), false);
+  }
+  assert.equal(isClientRequest({ type: 'config.set', id: 'test', key: 'hosts.agents.provider', value: 'fake', expected: { value: null } }), true);
+  for (const expected of [null, [], {}]) assert.equal(isClientRequest({ type: 'config.set', id: 'test', key: 'hosts.agents.provider', value: 'fake', expected }), false);
+});
+
+test('paid terms compare normalized pool and builder values independent of object key order', () => {
+  const config = parseConfig('[hosts.agents]\nprovider="fake"', 'test', {});
+  const current = paidTerms(config, 'agents', true);
+  assert.doesNotThrow(() => assertPaidTerms(undefined, current));
+  assert.doesNotThrow(() => assertPaidTerms({ builder: current.builder!, pool: Object.fromEntries(Object.entries(current.pool).reverse()) }, current));
+  assert.throws(() => assertPaidTerms({ ...current, builder: { ...current.builder!, prepare_size: 'other' } }, current), /current terms:.*prepare_size/);
+  assert.throws(() => assertPaidTerms({ ...current, pool: { ...current.pool, region: 'other' } }, current), /current terms:.*lon1/);
+});
 
 test('host pools default capacity, agent minimum and global policy', () => {
   const hosts = readHostPools({ agents: { provider: 'fake' }, qa: { provider: 'fake', size: 's-2vcpu-4gb' } });

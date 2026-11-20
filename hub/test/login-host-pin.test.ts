@@ -17,9 +17,20 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownDirectory, onCleanup } from './process-cleanup.ts';
 import { fakeLockProcesses } from './fakes/lock-processes.ts';
 import type { Host } from '../src/host/host.ts';
+import { stageCase } from './stage-case-fixture.ts';
 
-async function fixture(t:test.TestContext,actualMachine=false) {
- const allocated=await mkdtemp(join(tmpdir(),'login-pin-'));ownDirectory(t,allocated);const root=await realpath(allocated);
+test('login admission refuses stale paid terms before reserving a login or creating a host', async t => {
+ const owner=stageCase(t);
+ await owner.run(async step=>{
+ const root=await owner.wait('root setup',()=>step(async()=>{const root=await (await import('./harness.ts')).tempProject(owner.fixtures);owner.adoptRoot(root);return root;}));
+ const f=await owner.wait('login fixture setup',()=>step(()=>fixture(owner.resources,false,root))); let creates=0;
+ await owner.wait('stale login admission',()=>step(()=>assert.rejects(preparePoolLogin({...f,pools:f.settings.pools,hosts:[],signal:new AbortController().signal,createHost:async()=>{creates++;}}, {harness:'codex',expectedTerms:{pool:{provider:'fake',region:'old'}}}), /paid terms changed; current terms:.*lon1/)));
+ assert.equal(creates,0); assert.deepEqual(f.records.logins.list(),[]);
+ });
+});
+
+async function fixture(t:test.TestContext,actualMachine=false,ownedRoot?:string) {
+ const allocated=ownedRoot??await mkdtemp(join(tmpdir(),'login-pin-'));if(!ownedRoot)ownDirectory(t,allocated);const root=await realpath(allocated);
  const db=new DatabaseSync(':memory:'),clock=new FakeClock(Date.now());
  let records:HostRecords|undefined;
  const owners:Array<()=>unknown|Promise<unknown>>=[];
@@ -27,7 +38,7 @@ async function fixture(t:test.TestContext,actualMachine=false) {
   const failures:unknown[]=[];
   try{for(const close of owners.reverse())try{await close();}catch(error){failures.push(error);}
    try{await records?.leases.close();}catch(error){failures.push(error);}
-  }finally{db.close();}
+  }finally{db.close();if(db.isOpen)throw Error('login fixture database close unconfirmed');}
   if(failures.length)throw new AggregateError(failures,'pin fixture cleanup failed');
  });
  records=new HostRecords(db);

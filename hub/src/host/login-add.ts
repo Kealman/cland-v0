@@ -7,6 +7,8 @@ import type { HostPools } from './pools.ts';
 import type { Host } from './host.ts';
 import type { Clock } from '../hub/clock.ts';
 import {snapshotHostIdentity,type LoginSnapshots} from './login-snapshots.ts';
+import { assertPaidTerms } from './paid-terms.ts';
+import { hostPoolDocument } from './pools.ts';
 
 /** Reuse any ready host, including full hosts; join a boot already admitted. */
 export async function preparePoolLogin(o:{root:string;env:NodeJS.ProcessEnv;pools:HostPools['pools'];records:HostRecords;hosts:readonly Host[];clock:Clock;signal:AbortSignal;createHost:(pool:string)=>Promise<unknown>;runner?:typeof prepareLoginSignIn;snapshots?:LoginSnapshots;pinHost?:(id:string)=>()=>void;afterSignIn?:(host:string,harness:LoginAddInput['harness'])=>Promise<void>}, input:LoginAddInput & {signin?:boolean}):Promise<{pending:LoginSignIn;nativeHost?:Host;plan:{name:string;host:string;command:string;args:string[]}}> {
@@ -20,6 +22,7 @@ export async function preparePoolLogin(o:{root:string;env:NodeJS.ProcessEnv;pool
  const names=Object.keys(o.pools),pool=input.pool??(names.includes('agents')?'agents':names.length===1?names[0]:undefined);
  if(!pool||!Object.hasOwn(o.pools,pool))throw Error('choose a configured host pool');
  const settings=o.pools[pool]!;
+ assertPaidTerms(input.expectedTerms, { pool: hostPoolDocument(settings) });
  if(existing?.kind==='disk'&&(existing.provider!==settings.provider||existing.region!==settings.region))throw Error('sign-in pool does not match login');
  const admission=existing?o.records.logins.beginSignIn(existing.name):undefined;
  const admitted=existing?o.records.logins.get(existing.name)!:reserveDiskLogin({logins:o.records.logins,harness:input.harness,name:input.name,account:input.account,providerName:settings.provider,region:settings.region});

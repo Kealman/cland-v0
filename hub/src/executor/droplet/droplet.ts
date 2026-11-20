@@ -471,27 +471,26 @@ export class DropletExecutor implements Executor {
   }
 
   /** Pool builds share executor admission, watchdog and spend, but never its image pointer. */
-  preparePool(pool: string, key: import('../../host/provider/pool-image.ts').PoolImageKey): Promise<Prepared> {
-    const work = this.#preparePoolOwned(pool, key).finally(() => { this.#poolWork.delete(work); });
+  preparePool(pool: string, key: import('../../host/provider/pool-image.ts').PoolImageKey, captured?: import('../../init/config.ts').ProjectConfig): Promise<Prepared> {
+    const work = this.#preparePoolOwned(pool, key, captured).finally(() => { this.#poolWork.delete(work); });
     this.#poolWork.add(work);
     return work;
   }
-  async #preparePoolOwned(pool: string, key: import('../../host/provider/pool-image.ts').PoolImageKey): Promise<Prepared> {
+  async #preparePoolOwned(pool: string, key: import('../../host/provider/pool-image.ts').PoolImageKey, captured?: import('../../init/config.ts').ProjectConfig): Promise<Prepared> {
     const { poolSnapshotStorage } = await import('../../host/provider/pool-image.ts');
     const release = claimSnapshotStorage(poolSnapshotStorage(this.root, pool));
     if (!release) throw new Error('pool snapshot operation running');
-    try { return await this.#preparePool(pool, key); }
+    try { return await this.#preparePool(pool, key, captured); }
     finally { release(); }
   }
-  async #preparePool(pool: string, key: import('../../host/provider/pool-image.ts').PoolImageKey): Promise<Prepared> {
+  async #preparePool(pool: string, key: import('../../host/provider/pool-image.ts').PoolImageKey, captured?: import('../../init/config.ts').ProjectConfig): Promise<Prepared> {
     const { parse } = await import('smol-toml');
     const { readHostPools } = await import('../../host/transport-config.ts');
     const { samePoolImageKey, poolSnapshotStorage } = await import('../../host/provider/pool-image.ts');
     const { renderRecipe } = await import('../../image/recipe.ts');
     const { recoverSnapshot } = await import('./snapshot-recovery.ts');
-    const config = await this.#config();
-    const text = await readFile(join(this.root, '.cland/config.toml'), 'utf8');
-    const selected = readHostPools(parse(text).hosts).pools[pool];
+    const config = captured ?? await this.#config();
+    const selected = captured ? captured.hosts.pools[pool] : readHostPools(parse(await readFile(join(this.root, '.cland/config.toml'), 'utf8')).hosts).pools[pool];
     if (!selected || selected.provider !== 'digitalocean') throw new Error('DigitalOcean pool unavailable');
     const storage = poolSnapshotStorage(this.root, pool);
     for (const record of await readRecoveries(this.root, storage)) {

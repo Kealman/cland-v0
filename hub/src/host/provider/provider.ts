@@ -26,7 +26,7 @@ export interface HostProvider {
   acquire(options: AcquireOptions): Promise<AcquireResult>;
   releaseAdmission?(project:string,pool:string,id:string):Promise<{state:'released';nonAcquisition:import('../acquisition-receipt.ts').ProviderNonAcquisitionReceipt}|Extract<ReleaseResult,{state:'incomplete'}>>;
   findAdmission?(project:string,pool:string,id:string):Promise<Machine|undefined>;
-  prepare(options?: { pool: string; key: PoolImageKey }): Promise<PrepareResult>;
+  prepare(options?: { pool: string; key: PoolImageKey; config?: import('../../init/config.ts').ProjectConfig }): Promise<PrepareResult>;
   /** Scoped reads must join cancellation before rejecting, freeing the provider for release. */
   status(machine: Machine, scope?:StatusReadScope): Promise<MachineStatus>;
   /** Caller first drains sessions and host transports. Success requires a

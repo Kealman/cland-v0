@@ -1,5 +1,14 @@
 # hub/test/case-deadlines.test.ts
 
+The two generated `stage case TestContext abort fences held writer` cases drive
+a real AbortController supplied as a controlled TestContext.signal. Before any
+normal hook runs, abort must synchronously refuse new admission. The original
+held filesystem writer then completes; the next step stays fenced. Real fixture
+cleanup observes the root removed only after positive resource close. The
+rejected-close variant exercises the actual removal guard, retaining the root,
+installed native guard and seam until a successful cleanup retry. These cases
+prove stageCase ownership boundaries; stage-closure-component covers stage data.
+
 Whole-case users supply the shared beforeDirectories and guardDirectoryRemoval
 adapters. Enrollment happens before acquisition; `run` refuses without it.
 Each acquisition callback calls adoptRoot before returning, so even a late

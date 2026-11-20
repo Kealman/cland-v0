@@ -18,3 +18,10 @@ non-help implementation budgets unchanged. Native no-hub auth/user calls remain
 database-free, and both dispatch paths preserve their import-failure stderr/exit.
 
 Hub lifecycle readers load dynamically only when their operation needs a lock. Empty-project status and stop avoid importing lock/host-identity/process probes; keep the existing module budgets and full command-closure assertions. Foreign-lock behavior remains covered by the reader tests.
+
+Paid-term wire shape validation lives in dependency-free
+host/paid-terms-input.ts. Protocol decoding must not import the captured-config
+projection owner, which imports pool parsing and duration/transport modules.
+T-1858's native regression observed 60 total modules for hub status (22 non-help,
+over budget 21); the narrow input guard restores 57 total/19 non-help without
+changing budgets, help counts, dispatch assertions or the validation grammar.

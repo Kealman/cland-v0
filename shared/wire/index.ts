@@ -955,13 +955,13 @@ export type ClientRequest =
   | { type: 'login.signin'; id: string; name: string }
   | { type: 'login.list'; id: string; name?: string }
   | { type: 'login.set'; id: string; name: string; exclusive: boolean }
-  | { type: 'login.add'; id: string; harness: 'claude-code'|'codex'|'opencode'; kind?: 'disk'|'key'; name?: string; account?: string; pool?: string }
+  | { type: 'login.add'; id: string; harness: 'claude-code'|'codex'|'opencode'; kind?: 'disk'|'key'; name?: string; account?: string; pool?: string; expectedTerms?: { pool: Record<string, unknown>; builder?: { prepare_size: string; regions: string[]; image: string } } }
   | { type: 'login.signed-in'; id: string; name: string; code: number | null }
   | { type: 'host.list'; id: string }
   | { type: 'host.status'; id: string; roleLogins?: boolean }
   | { type: 'host.providers'; id: string; provider?: 'digitalocean' }
   | { type: 'host.stop'; id: string; host: string }
-  | { type: 'host.prepare'; id: string; pool?: string }
+  | { type: 'host.prepare'; id: string; pool?: string; expectedTerms?: { pool: Record<string, unknown>; builder?: { prepare_size: string; regions: string[]; image: string } } }
   | { type: 'host.destroy'; id: string; host: string }
   | { type: 'host.revoke'; id: string; host: string }
   | { type: 'pairing.approve'; id: string; messenger: RemoteVia; code: string; user?: string }
@@ -1007,7 +1007,7 @@ export type ClientRequest =
   | { type: 'executor.prepare'; id: string; report?: string }
   | { type: 'executor.retire-legacy'; id: string; confirmRegisteredHubs: boolean }
   | { type: 'crew.set'; id: string; key: string; value: unknown }
-  | { type: 'config.set'; id: string; key: string; value: unknown }
+  | { type: 'config.set'; id: string; key: string; value: unknown; expected?: { value: unknown } }
   | { type: 'hub.subscriptions'; id: string }
   | { type: 'hub.status'; id: string; flushLogs?: boolean; history?: boolean; releaseTools?: boolean }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
