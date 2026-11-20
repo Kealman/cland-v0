@@ -25,7 +25,7 @@ function scope(node: ts.Node): ts.Node {
   return node;
 }
 
-export function statePathFindings(file: string, source: string): string[] {
+export function statePathFindings(file: string, source: string, parse = ts.createSourceFile): string[] {
   if (file === 'state-paths.ts') return [];
   if (file.endsWith('.sh')) return source.split('\n').flatMap((line, index) => {
     const code = line.trim();
@@ -34,7 +34,12 @@ export function statePathFindings(file: string, source: string): string[] {
     if (code.startsWith('#') || !path && !command) return [];
     return exception(file, code, 'shell line') ? [] : [`${file}:${index + 1}: unregistered shell runtime path/command: ${code}`];
   });
-  const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  // An unregistered path can appear in any source file, including one outside
+  // the inventory's import graph. Read every source, but only build an AST if
+  // it can contain a finding. Escapes conservatively fall back to parsing:
+  // TypeScript decodes string literals before the checks below inspect them.
+  if (!/homedir|tmpdir|HOME|\/tmp|Library|open|caffeinate|\\/.test(source)) return [];
+  const ast = parse(file, source, ts.ScriptTarget.Latest, true);
   const findings = new Set<string>();
   const resolvers = new Set(['homedir', 'tmpdir']);
   const launchers = new Set(nativeNames);
@@ -90,10 +95,13 @@ export function statePathFindings(file: string, source: string): string[] {
     else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) command(node.left, use, seen);
   };
   const isLauncher = (expression: ts.Expression) => ts.isIdentifier(expression) ? launchers.has(expression.text)
-    : ts.isPropertyAccessExpression(expression) && namespaces.has(expression.expression.getText(ast)) && nativeNames.includes(expression.name.text);
+    : ts.isPropertyAccessExpression(expression) && ts.isIdentifier(expression.expression)
+      && namespaces.has(expression.expression.text) && nativeNames.includes(expression.name.text);
   const visit = (node: ts.Node) => {
     if (ts.isCallExpression(node)) {
-      if (resolvers.has(node.expression.getText(ast)) || /\.(?:homedir|tmpdir)$/.test(node.expression.getText(ast))) report(node, 'home/temp resolver');
+      const expression = node.expression;
+      if (ts.isIdentifier(expression) ? resolvers.has(expression.text)
+        : ts.isPropertyAccessExpression(expression) && ['homedir', 'tmpdir'].includes(expression.name.text)) report(node, 'home/temp resolver');
       if (isLauncher(node.expression) && node.arguments[0]) command(node.arguments[0], node);
     }
     if (ts.isPropertyAccessExpression(node) && node.name.text === 'HOME'

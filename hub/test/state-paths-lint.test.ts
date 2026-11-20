@@ -1,7 +1,63 @@
 // T1: source inventory and planted violations; no native launches.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import ts from 'typescript';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { statePathFindings, scanStatePaths } from './state-paths-lint.ts';
+
+test('state inventory bounds parsing to candidate sources without losing unnamed paths', () => {
+  const parsed: string[] = [];
+  const parse: typeof ts.createSourceFile = (...args) => {
+    parsed.push(args[0]);
+    return ts.createSourceFile(...args);
+  };
+  for (let index = 0; index < 100; index++) {
+    assert.deepEqual(statePathFindings(`unrelated-${index}.ts`, 'export const count = 1;', parse), []);
+  }
+  assert.deepEqual(parsed, []);
+  assert.deepEqual(statePathFindings('future.ts', "join(env.HOME, 'unnamed')", parse),
+    ['future.ts:1: HOME access: env.HOME']);
+  assert.deepEqual(parsed, ['future.ts']);
+  assert.ok(statePathFindings('escaped.ts', String.raw`const path = '\x2ftmp/unnamed';`, parse).length);
+  assert.deepEqual(parsed, ['future.ts', 'escaped.ts']);
+});
+
+test('state inventory discovers unnamed paths in files unreachable from registered sources', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'state-inventory-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, 'detached'));
+  await writeFile(join(root, 'state-paths.ts'), 'export const named = true;');
+  await writeFile(join(root, 'entry.ts'), 'export const entry = true;');
+  await writeFile(join(root, 'detached/escape.ts'), "const state = join(env.HOME, 'unnamed');");
+  await writeFile(join(root, 'detached/escape.sh'), 'mkdir "$HOME/unnamed"');
+  assert.deepEqual((await scanStatePaths(pathToFileURL(root + '/'))).sort(), [
+    'detached/escape.sh:1: unregistered shell runtime path/command: mkdir "$HOME/unnamed"',
+    'detached/escape.ts:1: HOME access: env.HOME',
+  ]);
+});
+
+test('state inventory candidate filter preserves path and command literals including escapes', () => {
+  for (const source of [
+    "const path = '/tmp/unnamed';",
+    "const path = 'Library/LaunchAgents';",
+    "spawn('open', []);",
+    "spawn('caffeinate', []);",
+    String.raw`const path = '\x2f\x74\x6d\x70/unnamed';`,
+    String.raw`spawn('\u006f\u0070\u0065\u006e', []);`,
+    'const path = `/tmp/${name}`;',
+  ]) {
+    let parses = 0;
+    const parse: typeof ts.createSourceFile = (...args) => {
+      parses++;
+      return ts.createSourceFile(...args);
+    };
+    assert.ok(statePathFindings('unregistered.ts', source, parse).length, source);
+    assert.equal(parses, 1, source);
+  }
+});
 
 test('state inventory rejects newly introduced home and temporary paths', () => {
   for (const source of ["homedir()", "import { homedir as home } from 'node:os'; home()", "os.homedir()", "join(env.HOME, 'escape')", "join(env['HOME'], 'escape')", "tmpdir()", "os.tmpdir()", "'/tmp/escape'"]) {

@@ -13226,13 +13226,6 @@
       "expires": "2026-12-18",
       "reason": "T-1954: worst passing 195.87377935299997 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:62; cap rounds 1.5x upward to milliseconds. Sum of top-level passing test time in completed ordinary file executions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 120 s. D72 owner E-880; report-only policy unchanged."
     },
-    "hub/test/state-paths-lint.test.ts::hub source conforms to the named state path inventory": {
-      "seconds": 12.994,
-      "owner": "E-880",
-      "added": "2026-11-18",
-      "expires": "2026-12-18",
-      "reason": "T-1954: worst passing 8.662268802 s in A-20923, receipt 0df78f7d-07c0-4e6d-93bc-1a59207a68d4:762; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T1 budget 0.5 s. D72 owner E-880; report-only policy unchanged."
-    },
     "hub/test/inbox-query.test.ts": {
       "seconds": 88.651,
       "file": true,
