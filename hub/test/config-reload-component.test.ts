@@ -13,10 +13,102 @@ import { layout } from '../src/project.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { cland, eventually, flushProjectLogs, projectHub, tempProject } from './harness.ts';
 import { fixtureHubCommand } from './fixture-hub-cli.ts';
+import { defaultConfig, renderConfig, parseConfig } from '../src/init/config.ts';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
+import type { FixtureStep } from '../../test-support/fixture-work.ts';
 
-const config = (root: string, budget: number) => `[verification]\nlock_path=${JSON.stringify(join(root, "suite.lock"))}\nremote_budget=${budget}\n`;
+async function ownedConfigRoot(scope: ReturnType<typeof guardedLeaseCase>, step: FixtureStep, source: (root: string) => string) {
+  return step(() => scope.wait('configuration root setup', async () => {
+    const root = await tempProject(scope.fixtures);
+    scope.adoptRoot(root);
+    await mkdir(join(root, '.cland'), { recursive: true });
+    const path = join(root, '.cland/config.toml');
+    await writeFile(path, source(root));
+    return { root, path };
+  }));
+}
 
-const roles = (model: string) => `[implementer.launch]\nharness="codex"\nmodel="${model}"\n`;
+const config = (root: string, budget: number) => '[verification]\nlock_path=' + JSON.stringify(join(root, 'suite.lock')) + '\nremote_budget=' + budget + '\n';
+const roles = (model: string) => '[implementer.launch]\nharness="codex"\nmodel="' + model + '"\n';
+const switchConfig = (root: string) => {
+  const initial = defaultConfig('switch');
+  initial.verification.lockPath = join(root, 'suite.lock');
+  initial.verification.test = 'fixture-only';
+  return renderConfig(initial);
+};
+
+test('executor switch returns effective settings and persists one live policy', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const { root, path } = await ownedConfigRoot(scope, step, switchConfig);
+    const head = 'a'.repeat(40);
+    const daemon = await step(() => scope.wait('hub setup', () => projectHub(scope.fixtures, root, {}, { candidate: {
+      head: async () => head, tree: async () => 'b'.repeat(40),
+      inspect: async () => ({ head, tree: 'b'.repeat(40), branch: 'candidate', budgetBase: undefined,
+        selection: { mode: 'full', files: [], reason: 'fixture project' }, tierPlan: [] }),
+    } })));
+    const ui = await step(() => scope.wait('socket setup', () => connectUi(scope.fixtures, daemon.discovery)));
+    for (const executor of ['droplet', 'local'] as const) {
+      const reply = await step(() => scope.wait('switch receipt', () => ui.request({ type: 'executor.switch', executor, workers: 3 })));
+      assert.equal(reply.ok, true, reply.error);
+      assert.deepEqual(reply.value, { executor, workers: 3, batchExecutor: executor,
+        summary: 'executor ' + executor + '; workers 3; batch executor ' + executor + '; applied now' });
+      const saved = parseConfig(await step(() => readFile(path, 'utf8')), 'switch');
+      assert.equal(saved.verification.executor, executor);
+      assert.equal(executor === 'local' ? saved.verification.workers : saved.verification.droplet.workers, 3);
+      const next = await step(() => scope.wait('next admission receipt', () => ui.request({ type: 'suite.start', mode: 'auto', cwd: root, dryRun: true })));
+      assert.equal(next.ok, true, next.error);
+      assert.equal((next.value as { executor: string }).executor, executor);
+      assert.equal((next.value as { workers: number }).workers, 3);
+    }
+    for (const role of ['coordinator', 'aide', 'implementer', 'reviewer', 'qa', 'lead']) {
+      const name = 'switch-' + role;
+      assert.equal((await step(() => ui.request({ type: 'role.set', session: name, role }))).ok, true);
+      const before = await step(() => readFile(path, 'utf8'));
+      const reply = await step(() => ui.request({ type: 'executor.switch', executor: 'local', workers: 2, as: { name } }));
+      assert.equal(reply.ok, role === 'coordinator', JSON.stringify(reply));
+      if (role !== 'coordinator') assert.equal(await step(() => readFile(path, 'utf8')), before);
+    }
+  });
+});
+
+test('verify executor CLI reports effective workers through a disposable hub', async t => {
+  const scope = guardedLeaseCase(t, undefined, { allowCli: true });
+  return scope.run(async step => {
+    const { root } = await ownedConfigRoot(scope, step, switchConfig);
+    await step(() => scope.wait('CLI hub setup', () => projectHub(scope.fixtures, root)));
+    const command = await step(() => scope.wait('CLI completion', () => cland(root, 'verify', 'executor', 'local', '--workers', '2', '--json')));
+    assert.equal(command.code, 0, command.stderr);
+    assert.equal(JSON.parse(command.stdout).workers, 2);
+  });
+});
+
+test('reload applies executor and droplet policy on a disposable running hub', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const { root, path } = await ownedConfigRoot(scope, step, root => config(root, 2));
+    const daemon = await step(() => scope.wait('hub setup', () => projectHub(scope.fixtures, root)));
+    const ui = await step(() => scope.wait('socket setup', () => connectUi(scope.fixtures, daemon.discovery)));
+    await step(() => writeFile(path, config(root, 2) + 'executor="droplet"\n[verification.droplet]\nworkers=7\nregions=["nyc1"]\n'));
+    const loaded = await step(() => scope.wait('reload receipt', () => ui.request({ type: 'hub.reload' })));
+    assert.equal(loaded.ok, true, loaded.error);
+    const receipt = loaded.value as { applied: string[] };
+    assert.ok(receipt.applied.includes('verification.executor'));
+    assert.ok(receipt.applied.includes('verification.droplet'));
+  });
+});
+
+test('reload applies local workers without restarting the hub', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const { root, path } = await ownedConfigRoot(scope, step, root => config(root, 2));
+    const daemon = await step(() => scope.wait('hub setup', () => projectHub(scope.fixtures, root)));
+    const ui = await step(() => scope.wait('socket setup', () => connectUi(scope.fixtures, daemon.discovery)));
+    await step(() => writeFile(path, config(root, 2) + 'workers=3\n'));
+    const loaded = await step(() => scope.wait('reload receipt', () => ui.request({ type: 'hub.reload' })));
+    assert.equal(loaded.ok, true, loaded.error);
+  });
+});
 
 // T2: real file edits through the configuration source used by launch admission.
 test('concurrent fresh callers both observe a saved same-size role account edit', async t => {

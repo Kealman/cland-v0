@@ -3,6 +3,8 @@ import type { SuiteSelection } from '../suite-selection.ts';
 export type ExecutorKind = 'local' | 'droplet';
 export type HostGate = { tree: string | null; command: string; code: number };
 export type RunRef = {
+  /** Replacement resource lifetime cap, distinct from acquisition wait time. */
+  leaseDeadline?: string;
   tierReceipts?: import('../verification-tier-receipts.ts').TierReceipt[];
   commands?: import('../verification-commands.ts').VerificationCommands;
   hostGate?: HostGate;

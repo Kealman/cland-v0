@@ -13,6 +13,8 @@ Implementation notes (read with the matching subsystem reference):
 - [Voice echo](../docs/hub/implementation/voice.md)
 
 Subsystem reference and implementation guidance live in `docs/hub/`.
+Live executor switching and bounded remote reachability are described in
+[Remote executors](../docs/hub/running.md#remote-executors-droplets).
 Evidence publication uses the session-aware `publishSessionEvidence` library;
 see [scan and publication](../docs/agents/evidence-publication.md) for snapshot,
 positive-control, scanner and refusal behaviour.

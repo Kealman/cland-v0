@@ -6,7 +6,7 @@ import { fakeNativeGuard } from './fake-native-guard.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
 
 /** Enroll the whole callback before acquisition; restore seams only after its join. */
-export function guardedLeaseCase(t: TestContext, releaseOnClose?: () => void, options: {timeoutMs?: number; canRestore?: () => boolean; deferRestore?: boolean} = {}) {
+export function guardedLeaseCase(t: TestContext, releaseOnClose?: () => void, options: {timeoutMs?: number; canRestore?: () => boolean; deferRestore?: boolean; allowCli?: boolean} = {}) {
   const scope = caseDeadlines(t, { timeoutMs: options.timeoutMs ?? 5000, ownership: { beforeDirectories, guardDirectoryRemoval }, ...(releaseOnClose ? { releaseOnClose } : {}) });
   const restorations: Array<() => void> = [];
   let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
@@ -22,7 +22,7 @@ export function guardedLeaseCase(t: TestContext, releaseOnClose?: () => void, op
     await drainFixtureWork();
     if (!options.deferRestore) releaseSeams();
   });
-  return { ...scope, releaseSeams,
+  return { ...scope, releaseSeams, own: scope.run,
     patch(target: object, key: PropertyKey, replacement: unknown) {
       const original = Reflect.get(target, key);
       let restored = false;
@@ -36,7 +36,7 @@ export function guardedLeaseCase(t: TestContext, releaseOnClose?: () => void, op
       return restore;
     },
     run: (body: (step: FixtureStep) => Promise<void>) => scope.run(async step => {
-      guard = await step(() => scope.wait('native guard setup', () => fakeNativeGuard(fn => { restoreGuard = fn; })));
+      guard = await step(() => scope.wait('native guard setup', () => fakeNativeGuard(fn => { restoreGuard = fn; }, { allowCli: options.allowCli ?? false })));
       await body(step);
     }),
   };

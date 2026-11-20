@@ -41,6 +41,7 @@ export const WEB_AUTHORITY = {
   'demo.stop': 'controls Coordinator and QA demos',
   'events.list': true,
   'executor.prepare': 'spends executor capacity',
+  'executor.switch': 'changes verification execution policy',
   'executor.reap': 'deletes executor resources',
   'executor.retire-legacy': 'retires executor resources',
   'executor.status': true,

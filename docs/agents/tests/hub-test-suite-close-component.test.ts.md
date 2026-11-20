@@ -1,5 +1,12 @@
 # hub/test/suite-close-component.test.ts
 
+For held-size cancellation, arm the provider hold within the real
+`reserveShards` call, after the pre-submit catalog probe. Observe the durable
+queued job before cancelling. Preserve the held ledger retry, joined submission,
+single cancelled report, zero spend and absence of provider creates. The whole
+caller owns setup and cancellation joins, releases gates and the holder before
+teardown drainage, and keeps a positive native launch guard through cleanup.
+
 The other-project integrated stage close with an unset check records
 `Commands: check not set · test printf project-test` and no local `Host gate:`.
 Committed-only integrated delivery skips that local gate, including its former

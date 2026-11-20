@@ -22,39 +22,41 @@ export async function receipt<T>(what: string, work: Promise<T>): Promise<T> {
   await eventually(what, () => done ? true : undefined);
   return completed;
 }
-export async function finish(f: Awaited<ReturnType<typeof fixture>>, id: string) {
-  await receipt('remote start persisted', f.machine.started(id));
-  await receipt('remote admission settled', f.verificationSettled());
+export type OriginalWork = <T>(start: () => Promise<T>) => Promise<T>;
+const direct: OriginalWork = start => start();
+export async function finish(f: Awaited<ReturnType<typeof fixture>>, id: string, original: OriginalWork = direct) {
+  await receipt('remote start persisted', original(() => f.machine.started(id)));
+  await receipt('remote admission settled', original(() => f.verificationSettled()));
   // Complete the scripted worker explicitly, then observe its done receipt.
   // A scheduler tick is permission to collect that receipt, not worker completion.
   f.machine.finish(id);
-  const record = (await readLeaseHistory(f.root)).find(lease => lease.run === id)!;
-  const completed = await receipt('remote worker completion', f.dependencies.run!.status(record));
+  const record = (await original(() => readLeaseHistory(f.root))).find(lease => lease.run === id)!;
+  const completed = await receipt('remote worker completion', original(() => f.dependencies.run!.status(record)));
   assert.equal(completed.state, 'done');
   // Join each admitted operation before another scheduler step; a retry can
   // request product time after the first tick or need a later collection poll.
-  return receipt('remote completion collected', scriptedResult(f, id));
+  return receipt('remote completion collected', original(() => scriptedResult(f, id, [f], original)));
 }
 
 // Each step follows the previous scheduler/sweep completion receipt. Topic reads
 // alone cannot admit time: persistence may still be pending on either shared hub.
-export async function scriptedResult(f: Awaited<ReturnType<typeof fixture>>, id: string, peers = [f]) {
+export async function scriptedResult(f: Awaited<ReturnType<typeof fixture>>, id: string, peers = [f], original: OriginalWork = direct) {
   const settled = async () => {
     let before: number;
     do {
       before = f.clock.now().getTime();
-      for (const peer of peers) await drive(peer, peer.verificationSettled());
+      for (const peer of peers) await original(() => drive(peer, peer.verificationSettled()));
       // A product-requested delay on a later peer can admit work on an earlier one.
     } while (f.clock.now().getTime() !== before);
   };
-  return eventually('scripted suite report', async () => {
+  return eventually('scripted suite report', () => original(async () => {
     await settled();
-    const prior = (await f.messages(id))[0];
+    const prior = (await original(() => f.messages(id)))[0];
     if (prior) return prior;
-    await f.clock.advance(1000);
+    await original(() => f.clock.advance(1000));
     await settled();
-    return (await f.messages(id))[0];
-  });
+    return (await original(() => f.messages(id)))[0];
+  }));
 }
 
 export async function foreignLeaseCase(t: TestContext) {

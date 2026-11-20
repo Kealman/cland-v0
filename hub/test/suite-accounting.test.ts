@@ -20,6 +20,7 @@ import { DropletRun } from '../src/executor/droplet/run.ts';
 import { deriveCover } from '../src/hub/suite-cover.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
 
 type Fixture = Awaited<ReturnType<typeof suiteUnit>>;
 async function running(f: Fixture, id: string) {
@@ -498,21 +499,33 @@ test('50 parallel acquirers refuse the spend cap after a stalled budget publicat
 });
 
 test('an unconfirmed acquire cleanup keeps its durable remote budget reservation', async t => {
-  const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 1 }, '', true);
-  f.hold(true); f.api.faults.deleteError = 503;
-  const exec = t.mock.method(f.machine.dependencies.machine, 'exec', async () => { throw new Error('scripted readiness failure'); });
-  const a = await f.launch();
-  await f.machine.waits.run(f.when(() => f.notices.includes(a.id) ? true : undefined));
-  assert.equal(f.api.droplets.length, 1);
-  const b = await f.launch(); await f.when(() => f.notices.includes(b.id) ? true : undefined);
-  assert.equal(f.api.droplets.length, 1); assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
-  assert.equal((await f.jobs()).find(j => j.id === b.id)!.fallback, 'remote budget full');
-  f.api.faults.deleteError = 0; exec.mock.restore();
-  // The hub's executor sweep owns retrying an unconfirmed lease. Exercise that
-  // same executor seam directly, rather than waiting on a daemon sweep timer.
-  const { DropletExecutor } = await import('../src/executor/droplet/droplet.ts');
-  const executor = new DropletExecutor(f.root, f.store, undefined, { DIGITALOCEAN_TOKEN: 'suite-unit-token', CLAND_EXECUTOR_STATE: join(f.root, '.cland/executor-state') }, () => f.config, { ...f.machine.dependencies, api: f.api.provider });
-  await f.machine.waits.run(executor.sweep()); assert.deepEqual(f.api.droplets, []);
-  for (const job of [a, b]) { await f.suites.cancel(job.id, null, () => {}); await f.result(job.id); }
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    let executor: DropletExecutor | undefined;
+    scope.fixtures.after(async () => { await executor?.close(); });
+    const f = await step(() => scope.wait('accounting fixture setup', () => suiteUnit(scope.fixtures, { executor: 'droplet', remoteBudget: 1, onRoot: scope.adoptRoot }, '', true)));
+    f.hold(true); f.api.faults.deleteError = 503;
+    const restoreExec = scope.patch(f.machine.dependencies.machine, 'exec', async () => { throw new Error('scripted readiness failure'); });
+    const a = await step(() => scope.wait('first admission', () => f.launch()));
+    await step(() => scope.wait('first acquisition settled', () => f.machine.waits.run(f.suites.settled())));
+    assert.ok(f.notices.includes(a.id), 'unconfirmed acquisition cleanup publishes its fallback notice');
+    assert.equal(f.api.droplets.length, 1);
+    const b = await step(() => scope.wait('second admission', () => f.launch()));
+    await step(() => scope.wait('second acquisition settled', () => f.machine.waits.run(f.suites.settled())));
+    assert.ok(f.notices.includes(b.id), 'the next acquisition publishes its budget fallback notice');
+    assert.equal(f.api.droplets.length, 1); assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+    assert.equal((await step(() => f.jobs())).find(j => j.id === b.id)!.fallback, 'remote budget full');
+    f.api.faults.deleteError = 0; restoreExec();
+    // The hub's executor sweep owns retrying an unconfirmed lease. Exercise that
+    // same executor seam directly, rather than waiting on a daemon sweep timer.
+    executor = new DropletExecutor(f.root, f.store, undefined, f.env, () => f.config, { ...f.machine.dependencies, api: f.api.provider });
+    await step(() => scope.wait('executor sweep receipt', () => f.machine.waits.run(executor!.sweep())));
+    assert.deepEqual(f.api.droplets, []);
+    for (const job of [a, b]) {
+      await step(() => scope.wait('cancellation receipt', () => f.suites.cancel(job.id, null, () => {})));
+      await step(() => scope.wait('cancelled producer settled', () => f.machine.waits.run(f.suites.settled())));
+      assert.equal(f.status(job.id).reported, true);
+    }
+  });
 });
 

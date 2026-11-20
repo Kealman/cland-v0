@@ -826,6 +826,7 @@ export type ClientRequest =
   /** What runs: the hub's process and the connected sessions. */
   | { type: 'crew.show'; id: string }
   | { type: 'executor.status' | 'executor.reap'; id: string }
+  | { type: 'executor.switch'; id: string; executor: 'local' | 'droplet'; workers?: number }
   | { type: 'executor.prepare'; id: string; report?: string }
   | { type: 'executor.retire-legacy'; id: string; confirmRegisteredHubs: boolean }
   | { type: 'crew.set'; id: string; key: string; value: unknown }
@@ -1291,6 +1292,10 @@ export function isClientRequest(f: Record<string, unknown>, issue?: (field: stri
           if (!((f.role === undefined || typeof f.role === 'string'))) invalid('role');
           return true;
         }
+      case 'executor.switch':
+        if (f.executor !== 'local' && f.executor !== 'droplet') invalid('executor');
+        if (f.workers !== undefined && (typeof f.workers !== 'number' || !Number.isSafeInteger(f.workers) || f.workers < 1)) invalid('workers');
+        return true;
       case 'config.set':
       case 'crew.set':
         {

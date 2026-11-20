@@ -1,5 +1,13 @@
 # hub/test/suite-accounting.test.ts
 
+The unconfirmed-acquisition case enters its guarded caller owner before setup.
+The fallback observer is installed by `suiteUnit` before submission; bounded
+producer settlement precedes explicit notice assertions, so a missing notice
+fails instead of leaving an unbounded waiter. It retains both budget assertions,
+the later sweep's provider-absence receipt and cancellation/report receipts.
+Already-releasing resources stay with reconciliation; replacement must not
+swallow the acquisition owner's fallback notice or allocate another machine.
+
 The parallel-acquire control reads pending reservations with the shared validated
 hasUnknownSpend policy: terminal unknown cost:null rows are distinct from pending
 reservations. Two refused peers retain their bound unknown receipts, and a later

@@ -1003,6 +1003,7 @@ export type ClientRequest =
   /** What runs: the hub's process and the connected sessions. */
   | { type: 'crew.show'; id: string }
   | { type: 'executor.status' | 'executor.reap'; id: string }
+  | { type: 'executor.switch'; id: string; executor: 'local' | 'droplet'; workers?: number }
   | { type: 'executor.prepare'; id: string; report?: string }
   | { type: 'executor.retire-legacy'; id: string; confirmRegisteredHubs: boolean }
   | { type: 'crew.set'; id: string; key: string; value: unknown }

@@ -1,5 +1,16 @@
 # hub/test/executor-prepare-component.test.ts
 
+The exhausted bundle-copy case retains its two timed native-transport receipts
+and asserts `DeliveryTransportError.attempts` plus the original cause identity.
+Scheduler replacement limits live in executor-run-rules: one replacement in a
+different region, durable retry receipt after reopen, and cumulative resource
+accounting. Those tests use semantic executor receipts and a native launch guard.
+The scheduler callers are enclosed before setup by the shared whole-case owner.
+Separate integrated and dev-t3 counterexamples retain infrastructure metadata
+after the replacement's second delivery failure and prove no worker started;
+reopen keeps the one-replacement fence. Actual allocation-cap proof is in
+executor-admission rather than the semantic scheduler fake.
+
 Copy capture uses a guarded fake spawn and fake timers, with no real process.
 The timeout alone must not settle the copy: the fake close receipt supplies its
 final signal and stderr. Feed 131085 bytes in two chunks with a synthetic known

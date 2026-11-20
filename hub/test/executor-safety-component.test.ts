@@ -4,6 +4,7 @@ import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import fs from 'node:fs/promises';
 import { join } from 'node:path';
 import { fixture } from './remote-fixture.ts';
 import { lease, receipt, finish, scriptedResult, foreignLeaseCase } from './executor-safety-case.ts';
@@ -18,6 +19,10 @@ import { warningSeverity } from '../src/hub/visibility.ts';
 import type { HubStatus } from '../src/protocol.ts';
 import { DropletExecutor, projectTag } from '../src/executor/droplet/droplet.ts';
 import { readLeaseHistory, writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
+import { acquireLockAsync } from '../src/hub/lock.ts';
+import { spendPath } from '../src/executor/droplet/spend.ts';
+import { fixtureWork } from '../../test-support/fixture-work.ts';
 
 test('stopping during create detaches the provider reply and retains the tagged lease for restart', async t => {
   const f = await fixture(t, { machine: 'scripted' });
@@ -179,22 +184,84 @@ test('a pre-start assertion failure drains both same-name acquisitions without s
 
 test('a short-lived hub preserves a foreign live lease beyond its own lifetime threshold', foreignLeaseCase);
 
-test('remote completion settles a provider retry beyond the first scheduler advance', async t => {
-  const f = await fixture(t, { machine: 'scripted', script: { outcome: 'slow' }, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000' } });
-  const run = await f.launch();
-  await receipt('remote admission settled', f.verificationSettled());
-  let retried = false;
-  f.api.beforeDropletList(async () => {
-    if (retried) return;
-    retried = true;
-    await f.waits.wait(2000);
+test('an abandoned completion observation joins its admitted original before cleanup', async t => {
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const originals = fixtureWork();
+  const scope = guardedLeaseCase(t, () => release.resolve());
+  scope.fixtures.after(() => originals.close());
+  return scope.run(async step => {
+    const order: string[] = [];
+    // Stop at the held admission boundary: no lease read or worker finish is
+    // reachable after this producer's controlled rejection.
+    const subject = {
+      machine: { started: async () => {} },
+      verificationSettled: async () => {
+        entered.resolve(); await release.promise;
+        order.push('original settled');
+        throw new Error('controlled original rejection');
+      },
+    } as unknown as Parameters<typeof finish>[0];
+    const finishing = scope.wait('controlled completion original joined', () => finish(subject, 'held-original', operation => originals.run(operation)));
+    const rejected = assert.rejects(finishing, /controlled original rejection/);
+    void rejected.catch(() => {});
+    await step(() => scope.wait('original admission entered', () => entered.promise));
+    // An observer has stopped waiting; disposal must still join the original.
+    await assert.rejects(Promise.reject(new Error('controlled observation abandoned')), /observation abandoned/);
+    const closing = originals.close().then(() => { order.push('cleanup allowed'); });
+    // One I/O turn lets an incorrectly empty close finish before the held
+    // producer. This is an ordering control, not an elapsed-time assertion.
+    await step(() => scope.wait('close admitted before producer release', () => new Promise<void>(resolve => setImmediate(resolve))));
+    release.resolve();
+    await step(() => scope.wait('original joined by close', () => closing));
+    await step(() => scope.wait('original rejection observed', () => rejected));
+    assert.deepEqual(order, ['original settled', 'cleanup allowed']);
   });
-  const report = await finish(f, run.id);
-  assert.equal(retried, true);
-  assert.match(report.text, /exit 0/);
-  assert.equal((await lease(f.root)).value.state, 'released');
-  assert.deepEqual(f.api.droplets, []);
-  assert.deepEqual(f.api.keys, []);
+});
+
+test('remote completion settles a provider retry beyond the first scheduler advance', async t => {
+  let holder: ReturnType<typeof acquireLockAsync> | undefined;
+  let releasing: Promise<void> | undefined;
+  const scope = guardedLeaseCase(t, () => {
+    releasing = scope.wait('admission holder release', async () => { await (await holder)?.release(); });
+    void releasing.catch(() => {});
+  });
+  scope.fixtures.after(async () => { await releasing; });
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('retry fixture setup', () => fixture(scope.fixtures, { machine: 'scripted', script: { outcome: 'slow' }, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000' } })));
+    scope.adoptRoot(f.root); scope.adoptRoot(f.territory); scope.adoptRoot(f.api.stateRoot);
+    await step(() => scope.wait('initial sweep completed', () => eventually('initial sweep persisted before held admission', async () => {
+      assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+      return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line)).find(row => row.event === 'executor-sweep');
+    })));
+    await step(() => scope.wait('admission ledger holder', async () => { holder = acquireLockAsync(`${spendPath(f.env)}.lock`, undefined, undefined, 'UTC', f.dependencies.processes); await holder; }));
+    const contention = Promise.withResolvers<void>(), link = fs.link;
+    scope.patch(fs, 'link', async (...args: Parameters<typeof link>) => {
+      try { return await link(...args); }
+      catch (error) {
+        if (args[1] === `${spendPath(f.env)}.lock` && (error as NodeJS.ErrnoException).code === 'EEXIST') contention.resolve();
+        throw error;
+      }
+    });
+    const waiting = scope.wait('admission ledger retry requested', () => f.waits.waiting());
+    void waiting.catch(() => {});
+    const run = await step(() => scope.wait('retry submission admitted', () => f.launch()));
+    await step(() => scope.wait('exact admission ledger contention', () => contention.promise));
+    await step(() => waiting);
+    await (await holder)!.release();
+    await step(() => receipt('remote admission settled', scope.own(() => drive(f, f.verificationSettled()))));
+    let retried = false;
+    f.api.beforeDropletList(async () => {
+      if (retried) return;
+      retried = true;
+      await f.waits.wait(2000);
+    });
+    const report = await step(() => scope.wait('provider retry completion report', () => finish(f, run.id, scope.own)));
+    assert.equal(retried, true);
+    assert.match(report.text, /exit 0/);
+    assert.equal((await lease(f.root)).value.state, 'released');
+    assert.deepEqual(f.api.droplets, []);
+    assert.deepEqual(f.api.keys, []);
+  });
 });
 
 test('provider list awaits cannot turn a concurrently acquired droplet or key into an orphan', async t => {

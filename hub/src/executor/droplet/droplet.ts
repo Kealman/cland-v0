@@ -1,6 +1,6 @@
 import { abortable, boundedProvider, within } from './deadline.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
-import { processHost, type DropletDependencies } from './dependencies.ts';
+import { processHost, type DropletDependencies, type Provider } from './dependencies.ts';
 import { acquireLockWithRetry } from '../../hub/lock.ts';
 import type { Store } from '../../hub/store.ts';
 import type { LogFn } from '../../log.ts';
@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { basename } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { defaultConfig, parseConfig, type ProjectConfig } from '../../init/config.ts';
-import { DigitalOceanApi, DigitalOceanError, DeletionUnconfirmed, apiTimeoutMs, type Droplet, type Key } from './api.ts';
+import { DigitalOceanApi, DigitalOceanError, DeletionUnconfirmed, apiTimeoutMs, type Droplet, type Key, type Size } from './api.ts';
 import { restoreWatchdogDeletions, accountRelease, durableJson, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, upgradeWatchdog, type DropletLease, type WatchdogReceipt } from './lease.ts';
 import { testTiming, type WatchdogOptions } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
@@ -215,21 +215,40 @@ export class DropletExecutor implements Executor {
     }
   }
 
-  /** Submission check only; acquire still reserves atomically against other hubs. */
-  async checkSpend(overrideSize?: string, snapshot?: ProjectConfig): Promise<void> {
+  /** Probe transport and regional availability without changing admission or spend. */
+  async checkReachability(overrideSize?: string, snapshot?: ProjectConfig): Promise<void> {
+    await this.#probeAvailability(overrideSize, snapshot);
+  }
+
+  async #probeAvailability(overrideSize?: string, snapshot?: ProjectConfig): Promise<Size> {
     const config = snapshot ?? await this.#config();
     if (!this.#env.DIGITALOCEAN_TOKEN) throw new Error('DIGITALOCEAN_TOKEN is required');
     const size = overrideSize ?? config.verification.droplet.size;
-    const selected = (await (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock)).sizes()).find(s => s.slug === size && s.available);
+    const deadline = this.clock.now().getTime() + 5000;
+    const api = boundedProvider(this.dependencies.api!, this.clock, 5000, deadline, this.#abort.signal);
+    let sizes: Awaited<ReturnType<Provider['sizes']>>, regions: Awaited<ReturnType<Provider['regions']>>;
+    try { sizes = await api.sizes(deadline); regions = await api.regions(deadline); }
+    catch (error) { throw new Error(`droplet API reachability probe failed: ${error instanceof Error ? error.message : String(error)}; use cland verify executor local`, { cause: error }); }
+    const selected = sizes.find(s => s.slug === size && s.available);
     if (!selected) throw new ProviderCapacityUnavailable(`droplet size ${size} is unavailable`);
     if (!Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
+    const available = config.verification.droplet.regions.filter(region => selected.regions.includes(region) && regions.some(row => row.slug === region && row.available && row.sizes.includes(size)));
+    for (const region of config.verification.droplet.regions) if (!available.includes(region)) this.logger({ event: 'executor-region-skipped', region, reason: `region unavailable for size ${size}` });
+    if (!available.length) throw new ProviderCapacityUnavailable(`droplet size ${size} unavailable in regions ${config.verification.droplet.regions.join(', ')}; use cland verify executor local`);
+    return selected;
+  }
+
+  /** Remote-required submissions check spend; acquire always reserves atomically. */
+  async checkSpend(overrideSize?: string, snapshot?: ProjectConfig): Promise<void> {
+    const config = snapshot ?? await this.#config();
+    const selected = await this.#probeAvailability(overrideSize, config);
     const lifetime = testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env);
     const reservation = Math.max(60000, lifetime) / 3600000 * selected.price_hourly;
     const { spent, reserved, cap } = await inspectSpend(config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes);
     if (spent + reserved + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
   }
 
-  async acquire(run: Pick<RunRef, 'id' | 'size'> & Partial<Pick<RunRef, 'log'>>, deadline: string, demo?: DropletLease['demo'], snapshotConfig?: ProjectConfig, admitted?: (lease: DropletLease) => void): Promise<DropletLease> {
+  async acquire(run: Pick<RunRef, 'id' | 'size'> & Partial<Pick<RunRef, 'log' | 'leaseDeadline'>>, deadline: string, demo?: DropletLease['demo'], snapshotConfig?: ProjectConfig, admitted?: (lease: DropletLease) => void): Promise<DropletLease> {
     this.#abort.signal.throwIfAborted();
     const config = snapshotConfig ?? await this.#config();
     const runDeadline = Date.parse(deadline);
@@ -252,7 +271,7 @@ export class DropletExecutor implements Executor {
     }
   }
 
-  async #acquire(run: Pick<RunRef, 'id'> & Partial<Pick<RunRef, 'log'>>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string; demo?: DropletLease['demo'] }, config: ProjectConfig, admitted?: (lease: DropletLease) => void): Promise<DropletLease> {
+  async #acquire(run: Pick<RunRef, 'id'> & Partial<Pick<RunRef, 'log' | 'leaseDeadline'>>, deadline: string, input: { size: string; regions: string[]; image: string | number; minDiskSize?: number; user_data?: string; demo?: DropletLease['demo'] }, config: ProjectConfig, admitted?: (lease: DropletLease) => void): Promise<DropletLease> {
     const runDeadline = Date.parse(deadline);
     const api = (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock));
     const { size, regions, image } = input;
@@ -266,10 +285,12 @@ export class DropletExecutor implements Executor {
     const region = candidates[0];
     if (!region) throw new ProviderCapacityUnavailable(`droplet size ${size} unavailable in regions ${regions.join(', ')}`);
     const created = this.clock.now().toISOString();
+    const lifetimeCap = run.leaseDeadline === undefined ? Infinity : Date.parse(run.leaseDeadline);
+    if (!(lifetimeCap > Date.parse(created))) throw new Error('replacement lease lifetime deadline reached or invalid');
     const id = randomUUID();
     const name = `cland-${projectName(config.name)}-${id.replace(/-/g, '').slice(0, 8)}`;
     const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: id, run: run.id, name, tags: ['cland', projectTag(this.root, config.name)], size, region, priceHourly: selected.price_hourly, keyName: `${projectTag(this.root, config.name)}-${id.replace(/-/g, '').slice(0, 8)}`, created,
-      ...(input.demo ? { demo: input.demo } : {}), deadline: new Date(Math.min(input.demo ? runDeadline : Infinity, Date.parse(created) + testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env))).toISOString(), state: 'creating', resource: null, keyId: null };
+      ...(input.demo ? { demo: input.demo } : {}), deadline: new Date(Math.min(lifetimeCap, input.demo ? runDeadline : Infinity, Date.parse(created) + testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env))).toISOString(), state: 'creating', resource: null, keyId: null };
     const dir = leaseDir(this.root, lease);
     await mkdir(dir, { recursive: true, mode: 0o700 });
     try {

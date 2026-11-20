@@ -1,5 +1,17 @@
 # hub/test/config-reload-component.test.ts
 
+Executor switching uses a disposable `projectHub`, a fake candidate and real
+socket requests. Check the effective executor/workers receipt, managed-file
+readback, next dry-run admission and Coordinator-only role routing. The queued
+run and retained running-worker snapshots are covered by executor-run-rules.
+The baseline reload case keeps executor/droplet reload distinct from local-worker
+reload; no live project config or provider call is involved.
+Changed callbacks enter `guardedLeaseCase.run` before guard/root setup, adopt
+late roots, and use separate named setup bounds. The real CLI subject is its own
+case with the helper's CLI allowance; the other new cases retain the fake-only
+positive launch guard. Normal and signal teardown join callers before resources,
+roots and guard seams are released.
+
 `hub/test/config-reload-component.test.ts` is T2: the real CLI talks to a sealed
 in-process `projectHub`, with fake adapters and scratch HOME/Git environments
 owned by the shared harness. No native hub-process lifecycle or browser is used.

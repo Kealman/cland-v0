@@ -17,6 +17,7 @@ import { serializeTierManifest, type TierManifest } from '../src/suite-shards.ts
 import { acquireLockAsync } from '../src/hub/lock.ts';
 import { spendPath } from '../src/executor/droplet/spend.ts';
 import { completeJournalLines } from './journal-lines.ts';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
 
 test('a reported two-shard Linux stage cover counts on the first run after hub restart', async t => {
   const setup = caseDeadlines(t);
@@ -300,43 +301,64 @@ test('live and restored shards separate remote execution from collection in one 
 });
 
 test('cancelling while provider sizes are held joins reservation before reporting and leaves zero reserved spend', async t => {
-  const f = await integrated(t, 'daily_spend_usd=3', 2, undefined, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '3600000' } });
-  await eventually('initial executor sweep persisted before reservation contention', async () => {
-    assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-    return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line)).find(row => row.event === 'executor-sweep');
-  }, 2000);
-  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
-  onCleanup(t, () => release.resolve());
-  f.api.beforeSizes(async () => { entered.resolve(); await release.promise; });
-  const submission = f.launch('all', '--fresh', '--occasion', 'stage');
-  await entered.promise;
-  const q = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
-  const id = q.waiters[0]!.id;
-  assert.equal((await f.ui.request({ type: 'suite.cancel', suite: id })).ok, true);
-  await f.clock.advance(1000);
-  assert.equal((await f.messages(id)).length, 0, 'no result while reservation completion is held');
-  // Pin the intermittent startup/sweep contention at the actual scratch ledger.
-  // The scripted retry is on fake time, independently of the provider reply.
-  const lock = await acquireLockAsync(`${spendPath(f.env)}.lock`, undefined, undefined, 'UTC', f.dependencies.processes);
-  onCleanup(t, () => lock.release());
-  const waiting = f.waits.waiting();
-  release.resolve();
-  await waiting;
-  await lock.release();
-  assert.equal((await drive(f, submission)).id, id);
-  // Admission may already be complete; keep driving the reservation owner,
-  // whose lock retry and cleanup must settle before advancing result polling.
-  await drive(f, f.verificationSettled());
-  await f.clock.advance(1000);
-  const result = await drive(f, f.result(id));
-  assert.match(result.text, /cancelled/);
-  const executor = (await f.ui.request({ type: 'executor.status' })).value as { taggedDroplets: number; spend: { reserved: number; spent: number } };
-  assert.equal(executor.spend.reserved, 0, 'late reservation placeholders must be released before the result');
-  assert.equal(executor.spend.spent, 0);
-  assert.equal(executor.taggedDroplets, 0);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
-  assert.equal((await f.messages(id)).length, 1);
+  const release = Promise.withResolvers<void>();
+  let lock: Awaited<ReturnType<typeof acquireLockAsync>> | undefined;
+  let acquiring: ReturnType<typeof acquireLockAsync> | undefined;
+  let releasing: Promise<void> | undefined;
+  const scope = guardedLeaseCase(t, () => {
+    release.resolve();
+    releasing = scope.wait('held reservation ledger release', async () => { await (await acquiring)?.release(); });
+    void releasing.catch(() => {});
+  });
+  scope.fixtures.after(async () => { await releasing; });
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('close fixture setup', () => integrated(scope.fixtures, 'daily_spend_usd=3', 2, undefined, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '3600000' } })));
+    scope.adoptRoot(f.root); scope.adoptRoot(f.territory); scope.adoptRoot(f.api.stateRoot);
+    await step(() => scope.wait('initial executor sweep', () => eventually('initial executor sweep persisted before reservation contention', async () => {
+      assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+      return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line)).find(row => row.event === 'executor-sweep');
+    }, 2000)));
+    assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+    const entered = Promise.withResolvers<void>();
+    let planning = false;
+    const reserve = DropletExecutor.prototype.reserveShards;
+    scope.patch(DropletExecutor.prototype, 'reserveShards', async function (this: DropletExecutor, ...args: Parameters<typeof reserve>) {
+      planning = true;
+      try { return await reserve.apply(this, args); }
+      finally { planning = false; }
+    });
+    // The pre-submit catalog probe must finish. Hold the same provider boundary
+    // only inside the real shard reservation owner, after durable admission.
+    f.api.beforeSizes(async () => { if (planning) { entered.resolve(); await release.promise; } });
+    const submission = scope.wait('submission joined', () => f.launch('all', '--fresh', '--occasion', 'stage'));
+    void submission.catch(() => {});
+    await step(() => scope.wait('reservation provider reply held', () => entered.promise));
+    const q = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+    const id = q.waiters[0]!.id;
+    assert.equal((await f.ui.request({ type: 'suite.cancel', suite: id })).ok, true);
+    await f.clock.advance(1000);
+    assert.equal((await f.messages(id)).length, 0, 'no result while reservation completion is held');
+    // Pin the intermittent startup/sweep contention at the actual scratch ledger.
+    // The scripted retry is on fake time, independently of the provider reply.
+    await step(() => scope.wait('scratch ledger holder', async () => { acquiring = acquireLockAsync(`${spendPath(f.env)}.lock`, undefined, undefined, 'UTC', f.dependencies.processes); lock = await acquiring; }));
+    const waiting = scope.wait('reservation lock retry observed', () => f.waits.waiting());
+    release.resolve();
+    await step(() => waiting);
+    await lock!.release();
+    assert.equal((await step(() => drive(f, submission))).id, id);
+    // Admission may already be complete; keep driving the reservation owner,
+    // whose lock retry and cleanup must settle before advancing result polling.
+    await step(() => scope.wait('reservation cancellation settled', () => drive(f, f.verificationSettled())));
+    await f.clock.advance(1000);
+    const result = await step(() => scope.wait('cancelled report persisted', () => drive(f, f.result(id))));
+    assert.match(result.text, /cancelled/);
+    const executor = (await f.ui.request({ type: 'executor.status' })).value as { taggedDroplets: number; spend: { reserved: number; spent: number } };
+    assert.equal(executor.spend.reserved, 0, 'late reservation placeholders must be released before the result');
+    assert.equal(executor.spend.spent, 0);
+    assert.equal(executor.taggedDroplets, 0);
+    assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
+    assert.equal((await f.messages(id)).length, 1);
+  });
 });
 
 /** Registered before caseDeadlines: release/cancel/join precedes its drainage

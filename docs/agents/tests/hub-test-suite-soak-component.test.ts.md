@@ -1,5 +1,11 @@
 # hub/test/suite-soak-component.test.ts
 
+Region-capacity probes name every configured region and the local-switch
+suggestion in the retained cause. The structured `provider-capacity` outcome
+still controls refusal: retain unavailable/not-run, no local fallback, no red
+headline or culprit search, no worker/provider create and no cover assertions.
+Explicit-size validation retains its separate configured-regions diagnostic.
+
 Periodic and soak native bundle proofs live in the T3
 [bundle contract](hub-test-suite-bundle-native.test.ts.md). Their earlier T2
 receipts supply no T3 coverage after migration.

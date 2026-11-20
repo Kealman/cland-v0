@@ -14,13 +14,13 @@ import { installedHarnessesAsync } from '../doctor/harnesses.ts';
 import type { Layout } from '../project.ts';
 import type { LogFn } from '../log.ts';
 import type { Resumed } from './budget.ts';
-import { setConfigValue } from '../init/config-set.ts';
+import { setConfigValue, setConfigValues } from '../init/config-set.ts';
 import { setRoleLaunch, type LaunchFields, type RoleLaunchResult } from '../roles/launch.ts';
 import { migrateAideTools, writeRolesFile } from '../roles/editor.ts';
 
 // These owners establish listeners, timers, storage or compatibility machinery at startup.
 const STARTUP_FIELDS = ['name', 'sessions', 'visibility', 'tracker', 'artifacts', 'hygiene', 'web'] as const;
-const STARTUP_VERIFICATION_FIELDS = [['lockPath', 'lock_path'], ['workers', 'workers'], ['testTimeoutMs', 'test_timeout'], ['stallTimeoutMs', 'stall_timeout'], ['coverageMaxAgeMs', 'coverage_max_age']] as const;
+const STARTUP_VERIFICATION_FIELDS = [['lockPath', 'lock_path'], ['testTimeoutMs', 'test_timeout'], ['stallTimeoutMs', 'stall_timeout'], ['coverageMaxAgeMs', 'coverage_max_age']] as const;
 export type ConfigSetResult = { key: string; value: unknown; applies: string };
 
 const exec = promisify(execFile);
@@ -150,6 +150,30 @@ export class ProjectConfiguration implements RolesSource {
     this.#work = work.catch(() => {});
     return work;
   }
+  switchExecutor(executor: 'local' | 'droplet', workers: number | undefined, resumed: Resumed, authorize: () => void) {
+    const work = this.#work.then(async () => {
+      resumed(() => {
+        authorize();
+        if (this.#stopped) throw new Error('hub is stopping');
+        setConfigValues(this.layout.root, this.layout.config, {
+          'verification.executor': executor,
+          ...(workers === undefined ? {} : { [executor === 'local' ? 'verification.workers' : 'verification.droplet.workers']: workers }),
+        }, this.env);
+      });
+      await this.#reload(resumed);
+      return resumed(() => {
+        authorize();
+        const v = this.#config.verification;
+        if (v.executor !== executor) throw new Error('executor switch was not applied');
+        const effectiveWorkers = executor === 'local' ? v.workers : v.droplet.workers ?? v.workers;
+        if (workers !== undefined && workers !== effectiveWorkers) throw new Error('worker switch was not applied');
+        return { executor: v.executor, workers: effectiveWorkers, batchExecutor: v.executor,
+          summary: `executor ${v.executor}; workers ${effectiveWorkers}; batch executor ${v.executor}; applied now` };
+      });
+    });
+    this.#work = work.catch(() => {});
+    return work;
+  }
   set(key: string, value: unknown, resumed: Resumed, authorize: () => void): Promise<ConfigSetResult> {
     const work = this.#work.then(async () => {
       const readback = resumed(() => {
@@ -236,7 +260,7 @@ export class ProjectConfiguration implements RolesSource {
         this.#rolesError = null;
         this.log({ event: 'roles-loaded', path: this.layout.roles, launch: Object.fromEntries([...roles].map(([role, definition]) => [role, definition.launch])) });
         if (configText !== null) this.#status = { loadedAt: new Date().toISOString(), sourceCommit };
-        const applied = ['hosts', 'verification.provision', 'verification.prepare', 'verification.check', 'verification.test', 'verification.executor', 'verification.local_fallback', 'verification.budget (capped at 1)', 'verification.remote_budget', 'verification.suite_retention_min_age_days', 'verification.suite_retention_pass_limit', 'verification.coordinator_suites', 'verification.load_gate_workers', 'verification.shards', 'verification.cache_max_age_minutes', 'verification.wait_p90_target', 'verification.lifetime', 'verification.run_timeout', 'verification.daily_spend_usd', 'verification.soak', 'verification.dev_t3_every', 'merge.batch_tiers', 'merge.batch_interaction', 'verification.droplet', 'keys.layouts', 'plan.approval', 'remote.mute_default', 'remote.telegram.enabled', 'remote.telegram.format', 'remote.discord.enabled', 'speech.provider', 'speech.model', 'speech.language', 'speech.max_seconds', 'speech.command', 'roles'];
+        const applied = ['hosts', 'verification.provision', 'verification.prepare', 'verification.check', 'verification.test', 'verification.executor', 'verification.workers', 'verification.local_fallback', 'verification.budget (capped at 1)', 'verification.remote_budget', 'verification.suite_retention_min_age_days', 'verification.suite_retention_pass_limit', 'verification.coordinator_suites', 'verification.load_gate_workers', 'verification.shards', 'verification.cache_max_age_minutes', 'verification.wait_p90_target', 'verification.lifetime', 'verification.run_timeout', 'verification.daily_spend_usd', 'verification.soak', 'verification.dev_t3_every', 'merge.batch_tiers', 'merge.batch_interaction', 'verification.droplet', 'keys.layouts', 'plan.approval', 'remote.mute_default', 'remote.telegram.enabled', 'remote.telegram.format', 'remote.discord.enabled', 'speech.provider', 'speech.model', 'speech.language', 'speech.max_seconds', 'speech.command', 'roles'];
         for (const warning of warnings) this.log({ event: 'config-reload-warning', file: this.layout.config, warning });
         this.log({ event: 'config-reloaded', ...this.#status, applied, warnings });
         return { ...this.#status, applied, warnings };

@@ -471,6 +471,7 @@ export async function serveProject(root: string, options: { createHostRegistry?:
         },
         reload: resumed => roles.reload(resumed),
         setConfig: (key, value, resumed, authorize) => roles.set(key, value, resumed, authorize),
+        switchExecutor: (executor, workers, resumed, authorize) => roles.switchExecutor(executor, workers, resumed, authorize),
         setRoleLaunch: (role, fields, resumed, authorize) => roles.setRoleLaunch(role, fields, resumed, authorize),
         flushLogs: async () => { await journal.flush(); await processJournal?.flush(); await options.flushLog?.(); },
         // without listeners: port 0 and no socket

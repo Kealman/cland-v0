@@ -4,6 +4,115 @@ import assert from 'node:assert/strict';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { readFile, writeFile } from 'node:fs/promises';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { DeliveryTransportError } from '../src/executor/droplet/run.ts';
+import { ReadinessDeadlineError } from '../src/executor/droplet/readiness-deadline.ts';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
+
+test('reload moves a queued default run while an admitted run retains its workers', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('scheduler setup', () => suiteUnit(scope.fixtures, { executor: 'local', machineReceiptsOnly: true, onRoot: scope.adoptRoot }, 'workers=4')));
+    const active = await step(() => scope.wait('first admission', () => f.launch()));
+    await step(() => scope.wait('first worker receipt', () => f.suites.settled()));
+    assert.equal(f.delivered.get(active.id)?.workers, 4);
+    f.hold(true);
+    const queued = await step(() => scope.wait('queued admission', () => f.launch()));
+    await step(() => f.suites.settled());
+    assert.equal(f.status(queued.id).state, 'queued');
+    f.configure('[verification]\nexecutor="droplet"\nworkers=2\n[verification.droplet]\nworkers=7');
+    await step(() => f.tick()); await step(() => scope.wait('reconfigured worker receipt', () => f.suites.settled()));
+    assert.equal(f.status(queued.id).executor, 'droplet');
+    assert.equal(f.status(queued.id).workers, 7);
+    assert.equal(f.status(queued.id).state, 'running');
+    assert.equal(f.delivered.get(active.id)?.workers, 4);
+  });
+});
+
+test('bounded SSH readiness failure replaces the released machine in a different region', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('scheduler setup', () => suiteUnit(scope.fixtures, { executor: 'droplet', machineReceiptsOnly: true, onRoot: scope.adoptRoot })));
+    const original = DropletExecutor.prototype.acquire;
+    let acquisitions = 0;
+    const release = DropletExecutor.prototype.release;
+    let releases = 0;
+    scope.patch(DropletExecutor.prototype, 'release', async function (this: DropletExecutor, ...args: Parameters<typeof release>) {
+      await release.apply(this, args);
+      return ++releases === 1 ? { lifetimeMs: 1000, costUsd: 0.25 } : { lifetimeMs: 2000, costUsd: 0.5 };
+    });
+    scope.patch(DropletExecutor.prototype, 'acquire', async function (this: DropletExecutor, ...args: Parameters<typeof original>) {
+      const lease = await original.apply(this, args);
+      if (++acquisitions === 1) throw new ReadinessDeadlineError('boot-readiness', 1, 1);
+      return lease;
+    });
+    const job = await step(() => scope.wait('replacement admission', () => f.launch()));
+    await step(() => scope.wait('replacement ready receipt', () => f.suites.settled()));
+    const saved = (await step(() => f.jobs())).find(row => row.id === job.id)!;
+    assert.equal(saved.remoteReplacement?.phase, 'readiness');
+    assert.equal(saved.remoteReplacement?.region, 'lon1');
+    assert.equal(saved.remoteReplacement?.state, 'acquired');
+    assert.equal((saved.lease as import('../src/executor/droplet/lease.ts').DropletLease).region, 'nyc1');
+    assert.equal(saved.state, 'running');
+    assert.equal(acquisitions, 2);
+    await step(() => scope.wait('completed accounting receipt', () => f.finish(job.id)));
+    const done = (await step(() => f.jobs())).find(row => row.id === job.id)!;
+    assert.equal(done.machine?.resources, 2);
+    assert.equal(done.machine?.costUsd, 0.75);
+    assert.equal(done.machine?.lifetimeMs, 3000);
+  });
+});
+
+test('delivery transport failure replaces one machine and retains the failed region receipt', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('scheduler setup', () => suiteUnit(scope.fixtures, { executor: 'droplet', machineReceiptsOnly: true, onRoot: scope.adoptRoot })));
+    const original = DropletExecutor.prototype.deliver;
+    let attempts = 0;
+    scope.patch(DropletExecutor.prototype, 'deliver', async function (this: DropletExecutor, ...args: Parameters<typeof original>) {
+      if (++attempts <= 2) throw new DeliveryTransportError('fixture upload exhausted', 2);
+      return original.apply(this, args);
+    });
+    const job = await step(() => scope.wait('replacement admission', () => f.launch()));
+    await step(() => scope.wait('delivery failure receipt', () => f.suites.settled()));
+    assert.equal(attempts, 2, 'one retry on a replacement, then stop');
+    const saved = (await step(() => f.jobs())).find(row => row.id === job.id)!;
+    assert.equal(saved.remoteReplacement?.region, 'lon1');
+    assert.equal(saved.remoteReplacement?.phase, 'delivery');
+    assert.equal(saved.remoteReplacement?.state, 'acquired');
+    assert.equal(f.acquisitions.length, 2);
+    await step(() => scope.wait('reopen setup', () => f.reopen()));
+    await step(() => f.tick()); await step(() => scope.wait('recovered failure receipt', () => f.suites.settled()));
+    assert.equal(attempts, 2, 'restart keeps the exhausted replacement receipt');
+    assert.equal((await step(() => f.jobs())).find(row => row.id === job.id)!.remoteReplacement?.state, 'acquired');
+  });
+});
+
+for (const occasion of [undefined, 'dev-t3'] as const) test('second delivery failure keeps ' + (occasion ?? 'integrated') + ' infrastructure classification without starting a worker', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('integrated scheduler setup', () => suiteUnit(scope.fixtures, { executor: 'droplet', machineReceiptsOnly: true, onRoot: scope.adoptRoot }, 'shards=1')));
+    f.candidate.branch = 'dev';
+    f.candidate.selection = { mode: 'full', files: [], reason: 'integrated fixture', fetchedDev: f.candidate.head };
+    let attempts = 0;
+    scope.patch(DropletExecutor.prototype, 'deliver', async () => {
+      throw new DeliveryTransportError('upload failure ' + (++attempts), 2);
+    });
+    const job = await step(() => scope.wait('integrated admission', () => f.launch({ mode: 'all', integrated: true, ...(occasion ? { occasion } : {}) })));
+    await step(() => scope.wait('second delivery failure receipt', () => f.suites.settled()));
+    const saved = (await step(() => f.jobs())).find(row => row.id === job.id)!;
+    assert.equal(saved.outcome?.notRun, 'infrastructure');
+    assert.equal(saved.outcome?.cause, 'upload failure 2');
+    assert.equal(saved.remoteReplacement?.cause, 'upload failure 1');
+    assert.equal(saved.remoteReplacement?.state, 'acquired');
+    assert.equal(attempts, 2);
+    assert.equal(f.acquisitions.length, 2);
+    assert.equal(f.machine.calls.some(call => call.step === 'start'), false);
+    await step(() => scope.wait('integrated reopen setup', () => f.reopen()));
+    await step(() => f.tick()); await step(() => scope.wait('integrated recovery settled', () => f.suites.settled()));
+    assert.equal(attempts, 2, 'the persisted replacement fence survives recovery');
+    assert.equal((await step(() => f.jobs())).find(row => row.id === job.id)!.outcome?.notRun, 'infrastructure');
+  });
+});
 
 const remoteReady = async (f: Awaited<ReturnType<typeof suiteUnit>>, id: string) => {
   await f.machine.waits.run(f.when(() => f.status(id).state === 'running' ? true : undefined));

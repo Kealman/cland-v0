@@ -21,86 +21,105 @@ import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import type { HubStatus } from '../src/protocol.ts';
 import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
 import { integrated } from './close-run-fixture.ts';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
 
 const processes: LockProcessTable = { alive: pid => pid === process.pid, started: () => null };
 
 for (const phase of ['reserve', 'release'] as const) test(`hub stop cancels shard planning ${phase} and restart settles its durable release`, { timeout: 10000 }, async t => {
-  const f = await integrated(t, '', 2, undefined, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '3600000' } });
-  await eventually('startup sweep persisted', async () => {
-    assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-    return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line)).find(row => row.event === 'executor-sweep');
-  });
-  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const planning = Promise.withResolvers<void>(), resume = Promise.withResolvers<void>();
-  const sizes = f.api.provider.sizes.bind(f.api.provider);
-  let calls = 0;
-  if (phase === 'release') t.mock.method(f.api.provider, 'sizes', async (...args: Parameters<typeof sizes>) => {
-    if (++calls === 1) { planning.resolve(); await resume.promise; throw new Error('controlled shard planning refusal'); }
-    return sizes(...args);
-  });
-  const path = `${spendPath(f.env)}.lock`;
-  const attempted = Promise.withResolvers<void>();
-  const link = fs.link;
-  t.mock.method(fs, 'link', async (...args: Parameters<typeof fs.link>) => {
-    try { return await link(...args); }
-    catch (error) {
-      if (args[1] === path && (error as NodeJS.ErrnoException).code === 'EEXIST') attempted.resolve();
-      throw error;
-    }
-  });
+  const resume = Promise.withResolvers<void>();
   let lock: Awaited<ReturnType<typeof acquireLockAsync>> | undefined;
-  let stopping: Promise<unknown> | undefined;
-  onCleanup(t, async () => {
-    resume.resolve(); await lock?.release();
-    await drive(f, stopping ?? f.stop());
-  });
-  if (phase === 'reserve') lock = await acquireLockAsync(path, undefined, undefined, 'UTC', processes);
-  // Suite.start joins planning, so observe its persisted job independently of
-  // the submission reply; no client request timer owns this held boundary.
-  f.ui.send({ type: 'suite.start', id: 'held-shard-submit', as: { name: 'impl', sessionId: 'remote-impl', shell: true }, cwd: f.root, mode: 'all', occasion: 'stage', report: f.topic, to: ['impl'], fresh: true });
-  const job = await eventually('close job persisted before shard planning', async () => {
-    const status = await f.ui.request({ type: 'hub.status' });
-    assert.equal(status.ok, true, status.error);
-    return (status.value as HubStatus).suites?.find(job => job.occasion === 'stage');
-  });
-  const runs = [1, 2].map(n => `${job.id}-shard-${n}`);
-  if (phase === 'release') {
-    await planning.promise;
-    await reserveShardSpend(f.root, runs, 'c-8', 0.25, 900000, 10, f.env, f.clock, processes);
-    lock = await acquireLockAsync(path, undefined, undefined, 'UTC', processes);
+  let acquiring: ReturnType<typeof acquireLockAsync> | undefined;
+  let releasing: Promise<void> | undefined;
+  const scope = guardedLeaseCase(t, () => {
     resume.resolve();
-  }
-  await attempted.promise;
-  const intents = join(f.root, '.cland/run/executor/shard-releases');
-  if (phase === 'release') {
-    const names = await eventually('shard release intent published', async () => {
-      const names = await readdir(intents).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
-      return names.length ? names : undefined;
-    });
-    assert.equal(names.length, 1);
-    assert.deepEqual(JSON.parse(await readFile(join(intents, names[0]!), 'utf8')), runs);
-  }
-  let stopped = false;
-  stopping = f.stop();
-  void stopping.then(() => { stopped = true; });
-  await eventually('hub stop drains shard planner with ledger still held', () => stopped ? true : undefined, 3000);
-  await stopping;
-  assert.equal(JSON.parse(await readFile(path, 'utf8')).token, lock!.holder.token);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST').length, 0);
-  if (phase === 'release') {
-    const ledger = JSON.parse(await readFile(spendPath(f.env), 'utf8'));
-    assert.equal(ledger.entries.filter((entry: { cost: number | null }) => entry.cost === null).length, 2, 'release intent owns the still-counted reservations until restart can take the ledger');
-  }
-  await lock!.release();
-  const next = await projectHub(t, f.root, f.env, { clock: f.clock, droplet: f.dependencies, harnesses: 'fake', probes: 'fake', syntheticProvider: { token: f.syntheticProvider.token, api: f.api.provider } });
-  const ui = await sessionUi(t, next.discovery);
-  await eventually('next hub durably settles shard release intent', async () => {
-    const ledger = JSON.parse(await readFile(spendPath(f.env), 'utf8'));
-    return ledger.entries.every((entry: { cost: number | null }) => entry.cost !== null) && (await readdir(intents)).length === 0 ? true : undefined;
+    releasing = scope.wait('held ledger release', async () => { await (await acquiring)?.release(); });
+    void releasing.catch(() => {});
   });
-  const status = await ui.request({ type: 'executor.status' });
-  assert.equal(status.ok, true, status.error);
-  assert.equal((status.value as { spend: { reserved: number } }).spend.reserved, 0);
+  scope.fixtures.after(async () => { await releasing; });
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('planning fixture setup', () => integrated(scope.fixtures, '', 2, undefined, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '3600000' } })));
+    scope.adoptRoot(f.root); scope.adoptRoot(f.territory); scope.adoptRoot(f.api.stateRoot);
+    await step(() => scope.wait('startup sweep', () => eventually('startup sweep persisted', async () => {
+      assert.equal((await f.ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+      return completeJournalLines(await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).map(line => JSON.parse(line)).find(row => row.event === 'executor-sweep');
+    })));
+    assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+    const planning = Promise.withResolvers<void>();
+    const sizes = f.api.provider.sizes.bind(f.api.provider);
+    let reserving = false;
+    const reserve = DropletExecutor.prototype.reserveShards;
+    scope.patch(DropletExecutor.prototype, 'reserveShards', async function (this: DropletExecutor, ...args: Parameters<typeof reserve>) {
+      reserving = true;
+      try { return await reserve.apply(this, args); }
+      finally { reserving = false; }
+    });
+    if (phase === 'release') scope.patch(f.api.provider, 'sizes', async (...args: Parameters<typeof sizes>) => {
+      if (reserving) { planning.resolve(); await resume.promise; throw new Error('controlled shard planning refusal'); }
+      return sizes(...args);
+    });
+    const path = `${spendPath(f.env)}.lock`;
+    const attempted = Promise.withResolvers<void>();
+    const link = fs.link;
+    scope.patch(fs, 'link', async (...args: Parameters<typeof fs.link>) => {
+      try { return await link(...args); }
+      catch (error) {
+        if (args[1] === path && (error as NodeJS.ErrnoException).code === 'EEXIST') attempted.resolve();
+        throw error;
+      }
+    });
+    let stopping: Promise<unknown> | undefined;
+    onCleanup(scope.fixtures, async () => {
+      resume.resolve(); await lock?.release();
+      await drive(f, stopping ?? f.stop());
+    });
+    if (phase === 'reserve') await step(() => scope.wait('spend holder setup', async () => { acquiring = acquireLockAsync(path, undefined, undefined, 'UTC', processes); lock = await acquiring; }));
+    // Suite.start joins planning, so observe its persisted job independently of
+    // the submission reply; no client request timer owns this held boundary.
+    f.ui.send({ type: 'suite.start', id: 'held-shard-submit', as: { name: 'impl', sessionId: 'remote-impl', shell: true }, cwd: f.root, mode: 'all', occasion: 'stage', report: f.topic, to: ['impl'], fresh: true });
+    const job = await step(() => scope.wait('durable admission', () => eventually('close job persisted before shard planning', async () => {
+      const status = await f.ui.request({ type: 'hub.status' });
+      assert.equal(status.ok, true, status.error);
+      return (status.value as HubStatus).suites?.find(job => job.occasion === 'stage');
+    })));
+    const runs = [1, 2].map(n => `${job.id}-shard-${n}`);
+    if (phase === 'release') {
+      await step(() => scope.wait('planning provider reply held', () => planning.promise));
+      await step(() => scope.wait('seed counted shard reservations', () => reserveShardSpend(f.root, runs, 'c-8', 0.25, 900000, 10, f.env, f.clock, processes)));
+      await step(() => scope.wait('release holder setup', async () => { acquiring = acquireLockAsync(path, undefined, undefined, 'UTC', processes); lock = await acquiring; }));
+      resume.resolve();
+    }
+    await step(() => scope.wait('exact ledger contention receipt', () => attempted.promise));
+    const intents = join(f.root, '.cland/run/executor/shard-releases');
+    if (phase === 'release') {
+      const names = await eventually('shard release intent published', async () => {
+        const names = await readdir(intents).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
+        return names.length ? names : undefined;
+      });
+      assert.equal(names.length, 1);
+      assert.deepEqual(JSON.parse(await readFile(join(intents, names[0]!), 'utf8')), runs);
+    }
+    let stopped = false;
+    stopping = f.stop();
+    void stopping.then(() => { stopped = true; });
+    await eventually('hub stop drains shard planner with ledger still held', () => stopped ? true : undefined, 3000);
+    await stopping;
+    assert.equal(JSON.parse(await readFile(path, 'utf8')).token, lock!.holder.token);
+    assert.equal(f.api.requests.filter(r => r.method === 'POST').length, 0);
+    if (phase === 'release') {
+      const ledger = JSON.parse(await readFile(spendPath(f.env), 'utf8'));
+      assert.equal(ledger.entries.filter((entry: { cost: number | null }) => entry.cost === null).length, 2, 'release intent owns the still-counted reservations until restart can take the ledger');
+    }
+    await lock!.release();
+    const next = await step(() => scope.wait('restart hub', () => projectHub(scope.fixtures, f.root, f.env, { clock: f.clock, droplet: f.dependencies, harnesses: 'fake', probes: 'fake', syntheticProvider: { token: f.syntheticProvider.token, api: f.api.provider } })));
+    const ui = await step(() => scope.wait('restart client', () => sessionUi(scope.fixtures, next.discovery)));
+    await eventually('next hub durably settles shard release intent', async () => {
+      const ledger = JSON.parse(await readFile(spendPath(f.env), 'utf8'));
+      return ledger.entries.every((entry: { cost: number | null }) => entry.cost !== null) && (await readdir(intents)).length === 0 ? true : undefined;
+    });
+    const status = await ui.request({ type: 'executor.status' });
+    assert.equal(status.ok, true, status.error);
+    assert.equal((status.value as { spend: { reserved: number } }).spend.reserved, 0);
+  });
 });
 
 for (const kind of ['spend', 'executor'] as const) test(`hub stop cancels the held ${kind} admission lock and restart has no reservation`, { timeout: 10000 }, async t => {

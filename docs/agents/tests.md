@@ -262,6 +262,11 @@ Detached droplet watchdog ownership and durable legacy upgrades use the [watchdo
 
 ### Test levels (D53)
 
+The Coordinator or human switches the default and merge-batch executor with
+`cland verify executor local|droplet [--workers N]`; its receipt names effective
+workers. This does not change a running run's admission snapshot or authorize
+an Implementer to change execution policy. See [remote executors](../hub/running.md#remote-executors-droplets).
+
 Every test belongs to one of four runtime tiers, T1–T4. T0 is the static check before a run. D53 (docs/spec/v0.1.4.md) makes moving tests to the lowest adequate tier the project's top priority. The study is A-4143. `hub/test/tiers.json` declares runtime tiers; manifest lint, source guards and the resource tripwire check their boundaries. Reviewers apply the rules below where enforcement is still report-only.
 
 | Tier | What it holds | What it may use | Budget per test |

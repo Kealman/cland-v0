@@ -13,45 +13,137 @@ import { readLeaseHistory } from '../src/executor/droplet/lease.ts';
 import { inspectSpend } from '../src/executor/droplet/spend.ts';
 import { fixtureWork, type FixtureStep } from '../../test-support/fixture-work.ts';
 import { until } from './until.ts';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { syntheticProviderEnvironment } from './synthetic-provider.ts';
+import { parseConfig } from '../src/init/config.ts';
+import { readLease, leaseDir } from '../src/executor/droplet/lease.ts';
 
-function regionalFixture(t: TestContext) {
+function regionalFixture(t: TestContext, options: { setup?: <T>(name: string, run: () => Promise<T>) => Promise<T>; adoptRoot?: (root: string) => void; step?: FixtureStep; beforeDispose?: () => Promise<void> } = {}) {
+  const setup = options.setup ?? (<T>(_name: string, run: () => Promise<T>) => run());
   const work = fixtureWork();
   let root: string | undefined;
-  let cleanupError: AggregateError | undefined;
+  const disposals: Array<() => Promise<void>> = [];
   let closing: Promise<void> | undefined;
   const close = () => closing ??= (async () => {
     await work.close(); // Incomplete joins retain storage.
-    if (cleanupError) throw cleanupError;
+    const outcomes = await Promise.allSettled(disposals.map(dispose => dispose()));
+    const errors = outcomes.filter((result): result is PromiseRejectedResult => result.status === 'rejected').map(result => result.reason);
+    if (errors.length) throw new AggregateError(errors, 'regional fixture cleanup incomplete; root retained');
     if (root) await rm(root, { recursive: true, force: true });
   })();
   t.after(close); // Register before acquiring any directory or provider.
-  const run = (sequence: (f: { root: string; clock: FakeClock; api: Awaited<ReturnType<typeof fakeDigitalOcean>>; machine: ReturnType<typeof scriptedMachine>; env: { DIGITALOCEAN_TOKEN: string; CLAND_EXECUTOR_STATE: string }; executor: DropletExecutor; step: FixtureStep }) => Promise<void>) => work.run(async step => {
-    const directory = await step(() => mkdtemp(join(tmpdir(), 'cland-regional-')));
-    root = directory; // Capture a late acquisition before the next admission check.
+  const run = (sequence: (f: { root: string; clock: FakeClock; api: Awaited<ReturnType<typeof fakeDigitalOcean>>; machine: ReturnType<typeof scriptedMachine>; env: NodeJS.ProcessEnv; executor: DropletExecutor; step: FixtureStep }) => Promise<void>) => work.run(async localStep => {
+    const step: FixtureStep = options.step ? operation => options.step!(() => localStep(operation)) : localStep;
     let api: Awaited<ReturnType<typeof fakeDigitalOcean>> | undefined;
     let executor: DropletExecutor | undefined;
-    try {
-      const clock = new FakeClock();
-      api = await step(() => fakeDigitalOcean('sentinel-regional', { machine: 'scripted', clock }));
-      const key = { node: process.version, lock: 'b'.repeat(64), base: 'c'.repeat(40) };
-      const machine = scriptedMachine(directory, clock, key);
-      const env = { DIGITALOCEAN_TOKEN: 'sentinel-regional', CLAND_EXECUTOR_STATE: join(directory, 'state') };
-      executor = new DropletExecutor(directory, undefined, undefined, env, undefined, { ...machine.dependencies, api: api.provider });
-      await step(() => mkdir(join(directory, '.cland/run/executor'), { recursive: true }));
-      await step(() => writeFile(join(directory, '.cland/config.toml'), '[verification.droplet]\nregions = ["lon1", "nyc1"]\n'));
-      await step(() => writeFile(join(directory, '.cland/run/executor/snapshot.json'), JSON.stringify({ image: 900, name: 'prepared', key, keyHash: keyHash(key), regions: ['lon1', 'nyc1'], minDiskSize: 10 })));
-      api.faults.activeAfter = 0;
-      await step(() => sequence({ root: directory, clock, api: api!, machine, env, executor: executor!, step }));
-    } finally {
-      // Attempt every owner close. A failed close rejects the joined sequence,
-      // so the directory guard retains storage rather than deleting under it.
+    disposals.push(async () => {
+      let releaseFailure: unknown;
+      try { await options.beforeDispose?.(); } catch (error) { releaseFailure = error; }
       const outcomes = await Promise.allSettled([executor?.close(), api?.close()]);
-      const errors = outcomes.filter((r): r is PromiseRejectedResult => r.status === 'rejected').map(r => r.reason);
-      if (errors.length) { cleanupError = new AggregateError(errors, 'regional fixture cleanup incomplete; root retained'); throw cleanupError; }
-    }
+      const errors = outcomes.filter((result): result is PromiseRejectedResult => result.status === 'rejected').map(result => result.reason);
+      if (releaseFailure) errors.unshift(releaseFailure);
+      if (errors.length) throw new AggregateError(errors, 'regional fixture resources did not close');
+    });
+    const directory = await step(() => setup('regional directory setup', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'cland-regional-'));
+      root = directory; // Capture the original operation's late result before a raced setup can return.
+      options.adoptRoot?.(directory);
+      return directory;
+    }));
+    const clock = new FakeClock();
+    const token = 'cland-test-regional';
+    await step(() => setup('regional provider setup', async () => {
+      api = await fakeDigitalOcean(token, { machine: 'scripted', clock });
+    }));
+    if (!api) throw new Error('regional provider setup returned no owner');
+    const key = { node: process.version, lock: 'b'.repeat(64), base: 'c'.repeat(40) };
+    const machine = scriptedMachine(directory, clock, key);
+    const env = syntheticProviderEnvironment(fixtureEnvironment(directory, process.env, { CLAND_EXECUTOR_STATE: join(directory, 'state') }), { token, api: api.provider }, api.provider);
+    executor = new DropletExecutor(directory, undefined, undefined, env, undefined, { ...machine.dependencies, api: api.provider });
+    await step(() => setup('regional image setup', async () => {
+      await mkdir(join(directory, '.cland/run/executor'), { recursive: true });
+      await writeFile(join(directory, '.cland/config.toml'), '[verification.droplet]\nregions = ["lon1", "nyc1"]\n');
+      await writeFile(join(directory, '.cland/run/executor/snapshot.json'), JSON.stringify({ image: 900, name: 'prepared', key, keyHash: keyHash(key), regions: ['lon1', 'nyc1'], minDiskSize: 10 }));
+    }));
+    api.faults.activeAfter = 0;
+    await step(() => sequence({ root: directory, clock, api: api!, machine, env, executor: executor!, step }));
   });
   return { run, close };
 }
+
+test('submission probe refuses unavailable regions before reserving a machine', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    await step(() => regionalFixture(scope.fixtures, { setup: scope.wait, adoptRoot: scope.adoptRoot, step }).run(async ({ api, executor, step }) => {
+      api.regions.splice(0);
+      await step(() => scope.wait('unavailable region receipt', () => assert.rejects(executor.checkReachability(), /lon1.*nyc1/)));
+      assert.equal(api.requests.filter(row => row.method === 'POST').length, 0);
+    }));
+  });
+});
+
+test('submission probe reports API reachability failure with local fallback guidance', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    await step(() => regionalFixture(scope.fixtures, { setup: scope.wait, adoptRoot: scope.adoptRoot, step }).run(async ({ api, executor, step }) => {
+      scope.patch(api.provider, 'sizes', async () => { throw new Error('fixture API unreachable'); });
+      await step(() => scope.wait('API refusal receipt', () => assert.rejects(executor.checkReachability(), /API.*fixture API unreachable.*verify executor local/)));
+      assert.equal(api.requests.filter(row => row.method === 'POST').length, 0);
+    }));
+  });
+});
+
+test('submission probe names a skipped region while retaining an available region', async t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    await step(() => regionalFixture(scope.fixtures, { setup: scope.wait, adoptRoot: scope.adoptRoot, step }).run(async ({ api, executor, step }) => {
+      const events: Record<string, unknown>[] = [];
+      scope.patch(executor, 'logger', (event: Parameters<typeof executor.logger>[0]) => { events.push(event); });
+      api.regions.find(region => region.slug === 'lon1')!.available = false;
+      await step(() => scope.wait('available-region probe receipt', () => executor.checkReachability()));
+      assert.deepEqual(events.filter(event => event.event === 'executor-region-skipped'), [
+        { event: 'executor-region-skipped', region: 'lon1', reason: 'region unavailable for size c-8' },
+      ]);
+      assert.equal(api.requests.filter(row => row.method === 'POST').length, 0);
+    }));
+  });
+});
+
+test('replacement allocation keeps the original lifetime cap in its persisted lease watchdog and spend', async t => {
+  const leases: import('../src/executor/droplet/lease.ts').DropletLease[] = [];
+  const scope = guardedLeaseCase(t, undefined, { canRestore: () => leases.every(lease => lease.state === 'released') });
+  let releaseLeases = async () => {};
+  return scope.run(async step => {
+    await step(() => regionalFixture(scope.fixtures, { setup: scope.wait, adoptRoot: scope.adoptRoot, step, beforeDispose: () => releaseLeases() }).run(async ({ root, clock, machine, executor, env, step }) => {
+      releaseLeases = async () => {
+        for (const lease of leases) if (lease.state !== 'released') await machine.waits.run(executor.release(lease));
+      };
+      const config = parseConfig('[verification]\nlifetime="15m"\nrun_timeout="5m"\n[verification.droplet]\nregions=["lon1","nyc1"]', 'regional', env);
+      const first = await step(() => scope.wait('original allocation receipt', () => machine.waits.run(executor.acquire({ id: 'same-run' }, new Date(clock.now().getTime() + 60000).toISOString(), undefined, config, lease => { leases.push(lease); }))));
+      const originalDeadline = first.deadline;
+      await step(() => scope.wait('original release receipt', () => machine.waits.run(executor.release(first))));
+      assert.equal(first.state, 'released');
+      await step(() => clock.advance(120000));
+      const watchdogDeadlines: string[] = [];
+      const arm = machine.dependencies.host.armWatchdog;
+      scope.patch(machine.dependencies.host, 'armWatchdog', async (...args: Parameters<typeof arm>) => {
+        watchdogDeadlines.push((await readLease(args[0])).deadline);
+        return arm(...args);
+      });
+      config.verification.droplet.regions = ['nyc1'];
+      const second = await step(() => scope.wait('replacement allocation receipt', () => machine.waits.run(executor.acquire({ id: 'same-run', leaseDeadline: originalDeadline }, originalDeadline, undefined, config, lease => { leases.push(lease); }))));
+      assert.equal(second.region, 'nyc1');
+      assert.equal(second.deadline, originalDeadline);
+      assert.equal((await step(() => readLease(leaseDir(root, second)))).deadline, originalDeadline);
+      assert.deepEqual(watchdogDeadlines, [originalDeadline]);
+      const spend = await step(() => inspectSpend(5, env, clock, machine.dependencies.processes));
+      assert.ok(Math.abs(spend.reserved - 0.25 * 13 / 60) < 0.000001, 'only the remaining thirteen minutes are reserved');
+      await step(() => scope.wait('replacement release receipt', () => machine.waits.run(executor.release(second))));
+      assert.equal(second.state, 'released');
+    }));
+  });
+});
 
 test('regional fixture joins held work and fences its next write before disposal', async t => {
   const fixture = regionalFixture(t);

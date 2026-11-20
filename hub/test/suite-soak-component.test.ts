@@ -430,7 +430,7 @@ for (const capacity of ['regions', 'unavailable-size', 'absent-size'] as const) 
   if (capacity === 'regions') for (const region of f.api.regions) region.available = false;
   else if (capacity === 'unavailable-size') f.api.sizes[0]!.available = false;
   else f.api.sizes.length = 0;
-  const cause = capacity === 'regions' ? 'droplet size c-8 unavailable in regions lon1' : 'droplet size c-8 is unavailable';
+  const cause = capacity === 'regions' ? 'droplet size c-8 unavailable in regions lon1, nyc1, sfo2; use cland verify executor local' : 'droplet size c-8 is unavailable';
   const tick = () => run.wait('periodic I/O settled', async () => { await f.clock.advance(1000); await drive(f, f.verificationSettled()); });
   await tick(); await tick(); await tick();
   const history = ((await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: { text: string; detail?: { event: string; run: string; result: string; notRun?: string; cause?: string } }[] }).messages;
@@ -469,7 +469,7 @@ for (const executor of [undefined, 'droplet', 'size', 'droplet-size'] as const) 
     assert.equal(f.api.requests.some(request => request.method === 'POST'), false, 'unknown override creates no provider resource');
     return;
   }
-  const cause = capacity === 'regions' ? explicitSize ? 'droplet size c-8 unavailable in configured regions' : 'droplet size c-8 unavailable in regions lon1' : 'droplet size c-8 is unavailable';
+  const cause = capacity === 'regions' ? explicitSize ? 'droplet size c-8 unavailable in configured regions' : 'droplet size c-8 unavailable in regions lon1, nyc1, sfo2; use cland verify executor local' : 'droplet size c-8 is unavailable';
   const job = await run.wait('submission', () => f.launch(...(executor === 'droplet' || executor === 'droplet-size' ? ['--executor', 'droplet'] : []), ...(explicitSize ? ['--size', 'c-8'] : [])));
   await run.wait('acquisition settled', () => drive(f, f.verificationSettled()));
   await f.clock.advance(1000);

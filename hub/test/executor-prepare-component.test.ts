@@ -23,6 +23,7 @@ import { keyHash, readSnapshot, snapshotPath, type Snapshot } from '../src/execu
 import { readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { Machine } from '../src/executor/droplet/machine.ts';
 import { diagnosticResult } from '../src/hub/merge-batches.ts';
+import { DeliveryTransportError } from '../src/executor/droplet/run.ts';
 import { Store } from '../src/hub/store.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { defaultConfig } from '../src/init/config.ts';
@@ -1038,6 +1039,9 @@ test('delivery retries a failed bundle with timed attempts and keeps exhausted d
     await writeFile(run.log, '');
     let cause = '';
     await assert.rejects(executor.deliver(lease, run), (error: Error) => {
+      assert.ok(error instanceof DeliveryTransportError);
+      assert.equal(error.attempts, 2);
+      assert.equal(error.cause, lastCopyError);
       cause = error.message;
       assert.match(cause, /delivery upload tree.bundle: 2 attempts failed.*1=125000 ms.*2=250 ms.*exit 255/);
       return true;

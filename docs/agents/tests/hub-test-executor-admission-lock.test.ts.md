@@ -32,3 +32,9 @@ stop within three seconds without releasing that holder, and retain the intent
 and counted entries until restart. The next hub must settle the entries, remove
 the intent and report zero reserved spend. Cleanup releases fixture gates and
 holders and joins shutdown before removing either root.
+
+The pre-submit API catalog probe precedes durable admission. Arm the held size
+reply only while the real `reserveShards` owner is running, so the test still
+reaches reservation/release after that probe. The whole caller owns bounded
+setup, exact EEXIST and persisted-job observations, shutdown and restart; its
+native launch guard and patched seams stay installed through fixture drainage.

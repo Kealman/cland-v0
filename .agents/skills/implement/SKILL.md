@@ -94,6 +94,11 @@ In a hub session, set your claimed item to `review` and send `review request T-<
 
 Before requesting review, fetch and merge `origin/dev`, then commit and push the head to review. After a clear source verdict, run `cland verify` at the exact reviewed head and wait for its hub result. A fix or later merge that changes the head needs a new review before a new run. An unchanged head may reuse an earlier green run through the tree-hash cache. The Reviewer settles the final verdict when the same-head result arrives; see `docs/agents/tests.md`.
 
+<!-- cland-workflow-change: T-1898 document Coordinator-only live executor switch -->
+The Coordinator or human can switch the default and merge-batch executor live
+with `cland verify executor local|droplet [--workers N]`. Implementers retain
+their per-run override procedure; running runs keep their admitted policy.
+
 Cache evidence names the original occasion and executor. Release reuse requires
 full matching coverage on the effective executor/OS, including configured defaults;
 a local macOS stage receipt cannot satisfy a droplet release request. See

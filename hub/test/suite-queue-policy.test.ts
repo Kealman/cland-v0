@@ -39,6 +39,7 @@ test('task queue executes the hub policy with explicit worker overrides', async 
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { delivered.set(run.id, run); });
   t.mock.method(LocalExecutor.prototype, 'status', async () => ({ state: 'running' }));
   t.mock.method(DropletExecutor.prototype, 'checkSpend', async () => {});
+  t.mock.method(DropletExecutor.prototype, 'checkReachability', async () => {});
   t.mock.method(DropletExecutor.prototype, 'acquire', async (run: RunRef, deadline: string): Promise<DropletLease> => ({
     kind: 'droplet', provider: 'digitalocean', run: run.id, lease: run.id, name: run.id,
     created: new Date().toISOString(), deadline, tags: ['cland'], size: 'c-8', region: 'lon1',

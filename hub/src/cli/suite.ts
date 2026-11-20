@@ -17,6 +17,15 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
   } });
   const workers = values.workers === undefined ? undefined : Number(values.workers);
   if (workers !== undefined && (!/^[1-9][0-9]*$/.test(values.workers!) || !Number.isSafeInteger(workers))) throw new Error('--workers must be a positive integer');
+  if (positionals[0] === 'executor') {
+    const executor = positionals[1];
+    if (positionals.length !== 2 || (executor !== 'local' && executor !== 'droplet') || Object.keys(values).some(key => !['json', 'workers'].includes(key))) throw new Error('usage: cland verify executor local|droplet [--workers <count>] [--json]');
+    const discovery = readDiscovery(hubDiscovery(cwd));
+    if (!discovery) throw new Error('no hub runs for this project — run `cland hub start`');
+    const result = await ask(discovery, { type: 'executor.switch', executor, ...(workers === undefined ? {} : { workers }) }, 30000) as { summary: string };
+    out(`${values.json ? JSON.stringify(result) : result.summary}\n`);
+    return 0;
+  }
   if (values.size !== undefined && !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(values.size)) throw new Error('--size must be a nonempty slug');
   if (values.executor !== undefined && values.executor !== 'local' && values.executor !== 'droplet') throw new Error('--executor must be local or droplet');
   if (values.occasion !== undefined && !isVerifyOccasion(values.occasion)) throw new Error('--occasion must be batch, dev-t3, stage, epic, release or soak (batch and dev-t3 are hub-owned)');

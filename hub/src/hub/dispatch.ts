@@ -163,6 +163,7 @@ export type Control = {
   stop: () => void;
   reload?: (resumed?: import('./budget.ts').Resumed) => Promise<import('./configuration.ts').ConfigReloadResult>;
   setConfig?: (key: string, value: unknown, resumed: import('./budget.ts').Resumed, authorize: () => void) => Promise<import('./configuration.ts').ConfigSetResult>;
+  switchExecutor?: (executor: 'local' | 'droplet', workers: number | undefined, resumed: import('./budget.ts').Resumed, authorize: () => void) => Promise<unknown>;
   setRoleLaunch?: (role: string, fields: import('../roles/launch.ts').LaunchFields, resumed: import('./budget.ts').Resumed, authorize: () => void) => Promise<import('../roles/launch.ts').RoleLaunchResult>;
   flushLogs?: () => Promise<void>;
 };
@@ -225,7 +226,7 @@ const HUMAN_SESSION = 'human';
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['auth.mode', 'auth.reset', 'user.list', 'user.add', 'user.invite', 'demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'executor.retire-legacy', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'role.launch', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'merge.queue', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['auth.mode', 'auth.reset', 'user.list', 'user.add', 'user.invite', 'demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.switch', 'executor.status', 'executor.reap', 'executor.prepare', 'executor.retire-legacy', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'role.launch', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'merge.queue', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -2810,13 +2811,20 @@ export class Dispatcher {
             return this.#demos!.status(request.epic, request.commit);
           }).then(value => ({ type: 'result' as const, id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
         }
-        if (isClientRequest(frame) && (frame.type === 'executor.status' || frame.type === 'executor.reap' || frame.type === 'executor.prepare' || frame.type === 'executor.retire-legacy')) {
+        if (isClientRequest(frame) && (frame.type === 'executor.switch' || frame.type === 'executor.status' || frame.type === 'executor.reap' || frame.type === 'executor.prepare' || frame.type === 'executor.retire-legacy')) {
           if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, frame.type, 'executor controls belong to the Coordinator or the human');
           if (!this.#droplets) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub serves no project for executors')));
           const authorize = () => {
             const now = this.#asSession(frame);
             if (caller && (!now || now.sessionId !== caller.sessionId || now.role !== 'coordinator')) throw new ToolForbidden(now?.role ?? null, frame.type, 'executor controls belong to the Coordinator or the human');
           };
+          if (frame.type === 'executor.switch') {
+            const change = this.#options.control?.switchExecutor;
+            if (!change) return peer.send(Dispatcher.#failure(frame.id, new Error('executor switching is unavailable; upgrade the hub')));
+            const resumed = this.#guard.resumer(frame.type, client);
+            return later(frame.type, change(frame.executor, frame.workers, resumed, authorize).then(
+              value => ({ type: 'result' as const, id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+          }
           if (frame.type === 'executor.retire-legacy') {
             return later(frame.type, this.#dropletReady.then(() => {
               authorize();

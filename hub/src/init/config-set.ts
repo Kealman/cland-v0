@@ -43,6 +43,12 @@ export function setConfigValue(root: string, path: string, key: string, value: u
   return writeConfigValue(root, path, key, value, env);
 }
 
+/** One validated file replacement for an operational settings change. */
+export function setConfigValues(root: string, path: string, values: Record<string, unknown>, env: NodeJS.ProcessEnv): void {
+  if (Object.hasOwn(values, 'auth.mode')) throw new Error('use cland auth mode users or cland auth reset to change auth.mode');
+  prepareConfigValues(root, path, values, env)();
+}
+
 export function prepareAuthMode(root: string, path: string, mode: 'single' | 'users', env: NodeJS.ProcessEnv): () => unknown {
   return prepareConfigValue(root, path, 'auth.mode', mode, env);
 }
@@ -52,20 +58,27 @@ function writeConfigValue(root: string, path: string, key: string, value: unknow
 }
 
 function prepareConfigValue(root: string, path: string, key: string, value: unknown, env: NodeJS.ProcessEnv): () => unknown {
+  const commit = prepareConfigValues(root, path, { [key]: value }, env);
+  return () => commit()[key];
+}
+
+function prepareConfigValues(root: string, path: string, values: Record<string, unknown>, env: NodeJS.ProcessEnv): () => Record<string, unknown> {
   const known = configKeys();
-  let poolKey = false;
-  if (key.startsWith('hosts.') && key.split('.').length >= 3) {
-    const parts = key.split('.');
-    const field = parts.pop()!;
-    const pool = parts.slice(1).join('.');
-    parsePoolName(pool);
-    if (!POOL_KEYS.some(allowed => allowed === field)) throw new Error(`unknown config key ${key}; allowed pool keys: ${POOL_KEYS.join(', ')}`);
-    poolKey = true;
-  }
-  if (!poolKey && !known.includes(key)) {
-    const section = key.split('.').slice(0, -1).join('.');
-    const keys = known.filter(k => k.startsWith(`${section}.`));
-    throw new Error(`unknown config key ${key}; known keys${section && keys.length ? ` in ${section}` : ''}: ${(keys.length ? keys : known).join(', ')}`);
+  for (const key of Object.keys(values)) {
+    let poolKey = false;
+    if (key.startsWith('hosts.') && key.split('.').length >= 3) {
+      const parts = key.split('.');
+      const field = parts.pop()!;
+      const pool = parts.slice(1).join('.');
+      parsePoolName(pool);
+      if (!POOL_KEYS.some(allowed => allowed === field)) throw new Error(`unknown config key ${key}; allowed pool keys: ${POOL_KEYS.join(', ')}`);
+      poolKey = true;
+    }
+    if (!poolKey && !known.includes(key)) {
+      const section = key.split('.').slice(0, -1).join('.');
+      const keys = known.filter(k => k.startsWith(`${section}.`));
+      throw new Error(`unknown config key ${key}; known keys${section && keys.length ? ` in ${section}` : ''}: ${(keys.length ? keys : known).join(', ')}`);
+    }
   }
   const link = symlinkOnPath(root, path);
   if (link !== null) throw new Error(symlinkNote(link));
@@ -73,14 +86,21 @@ function prepareConfigValue(root: string, path: string, key: string, value: unkn
   if (!isManagedFile(original)) throw new Error('config.toml has no managed by cland mark: it is the project\'s own; left unchanged');
   const name = basename(root);
   const doc = parse(original) as Table;
-  const parts = key.split('.');
-  const field = parts.pop()!;
-  tableAt(doc, parts)[field] = value;
+  for (const [key, value] of Object.entries(values)) {
+    const parts = key.split('.');
+    const field = parts.pop()!;
+    tableAt(doc, parts)[field] = value;
+  }
   const candidate = parseConfig(stringify(doc), name, env, { strict: true });
   const text = renderConfig(candidate, stringify(doc));
   // Validate the rendered candidate too, before publishing any bytes.
   parseConfig(text, name, env, { strict: true });
-  const readback = tableAt(parse(text) as Table, parts)[field];
+  const parsed = parse(text) as Table;
+  const readback = Object.fromEntries(Object.keys(values).map(key => {
+    const parts = key.split('.');
+    const field = parts.pop()!;
+    return [key, tableAt(parsed, parts)[field]];
+  }));
   return () => {
     const refused = writeAtomic(root, path, text, original);
     if (refused !== null) throw new Error(symlinkNote(refused));

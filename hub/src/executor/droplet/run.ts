@@ -23,6 +23,14 @@ import { ReadinessDeadlineError } from './readiness-deadline.ts';
 import { candidatePathspec, candidateTree, excludedPaths } from '../../verification-tree.ts';
 import { selectionTransport } from '../../suite-selection.ts';
 
+/** Copy retries have closed without delivering the run; a new machine is safe. */
+export class DeliveryTransportError extends Error {
+  readonly attempts: number;
+  constructor(message: string, attempts: number, cause?: unknown) {
+    super(message, { cause }); this.attempts = attempts;
+  }
+}
+
 const exec = promisify(execFile);
 /** Hosting-source program; delivered older trees need not contain the reader. */
 export function runStatusProgram(): string {
@@ -99,7 +107,9 @@ export class DropletRun {
       }
       if (succeeded) return;
     }
-    throw new Error(`delivery upload ${name}: ${attempts.length} attempts failed (${attempts.join(', ')}); ${failure}${this.#clock.now().getTime() >= deadline ? '; delivery deadline reached' : ''}`);
+    const message = `delivery upload ${name}: ${attempts.length} attempts failed (${attempts.join(', ')}); ${failure}${this.#clock.now().getTime() >= deadline ? '; delivery deadline reached' : ''}`;
+    if (attempts.length === 2 && copyFailure instanceof MachineRequestError && !copyFailure.localClientUnavailable) throw new DeliveryTransportError(message, 2, copyFailure);
+    throw new Error(message, { cause: copyFailure });
   }
   async #directory(lease: DropletLease, dir: string, run: RunRef, deadline: number): Promise<void> {
     const limit = Math.min(deadline, this.#clock.now().getTime() + 30000);

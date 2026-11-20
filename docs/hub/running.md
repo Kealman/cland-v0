@@ -180,12 +180,43 @@ Enable it for batch landing; `merge.batch` (default 3) and `merge.batch_wait`
 settable through `cland config set`. See [test guidance](../agents/tests.md).
 
 Choose the project default with `[verification] executor = "local"` (the default)
-or `"droplet"` in `.cland/config.toml`; restart the hub to apply scheduling changes.
+or `"droplet"` in `.cland/config.toml`; `cland hub reload` applies executor,
+local workers and droplet settings live. The human or Coordinator can use
+`cland verify executor local|droplet [--workers N] [--json]` to atomically save
+the default executor and its worker count, reload, and return the effective
+executor, workers and batch location. Without `--workers`, it keeps that
+executor's configured count (droplets inherit local workers without an override).
+An unmarked config is left unchanged. A reload refusal fails the command;
+the saved edit is not reported as applied. Running jobs retain their admission
+snapshot; queued jobs following the default take the new policy. Merge batches
+use the default; periodic dev and soak still explicitly use droplets.
 `cland verify --executor local|droplet --report <topic>` overrides it for one run.
 Use `--executor local` on a macOS host for a macOS-only question or when the human
 asks. Both executors share admission order, the tree/mode cache and the
 artifact-backed result. Review source first, then verify the exact reviewed head
 (D25), whichever executor runs it.
+
+Before an uncached remote submission, a five-second API probe checks sizes and
+configured regions. Unavailable regions are skipped with a named reason; an
+unreachable API refuses with its cause and suggests `cland verify executor local`.
+The probe does not reserve or inspect spend for a fallback-eligible request:
+with the executor flag omitted and `local_fallback = true`, acquisition retains
+the existing spend-cap fallback. Remote-required requests (an explicit droplet
+executor or `local_fallback = false`) also check spend before submission.
+Every acquisition still reserves against the shared cap atomically.
+After acquisition, SSH readiness has its own bounded wait. A readiness failure or
+an exhausted two-attempt upload transport failure can replace the droplet once,
+after confirmed release, in a different configured snapshot region. The run
+retains the failed lease, region, phase and replacement identity. Accounting
+retains both resources; the report labels cumulative lifetime and cost as a total
+across two machines. Upload failures
+from the local SSH client, already delivered runs, and unconfirmed cleanup never
+authorize replacement.
+Replacement allocation supplies an explicit resource-lifetime cap from the
+original lease. That cap is distinct from the acquisition wait deadline and is
+persisted before spend reservation and watchdog launch; replacement cannot renew
+the run's resource lifetime. A second delivery failure retains the integrated or
+periodic run's pre-execution infrastructure classification.
 
 Result messages retain executor accounting and machine health before optional
 diagnostics when the text cap requires a shorter summary. Long fallback and

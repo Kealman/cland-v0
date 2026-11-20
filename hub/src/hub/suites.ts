@@ -47,6 +47,8 @@ import { readLeases, readLease, leaseDir, type DropletLease } from '../executor/
 import { machineEnv } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
 import type { ExecutorKind, HostGate, Lease, Platform, RunRef } from '../executor/executor.ts';
+import { DeliveryTransportError } from '../executor/droplet/run.ts';
+import { ReadinessDeadlineError } from '../executor/droplet/readiness-deadline.ts';
 import { idNumber } from '../tracker/item.ts';
 import { diagnosticTestFile, taskSuiteSelection, describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 import { parseCoverageMap, mergeCoverageFiles } from '../suite-coverage.ts';
@@ -83,7 +85,8 @@ export type SuiteJob = {
   occasion?: VerifyOccasion; shards?: SuiteJob[]; parentRun?: string; shardName?: string; shardingSkipped?: string; shardingSkipLogged?: boolean; groupMerged?: boolean;
   workers?: number; fallbackWorkers?: number; size?: string;
   executor: ExecutorKind; requestedExecutor?: ExecutorKind; requireRemote?: boolean; fallback?: string; fallbackLogged?: boolean; remoteReclaimPending?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
-  machine?: { name?: string; size?: string; region?: string; lifetimeMs: number | null; costUsd: number | null };
+  remoteReplacement?: { lease: string; region: string; phase: 'readiness' | 'delivery'; state: 'releasing' | 'acquiring' | 'acquired'; replacement?: string; cause: string; accounting?: { lifetimeMs: number; costUsd: number } };
+  machine?: { name?: string; size?: string; region?: string; lifetimeMs: number | null; costUsd: number | null; resources?: number };
   remoteOutputAt?: number;
   remoteOutputOffset?: number;
   submissionKey?: string;
@@ -214,6 +217,13 @@ export function releaseT3Cover(store: Store, tree: string): { run: string; head:
     && job.selection?.mode === 'full' && !job.selection.tests && !job.selection.nvimTests && !job.selection.shard
     && (job.selection.tiers?.includes('T3') ?? job.selection.soak === true));
   return job ? { run: job.id, head: job.head } : null;
+}
+
+function resourceAccounting(job: SuiteJob, lease: DropletLease, released: { lifetimeMs: number | null; costUsd: number | null }) {
+  const previous = job.remoteReplacement;
+  if (!previous?.accounting || previous.lease === lease.lease) return released;
+  return { resources: 2, lifetimeMs: released.lifetimeMs === null ? null : released.lifetimeMs + previous.accounting.lifetimeMs,
+    costUsd: released.costUsd === null ? null : released.costUsd + previous.accounting.costUsd };
 }
 
 export class Suites {
@@ -786,9 +796,12 @@ export class Suites {
       } else await rm(job.log + '.cache.tmp', { force: true });
     }
     if (!job.cached && capacityRefusal) job.outcome = { code: 1, cause: capacityRefusal.message, notRun: 'provider-capacity' };
-    if (!job.cached && !job.outcome && job.requireRemote) {
-      if (!tree) throw new Error('dirty worktree cannot be bundled for droplet');
-      try { await this.#droplet.checkSpend(input.size, config); }
+    if (!job.cached && !job.outcome && executor === 'droplet') {
+      if (job.requireRemote && !tree) throw new Error('dirty worktree cannot be bundled for droplet');
+      try {
+        if (job.requireRemote) await this.#droplet.checkSpend(input.size, config);
+        else await this.#droplet.checkReachability(input.size, config);
+      }
       catch (error) {
         if (!(error instanceof ProviderCapacityUnavailable)) throw error;
         job.outcome = { code: 1, cause: error.message, notRun: 'provider-capacity' };
@@ -1076,6 +1089,10 @@ export class Suites {
       // root commits. Its check runs remotely against that detached commit.
       const committedOnly = job.occasion === 'dev-t3' || job.integrated === true;
       if (job.executor === 'droplet') {
+        if (job.remoteReplacement && job.remoteReplacement.state !== 'acquired') {
+          job.outcome ??= { code: 1, cause: job.remoteReplacement.cause, notRun: 'infrastructure' };
+          throw new Error('droplet replacement interrupted before readiness receipt');
+        }
         // Undelivered leases cannot have submitted a worker. A restored delivered
         // lease may have lost its start acknowledgement, so remains uncertain.
         remotePreExecution = !job.lease || !(job.lease as DropletLease).execution?.delivered;
@@ -1096,24 +1113,28 @@ export class Suites {
             }); }
             catch (error) {
               if (this.#closed) return; // The durable creating lease belongs to restart reconciliation.
-              if (job.cancelled) throw error;
-              if (error instanceof ProviderCapacityUnavailable) {
-                job.outcome = { code: 1, cause: error.message, notRun: 'provider-capacity' };
-                throw error;
+              if (await this.#replaceRemote(job, run, error)) {
+                // A confirmed release and a new lease permit delivery below.
+              } else {
+                if (job.cancelled) throw error;
+                if (error instanceof ProviderCapacityUnavailable) {
+                  job.outcome = { code: 1, cause: error.message, notRun: 'provider-capacity' };
+                  throw error;
+                }
+                // Acquisition never submits a worker start. Later start errors can
+                // be ambiguous and must retain their executed-or-unknown outcome.
+                if (job.parentRun) {
+                  job.outcome = { code: 1, cause: error instanceof Error ? error.message : String(error), notRun: 'infrastructure' };
+                  throw error;
+                }
+                if (job.requireRemote && !job.parentRun && error instanceof RemoteBudgetFull) {
+                  job.state = 'queued';
+                  delete job.admittedAt; delete job.remoteAcquireAttempted; delete job.config;
+                  this.#save(job);
+                  return;
+                }
+                this.#fallback(job, error instanceof Error ? error.message : 'provider unavailable'); return;
               }
-              // Acquisition never submits a worker start. Later start errors can
-              // be ambiguous and must retain their executed-or-unknown outcome.
-              if (job.parentRun) {
-                job.outcome = { code: 1, cause: error instanceof Error ? error.message : String(error), notRun: 'infrastructure' };
-                throw error;
-              }
-              if (job.requireRemote && !job.parentRun && error instanceof RemoteBudgetFull) {
-                job.state = 'queued';
-                delete job.admittedAt; delete job.remoteAcquireAttempted; delete job.config;
-                this.#save(job);
-                return;
-              }
-              this.#fallback(job, error instanceof Error ? error.message : 'provider unavailable'); return;
             }
           }
           try {
@@ -1122,12 +1143,18 @@ export class Suites {
             job.remoteLogStart = (await stat(job.log)).size;
           }
           catch (error) {
-            if (committedOnly || job.parentRun) {
-              const cause = error instanceof Error ? error.message : String(error);
-              if (job.outcome) await appendFile(job.log, `secondary delivery failure: ${cause}\n`);
-              else job.outcome = { code: 1, cause, notRun: 'infrastructure' };
+            try {
+              if (!await this.#replaceRemote(job, run, error)) throw error;
+              await this.#droplet.deliver(job.lease as DropletLease, run, committedOnly);
+              job.remoteLogStart = (await stat(job.log)).size;
+            } catch (failure) {
+              if (committedOnly || job.parentRun) {
+                const cause = failure instanceof Error ? failure.message : String(failure);
+                if (job.outcome) await appendFile(job.log, `secondary delivery failure: ${cause}\n`);
+                else job.outcome = { code: 1, cause, notRun: 'infrastructure' };
+              }
+              throw failure;
             }
-            throw error;
           }
         }
         const lease = job.lease as DropletLease;
@@ -1162,6 +1189,42 @@ export class Suites {
       job.outcome ??= { code: 1, cause: error instanceof Error ? error.message : String(error),
         ...(job.parentRun && remotePreExecution && !job.cancelled ? { notRun: 'infrastructure' as const } : {}) }; this.#save(job);
     } finally { this.#launching.delete(job.id); if (job.cancelled) void this.#inspectJob(job); }
+  }
+  async #replaceRemote(job: SuiteJob, run: RunRef, error: unknown): Promise<boolean> {
+    const phase = error instanceof DeliveryTransportError ? 'delivery'
+      : error instanceof ReadinessDeadlineError && error.phase === 'boot-readiness' ? 'readiness' : null;
+    if (!phase || job.remoteReplacement || job.cancelled || this.#closed || job.lease?.kind !== 'droplet' || !job.config) return false;
+    const lease = job.lease as DropletLease;
+    // Acquisition already owns unconfirmed cleanup. Leave its durable lease
+    // with reconciliation and preserve the caller's existing fallback policy.
+    if (lease.execution?.delivered || lease.state === 'releasing') return false;
+    const config = structuredClone(job.config);
+    config.verification.droplet.regions = config.verification.droplet.regions.filter(region => region !== lease.region);
+    if (!config.verification.droplet.regions.length) return false;
+    job.remoteReplacement = { lease: lease.lease, region: lease.region, phase, state: 'releasing', cause: error instanceof Error ? error.message : String(error) };
+    this.#save(job);
+    try {
+      const released = await this.#droplet.release(lease);
+      if (lease.state !== 'released' || released.lifetimeMs === null || released.costUsd === null) throw error;
+      job.remoteReplacement.accounting = { lifetimeMs: released.lifetimeMs, costUsd: released.costUsd };
+      this.#save(job);
+      if (job.cancelled || this.#closed) throw error;
+      job.remoteReplacement.state = 'acquiring'; this.#save(job);
+      job.lease = await this.#droplet.acquire({ ...run, leaseDeadline: lease.deadline }, lease.deadline, undefined, config, replacement => {
+        if (replacement.run !== job.id) throw new Error('replacement lease run identity mismatch');
+        job.lease = replacement; this.#save(job);
+      });
+      job.remoteReplacement.state = 'acquired';
+      job.remoteReplacement.replacement = (job.lease as DropletLease).lease;
+      this.#save(job);
+      await appendFile(job.log, `droplet replacement ${JSON.stringify(job.remoteReplacement)}\n`);
+      return true;
+    } catch (secondary) {
+      job.outcome ??= { code: 1, cause: job.remoteReplacement.cause, notRun: 'infrastructure' };
+      this.#save(job);
+      await appendFile(job.log, `secondary replacement failure: ${secondary instanceof Error ? secondary.message : String(secondary)}\n`);
+      throw error;
+    }
   }
   #shouldPlanShards(job: SuiteJob): boolean {
     // Integrated is assigned by dispatch only to Coordinator root runs (or QA
@@ -1654,7 +1717,7 @@ export class Suites {
       if (lease.lease !== (source.lease as DropletLease).lease || lease.name !== (source.lease as DropletLease).name) throw new Error('accounting lease identity changed');
       if (lease.state !== 'released' || lease.lifetimeMs === undefined || lease.costUsd === undefined) return;
       source.lease = lease;
-      source.machine = { name: lease.name, size: lease.size, region: lease.region, lifetimeMs: lease.lifetimeMs, costUsd: lease.costUsd };
+      source.machine = { name: lease.name, size: lease.size, region: lease.region, ...resourceAccounting(source, lease, { lifetimeMs: lease.lifetimeMs, costUsd: lease.costUsd }) };
     }
     // Publication is idempotent by run id. Save the confirmed numbers only after
     // the notice succeeds so a crash or unavailable topic retries the correction.
@@ -1792,7 +1855,7 @@ export class Suites {
               this.#options.log?.({ event: 'verification-release-deferred', id: job.id, lease: lease.lease, error: String(error) });
               return { lifetimeMs: lease.lifetimeMs ?? null, costUsd: lease.costUsd ?? null };
             });
-            job.machine = { name: lease.name, size: lease.size, region: lease.region, ...released };
+            job.machine = { name: lease.name, size: lease.size, region: lease.region, ...resourceAccounting(job, lease, released) };
             this.#save(job);
             if (released.lifetimeMs === null || released.costUsd === null) {
               if (this.#clock.now().getTime() - Date.parse(job.accountingWaitStarted) < ACCOUNTING_WAIT_MS) {
