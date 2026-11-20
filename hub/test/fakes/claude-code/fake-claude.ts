@@ -54,6 +54,7 @@ import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, watch, writeFileSync } from 'node:fs';
 import { claudeHookReceiptPath, type ClaudeHookClose } from '../../claude-hook-receipt.ts';
+import { heldModPosts, waitForModHold } from '../../held-mod-post.ts';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -372,6 +373,7 @@ async function runSession(id: string): Promise<number> {
   const queue: Array<{ text: string; started: () => void }> = [];
   let wake: (() => void) | null = null;
   const children = new Set<ReturnType<typeof spawn>>();
+  const heldPosts = heldModPosts();
   let dropped = false;
   const $ = {
     env: { get: async (name: string) => env[name] },
@@ -380,23 +382,38 @@ async function runSession(id: string): Promise<number> {
     process: {
       run: (argv: string[], init: { stdin?: string; timeoutMs?: number } = {}) => {
         if (stopping) return Promise.resolve({ exitCode: 143, stdout: '', stderr: 'session stopping' });
-        const posted = new Promise((resolve, reject) => {
+        const observedPrompt=promptId;
+        const hold=env.FAKE_CLAUDE_MOD_START_HOLD;
+        const prepare=async(signal:AbortSignal)=>{
+          if(argv[3]==='mod-turn-start'&&hold&&existsSync(hold)&&String(init.stdin).includes(readFileSync(hold,'utf8'))) {
+            await waitForModHold(signal,{
+              watch:check=>{const watcher=watch(hold,check);return ()=>watcher.close();},
+              released:()=>!existsSync(hold),
+              publish:()=>writeFileSync(hold+'.started',init.stdin??''),
+            });
+          }
+        };
+        const launch=()=>new Promise((resolve, reject) => {
           // cland-allow-child-env: native fake harness descendant preserves fixture-owned profiles and synthetic account credentials from its sealed launcher
           const child = spawn(argv[0] as string, argv.slice(1), { cwd: job.cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
           let stdout = '';
           let stderr = '';
+          let spawnError: Error | undefined;
           child.stdout.on('data', (c: Buffer) => (stdout += String(c)));
           child.stderr.on('data', (c: Buffer) => (stderr += String(c)));
           const timer = setTimeout(() => child.kill('SIGKILL'), init.timeoutMs ?? 30_000);
-          child.on('error', reject);
-          child.on('close', (code) => {
+          child.on('error', error=>{spawnError=error;});
+          child.on('close', (code, signal) => {
             clearTimeout(timer);
+            if(hold&&argv[3]==='mod-turn-complete') writeFileSync(`${hold}.complete.${observedPrompt}.json`,JSON.stringify({job:id,turnId:observedPrompt,event:argv[3],payload:JSON.parse(init.stdin??'{}'),pid:child.pid,code,signal}));
             if (argv[3] === 'mod-measure') log(`mod-measure posted: ${init.stdin}`);
             if (stderr.trim()) log(`process.run ${argv.slice(2, 4).join(' ')}: ${stderr.trim()}`);
-            resolve({ exitCode: code ?? 1, stdout, stderr });
+            if(spawnError)reject(spawnError);
+            else resolve({ exitCode: code ?? 1, stdout, stderr });
           });
           child.stdin.end(init.stdin ?? '');
         });
+        const posted=hold?heldPosts.run(prepare,launch,{exitCode:143,stdout:'',stderr:'session stopping'}):launch();
         if (awaitSignals) {
           posts.add(posted);
           void posted.then(() => posts.delete(posted), () => posts.delete(posted));
@@ -497,7 +514,9 @@ async function runSession(id: string): Promise<number> {
   const shutdown = async () => {
     if (stopping) return;
     stopping = true;
+    const heldClosed=heldPosts.stop();
     await runHooks('SessionEnd', { reason: 'other' });
+    await heldClosed;
     if (awaitSignals) await drainPosts();
     for (const c of children) c.kill();
     for (const client of tools.values()) await client.close().catch(() => {});

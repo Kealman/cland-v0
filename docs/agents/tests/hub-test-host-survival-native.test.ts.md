@@ -31,6 +31,29 @@ on every exit; cleanup releases the hook hold before removing fixture roots.
 Failure diagnostics retain at most 32 KiB of the hub log and preserve the
 selected response error if status requests, reads or closing the log fail.
 
+The restart turn also holds the mod-start child before spawn until that turn's
+mod-completion child has closed and its exact payload timestamp was independently
+interpreted by the hub. This forces completion-before-start without CPU load.
+The product rejects the late busy state as stale; the fixture correlates the
+completion using the native close's job and turn identity, the exact interpreted
+completion timestamp, and the held start payload's turn ID and exact timestamp
+matched to the interpreted envelope ID (the CLI strips turn IDs). It never credits
+the most recently observed start. The unchanged composite wait requires both
+exact-input completion and visible idle. Its failure reports these components
+separately, up to 256 ordered interpretations and at most 32 KiB of hub-log bytes
+before the SSH fixture removes its root. Missing diagnostics are incomplete and
+cannot replace the selected failure. Pure correlation negative controls live in
+`hub/test/claude-mod-receipt.test.ts`.
+
+With this hold configured, the fake's held-post owner tracks mod posts regardless
+of await-signals mode. TERM cancels the hold watcher, fences native admission
+again after release, and joins every admitted post through native close before
+exit. Pure stop-while-held and already-launched-close controls exercise that
+same owner with an explicit launch callback; no native process is used there.
+The preparation seam separately rejects a failed receipt publication after
+closing its observer. Its control preserves the original error identity and
+asserts that the launch callback was never admitted.
+
 The final step shuts down the hub without an explicit post-turn Claude stop:
 T-1678 owns that shared refusal, with failed captures retained in A-16593. This
 scenario keeps its survival assertions and uses the fixture's existing native

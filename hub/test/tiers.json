@@ -118,6 +118,7 @@
     "hub/test/claude-code-sessions.test.ts": "T2",
     "hub/test/claude-component-fixture.test.ts": "T2",
     "hub/test/claude-hook-receipt.test.ts": "T1",
+    "hub/test/claude-mod-receipt.test.ts": "T1",
     "hub/test/claude-stop-owner-component.test.ts": "T2",
     "hub/test/claude-stop.test.ts": "T1",
     "hub/test/cli-as-user.test.ts": "T2",

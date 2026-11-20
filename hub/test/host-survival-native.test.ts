@@ -25,6 +25,7 @@ import { caseDeadlines } from './case-deadlines.ts';
 import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 import { assertClaudeHookProcessed, claudeHookReceiptPath, type ClaudeHookClose } from './claude-hook-receipt.ts';
+import { completedModInput, type ModClose, type ModInterpretation } from './claude-mod-receipt.ts';
 
 test('three remote harnesses retain births, forwards and welcomed spokes across 20s hub downtime and master loss', {timeout:8 * testWaitMs() + 120000}, async t => {
   const scope = caseDeadlines(t,{timeoutMs:4*testWaitMs()+20000,ownership:{beforeDirectories,guardDirectoryRemoval}});
@@ -42,6 +43,9 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
   const second = await op(async()=>createFakeHost(f.root, 'f2'));
   const claude = await op(async()=>fakeClaude(scope.fixtures)), codex = await op(async()=>fakeCodex(scope.fixtures));
   const hookHold = join(claude.home,'start-hook-hold');
+  const modHold=join(claude.home,'start-mod-hold');
+  await op(()=>writeFile(modHold,'restart-cc'));
+  f.addCleanup(async()=>{await unlink(modHold).catch(error=>{if(error.code!=='ENOENT')throw error;});});
   await op(async()=>writeFile(hookHold,'restart-cc'));
   f.addCleanup(async()=>{await unlink(hookHold).catch(error=>{if(error.code!=='ENOENT')throw error;});});
   const fakeHosts = [f.fake, second];
@@ -69,8 +73,11 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
   const localCalls: string[] = [], stops: number[] = [];
   const modCompletions = new Set<string>();
   const modInputs = new Map<string,string[]>();
+  const modInterpretations: ModInterpretation[]=[];
   const sentIds = new Map<string,string>();
   const processedHooks = new Set<string>();
+  const observedInterpretations: Array<Record<string,unknown>> = [];
+  let interpretationSequence = 0;
   const wrap = (machine: import('../src/host/host.ts').Host) => ({...machine,freePort:async()=>12345,stop:async(...args: Parameters<typeof machine.stop>)=>{stops.push(args[0].pid!);return machine.stop(...args);}});
   const boundary = (host: AdapterHost): AdapterHost => ({...host,hostForProcess: p => wrap(host.hostForProcess!(p)),hostForLaunch:p=>wrap(host.hostForLaunch!(p))});
   const start = () => projectHub(scope.fixtures,f.root,env,{hostConfigurations:configurations,hosts:[testHost('local',e=>localCalls.push(String(e.operation)))],adapters:[
@@ -80,13 +87,20 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
       adapter.interpret = (...args) => {
         const meaning = interpret(...args);
         const process = args[2];
+        if(process&&args[0].startsWith('mod-turn-')) {
+          modInterpretations.push({sessionId:process.sessionId,event:args[0],at:args[3]!,turnId:typeof args[1].turnId==='string'?args[1].turnId:undefined,confirms:meaning.confirms});
+          if(modInterpretations.length>256)modInterpretations.shift();
+        }
+        if(process&&['turn-start','turn-end','mod-turn-start','mod-turn-complete'].includes(args[0])) {
+          observedInterpretations.push({sequence:++interpretationSequence,event:args[0],sessionId:process.sessionId,promptId:args[1].prompt_id??null,turnId:args[1].turnId??null,at:args[3]??null,stateCurrent:args[4]??true,confirms:meaning.confirms??[],state:meaning.state??null});
+          if(observedInterpretations.length>256)observedInterpretations.shift();
+        }
         if(process&&typeof args[1].prompt_id==='string'&&(args[0]==='turn-start'||args[0]==='turn-end')) processedHooks.add(args[0]+':'+args[1].prompt_id);
         if(process&&args[0]==='mod-turn-start') modInputs.set(process.sessionId,meaning.confirms??[]);
-        if(process&&args[0]==='mod-turn-complete') for(const id of modInputs.get(process.sessionId)??[]) modCompletions.add(id);
         return meaning;
       };
       const spawn = adapter.spawn.bind(adapter);
-      adapter.spawn = request=>spawn({...request,accountEnv:fixtureEnvironment(f.root,process.env,{...env,...claude.env,CLAUDE_CONFIG_DIR:claude.home,FAKE_CLAUDE_START_HOLD:hookHold})});
+      adapter.spawn = request=>spawn({...request,accountEnv:fixtureEnvironment(f.root,process.env,{...env,...claude.env,CLAUDE_CONFIG_DIR:claude.home,FAKE_CLAUDE_START_HOLD:hookHold,FAKE_CLAUDE_MOD_START_HOLD:modHold})});
       return adapter;
     },
     host=>{
@@ -187,10 +201,39 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
     t.diagnostic(JSON.stringify({event:'held-hook-confirmed',sessionId:cc.sessionId,input:sentIds.get('restart-cc'),native:closed,processed:{event:signalEvent,promptId:held.promptId}}));
   };
   await requireHook('Stop','turn-end');
+  const modClose=await op(()=>eventually('exact held mod completion native close',async()=>{
+    try{return JSON.parse(await readFile(`${modHold}.complete.${held.promptId}.json`,'utf8')) as ModClose;}
+    catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return undefined;throw error;}
+  },testWaitMs())).catch(cause=>{throw new Error('incomplete mod completion: native close missing; producer exit/signal unknown',{cause});});
+  await op(()=>eventually('exact held mod completion interpreted before releasing start',()=>modInterpretations.some(row=>row.sessionId===cc.sessionId&&row.event==='mod-turn-complete'&&row.at===modClose.payload.at)||undefined,testWaitMs()));
+  const modStart=JSON.parse(await op(()=>readFile(modHold+'.started','utf8'))) as {turnId:string;at:number};
+  await op(()=>unlink(modHold));
   await op(async()=>eventually('held input mod completion and persisted idle',async()=>{
+    if(completedModInput(modClose,{job:cc.harnessId!,turnId:held.promptId,start:modStart,sessionId:cc.sessionId,input:sentIds.get('restart-cc')!},modInterpretations))modCompletions.add(sentIds.get('restart-cc')!);
     return modCompletions.has(sentIds.get('restart-cc')!)
       && (await op(async()=>rows())).some(row=>row.sessionId===cc.sessionId&&row.state==='idle') || undefined;
-  },testWaitMs()));
+  },testWaitMs())).catch(async primary=>{
+    // Capture before the SSH owner removes its independent fixture root.
+    const expectedInput=sentIds.get('restart-cc');
+    t.diagnostic(JSON.stringify({event:'held-predicate-failure',sessionId:cc.sessionId,expectedInput,completionPresent:expectedInput!==undefined&&modCompletions.has(expectedInput),modInputIds:modInputs.get(cc.sessionId)??[],modClose,modStart,observedInterpretations}));
+    try {
+      const state=await op(()=>rows());
+      t.diagnostic(JSON.stringify({event:'held-predicate-persisted-state',rows:state.map(({sessionId,name,state,status})=>({sessionId,name,state,status})),idlePresent:state.some(row=>row.sessionId===cc.sessionId&&row.state==='idle')}));
+    } catch(secondary) { t.diagnostic('held-predicate-state-incomplete: '+String(secondary).slice(-1024)); }
+    try {
+      await op(async()=>{
+        await ui.request({type:'hub.status',flushLogs:true});
+        const log=await open(join(f.root,'.cland/log/hub.log'),'r');
+        try {
+          const size=(await log.stat()).size;
+          const bytes=Buffer.alloc(Math.min(size,32768));
+          const result=await log.read(bytes,0,bytes.length,Math.max(0,size-bytes.length));
+          t.diagnostic(JSON.stringify({event:'held-predicate-hub-log-tail',sourceBytes:size,keptBytes:result.bytesRead,limitBytes:32768,text:bytes.subarray(0,result.bytesRead).toString('utf8')}));
+        } finally { await log.close(); }
+      });
+    } catch(secondary) { t.diagnostic('held-predicate-log-incomplete: '+String(secondary).slice(-1024)); }
+    throw primary;
+  });
   await op(async()=>unlink(hookHold));
   await requireHook('UserPromptSubmit','turn-start');
   for (const old of before) {
