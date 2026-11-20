@@ -14314,6 +14314,13 @@
       "expires": "2026-12-18",
       "reason": "T-1954: worst passing 75.213911184 s in A-20961, receipt a07bfbbb-c259-4992-a036-47ac3beae522:76; cap rounds 1.5x upward to milliseconds. Sum of top-level passing test time in completed ordinary file executions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier Web budget 40 s. D72 owner E-880; report-only policy unchanged."
     },
+    "hub/test/fake-claude-cleanup.test.ts::fake Claude final census detects dropped cleanup": {
+      "seconds": 7.6,
+      "owner": "C-216",
+      "added": "2026-11-20",
+      "expires": "2026-11-27",
+      "reason": "T-2030: Linux stage cover f315d006 at dev 3d2de496f (A-22121), shard 2 under suite load, measured 5.021 s against the enforced 5 s budget; earlier samples were 3.5 to 4.2 s. Allow 7.6 s, about 1.5 times the worst observed sample, for the real CLI teardown and final process census. Assertions and all timing baselines are unchanged."
+    },
     "hub/test/scenarios/integrated-v04.test.ts::v0.4 integrated: remote login, live renewal, two users, busy restart and host sub-cap": {
       "seconds": 29.092,
       "owner": "E-880",
