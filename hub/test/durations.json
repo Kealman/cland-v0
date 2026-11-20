@@ -13162,13 +13162,6 @@
       "expires": "2026-12-18",
       "reason": "T-1954: worst passing 13.985479909 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:408; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
     },
-    "hub/test/login-snapshots.test.ts::one login save has bounded scheduling work across ten thousand retained logins": {
-      "seconds": 8.926,
-      "owner": "E-880",
-      "added": "2026-11-18",
-      "expires": "2026-12-18",
-      "reason": "T-1954: worst passing 5.9500428229999995 s in A-20961, receipt b0264356-269b-4833-b025-3b5561cbeef8:2378; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T2 budget 2 s. D72 owner E-880; report-only policy unchanged."
-    },
     "hub/test/host-watchdog.test.ts::detached watchdog outlives the lease database owner and confirms deletion at a 30 second deadline": {
       "seconds": 45.206,
       "owner": "E-880",

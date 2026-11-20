@@ -5,7 +5,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {mkdtemp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {LoginRecords} from '../src/host/logins.ts';
+import {LoginRecords,type Login} from '../src/host/logins.ts';
 import {LoginSnapshots} from '../src/host/login-snapshots.ts';
 import {FakeHostProvider} from '../src/host/provider/fake.ts';
 import {FakeClock} from './fake-clock.ts';
@@ -46,14 +46,27 @@ test('one login save has bounded scheduling work across ten thousand retained lo
  const probe=sqliteProbe(),db=probe.open(join(root,'metadata.db'));
  let scheduler:LoginSnapshots|undefined;onCleanup(t,async()=>{await scheduler?.close();db.close();});
  const logins=new LoginRecords(db),clock=new FakeClock();
+ let seedWrites=0;
+ probe.before(t,(_sql,method)=>{if(method==='run')seedWrites++;});
+ const seedStart=performance.now();
  db.exec('begin');
+ // Seed final retained state, without replaying creation and revision writes.
+ // LoginRecords has already installed every production index and trigger.
+ const insert=db.prepare('insert into logins(name,record) values (?,?)');
  for(let i=0;i<10000;i++){
   const name=`history-${i}`;
-  logins.insert({name,kind:'disk',harness:'codex',account:name,provider:'fake',region:'fake-1',volumeId:name,snapshotIds:[],lastSignIn:clock.now().toISOString()});
-  logins.transition(name,'ready');
+  const row:Login={name,kind:'disk',state:'ready',exclusive:true,harness:'codex',account:name,provider:'fake',region:'fake-1',volumeId:name,snapshotIds:[],lastSignIn:clock.now().toISOString()};
+  insert.run(name,JSON.stringify(row));
  }
  db.exec('commit');
+ const seedMs=performance.now()-seedStart,historyWrites=seedWrites;
+ assert.equal(logins.freeCount({harness:'codex',provider:'fake',region:'fake-1'}),10000,'real capacity index contains every seeded login');
+ logins.bind('history-9999',{host:'seed-check',role:'writer',volumeId:'history-9999',phase:'pending'});
+ assert.equal(db.prepare('select pending_bindings from logins where name=?').get('history-9999')?.pending_bindings,1,'real pending trigger maintains seeded state');
+ logins.unbind('history-9999','seed-check');
+ assert.equal(db.prepare('select pending_bindings from logins where name=?').get('history-9999')?.pending_bindings,0,'trigger restores the unbound retained state');
  scheduler=new LoginSnapshots({logins,clock,resolve:async()=>{throw Error('not due');}});
+ const controlsStart=performance.now();
  let decoded=0;const parse=JSON.parse;
  t.mock.method(JSON,'parse',((source:string)=>{const value=parse(source);if(value?.name)decoded++;return value;}) as typeof JSON.parse);
  logins.list();assert.equal(decoded,10000,'decode positive control');decoded=0;
@@ -64,11 +77,15 @@ test('one login save has bounded scheduling work across ten thousand retained lo
  });
  logins.list();assert.ok(plans.some(plan=>/^SCAN /.test(plan)),'query guard detects retained-history scan');
  decoded=0;queries=0;plans.length=0;
+ const controlsMs=performance.now()-controlsStart,saveStart=performance.now();
  logins.updateBackup('history-1',{pending:false});
+ const saveMs=performance.now()-saveStart;
  assert.ok(decoded<=8,`decoded ${decoded} rows for one save`);
  assert.ok(queries<=12,`executed ${queries} queries for one save`);
  assert.ok(plans.length>0);assert.ok(plans.every(plan=>!/^SCAN |USE TEMP B-TREE/.test(plan)),plans.join('\n'));
  t.diagnostic(`one save: ${decoded} decoded rows, ${queries} queries; indexed plans: ${plans.join('; ')}`);
+ t.diagnostic(`phases: seed ${seedMs.toFixed(3)} ms (${historyWrites} writes), positive controls ${controlsMs.toFixed(3)} ms, traced save ${saveMs.toFixed(3)} ms`);
+ assert.ok(historyWrites<=10000,`history seed used ${historyWrites} writes for 10000 final rows`);
 });
 
 test('pending detection bounds binding-row work for a login with many readers',async t=>{

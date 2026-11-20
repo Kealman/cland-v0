@@ -4,8 +4,14 @@ T2 filesystem fake-provider tests, FakeClock, no network or native processes.
 Each disposable root is registered with ownDirectory before allocation continues;
 scheduler close joins provider writes before database and root disposal.
 
-T-1803 adds a synthetic 10,000-login corpus built through LoginRecords in a
-scratch SQLite database. `one login save has bounded scheduling work across ten
+The synthetic 10,000-login corpus uses prepared inserts of final ready disk
+records in a scratch SQLite database initialized by LoginRecords. All production
+indexes and triggers stay enabled; setup checks capacity-index membership and a
+pending binding's increment/decrement receipts. Seeding performs at most one
+write per retained row instead of replaying creation, transition and revision
+writes. Diagnostics separately report seed, positive controls and traced-save
+time; these exclude schema setup, scheduler startup and cleanup.
+`one login save has bounded scheduling work across ten
 thousand retained logins` controls JSON decodes, query count and EXPLAIN plans;
 a full list is the positive control for both decode and scan detection. One save
 permits at most eight decodes and twelve queries, with no scan or temp sort.
