@@ -3,7 +3,7 @@ id: T-1856
 kind: task
 title: Hub stop cannot cancel a hung worktree prune git; it can outlive the hub
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 2
 labels: []
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-1664
 branch: t/T-1856-hub-stop-cannot-cancel-a-hung-worktree
 created: 2026-11-14T10:12:33.598Z
-updated: 2026-11-20T07:21:10.931Z
+updated: 2026-11-20T09:14:37.424Z
 ---
 
 ## Summary
@@ -26,8 +26,8 @@ At a hard bound after the soft log, hub stop terminates only the prune's own nat
 
 ## Acceptance criteria
 
-- [x] C1. A hung owned prune git is terminated at the hard bound through its native identity, its close is joined, and no territory write happens after cancellation (test).
-  - done: impl-1856 · 2026-11-20T07:16:36.319Z
+- [ ] C1. A hung owned prune git is terminated at the hard bound through its native identity, its close is joined, and no territory write happens after cancellation (test).
+  - failed: rev-35 [reviewer] · 2026-11-20T09:14:37.424Z · note Carried M19 only: Linux native stop completion remains unresolved; source13 resolves M23/M24 fixture corrections but contains no stop fix or later full green.
 - [x] C2. A process the prune doesn't own is never signalled, and an unconfirmed native stop reports incompleteness with a usable retry owner (test).
   - done: impl-1856 · 2026-11-20T07:16:36.488Z
 
@@ -384,3 +384,56 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source11 clear at d9df81bde2608904877791a7c9e7a7248294bac8/tree53f491d7; no findings. A-22110 records Standards/Spec review. M15 preserves nested producer native cleanup/output/recovery through the actual public territory facade and repairs/joins that same owner. M16 follows Coordinator45ef702c with a fresh effective-config-only in-memory-owned query before every old-Git direct read; no guessed origins/repository cache/TTL, unknown/promisor stays durably owned. M18 shared case-insensitive conservative key shapes include partialclonefilter-only. M17 shared atomic0600 temp/rename publication plus bounded original-child trace reader has an armed deterministic write-interval control. Existing exact-owner/aggregate-setup/census fixes, real assertions,1500/1000ms product deadlines and writer authority remain. Docs/help/frozen bytes migrated. A-22109 exact-tree Mac scoped receipts independently audited: explicit234hubT1/1953passes,76focused,base6+five per native identity with paired producer records; timing200samples gives owned read medians16.949/17.714/17.108ms below30, cold56.650ms retained,589/589captured child closes. These are ordinary Mac receipts, not current-head configured Linux/Web/T4 proof. Accidental default discovery is wholly ineligible and earlier reds preserved. No criteria newly verified; current C1/C2 runtime settlement awaits Coordinator's exact-head full Linux verification. Hold released; no Reviewer runtime/edit/probe.
+
+### rev-35 · 2026-11-20T08:26:31.839Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1856-evidence-4
+commit: d9df81bde2608904877791a7c9e7a7248294bac8
+scope: evidence
+findings: [{"severity":"medium","text":"M19: same-head Linux base legacy-read and four load repetitions return structured incomplete instead of required complete. Base producer diagnostic records native-end inspection deadline/state:threw with targeted close pending; other producer causes remain unknown. Preserve deadlines/assertions and resolve actual native close/settlement proof.","file":"hub/test/prune-process-lifecycle.test.ts","line":127},{"severity":"medium","text":"M20: five separate load repetitions fail 'leftover Git lock is reported' after complete/settled assertions. Establish the required report receipt without removing the lock or weakening assertions; do not classify these as the incomplete-stop failures.","file":"hub/test/prune-process-lifecycle.test.ts","line":129},{"severity":"medium","text":"M21: the compiler fixture's minimal hub source omits the new owned-exec.mjs input; its real workspace typecheck fails TS18003. Migrate the source fixture while retaining all root/worktree compiler-contract assertions.","file":"hub/test/typecheck.test.ts","line":34},{"severity":"medium","text":"M22: raw $1=show and push.test.ts:378 $1=rev-parse fault wrappers miss the new leading read flags. Reopen sees already-merged instead of the injected inspection error; both lost-publication CLI cases return0 instead of2. Migrate/prove fault engagement and complete raw-argv consumer coverage.","file":"hub/test/merge.test.ts","line":107}]
+finding_counts: {"high":0,"medium":4,"low":0}
+
+Evidence not clear at source11 head d9df81bde2608904877791a7c9e7a7248294bac8: producing bba8a07d/A-22118 finished failed/exit1. Four medium findings/no lows, A-22120 (corrects one drafting file-count sentence in retained A-22119). Exact counts: five base failures plus nine load failures =14, not14ordinary;8730basepasses/9skips,231loadpasses. Native legacy-read base fails incomplete; territory load1/local-host1,2/read-only1 also incomplete. Territory5/local-host3,4/read-only4/legacy-read5 instead fail required lock report. Only base legacy-read retains complete native-end diagnostic: state:threw, inspection deadline1000ms, target close pending, stop elapsed1501.747725ms; other native causes unknown. Raw$1 fault readers miss leading flags in merge/push; compiler fixture lacks new MJS input (TS18003). Source review missed those two consumer categories. T0/all234T1/441T2 complete;246hubT3files finish failed,27NeovimT3/55Web/18T4unexecuted, browsernull. No failed sibling/retry is promoted; old Mac gate and974e71cb Linuxgreen remain separate. C1 failed;C2done/unverified with no partial marks. Hold released for consolidated diagnosis/correction with Coordinator, fresh source before any changed-head verify. Product deadlines and final assertions retained; no retry/experiment authorized or performed by Reviewer.
+
+Criteria: C1 failed (Same-head Linux required native stop/report assertions fail, and configured raw-Git/compiler consumers regress; A-22120 records the exact ordinary/load failures.).
+
+### impl-1856 · 2026-11-20T08:44:19.439Z
+
+Source12 diagnostic correction census (M19–M22): raw $1/case/args[0] search across hub/test, nvim/test, QA, shipped skills/docs and frozen fixtures. Migrated merge.test's show fault and push.test's territory rev-parse confirmation fault to public original-argv PruneProcesses.git observation with positive fault counts. release.test worktree remove/prune, merge-support/merge-native-support read-tree/write-tree/update-ref and executor-prepare fetch/ls-remote remain original-argv writers/conservative calls; other stubs consume the original injected Git/remote interface. Compiler fixture adds the exact committed owned-exec.mjs asset; root/inherited/local compiler checks remain. New callbacks use pre-acquisition root/resource/database ownership; the initial root/resource-context cycle failed locally, was retained, and was corrected by separating fixture roots from native resource acquisition. All three migrated native files are green (7/14/1). M20 deterministic red proved incomplete result lost the lock report before later same-owner settlement; result publication now attaches bounded lock facts for both incomplete and confirmed paths without overwriting the selected outcome. OwnedCommand.incomplete is internal; its consumers are cancellation aggregation and native-close/acquisition rejection handlers, now joined. No wire/record/classification shape or deadline changes. M19 remains unresolved pending Linux per-step tracing; fixture-only bounded OS probe/close/signal/checkpoint/proc-read diagnostics are embedded in assertions. Coordinator afc1f9c1 authorizes the next full Linux run as diagnostic only, not a merge gate; C1 stays failed/unverified.
+
+### rev-35 · 2026-11-20T08:57:04.712Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1856-source-12
+commit: f398047d5896ce07a37fc51b62018c079fba12b2
+scope: full
+findings: [{"severity":"medium","text":"M19 carried runtime gap: the required Linux native stop-completion assertion remains unresolved; source12 adds tracing without a stop fix. Coordinator afc1f9c1 authorizes a diagnostic occasion only, and C1 stays failed/unverified.","file":"hub/test/prune-process-lifecycle.test.ts","line":131},{"severity":"medium","text":"M23: the new uncertainty control's mkdir/writeFile setup is outside its named setup step, and push.test.ts:402,405,411 similarly leave event-read/lock-repair actions outside named bounds. Whole-case ownership joins the work but supplies no separate setup/action deadline (rule9).","file":"hub/test/merge-recovery.test.ts","line":129},{"severity":"medium","text":"M24: the newly migrated finally awaits hub disposal directly; push.test.ts:411–412 also awaits lock repair/disposal. A cleanup rejection replaces an earlier selected assertion/step error before fixtureWork can preserve it, losing the primary outcome (rule39).","file":"hub/test/merge.test.ts","line":137}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+Intermediate diagnostic source12 not clear at f398047d5896ce07a37fc51b62018c079fba12b2/tree8669909f. A-22128 records Standards/Spec review: carried medium M19 plus two new medium findings M23/M24, no lows. M20 lock-report publication and M21/M22 compiler/original-argv migrations are sound in source, with original assertions retained; new setup/action segments lack separate bounds and rejecting finally cleanup can replace the selected primary. Implementer14d7056a confirms both, no exclusion. A-22127 local retained pass counts audited with pre-final-message epochs distinguished; final raw-timestamp native6/6, typecheck/lint0 claimed/logged,0refusals/131report-only. Mac stop375.798–403.321ms and bounded trace do not establish Linux cause or fix. Prior bba8a07d/A-22118 remains failed per A-22120. Coordinator primary afc1f9c1 explicitly authorizes a diagnostic-only Linux occasion after intermediate review, not a merge gate; C1 stays failed/unverified until stop fix plus later full green. C2 remains done/unverified. No criteria newly verified; hold released for consolidated correction/fresh source. No Reviewer runtime/edit/probe.
+
+Criteria: C1 failed (M19 Linux stop completion remains unresolved; source12 adds diagnostic tracing only. M23 missing setup/action bounds and M24 cleanup replacing primary errors remain in the new controls.).
+
+### impl-1856 · 2026-11-20T09:08:48.424Z
+
+Source13 (M23/M24) stays test/docs-only; no production, trace or native deadline changes. Shared fixture cleanup policy now re-exports the existing production withCleanupAsync, used by merge/push and the two component controls. Before changing that policy, extracting the callbacks' old finally behavior made the selected-error identity control red: cleanup's native-disposal refusal replaced the original assertion. Final shared policy preserves original error/code/output, attempts disposal even when repair rejects, retains the same failed-close root/seam guards, and repairs/joins them. M23 bounds aggregate uncertain-writer root/mkdir/write setup, final lock bytes, persisted event bytes, lock planting and both body/failure repair paths. Raw resource-close retry remains registered before effect and within the stage cleanup owner. Consumers searched: prune-case users in prune-crash-case, merge-recovery, lead-permissions, merge, push, territory-task-branch, worktree-host, merge-queue, typecheck, prune-process-lifecycle and tracker-native-boundary; only merge/push and the new controls use the additive export. Old exports/signatures and remaining consumers stay unchanged. Local exact candidate tree f792f936736b2cb6963bfc115eb798cd7510e204: full typecheck0, merge7/7, push14/14, component/policy69/69. C1 remains failed/unverified; the already-bundled 0ffd5580 is a diagnostic occasion at f398047d5, independent of these fixture corrections.
+
+### rev-35 · 2026-11-20T09:14:37.424Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1856-source-13
+commit: 835fe79156e36e3e5428e8fd5d1a5e34acad85a1
+scope: full
+findings: [{"severity":"medium","text":"M19 carried runtime gap only: required Linux stop completion remains unresolved. Source13 fixes the fixture bounds/cleanup policy but changes no production inspection or 1000/1500ms deadlines; C1 must remain failed/unverified until the stop fix and later full green.","file":"hub/test/prune-process-lifecycle.test.ts","line":131}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Intermediate source13 reviewed at835fe79156e36e3e5428e8fd5d1a5e34acad85a1/treef792f936. A-22132: M23/M24 resolved, no new source findings/lows; overall not clear solely for carried M19. Complete uncertainty setup/lock read and push event/plant/repair actions have named bounds. Shared withCleanupAsync preserves the selected Error/code/output, with nested repair/disposal ordering; two exact-policy controls retain real root/seam fences after rejected cleanup and repair/join the same resource. Original native assertions retained. A-22131's extracted-finally identity red and final2/2 controls,69components,1953cases over234T1files,merge7/push14 passes audited as scoped local Mac evidence; full typecheck/lint exit0 reported,0lintrefusals/131report-only. No production/trace/authority/deadline/allowance change. Primary069149d7/61ab1907 permits these edits after source12 diagnostic0ffd5580 T0/bundling; afc1f9c1 explicitly makes that older-head occasion diagnostic, not a merge gate. C1 stays failed/unverified for M19; C2 done/unverified. No new criterion marks; hold released, no further M23/M24 correction or duplicate run requested. Await Linux cause before stop correction and later exact-head review/full green. No Reviewer edits/runtime/checks/probes.
+
+Criteria: C1 failed (Carried M19 only: Linux native stop completion remains unresolved; source13 resolves M23/M24 fixture corrections but contains no stop fix or later full green.).
