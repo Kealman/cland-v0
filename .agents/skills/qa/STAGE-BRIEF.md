@@ -9,6 +9,7 @@ Copy to `qa/briefs/T-<epic>-stage-<index>.md`; fill every section and commit on 
 - Items: <ordered ids in every lane, including QA finding fixes>.
 - Policy: <affected or full>/after-stage.
 - Scope: <combined changed behavior for affected, complete product checks for full>.
+- Covers: <Linux stage full-cover id/tree; if plan macos paths exist, targeted macOS receipt id at that tree>.
 
 Read membership, counts and other plan facts from `task plan show` at the run; retain its output instead of writing numeric stage totals here (A-9063 R3; E-413 stage 1/T-1093).
 

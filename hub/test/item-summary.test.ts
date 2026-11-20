@@ -277,18 +277,18 @@ test('stage-cover settlement pushes a changed current stage without another item
   assert.equal((await ui.request({type:'task.plan',item:epic,op:'set',yaml:JSON.stringify({stages:[{name:'only',qa:{scope:'none',when:'after-stage'},lanes:[[child]]}]})})).ok,true);
   assert.equal((await ui.request({type:'task.close',item:child})).ok,true);
   tracker.recordMerge(child,{branch:'t/landed',tip:head,commit:head,base:'dev'});
-  let covers:import('../src/hub/suites.ts').StageCover[]=[{id:'linux',head,tree,platform:'Linux droplet'}];
+  let covers:import('../src/hub/suites.ts').StageCover[]=[];
   tracker.useVerify(()=>null,()=>covers);await tracker.refreshFreshness();
-  await eventually('linux cover is settled before observing the missing platform',async()=>{
+  await eventually('uncovered stage is settled before observing Linux completion',async()=>{
     const reply=await ui.request({type:'task.plan',item:epic,op:'show'});
-    const stage=(reply.value as {stages:Array<{state:string;cover?:{linux?:string;missing:string[];pending?:string[]}}>}).stages[0]!;
-    return stage.cover?.linux==='linux'&&!stage.cover.pending?.length&&stage.state==='open'?true:undefined;
+    const stage=(reply.value as {stages:Array<{state:string;cover?:{tree:string|null;missing:string[];pending?:string[]}}>}).stages[0]!;
+    return stage.cover?.tree===tree&&stage.cover.missing.includes('Linux droplet')&&!stage.cover.pending?.length&&stage.state==='open'?true:undefined;
   });
   const baseline=await ui.request({type:'task.list',projection:'summary'});
   assert.deepEqual((baseline.value as {items:ItemSummary[]}).items.find(i=>i.id===epic)!.rollup?.stage,{number:1,total:1,name:'only'});
   const mark=ui.frames.length;
   const settled=ui.waitFor(f=>ui.frames.indexOf(f)>=mark&&f.type==='task'&&f.id===epic&&(f.item as ItemSummary).rollup?.stage===null,1000);
-  covers=[...covers,{id:'mac',head,tree,platform:'macOS'}];
+  covers=[{id:'linux',head,tree,platform:'Linux droplet'}];
   tracker.useVerify(()=>null,()=>covers);
   const delta=await settled;
   assert.equal((delta.item as ItemSummary).rollup?.stage,null);

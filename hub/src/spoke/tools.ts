@@ -12,6 +12,7 @@ const BASE_TOOLS = [
     description: 'Preview admission with dryRun, or submit verification and return immediately; the hub posts one result. Running sessions retain their launch-time tool schema.',
     inputSchema: { type: 'object', properties: {
       cwd: { type: 'string', description: "Absolute candidate directory; defaults to the caller's claimed item worktree. Required when no item is claimed." },
+      stages: { type: 'array', items: { type: 'string' }, description: 'Epic ids for a local stage occasion: union their current open stages macos test paths. Omit for a full run.' },
       mode: { type: 'string', enum: ['auto', 'all', 'hub', 'nvim'], default: 'auto', description: 'Omit for task selection. all is reserved to the Coordinator, human shell and authorized occasions; hub/nvim select a package.' },
       executor: { type: 'string', enum: ['local', 'droplet'], description: 'Override the configured verification executor; omit to use project configuration.' },
       report: { type: 'string', description: 'Report topic id or recipient. Defaults to Agents, addressed to the Coordinator; item workers must name their permitted item topic.' },

@@ -1,5 +1,9 @@
 # hub/test/suite-stage-cover.test.ts
 
+T-1892: the native fake-machine compatibility case closes and advances on the
+sharded Linux cover despite an older Mac full cover at another tree. A later
+local full cover stays independent; it does not reopen the completed stage.
+
 The final droplet cache hit must retain the original green result and stage
 cover without inventing a new native-result obligation. Its text excludes the
 missing-result/lost-collection diagnosis. Run the complete T3 file using the

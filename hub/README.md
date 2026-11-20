@@ -226,6 +226,9 @@ Verify admission returns the persisted run id and queue position before schedule
 inspection or worker launch. A sent request whose reply times out exits 75; check
 `cland verify queue` before resubmitting. See [verification](../docs/hub/running.md).
 
+See [close runs](../docs/hub/running.md#close-runs) for Linux stage covers,
+optional targeted macOS stages and the macOS full epic DoD gate.
+
 Host verify and ready admission flush the leased agent publisher and require
 matching worktree/territory HEADs. The scheduler owns a detached territory source
 through queued execution and restart; see [publication admission](../docs/agents/host-agent.md#publication-admission).

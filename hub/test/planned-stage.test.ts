@@ -53,7 +53,7 @@ async function fixture(t: test.TestContext, approval = false, gated = false, fac
           (await tracker.viewAsync(epic.id)).stages?.[0]?.cover?.tree ? true : undefined);
         await new Promise<void>(resolve => setImmediate(resolve));
         const before = await tracker.viewAsync(epic.id);
-        assert.deepEqual(before.stages?.[0]?.cover?.missing, ['Linux droplet', 'macOS']);
+        assert.deepEqual(before.stages?.[0]?.cover?.missing, ['Linux droplet']);
         assert.equal((await tracker.viewAsync(c.id)).status, 'backlog');
       } } : {}),
     });

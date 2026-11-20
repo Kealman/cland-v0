@@ -1203,7 +1203,7 @@ export class Dispatcher {
     const originalExecution = job.cached ? `Original occasion ${job.cached.occasion === undefined ? 'unknown' : job.cached.occasion ?? 'none'} · executor ${job.cached.executor ?? job.executor}` : '';
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}\n${originalExecution}` : '';
     const missing = job.occasion === 'stage' ? this.#suites!.stageMissing(job.tree, job) : [];
-    const stageCover = job.occasion === 'stage' ? `\nstage cover ${missing.length ? `missing ${missing.join(', ')}` : 'complete (Linux droplet, macOS)'} · tree ${job.tree ?? 'unknown'}` : '';
+    const stageCover = job.selection?.stageTargets ? `\nmacOS stage targets: ${job.selection.stageTargets.map(target => `${target.epic} stage ${target.stage}: ${target.files.join(', ')}`).join('; ')} · tree ${job.tree ?? 'unknown'}` : job.occasion === 'stage' ? `\nstage cover ${missing.length ? `missing ${missing.join(', ')}` : 'complete (Linux droplet)'} · tree ${job.tree ?? 'unknown'}` : '';
     const incompleteInfrastructure = suiteInfrastructureCauses(job).length > 0;
     const unavailableExecution = incompleteInfrastructure ? `Execution incomplete.\n${summary}` : 'No tests executed.';
     const resultText = (artifact: { id: string; path: string }): string => {
@@ -2659,8 +2659,14 @@ export class Dispatcher {
         if(remote&&!source)throw new Error('host-flush-refused: claimed host task unavailable; worktree HEAD unknown; territory HEAD unknown');
         authorize();
         const reply = Promise.withResolvers<Awaited<ReturnType<Suites['start']>>>();
+        let stageTargets: Array<{ epic: string; stage: string; files: string[] }> | undefined;
+        if (request.stages) {
+          const executor = request.executor ?? this.#options.projectConfig?.().verification.executor;
+          if (request.occasion !== 'stage' || executor !== 'local' || process.platform !== 'darwin') throw new Error('--stage requires a local macOS stage occasion');
+          stageTargets = await this.#options.tracker!.stageTargets(request.stages);
+        }
         let admitted: string | undefined;
-        const work = this.#suites!.start({ ...(source?{source}:{}), mode: request.mode, dryRun: request.dryRun ?? false, diagnostics: request.diagnostics ?? false, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: !source && (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize, admission => { admitted = admission.id; reply.resolve(admission); });
+        const work = this.#suites!.start({ ...(source?{source}:{}), ...(stageTargets ? { stageTargets } : {}), mode: request.mode, dryRun: request.dryRun ?? false, diagnostics: request.diagnostics ?? false, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: !source && (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize, admission => { admitted = admission.id; reply.resolve(admission); });
         // start() retains its in-process scheduler join. Its durable callback
         // releases only this wire reply; Suites still owns/drains the work.
         void work.then(value => reply.resolve(value), error => {

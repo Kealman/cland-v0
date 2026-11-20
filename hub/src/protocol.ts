@@ -678,6 +678,7 @@ export type ClientHello = {
 /** Field diagnostics shared by frame validation and verification admission. */
 export function suiteStartIssues(f: Record<string, unknown>): string[] {
   const issues: string[] = [];
+  if (f.stages !== undefined && (!Array.isArray(f.stages) || !f.stages.length || !f.stages.every(id => typeof id === 'string' && /^[A-Z]+-[1-9]\d*$/.test(id)) || new Set(f.stages).size !== f.stages.length || f.occasion !== 'stage')) issues.push('stages requires unique epic ids and occasion stage');
   if (typeof f.id !== 'string') issues.push('id must be a string');
   if (typeof f.cwd !== 'string') issues.push('cwd must be an absolute directory; supply cwd when no item is claimed');
   if (!['auto', 'all', 'hub', 'nvim'].some(mode => mode === f.mode)) issues.push('mode must be auto, all, hub or nvim');
@@ -695,7 +696,7 @@ export function suiteStartIssues(f: Record<string, unknown>): string[] {
   return issues;
 }
 
-export type SuiteStart = { type: 'suite.start'; worktreeHead?: string; dryRun?: boolean; diagnostics?: boolean; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report?: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
+export type SuiteStart = { type: 'suite.start'; stages?: string[]; worktreeHead?: string; dryRun?: boolean; diagnostics?: boolean; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report?: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
 export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode: string; cwd: string; head: string; pid: number; token: string };
 /** Targeted-test admission; no reservation, but a refused session arms one wake-up. */
 export type SuiteSlotCheck = { type: 'suite.slot'; id: string; check: true; lease?: { pid: number; started: string; token: string } };

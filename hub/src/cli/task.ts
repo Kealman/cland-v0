@@ -293,7 +293,7 @@ function humanOf(sub: Sub, value: Record<string, unknown>): string {
       const covers = stages.filter(stage => stage.cover).map(stage => {
         const cover = stage.cover!;
         const status = [cover.missing.length ? `missing ${cover.missing.join(', ')}` : '', cover.pending?.length ? `pending ${cover.pending.join(', ')}` : ''].filter(Boolean).join('; ');
-        return `# ${stage.name}: ${stage.state}; stage cover ${status || 'complete (Linux droplet, macOS)'}; tree ${cover.tree ?? 'pending'}\n`;
+        return `# ${stage.name}: ${stage.state}; stage cover ${status || 'complete (Linux droplet)'}; tree ${cover.tree ?? 'pending'}${cover.macos ? `; macOS receipt ${cover.macos}` : ''}\n`;
       }).join('');
       return approvalLine + covers + (value.plan ? planYaml(value.plan as EpicPlan) : `${String(value.id)} has no plan\n`) + (value.planError ? `plan refused: ${String(value.planError)}; showing the last valid plan\n` : '');
     case 'list':

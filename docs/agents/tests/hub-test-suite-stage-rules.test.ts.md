@@ -1,5 +1,10 @@
 # hub/test/suite-stage-rules.test.ts
 
+T-1892: semantic local worker receipts prove a targeted stage run pins the union
+of two epics' paths, deduplicates shared files and publishes one exact-path
+receipt per stage. Complete producer step receipts are required. Linux alone
+satisfies stageMissing; targeted Mac receipts remain distinct from full covers.
+
 Filed flaky receipt controls enroll the whole caller through `flakyReceiptCase`
 and the unchanged `suiteCase` before
 fixture acquisition. Setup and each body step have separate named bounds. The

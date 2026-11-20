@@ -241,7 +241,7 @@ test('stage QA recorded after restart stays pending then current with restored t
   assert.equal(verdict.ok, true, verdict.error);
   const pending = await read();
   assert.deepEqual(pending.cover!.missing, []);
-  assert.deepEqual(pending.cover!.pending, ['Linux droplet', 'macOS']);
+  assert.deepEqual(pending.cover!.pending, ['Linux droplet']);
   assert.equal(pending.verdict!.current, undefined, 'unresolved restored evidence is never recorded as stale');
   tree.resolve('f'.repeat(40));
   const after = await eventually('post-restart QA and original covers close the stage', async () => {
@@ -294,12 +294,36 @@ test('publication landings survive tracker reopen and require covers containing 
   assert.equal(uncontained.merged, 1);
   assert.equal(uncontained.state, 'open');
   assert.deepEqual(uncontained.cover?.missing, ['Linux droplet']);
-  covers = [covers[1]!, { id: 'linux', head, tree, platform: 'Linux droplet' }];
-  const closed = await eventually('matching cover pair closes the published stage', async () => {
+  covers = [{ id: 'linux', head, tree, platform: 'Linux droplet' }];
+  const closed = await eventually('Linux cover closes the published stage without a Mac full cover', async () => {
     const value = await stage(); return value.state === 'closed' ? value : undefined;
   });
   assert.equal(closed.merged, 1);
-  assert.deepEqual(closed.cover, { tree, missing: [], linux: 'linux', macos: 'mac' });
+  assert.deepEqual(closed.cover, { tree, missing: [], linux: 'linux' });
+  assert.deepEqual(closed.closure, { head, tree, linux: 'linux' });
+  await assert.rejects(tracker.stageTargets([epic.id]), /current open stage has no macos paths/);
+  const path = 'hub/test/mac.test.ts';
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await writeFile(join(root, path), '');
+  const plan = { stages: [{ name: 'marketing', qa: { scope: 'none', when: 'after-stage' }, lanes: [[child.id]], macos: [path] }] };
+  await assert.rejects(tracker.setPlan(actor, epic.id, JSON.stringify({ stages: [{ ...plan.stages[0], macos: ['hub/test/unknown.test.ts'] }] })), /unknown macOS test path/);
+  await tracker.setPlan(actor, epic.id, JSON.stringify(plan));
+  assert.equal((await stage()).state, 'open');
+  assert.deepEqual((await stage()).cover?.missing, ['macOS']);
+  assert.deepEqual(await tracker.stageTargets([epic.id]), [{ epic: epic.id, stage: 'marketing', files: [path] }]);
+  const linux = covers[0]!;
+  for (const invalid of [
+    { id: 'mac-full', head, tree, platform: 'macOS' as const },
+    { id: 'mac-wrong-tree', head, tree: before, platform: 'macOS' as const, files: [path], target: { epic: epic.id, stage: 'marketing' } },
+    { id: 'mac-wrong-paths', head, tree, platform: 'macOS' as const, files: ['hub/test/other.test.ts'], target: { epic: epic.id, stage: 'marketing' } },
+  ]) {
+    covers = [linux, invalid];
+    assert.equal((await stage()).state, 'open');
+  }
+  covers = [linux, { id: 'mac-targeted', head, tree, platform: 'macOS', files: [path], target: { epic: epic.id, stage: 'marketing' } }];
+  const targeted = await stage();
+  assert.equal(targeted.state, 'closed');
+  assert.equal(targeted.cover?.macos, 'mac-targeted');
 });
 
 test('a pending stage build tree keeps QA currency unknown until a mismatching tree is observed', async t => {
@@ -333,7 +357,7 @@ test('a pending stage build tree keeps QA currency unknown until a mismatching t
   const stage = async () => (await tracker.viewAsync(epic.id)).stages![0]!;
   await eventually('stage tree lookup entered', () => readingTree ? true : undefined);
   const pending = await stage();
-  assert.deepEqual(pending.cover, { tree: null, missing: [], pending: ['Linux droplet', 'macOS'] });
+  assert.deepEqual(pending.cover, { tree: null, missing: [], pending: ['Linux droplet'] });
   assert.equal(pending.verdict!.current, undefined);
   assert.equal(pending.state, 'open');
   tree.resolve(actualTree);
@@ -341,7 +365,7 @@ test('a pending stage build tree keeps QA currency unknown until a mismatching t
     const value = await stage();
     return value.cover?.tree === actualTree ? value : undefined;
   });
-  assert.deepEqual(missing.cover, { tree: actualTree, missing: ['Linux droplet', 'macOS'] });
+  assert.deepEqual(missing.cover, { tree: actualTree, missing: ['Linux droplet'] });
   assert.equal(missing.verdict!.current, false);
   assert.equal(missing.state, 'open');
   assert.equal(coverReads, 0, 'a cover with an unobserved then mismatching tree never requests ancestry');
@@ -475,7 +499,7 @@ test('a covered stage records its tested build durably while later stages advanc
   assert.deepEqual(restored.map(stage => stage.state), ['closed', 'open']);
   assert.deepEqual(restored[0]!.cover, { tree: testedTree, missing: [], linux: 'linux-stage-1', macos: 'mac-stage-1' });
   assert.deepEqual(restored[0]!.closure, closure);
-  assert.deepEqual(restored[1]!.cover, { tree: laterTree, missing: ['Linux droplet', 'macOS'] });
+  assert.deepEqual(restored[1]!.cover, { tree: laterTree, missing: ['Linux droplet'] });
   const joined = await tracker.create(actor, { size: 'S', title: 'Joined second stage', parent: epic.id });
   plan.stages[1]!.lanes[0]!.push(joined.id);
   await tracker.setPlan(actor, epic.id, JSON.stringify(plan));
@@ -626,11 +650,11 @@ test('open stage results match the full recompute across paired, rejected and in
   // Previous eager algorithm with independently known, fully settled Git facts.
   const fullRecompute = (covers: StageCover[]) => {
     const eligible = covers.filter(c => c.platform === 'Linux droplet' && valid.has(c.head));
-    const pair = eligible.findLast(linux => covers.some(mac => mac.platform === 'macOS' && mac.tree === linux.tree));
+    const pair = eligible.at(-1);
     const tree = pair?.tree ?? expected;
     const linux = pair ?? eligible.findLast(c => c.tree === tree);
     const mac = covers.findLast(c => c.platform === 'macOS' && c.tree === tree);
-    return { tree, missing: [...(!linux ? ['Linux droplet'] : []), ...(!mac ? ['macOS'] : [])],
+    return { tree, missing: [...(!linux ? ['Linux droplet'] : [])],
       ...(linux ? { linux: linux.id } : {}), ...(mac ? { macos: mac.id } : {}) };
   };
   for (let scenario = 0; scenario < 16; scenario++) {

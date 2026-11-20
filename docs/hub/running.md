@@ -233,17 +233,27 @@ fetched `origin/dev`. Other roles and task heads are refused. The MCP `verify`
 tool takes the same `occasion` field. Batch and task runs stay on one slot;
 `--executor local` keeps a close run local.
 
-Every `after-stage` gate, including a stage with `qa.scope: none`, requires green
-integrated full-suite receipts at the same verification tree on **Linux droplets
-and macOS**. The Linux receipt comes from `--occasion stage` (normally sharded);
-the Mac receipt comes from a local full run on macOS. A stage with a QA scope also
-needs its clear stage QA verdict on that tree. Per-item stages keep their existing
-gate. `task plan show` names each missing platform and the expected tree. A stage
-request runs the chosen executor and its result names the other platform still
-missing; the Coordinator submits that run separately, using `--executor local` on
-the Mac. Cache reuse for stage requests preserves the executor and platform, so a
-Linux cache hit cannot stand in for a Mac run. Completed stages remain closed
-across later descendant builds, while their plan and landing evidence stay valid.
+Every `after-stage` gate, including `qa.scope: none`, requires a green integrated
+Linux droplet `--occasion stage` full cover (normally sharded; the documented
+one-slot fallback still counts). A stage may additionally name `macos: [<test
+paths>]` in its plan. These paths must exist at plan set and use repository test
+paths; duplicates and unknown paths refuse. That stage also requires a green
+targeted macOS receipt for exactly those paths at the Linux cover's tree. A
+non-none QA scope additionally needs its clear stage QA verdict at that tree.
+Per-item gates are unchanged. `task plan show` names missing platforms, tree and
+the targeted macOS receipt. Completed stages retain their evidence across later
+descendant builds while their plan and landing evidence remain valid.
+
+The Coordinator submits `cland verify all --occasion stage --executor local
+--stage E-<n> --report <topic>` on macOS. Repeat `--stage` for several epics: the
+run pins the union of their current open stages' `macos` paths and records a
+receipt for each named stage. Linux, a non-stage occasion, or a named epic whose
+open stage has no `macos` paths refuses the selector. MCP `verify` takes the
+equivalent `stages: ["E-<n>"]`. Without the selector a local stage occasion stays
+a full run; Linux stage occasions remain full. Cache reuse preserves executor,
+platform and pinned targets. A full cover does not replace an explicit targeted
+receipt. The epic Definition of done requires a green macOS **full** cover at
+its DoD tree; a targeted stage receipt cannot satisfy it.
 
 Restored covers can await background tree or ancestry checks. `task plan show`
 reports those platforms as `pending`, not `missing`; JSON covers include an optional

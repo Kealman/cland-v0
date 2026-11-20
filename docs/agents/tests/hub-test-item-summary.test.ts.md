@@ -1,5 +1,11 @@
 # hub/test/item-summary.test.ts
 
+T-1892: settle the initial uncovered stage while its summary still names the
+current stage. Arm the task-frame observer before supplying the Linux cover.
+Its pushed summary must clear the current stage and carry the closed stage's
+counts without another item edit or reread; compare that frame with a fresh
+summary snapshot. No Mac receipt supplies this transition.
+
 `item-summary.test.ts` also proves card verdict reasons/rounds/scopes, Decision
 previews and agents' text outlines through snapshots and mutation deltas, without
 body/comment reads. Closing a task removes its row from the open snapshot; its final delta still

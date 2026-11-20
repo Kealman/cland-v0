@@ -18,18 +18,45 @@ import { acquireLockAsync } from '../src/hub/lock.ts';
 import { spendPath } from '../src/executor/droplet/spend.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import { guardedLeaseCase } from './executor-lease-fixture.ts';
+import { stageCase } from './stage-case-fixture.ts';
+
+test('local stage selectors pin several epics through MCP', { skip: process.platform !== 'darwin' ? 'local macOS stage selector requires a macOS host' : false }, async t => {
+  const owner = stageCase(t);
+  await owner.run(async step => {
+    const f = await step(() => integrated(owner.fixtures, 'test_unit="unit"\n', 2, undefined, { machine: 'scripted' }));
+    owner.requireClose(async () => { await f.stop(); });
+    assert.equal((await step(() => f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' }))).ok, true);
+    const targets: NonNullable<import('../src/suite-selection.ts').SuiteSelection['stageTargets']> = [];
+    for (const path of ['hub/test/one.test.ts', 'hub/test/two.test.ts']) {
+      const created = await step(() => f.ui.request({ type: 'task.create', kind: 'epic', title: 'Targeted stage' }));
+      const epic = (created.value as { item: { id: string } }).item.id;
+      const child = await step(() => f.ui.request({ type: 'task.create', size: 'S', title: 'Member', parent: epic }));
+      const id = (child.value as { item: { id: string } }).item.id;
+      const plan = await step(() => f.ui.request({ type: 'task.plan', item: epic, op: 'set', yaml: JSON.stringify({ stages: [{ name: 'build', qa: { scope: 'none', when: 'after-stage' }, lanes: [[id]], macos: [path] }] }) }));
+      assert.equal(plan.ok, true, plan.error);
+      targets.push({ epic, stage: 'build', files: [path] });
+    }
+    const preview = await step(() => f.spoke.call<{ ok: boolean; error?: string; selection: import('../src/suite-selection.ts').SuiteSelection }>('verify', { mode: 'all', cwd: f.root, report: f.topic, occasion: 'stage', executor: 'local', stages: targets.map(target => target.epic), dryRun: true }));
+    assert.equal(preview.ok, true, preview.error);
+    assert.deepEqual(preview.selection.stageTargets, targets);
+    assert.deepEqual(preview.selection.files, targets.flatMap(target => target.files));
+  });
+});
 
 test('a reported two-shard Linux stage cover counts on the first run after hub restart', async t => {
   const setup = caseDeadlines(t);
   const f = await setup.wait('sealed close fixture', () => integrated(setup.fixtures, '', 2, undefined, { machine: 'scripted' }));
   f.machine.script({ outcome: 'slow' }, { outcome: 'slow' });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  const refusedTarget = await f.spoke.call<{ ok: boolean; error?: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, occasion: 'stage', executor: 'droplet', stages: ['E-1'], dryRun: true });
+  assert.equal(refusedTarget.ok, false);
+  assert.match(refusedTarget.error ?? '', /requires a local macOS stage occasion/);
   const run = await drive(f, f.launch('all', '--fresh', '--occasion', 'stage'));
   await setup.wait('both shard start receipts', () => startedShards(f, run.id));
   for (const n of [1, 2]) f.machine.finish(`${run.id}-shard-${n}`, 0);
   await f.clock.advance(1000);
   const before = await drive(f, f.result(run.id));
-  assert.match(before.text, /stage cover missing macOS/);
+  assert.match(before.text, /stage cover complete/);
   assert.doesNotMatch(before.text, /missing Linux droplet/);
   await f.verificationSettled();
   await f.spoke.close(); f.ui.close(); await f.stop();
@@ -49,7 +76,7 @@ test('a reported two-shard Linux stage cover counts on the first run after hub r
   await f.clock.advance(1000);
   await restarted.verificationSettled();
   const after = await f.result(cached.id, ui);
-  assert.match(after.text, /stage cover missing macOS/);
+  assert.match(after.text, /stage cover complete/);
   assert.doesNotMatch(after.text, /missing Linux droplet/);
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2, 'recovery creates no replacement machines');
 });

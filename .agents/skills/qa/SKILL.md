@@ -48,6 +48,16 @@ create one before sending: QA can publish artifacts only where its request arriv
 
 ## After-stage QA
 
+<!-- cland-workflow-change: T-1892 require Linux per stage and macOS full at DoD -->
+After-stage closure needs a Linux stage full cover. When the plan names `macos`
+test paths, the Coordinator also runs local `verify all --occasion stage
+--executor local --stage <epic>` at that tree; repeated `--stage` unions several
+epics' current open stages. Read its exact-path targeted receipt in `task plan
+show`. A full cover cannot replace a named targeted run. The epic DoD gate
+separately requires a macOS full cover at the DoD tree; targeted evidence cannot
+satisfy it. Unselected local stage occasions stay full. See
+[close runs](../../../docs/hub/running.md#close-runs).
+
 Keep conditional-check scope identical in the request and committed brief, stating whether missing authorization means out of scope or BLOCKED. Read stage member counts and other plan facts from `task plan show` at the run rather than hard-coding totals (A-9063 R3; E-416 stage 1, E-413 stage 1/T-1093).
 
 The Coordinator or epic's Lead writes `qa/briefs/T-<epic>-stage-<index>.md` from `STAGE-BRIEF.md` after reading `task.plan show` and the stage's merged items. Fill every section: exact stage name, ordered item ids, effective stage scope (`affected` or `full`, including after-stage item overrides), commands/cases and expected results, evidence, out of scope and grants. `affected` covers the stage's combined changes; `full` covers the product's complete QA scope. Commit the brief on dev before requesting the run. A stage uses no stage QA verdict when neither its default nor any item override requires after-stage QA.

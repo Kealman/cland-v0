@@ -13,7 +13,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
   const out = options.out ?? ((text: string) => { process.stdout.write(text); });
   const ask = (d: Parameters<typeof askHubFrame>[0], frame: Parameters<typeof askHubFrame>[1], timeoutMs = 3000) => askHubFrame(d, frame, timeoutMs, options.env ?? process.env, options.clock ?? realClock);
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
-    'dry-run': { type: 'boolean' }, diagnostics: { type: 'boolean' }, note: { type: 'string' }, workers: { type: 'string' }, size: { type: 'string' }, occasion: { type: 'string' }, executor: { type: 'string' }, report: { type: 'string' }, to: { type: 'string', multiple: true }, all: { type: 'boolean' }, fresh: { type: 'boolean' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+    stage: { type: 'string', multiple: true }, 'dry-run': { type: 'boolean' }, diagnostics: { type: 'boolean' }, note: { type: 'string' }, workers: { type: 'string' }, size: { type: 'string' }, occasion: { type: 'string' }, executor: { type: 'string' }, report: { type: 'string' }, to: { type: 'string', multiple: true }, all: { type: 'boolean' }, fresh: { type: 'boolean' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
   } });
   const workers = values.workers === undefined ? undefined : Number(values.workers);
   if (workers !== undefined && (!/^[1-9][0-9]*$/.test(values.workers!) || !Number.isSafeInteger(workers))) throw new Error('--workers must be a positive integer');
@@ -32,7 +32,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
   if (values.help) { out(SUITE_USAGE); return 0; }
   if (values.diagnostics && !values['dry-run']) throw new Error('--diagnostics requires --dry-run');
   if (positionals[0] === 'classify') {
-    if (positionals.length !== 3 || !positionals[1]?.trim() || positionals[2] !== 'load-flake' || !values.note?.trim() || values['dry-run'] !== undefined || values.diagnostics !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
+    if (positionals.length !== 3 || !positionals[1]?.trim() || positionals[2] !== 'load-flake' || !values.note?.trim() || values['dry-run'] !== undefined || values.diagnostics !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined || values.stage !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
     const result = await ask(d, { type: 'suite.classify', suite: positionals[1], cause: 'load-flake', note: values.note }) as { id: string; cover: import('../protocol.ts').CoverRecord };
@@ -41,7 +41,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
   }
   if (values.note !== undefined) throw new Error('--note requires verify classify');
   if (positionals[0] === 'queue') {
-    if (positionals.length !== 1 || values['dry-run'] !== undefined || values.diagnostics !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
+    if (positionals.length !== 1 || values['dry-run'] !== undefined || values.diagnostics !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined || values.stage !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
     const q = await ask(d, { type: 'suite.queue' }, 15000) as VerificationQueue;
@@ -67,7 +67,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
     return 0;
   }
   if (positionals[0] === 'cancel') {
-    if (positionals.length > 2 || values['dry-run'] !== undefined || values.diagnostics !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
+    if (positionals.length > 2 || values['dry-run'] !== undefined || values.diagnostics !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined || values.stage !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
     const result = await ask(d, { type: 'suite.cancel', ...(positionals[1] ? { suite: positionals[1] } : {}) }, 15000) as { id: string; topic: string; cancelled: true };
@@ -90,7 +90,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
   const defaultReport = values.report === undefined && !values['dry-run'];
   // Candidate validation precedes the durable checkpoint even on a local socket.
   // Allow the same admission budget as a remote discovery (diagnostics: 120s).
-  const result = await ask(d, { type: 'suite.start', ...(d.remote?{worktreeHead:await gitIn(cwd,options.env??process.env)(['rev-parse','--verify','HEAD'])??'unknown'}:{}), mode, cwd, dryRun: values['dry-run'] ?? false, ...(values.diagnostics ? { diagnostics: true } : {}), ...(workers !== undefined ? { workers } : {}), ...(values.size ? { size: values.size } : {}), ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: defaultReport ? 'agents' : values.report, ...(values.to ? { to: values.to } : defaultReport ? { to: ['coordinator'] } : {}) }, values.diagnostics ? 120_000 : 90_000).catch(error => {
+  const result = await ask(d, { type: 'suite.start', ...(d.remote?{worktreeHead:await gitIn(cwd,options.env??process.env)(['rev-parse','--verify','HEAD'])??'unknown'}:{}), mode, cwd, ...(values.stage ? { stages: values.stage } : {}), dryRun: values['dry-run'] ?? false, ...(values.diagnostics ? { diagnostics: true } : {}), ...(workers !== undefined ? { workers } : {}), ...(values.size ? { size: values.size } : {}), ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: defaultReport ? 'agents' : values.report, ...(values.to ? { to: values.to } : defaultReport ? { to: ['coordinator'] } : {}) }, values.diagnostics ? 120_000 : 90_000).catch(error => {
     if (!(error instanceof HubTimeout) || !error.requestSent || values['dry-run']) throw error;
     const err = options.err ?? ((text: string) => { process.stderr.write(text); });
     err(`cland: submission sent; no reply within ${error.timeoutMs / 1000} s; check \`cland verify queue\` before resubmitting\n`);

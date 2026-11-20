@@ -18,7 +18,7 @@ async function linuxMachines(f: Awaited<ReturnType<typeof integrated>>) {
   await writeFile(node, `#!/bin/sh\nif [ "$1" = "-e" ]; then\ncase "$2" in *'os:os.platform()'*) shift; program="$1"; shift; exec '${process.execPath}' -e "require('os').platform=()=> 'linux';$program" "$@";; esac\nfi\nexec '${process.execPath}' "$@"\n`, { mode: 0o700 });
 }
 
-test('after-stage gates require Mac and sharded Linux at one tree, retain history and advance the next stage', async t => {
+test('after-stage gates close on sharded Linux, retain history and advance without a Mac full cover', async t => {
   // Fake machines still run the real uploaded shell and receipt collection. Only
   // their measured OS is simulated, so this proof also runs on either host OS.
   const settings = await tempProject(t);
@@ -80,15 +80,16 @@ test('after-stage gates require Mac and sharded Linux at one tree, retain histor
   const pushed = await cland(f.root, 'push'); assert.equal(pushed.code, 0, pushed.stderr);
   const linux = await run('droplet', false);
   assert.equal(linux.cached, undefined, 'a Mac cache cannot supply Linux proof');
-  assert.match(linux.text, /stage cover missing macOS.*tree [0-9a-f]{40}/);
-  assert.equal((await read()).stages![0]!.state, 'open', 'different green trees cannot close a stage');
+  assert.match(linux.text, /stage cover complete.*tree [0-9a-f]{40}/);
+  await eventually('Linux cover durably closes the stage without a matching Mac full cover', async () => (await read()).stages![0]!.state === 'closed' ? true : undefined);
+  assert.equal((await read()).stages![0]!.state, 'closed');
   // The first two result deliveries fill this pair's loop-breaker window.
   const both = await run('local', false, async id => {
     await eventually('completed Mac run waits for its report to be deliverable', async () => {
       const status = (await f.ui.request({ type: 'hub.status', history: true })).value as { suites: Array<{ id: string; error: string | null }> };
       return status.suites.find(job => job.id === id)?.error ? true : undefined;
     });
-    assert.equal((await read()).stages![0]!.state, 'open', 'an undelivered result is not stage evidence');
+    assert.equal((await read()).stages![0]!.state, 'closed', 'an extra Mac run does not reopen Linux stage evidence');
     assert.equal((await f.ui.request({ type: 'hygiene.unmute', a: 'impl', b: 'stage-rev' })).ok, true);
   });
   assert.equal(both.cached, undefined, 'a Linux cache cannot supply Mac proof');

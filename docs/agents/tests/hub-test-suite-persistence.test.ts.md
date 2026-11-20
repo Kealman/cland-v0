@@ -1,5 +1,8 @@
 # hub/test/suite-persistence.test.ts
 
+T-1892: keep the legacy full-cover byte oracle, bounded history traversal and
+restart assertions. `stageMissing` now requires Linux only, so Linux receipts
+leave no missing platform; absence of both platforms reports Linux alone.
 The masked-stage case uses stageCase with a complete setup bound before its
 separate behavior bound. Positive unmasked stage/release controls precede empty
 and nonempty T3-mask refusals across reopen. Compact history preserves mask

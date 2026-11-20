@@ -6403,7 +6403,7 @@
     "hub/test/suite-soak.test.ts::periodic T2/T3 failures reach Bug filing through the culprit search": 0.141683,
     "hub/test/suite-soak.test.ts::periodic T3 configuration round-trips duration and disable settings": 0.003166,
     "hub/test/suite-soak.test.ts::soak configuration validates UTC HH:MM and preserves empty disable on render": 0.003506,
-    "hub/test/suite-stage-cover.test.ts::after-stage gates require Mac and sharded Linux at one tree, retain history and advance the next stage": 19.617321,
+    "hub/test/suite-stage-cover.test.ts::after-stage gates close on sharded Linux, retain history and advance without a Mac full cover": 19.617321,
     "hub/test/suite-stage-rules.test.ts::a T1 to T3 batch green cannot supply an occasion cache or stage cover": 0.037311,
     "hub/test/suite-stage-rules.test.ts::active stage submissions retain separate droplet and local runs for one caller": 0.043845,
     "hub/test/suite-stage-rules.test.ts::active submission retries preserve requested overrides across scheduler recovery": 0.06696,
@@ -13977,7 +13977,7 @@
       "expires": "2026-12-17",
       "reason": "T-1879: slowest passing linux sample 67.011936269 s in A-19799-suite-d5150de3-66a9-478a-9cf3-63e9aeca55c6-all-at-92dd61b.log, head 92dd61bcf8b0d8679de8c5d21846c33d96ef8804, receipt 6418eae8-371e-41d8-9ff9-ed764d08221d:1678. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
     },
-    "hub/test/suite-stage-cover.test.ts::after-stage gates require Mac and sharded Linux at one tree, retain history and advance the next stage": {
+    "hub/test/suite-stage-cover.test.ts::after-stage gates close on sharded Linux, retain history and advance without a Mac full cover": {
       "seconds": 63.17,
       "owner": "C-216",
       "added": "2026-11-20",

@@ -41,7 +41,7 @@ The fixture's optional `stageTree` seam holds product work, not elapsed time.
 The paired `suite-close-component.test.ts` regression proves actual shard completion
 and checkpoint restoration separately; this case needs no provider execution.
 
-T-1276: the publication case records a completed publish landing, reopens the tracker and observes task/view and after-stage progress. A same-tree Linux cover that lacks the published dev merge is rejected; the containing Linux/macOS pair closes the stage. Publication never creates a merge-recovery receipt. Git and covers are injected; no process or browser runs.
+T-1276/T-1892: the publication case records a completed publish landing, reopens the tracker and observes task/view and after-stage progress. A Linux cover lacking the published merge is rejected; a containing Linux cover closes and persists without Mac evidence. Adding plan macos paths reopens the stage. Unknown files, full Mac covers, wrong trees and wrong path sets fail; the exact targeted receipt closes it. The target selector refuses an epic without named open-stage paths. Git and covers are injected; no process or browser runs.
 
 T-1082: force a checkpoint-free recompute over the pinned copied tracker plus
 1,200 synthetic historical covers. Assert the selected durable closure, one

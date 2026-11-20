@@ -13,8 +13,9 @@ import { durationAllowanceOwner, durationLegacyOwner, readDurationManifest } fro
 import { selectWebRepetitionFiles, newWebFiles } from './web-repetitions.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'web-only' | 'full';
-export type SuiteSelection = { loadGateRerun?: { head: string; recent: string[]; passed?: string[]; phases?: string[] }; batchInteraction?: { t3?: { mode: 'report'; files: string[] | null; reason: string }; mode: 'report' | 'run'; files: string[] | null; phases: Array<'T2' | 'Web'>; reason: string }; batchTests?: { T2?: string[]; T3?: string[]; Web?: string[] }; interactionTests?: string[]; webRepetitionFiles?: string[]; durationCheck?: { files: string[]; owner?: string }; web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
-export const diagnosticTestFile = (file: string): boolean => /^(?!.*(?:^|\/)\.\.\/)(hub\/(test|src)|nvim\/test|web\/test)\/.*\.test\.ts$/.test(file);
+export type SuiteSelection = { stageTargets?: Array<{ epic: string; stage: string; files: string[] }>; loadGateRerun?: { head: string; recent: string[]; passed?: string[]; phases?: string[] }; batchInteraction?: { t3?: { mode: 'report'; files: string[] | null; reason: string }; mode: 'report' | 'run'; files: string[] | null; phases: Array<'T2' | 'Web'>; reason: string }; batchTests?: { T2?: string[]; T3?: string[]; Web?: string[] }; interactionTests?: string[]; webRepetitionFiles?: string[]; durationCheck?: { files: string[]; owner?: string }; web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export { diagnosticTestFile } from './test-path.ts';
+import { diagnosticTestFile } from './test-path.ts';
 
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
@@ -96,6 +97,7 @@ export function describeSelection(selection: SuiteSelection, filesBytes = Infini
 
 /** Cache receipts are reusable only for identical effective package/test sets. */
 export function sameSuiteSelection(previous: SuiteSelection | undefined, selection: SuiteSelection): boolean {
+  if (JSON.stringify(previous?.stageTargets) !== JSON.stringify(selection.stageTargets)) return false;
   return previous?.batchInteraction?.mode === selection.batchInteraction?.mode
     && JSON.stringify(previous?.batchTests) === JSON.stringify(selection.batchTests)
     && JSON.stringify(previous?.interactionTests) === JSON.stringify(selection.interactionTests)

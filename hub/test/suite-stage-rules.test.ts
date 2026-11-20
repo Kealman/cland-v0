@@ -13,6 +13,43 @@ import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { StageCandidates } from '../src/tracker/stage-candidates.ts';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { suiteStartIssues } from '../src/protocol.ts';
+
+test('stage selectors are additive to legacy verification frames and require unique epic ids', () => {
+  const legacy = { id: 'request', cwd: '/scratch', mode: 'all', occasion: 'stage', executor: 'local' };
+  assert.deepEqual(suiteStartIssues(legacy), []);
+  assert.deepEqual(suiteStartIssues({ ...legacy, stages: ['E-1', 'E-2'] }), []);
+  for (const stages of [[], ['E-1', 'E-1'], ['bad'], 'E-1']) assert.ok(suiteStartIssues({ ...legacy, stages }).length);
+  assert.ok(suiteStartIssues({ ...legacy, occasion: 'epic', stages: ['E-1'] }).length);
+});
+
+test('targeted Mac stages pin their union and publish separate exact-path receipts', t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(fixtures => ownedSuiteUnit(t, fixtures, { machineReceiptsOnly: true }, 'test_unit="unit"\ntest_soak="soak"'));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const files = ['hub/test/example.test.ts', 'hub/test/second.test.ts', 'web/test/browser.test.ts'];
+  await step('prepare targeted Web directory', () => mkdir(join(f.root, 'web/test'), { recursive: true }));
+  await step('declare Web-capable runner', () => writeFile(join(f.root, 'hub/test/run-suite.ts'), '// inheritedLease; supportsWebPhase = true'));
+  for (const file of files) await step('write targeted fixture', () => writeFile(join(f.root, file), ''));
+  await step('write unrelated Web fixture', () => writeFile(join(f.root, 'web/test/unrelated.test.ts'), ''));
+  await step('declare targeted fixture tier', () => writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [files[0]!]: 'T1', [files[1]!]: 'T4', [files[2]!]: 'Web', 'web/test/unrelated.test.ts': 'Web' } })));
+  const targets = [{ epic: 'E-1', stage: 'first', files: [files[0]!] }, { epic: 'E-2', stage: 'second', files }];
+  const run = await step('admit targeted Mac stage union', () => f.launch({ mode: 'all', integrated: true, occasion: 'stage', executor: 'local', stageTargets: targets, fresh: true }));
+  const admitted = (await step('read pinned targets', () => f.jobs())).find(job => job.id === run.id)!;
+  assert.deepEqual(admitted.selection!.files, files);
+  assert.deepEqual(admitted.selection!.stageTargets, targets);
+  assert.equal(admitted.selection!.soak, true, 'explicit Mac targets include their T4 files');
+  await step('record targeted worker completion', () => f.finish(run.id, 0, '', true, verificationSteps(admitted.commands!).map(row => tierReceipt(admitted, row, 0))));
+  const receipts = f.suites.stageCovers().filter(cover => cover.id === run.id);
+  assert.deepEqual(receipts.map(cover => cover.target), targets.map(({ epic, stage }) => ({ epic, stage })));
+  assert.deepEqual(receipts.map(cover => cover.files), [[files[0]!], files]);
+  assert.ok(receipts.every(cover => cover.tree === f.candidate.tree));
+  const stored = await step('read completed target ownership', () => f.jobs());
+  const producer = stored.find(job => job.id === run.id)!;
+  producer.tierReceipts = [];
+  await step('reopen missing producer receipts', () => f.reopen(stored));
+  assert.ok(!f.suites.stageCovers().some(cover => cover.id === run.id));
+}));
 import { tierReceipt } from '../src/verification-tier-receipts.ts';
 import { verificationSteps } from '../src/verification-plan.ts';
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
@@ -224,7 +261,7 @@ test('filed cover failures need five same-tree hub greens before stage admission
   published.length = 0;
   f.clock.block(expires - f.clock.now().getTime());
   assert.ok(!f.suites.stageCovers().some(cover => cover.id === run.id), 'memoized stage admission must lint expired evidence');
-  assert.ok(f.suites.stageMissing(original.tree).includes('macOS'));
+  assert.ok(f.suites.stageMissing(original.tree).includes('Linux droplet'));
   await step('publish expiry to stage dependents', () => f.tick());
   await step('join expiry publication', () => f.suites.settled());
   assert.ok(published.includes(run.id), 'expiry must publish after a projection read invalidated the cache');
@@ -311,7 +348,7 @@ test('a T1 to T3 batch green cannot supply an occasion cache or stage cover', as
   const batch = await f.launch({ mode: 'all', integrated: true, fresh: true, actor });
   await assert.rejects(f.launch({ mode: 'all', integrated: true, occasion: 'stage', actor }), /already has a suite queued or running/);
   await f.finish(batch.id);
-  assert.deepEqual(f.suites.stageMissing(f.candidate.tree), ['Linux droplet', 'macOS']);
+  assert.deepEqual(f.suites.stageMissing(f.candidate.tree), ['Linux droplet']);
   const close = await f.launch({ mode: 'all', integrated: true, occasion: 'release' });
   assert.equal(close.cached, undefined);
   await f.finish(close.id);
@@ -379,7 +416,7 @@ test('fresh failed or unreported stage attempts supersede the older green cache'
     await f.machine.started(id);
   };
   let green = await submit(true); await running(green.id); await f.finish(green.id);
-  assert.deepEqual(f.suites.stageMissing(f.candidate.tree), ['macOS']);
+  assert.deepEqual(f.suites.stageMissing(f.candidate.tree), []);
   for (const state of ['failed', 'unreported'] as const) {
     const hit = await submit(false); assert.equal(hit.cached?.run, green.id); await f.result(hit.id);
     let withheld = false;

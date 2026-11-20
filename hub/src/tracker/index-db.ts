@@ -149,7 +149,7 @@ type KeyedVerdict = { verdict: VerdictRecord; key: string };
 export type CheckoutRecovery = { before: string; after: string };
 export type MergeReceipt = { branch: string; tip: string; base: string; commit: string; override?: string; checkout?: CheckoutRecovery };
 /** Durable completed stage evidence, independent of the suite cache and rebuildable item index. */
-export type StageClosure = { hash: string; head: string; tree: string; linux: string; macos: string };
+export type StageClosure = { hash: string; head: string; tree: string; linux: string; macos?: string };
 
 export type IndexMeta = { file: string; hash: string; source: Source; indexedAt: number };
 

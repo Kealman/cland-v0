@@ -7,7 +7,7 @@ import { connectUi, eventually, inProcessSpoke, projectHub, flushProjectLogs, te
 import { sessionCland as cland } from './session-credential-fixture.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { FakeClock } from './fake-clock.ts';
-import { planStageHub, PlanGit, writeBarrier } from './plan-stage-fixture.ts';
+import { planStageHub, PlanGit, writeBarrier, seedPlanStageCover } from './plan-stage-fixture.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { manualTips } from './freshness-harness.ts';
 import { onCleanup, ownDirectory } from './process-cleanup.ts';
@@ -15,9 +15,36 @@ import { tmpdir } from 'node:os';
 import { pacingOwner } from './telegram-pacing-fixture.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
 import { dispatcherUi } from './harness.ts';
+import { stageCase } from './stage-case-fixture.ts';
 
 const repositories = new Map<string, PlanGit>();
 const facts = (root: string) => repositories.get(root)!;
+
+test('epic DoD refuses missing, targeted and wrong-tree Mac evidence before accepting its full cover', async t => {
+  const owner = stageCase(t);
+  await owner.run(async step => {
+    const f = await step(() => project(owner.fixtures, true));
+    owner.requireClose(f.component.stop);
+    owner.adoptRoot(f.root);
+    if (!('tracker' in f.component)) throw new Error('stage component required');
+    const tracker = f.component.tracker;
+    await step(() => f.verdict('dod', 'clear', 'all'));
+    const head = facts(f.root).head, tree = 'f'.repeat(40);
+    for (const covers of [[],
+      [{ id: 'wrong-tree', head, tree: 'a'.repeat(40), platform: 'macOS' as const }],
+      [{ id: 'targeted', head, tree, platform: 'macOS' as const, files: ['hub/test/mac.test.ts'], target: { epic: f.item.id, stage: 'build' } }],
+    ]) {
+      tracker.useVerify(() => null, () => covers);
+      const refused = await step(() => f.ui.request({ type: 'task.close', item: f.item.id }));
+      assert.equal(refused.ok, false);
+      assert.match(refused.error ?? '', /epic DoD needs a green macOS full cover/);
+    }
+    tracker.useVerify(() => null, () => [{ id: 'mac-full', head, tree, platform: 'macOS' }]);
+    const closed = await step(() => f.ui.request({ type: 'task.close', item: f.item.id }));
+    assert.equal(closed.ok, true, closed.error);
+    assert.equal((closed.value as { item: ItemView }).item.state, 'closed');
+  });
+});
 
 test('closed epic demo reads after restart do not rescan history', async t => {
   const root = await tempProject(t);
@@ -54,8 +81,9 @@ async function project(t: TestContext, gated = false, levels = ['release', 'epic
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), `[tracker]\nlevels = ${JSON.stringify(levels)}\n`);
   const gate = gated ? writeBarrier(t) : null;
+  await seedPlanStageCover(root, facts(root).head);
   const component = gate ? await planStageHub(t, root, facts(root), { levels, gate }) : {
-    ...await projectHub(t, root, {}, { git: facts(root).read, readBase: async () => 'dev', clock: new FakeClock(),
+    ...await projectHub(t, root, {}, { git: facts(root).read, readBase: async () => 'dev', stageTree: async () => 'f'.repeat(40), clock: new FakeClock(),
       scheduleTips: read => { void read(); return { poke: () => { void read(); }, stop() {} }; },
     }),
     flush: () => flushProjectLogs(t, root),
@@ -387,8 +415,9 @@ async function durationFixture(t: TestContext) {
   const clock = new FakeClock();
   const graph = new PlanGit();
   await mkdir(join(root, '.cland'), { recursive: true });
+  await seedPlanStageCover(root, graph.head);
   const start = (setup: { receipt?: Promise<void>; signal?: AbortSignal; clock?: FakeClock; setupTimeoutMs?: number } = {}) => owner.start(root, {}, clock, {
-    ...setup, hubOptions: { git: graph.read, readBase: async () => 'dev',
+    ...setup, hubOptions: { git: graph.read, readBase: async () => 'dev', stageTree: async () => 'f'.repeat(40),
       scheduleTips: read => { void read(); return { poke: () => { void read(); }, stop() {} }; } },
   });
   const ready = async () => {

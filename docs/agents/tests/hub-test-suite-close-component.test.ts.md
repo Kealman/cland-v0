@@ -1,5 +1,13 @@
 # hub/test/suite-close-component.test.ts
 
+T-1892: on macOS the in-process MCP preview selects two epics' current open
+stage paths and pins their union. The fixture holds a positively controlled
+native launch guard through component shutdown. Linux skips this local-macOS
+case with a prerequisite reason; the shared frame validation and scheduler
+targeted-receipt permutations run in suite-stage-rules on either platform.
+The shard case also refuses a droplet request carrying stage selectors before
+any provider acquisition. Stage result summaries require Linux only.
+
 For held-size cancellation, arm the provider hold within the real
 `reserveShards` call, after the pre-submit catalog probe. Observe the durable
 queued job before cancelling. Preserve the held ledger retry, joined submission,

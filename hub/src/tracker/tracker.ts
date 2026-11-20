@@ -374,35 +374,27 @@ export class Tracker {
   #stageAncestors = new Map<string, boolean | undefined>();
   #stageAncestorTip: string | null = null;
   #stageAncestryChanged = false;
-  #coverIndex: { source: StageCover[]; byId: Map<string, StageCover>; mac: Map<string, StageCover>; paired: StageCandidates; unpaired: StageCandidates; byTree: Map<string, StageCandidates>; byHead: Map<string, StageCover[]> } | undefined;
+  #coverIndex: { source: StageCover[]; targeted: Map<string, StageCover>; byId: Map<string, StageCover>; mac: Map<string, StageCover>; linux: StageCandidates; byHead: Map<string, StageCover[]> } | undefined;
   #indexedCovers() {
     const source = this.#stageCovers();
     const tip = this.#fresh.tip('dev');
     if (this.#coverIndex?.source === source && this.#stageAncestorTip === tip) return this.#coverIndex;
+    const targeted = new Map<string, StageCover>();
+    for (const cover of source) if (cover.target && cover.files) targeted.set(JSON.stringify([cover.target.epic, cover.target.stage, cover.tree, [...cover.files].sort()]), cover);
     this.#stageAncestorTip = tip; this.#stageAncestors.clear();
     const byId = new Map<string, StageCover>(), mac = new Map<string, StageCover>();
     const byHead = new Map<string, StageCover[]>();
     for (const cover of source) {
       byId.set(cover.id, cover);
-      if (cover.platform === 'macOS') mac.set(cover.tree, cover);
+      if (cover.platform === 'macOS' && !cover.files) mac.set(cover.tree, cover);
       const head = cover.head;
       const rows = byHead.get(head) ?? []; rows.push(cover); byHead.set(head, rows);
     }
-    const paired = [], unpaired = [], trees = new Map<string, StageCover[]>();
-    for (const cover of source) if (cover.platform === 'Linux droplet') {
-      if (mac.has(cover.tree)) paired.push(cover);
-      else {
-        unpaired.push(cover);
-        const rows = trees.get(cover.tree) ?? []; rows.push(cover); trees.set(cover.tree, rows);
-      }
-    }
-    const byTree = new Map([...trees].map(([tree, rows]) => [tree, new StageCandidates(rows)]));
-    return this.#coverIndex = { source, byId, mac, paired: new StageCandidates(paired), unpaired: new StageCandidates(unpaired), byTree, byHead };
+    const linux = new StageCandidates(source.filter(cover => cover.platform === 'Linux droplet'));
+    return this.#coverIndex = { source, targeted, byId, mac, linux, byHead };
   }
   #stageCandidateState(cover: StageCover, active: boolean): void {
-    this.#coverIndex?.paired.set(cover, active);
-    this.#coverIndex?.unpaired.set(cover, active);
-    this.#coverIndex?.byTree.get(cover.tree)?.set(cover, active);
+    this.#coverIndex?.linux.set(cover, active);
   }
   #stageCoverKey = '[]';
   readonly #stageCoverDependents = new Set<string>();
@@ -1387,14 +1379,31 @@ export class Tracker {
     this.#planHistory.set(`T-${idNumber(id)}`, history);
   }
 
+  /** Resolve selectors once; the suite pins these stage identities and paths. */
+  async stageTargets(ids: readonly string[]): Promise<Array<{ epic: string; stage: string; files: string[] }>> {
+    const targets = [];
+    for (const id of ids) {
+      const view = await this.viewAsync(id);
+      const stage = view.stages?.find(stage => stage.state === 'open');
+      const files = view.plan?.stages.find(plan => plan.name === stage?.name)?.macos;
+      if (!stage || !files?.length) throw new TrackerError(`${id}: current open stage has no macos paths`);
+      targets.push({ epic: view.id, stage: stage.name, files: [...files] });
+    }
+    return targets;
+  }
+
   /** Plans use the same admitted read/modify/publication cycle as other item writes. */
   setPlan(actor: Actor, rawId: string, yaml: string, resumed: Resumed = untimed, authorize: () => void = () => {}, reason?: string, allowLarge: Record<string, string> = {}): Promise<ItemView> {
-    return this.#serial(resumed => {
+    return this.#serial(async resumed => {
       checkText(yaml, 'plan YAML');
       if (reason !== undefined) checkText(reason, 'plan change reason');
       let plan: EpicPlan;
       try { plan = parsePlan(yaml, [...this.kinds, 'category']); }
       catch (err) { throw new TrackerError(err instanceof Error ? err.message : String(err)); }
+      for (const path of plan.stages.flatMap(stage => stage.macos ?? [])) {
+        const info = await this.#files.stat(join(this.#root, path)).catch(() => null);
+        resumed(() => { if (!info?.isFile()) throw new TrackerError(`unknown macOS test path: ${path}`); });
+      }
       const large = plan.stages.flatMap(stage => stage.lanes.flat()).map(id => this.#referenceId(id) ?? id).filter(id => this.#index.get(id)?.size === 'L');
       const allowed = new Map<string, string>();
       for (const [raw, text] of Object.entries(allowLarge)) {
@@ -2029,14 +2038,13 @@ export class Tracker {
     this.#stageCoverDependents.add(id);
     const recorded = this.#index.stageClosure(id, name);
     if (recorded?.hash === snapshot.hash && (!build || build === recorded.head)) {
-      return { tree: recorded.tree, missing: [], linux: recorded.linux, macos: recorded.macos };
+      return { tree: recorded.tree, missing: [], linux: recorded.linux, ...(recorded.macos ? { macos: recorded.macos } : {}) };
     }
     const covers = this.#indexedCovers();
     const expected = this.#stageTree(id, build ?? this.#fresh.tip('dev'));
     const landings = snapshot.items.flatMap(child => this.#index.landingReceipt(child)?.commit ?? []);
-    // Search newest first. An unresolved newer pair can still win, so settle
-    // that candidate before asking Git about older history. Unpaired trees
-    // cannot win; only the expected tree can provide a Linux-only fallback.
+    // Search Linux covers newest first, settling unresolved candidates before
+    // considering older history. Any targeted Mac receipt must match its tree.
     const candidates: Array<{ cover: StageCover; current: boolean | undefined }> = [];
     const check = (cover: StageCover): boolean | undefined => {
       const treeMatches = expected === null ? undefined : !build || cover.tree === expected;
@@ -2057,24 +2065,19 @@ export class Tracker {
     };
     let pair: StageCover | undefined;
     let waitingPair = false;
-    for (const cover of covers.paired) {
+    for (const cover of covers.linux) {
       const current = check(cover);
       candidates.push({ cover, current });
       if (current === true) { pair = cover; break; }
       if (current === undefined) { waitingPair = true; break; }
     }
-    if (!pair && !waitingPair) {
-      const unpaired = expected === null ? covers.unpaired : covers.byTree.get(expected) ?? [];
-      for (const cover of unpaired) {
-        const current = check(cover);
-        candidates.push({ cover, current });
-        if (current !== false) break;
-      }
-    }
     const eligible = candidates.filter(candidate => candidate.current === true).map(candidate => candidate.cover);
     const tree = pair?.tree ?? expected;
     const linux = pair ?? eligible.find(cover => cover.tree === tree);
-    const mac = tree === null ? undefined : covers.mac.get(tree);
+    const paths = this.#index.plan(id)?.stages.find(stage => stage.name === name)?.macos;
+    const mac = tree === null ? undefined : paths
+      ? covers.targeted.get(JSON.stringify([id, name, tree, [...paths].sort()]))
+      : covers.mac.get(tree);
     const pending: StagePlatform[] = [];
     const missing: StagePlatform[] = [];
     if (!linux) {
@@ -2082,7 +2085,7 @@ export class Tracker {
         && (candidate.current === undefined || tree === null));
       (unresolved ? pending : missing).push('Linux droplet');
     }
-    if (!mac) (tree === null && covers.mac.size ? pending : missing).push('macOS');
+    if (paths && !mac) (tree === null ? pending : missing).push('macOS');
     return { tree, missing, ...(pending.length ? { pending } : {}), ...(linux ? { linux: linux.id } : {}), ...(mac ? { macos: mac.id } : {}) };
   }
 
@@ -2102,10 +2105,10 @@ export class Tracker {
         // is pending. An observed rollback (or Git failure) still opens it.
         && (!closure || this.#fresh.ancestor(item.fm.id, closure.head) !== false)
         && (!needsQa || !!verdict && verdict.result === 'clear' && this.#stageCurrent(item.fm.id, verdict));
-      if (completed && cover?.tree && cover.linux && cover.macos && !closure) {
+      if (completed && cover?.tree && cover.linux && !closure) {
         const head = needsQa ? verdict?.commit : this.#indexedCovers().byId.get(cover.linux)?.head;
         if (head) {
-          closure = { hash: snapshot.hash, head, tree: cover.tree, linux: cover.linux, macos: cover.macos };
+          closure = { hash: snapshot.hash, head, tree: cover.tree, linux: cover.linux, ...(cover.macos ? { macos: cover.macos } : {}) };
           this.#index.recordStageClosure(item.fm.id, stage.name, closure);
         }
       }
@@ -2113,7 +2116,7 @@ export class Tracker {
       return { name: stage.name, state: closed ? 'closed' : 'open', qa: snapshot.qa, items: snapshot.items,
         merged:snapshot.mergedCount,total:snapshot.items.length,statuses:snapshot.statuses,
         ...(cover ? { cover } : {}),
-        ...(closure ? { closure: { head: closure.head, tree: closure.tree, linux: closure.linux, macos: closure.macos } } : {}),
+        ...(closure ? { closure: { head: closure.head, tree: closure.tree, linux: closure.linux, ...(closure.macos ? { macos: closure.macos } : {}) } } : {}),
         ...(verdict ? { verdict: withCurrent(verdict, this.#stageCurrent(item.fm.id, verdict)) } : {}) };
     });
   }
@@ -2173,6 +2176,12 @@ export class Tracker {
       const fresh = await this.demoFreshness(id, qa.commit, tip);
       if (!fresh.current) throw new TrackerError(`qa-stale: ${fresh.reason}`, 'qa-stale');
       accepted = qa.commit;
+    }
+    if (verifyBuild && accepted) {
+      const tree = await this.#readStageTree(accepted);
+      resumed(() => {
+        if (!tree || !this.#indexedCovers().mac.has(tree)) throw new TrackerError(`${id}: epic DoD needs a green macOS full cover at tree ${tree ?? 'unknown'}`);
+      });
     }
     if (verifyBuild && tip !== await this.#resolve('refs/heads/dev', 'the epic demo tip before closing')) throw new TrackerError('dev changed while checking demo freshness; retry');
     await this.#checkDurationOwner(id, resumed);

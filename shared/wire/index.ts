@@ -654,7 +654,7 @@ export const FOUND_BY = ['review', 'cover', 'droplet', 'qa', 'human'] as const;
 
 // hub/src/tracker/plan.ts
 export type EpicPlan = {
-  stages: Array<{ name: string; qa: QaPolicy; lanes: string[][] }>;
+  stages: Array<{ name: string; qa: QaPolicy; lanes: string[][]; macos?: string[] }>;
   items?: Record<string, { qa?: QaPolicy; qa_criteria?: string[] }>;
 };
 
@@ -860,7 +860,7 @@ export type ClientHello = {
 };
 
 // hub/src/protocol.ts
-export type SuiteStart = { type: 'suite.start'; worktreeHead?: string; dryRun?: boolean; diagnostics?: boolean; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report?: string; to?: string[]; fresh?: boolean; executor?: ExecutorKind };
+export type SuiteStart = { type: 'suite.start'; stages?: string[]; worktreeHead?: string; dryRun?: boolean; diagnostics?: boolean; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report?: string; to?: string[]; fresh?: boolean; executor?: ExecutorKind };
 
 // hub/src/protocol.ts
 export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode: string; cwd: string; head: string; pid: number; token: string };
@@ -1127,7 +1127,7 @@ export type SuiteStatus = {
 export type Platform = { os: string; arch: string; release: string; node: string; nvim: string };
 
 // hub/src/suite-selection.ts
-export type SuiteSelection = { loadGateRerun?: { head: string; recent: string[]; passed?: string[]; phases?: string[] }; batchInteraction?: { t3?: { mode: 'report'; files: string[] | null; reason: string }; mode: 'report' | 'run'; files: string[] | null; phases: Array<'T2' | 'Web'>; reason: string }; batchTests?: { T2?: string[]; T3?: string[]; Web?: string[] }; interactionTests?: string[]; webRepetitionFiles?: string[]; durationCheck?: { files: string[]; owner?: string }; web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export type SuiteSelection = { stageTargets?: Array<{ epic: string; stage: string; files: string[] }>; loadGateRerun?: { head: string; recent: string[]; passed?: string[]; phases?: string[] }; batchInteraction?: { t3?: { mode: 'report'; files: string[] | null; reason: string }; mode: 'report' | 'run'; files: string[] | null; phases: Array<'T2' | 'Web'>; reason: string }; batchTests?: { T2?: string[]; T3?: string[]; Web?: string[] }; interactionTests?: string[]; webRepetitionFiles?: string[]; durationCheck?: { files: string[]; owner?: string }; web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 
 // hub/src/suite-selection.ts
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'web-only' | 'full';

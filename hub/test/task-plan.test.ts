@@ -181,6 +181,9 @@ test('invalid schema and references are refused without changing the previous ep
     [{ stages: plan.stages, items: { 'T-999': { qa: plan.stages[0]!.qa } } }, /T-999: override item is not in/],
     [{ stages: plan.stages, items: { [b.id]: { qa_criteria: ['C99'] } } }, /no criterion C99/],
     [{ stages: plan.stages, typo: true }, /unknown field typo/],
+    [{ stages: [{ ...plan.stages[0], macos: [] }] }, /macos must be a nonempty list/],
+    [{ stages: [{ ...plan.stages[0], macos: ['hub/test/../escape.test.ts'] }] }, /macos must be a nonempty list/],
+    [{ stages: [{ ...plan.stages[0], macos: ['hub/test/a.test.ts', 'hub/test/a.test.ts'] }] }, /macos must be a nonempty list/],
   ];
   for (const [raw, reason] of cases) {
     const result = await set(stringify(raw));

@@ -1,5 +1,11 @@
 # hub/test/epic-close.test.ts
 
+T-1892: the DoD close seam refuses missing Mac evidence, a wrong tree and a
+targeted stage receipt, then accepts a full Mac cover at the DoD tree. Git and
+tree facts are injected. The fake-only case owns its component close receipt
+before root cleanup and retains a native launch guard through teardown. Existing
+close fixtures seed legacy full-cover records and inject their tree lookup.
+
 Use the sealed in-process project hub and existing injected Git graph. Duration
 ownership cases use real task.close/task.edit frames with clear QA evidence;
 plant both a test allowance and a file allowance, require every key and the

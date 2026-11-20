@@ -135,7 +135,7 @@ test('five thousand stage receipts retain the recorded cover oracle across thirt
   assert.equal(createHash('sha256').update(JSON.stringify(covers)).digest('hex'), 'dd0e96b39e2e7e98b74aac2e8080611f91364f71491382e3f903cdc79874e8cd');
   for (let epic = 0; epic < 10; epic++) for (let stage = 0; stage < 3; stage++) {
     assert.strictEqual(f.suites.stageCovers(), covers);
-    assert.deepEqual(f.suites.stageMissing('tree'), ['macOS']);
+    assert.deepEqual(f.suites.stageMissing('tree'), []);
   }
   assert.equal(visits, 5000);
   await f.reopen();
@@ -158,7 +158,7 @@ test('stage cover reload drops pruned receipts and temporary reporting includes 
   f.store.clearMeta('suite-job:1');
   await f.reopen();
   assert.deepEqual(f.suites.stageCovers(), [covers[0]]);
-  assert.deepEqual(f.suites.stageMissing('temporary'), ['Linux droplet', 'macOS']);
+  assert.deepEqual(f.suites.stageMissing('temporary'), ['Linux droplet']);
   // Exercise the actual registered cleanup/restoration owner with a rejected
   // Suites close, then recover through that same owner before leaving the case.
   let nested: ReturnType<typeof stageCase> | undefined;
@@ -443,7 +443,7 @@ test('archived two-shard Linux stage summaries preserve their cover after restar
   const restored = new Suites(f.store, f.root, async () => {}, { clock: f.clock, env: f.env });
   t.after(() => restored.close());
   assert.deepEqual(restored.stageCovers(), ['original', 'cached'].map(id => ({ id, head: 'head', tree: 'tree', platform: 'Linux droplet' })));
-  assert.deepEqual(restored.stageMissing('tree'), ['macOS']);
+  assert.deepEqual(restored.stageMissing('tree'), []);
 });
 
 for (const executor of ['local', 'droplet'] as const) test(`${executor} suite log ends with one complete provenance footer`, async t => {

@@ -7,7 +7,7 @@ import { RawCoverageSweep, removeRawCoverage } from '../suite-raw-coverage.ts';
 import { recentCoverGreens } from '../suite-load-rerun.ts';
 import { memberVerificationReason, batchT1Summary, type BatchT1 } from '../batch-member-verification.ts';
 import { batchDevT3Cover, fullPeriodicDevT3Cover, DEV_T3_BACKSTOP_MS } from '../dev-t3-coverage.ts';
-import { parseTierReceipts, tierReceipt, type TierReceipt } from '../verification-tier-receipts.ts';
+import { completeTierPlanReason, parseTierReceipts, tierReceipt, type TierReceipt } from '../verification-tier-receipts.ts';
 
 import { suiteRecoveryState, isolatedUnavailableReport, isolatedSuiteProcessOwned, isolatedSuiteEvidencePath, outsideSuitePath, sealSuiteJob } from './suite-isolation.ts';
 import { lightBatchSelection, LIGHT_BATCH_POLICY } from '../batch-selection.ts';
@@ -125,7 +125,7 @@ export type SuiteJob = {
 export type SuiteRunFacts = Pick<SuiteJob, 'id' | 'batch' | 'devT3Probe' | 'reported' | 'outcome' | 'head' | 'tree' | 'runMs'> & { selection?: Pick<SuiteSelection, 'tiers'> };
 export type VerifyResult = { webPhase?: WebPhaseUnavailable; executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | 'unavailable' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
 export type StagePlatform = 'Linux droplet' | 'macOS';
-export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
+export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform; files?: string[]; target?: { epic: string; stage: string } };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ ...(job.webPhase ? { webPhase: job.webPhase } : {}), executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome?.notRun ? 'unavailable' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 // A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
@@ -136,7 +136,7 @@ const ACCOUNTING_WAIT_MS = 120_000;
 const KEY = 'suite-jobs';
 // Hub-derived: callers cannot accidentally rotate the key when retrying a lost reply.
 const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion' | 'devT3Probe'>) => input.devT3Probe?.key ?? input.actor?.sessionId ?? (input.occasion === 'dev-t3' ? 'dev-t3' : input.occasion === 'soak' ? 'nightly-soak' : 'human');
-const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion' | 'devT3Probe'>, head: string): string => createHash('sha256').update(JSON.stringify([suiteOwner(input), input.cwd, head, input.mode])).digest('hex');
+const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion' | 'devT3Probe'> & { stageTargets?: SuiteSelection['stageTargets'] }, head: string): string => createHash('sha256').update(JSON.stringify([suiteOwner(input), input.cwd, head, input.mode, ...(input.stageTargets ? [input.stageTargets] : [])])).digest('hex');
 const METRICS_WINDOW = 20;
 const runRef = (job: SuiteJob): RunRef => ({ ...(job.tierReceipts ? { tierReceipts: job.tierReceipts } : {}), ...(job.commands ? { commands: job.commands } : {}), ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
 function elapsed(since: string | undefined | null, now: number): number | null {
@@ -548,6 +548,10 @@ export class Suites {
     return include ? [...this.#stageReceipts.filter(cover => cover.id !== include.id), ...this.#stageReceipt(include, true)] : this.#stageReceipts;
   }
   #stageReceipt(job: Readonly<SuiteJob>, include = false): StageCover[] {
+    if (job.selection?.stageTargets && job.integrated && job.branch === 'dev' && job.tree && job.executor === 'local' && job.platform?.os === 'darwin' && job.outcome?.code === 0 && !job.outcome.notRun && !job.webPhase && !job.cancelled && !job.requesterDied && (job.reported || include) && completeTierPlanReason(job) === null) {
+      return job.selection.stageTargets.map(({ epic, stage, files }) => ({ id: job.id, head: job.head, tree: job.tree!, platform: 'macOS', files, target: { epic, stage } }));
+    }
+    if (job.selection?.stageTargets) return [];
     if (!job.integrated || job.branch !== 'dev' || !job.tree || !job.selection?.soak || !wholeSuiteSelection(job.selection) || !greenWithReceipt(job, this.#clock.now().getTime()) || job.cancelled || job.requesterDied || !job.reported && !include) return [];
     const source = job.cached ? this.#stageJobs.get(job.cached.run) : job;
     if (!source || !wholeSuiteSelection(source.selection)) return [];
@@ -566,7 +570,7 @@ export class Suites {
       if (previous && previous.tree === tree) counts[previous.platform] = (counts[previous.platform] ?? 0) - 1;
       for (const cover of this.#stageReceipt(include, true)) if (cover.tree === tree) counts[cover.platform] = (counts[cover.platform] ?? 0) + 1;
     }
-    return (['Linux droplet', 'macOS'] as const).filter(platform => !counts[platform]);
+    return (['Linux droplet'] as const).filter(platform => !counts[platform]);
   }
   #active = (job: SuiteJob) => !job.reported && (!job.outcome || (job.outcome.code !== 0 && !job.cleaned));
   // Terminal report recovery without an acquired resource holds no execution
@@ -637,7 +641,7 @@ export class Suites {
     }
     this.#hostSnapshotSweepComplete=true;
   }
-  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void, onAdmitted?: (admission: SuiteAdmission) => void): Promise<SuiteAdmission | SuiteDryRun> {
+  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { stageTargets?: NonNullable<SuiteSelection['stageTargets']>; hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void, onAdmitted?: (admission: SuiteAdmission) => void): Promise<SuiteAdmission | SuiteDryRun> {
     if (input.batch) input = { ...input, actor: { name: 'hub', sessionId: `merge-batch:${input.batch.id}:${input.batch.diagnostic?.key ?? 'batch'}`, shell: true }, fresh: true };
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const prepare = async()=>{
@@ -659,7 +663,7 @@ export class Suites {
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void, onAdmitted?: (admission: SuiteAdmission) => void, inspect = true, repeatCommands?: import('../verification-commands.ts').VerificationCommands, repeatSoak = false): Promise<SuiteAdmission | SuiteDryRun> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { stageTargets?: NonNullable<SuiteSelection['stageTargets']>; hostSnapshot?: HostVerifySnapshot; source?: {head:string;branch:string}; priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; batchPlanFrom?: string; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void, onAdmitted?: (admission: SuiteAdmission) => void, inspect = true, repeatCommands?: import('../verification-commands.ts').VerificationCommands, repeatSoak = false): Promise<SuiteAdmission | SuiteDryRun> {
     if (input.batchPlanFrom && (!input.batch || input.batch.diagnostic || input.occasion !== 'batch')) throw new Error('pinned batch plan requires a full batch confirmation');
     const pinned = input.batchPlanFrom ? (await this.receipt(input.batchPlanFrom)).job : undefined;
     const config = this.#options.projectConfig?.();
@@ -706,16 +710,17 @@ export class Suites {
     }
     // Explicit command tiers apply to any stack; cland file planning stays runner-only.
     if (runner && commands.tiers && config?.merge.queue && !admitted.tiers) admitted = taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, true);
-    const files = runner ? (input.devT3Probe?.files ?? input.batch?.diagnostic?.files) : undefined;
+    const files = runner ? (input.stageTargets?.flatMap(target => target.files).filter((file, index, files) => files.indexOf(file) === index) ?? input.devT3Probe?.files ?? input.batch?.diagnostic?.files) : undefined;
+    if (input.stageTargets && (!runner || executor !== 'local' || input.occasion !== 'stage')) throw new Error('targeted stages require a local cland stage occasion');
     const diagnosticSteps = input.batch?.diagnostic?.steps;
     if (files && (!files.length && !diagnosticSteps?.length || files.some(file => !diagnosticTestFile(file)))) throw new Error('invalid batch diagnostic files');
     const nvimTests = files?.filter(file => file.startsWith('nvim/'));
     const webDiagnostic = Boolean(files?.some(file => file.startsWith('web/')) || diagnosticSteps?.includes('Web'));
     let selection: SuiteSelection = files
-      ? { mode: 'full', files, reason: input.devT3Probe ? 'periodic dev T3 failing-file rerun' : 'batch failing-file rerun', loadGate: false, soak: false,
+      ? { mode: 'full', files, ...(input.stageTargets ? { stageTargets: structuredClone(input.stageTargets), fetchedDev: admitted.fetchedDev } : {}), reason: input.stageTargets ? 'targeted macOS stage paths' : input.devT3Probe ? 'periodic dev T3 failing-file rerun' : 'batch failing-file rerun', loadGate: false, soak: Boolean(input.stageTargets),
         shard: { files: files.filter(file => file.startsWith('hub/')), nvim: Boolean(nvimTests?.length || webDiagnostic) },
-        ...(webDiagnostic ? { web: 'all' as const, ...(files.every(file => file.startsWith('web/')) ? { tiers: [] } : {}) } : {}),
-        ...(nvimTests?.length ? { nvimTests } : {}) }
+        ...(webDiagnostic ? { web: 'all' as const, ...(input.stageTargets ? { batchTests: { Web: files.filter(file => file.startsWith('web/')) } } : {}), ...(files.every(file => file.startsWith('web/')) ? { tiers: [] } : {}) } : {}),
+        ...(input.stageTargets || nvimTests?.length ? { nvimTests: nvimTests ?? [] } : {}) }
       : runner ? occasionSelection(admitted, input.occasion, config?.merge.batchTiers) : admitted;
     if (runner && input.batch && !input.batch.diagnostic && !pinned) selection = await batchInteractionSelection(input.cwd, selection, input.batch.members.map(member => member.head), async (...args) => { if (!this.#candidate.git) throw new Error('candidate Git delta boundary unavailable'); return this.#candidate.git(input.cwd, args); }, undefined, config?.merge.batchInteraction ?? 'report');
     if (runner && input.batch && !input.batch.diagnostic && !pinned) selection = await lightBatchSelection(input.cwd, selection, input.batch.waiting ?? input.batch.members.length,
@@ -758,6 +763,10 @@ export class Suites {
           green: prior.outcome?.code === 0, identities: this.#full(prior).selection?.loadGateRerun?.passed ?? [] })), this.#clock.now().getTime()) };
     } else delete selection.loadGateRerun;
     let tierPlan = !runner || input.devT3Probe ? [] : input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
+    if (input.stageTargets) {
+      const planned = new Set(tierPlan.flatMap(row => row.files));
+      if (!commands.tiers || !files?.length || planned.size !== files.length || files.some(file => !planned.has(file))) throw new Error('targeted stage paths need an exact executable tier plan');
+    }
     selection = skipT4LoadRepetitions(selection, tierPlan);
     const soakCursors: Record<string, number> = JSON.parse(this.#store.meta('soak-cursors') ?? '{}');
     let soakDropped: string[] = [];

@@ -3,10 +3,11 @@
 import { parse, stringify } from 'yaml';
 import { idNumber } from './item.ts';
 import { parseItemReference } from './prefixes.ts';
+import { diagnosticTestFile } from '../test-path.ts';
 
 export type QaPolicy = { scope: 'none' | 'affected' | 'full'; when: 'per-item' | 'after-stage' };
 export type EpicPlan = {
-  stages: Array<{ name: string; qa: QaPolicy; lanes: string[][] }>;
+  stages: Array<{ name: string; qa: QaPolicy; lanes: string[][]; macos?: string[] }>;
   items?: Record<string, { qa?: QaPolicy; qa_criteria?: string[] }>;
 };
 /** Preserve plan spelling for approval hashes; match policy overrides by numeric identity. */
@@ -50,7 +51,8 @@ export function parsePlan(yaml: string, kinds?: readonly string[]): EpicPlan {
   const stages = nonempty(r.stages, 'stages').map((raw, stageIndex) => {
     const where = `stages[${stageIndex + 1}]`;
     const s = mapping(raw, where);
-    keys(s, ['name', 'qa', 'lanes'], where);
+    keys(s, ['name', 'qa', 'lanes', 'macos'], where);
+    if (s.macos !== undefined && (!Array.isArray(s.macos) || !s.macos.length || !s.macos.every(path => typeof path === 'string' && diagnosticTestFile(path)) || new Set(s.macos).size !== s.macos.length)) throw new PlanError(`${where}.macos must be a nonempty list of unique repository test paths`);
     if (typeof s.name !== 'string' || !s.name.trim() || /[\r\n]/.test(s.name)) throw new PlanError(`${where}.name must be a nonempty single line`);
     const name = s.name.trim();
     if (names.has(name)) throw new PlanError(`duplicate stage name ${name}`);
@@ -61,7 +63,7 @@ export function parsePlan(yaml: string, kinds?: readonly string[]): EpicPlan {
       seen.add(String(parseItemReference(id, kinds)!.n));
       return id;
     }));
-    return { name, qa: qaPolicy(s.qa, `${where}.qa`), lanes };
+    return { name, qa: qaPolicy(s.qa, `${where}.qa`), lanes, ...(s.macos === undefined ? {} : { macos: s.macos as string[] }) };
   });
   const plan: EpicPlan = { stages };
   if (r.items !== undefined) {
