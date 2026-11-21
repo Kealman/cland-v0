@@ -4,6 +4,15 @@ export type TierReceipt = { tier: 'T0' | VerificationStep['name']; exit: number 
 
 /** Complete planned execution, with ordered same-command interruption recovery. */
 export function completeTierPlanReason(proof: { id: string; tree?: string | null; tierReceipts?: unknown; commands?: { plan?: VerificationStep[] } }): string | null {
+  return tierPlanReason(proof, false);
+}
+
+/** Red execution can stop after its first failure, but interruptions remain unknown. */
+export function terminalTierPlanReason(proof: Parameters<typeof completeTierPlanReason>[0]): string | null {
+  return tierPlanReason(proof, true);
+}
+
+function tierPlanReason(proof: Parameters<typeof completeTierPlanReason>[0], allowFailure: boolean): string | null {
   const plan = proof.commands?.plan;
   if (!plan?.length) return 'missing execution plan';
   const rows = parseTierReceipts(proof.tierReceipts);
@@ -12,8 +21,11 @@ export function completeTierPlanReason(proof: { id: string; tree?: string | null
   for (const [index, row] of rows.entries()) {
     if (row.completion === 'complete' && row.exit === 0) continue;
     if (row.exit !== null && verificationInterrupted(row.exit) && rows.slice(index + 1).some(later => key(later) === key(row) && later.exit === 0 && later.completion === 'complete')) continue;
+    if (allowFailure && row.completion === 'complete' && row.exit !== null && !verificationInterrupted(row.exit)
+      && plan.some(step => row.tier === (step.name === 'check' ? 'T0' : step.name) && row.command === step.command)) continue;
     return 'failed or incomplete producer tier receipt';
   }
+  if (allowFailure && rows.some(row => row.exit !== null && row.exit !== 0 && !verificationInterrupted(row.exit))) return null;
   if (plan.some(step => !rows.some(row => row.tier === (step.name === 'check' ? 'T0' : step.name)
     && row.command === step.command && row.exit === 0 && row.completion === 'complete'))) return 'missing complete passing step receipt';
   return null;

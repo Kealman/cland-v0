@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { MergeBatches, BatchRefusal, BatchRebuild, diagnosticResult, batchInteractionSummary, batchNoticeId, type BatchBoundary, type BatchCandidate } from '../src/hub/merge-batches.ts';
 import type { MergeQueueEntry } from '../src/protocol.ts';
 import type { TopicNotice } from '../src/hub/core.ts';
-import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { DropletExecutor, ProviderCapacityUnavailable } from '../src/executor/droplet/droplet.ts';
 import { prepareBatchDependencies, prepareMergeBatch, batchRebuildReason, type BatchRepository } from '../src/hub/merge-batch-territory.ts';
 import { recordBatchFlakes } from '../src/hub/batch-flakes.ts';
 import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
@@ -120,6 +120,10 @@ test('batch and periodic failing-file selections round-trip to exactly the reque
 
 async function fixture(t: Parameters<typeof suiteUnit>[0], options: Parameters<typeof suiteUnit>[1] = {}, outer?: TestContext) {
   const f = await (outer ? ownedSuiteUnit(outer, t, { executor: 'droplet', ...options }) : suiteUnit(t, { executor: 'droplet', ...options }));
+  // Existing controller cases exercise a single worker; shard cases opt in explicitly.
+  f.config.verification.shards = 1;
+  const configure = f.configure;
+  f.configure = source => configure(/^shards\s*=/m.test(source) ? source : source.replace('[verification]', '[verification]\nshards=1'));
   const finish = f.finish;
   f.finish = async (...args) => { await f.machine.waits.run(f.machine.started(args[0])); return finish(...args); };
   const entries: MergeQueueEntry[] = [1, 2, 3].map(n => ({ item: `T-${n}`, branch: `t/${n}`, head: `${n}`.repeat(40), verdictBase: 'dev', enqueued: f.clock.now().toISOString(), by: { id: 'coord', name: 'coord', role: 'coordinator' } }));
@@ -148,6 +152,55 @@ async function fixture(t: Parameters<typeof suiteUnit>[0], options: Parameters<t
 
 const failureLog = 'suite test failures [{"file":"hub/test/example.test.ts","name":"rejects stale input"}]\n# tests 1\n# fail 1\n';
 const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/example.test.ts","name":"rejects stale input","at":1,"nesting":0,"outcome":"pass","seconds":0.01}\nsuite test failures []\n# tests 1\n# pass 1\n';
+
+for (const exit of [0, 1, 137, 143, 'not-run'] as const) test(`sharded batch lands only after every green receipt (last exit ${exit})`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const state = await step(() => setup('sharded batch setup', async () => {
+    const state = await fixture(fixtures, { machineReceiptsOnly: true });
+    const source = '[verification]\nexecutor="droplet"\nshards=2\ncheck="true"\ntest_unit="true"\ntest_integration="true"\n[merge]\nqueue=true\n';
+    state.f.configure(source);
+    await writeFile(join(state.root, '.cland/config.toml'), source);
+    for (const name of ['one', 'two']) await writeFile(join(state.root, `hub/test/${name}.test.ts`), '');
+    await writeFile(join(state.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/one.test.ts': 'T3', 'hub/test/two.test.ts': 'T3' } }));
+    fixtures.mock.method(DropletExecutor.prototype, 'reserveShards', async () => {});
+    fixtures.mock.method(DropletExecutor.prototype, 'releaseShardReservations', async () => {});
+    if (exit === 'not-run') {
+      const acquire = DropletExecutor.prototype.acquire;
+      fixtures.mock.method(DropletExecutor.prototype, 'acquire', function (this: DropletExecutor, ...args: Parameters<typeof acquire>) {
+        if (args[0].id.endsWith('shard-2')) throw new ProviderCapacityUnavailable('fixture capacity refusal');
+        return acquire.apply(this, args);
+      });
+    }
+    return state;
+  }));
+  await step(() => state.runner.tick());
+  await step(() => state.f.suites.settled());
+  const id = state.runner.snapshot()!.run!;
+  const parent = (await step(() => state.f.jobs())).find(job => job.id === id)!;
+  assert.equal(parent.shards?.length, 2);
+  await step(() => state.f.machine.waits.run(Promise.all(parent.shards!.slice(0, exit === 'not-run' ? 1 : 2).map(shard => state.f.machine.started(shard.id)))));
+  const finish = (index: number, code: number) => {
+    const shard = parent.shards![index]!;
+    state.f.machine.finish(shard.id, code, code ? failureLog : passLog, shard.commands!.plan!.map(row => tierReceipt(shard, row, code)));
+  };
+  const mixed = exit === 'not-run' || exit === 137 || exit === 143;
+  const completed = state.f.result(id);
+  finish(0, mixed ? 1 : 0);
+  await step(async () => { await state.f.tick(); await state.f.suites.settled(); await state.runner.tick(); });
+  assert.deepEqual(state.landed, []);
+  if (exit !== 'not-run') finish(1, exit);
+  await step(async () => { await state.f.tick(); await state.f.suites.settled(); await state.f.machine.waits.run(completed); });
+  await step(() => state.runner.tick());
+  assert.deepEqual(state.landed, exit ? [] : ['T-1', 'T-2', 'T-3']);
+  if (mixed) {
+    assert.deepEqual(state.dropped, []);
+    assert.match(state.runner.snapshot()!.failed!, /original .* inconclusive:/);
+    const receipt = await step(() => state.f.suites.receipt(id));
+    if (exit === 'not-run') assert.equal(receipt.job.shards![1]!.outcome!.notRun, 'provider-capacity');
+    else assert.equal(receipt.job.shards![1]!.outcome!.code, exit);
+    assert.equal(diagnosticResult(receipt.job, receipt.log).result, 'inconclusive');
+    assert.equal(state.f.suites.status().filter(job => job.occasion === 'batch').length, 1, 'no culprit probes admitted');
+  }
+}));
 
 test('light batch plans only affected T3 importers across both packages', t => guardedMemberCase(t, async (fixtures, step, setup) => {
   const { f, unit, affected, other, nvim } = await step(() => setup('complete light setup', async () => {

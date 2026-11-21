@@ -230,7 +230,7 @@ JSON footer; pending accounting stays explicitly unconfirmed.
 integrated `dev` closes. The Coordinator may name any occasion; QA may name `epic`
 for an epic demo. The project-root checkout must be clean, on `dev`, at freshly
 fetched `origin/dev`. Other roles and task heads are refused. The MCP `verify`
-tool takes the same `occasion` field. Batch and task runs stay on one slot;
+tool takes the same `occasion` field. Task runs stay on one slot; cland tier-command batches may shard;
 `--executor local` keeps a close run local.
 
 Every `after-stage` gate, including `qa.scope: none`, requires a green integrated
@@ -273,6 +273,22 @@ At admission, free remote slots up to `[verification] shards` (default 2) set th
 shard count. Hub files are placed largest-first on the lightest shard using
 `hub/test/durations.json` `files[*].seconds`; unknown files use the manifest
 median. Neovim goes to the shard with the least hub time, on that same droplet.
+Hub-owned batches carrying cland tier commands and a nonempty file plan use this
+policy too. Their pinned tier plan limits both balancing weights and execution:
+configured T4 is retained, omitted T1 stays omitted, and partial importer masks
+stay partial. Neovim and Web share one assigned machine. Setup repeats per shard;
+T0 reuses the host gate only with matching tree and command, otherwise it repeats.
+Every planned shard must report green structured command receipts with
+the admitted tree/head and the exact complete parent file inventory before
+landing; missing, failed or incomplete shards cannot land or establish full
+coverage. Full sharded batches may supply the periodic full-batch backstop;
+partial batches never do. Legacy unsharded receipts remain supported.
+Mixed failed and interrupted/unexecuted shards remain inconclusive for culprit
+diagnosis, using the children's structured native and tier receipts. Full batch
+coverage is checkpointed from the already-loaded terminal producer. Periodic
+checks consume that versioned run/head/tree-bound compact fact without hydrating
+archived groups; old sharded history without it remains unknown. Unsharded
+history retains its existing receipt policy.
 `CLAND_SUITE_SELECTION` carries each explicit file list into the package runner, which retains free/machine classification inside that shard. Selections above 64 KiB, including large stage identity baselines, use a delivered JSON file named by `CLAND_SUITE_SELECTION_FILE` on both executors; test workers and repetition workers inherit neither selection variable.
 
 The hub atomically reserves the whole group's estimated lifetime cost against
@@ -1211,7 +1227,7 @@ times. The replay bar is zero misses on those merges' own changed/added tests;
 every wider miss must be listed with its cause.
 
 **Close-run sharding.** Only integrated `dev` requests with `--occasion
-stage|epic|release` shard remotely; ordinary batch runs stay on one slot. The
+stage|epic|release` shard remotely; cland tier-command batches may shard under the same remote slot/spend policy. The
 Coordinator sets the occasion; QA may use `epic` for its demo. File balancing,
 Neovim placement, the daily-cap whole-run fallback and per-run costs are described
 under [Remote executors: Close runs](#close-runs). The result and queue show the
@@ -1636,7 +1652,7 @@ under their existing rules.
 
 The hub takes `[merge] batch` entries (default 3) when full or after `batch_wait`
 (default `"10m"`). It runs the resolved `check` (T0) on the immutable merged
-candidate before its runtime tiers, on one slot using
+candidate before its runtime tiers, using available remote shards for cland tier commands (one local slot) and
 `[merge] batch_tiers`, a nonempty set of T1–T4 tiers. Its default is
 `["T1", "T3"]`; generated or inherited configuration can override it. Configured
 T1 is omitted only when every member's latest mode-free verify is green at its
@@ -1906,7 +1922,7 @@ refuses with `verify-tiers` before queueing; merge admission checks the immutabl
 merged candidate and refuses with `merge-tiers` before changing refs. The old
 `verify-shards`/`merge-shards` wire codes remain accepted aliases.
 
-T0 runs static checks. T1 maps to `hub free`, T2–T4 to `hub machine`, and Neovim keeps its package phase. Hub-owned batches default to configured T1/T3 on one slot, omitting redundant T1 only with complete producer receipts and another configured runtime tier. Ordinary `all` and integrated `dev` runs plan T1–T3. Stage, epic and release occasions plan T1–T4 on both executors and set `CLAND_TEST_SOAK=1` for tests and load-gate repetitions. Close-run balancing places T4 files like the others, and the merged result retains each shard’s tier lines. A pre-migration tree carrying only `hub/test/shards.json`
+T0 runs static checks. T1 maps to `hub free`, T2–T4 to `hub machine`, and Neovim keeps its package phase. Hub-owned batches default to configured T1/T3 across available remote shards for cland tier commands (one local slot), omitting redundant T1 only with complete producer receipts and another configured runtime tier. Ordinary `all` and integrated `dev` runs plan T1–T3. Stage, epic and release occasions plan T1–T4 on both executors and set `CLAND_TEST_SOAK=1` for tests and load-gate repetitions. Close-run balancing places T4 files like the others, and the merged result retains each shard’s tier lines. A pre-migration tree carrying only `hub/test/shards.json`
 remains admissible: `free` maps to T1 and `machine` to T3, without requiring
 Neovim entries or sorted keys. If both manifests exist, `tiers.json` takes priority.
 

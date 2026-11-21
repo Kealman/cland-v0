@@ -226,6 +226,13 @@ at the captured commit instead. A host failure reports
 `host check failed (exit <n>); no droplet created`. An unset check logs
 `Host gate: check not set` and continues. `prepare` installs dependencies on the remote executor.
 Stage, epic and release closes shard only candidates carrying cland's own runner.
+Hub-owned batches with tier commands and a nonempty tier plan use the same remote
+sharding, retaining their configured tiers, importer masks and exact-head T1 reuse.
+Whole-test-only commands retain one machine. Each shard repeats setup; T0 reuses
+the host gate only with matching tree and command, otherwise it runs again.
+Web and the selected Neovim files run on one assigned shard. Landing needs every
+planned shard's green structured command receipts and the complete planned file
+inventory. A partial T3 mask remains partial even when all shards pass.
 Other projects log `sharding skipped: project commands are not sharded` and run
 their recorded test once on one machine.
 Set available runtime tiers with `cland config set verification.test_unit '<command>'`
@@ -1537,7 +1544,7 @@ Shares use the current duration manifest, rather than claiming historical wall
 times. The replay bar is zero misses on those merges' own changed/added tests;
 every wider miss must be listed with its cause.
 
-Close runs on integrated `dev` use `cland verify all --occasion stage|epic|release --report <topic>`. The Coordinator sets any occasion; QA may set `epic` for the epic demo. The hub requires the clean project-root `dev` head to match freshly fetched `origin/dev` and refuses other roles or task heads. The MCP `verify` request accepts the same `occasion` field. An ordinary Coordinator integrated `cland verify all` on the same clean root `dev` head may shard too, with no occasion or stage provenance. The hub-owned merge batch and nightly soak each use one slot. Task heads and non-Coordinator requests without an authorized occasion use one slot. A local executor still uses one local slot.
+Close runs on integrated `dev` use `cland verify all --occasion stage|epic|release --report <topic>`. The Coordinator sets any occasion; QA may set `epic` for the epic demo. The hub requires the clean project-root `dev` head to match freshly fetched `origin/dev` and refuses other roles or task heads. The MCP `verify` request accepts the same `occasion` field. An ordinary Coordinator integrated `cland verify all` on the same clean root `dev` head may shard too, with no occasion or stage provenance. Hub-owned merge batches with cland tier commands also shard; nightly soak retains one slot. Task heads and non-Coordinator requests without an authorized occasion use one slot. A local executor still uses one local slot.
 
 Every `after-stage` stage, including `qa.scope: none`, needs a green Linux droplet stage full cover (sharded or the documented one-slot fallback). Optional plan `macos` paths additionally require a same-tree exact-path targeted macOS receipt. Use local `cland verify all --occasion stage --executor local --stage <epic>`; repeat `--stage` to union named epics' current open stages. Without the selector local stage runs stay full; Linux runs stay full and refuse the selector. Non-none scopes also require clear stage QA at that tree. `task plan show` shows missing platforms and the macOS receipt. Epic DoD close separately requires a macOS full cover at its DoD tree; targeted receipts never satisfy it. Completed stages retain their tree across later descendants while plan and landing evidence remain valid.
 

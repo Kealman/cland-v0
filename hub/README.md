@@ -59,6 +59,8 @@ triggers and per-file baseline receipts described there. Configured size and wai
 remain unchanged; inherited configuration and non-cland runners retain their plans.
 Partial masks never establish full periodic, stage or release coverage. Light
 batches retain existing exact-head member T1 omission and report that coverage source.
+Remote batches with cland tier commands share the configured shard limit and
+spend reservation policy described in [Running](../docs/hub/running.md).
 
 After terminal batch receipts, candidate cleanup failures retain a separate
 guarded obligation, visible with its path, last error and retry time in merge

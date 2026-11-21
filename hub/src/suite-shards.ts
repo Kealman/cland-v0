@@ -294,7 +294,7 @@ export async function packageShards(cwd: string, mode: SuiteMode, selection?: { 
     // Coverage restricts T2 only. Every task proves the whole T1 rule set,
     // including when the diff selects only Neovim or a single hub function.
     if (coverage.durationCheck && coverage.tiers.includes('T1') || coverage.tiers.length === 2 && coverage.tiers.includes('T1') && coverage.tiers.includes('T2')) {
-      const units = [...tiers].filter(([, tier]) => tier === 'T1').map(([file]) => file).sort();
+      const units = [...tiers].filter(([file, tier]) => tier === 'T1' && (!selection || (file.startsWith('hub/') ? selection.files.includes(file) : selection.nvim))).map(([file]) => file).sort();
       for (const phase of planned) phase.targets = phase.targets.filter(file => !units.includes(file));
       if (units.length) planned.unshift({ name: 'T1 whole', targets: units, resource: 'free', workers: 1 });
     }

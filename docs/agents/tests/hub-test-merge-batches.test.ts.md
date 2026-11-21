@@ -1,5 +1,18 @@
 # hub/test/merge-batches.test.ts
 
+Sharded batch controls fake every machine and reservation boundary. They retain
+all members while one child is missing, land only after every child reports
+green, and retain no landing on a red child. Existing controller cases explicitly
+select one shard so their single-worker diagnosis receipts keep their scope.
+Mixed failing-test and native 137/143 or typed capacity-refused children remain
+inconclusive, with native outcomes retained and no culprit probes, drops or
+landing. Shared terminal-tier receipt policy permits a genuine failed step to
+end its plan early; incomplete metadata and unsuperseded interruptions remain
+unknown. The controls were red with an actual wrong-member drop before this fix.
+T-2039 is covered here: the shared scripted DigitalOcean fake retains the exact
+supplied exit code. Before that fix, the new native-status assertions observed
+`1 !== 137` and `1 !== 143`; the controller controls retain both assertions.
+
 Light landing uses fake Suites admission through selection transport and both
 package planners. It excludes an unrelated T3 file, retains unproved T1, and proves
 full T3 for three waiting entries or a deleted production path. The

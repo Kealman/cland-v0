@@ -100,7 +100,7 @@ export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey 
   function finish(id: string, code = 0, log?: string, tierReceipts?: NonNullable<RunStatus['tierReceipts']>) {
     const execution = executions.get(id);
     if (execution?.started === undefined) throw new Error('observe machine start before completing a scripted run');
-    execution.script = { outcome: code ? 'red' : 'green', afterMs: 0, ...(log === undefined ? {} : { log }), ...(tierReceipts ? { tierReceipts } : {}) };
+    execution.script = { outcome: code ? 'red' : 'green', code, afterMs: 0, ...(log === undefined ? {} : { log }), ...(tierReceipts ? { tierReceipts } : {}) };
     execution.finished = clock.now().getTime();
   }
   return { calls, waits, finish, started: (id: string) => startReceipt(id).promise, script: (...next: MachineScript[]) => scripts.push(...next), dependencies: { processes: { alive: pid => pid === process.pid, started: () => null }, clock, wait: waits.wait, run, host, machine, prepareKey: async () => key, prepareBase: async () => key.base,

@@ -1,6 +1,7 @@
 import type { SuiteJob } from './hub/suites.ts';
 import { completeTierPlanReason } from './verification-tier-receipts.ts';
 import { wholeSuiteSelection } from './suite-completeness.ts';
+import { batchShardReceiptReason } from './batch-shard-receipts.ts';
 
 export const DEV_T3_BACKSTOP_MS = 24 * 60 * 60 * 1000;
 
@@ -18,15 +19,19 @@ export function fullPeriodicDevT3Cover(job: SuiteJob): boolean {
 }
 
 /** Candidate commits may be unrelated; the captured verification tree is identity. */
-export function batchDevT3Cover(job: SuiteJob, tree: string): { batch: string; run: string } | null {
+export function batchDevT3Cover(job: SuiteJob, tree: string, source: 'full' | 'checkpoint' = 'full'): { batch: string; run: string } | null {
   if (!tree || job.tree !== tree || job.occasion !== 'batch' || !job.batch?.id || job.batch.diagnostic
     || job.parentRun || job.devT3Probe || job.mode !== 'all' || job.state !== 'finished'
     || !job.reported || !job.artifact || job.outcome?.code !== 0 || job.outcome.notRun
-    || job.cached || job.cancelled || job.requesterDied || job.webPhase || job.shards?.length
+    || job.cached || job.cancelled || job.requesterDied || job.webPhase
     || !wholeSuiteSelection(job.selection)
     || !job.selection.tiers?.includes('T3')) return null;
   const plan = job.commands?.plan;
-  if (!plan?.some(step => step.name === 'check') || !plan.some(step => step.name === 'T3') || completeTierPlanReason(job)) return null;
+  const proof = job.batchT3Proof;
+  const sharded = !job.shards ? null : source === 'full' ? batchShardReceiptReason(job)
+    : proof?.version === 1 && proof.run === job.id && proof.head === job.head && proof.tree === tree ? null : 'missing shard checkpoint';
+  if (!plan?.some(step => step.name === 'check') || !plan.some(step => step.name === 'T3')
+    || (job.shards ? sharded : completeTierPlanReason(job))) return null;
   const ranT1 = job.selection.tiers.includes('T1') && plan.some(step => step.name === 'T1');
   const decision = job.batchT1;
   const memberT1 = decision?.skipped && decision.members.length > 0

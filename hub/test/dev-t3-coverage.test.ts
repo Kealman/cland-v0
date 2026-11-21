@@ -18,6 +18,44 @@ test('a complete batch covers the identical dev tree without commit ancestry', (
   assert.deepEqual(batchDevT3Cover(cover(), 'tree'), { batch: 'batch', run: 'run' });
 });
 
+test('full batch coverage requires the complete green shard set and exact planned files', () => {
+  const job = cover();
+  job.plannedShards = 2;
+  job.tierPlan = [{ tier: 'T3', files: ['one', 'two'], tests: 2, seconds: 1, projectedWall: 1, workers: 1, missing: 0 }];
+  job.shards = ['one', 'two'].map((file, i) => {
+    const shard = cover({ id: `child-${i}`, parentRun: job.id });
+    shard.tierPlan = [{ ...job.tierPlan![0]!, files: [file] }];
+    shard.tierReceipts = plan.map(step => tierReceipt(shard, step, 0));
+    return shard;
+  });
+  assert.ok(batchDevT3Cover(job, 'tree'));
+  const archived = structuredClone(job);
+  archived.batchT3Proof = { version: 1, run: job.id, head: job.head, tree: job.tree! };
+  delete archived.tierPlan;
+  for (const shard of archived.shards!) { delete shard.tierPlan; delete shard.tierReceipts; }
+  assert.ok(batchDevT3Cover(archived, 'tree', 'checkpoint'));
+  assert.equal(batchDevT3Cover(archived, 'tree'), null, 'compact metadata never substitutes for a source review of full receipts');
+  for (const field of ['run', 'head', 'tree'] as const) {
+    const foreign = structuredClone(archived); foreign.batchT3Proof![field] = 'foreign';
+    assert.equal(batchDevT3Cover(foreign, 'tree', 'checkpoint'), null);
+  }
+  delete archived.batchT3Proof;
+  assert.equal(batchDevT3Cover(archived, 'tree', 'checkpoint'), null, 'old sharded history stays unknown without hydration');
+  for (const change of [
+    (j: SuiteJob) => { j.shards!.pop(); },
+    (j: SuiteJob) => { j.shards![0]!.outcome!.code = 1; },
+    (j: SuiteJob) => { j.shards![0]!.reported = false; },
+    (j: SuiteJob) => { j.shards![0]!.tierReceipts = []; },
+    (j: SuiteJob) => { j.shards![0]!.commands!.plan = plan.filter(row => row.name !== 'T3'); },
+    (j: SuiteJob) => { j.shards![0]!.head = 'foreign'; },
+    (j: SuiteJob) => { j.shards![0]!.tierPlan![0]!.files = []; },
+    (j: SuiteJob) => { j.selection!.batchTests = { T3: ['one'] }; },
+  ]) {
+    const broken = structuredClone(job); change(broken);
+    assert.equal(batchDevT3Cover(broken, 'tree'), null);
+  }
+});
+
 test('importer masks never supply full batch or periodic coverage', () => {
   for (const files of [[], ['hub/test/affected.test.ts']]) {
     const batch = cover();

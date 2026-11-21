@@ -1,5 +1,18 @@
 # hub/test/suite-cover.test.ts
 
+Batch controls request two and three shards with fake reservations and executor
+receipts. The aggregate stays pending while the last shard is missing and keeps
+its last exit. A light batch partitions only admitted files, excludes unrelated
+T3 and unconfigured T4, and assigns Web/Neovim to one machine. Structured command
+receipts, rather than aggregate log text, establish green settlement.
+Complete manifest/config setup runs inside `setup`; post-admission reads and
+package planning each use a bounded `step`. The periodic checkpoint control
+restores 64 compact archived groups whose full records each carry 1024 long
+planned paths, then measures zero full-job reads and zero hydrated bytes across
+repeated due checks. A direct full-job read positively controls the observer
+before the measurement. The successful proof is produced by a real fake-executor
+batch completion and survives reopen; rejected history never requires hydration.
+
 T1 uses the sealed `suiteUnit` scheduler, candidate facts, semantic executor
 receipts and a fake clock. Sharded outcome tests inject typed and generic acquisition refusals and
 delivery failures before start, observe the durable merged report, and retain

@@ -2,7 +2,7 @@
 // Role authorization, CLI rendering and domain journal retain one T2 frame proof.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { shardOutput, shardCover } from './suite-cover-examples.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
@@ -14,6 +14,113 @@ import { devT3Result } from '../src/hub/dev-t3-result.ts';
 import { DevT3Search } from '../src/hub/dev-t3-search.ts';
 import { suiteEvidence } from '../src/suite-log.ts';
 import { suiteCase } from './suite-case-fixture.ts';
+import { packageShards } from '../src/suite-shards.ts';
+import { tierReceipt } from '../src/verification-tier-receipts.ts';
+import { diagnosticResult } from '../src/hub/merge-batches.ts';
+
+for (const count of [2, 3]) for (const code of [0, 1]) test(`${count} batch shards wait for every receipt and aggregate exit ${code}`, async t => {
+  return suiteCase(t, async ({ setup, step }) => {
+    const f = await setup(async fixtures => {
+      const f = await shardedCover(fixtures, { remoteBudget: count });
+      const source = `[verification]\nexecutor="droplet"\nshards=${count}\nremote_budget=${count}\ncheck="true"\ntest_unit="true"\ntest_integration="true"\n`;
+      f.configure(source);
+      await writeFile(join(f.root, '.cland/config.toml'), source);
+      return f;
+    });
+    const job = await step('batch admission', () => f.launch({ mode: 'all', occasion: 'batch', batch: { id: 'batch', members: [] }, fresh: true }));
+    await step('launch settled', () => f.suites.settled());
+    const parent = (await step('read batch plan', () => f.jobs())).find(saved => saved.id === job.id)!;
+    assert.equal(parent.shards?.length, count);
+    const targets = (await step('expand shard plans', () => Promise.all(parent.shards!.map(shard => packageShards(f.root, shard.selection!.mode, shard.selection!.shard, shard.selection))))).flat(2).flatMap(phase => phase.targets);
+    assert.deepEqual(targets.sort(), ['hub/test/one.test.ts', 'hub/test/two.test.ts']);
+    await step('workers started', () => f.machine.waits.run(Promise.all(parent.shards!.map(shard => f.machine.started(shard.id)))));
+    const completed = f.result(job.id);
+    const finish = (shard: SuiteJob, exit: number) => f.machine.finish(shard.id, exit, '# tests 1\n# pass 1\n', shard.commands!.plan!.map(step => tierReceipt(shard, step, exit)));
+    for (const shard of parent.shards!.slice(0, -1)) finish(shard, 0);
+    await step('first receipt collected', async () => { await f.tick(); await f.suites.settled(); });
+    assert.equal(f.status(job.id).reported, false);
+    finish(parent.shards!.at(-1)!, code);
+    await step('all receipts collected', async () => { await f.tick(); await f.suites.settled(); });
+    const result = await step('durable aggregate receipt', () => f.machine.waits.run(completed));
+    assert.equal(result.outcome?.code, code);
+    if (code === 0) assert.equal(diagnosticResult((await step('read batch receipt', () => f.suites.receipt(job.id))).job, '', ['check']).result, 'green');
+  });
+});
+
+test('batch shards partition the admitted light selection including one Web and Neovim owner', t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(async fixtures => {
+    const f = await shardedCover(fixtures);
+    const source = '[verification]\nexecutor="droplet"\ncheck="true"\ntest_unit="true"\ntest_integration="true"\n';
+    f.configure(source);
+    await writeFile(join(f.root, '.cland/config.toml'), source);
+    const sources = {
+      'hub/test/one.test.ts': '', 'hub/test/two.test.ts': 'import "../../web/src/model.ts";',
+      'hub/test/unrelated.test.ts': '', 'hub/test/soak.test.ts': '',
+      'nvim/test/affected.test.ts': 'import "../../web/src/model.ts";',
+      'web/test/browser.test.ts': '', 'web/src/model.ts': 'export const value = 1;',
+      'hub/test/run-suite.ts': '// inheritedLease; supportsWebPhase = true',
+    };
+    for (const [file, text] of Object.entries(sources)) { await mkdir(join(f.root, file, '..'), { recursive: true }); await writeFile(join(f.root, file), text); }
+    await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
+      'hub/test/one.test.ts': 'T1', 'hub/test/two.test.ts': 'T3', 'hub/test/unrelated.test.ts': 'T3',
+      'hub/test/soak.test.ts': 'T4', 'nvim/test/affected.test.ts': 'T3', 'web/test/browser.test.ts': 'Web',
+    } }));
+    f.candidate.selection = { mode: 'full', files: ['web/src/model.ts'], reason: 'light candidate' };
+    return f;
+  });
+  const job = await step('batch admission', () => f.launch({ mode: 'all', occasion: 'batch', batch: { id: 'light', members: [] }, fresh: true }));
+  await step('launch settled', () => f.suites.settled());
+  const parent = (await step('read light plan', () => f.jobs())).find(saved => saved.id === job.id)!;
+  assert.deepEqual(parent.selection!.batchTests!.T3, ['hub/test/two.test.ts', 'nvim/test/affected.test.ts']);
+  const targets = (await step('expand light shard plans', () => Promise.all(parent.shards!.map(shard => packageShards(f.root, shard.selection!.mode, shard.selection!.shard, shard.selection))))).flat().flatMap(phase => phase.targets);
+  assert.deepEqual(targets.sort(), ['hub/test/one.test.ts', 'hub/test/two.test.ts', 'nvim/test/affected.test.ts', 'web/test/browser.test.ts']);
+  assert.equal(parent.shards!.filter(shard => shard.commands!.plan!.some(row => row.name === 'Web')).length, 1);
+}));
+
+test('periodic batch coverage reuses its durable checkpoint without hydrating archived groups', t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(async fixtures => {
+    const f = await shardedCover(fixtures);
+    const source = '[verification]\nexecutor="droplet"\ncheck="true"\ntest_unit="true"\ntest_integration="true"\n';
+    f.configure(source);
+    await writeFile(join(f.root, '.cland/config.toml'), source);
+    await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
+      'hub/test/one.test.ts': 'T1', 'hub/test/two.test.ts': 'T3',
+    } }));
+    return Object.assign(f, { source });
+  });
+  const run = await step('batch admission', () => f.launch({ mode: 'all', occasion: 'batch', batch: { id: 'full', members: [], waiting: 3 }, fresh: true }));
+  await step('launch settled', () => f.suites.settled());
+  const parent = (await step('read planned batch', () => f.jobs())).find(job => job.id === run.id)!;
+  await step('observe both launches', () => f.machine.waits.run(Promise.all(parent.shards!.map(shard => f.machine.started(shard.id)))));
+  const completed = f.result(run.id);
+  for (const shard of parent.shards!) f.machine.finish(shard.id, 0, '# tests 1\n# pass 1\n', shard.commands!.plan!.map(row => tierReceipt(shard, row, 0)));
+  await step('collect group', async () => { await f.tick(); await f.suites.settled(); await f.machine.waits.run(completed); });
+  const saved = (await step('read completed batch', () => f.jobs())).find(job => job.id === run.id)!;
+  assert.deepEqual(saved.batchT3Proof, { version: 1, run: saved.id, head: saved.head, tree: saved.tree });
+  await step('restore large archived groups', async () => {
+    const history = Array.from({ length: 64 }, (_, i) => {
+      const job = structuredClone(saved);
+      job.id = `rejected-${i}`; job.sequence = (saved.sequence ?? 0) + i + 1;
+      job.tierPlan![0]!.files = Array.from({ length: 1024 }, (_, n) => `hub/test/archived-${n}-${'x'.repeat(96)}.test.ts`);
+      if (i % 2) job.outcome!.code = 1;
+      else job.selection!.batchTests = { T3: [] };
+      return job;
+    });
+    await f.reopen([saved, ...history]);
+    f.configure(f.source + 'dev_t3_every="1s"\n');
+  });
+  let reads = 0, bytes = 0;
+  const read = f.store.suiteJob.bind(f.store);
+  t.mock.method(f.store, 'suiteJob', (id: string) => { reads++; const value = read(id); bytes += Buffer.byteLength(value ?? ''); return value; });
+  assert.ok(f.store.suiteJob(saved.id));
+  assert.equal(reads, 1, 'positive control observes a full archived-job read');
+  assert.ok(bytes > 0);
+  reads = 0; bytes = 0;
+  await step('periodic anchor and repeated due checks', async () => { for (let i = 0; i < 3; i++) { await f.tick(); await f.suites.settled(); } });
+  assert.ok(f.logs.some(row => row.event === 'verification-dev-t3-skipped' && String(row.text).includes(`green batch full run ${saved.id}`)));
+  assert.equal(reads, 0, 'periodic eligibility reads no archived full jobs');
+  assert.equal(bytes, 0, 'periodic eligibility hydrates zero archived bytes');
+}));
 
 async function shardedCover(t: Parameters<typeof suiteUnit>[0], options: Parameters<typeof suiteUnit>[1] = {}) {
   const f = await suiteUnit(t, { executor: 'droplet', machineReceiptsOnly: true, ...options });

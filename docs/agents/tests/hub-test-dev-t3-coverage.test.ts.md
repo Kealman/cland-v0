@@ -1,5 +1,13 @@
 # hub/test/dev-t3-coverage.test.ts
 
+Sharded batches require the captured shard count, every child's green structured
+plan, matching parent/head/tree and the exact union of planned files. Missing or
+red shards, absent command receipts, missing files and partial masks supply no
+full coverage. Historical unsharded batch records retain their existing policy.
+Archived sharded coverage requires the producer's versioned run/head/tree-bound
+checkpoint. Missing or foreign checkpoints stay unknown; compact metadata never
+replaces the full source-receipt checker at settlement.
+
 T1 tests import only pure policy and producer-receipt modules. Batch candidate
 head ancestry is irrelevant; exact verification tree identity, complete planned
 producer receipts and executed T1 or named member proofs establish eligibility.

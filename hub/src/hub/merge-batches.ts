@@ -1,4 +1,5 @@
 import { TerritoryBusy } from '../territory-lock-context.ts';
+import { batchShardReceiptReason } from '../batch-shard-receipts.ts';
 import { CandidateOwnershipUnavailable } from '../batch-candidate-ownership.ts';
 import { batchT1Summary } from '../batch-member-verification.ts';
 // Durable merge-batch policy; Git preparation and landing are owned by the territory boundary.
@@ -101,13 +102,20 @@ function failureText(evidence: { failures: string[]; budgetLines?: string[] }): 
   return [evidence.failures.join(', '), ...evidence.budgetLines ?? []].join('\n');
 }
 /** Executor interruption and absence of an observed test failure cannot prove a red alternative. */
-export function diagnosticResult(job: Pick<SuiteJob, 'state' | 'outcome' | 'cancelled' | 'requesterDied' | 'timedOut' | 'cached'> & Partial<Pick<SuiteJob, 'id' | 'tree'>>, log: string, steps: VerificationStep['name'][] = []): DiagnosticResult {
+export function diagnosticResult(job: Pick<SuiteJob, 'state' | 'outcome' | 'cancelled' | 'requesterDied' | 'timedOut' | 'cached'> & Partial<SuiteJob>, log: string, steps: VerificationStep['name'][] = []): DiagnosticResult {
   const results = verificationStepResults(log, job).filter(step => !step.superseded);
+  if (job.shards) {
+    const reason = batchShardReceiptReason(job as SuiteJob, job.outcome?.code !== 0);
+    if (reason) return { result: 'inconclusive', reason };
+  }
   if (job.cancelled || job.requesterDied || job.timedOut || job.cached || job.state !== 'finished' || !job.outcome
     || !Number.isInteger(job.outcome.code) || verificationInterrupted(job.outcome.code)
     || results.some(step => verificationInterrupted(step.code))
     || /cancelled|abandon|unknown|remote machine lost|worker disappeared|without an exit receipt|lifetime expired/i.test(job.outcome?.cause ?? '')) {
     return { result: 'inconclusive', reason: job.outcome?.cause || 'aborted or unavailable worker result' };
+  }
+  if (job.outcome.code === 0 && job.shards) {
+    return { result: 'green' };
   }
   if (job.outcome.code === 0) return steps.every(name => results.some(step => step.name === name && step.code === 0) && !results.some(step => step.name === name && step.code !== 0))
     ? { result: 'green' } : { result: 'inconclusive', reason: 'missing passing step receipt' };

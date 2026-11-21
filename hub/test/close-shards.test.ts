@@ -56,4 +56,5 @@ test('explicit shard files retain resource classes and include Neovim only on it
     { name: 'Neovim', targets: nvimTests, resource: 'machine', workers: 4 },
   ]);
   await assert.rejects(packageShards(root, 'full', { files: ['hub/test/missing.test.ts'], nvim: false }), /unknown explicit hub shard file/);
+  assert.deepEqual((await packageShards(root, 'full', { files: [], nvim: false }, { mode: 'full', files: [], reason: 'batch shard', tiers: ['T1', 'T2'] })).flatMap(phase => phase.targets), []);
 });

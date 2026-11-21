@@ -71,6 +71,7 @@ export type TestSlotWaiter = { id: string; sessionId: string; cover: string };
 export type SuiteJob = {
   flaky?: { owners: Record<string, string>; runs: string[]; commands?: import('../verification-commands.ts').VerificationCommands; rejected?: string };
   tierReceipts?: TierReceipt[];
+  batchT3Proof?: { version: 1; run: string; head: string; tree: string };
   batchT1?: BatchT1;
   webPhase?: WebPhaseUnavailable;
   commands?: import('../verification-commands.ts').VerificationCommands;
@@ -87,7 +88,7 @@ export type SuiteJob = {
   workersOverride?: number;
   devT3Probe?: { key: string; files: string[] };
   devT3?: { previousGreenHead: string | null; previousGreenRun: string | null };
-  occasion?: VerifyOccasion; shards?: SuiteJob[]; parentRun?: string; shardName?: string; shardingSkipped?: string; shardingSkipLogged?: boolean; groupMerged?: boolean;
+  occasion?: VerifyOccasion; shards?: SuiteJob[]; plannedShards?: number; parentRun?: string; shardName?: string; shardingSkipped?: string; shardingSkipLogged?: boolean; groupMerged?: boolean;
   workers?: number; fallbackWorkers?: number; size?: string;
   executor: ExecutorKind; requestedExecutor?: ExecutorKind; requireRemote?: boolean; fallback?: string; fallbackLogged?: boolean; remoteReclaimPending?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
   remoteReplacement?: { lease: string; region: string; phase: 'readiness' | 'delivery'; state: 'releasing' | 'acquiring' | 'acquired'; replacement?: string; cause: string; accounting?: { lifetimeMs: number; costUsd: number } };
@@ -457,6 +458,11 @@ export class Suites {
       for (const current of changed) {
         this.#baselineCheckpoint(current);
         if (current.state !== 'finished') continue;
+        // Compute from the already-loaded producer, never by hydrating history.
+        if (!this.#summaries.has(current.id) && current.shards && current.occasion === 'batch') {
+          if (batchDevT3Cover(current, current.tree ?? '')) current.batchT3Proof = { version: 1, run: current.id, head: current.head, tree: current.tree! };
+          else delete current.batchT3Proof;
+        }
         const value = JSON.stringify({ position: this.#order.get(current.id), job: current });
         const digest = createHash('sha256').update(value).digest('hex');
         if (this.#savedJobs.get(current.id) === digest) continue;
@@ -1321,8 +1327,8 @@ export class Suites {
   }
   #shouldPlanShards(job: SuiteJob): boolean {
     // Integrated is assigned by dispatch only to Coordinator root runs (or QA
-    // epic occasions). Soaks and hub-owned merge batches use one slot and gain no stage proof.
-    return job.occasion !== 'batch' && job.occasion !== 'soak' && job.occasion !== 'dev-t3' && !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
+    // epic occasions). Soaks and periodic runs retain their single-slot policy.
+    return !job.batch?.diagnostic && (job.occasion !== 'batch' || Boolean(job.tierPlan?.length && job.commands?.tiers)) && job.occasion !== 'soak' && job.occasion !== 'dev-t3' && !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
       && job.branch === 'dev' && job.mode === 'all' && job.tree
       && job.selection?.mode === 'full' && job.selection.fetchedDev === job.head);
   }
@@ -1338,18 +1344,23 @@ export class Suites {
       else {
         const history = durationHistory(this.#options.durationContext);
         const tiers = job.selection?.soak ? null : await readTierAssignments(job.cwd);
-        const included = (file: string) => tiers?.get(file) !== 'T4';
+        const batchFiles = job.occasion === 'batch' ? new Set(job.tierPlan?.flatMap(row => row.files) ?? []) : undefined;
+        const included = (file: string) => batchFiles ? batchFiles.has(file) : tiers?.get(file) !== 'T4';
         const files = (await hubShards(job.cwd, false, undefined, history)).flatMap(shard => shard.targets).filter(included);
         const durations = Object.fromEntries(Object.entries((await readDurationManifest(job.cwd))?.files ?? {}).filter(([file]) => included(file)));
         const plans = balanceCloseShards(files, durations, count);
+        job.plannedShards = count;
         job.shards ??= plans.map((plan, i) => {
           const id = `${job.id}-shard-${i + 1}`, dir = join(this.#root, '.cland/run/suites', id);
           const { shards: _shards, ...parent } = job;
           return { ...parent, id, parentRun: job.id, shardName: `shard-${i + 1}`, state: 'launching',
-            selection: { ...job.selection!, mode: 'full', files: plan.files, reason: `close run shard ${i + 1}/${count}`, shard: { files: plan.files, nvim: plan.nvim } },
+            selection: { ...job.selection!, mode: 'full', files: plan.files, reason: `${job.occasion === 'batch' ? 'batch' : 'close'} run shard ${i + 1}/${count}`, shard: { files: plan.files, nvim: plan.nvim } },
             log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready') };
         });
-        for (const shard of job.shards) shard.tierPlan = await planTierReport(job.cwd, shard.selection!, job.workers ?? 4, undefined, history);
+        for (const shard of job.shards) {
+          if (job.occasion === 'batch' && shard.commands) shard.commands = pinVerificationPlan(shard.commands, { branch: shard.branch, mode: shard.mode, occasion: job.occasion, selection: shard.selection! });
+          shard.tierPlan = await planTierReport(job.cwd, shard.selection!, job.workers ?? 4, undefined, history);
+        }
         this.#save(job);
         try { await this.#droplet.reserveShards(job.shards!.map(shard => shard.id), job.size, job.config); }
         catch (error) { cause = error instanceof Error ? error.message : String(error); }
@@ -1551,7 +1562,8 @@ export class Suites {
       if (now - suppressedSince < DEV_T3_BACKSTOP_MS) {
         for (let index = this.#jobs.length - 1; index >= 0; index--) {
           const cover = this.#jobs[index]!;
-          const proof = batchDevT3Cover(cover, candidate.tree);
+          if (cover.tree !== candidate.tree || cover.occasion !== 'batch') continue;
+          const proof = batchDevT3Cover(cover, candidate.tree, 'checkpoint');
           if (!proof || !this.#store.resolveArtifact(cover.artifact!)) continue;
           this.#store.setMeta('dev-t3-batch-suppressed-since', String(suppressedSince));
           this.#store.setMeta('dev-t3-attempt', String(now));
