@@ -3,8 +3,9 @@ id: T-1983
 kind: task
 title: lifecycle-serialization "shutdown drains a held found resume" times out at its fixed 2 s test bound on macOS dev, alone and at low load
 state: open
-status: in progress
+status: review
 size: XS
+criterion_seq: 2
 labels:
   - ready-for-agent
   - flaky
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-1695
 branch: t/T-1983-lifecycle-serialization-shutdown-drains
 created: 2026-11-18T18:59:49.929Z
-updated: 2026-11-21T07:40:41.616Z
+updated: 2026-11-21T08:11:35.154Z
 ---
 
 ## Summary
@@ -27,5 +28,59 @@ Name what the `found` path waits on beyond the 2 s per-test bound. Candidates ar
 
 ## Acceptance criteria
 
-- [ ] C1. The cause is named from evidence: the step the `found` case spends its 2 s on, with a native-call census or timestamps (rule 39).
+- [x] C1. The cause is named from evidence: the step the `found` case spends its 2 s on, with a native-call census or timestamps (rule 39).
+  - verified: rev-40 [reviewer] · run rev-40-20261121-1983-source2 · 2026-11-21T08:11:01.733Z · commit 44e58b48fc7d350d1223ab2e63acdb6dda713bb8
+  - done: impl-1983 · 2026-11-21T08:11:35.154Z
 - [ ] C2. The case passes 20/20 alone on macOS at an ambient load below 8 and 20/20 under a load gate of 10 (native slot), assertions unchanged (evidence).
+
+## Comments
+
+### impl-1983 · 2026-11-21T07:42:17.691Z
+
+Preliminary diagnosis: found-only T1 runs with positively controlled fixtureNativeGuard passed twice on macOS Node v24.21.0 (114 ms and 36 ms), with no native child calls. Traced setup completed at 30.84 ms, then adapter entry, closure and lifecycle drain were observed. Cause remains unconfirmed. Worker admission is inside the first case explicit 2 s bound; later variants reuse setup. Awaiting Coordinator native slot for reproduction/C2 and T-2046 landing before selecting fix. Details in topic-1695.
+
+### impl-1983 · 2026-11-21T07:47:28.371Z
+
+Diagnosis slot completed and released. A-22386 holds 10/10 guarded found-only receipts at measured load 4.34–4.52, case times 69–396 ms; no native launches. Original timeout not reproduced, C1 remains unknown, C2 outstanding. Asked lead about a controlled delayed-admission reproduction after T-2046 lands; no fix selected.
+
+### impl-1983 · 2026-11-21T07:50:28.766Z
+
+Controlled red A-22391: in-process disposable admission responder held suite.slot/check reply 2200 ms. Found case cancelled at 2003.121 ms with exact test timed out after 2000ms, before tempProject completion or adapter entry. Producer timestamps received 853.52 ms / reply 3056.49 ms. Setup admission is inside first-case timeout. Proposed fix: initialize worker in separately bounded before hook; preserve explicit 2 s behavior timeout and all assertions. Awaiting T-2046 landing before finalizing.
+
+### impl-1983 · 2026-11-21T07:54:07.439Z
+
+Source committed/pushed at 518d635f38024742f80897291b75232676addb2b, branch t/T-1983-lifecycle-serialization-shutdown-drains. Current origin/dev c0198410b merged before source review. Controlled red A-22391, preload A-22392, controlled green and full changed-file 9/9 A-22394. Full npm run test:lint exit 0, 0 refusals; full npm run typecheck exit 0 on macOS Node v24.21.0. Lint ran before tracker-only merge; merged tracker wording recheck passed 0 findings. Initial source review requested before C2 repetitions per Coordinator decision; C2 remains outstanding, no configured verify run yet.
+
+### rev-35 · 2026-11-21T07:56:40.889Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1983-source-1
+commit: 518d635f38024742f80897291b75232676addb2b
+scope: full
+findings: [{"severity":"medium","text":"M1: Newly added native guard is unfenced and the fixture/callback lacks pre-acquisition ownership; rejected Sessions close can skip DB/hub closure while guard restoration still runs. Require complete original-work/partial-acquisition ownership and positive resource closure before root/seam release, with failure controls.","file":"hub/test/lifecycle-serialization.test.ts","line":32},{"severity":"low","text":"L1: Guide says the 2000 ms bound covers setup, but admission now runs in a separately bounded before hook. Describe that separation and retain the exact lifecycle behavior bound.","file":"docs/agents/tests/hub-test-lifecycle-serialization.test.ts.md","line":16}]
+finding_counts: {"high":0,"medium":1,"low":1}
+
+Full source not clear; A-22398. M1 medium: fixtureNativeGuard defaults unfenced, fixture registers cleanup after hub/table/Sessions construction, and Sessions close rejection skips later closure while guard restores. Implementer confirms no encompassing owner/control (2e3c1968). Require shared pre-acquisition callback/resource ownership and positive close before root/seam restoration, retaining cancellation/rejected-cleanup proof. L1 low: file guide incorrectly says exact 2000 ms test bound covers setup; update for separate admission before hook. Coordinator e5db4743 explicitly accepts delayed admission seam for C1; retained producer timestamps/red/green establish that controlled setup boundary, not all historical scheduling. Every existing case body/timeout/assertion is byte-unchanged. C1 diagnostic proof is retained but verification awaits corrected fix; C2 remains unchecked and both 20/20 occasions outstanding. Local nine-case report is not campaigns/configured evidence. No Reviewer execution/edit. Hold releases for one consolidated correction and fresh source review.
+
+Criteria: C1 failed (Accepted controlled admission diagnosis is retained, but newly introduced fixture guard lacks whole-callback/partial-acquisition and positive-close cleanup controls; correct before verification.).
+
+### impl-1983 · 2026-11-21T08:08:55.445Z
+
+M1/L1 consolidated correction pushed at 44e58b48fc7d350d1223ab2e63acdb6dda713bb8. A-22409 records pre-acquisition whole-callback/fenced-cleanup ownership, four real-fixture cancellation/positive-close controls and exact-head 13/13. Full typecheck and full test:lint exit 0 on final source bytes; 0 lint refusals. Guide corrected. Initial source review 2 requested; C2 campaigns/configured verify remain pending. No dev merge after first source review.
+
+### rev-40 · 2026-11-21T08:11:01.733Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261121-1983-source2
+commit: 44e58b48fc7d350d1223ab2e63acdb6dda713bb8
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source2 clear; Standards0/Spec0 findings. M1 resolved by pre-acquisition complete-callback stageCase ownership, fenced retry cleanup, captured partial resources/root and positive required closes before storage/root/native-seam release. Four actual fixture/registered-cleanup controls prove held-abort and rejected table/Sessions-close retention, repair, confirmed close/root ENOENT/restoration. L1 corrected: separate admission before hook versus unchanged explicit2s lifecycle bound; all original body/assertions retained. C1 verified under Coordinatore5db4743 accepted delayed-admission seam: A-22391 producer timestamps and exact2s cancellation before adapter; A-22394 same hold green after before hook. Prior source epochs/historical-cause limits remain explicit. C1 checkbox currently cleared by source1; claimant done bookkeeping remains. C2 two20/20macOS campaigns remain pending; A-22409 reported13/13 at ambient18.97 is not C2 or configured evidence. Await Coordinator campaign/verify windows, no slot/final-ready grant. No Reviewer runtime/probes/edits.
+
+Criteria: C1 verified.

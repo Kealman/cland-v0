@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T07:28:33.940Z
-updated: 2026-11-21T07:39:20.988Z
+updated: 2026-11-21T08:02:27.428Z
 ---
 
 ## Goal
@@ -57,10 +57,10 @@ stages:
       when: after-stage
     lanes:
       - - T-1981
-  - name: stage 4
-    qa:
-      scope: none
-      when: after-stage
-    lanes:
-      - - T-1990
 ```
+
+## Comments
+
+### coord · 2026-11-21T08:02:27.428Z
+
+T-1990 (lint to enforce after a clean week) was moved out of this epic and 0.4.1 by the human (ask 517bbd3c, 2026-11-21 08:01Z). It waits for the clean week ending 2026-11-26 and is parked in Follow-ups (C-326) for the next release. Stage 4 is removed from the plan. E-1887 closes after T-1981 lands, without T-1990, with this reason recorded.
