@@ -3,7 +3,7 @@ id: T-2035
 kind: task
 title: Durable exact-head Linux timing receipts, and the enqueue refusal of unallowed new identities of 4 s or more (split from T-1901 C2)
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1689
 branch: t/T-2035-durable-exact-head-linux-timing-receipts
 created: 2026-11-20T17:39:51.105Z
-updated: 2026-11-21T01:31:32.141Z
+updated: 2026-11-21T07:33:54.509Z
 ---
 
 ## Summary
@@ -28,7 +28,7 @@ Kind: product. Part of E-1888 (approved in triage A-19813, ask 8e3dd5ab); carrie
 - [x] C1. A local and a droplet run each record a durable structured timing receipt (identity, seconds, outcome, platform, head, tree) that Suites exposes after the run and after a hub restart, with no log parsing (test).
   - done: impl-2035 · 2026-11-21T01:31:31.917Z
 - [x] C2. A new identity measured at 4 s or more on Linux with no allowance is refused before enqueue, with the allowance stanza (test).
-  - done: impl-2035 · 2026-11-21T01:31:32.141Z
+  - done: impl-2035 · 2026-11-21T06:05:22.024Z
 
 ## Comments
 
@@ -39,3 +39,43 @@ Consumer audit (rules20/41): duration-reporter/run-suite produce samples; local 
 ### impl-2035 · 2026-11-21T01:20:35.620Z
 
 Checkpoint: stacked source-clear T-1901 895ad0152 with Coordinator authorization (9897b0a7), preserving current dev sharding/importer changes in conflicts. C1 local/droplet semantic completion and real fixture SQLite/Suites restart controls green; uploaded droplet status VM covers previous shape and damaged metadata. C2 pure policy red-first, then public merge-queue file 49/49 green (macOS Node24.21, no provider/native launch). Full lint second run exit0/refusals0, 764 report-only advisories retained; first lint attempt failed because my tiers additions were unsorted, now corrected. Full typecheck integration draft exit0. All242 T1 files running serially; no current configured/Linux/Web/native verification claimed. Contract follow-up census: SuiteStatus timingSummary is mirrored shared/wire, conformance typechecks; Store summary SQL and read/list paths omit timing samples; older status/result shapes remain supported. Pending before review: finish current draft checks, T-1901 squash landing + merge origin/dev, publish evidence, fresh full lint/typecheck and review.
+
+### impl-2035 · 2026-11-21T05:41:22.180Z
+
+First full source review requested and delivered to Reviewer at pushed head a4d5ac1288de0d3e2b4126bc696df7ac382544c7 / tree46ecc25d5aa8984a2d51656e8c3fb3a1510f07ca. A-22348 preserves exact-head local evidence: full typecheck0; full npm run test:lint/static0,764 report-only/0refusals; all243T1=2094pass and nine affectedT2=116pass, no failures/skips. Platform macOS Darwin27arm64 Node24.21; no configured/Linux/T3/T4/Web receipt claimed. Five CLI-subject T2 files ran under granted native slot with enforcing os.loadavg()[0]<12; released. T-1901 squash reconciliation completed, duplicate importer/helper documentation removed, tracker delta against origin/dev empty; both reconciliation files match dev. Added producer/native OS agreement controls red-first, and WorkerCompletion timing metadata type/control (TS2339 red first) through signal/cleanup. C1/C2 done, task review. Coordinator owns full verify all after source clear; no verify submitted before review. Keep claim until merge.
+
+### rev-35 · 2026-11-21T05:49:31.240Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-2035-source-1
+commit: a4d5ac1288de0d3e2b4126bc696df7ac382544c7
+scope: full
+findings: [{"severity":"medium","text":"M1: Timing admission seed constructs Store and Tracker before native database capture; constructor rejection can leave an unreturned DB open without a positive close fence before fixture disposal/guard restoration. Capture both before construction and retain constructor-rejection/cleanup controls on this path.","file":"hub/test/merge-queue.test.ts","line":186}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full source review is not clear: M1 in A-22350. The new timing admission seed constructs Store and Tracker before a native DB handle is owned, allowing constructor rejection to escape the fixture's positive-close fence. Implementer confirms the gap (af50f676). Capture both acquisitions through the shared seam and retain rejection/cleanup controls while keeping the real admission/queue assertions. No additional functional finding established. T-1901 reconciliation verified: helper and merge-batches guide exactly match dev 792d643d8; tracker diff empty. A-22348 selected macOS local/fake evidence remains distinct from real Linux/configured phases. C2 failed; C1 unverified pending run evidence. No Reviewer execution or edits. Verdict releases this hold for the consolidated fix; fresh source review at the corrected head before Coordinator verify all.
+
+Criteria: C2 failed (New timing-admission seed has no pre-constructor capture/positive DB-close fence for Store and Tracker construction failures; repair this control before verification.).
+
+### impl-2035 · 2026-11-21T06:05:37.313Z
+
+Source2 correction pushed at5ab9cb2bc5204a662bcc9241076f9455b8db3c0c/tree2df555bed04592398ac05478d79b68a688922da2; fresh review delivered to Reviewer. M1 consolidated fix uses shared ownedTracker/ownedDatabases before wrapper construction, stageCase positive-close fencing and actual seed constructor/close rejection controls. Six original admission scenarios preserved. A-22354 retains red/setup rounds separately and qualified green draft controls (targeted3/3, whole fake file51/51, tightened rescue targeted3/3). At committed head, full typecheck0 and test:lint/static0,764advisory/0refusals; no committed-head runtime test receipt yet because quiet window opened after final formatting/unused-local cleanup. Prior a4d5ac128 tests remain prior-head A-22348 evidence. Only test+guide changed, production/tier/tracker unchanged; no dev merge after source1. No tests active or configured verification submitted. Reviewer source clearance precedes Coordinator-owned full verify all.
+
+### rev-35 · 2026-11-21T06:06:58.369Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2035-source-2
+commit: 5ab9cb2bc5204a662bcc9241076f9455b8db3c0c
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source2 clear, findings=[]; A-22355. M1 resolved: both actual seed acquisitions capture native databases before wrapper construction through ownedTracker/ownedDatabases and stageCase positive-close ownership. Controls retain the constructor primary, reject close/restoration/real guarded removal while isOpen, then close that same handle before restoration/removal. Exact observer-only rescue cannot authorize the body's assertions. Original six admission scenarios and queue assertions are byte-retained. Only test and guide changed from source1; unchanged production/consumer/reconciliation assessment carries from A-22350. A-22354's 3/3 and 51/51 runtime receipts are explicitly correction-draft, not final-head; final-head typecheck/lint are reported green, zero refusals. Prior checks stay prior-head. No Reviewer execution. C1/C2 remain run-dependent and unverified pending actual same-head configured evidence. Hold releases; Coordinator's full verify all may proceed after applicable quiet-window/slot constraints. Keep head fixed.
+
+### impl-2035 · 2026-11-21T07:33:54.509Z
+
+Same-head local receipts complete at clear source2 head5ab9cb2bc/tree2df555bed04592398ac05478d79b68a688922da2. A-22363 retains all243T1/2094pass plus four fake T2/88pass; A-22365 retains five CLI-subject T2/30pass. Total2094T1+118T2=2212pass,0fail/cancel/skip, macOS Darwin27arm64 Node24.21. All launches enforced os.loadavg()[0]<12 (T1 2.4638671875; fakeT2 2.80224609375; nativeCLI 1.9130859375). Native slot granted e01e28eb and released immediately after batch. Same-head full lint/static/typecheck0 remains A-22354; original reds/draft receipts stay distinct. No actual configured/Linux/T3/T4/Web receipt yet; Coordinator-owned full verify all and Reviewer final evidence verdict pending. Head fixed and worktree clean; claim retained.

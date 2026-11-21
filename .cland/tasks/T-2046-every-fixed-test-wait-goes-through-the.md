@@ -3,7 +3,7 @@ id: T-2046
 kind: task
 title: Every fixed test wait goes through the shared load-scaled helper, with a per-wait load factor (E-1881 C3 rework, A-22306)
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1691
 branch: t/T-2046-every-fixed-test-wait-goes-through-the
 created: 2026-11-21T03:32:07.872Z
-updated: 2026-11-21T05:25:42.723Z
+updated: 2026-11-21T07:37:24.775Z
 ---
 
 ## Summary
@@ -28,10 +28,13 @@ Route every fixed test wait through the shared load-scaled helper, with the fact
 ## Acceptance criteria
 
 - [x] C1. The waits behind T-2028, T-2033 and T-2034, and the helper's other bypasses named in A-22306, go through the shared helper with a per-wait load factor; each was shown failing first under injected load and now passes (test).
-  - done: impl-2046 · 2026-11-21T04:52:53.462Z
+  - done: impl-2046 · 2026-11-21T05:47:57.842Z
+  - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final · 2026-11-21T07:37:24.634Z · commit 71dc49862363f2b686cd167c9def8241bc50e466
 - [x] C2. A report-only lint lists fixed waits outside the helper, with the current count recorded (test).
   - done: impl-2046 · 2026-11-21T04:24:17.504Z
   - verified: rev-35 [reviewer] · run rev-35-2046-source-2 · 2026-11-21T04:58:00.998Z · commit 6fab755a9f9fdf3751d8f9eb787b2f93175d21ca
+  - verified: rev-40 [reviewer] · run rev-40-20261121-2046-M3-source · 2026-11-21T05:49:46.661Z · commit 71dc49862363f2b686cd167c9def8241bc50e466
+  - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final · 2026-11-21T07:37:24.634Z · commit 71dc49862363f2b686cd167c9def8241bc50e466
 
 ## Comments
 
@@ -76,3 +79,56 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Full Standards/Spec source2 clear within Coordinator-approved central-default scope. A-22337 resolves M1 with pre-acquisition original setup/body ownership and positive native result/pipe-close receipts, and M2 with shared budget sampling inside generated producers at timer admission. Real child execArgv and final receipt assertions retained. A-22336 pinned command/native code0/signal-null records support64 runner,5 targeted native and55 unit passes plus full lint/typecheck; earlier A-22328 gaps stay explicit. C2 verified: planted advisory census and1963-site current report with zero refusals. C1 final runtime evidence waits for Coordinator's actual exact-head configured result, no new full/native/Web claim. No Reviewer runs/probes/edits.
 
 Criteria: C2 verified.
+
+### rev-35 · 2026-11-21T05:30:25.295Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-2046-evidence-1
+commit: 6fab755a9f9fdf3751d8f9eb787b2f93175d21ca
+scope: evidence
+findings: [{"severity":"medium","text":"M3 (configured evidence/C1): The adapter wraps returned Frame objects such as page.mainFrame(), but forwards event listeners and waitForEvent predicates unchanged, so Playwright supplies raw Frames. The unchanged identity comparisons at connection.test.ts113–114 compare raw Frame to proxy and cannot match. A-22342 fails that child on a6000ms framenavigated wait and its parent; this is one underlying identity regression, not proof of slow/absent navigation. Preserve consistent compared-object identity, add frame listener/predicate controls and keep the real browser reload/count/final assertions, per Coordinatorc468eb04.","file":"hub/test/browser-wait-defaults.ts","line":10}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Configured evidence not clear: Web child framenavigated predicate times out6000ms, parent fails; one underlying adapter identity regression. A-22347 preserves exact failure/source cause and unknown native navigation state, positive named condition/Discord/barrier/runner/hosts controls and actual selected phases. C2 current source verification retained; no final C1 mark. Coordinator223d858a's mode-free scope and omitted importing T3 files are explicit for decision; fullT3 not inferred. Coordinatorc468eb04 correction/local-Web/narrow-review/fresh-mode-free plan recorded. No Reviewer run/probe/edit.
+
+Criteria: C1 failed (Same-head13518715/A-22342 fails unchanged Web frame comparisons because returned mainFrame is proxied while event/predicate Frames remain raw. A-22347 M3; Coordinatorc468eb04 authorizes identity correction and narrow re-review.).
+
+### rev-40 · 2026-11-21T05:49:46.661Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261121-2046-M3-source
+commit: 71dc49862363f2b686cd167c9def8241bc50e466
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Narrow M3 source clear, Standards0/Spec0 findings. Native owners decorated in place; original Page/Frame/Locator/array and callback identity preserved. Existing/new Frame/popup enrollment retains per-action load sampling without callback wrappers; explicit timeouts still win. Raw listener/predicate equality and removal controls reproduce old0!==1 then observe documents1/predicateMatches/pageMatches; async/newowner controls pass. Real connection comparisons/reload count/final receipts unchanged. Prior source2 M1/M2 code unchanged. A-22349 pinnedcleanhead/tree localmacOSNode24.21 unit57 andall55Webfiles/twoworkers Node351pass nativecode0/signalnull, lint/typecheckgreen. HeadlessShell isolated perharness; browserbinary/version not emitted/unknown, no borrowedLinuxversion. Supplied admissionpin is not independent percommandGitattestation. C2reverified: unchanged advisory/plantedlint with current1963report-onlysites/zero refusals. C1finalpending Coordinator7f14c967/b3455900's four whole nativeT3importers at finalhead after quietwindow plus freshsamehead mode-freeverify; localWeb is not overallgreen. Failed13518715 retained. Reviewer ran no tests/native/browser.
+
+Criteria: C2 verified.
+
+### coord · 2026-11-21T06:51:35.921Z
+
+Recurrence on dev 792d643d8, before T-2046 landed: Linux epic cover 6b458fee (A-22358), shard-1 Web, `web/test/hosts-view.test.ts:552` "Hosts Add moves the real inbox login wait through booting to placed". `locator.waitFor: Timeout 3000ms exceeded` waiting for "waiting for host waiting-host to boot". The Web tier observed 643.9 s against a 202.9 s projection (about 3x slower runner). This is the T-2034 class of fixed wait that T-2046 C1 converts. It is the only failure among 9,546 passing. Under the flaky rule, coord resubmitted the Linux cover once, fresh, at the same tree.
+
+### impl-2046 · 2026-11-21T07:35:41.416Z
+
+Final required native coverage completed after quiet at unchanged reviewed71dc49862363f2b686cd167c9def8241bc50e466/Git treebf5bd21ab8edcf5c3ff1f2ebc520a9e922d5a9cb. Whole files, serial: executor-run22/22, executor-safety17/17, suite-close-recovery4/4, suite-remote-process1/1; zero fail/skip/cancel, each native code0/signalnull. Fresh enforcing one-minute load<12 per launch (1.842/1.647/1.637/2.303); no continuous-load or real stress-cover claim. A-22367 retains complete command/source/runtime/outcome records with declared path-prefix redactions. Native slot released. Existing same-head configured a1147b6e/A-22356 remains green, with Reviewer auditA-22357; prior13518715 remains red. No source edits, dev merge, or new configured submission. Requesting final C1 evidence settlement; full LinuxT3 integration remains with the merge batch.
+
+### rev-40 · 2026-11-21T07:37:24.634Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261121-2046-final
+commit: 71dc49862363f2b686cd167c9def8241bc50e466
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; Standards0/Spec0 findings. A-22372 independently audits A-22367's four whole importer files at unchanged source-clear head: executor-run22/22, executor-safety17/17, suite-close-recovery4/4, suite-remote-process1/1; local macOS/Node24.21.0, serial native code0/signalnull each, no fail/skip/cancel, fresh enforcing launchload<12. Launcher clean-head pins are retained, not independent per-child Git attestations; first absolute admission time remains unknown. A-22356/a1147b6e (A-22357 audit) supplies noncached same-head Linux c8ams3 T0/T1/fallbackT2/all55Web plus selected suite-runnerT3 64 cases and mappedT4 one parent once:7319pass/1Mac-only selector skip/0fail. RemainingT3 merge batch and remainingT4 unexecuted. HeadlessShell1248/CfT156.0.8078.4; advisory budgets remain report-only, no performance/stress clearance. Named condition/Discord/browser/producer timer/real Node launch/setup join and original Hosts/reload receipts pass. C1 verified in approved central-default scope, with Node's approved once-per-launch backstop exception. Earlier red-first capture/provenance gaps remain explicit in A-22328/A-22336; current receipts do not reconstruct them. C2 verified: current1963-site report-only census, planted control and zero refusals. Prior13518715/A-22342 stays failed. Source unchanged; no Reviewer runtime/probe/browser actions.
+
+Criteria: C1 verified, C2 verified.

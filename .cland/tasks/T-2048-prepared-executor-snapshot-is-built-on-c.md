@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1693
 branch: t/T-2048-prepared-executor-snapshot-is-built-on-c
 created: 2026-11-21T03:51:03.851Z
-updated: 2026-11-21T04:49:46.092Z
+updated: 2026-11-21T07:33:29.472Z
 ---
 
 ## Summary
@@ -28,9 +28,9 @@ Make the prepared snapshot usable by every size the project may request: build i
 ## Acceptance criteria
 
 - [x] C1. A `verify --size c-4` request with a prepared snapshot built for c-8 either uses a fitting snapshot or is refused at admission, before T0, naming the sizes the current snapshot fits (test).
-  - done: impl-2048 · 2026-11-21T04:49:18.502Z
+  - done: impl-2048 · 2026-11-21T07:33:01.538Z
 - [x] C2. After a prepare under the new policy, both c-4 and c-8 requests restore from a prepared snapshot (test with the fake provider).
-  - done: impl-2048 · 2026-11-21T04:49:18.696Z
+  - done: impl-2048 · 2026-11-21T07:33:01.874Z
 
 ## Comments
 
@@ -119,3 +119,39 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear at 7607207e674771e4100dbcf54a7f596dfcca143e. Reviewed changes from eb243b038 and retained prior full source review context (base 4e07dbcb8); no dev merge. Standards: 0 findings. Spec: 0 findings. Prior evidence finding resolved: fake provider default catalog returns to its original c-8 shape; only the two sizing regressions add c-4. The seeded replacement regression and producer-bound publication remain intact. Matching-key reuse with absent snapshot_size restores the original provider-free path; explicit snapshot_size keeps disk-aware validation/rebuild. Existing drain tests retain setup/result/pending/root cleanup assertions and now prove no extra provider request after held-key release. Running docs qualify this compatibility behavior.
 
 A-22334 preserves actual local red: expected setup receipt deadline/setup cancelled, received 'AggregateError: upload fixture drainage failed'; producer diagnostic 'hub is stopping; executor lease retained for reconciliation'. Incomplete interrupted diagnostic runs remain labelled incomplete. Reported selected macOS Node24.21 scripted/fake-provider T2 evidence: 173/173 across four files, then final strengthened retry file 5/5 with observed process exit0/no signal. Enforcing initial load guards below12. Implementer reports full final lint/typecheck exit0. This evidence addresses the prior failures, but does not supersede run57eec9d0's failed/incomplete full result. No Linux full rerun at this head has been reviewed; C1/C2 execution marks stay unverified pending Coordinator's full all rerun. Earlier T3 does not apply to this head. Reviewer ran no tests, browser or cloud.
+
+### rev-41 · 2026-11-21T06:01:17.533Z
+
+verdict: review
+result: not clear
+by: rev-41 [reviewer]
+run: rev-41-20261121-2048-evidence2
+commit: 7607207e674771e4100dbcf54a7f596dfcca143e
+scope: evidence
+findings: [{"severity":"medium","text":"New missing-snapshot refusal reaches explicit droplet dry-run via checkSpend and breaks existing CLI planning regression (suite-dry-run.test.ts:57 actual1 expected0). Preserve planning behavior or migrate/document its contract and regression.","file":"hub/src/executor/droplet/droplet.ts","line":246}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear at 7607207e674771e4100dbcf54a7f596dfcca143e/tree8e7c59514f3d3e4d25561663b61ebab5c6f399a3. Full run cca62992-4c46-4f41-a406-7143b272dfe5 (A-22352) exit1. Actual failure output: 'AssertionError [ERR_ASSERTION]: cland: no prepared snapshot; run cland executor prepare', actual1 expected0, suite-dry-run.test.ts:57. Failed identity: 'CLI dry-run prints admission and planned tiers without queueing or reserving spend'. Its planning fixture has no prepared snapshot.
+
+Medium — hub/src/executor/droplet/droplet.ts:246: the new unconditional missing-snapshot refusal in #validateSnapshotDisk changes existing dry-run planning admission. Explicit droplet dry-run calls checkSpend from suites.ts:812, which reaches #probeAvailability and the new snapshot check. This fixture/consumer was omitted from migration. Preserve intended planning behavior or explicitly migrate/document the contract and its CLI/MCP regression; do not silently count the failed test as unrelated. Existing mismatch admission C1 must remain covered.
+
+T0/T1/T2 completed exit0; T3 completed exit1; Web unexecuted (55 files), no T4 requested. Overall producer reports 8946 completed, 8930 pass,1 fail,15 skips. Linuxx64 6.8.0-149-generic, Node24.21/Neovim0.12.5, droplet c-8 ams3 workers2, browser binary/version null; budget/lint advisories report-only. Prior retry/declaration failures are resolved in this run; passing tests do not turn the full failed run into a pass. No criterion marks added; C1/C2 remain unverified pending corrected-head complete evidence. Fresh source review required for changed head before rerun. Reviewer ran no tests or edits.
+
+### impl-2048 · 2026-11-21T06:02:43.255Z
+
+Second full run cca62992 at7607207e6: T0-T2 exit0, T3 exit1 (CLI dry-run test), Web unexecuted. Literal failure: AssertionError [ERR_ASSERTION]: cland: no prepared snapshot; run cland executor prepare; actual1 expected0 at suite-dry-run.test.ts:57. Head reproduction4tests:3pass1fail under load1.488<12. Fetched origin/dev792d643d8 disposable detached control4/4 but unsupported Node25.6.1, not supported proof; control worktree removed. Coordinator explicitly preserves dev behavior when no snapshot exists; disk validation only applies to existing snapshots. Source fixes missing-snapshot validator to return, leaving acquire missing-image refusal intact; docs qualify presence. Unchanged native dry-run test is exact red/green seam (presence is filesystem, no pure T1 seam); green rerun and selected T2 regressions deferred until Coordinator closes macOS quiet window. No full verify resubmitted.
+
+### rev-41 · 2026-11-21T07:33:29.472Z
+
+verdict: review
+result: clear
+by: rev-41 [reviewer]
+run: rev-41-20261121-2048-source4
+commit: 72258e3406aa0234eaa5e3e6d3865aae6ec63d63
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at 72258e3406aa0234eaa5e3e6d3865aae6ec63d63. Narrow two-file fix reviewed from7607207e6 with retained prior full review context; no dev merge. Standards0/Spec0 findings. #validateSnapshotDisk now returns only for absent snapshot, preserving the original CLI/MCP planning contract; existing snapshot mismatch still uses the shared disk predicate and names fitting sizes before T0. acquire still refuses absent image before lease creation (droplet.ts:275); snapshot producer ownership and explicit builder-size policy are untouched. Running docs state snapshot presence as the condition. No fixture was weakened or populated to hide the prior missing-snapshot failure.
+
+A-22364 records supported local red at prior source (unchanged suite-dry-run.test.ts:57 actual1 expected0; 'no prepared snapshot'), prior Linux cca62992 T0-T2 pass/T3 fail/Web unexecuted, and supported final-head local selected green: fake-provider T2 four files173/173 and unchanged native CLI T3 file4/4, macOS Node24.21, observed processes exit0/no signal, initial load guards enforce <12. Unsupported Node25 dev control explicitly excluded. Full lint/typecheck reported exit0; lint advisories remain report-only. Selected greens do not replace earlier failed full receipts. Final C1/C2 verification remains pending exact-head configured full-all rerun. Reviewer ran no tests, native/browser/cloud work or edits.
