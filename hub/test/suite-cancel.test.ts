@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, eventually, testWaitMs, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
+import { cland, eventually, testWaitMs, projectHub, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
 import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
@@ -71,17 +71,21 @@ test('cancel retry retains a detached native identity reparented before the next
   await systemProcessProbe(`
 const { LocalExecutor } = await import(${JSON.stringify(new URL('../src/executor/local.ts', import.meta.url).href)});
 rows = [row(420100, 1, 420100), row(420101, 420100, 420101)];
-const executor = new LocalExecutor([], () => {}, () => {});
+const receipts = [];
+const executor = new LocalExecutor([], () => {}, () => {}, process.env, undefined, entry => receipts.push(entry));
 const run = { id: 'reparented-cancel', cwd: process.cwd(), head: 'a'.repeat(40), mode: 'auto', log: 'suite.log', result: 'result.json', gate: 'gate' };
 const lease = executor.restore(run, { pid: 420100, started: start, identity: nativeBirth(rows[0]), outcome: null });
 onSignal = (pid, signal) => {
   if (pid === 420100 && signal === 'SIGTERM') nativeFailure = true;
 };
 await assert.rejects(executor.cancel(lease, 'SIGTERM'), /suite cancellation could not verify the worker tree/);
+assert.ok(receipts.some(r => r.event === 'suite-process-captured' && r.run === run.id && r.processes.some(p => p.pid === 420101 && p.pidIdentity === nativeBirth(row(420101, 1, 420101)))));
+assert.ok(receipts.some(r => r.event === 'suite-process-end' && r.pid === 420100 && r.outcome === 'incomplete'));
 assert.deepEqual(rows.map(r => [r.pid, r.parent, r.group]), [[420101, 1, 420101]], 'the captured detached child reparents before retry');
 nativeFailure = false;
 onSignal = () => {};
 await executor.cancel(lease, 'SIGTERM');
+assert.ok(receipts.some(r => r.event === 'suite-process-end' && r.pid === 420101 && r.identity === nativeBirth(row(420101, 1, 420101)) && r.outcome === 'confirmed'));
 assert.deepEqual(rows, [], 'cancellation retry confirms death of the previously captured detached identity');
 assert.ok(signals.some(s => s.pid === 420101 && s.signal !== 'SIGSTOP' && s.signal !== 'SIGCONT'), 'the detached survivor receives its own verified termination signal');
 `);
@@ -189,7 +193,19 @@ assert.equal(pidAlive(420101), false, 'detached descendant is reaped after the r
 });
 
 for (const recreate of [true, false]) test(`verify cancel reaps a detached fake child ${recreate ? 'that recreates the root after runner death' : 'before removing the phase root'}, then admits the next run`, async t => {
-  const f = await fixture(t, 'node detached.mjs');
+  const diagnostics = process.env.CLAND_TEST_PID_DIAGNOSTICS === '1';
+  const ownerReceipts: Array<Record<string, unknown>> = [];
+  const captures = new Map<number, string>();
+  let droppedReceipts = 0;
+  const serve: typeof projectHub = (context, root, env) => projectHub(context, root, env, {
+    log: entry => {
+      if (!diagnostics || !String(entry.event).startsWith('suite-process-')) return;
+      if (entry.event === 'suite-process-captured') for (const p of entry.processes as Array<{ pid: number; pidIdentity: string }>) captures.set(p.pid, p.pidIdentity);
+      if (ownerReceipts.length === 256) { ownerReceipts.shift(); droppedReceipts++; }
+      ownerReceipts.push({ ...entry, observed: Date.now() });
+    },
+  });
+  const f = await fixture(t, 'node detached.mjs', undefined, '', {}, 1, 1440, serve);
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
   const environment = fileURLToPath(new URL('./fixture-environment.ts', import.meta.url));
   const processes = new URL('../src/adapters/processes.ts', import.meta.url).href;
@@ -250,33 +266,56 @@ const poll = setInterval(() => {
 }, 10);`);
   const job = await f.launch();
   const fake = await eventually('detached fake child ready', async () => readFile(marker, 'utf8').then(JSON.parse, () => undefined), testWaitMs(45_000));
-  const diagnostics = process.env.CLAND_TEST_PID_DIAGNOSTICS === '1';
   const samples: Array<Record<string, unknown>> = [];
+  const signals: Array<Record<string, unknown>> = [];
+  let droppedSignals = 0;
+  const kill = process.kill.bind(process);
+  if (diagnostics) t.mock.method(process, 'kill', (pid: number, signal?: NodeJS.Signals | number) => {
+    try {
+      const result = kill(pid, signal);
+      if (signal !== 0) {
+        if (signals.length === 256) { signals.shift(); droppedSignals++; }
+        signals.push({ pid, signal, observed: Date.now(), sent: true });
+      }
+      return result;
+    } catch (error) {
+      if (signal !== 0) {
+        if (signals.length === 256) { signals.shift(); droppedSignals++; }
+        signals.push({ pid, signal, observed: Date.now(), sent: false, code: (error as NodeJS.ErrnoException).code ?? null });
+      }
+      throw error;
+    }
+  });
   let cancelledReceipt: string | null = null;
   const diagnosticEnv = scratchGitEnvironment(f.root, fixtureEnvironment(f.root, process.env), { excludesFile: join(f.root, 'diagnostic-gitignore') });
   let diagnosticTail = Promise.resolve();
   const sample = (phase: string, final = false) => {
     if (!diagnostics || samples.length >= (final ? 33 : 32)) return diagnosticTail;
     diagnosticTail = diagnosticTail.then(async () => {
-      const started = Date.now();
-      try {
-        let nativeExited = false;
-        const identity = await processIdentityAsync(fake.pid, diagnosticEnv, undefined, () => { nativeExited = true; });
-        const alive = await processAlive({ pid: fake.pid, pidStarted: null, pidIdentity: fake.identity }, undefined, diagnosticEnv);
-        // cland-allow-child-env: PID-only ps uses fixtureEnvironment then scratchGitEnvironment; no account, provider or Git operation
-        const listing = await promisify(execFile)('ps', ['-p', String(fake.pid), '-o', 'pid=,ppid=,stat='],
-          { cwd: f.root, env: scratchGitEnvironment(f.root, fixtureEnvironment(f.root, process.env), { excludesFile: join(f.root, 'diagnostic-gitignore') }), timeout: 1500, maxBuffer: 4096 }).then(result => ({ code: 0 as number | string | null, signal: null as string | null, text: result.stdout }),
-          (error: NodeJS.ErrnoException & { signal?: string; stdout?: string }) => ({ code: error.code ?? null, signal: error.signal ?? null, text: error.stdout ?? '' }));
-        const row = /^\s*(\d+)\s+(\d+)\s+(\S+)\s*$/.exec(listing.text);
-        samples.push({ phase, started, finished: Date.now(), pid: fake.pid, capturedIdentity: fake.identity,
-          initialParent: fake.parent, initialRunner: fake.runner, observer: process.pid, cancelledReceipt,
-          kill0Alive: pidAlive(fake.pid), nativeExited, identity, processAlive: alive,
-          parent: row ? Number(row[2]) : null, state: row?.[3] ?? null,
-          psCode: listing.code, psSignal: listing.signal });
-      } catch (error) {
-        samples.push({ phase, started, finished: Date.now(), pid: fake.pid, incomplete: true,
-          code: (error as NodeJS.ErrnoException).code ?? null });
+      const targets = new Map([[fake.pid as number, fake.identity as string], ...captures]);
+      const states: Array<Record<string, unknown>> = [];
+      for (const [pid, capturedIdentity] of [...targets].slice(0, 32)) {
+        const started = Date.now();
+        try {
+          let nativeExited = false;
+          const identity = await processIdentityAsync(pid, diagnosticEnv, undefined, () => { nativeExited = true; });
+          const alive = await processAlive({ pid, pidStarted: null, pidIdentity: capturedIdentity }, undefined, diagnosticEnv);
+          // cland-allow-child-env: PID-only ps uses fixtureEnvironment then scratchGitEnvironment; no account, provider or Git operation
+          const listing = await promisify(execFile)('ps', ['-p', String(pid), '-o', 'pid=,ppid=,stat='],
+            { cwd: f.root, env: scratchGitEnvironment(f.root, fixtureEnvironment(f.root, process.env), { excludesFile: join(f.root, 'diagnostic-gitignore') }), timeout: 1500, maxBuffer: 4096 }).then(result => ({ code: 0 as number | string | null, signal: null as string | null, text: result.stdout }),
+            (error: NodeJS.ErrnoException & { signal?: string; stdout?: string }) => ({ code: error.code ?? null, signal: error.signal ?? null, text: error.stdout ?? '' }));
+          const row = /^\s*(\d+)\s+(\d+)\s+(\S+)\s*$/.exec(listing.text);
+          states.push({ phase, started, finished: Date.now(), pid, capturedIdentity,
+            ...(pid === fake.pid ? { initialParent: fake.parent, initialRunner: fake.runner } : {}), observer: process.pid, cancelledReceipt,
+            kill0Alive: pidAlive(pid), nativeExited, identity, processAlive: alive,
+            parent: row ? Number(row[2]) : null, state: row?.[3] ?? null,
+            psCode: listing.code, psSignal: listing.signal });
+        } catch (error) {
+          states.push({ phase, started, finished: Date.now(), pid, capturedIdentity, incomplete: true,
+            code: (error as NodeJS.ErrnoException).code ?? null });
+        }
       }
+      samples.push({ phase, states, omittedTargets: Math.max(0, targets.size - 32) });
     });
     return diagnosticTail;
   };
@@ -305,7 +344,7 @@ const poll = setInterval(() => {
   } finally {
     await diagnosticTail;
     await sample('cancel-or-retirement-final', true);
-    if (diagnostics) t.diagnostic(JSON.stringify({ kind: 'detached-pid-receipts', samples }));
+    if (diagnostics) t.diagnostic(JSON.stringify({ kind: 'detached-pid-receipts', run: job.id, ownerReceipts, droppedReceipts, signals, droppedSignals, samples }));
   }
   assert.equal(pidAlive(fake.pid), false, 'detached descendant PID is retired after cancellation');
   await assert.rejects(stat(fake.raw), { code: 'ENOENT' }, 'raw deletion follows delegated detached-writer cleanup');

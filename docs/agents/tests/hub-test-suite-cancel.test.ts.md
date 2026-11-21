@@ -96,6 +96,20 @@ reads and diagnostic work join before teardown; diagnostics never replace the
 test outcome or widen its deadline. A sustained native zombie with an owned
 parent is reported to the item lead before any product or harness fix.
 
+The diagnostic output also records the local cancellation owner's actual
+`suite-process-end-start`, `suite-process-captured`, `suite-process-end` and
+`suite-process-exit-probe` receipts, keyed by run and native birth. Forwarded
+termination diagnostics keep the `suite-process-` prefix. End outcomes distinguish
+confirmed, incomplete and unknown (a thrown native operation); none is inferred
+from error text. Native state sampling includes captured identities as well as
+the fake child, with at most 32 targets per round and an explicit omitted count.
+A pass-through native signal observer records successful and failed sends.
+Owner and signal tails each retain 256 records and report dropped counts.
+Missing native state stays unknown. These log observations grant no authority
+and logger failure cannot change cleanup. The synthetic reparented-retry case
+requires capture, incomplete-end and confirmed detached-retry receipts while
+preserving its signal and final tree assertions.
+
 The artificial 30-second body hold is ended by cancellation. Polls observe
 process death or filesystem receipts; elapsed time is never the asserted fact.
 

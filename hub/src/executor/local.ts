@@ -39,8 +39,10 @@ export class LocalExecutor implements Executor {
   readonly #env: NodeJS.ProcessEnv;
   readonly #compatibility: LocalCompatibility;
   readonly #recover: (settled: { pid: number; started: string }) => Promise<boolean>;
+  readonly #log: ((entry: Record<string, unknown>) => void) | undefined;
   constructor(locks: string[], checkpoint: (lease: Lease, worker: LocalWorker) => void, admit: (run: string) => void, env: NodeJS.ProcessEnv = process.env, compatibility?: LocalCompatibility, log?: (entry: Record<string, unknown>) => void) {
     this.#env = env;
+    this.#log = log;
     this.#compatibility = compatibility ?? { holder: () => compatibilityHolder(locks, env), occupied: () => compatibilityOccupied(locks, env, log) };
     this.#recover = settled => compatibilityOccupied(locks, env, log, settled);
     this.#checkpoint = checkpoint; this.#admit = admit;
@@ -151,7 +153,10 @@ export class LocalExecutor implements Executor {
       }
     }
   }
-  #end(worker: Pick<LocalWorker, 'pid' | 'started' | 'identity'>, graceMs: number, lease: Lease, refusal: string): Promise<boolean> {
+  #observe(lease: Lease, entry: Record<string, unknown>): void {
+    try { this.#log?.({ ...entry, run: lease.run }); } catch { /* diagnostics grant no cleanup authority */ }
+  }
+  async #end(worker: Pick<LocalWorker, 'pid' | 'started' | 'identity'>, graceMs: number, lease: Lease, refusal: string): Promise<boolean> {
     const root = this.#env.CLAND_TEST_ORPHAN_ROOT;
     const authority = () => {
       const captured = this.#leases.get(lease.run) === lease ? this.#launches.get(lease) : undefined;
@@ -159,23 +164,33 @@ export class LocalExecutor implements Executor {
       return captured && captured.pid === resource.pid && captured.identity === resource.identity ? captured : undefined;
     };
     const admitted = authority();
-    return endProcess({ pid: worker.pid, pidStarted: worker.started, pidIdentity: worker.identity ?? null }, () => {}, graceMs, undefined, {
-      env: this.#env, allowReused: true,
-      onCaptured: tree => {
-        if (this.#leases.get(lease.run) !== lease) throw new Error(`${refusal}; secondary diagnostic: suite capture owner changed during cleanup`);
-        let captured = this.#captured.get(lease);
-        if (!captured) { captured = new Map(); this.#captured.set(lease, captured); }
-        for (const process of tree) captured.set(process.pid, { ...process });
-      },
-      ...(root ? {
-        canSignalTargets: async (targets, snapshot) => {
-          const launch = authority();
-          return await isolatedSuiteSignalTargets(root, targets, snapshot, this.#env, launch)
-            && (!launch || authority() === launch);
+    const target = { pid: worker.pid, identity: worker.identity ?? null, started: worker.started };
+    this.#observe(lease, { event: 'suite-process-end-start', ...target });
+    try {
+      const confirmed = await endProcess({ pid: worker.pid, pidStarted: worker.started, pidIdentity: worker.identity ?? null }, entry => this.#observe(lease, { ...entry, event: `suite-process-${entry.event}` }), graceMs, undefined, {
+        env: this.#env, allowReused: true,
+        onCaptured: tree => {
+          if (this.#leases.get(lease.run) !== lease) throw new Error(`${refusal}; secondary diagnostic: suite capture owner changed during cleanup`);
+          let captured = this.#captured.get(lease);
+          if (!captured) { captured = new Map(); this.#captured.set(lease, captured); }
+          for (const process of tree) captured.set(process.pid, { ...process });
+          this.#observe(lease, { event: 'suite-process-captured', pid: worker.pid, processes: tree.map(process => ({ ...process })) });
         },
-        authorize: () => { if (admitted && authority() !== admitted) throw new Error('suite launch authority changed during cleanup'); },
-      } : {}),
-    });
+        ...(root ? {
+          canSignalTargets: async (targets, snapshot) => {
+            const launch = authority();
+            return await isolatedSuiteSignalTargets(root, targets, snapshot, this.#env, launch)
+              && (!launch || authority() === launch);
+          },
+          authorize: () => { if (admitted && authority() !== admitted) throw new Error('suite launch authority changed during cleanup'); },
+        } : {}),
+      });
+      this.#observe(lease, { event: 'suite-process-end', ...target, outcome: confirmed ? 'confirmed' : 'incomplete' });
+      return confirmed;
+    } catch (error) {
+      this.#observe(lease, { event: 'suite-process-end', ...target, outcome: 'unknown', code: (error as NodeJS.ErrnoException)?.code ?? null });
+      throw error;
+    }
   }
   async #drainCaptured(lease: Lease, graceMs: number): Promise<void> {
     const captured = this.#captured.get(lease);
@@ -188,6 +203,7 @@ export class LocalExecutor implements Executor {
       // ESRCH, or a different native birth before forgetting this captured identity.
       let exited = false;
       const identity = await processIdentityAsync(process.pid, this.#env, undefined, () => { exited = true; });
+      this.#observe(lease, { event: 'suite-process-exit-probe', pid: process.pid, capturedIdentity: process.pidIdentity, identity, exited });
       if (!exited && (identity === null || identity === process.pidIdentity)
         && branchAbsenceFailure(process.pid, []) !== null) {
         throw new Error('suite cleanup waiting for a captured descendant exit receipt');
