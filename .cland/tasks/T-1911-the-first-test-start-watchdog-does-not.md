@@ -3,17 +3,17 @@ id: T-1911
 kind: task
 title: The first-test-start watchdog does not cover load-gate repetitions and Web repetition children
 state: open
-status: backlog
+status: in progress
 size: S
 labels: []
 assignee: null
 parent: E-1881
 blocked_by:
   - T-1841
-topic: null
-branch: null
+topic: topic-1694
+branch: t/T-1911-the-first-test-start-watchdog-does-not
 created: 2026-11-16T13:42:11.941Z
-updated: 2026-11-16T13:42:16.760Z
+updated: 2026-11-21T07:40:36.450Z
 ---
 
 ## Summary

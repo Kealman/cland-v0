@@ -3,7 +3,7 @@ id: T-1987
 kind: task
 title: A hub start with about 1,500 branch freshness answers serves task.view within a named bound once T-1984 and T-1646 have both landed
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-1883
 blocked_by:
   - T-1984
   - T-1646
-topic: null
-branch: null
+topic: topic-1699
+branch: t/T-1987-a-hub-start-with-about-1-500-branch
 created: 2026-11-18T20:13:06.075Z
-updated: 2026-11-18T20:13:06.075Z
+updated: 2026-11-21T07:40:51.228Z
 ---
 
 ## Summary

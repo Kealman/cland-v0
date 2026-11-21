@@ -3,7 +3,7 @@ id: T-1986
 kind: task
 title: suite-cancel detached-child case passes 20/20 under a CPU burner at load ≥10 on macOS after T-1758's retained-capture fix (one report-wait timeout unexplained)
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ assignee: null
 parent: E-1881
 blocked_by:
   - T-1758
-topic: null
-branch: null
+topic: topic-1700
+branch: t/T-1986-suite-cancel-detached-child-case-passes
 created: 2026-11-18T20:05:12.173Z
-updated: 2026-11-18T20:05:12.173Z
+updated: 2026-11-21T07:40:52.123Z
 ---
 
 ## Summary

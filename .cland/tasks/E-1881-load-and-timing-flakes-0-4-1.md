@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-1532
 branch: null
 created: 2026-11-16T07:28:32.737Z
-updated: 2026-11-20T17:34:48.987Z
+updated: 2026-11-21T07:39:17.450Z
 ---
 
 ## Goal
@@ -68,4 +68,14 @@ stages:
       - - T-1947
       - - T-1951
       - - T-1939
+  - name: stage 3
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-1911
+      - - T-1980
+      - - T-1983
+      - - T-1985
+      - - T-1986
 ```

@@ -3,7 +3,7 @@ id: T-1985
 kind: task
 title: A non-HubLocked termination-ownership acquisition rejection drops an already native-verified grace child before it is retained, so a reparented descendant can escape cancellation
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1881
 blocked_by:
   - T-1758
-topic: null
-branch: null
+topic: topic-1697
+branch: t/T-1985-a-non-hublocked-termination-ownership
 created: 2026-11-18T19:54:52.553Z
-updated: 2026-11-18T19:54:52.553Z
+updated: 2026-11-21T07:40:47.865Z
 ---
 
 ## Summary

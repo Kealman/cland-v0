@@ -3,7 +3,7 @@ id: T-1980
 kind: task
 title: claude-code-remote.test.ts:330 scans the fake host's run directory while processes.json is atomically replaced, and fails with ENOENT on the temporary file
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-1881
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1696
+branch: t/T-1980-claude-code-remote-test-ts-330-scans-the
 created: 2026-11-18T15:22:04.049Z
-updated: 2026-11-18T15:22:04.049Z
+updated: 2026-11-21T07:40:43.418Z
 ---
 
 ## Summary

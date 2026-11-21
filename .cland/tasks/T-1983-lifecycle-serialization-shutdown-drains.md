@@ -3,7 +3,7 @@ id: T-1983
 kind: task
 title: lifecycle-serialization "shutdown drains a held found resume" times out at its fixed 2 s test bound on macOS dev, alone and at low load
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-1881
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1695
+branch: t/T-1983-lifecycle-serialization-shutdown-drains
 created: 2026-11-18T18:59:49.929Z
-updated: 2026-11-18T18:59:49.929Z
+updated: 2026-11-21T07:40:41.616Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-1981
 kind: task
 title: publishSessionEvidence reports "publication outcome unknown" for an implementer's publish that created nothing, hiding the hub's reply
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-1887
 blocked_by: []
 regression_of: T-1808
-topic: null
-branch: null
+topic: topic-1698
+branch: t/T-1981-publishsessionevidence-reports
 created: 2026-11-18T18:12:25.052Z
-updated: 2026-11-19T20:45:18.808Z
+updated: 2026-11-21T07:40:50.892Z
 ---
 
 ## Summary
