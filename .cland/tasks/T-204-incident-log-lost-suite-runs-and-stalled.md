@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-21T14:49:47.805Z
+updated: 2026-11-21T22:34:15.493Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -698,3 +698,11 @@ Restart #94, rollback (2026-11-21, on coord's GO): on 55479f075 T-1901's enqueue
 ### human · 2026-11-21T14:49:47.805Z
 
 Restart #95, forward (2026-11-21, on coord's GO after T-2054's preflight scratch-HOME fix landed): hub r94 pid 11318 (782f2a58e worktree) stopped 14:48:29Z; job cland-hub-r95 pid 49858 started from the root at 4cafa6040 (dev = origin/dev, root clean, merge queue empty, no runs), serving 14:48:41.712Z, gap 12 s. web/dist rebuilt before the stop (stale against the tip). Binding listeners 4 ms, web listener 294 ms. Port 54388, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 14:48:42.057Z. task view 0.14 s, no tracker-storage-stalled lines. Rollback worktree 782f2a58e kept until coord confirms a live enqueue on #95.
+
+### human · 2026-11-21T21:06:06.174Z
+
+Restart #96 (2026-11-21, on the human's answer to ask 6c320816 option 1 and coord's GO): hub r95 pid 49858 (dev 4cafa6040) stopped 21:01:08Z; the hub now runs T-2056's reviewed head 678931704 from a detached worktree (jobs/92748b6f/tmp/hub-678931704) with the root as cwd, because T-2035's enqueue timing check refused every enqueue (T-2056 is the fix). The first launchd submit (label cland-hub-r96) exited 1 at once: the starter note contained an apostrophe, which broke the zsh -c quoting; found by a foreground probe, resubmitted as cland-hub-r96b with a plain note. pid 12744 serving 21:04:39.581Z, so the gap was 3 min 31 s, over the 60 s bridge budget; coord's bridge-closed 21:01:08Z, bridge-connected 21:04:40Z, injected 21:04:41Z (the mod respawned the bridge, T-867). Binding listeners 4 ms, web listener 282 ms. Port 64236, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. No runs were in flight. Lesson: no apostrophes or quotes in the starter note. Return to dev follows after T-2056, T-2053, T-2049 and T-2050 land.
+
+### human · 2026-11-21T22:34:15.493Z
+
+Restart #97 (2026-11-21, under the human's answer to ask 6c320816 and coord's GO): hub r96b pid 12744 (678931704) stopped 22:33:12Z; job cland-hub-r97 pid 34280 runs T-2056's new reviewed head b2b66069b from a detached worktree (jobs/92748b6f/tmp/hub-b2b66069b) with the root as cwd, serving 22:33:25.051Z, gap 13 s. Binding listeners 4 ms, web listener 342 ms. Port 50875, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 22:33:26Z, injected 22:33:28Z. No runs in flight. The 678931704 worktree removed; 782f2a58e kept as rollback. Return to dev follows after T-2056, T-2053, T-2049 and T-2050 land.

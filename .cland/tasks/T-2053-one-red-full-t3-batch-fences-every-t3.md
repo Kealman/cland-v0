@@ -2,8 +2,8 @@
 id: T-2053
 kind: task
 title: One red full-T3 batch fences every T3 file from the next batch's load-gate baseline, so that batch repeats every identity and times out at 75 min
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1706
 branch: t/T-2053-one-red-full-t3-batch-fences-every-t3
 created: 2026-11-21T09:44:13.651Z
-updated: 2026-11-21T19:28:09.718Z
+updated: 2026-11-21T23:08:34.947Z
+closed: 2026-11-21T23:08:34.947Z
 ---
 
 ## Summary
@@ -89,3 +90,7 @@ Compact-history positive control '3000 large legacy archives start from bounded 
 Run scope:T0/allT1/fallback-allT2/selectedT3importers/Web exit0. T3 plan245files/1983observed identities, not all273T3files; remainingT3 belongs to integrated merge-batch occasion, T4 unrequested. Linuxx64 6.8.0-149-generic,Node24.21.0,Neovim0.12.5,dropletc-8ams3 workers2. Browser receipt chromium_headless_shell-1248 chrome-headless-shell/Google Chrome for Testing156.0.8078.4; Web executed. Platform/prerequisite skips include macOS sandbox/caffeinate/selectors, absent OpenCode/zsh; provenance skipReasonCheckreport/missing0. Advisory duration/test-lint/ratchet notices remain report-only. No all-platform/full-T3-stage or timing speedup claim. Reviewer ran no tests, native/browser work or edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T23:08:34.947Z
+
+Merged 75390a00eb445174f5ba39f2828fe6735decacb8 onto dev.

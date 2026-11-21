@@ -2,8 +2,8 @@
 id: T-2050
 kind: task
 title: An item turns ready on a clear evidence verdict while its same-head verify is still launching, with no result
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1710
 branch: t/T-2050-an-item-turns-ready-on-a-clear-evidence
 created: 2026-11-21T08:26:55.956Z
-updated: 2026-11-21T19:23:38.850Z
+updated: 2026-11-21T23:38:21.913Z
+closed: 2026-11-21T23:38:21.913Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ The ready transition requires a green same-head verify result for items whose fl
 
 - [x] C1. With clear review verdicts and a same-head verify in `launching` or `running` state, the item stays in review; it turns ready only when that run finishes green (test, red before).
   - done: impl-2050 · 2026-11-21T19:21:04.654Z
+  - verified: rev-40 [reviewer] · run rev-40-20261121-2050-final · 2026-11-21T20:36:07.961Z · commit 58206d6d0ea81327c7dde0040270a9496b8ff14e
 - [x] C2. A red or cancelled same-head run keeps the item out of ready (test).
   - done: impl-2050 · 2026-11-21T19:21:04.762Z
+  - verified: rev-40 [reviewer] · run rev-40-20261121-2050-final · 2026-11-21T20:36:07.961Z · commit 58206d6d0ea81327c7dde0040270a9496b8ff14e
 
 Evidence: T-1983's task.view at 08:26Z shows status ready with `verify: {id: 6532e3ef…, state: "launching", result: null, head: 44e58b48f}`.
 
@@ -120,3 +123,22 @@ Consumer correction source clear, no findings. Shared fixture records explicit c
 ### impl-2050 · 2026-11-21T19:23:38.850Z
 
 Consumer correction source-clear at58206d6d0ea81327c7dde0040270a9496b8ff14e. A-22561/committed audit list all31 task-ready files and fixture paths/dispositions. Under granted native slot all31 passed378/378 including T2/T3/Web, plus four stub QA cases4/4; zero skips; slot released. Pre-window new-head T1 reachability batch72 files passed981/981, zero skipped. Full typecheck/test:lint passed0refusals; final doc wording lint passed. Local macOS arm64 Node24.21.0; pinned Chrome Headless Shell revision1248, isolated groups closed; headless Neovim for QA. Prior two configured runs remain failed. New window requested; no resubmission yet.
+
+### rev-40 · 2026-11-21T20:36:07.961Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261121-2050-final
+commit: 58206d6d0ea81327c7dde0040270a9496b8ff14e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at exact reviewed head/treea89cf58e. Run695455ea/A-22570 finished/passed. All ten new generated readiness cases have base passes +5/5 load gates (50 positive rounds); all51 merge-queue cases,11 tracker-ready cases and migrated native stage-cover identity pass independently. C1 launching/running and C2 failed/cancelled assertions verified; missing/older/unfinished/passed/cache/no-command/empty-diff controls retained. T0/T1/fallbackT2/T3command/Web exit0; T4 unexecuted. Actual T3 receipt includes stage-cover pass48298; no blanket unexecuted T3 claim or totals inferred from nested generated records. Noncached Linuxx64/c-8blr1/Node24.21.0/Nvim0.12.5/workers2; HeadlessShell1248/CfT156.0.8078.4. Platform/prerequisite skips and report-only advisories retain status. Prior186e2294 and59022dad remain failed historical rounds. No reviewer runs/edits. Prior final sourceA-22562 and full productA-22547 retained.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T23:38:21.913Z
+
+Merged 503d5858f72ef8ae6eb71a6b18bfb306c2bfb396 onto dev.

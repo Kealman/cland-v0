@@ -2,8 +2,8 @@
 id: T-2049
 kind: task
 title: A QA verdict's task.comment reply counts its own fresh criterion marks as stale while the item read and demo freshness say current
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1707
 branch: t/T-2049-a-qa-verdict-s-task-comment-reply-counts
 created: 2026-11-21T07:44:31.768Z
-updated: 2026-11-21T18:28:31.588Z
+updated: 2026-11-21T23:37:32.313Z
+closed: 2026-11-21T23:37:32.313Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ Make the reply to a verdict or criterion write compute mark freshness by the sam
 
 - [x] C1. A QA verdict written at a commit behind dev by tracker- and brief-only commits returns `criteriaCounts` with its marks verified and not stale, matching `task.view` (test, red before).
   - done: impl-2049 · 2026-11-21T18:23:06.039Z
+  - verified: rev-35 [reviewer] · run rev-35-2049-evidence-1 · 2026-11-21T19:44:57.403Z · commit 42d80de9a066dedca0db51e3bbed9855ebd110be
 - [x] C2. A later commit that touches a file changed by the epic's task merges still makes the marks stale in both the reply and `task.view` (test).
   - done: impl-2049 · 2026-11-21T18:23:06.681Z
+  - verified: rev-35 [reviewer] · run rev-35-2049-evidence-1 · 2026-11-21T19:44:57.403Z · commit 42d80de9a066dedca0db51e3bbed9855ebd110be
 
 Evidence: E-1882's comments and A-22380 to A-22383; qa-1880's aside in topic-1544 (2026-11-21 07:44Z). Found by QA.
 
@@ -68,3 +71,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source42d80de9a066dedca0db51e3bbed9855ebd110be, Git tree204229546ec3092a89af15490ef0d23932183820, clears M1/M2. M1: trackerFileCase/stageCase+pre-construction ownedTracker, separately bounded setup and positive Tracker/DB-close restoration. M2: explicit demoProof binds to existing Want, queued/in-flight result cannot overwrite it, retry ids transfer into existing worker publication. Controlled overlap and queued/running/retry cases retain all waiting ids and test membership/dev-tip/stopped refusal; all original reply/view/criterion/surface-edit assertions remain. No wire/policy/schema/ready-field changes. C1/C2 remain checked but unverified pending actual exact-head mode-free result. A-22539/A-22550 preserve original and correction reds plus authored local T1/check receipts, not configured proof. Audit A-22551 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-22551-t-2049-source2-proof-supersession-and-fixture-ownership-clear.md. Standards/Spec read-only in-session; no Reviewer execution/edit/submission. Hold releases; ask Coordinator window for one exact-head mode-free verify, no full run requested.
+
+### rev-35 · 2026-11-21T19:44:57.403Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2049-evidence-1
+commit: 42d80de9a066dedca0db51e3bbed9855ebd110be
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear: run9196705f-1c9e-409e-ab23-e3478873ccbd/A-22568 autoexit0 at42d80de9a066dedca0db51e3bbed9855ebd110be, runtime tree4fed7e105dd7516392630ba5a668c58e503cd1a9 distinct Gittree204229546ec3092a89af15490ef0d23932183820. All5 required generated reply/overlap/queued/running/retry controls have matching base start/pass finishes plus5 distinct passing load rounds each; tracker-summary33/33 base and filepass. C1 fresh immediate replies/views and C2 later surface-edit stale flags/counts verified with retained source2; waiting-id publication proven. Actualall243T1/all444T2/244selectedT3/all55Web plusT0exit0;29T3 deferredbatch,18T4unexecuted. Producer9382tests/9370pass/12prereqskip/0fail/cancel;17provenanceskipreceipts include5loadedmacOS-selector skips, reasonsmissing0. SelectedT3duration244files1980passingidentities2720.713s phasewall excludeswait, baseonly. Linuxc8ams3 Node24.21.0/Nvim0.12.5 HeadlessShell1248/Chrome156.0.8078.4,workers2;budget/ratchet/lintreport-only;lifecostnotwall;cache:nullunknown. Audit A-22569 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-22569-t-2049-final-evidence-same-head-c1-and-c2-clear.md. Head unchanged; no Reviewer execution/edit/submission or duplicate/full-run request.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T23:37:32.313Z
+
+Merged 3d384a7fa45cc8b34414ef46f20e2a27aabee946 onto dev.
