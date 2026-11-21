@@ -12,6 +12,18 @@ publishing its result` matrix holds native resume completion (`found`, `alive`)
 or the later process-identity probe (`identity`). Observe adapter closure before
 releasing each result, then await both the resume rejection and session drain.
 Keep the final unchanged process row, zero watch calls, absent resume
-publications and released lifecycle assertions. The 2000 ms test bound matches the
-T1 peers and covers setup and completion; unconditional gate release drains
-failures before fixture storage closes. These T1 cases use only a fake adapter and clock.
+publications and released lifecycle assertions. Worker admission and account
+initialization finish in a separately bounded before hook (75 seconds through
+the shared wait policy). The explicit 2000 ms case bound covers the remaining
+fixture setup and lifecycle behavior; admission retains its own 15–60 second
+reply bound. Unconditional gate release drains failures before storage closes.
+These T1 cases use only a fake adapter and clock.
+
+The shared stageCase owner enrolls the complete callback before acquisition,
+fences new steps on cancellation, and retains the native launch guard until
+original work joins and resource close returns positively. The fixture captures
+hub, table and Sessions ownership before each next acquisition. Failed Sessions
+close retains storage; failed table close retains the hub. Cleanup retries the
+unconfirmed close before removing the root or restoring seams. Controlled
+partial-acquisition cancellation cases exercise actual guarded cleanup with
+confirmed close and with a rejected close followed by repair.

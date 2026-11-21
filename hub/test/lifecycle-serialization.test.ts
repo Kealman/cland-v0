@@ -1,9 +1,9 @@
 // T1: fake adapters and deferred dispatcher operations prove serialization and rollback without child processes or sockets.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import test, { type TestContext } from 'node:test';
+import test, { before, type TestContext } from 'node:test';
 import { LaunchFiles } from '../src/adapters/launch-files.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { localHost } from '../src/host/local.ts';
@@ -14,6 +14,15 @@ import { parseRoles } from '../src/roles/config.ts';
 import { FakeClock } from './fake-clock.ts';
 import { tempProject } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { lifecycleOwner, ownedCase } from './lifecycle-fixture-owner.ts';
+import { ensureAccountFixture } from './account-fixture-env.ts';
+import { waitTimeoutMs } from './until.ts';
+
+// Worker admission can await a busy hub for up to 60 s. Complete it before
+// starting the lifecycle cases' explicit 2 s behaviour deadline.
+before(ensureAccountFixture, { timeout: waitTimeoutMs(75_000) });
+
+type Scope = ReturnType<typeof lifecycleOwner>['scope'];
 
 function deferred() {
   let resolve!: () => void;
@@ -21,27 +30,102 @@ function deferred() {
   return { promise, resolve };
 }
 
-async function fixture(t: TestContext, log?: (entry: Record<string, unknown>) => void, processStarted?: (pid: number) => Promise<string | null>) {
-  const root = await tempProject(t);
+async function fixture(t: TestContext, log?: (entry: Record<string, unknown>) => void, processStarted?: (pid: number) => Promise<string | null>, afterTable?: (root: string, table: ProcessTable) => Promise<void>, afterSessions?: (root: string, sessions: Sessions) => Promise<void>) {
+  const { scope, step } = lifecycleOwner(t);
+  let hub: ReturnType<typeof createHubBase> | undefined;
+  let table: ProcessTable | undefined;
+  let sessions: Sessions | undefined;
+  let tableClosed = false, hubClosed = false;
+  // Register before acquisition, capturing each owner as soon as it exists.
+  // A failed writer close retains storage, root and guard for a repaired retry.
+  scope.requireClose(async () => {
+    await sessions?.close();
+    if (table && !tableClosed) { table.close(); tableClosed = true; }
+    if (hub && !hubClosed) { await hub.close(); hubClosed = true; }
+  });
+  const root = await step(async () => {
+    const root = await tempProject(scope.fixtures);
+    scope.adoptRoot(root);
+    return root;
+  });
   let roles = parseRoles('[coordinator.launch]\nharness = "test"\n');
   const clock = new FakeClock();
-  const hub = createHubBase({ clock, secret: 'test', roles: { get: () => roles } });
-  const table = new ProcessTable(':memory:', clock);
-  const sessions = new Sessions({ core: hub.core, table, root, env: fixtureEnvironment(root, {}), ...(log ? { log } : {}), ...(processStarted ? { hosts: [{ ...localHost(), identity: async pid => ({ pid, pidStarted: await processStarted(pid), pidIdentity: null }) }] } : {}) });
-  t.after(async () => { await sessions.close(); table.close(); await hub.close(); });
+  await step(async () => {
+    hub = createHubBase({ clock, secret: 'test', roles: { get: () => roles } });
+    table = new ProcessTable(':memory:', clock);
+    await afterTable?.(root, table);
+  });
+  const acquiredHub = hub!, acquiredTable = table!;
+  await step(async () => {
+    sessions = new Sessions({ core: acquiredHub.core, table: acquiredTable, root, env: fixtureEnvironment(root, {}), ...(log ? { log } : {}), ...(processStarted ? { hosts: [{ ...localHost(), identity: async pid => ({ pid, pidStarted: await processStarted(pid), pidIdentity: null }) }] } : {}) });
+    await afterSessions?.(root, sessions);
+  });
+  const acquiredSessions = sessions!;
   const p = { name: 'impl', harness: 'test', role: null, model: null, cwd: root, pid: null, pidStarted: null, harnessId: null, sessionId: 'stable-id', harnessSessionId: 'conversation', startedAt: '', status: 'stopped' as const };
-  table.put(p);
-  sessions.register({
+  acquiredTable.put(p);
+  acquiredSessions.register({
     harness: 'test',
     capabilities: { terminal: 'none', history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
     spawn: async r => ({ ...p, ...r, sessionId: 'replacement', harness: 'test', status: 'running' }),
     resume: async r => ({ found: true, process: { ...r, status: 'running' }, state: 'unknown' }),
     stop: async () => {}, attachCommand: () => '', watch: () => {}, inject: async () => {}, confirm: () => {}, interpret: () => ({}), close: () => {},
   });
-  return { root, table, sessions, hub, revokeStop: () => { roles = parseRoles('[coordinator.launch]\nharness = "test"\n[coordinator.permissions]\ntools = []\n'); } };
+  return { root, table: acquiredTable, sessions: acquiredSessions, hub: acquiredHub, revokeStop: () => { roles = parseRoles('[coordinator.launch]\nharness = "test"\n[coordinator.permissions]\ntools = []\n'); } };
 }
 
-for (const outcome of ['found', 'alive', 'identity'] as const) test(`shutdown drains a held ${outcome} resume without restarting supervision or publishing its result`, { timeout: 2000 }, async t => {
+for (const acquired of ['table', 'Sessions'] as const) for (const rejectedClose of [false, true]) test(`lifecycle fixture cancellation retains acquired ${acquired} until ${rejectedClose ? 'repaired' : 'confirmed'} close`, ownedCase(async t => {
+  const { scope: supervisor } = lifecycleOwner(t);
+  const abort = new AbortController();
+  const hooks: Array<() => unknown> = [];
+  const controlled = { name: 'controlled lifecycle cancellation', signal: abort.signal, after: (hook: () => unknown) => { hooks.push(hook); } } as unknown as TestContext;
+  const dispose = async () => { for (const hook of hooks) await hook(); };
+  const entered = Promise.withResolvers<{ root: string; scope: Scope }>();
+  const release = deferred();
+  let refuse = rejectedClose, closed = false;
+  const outerBoundary = supervisor.nativeBoundary();
+  supervisor.releaseOnClose(() => { refuse = false; release.resolve(); });
+  supervisor.requireClose(async () => { refuse = false; release.resolve(); await running.catch(() => {}); await dispose(); });
+  const running = ownedCase(async inner => {
+    const { scope } = lifecycleOwner(inner);
+    const hold = async (root: string, resource: { close: () => void | Promise<void> }) => {
+      const close = resource.close.bind(resource);
+      scope.patch(resource, 'close', () => {
+        if (refuse) throw new Error('controlled lifecycle resource close rejected');
+        const result = close();
+        if (result) return result.then(() => { closed = true; });
+        closed = true;
+      });
+      entered.resolve({ root, scope });
+      await release.promise;
+      throw new Error('controlled partial acquisition failure');
+    };
+    await fixture(inner, undefined, undefined, acquired === 'table' ? hold : undefined, acquired === 'Sessions' ? hold : undefined);
+  })(controlled);
+  const rejected = assert.rejects(running, /controlled partial acquisition failure/);
+  const { root, scope } = await supervisor.wait('partial acquisition entered', () => entered.promise);
+  const heldBoundary = scope.nativeBoundary();
+  abort.abort(new Error('controlled fixture abort'));
+  assert.equal((await stat(root)).isDirectory(), true);
+  assert.equal(scope.nativeBoundary(), heldBoundary);
+  assert.equal(closed, false, 'the held original acquisition has not closed');
+  await assert.rejects(scope.restore(), /resource close unconfirmed/);
+  release.resolve();
+  await rejected;
+  if (rejectedClose) {
+    await assert.rejects(dispose(), /controlled lifecycle resource close rejected/);
+    await assert.rejects(scope.restore(), /resource close unconfirmed/);
+    assert.equal((await stat(root)).isDirectory(), true, 'real guarded cleanup retains the root after rejected close');
+    assert.equal(scope.nativeBoundary(), heldBoundary);
+    assert.equal(closed, false);
+    refuse = false;
+  }
+  await dispose();
+  assert.equal(closed, true, 'resource close returned positively');
+  await assert.rejects(stat(root), { code: 'ENOENT' });
+  assert.equal(scope.nativeBoundary(), outerBoundary, 'guard restored only after original work and resources closed');
+}));
+
+for (const outcome of ['found', 'alive', 'identity'] as const) test(`shutdown drains a held ${outcome} resume without restarting supervision or publishing its result`, { timeout: 2000 }, ownedCase(async t => {
   const entered = deferred(), gate = deferred(), closed = deferred();
   t.after(() => gate.resolve()); // Release before fixture cleanup even if setup hits the test bound.
   const records: Array<Record<string, unknown>> = [];
@@ -81,9 +165,9 @@ for (const outcome of ['found', 'alive', 'identity'] as const) test(`shutdown dr
     await result;
     await f.sessions.close();
   }
-});
+}));
 
-test('a delayed failing relaunch cannot undo another relaunch that commits to the same files', async t => {
+test('a delayed failing relaunch cannot undo another relaunch that commits to the same files', ownedCase(async t => {
   const f = await fixture(t);
   const entered = deferred(), gate = deferred();
   t.after(() => gate.resolve());
@@ -114,9 +198,9 @@ test('a delayed failing relaunch cannot undo another relaunch that commits to th
   gate.resolve(); await failure; await b;
   assert.equal(await readFile(file, 'utf8'), 'OLD\nB committed\n');
   assert.equal(f.sessions.lifecyclePending(), false);
-});
+}));
 
-test('renaming a session does not create a second lifecycle slot', async t => {
+test('renaming a session does not create a second lifecycle slot', ownedCase(async t => {
   const f = await fixture(t);
   const entered = deferred(), gate = deferred();
   t.after(() => gate.resolve());
@@ -133,9 +217,9 @@ test('renaming a session does not create a second lifecycle slot', async t => {
   assert.equal(starts, 2);
   assert.equal(f.table.get('renamed')?.sessionId, 'stable-id');
   assert.equal(f.sessions.lifecyclePending(), false);
-});
+}));
 
-test('launch waits behind an existing identity and rechecks a successful resume before replacing its row', async t => {
+test('launch waits behind an existing identity and rechecks a successful resume before replacing its row', ownedCase(async t => {
   const f = await fixture(t);
   const entered = deferred(), gate = deferred();
   t.after(() => gate.resolve());
@@ -148,9 +232,9 @@ test('launch waits behind an existing identity and rechecks a successful resume 
   const rejected = assert.rejects(f.sessions.launch({ name: 'impl', harness: 'test' }), /changed while waiting/);
   gate.resolve(); await a; await rejected;
   assert.equal(spawns, 0); assert.equal(f.sessions.lifecyclePending(), false);
-});
+}));
 
-test('a stop queued behind relaunch reads the replacement process after admission', async t => {
+test('a stop queued behind relaunch reads the replacement process after admission', ownedCase(async t => {
   const f = await fixture(t);
   const entered = deferred(), gate = deferred();
   t.after(() => gate.resolve());
@@ -165,9 +249,9 @@ test('a stop queued behind relaunch reads the replacement process after admissio
   gate.resolve(); await resume; await stop;
   assert.equal(stopped, 'new-conversation');
   assert.equal(f.sessions.lifecyclePending(), false);
-});
+}));
 
-test('a Coordinator CLI stop queued behind relaunch rechecks a revoked grant before stopping the replacement', async t => {
+test('a Coordinator CLI stop queued behind relaunch rechecks a revoked grant before stopping the replacement', ownedCase(async t => {
   const f = await fixture(t);
   const entered = deferred(), gate = deferred();
   t.after(() => gate.resolve());
@@ -197,9 +281,9 @@ test('a Coordinator CLI stop queued behind relaunch rechecks a revoked grant bef
   assert.equal(f.table.get('impl')?.harnessSessionId, 'replacement');
   assert.equal(f.table.get('impl')?.status, 'running');
   assert.equal(f.sessions.lifecyclePending(), false);
-});
+}));
 
-test('stop publication and lifecycle slot release share one resumed scope', async t => {
+test('stop publication and lifecycle slot release share one resumed scope', ownedCase(async t => {
   let clock = 0;
   const records: Array<Record<string, unknown>> = [];
   const f = await fixture(t, entry => { if (entry.event === 'session-stopped') clock += 150; });
@@ -211,4 +295,4 @@ test('stop publication and lifecycle slot release share one resumed scope', asyn
     finally { if (pending && !f.sessions.lifecyclePending()) clock += 150; }
   }));
   assert.deepEqual(records.filter(entry => entry.event === 'slow-request').map(entry => [entry.tool, entry.phase, entry.ms]), [['session.stop', 'resumed', 300]]);
-});
+}));
