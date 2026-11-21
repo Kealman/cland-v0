@@ -8,6 +8,7 @@ import { recentCoverGreens } from '../suite-load-rerun.ts';
 import { memberVerificationReason, batchT1Summary, type BatchT1 } from '../batch-member-verification.ts';
 import { batchDevT3Cover, fullPeriodicDevT3Cover, DEV_T3_BACKSTOP_MS } from '../dev-t3-coverage.ts';
 import { completeTierPlanReason, parseTierReceipts, tierReceipt, type TierReceipt } from '../verification-tier-receipts.ts';
+import { parseTimingReceipts, type TimingReceipt } from '../suite-timing-receipts.ts';
 
 import { suiteRecoveryState, isolatedUnavailableReport, isolatedSuiteProcessOwned, isolatedSuiteEvidencePath, outsideSuitePath, sealSuiteJob } from './suite-isolation.ts';
 import { lightBatchSelection, LIGHT_BATCH_POLICY } from '../batch-selection.ts';
@@ -69,6 +70,9 @@ export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteAdmission = { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] };
 export type TestSlotWaiter = { id: string; sessionId: string; cover: string };
 export type SuiteJob = {
+  timingReceipts?: TimingReceipt[];
+  timingSummary?: Array<{ run: string; head: string; tree: string; platform: string; command: string; step: string; samples: number }>;
+  timingShards?: { state: 'sharded'; runs: string[] };
   flaky?: { owners: Record<string, string>; runs: string[]; commands?: import('../verification-commands.ts').VerificationCommands; rejected?: string };
   tierReceipts?: TierReceipt[];
   batchT3Proof?: { version: 1; run: string; head: string; tree: string };
@@ -287,6 +291,7 @@ export class Suites {
   #options: SuiteSchedulerOptions;
   readonly #humans = new Map<object, HumanSlot>();
   readonly #savedJobs = new Map<string, string>();
+  readonly #timingRuns = new Map<string, string>();
   readonly #summaries = new Set<string>();
   readonly #batchBaselineWork = new Map<string, Promise<{ selection: NonNullable<SuiteSelection['loadGateBaseline']>; runs: NonNullable<SuiteJob['batchBaselineRuns']>; fileRuns: Record<string, string> }>>();
   readonly #batchBaselineStates = new Map<string, string>();
@@ -417,7 +422,7 @@ export class Suites {
         isolatedSuiteEvidencePath(root, job.id, job.log, environment);
         isolatedSuiteEvidencePath(root, job.id, job.result, environment);
         await writeFile(job.log, 'log unavailable (outside isolated root)\n', { mode: 0o600 });
-        await writeFile(job.result, JSON.stringify({ ...job.outcome, ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: job.finished }), { mode: 0o600 });
+        await writeFile(job.result, JSON.stringify({ ...job.outcome, ...(job.timingReceipts ? { timingReceipts: job.timingReceipts } : {}), ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: job.finished }), { mode: 0o600 });
       })();
       this.#isolatedAdmissions.set(job.id, preparation);
       admissions.push(preparation);
@@ -452,6 +457,8 @@ export class Suites {
     this.#save(job);
   }
   #save = (job?: SuiteJob) => {
+    if (job?.shards) job.timingShards = { state: 'sharded', runs: job.shards.map(shard => shard.id) };
+    if (job?.timingReceipts) job.timingSummary = job.timingReceipts.map(({ samples, ...owner }) => ({ ...owner, samples: samples.length }));
     this.#stageReceipts = undefined;
     if (job && !job.parentRun && !this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
     const parent = job?.parentRun ? this.#jobs.find(parent => parent.id === job.parentRun) : job;
@@ -460,6 +467,7 @@ export class Suites {
     const active = JSON.stringify(this.#jobs.filter(current => current.state !== 'finished'));
     this.#store.transaction(() => {
       for (const current of changed) {
+        if (current.shards) current.timingShards = { state: 'sharded', runs: current.shards.map(shard => shard.id) };
         this.#baselineCheckpoint(current);
         if (current.state !== 'finished') continue;
         // Compute from the already-loaded producer, never by hydrating history.
@@ -485,6 +493,10 @@ export class Suites {
   #remember(job: SuiteJob, announce: boolean): void {
     this.#baselineCheckpoint(job);
     this.#stageJobs.set(job.id, job);
+    if (job.timingSummary?.length && job.state === 'finished' && job.reported && job.cleaned && job.outcome?.code === 0 && !job.outcome.notRun && !job.cached && !job.error && !packageClosurePending(job)) {
+      this.#timingRuns.set(`${job.head}\0${job.tree}`, job.id);
+      for (const row of job.timingSummary) if (row.run === job.id && row.head === job.head && row.tree === job.tree && row.platform === job.platform?.os) this.#timingRuns.set(`${job.head}\0${job.tree}\0${row.platform}`, job.id);
+    }
     this.#stageReceipts = undefined;
     this.#rawCoverage.remember(job);
     if (this.#store.meta(`suite-retired:${job.id}`) !== '1') this.#retention.remember(job);
@@ -516,8 +528,8 @@ export class Suites {
     this.#cards.set(job.id, card);
     if (announce && moved) this.#options.onJob?.(job);
   }
-  #full(job: SuiteJob): SuiteJob {
-    const full = this.#summaries.has(job.id) ? (JSON.parse(this.#store.suiteJob(job.id)!) as { job: SuiteJob }).job : job;
+  #full(job: SuiteJob, includeTimings = true): SuiteJob {
+    const full = this.#summaries.has(job.id) ? (JSON.parse((includeTimings ? this.#store.suiteJob(job.id) : this.#store.suiteJobWithoutTimings(job.id))!) as { job: SuiteJob }).job : job;
     return this.#env.CLAND_TEST_ORPHAN_ROOT === this.#root && outsideSuitePath(this.#root, full, '', this.#env) ? sealSuiteJob(full, this.#root) : full;
   }
   /** Latest submission by item or branch, reconstructed once at startup and maintained on saves. */
@@ -525,6 +537,25 @@ export class Suites {
     const byItem = this.#latestItems.get(idNumber(item)), byBranch = branch ? this.#latestBranches.get(branch) : undefined;
     const job = !byItem ? byBranch : !byBranch ? byItem : this.#order.get(byItem.id)! > this.#order.get(byBranch.id)! ? byItem : byBranch;
     return job ? verifyResult(job) : null;
+  }
+  /** One indexed persisted producer; no log reads or history hydration. */
+  timingReceiptForRun(run: string): TimingReceipt[] | null {
+    const parent = this.#stageJobs.get(this.#retentionParents.get(run) ?? run);
+    if (!parent) return null;
+    const detail = this.#full(parent);
+    const producer = detail.id === run ? detail : detail.shards?.find(shard => shard.id === run);
+    return parseTimingReceipts(producer?.timingReceipts) ?? null;
+  }
+  timingReceiptId(head: string, tree: string, platform: string): string | null {
+    return this.#timingRuns.get(`${head}\0${tree}\0${platform}`) ?? null;
+  }
+  timingReceipt(head: string, tree: string, platform?: string): { id: string; receipts: TimingReceipt[] } | null {
+    const id = this.#timingRuns.get(`${head}\0${tree}${platform ? `\0${platform}` : ''}`);
+    if (!id) return null;
+    const job = this.#stageJobs.get(id);
+    if (!job) return null;
+    const receipts = parseTimingReceipts(this.#full(job).timingReceipts);
+    return receipts ? { id, receipts: receipts.filter(row => row.run === id && row.head === head && row.tree === tree && (!platform || row.platform === platform)) } : null;
   }
   /** Completed integrated full receipts, never a cache label borrowed from another platform. */
   #expireStageEvidence(): void {
@@ -1778,7 +1809,7 @@ export class Suites {
       throw error;
     });
     if (text === null) return false;
-    const result = JSON.parse(text) as { packageClosure?: SuiteJob['packageClosure']; tierReceipts?: unknown; code: number; cause?: string; notRun?: 'infrastructure' | 'provider-capacity'; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
+    const result = JSON.parse(text) as { timingReceipts?: unknown; packageClosure?: SuiteJob['packageClosure']; tierReceipts?: unknown; code: number; cause?: string; notRun?: 'infrastructure' | 'provider-capacity'; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
     if (!Number.isInteger(result.code) || typeof result.finished !== 'string' || !Number.isFinite(Date.parse(result.finished)) || result.cause !== undefined && typeof result.cause !== 'string') throw new Error('invalid remote result receipt');
     // The receipt survives deletion of the machine and can predate the last job
     // checkpoint. Reconcile it before polling or relaunching a persisted holder.
@@ -1793,6 +1824,8 @@ export class Suites {
     if (result.packageClosure) job.packageClosure = result.packageClosure;
     const tierReceipts = parseTierReceipts(result.tierReceipts);
     if (tierReceipts) job.tierReceipts = tierReceipts;
+    const timing = parseTimingReceipts(result.timingReceipts);
+    if (timing) job.timingReceipts = timing;
     if (result.platform) job.platform = result.platform;
     if (result.health) job.health = result.health;
     if (result.shardHealth) { job.shardHealth = result.shardHealth; delete job.health; }
@@ -1880,12 +1913,14 @@ export class Suites {
       if (receipt && (receipt.state === 'done' || receipt.state === 'lost')) {
         const tierReceipts = parseTierReceipts(receipt.tierReceipts);
         if (tierReceipts) job.tierReceipts = tierReceipts;
+        const timing = parseTimingReceipts(receipt.timingReceipts);
+        if (timing) job.timingReceipts = timing;
       }
       let logError: unknown;
       if (!restored && remote && job.lease && job.remoteLogStart !== undefined) {
         try { await this.#collectLog(job); }
         catch (error) { logError = error; }
-        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ ...(job.outcome?.notRun ? job.outcome : suiteCommandOutcome(receipt.code ?? 1, receipt.cause ?? '')), ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.tierReceipts ? { tierReceipts: receipt.tierReceipts } : {}), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
+        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ ...(job.outcome?.notRun ? job.outcome : suiteCommandOutcome(receipt.code ?? 1, receipt.cause ?? '')), ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: receipt.finished ?? this.#clock.now().toISOString(), ...(job.timingReceipts ? { timingReceipts: job.timingReceipts } : {}), ...(receipt.tierReceipts ? { tierReceipts: receipt.tierReceipts } : {}), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
       }
       if (receipt?.platform) job.platform = receipt.platform;
       if (receipt?.finished) job.finished = receipt.finished;
@@ -2280,8 +2315,10 @@ export class Suites {
     return this.#jobs.find(predicate);
   }
   status(includeFinished = true): SuiteStatus[] {
-    return this.#jobs.filter(job => includeFinished || job.state !== 'finished').map(job => this.#full(job)).map(job => ({
+    return this.#jobs.filter(job => includeFinished || job.state !== 'finished').map(job => this.#full(job, false)).map(job => ({
       ...(job.devT3Probe ? { devT3Probe: job.devT3Probe } : {}),
+      ...(job.timingSummary ? { timingSummary: job.timingSummary } : {}),
+      ...(job.timingShards ? { timingShards: job.timingShards } : {}),
       ...(job.batch ? { batch: job.batch } : {}),
       ...(job.cover ? { cover: job.cover } : {}),
       ...(job.occasion ? { occasion: job.occasion } : {}),

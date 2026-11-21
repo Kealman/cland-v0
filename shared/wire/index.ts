@@ -1105,6 +1105,8 @@ export type CoverStatus = { id: string; head: string; branch: string; completedA
 
 // hub/src/protocol.ts
 export type SuiteStatus = {
+  timingShards?: { state: 'sharded'; runs: string[] };
+  timingSummary?: Array<{ run: string; head: string; tree: string; platform: string; command: string; step: string; samples: number }>;
   webPhase?: { status: 'not-run'; reason: string };
   devT3Probe?: { key: string; files: string[] };
   batch?: BatchSuite;

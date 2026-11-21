@@ -1,6 +1,6 @@
 // One projection for legacy backfill and new checkpoints. These scheduler facts
 // are never written back as full receipts. Plans remain in suite-job:<id>.
-const omitted = ['config', 'tierPlan', 'loadProofs', 'timingIdentities', 'selection', 'lease', 'shards', 'batchBaselineFileRuns'];
+const omitted = ['config', 'tierPlan', 'loadProofs', 'timingIdentities', 'timingReceipts', 'selection', 'lease', 'shards', 'batchBaselineFileRuns'];
 const paths = (prefix: string) => omitted.map(key => `'${prefix}.${key}'`).join(', ');
 const selection = (value: string, path: string) => `case when json_type(${value}, '${path}') = 'object' then json_object(
   'mode', json_extract(${value}, '${path}.mode'),

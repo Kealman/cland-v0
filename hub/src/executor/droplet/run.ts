@@ -1,4 +1,5 @@
 import type { LogFn } from '../../log.ts';
+import { parseTimingReceipts, readTimingReceipts } from '../../suite-timing-receipts.ts';
 import { incompletePackageStatus } from './metrics.ts';
 import { readSuiteCauseBounded, SUITE_CAUSE_BYTES, SUITE_INFRASTRUCTURE_PREFIX } from '../../suite-infrastructure.ts';
 import { verificationSteps, verificationStepCommand } from '../../verification-plan.ts';
@@ -35,7 +36,8 @@ export class DeliveryTransportError extends Error {
 const exec = promisify(execFile);
 /** Hosting-source program; delivered older trees need not contain the reader. */
 export function runStatusProgram(): string {
-  return `const fs=require('fs'),p=process.argv[1];const readCause=(${readSuiteCauseBounded.toString()});const incomplete=(${incompletePackageStatus.toString()});const platform=fs.existsSync(p+'/platform')?JSON.parse(fs.readFileSync(p+'/platform','utf8')):undefined;let status={state:'pending',platform};if(fs.existsSync(p+'/done')){const finished=fs.readFileSync(p+'/done','utf8').trim();status=finished?{state:'done',code:Number(fs.readFileSync(p+'/exit','utf8')),cause:readCause(fs,p+'/cause',${SUITE_CAUSE_BYTES},${JSON.stringify(SUITE_INFRASTRUCTURE_PREFIX)}),finished,platform}:{state:'running',platform};}else if(fs.existsSync(p+'/package-incomplete')){status={...incomplete(fs,p+'/package-incomplete'),platform};}else if(fs.existsSync(p+'/pgid')){let alive=true;try{process.kill(-Number(fs.readFileSync(p+'/pgid','utf8')),0)}catch{alive=false}status=alive?{state:'running',platform}:fs.existsSync(p+'/package-pending')&&!fs.existsSync(p+'/package-closed')?{...incomplete(fs,p+'/package-incomplete'),platform}:{state:'done',code:1,cause:'remote runner disappeared without a done marker',finished:new Date().toISOString(),platform};}if(fs.existsSync(p+'/tier-receipts.json')){const rows=(${readTierReceipts.toString()})(fs,p+'/tier-receipts.json',(${parseTierReceipts.toString()}));if(rows)status.tierReceipts=rows;}console.log(JSON.stringify(status));`;
+  const timing = `if(fs.existsSync(p+'/timing-receipts.json')){const rows=(${readTimingReceipts.toString()})(fs,p+'/timing-receipts.json',(${parseTimingReceipts.toString()}));if(rows)status.timingReceipts=rows;}`;
+  return `const fs=require('fs'),p=process.argv[1];const readCause=(${readSuiteCauseBounded.toString()});const incomplete=(${incompletePackageStatus.toString()});const platform=fs.existsSync(p+'/platform')?JSON.parse(fs.readFileSync(p+'/platform','utf8')):undefined;let status={state:'pending',platform};if(fs.existsSync(p+'/done')){const finished=fs.readFileSync(p+'/done','utf8').trim();status=finished?{state:'done',code:Number(fs.readFileSync(p+'/exit','utf8')),cause:readCause(fs,p+'/cause',${SUITE_CAUSE_BYTES},${JSON.stringify(SUITE_INFRASTRUCTURE_PREFIX)}),finished,platform}:{state:'running',platform};}else if(fs.existsSync(p+'/package-incomplete')){status={...incomplete(fs,p+'/package-incomplete'),platform};}else if(fs.existsSync(p+'/pgid')){let alive=true;try{process.kill(-Number(fs.readFileSync(p+'/pgid','utf8')),0)}catch{alive=false}status=alive?{state:'running',platform}:fs.existsSync(p+'/package-pending')&&!fs.existsSync(p+'/package-closed')?{...incomplete(fs,p+'/package-incomplete'),platform}:{state:'done',code:1,cause:'remote runner disappeared without a done marker',finished:new Date().toISOString(),platform};}if(fs.existsSync(p+'/tier-receipts.json')){const rows=(${readTierReceipts.toString()})(fs,p+'/tier-receipts.json',(${parseTierReceipts.toString()}));if(rows)status.tierReceipts=rows;}${timing}console.log(JSON.stringify(status));`;
 }
 const remoteDir = (lease: DropletLease): string => {
   if (!/^[a-zA-Z0-9-]+$/.test(lease.run)) throw new Error('invalid remote run id');
@@ -157,8 +159,9 @@ export class DropletRun {
     const commands = (!lines.check ? ["echo 'check: not set'"] : []).concat(verificationSteps(lines).map(step => {
       const { name, command: line } = step;
       const commandId = randomUUID();
+      const timingEnv = `export CLAND_TIMING_OUTPUT=${dir}/timing-receipts.json\nexport CLAND_TIMING_OWNER=${quote(JSON.stringify({ run: run.id, head: run.head, tree: run.tree ?? '', command: line, step: name }))}\n`;
       const recordTier = `node -e ${quote(tierReceiptWriterProgram(run, step, run.tierReceipts))} ${dir}/tier-receipts.json "$suite_command_exit" || echo 'tier receipt unavailable'`;
-      const command = `echo ${quote(`$ ${line}`)}\nprintf '%s\\n' ${quote(`suite command start ${JSON.stringify({ id: commandId, name, line })}`)}\nsuite_command_exit=0\n/bin/sh -c ${quote(verificationStepCommand(step))} || suite_command_exit=$?\n${recordTier}\nprintf '\\nsuite command end ${commandId} %s\\n' "$suite_command_exit"\nif test "$suite_command_exit" -ne 0; then exit "$suite_command_exit"; fi`;
+      const command = `echo ${quote(`$ ${line}`)}\nprintf '%s\\n' ${quote(`suite command start ${JSON.stringify({ id: commandId, name, line })}`)}\nsuite_command_exit=0\n${timingEnv}/bin/sh -c ${quote(verificationStepCommand(step))} || suite_command_exit=$?\n${recordTier}\nprintf '\\nsuite command end ${commandId} %s\\n' "$suite_command_exit"\nif test "$suite_command_exit" -ne 0; then exit "$suite_command_exit"; fi`;
       if (name !== 'check') {
         const release = released ? '' : 'rmdir /tmp/cland-suite.lock; trap - EXIT\n';
         released = true;
@@ -265,7 +268,7 @@ git write-tree
     } catch (error) { if (error instanceof DigitalOceanError && error.status === 404) return { state: 'lost', code: 1, cause: 'remote machine lost' }; }
     try {
       const program = runStatusProgram();
-      const status = JSON.parse(await this.#machine.exec(lease, `node -e ${quote(program)} ${remoteDir(lease)}`, { timeoutMs: 10000 })) as RunStatus;
+      const status = JSON.parse(await this.#machine.exec(lease, `node -e ${quote(program)} ${remoteDir(lease)}`, { timeoutMs: 10000, maxOutputBytes: 17 * 1024 * 1024 })) as RunStatus;
       if (lease.execution?.unreachableSince) { delete lease.execution.unreachableSince; await writeLease(this.#root, lease, this.#logger); }
       return status;
     } catch (statusError) {

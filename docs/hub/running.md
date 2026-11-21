@@ -49,7 +49,39 @@ Shutdown joins that obligation. Missing or failed observations retain the root.
 A captured descendant that remains listed with an unreadable current birth
 also retains the fence, even outside the original process group. Only an
 authoritative absence or a positively observed different birth releases it.
-No timing-receipt allowance gate is part of this preflight.
+Projects whose pinned task head contains `hub/test/durations.json` also require
+a passing, reported, cleaned exact-head and candidate-tree Linux timing receipt
+before code enqueue, independently of manifest budget mode or a configured
+check. Missing receipts refuse explicitly. Projects without that manifest keep
+their existing path. Same-tree cache reuse from another head is insufficient.
+The timing producer's OS must agree with the run's structured platform receipt;
+missing or mismatched native platform metadata cannot supply Linux proof.
+
+The runner atomically preserves reporter samples outside its temporary root.
+Local worker results and droplet status carry optional `timingReceipts`: run,
+head, tree, command, step, platform and samples (file, generated name, seconds,
+outcome). Readers cap retained bytes at 16 MiB while reading; absent, damaged
+and oversized sidecars stay unknown. Persisted Suites detail retains the data
+across restart. `Suites.timingReceipt(head, tree, platform)` reads one indexed
+producer; status/list replies carry only optional `timingSummary` counts and
+producer identities. Older result and list shapes remain supported.
+Sharded parent summaries carry `timingShards` with state `sharded` and child
+run ids. `Suites.timingReceiptForRun(id)` reads the named child's own receipt;
+parent lookups never synthesize combined samples or replace child producer ids.
+
+Admission compares passing samples with the pinned base's source identities.
+New identities measured at least 4 seconds need an allowance covering the peak.
+Refusals provide an `allow` stanza with 1.5x headroom, seven-day dates and the
+standing owner when available (`OWNER_REQUIRED` otherwise). Unresolved dynamic
+base identities refuse as unknown. Logs and manifest timings supply no proof.
+Derivation runs outside serialization; final mutation rechecks the indexed
+producer and existing freshness fences.
+
+Deploy this capability and restart the hub before obtaining fresh Linux
+receipts: local worker and droplet status scripts come from the hosting hub,
+and the delivered candidate must contain the timing-capable runner. Older
+runners remain compatible but cannot supply timing proof. Prepared executors
+still need the candidate's runtime dependencies; no new provider access is added.
 
 CLI and spoke merge requests wait up to 30 minutes for this preflight; cancel
 requests retain their one-minute reply deadline. These are client reply waits,

@@ -1,5 +1,6 @@
 import { glob, readFile } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { measuredDurationAllowance } from './duration-allowance.ts';
+import { join } from 'node:path';
 import { isMap, isScalar, parseDocument } from 'yaml';
 import { projectRoot } from './project.ts';
 import { DEFAULT_LEVELS, isPlanningContainer } from './tracker/kinds.ts';
@@ -39,7 +40,6 @@ const durationDate = (value: unknown): number => typeof value === 'string' && /^
 /** Ready-to-commit entries; never modify a baseline or an existing allowance. */
 export function durationAllowanceStanzas(tests: TestTiming[], manifest: DurationManifest, tiers: Record<string, Tier>, options: { owner: string; now?: number }): DurationManifest['allow'] {
   const added = new Date(options.now ?? Date.now()).toISOString().slice(0, 10);
-  const expires = new Date(durationDate(added) + 7 * 86_400_000).toISOString().slice(0, 10);
   const worst = new Map<string, TestTiming>();
   for (const test of tests) {
     if (test.outcome !== 'pass' || !Number.isFinite(test.seconds) || test.seconds < 0) continue;
@@ -50,8 +50,7 @@ export function durationAllowanceStanzas(tests: TestTiming[], manifest: Duration
     const tier = tiers[test.file];
     const budget = tier && (manifest.budget[tier] ?? TIER_BUDGETS[tier])?.testSeconds;
     if (budget === undefined || test.seconds < budget * 0.8) return [];
-    return [[key, { seconds: Math.ceil(test.seconds * 1500) / 1000, owner: options.owner, added, expires,
-      reason: `${tier} measured peak ${seconds(test.seconds)} s; 1.5x headroom for ${basename(test.file)}: ${test.name}.` }]];
+    return [[key, measuredDurationAllowance(test, tier!, options.owner, durationDate(added))]];
   }));
 }
 

@@ -80,9 +80,9 @@ export class Machine {
     if (!lease.address) throw new Error('machine has no address');
     return ['-F', '/dev/null', '-i', join(leaseDir(this.root, lease), 'key'), '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'ConnectTimeout=5', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=8'];
   }
-  async exec(lease: DropletLease, command: string, options: { timeoutMs: number; user?: 'root' | 'runner'; signal?: AbortSignal | undefined }): Promise<string> {
+  async exec(lease: DropletLease, command: string, options: { timeoutMs: number; user?: 'root' | 'runner'; signal?: AbortSignal | undefined; maxOutputBytes?: number }): Promise<string> {
     const args = [...this.#options(lease), `${options.user ?? 'runner'}@${lease.address}`, command];
-    try { return (await this.#execute(sshBinaries(this.#env).ssh, args, { env: machineEnv(this.#env), timeout: Math.max(1, options.timeoutMs), signal: options.signal, maxBuffer: 8 * 1024 * 1024 })).stdout; }
+    try { return (await this.#execute(sshBinaries(this.#env).ssh, args, { env: machineEnv(this.#env), timeout: Math.max(1, options.timeoutMs), signal: options.signal, maxBuffer: options.maxOutputBytes ?? 8 * 1024 * 1024 })).stdout; }
     catch (error) { throw failure('command', error, this.#env); }
   }
   /** Shell outcomes cross the transport unchanged; SSH failures still fail the request. */

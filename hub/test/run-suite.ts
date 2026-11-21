@@ -1,5 +1,7 @@
 import { SUITE_INFRASTRUCTURE_EXIT, writeSuiteCause } from '../src/suite-infrastructure.ts';
 import { rawCoverageOwner, removeRawCoverage } from '../src/suite-raw-coverage.ts';
+import * as timingFs from 'node:fs';
+import { publishTimingReceipt, readTimingReceipts, parseReporterTimings, type TimingReceipt } from '../src/suite-timing-receipts.ts';
 import { eligibleLoadRerun } from '../src/suite-load-rerun.ts';
 import { lockHostIdentity } from '../src/hub/lock-identity.ts';
 import { waitForHumanSlot } from '../src/suite-human-queue.ts';
@@ -193,6 +195,8 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       delete env.CLAND_SUITE_CAUSE_FILE;
       // Never propagate a parent's capture into nested fixture package runs.
       delete env.CLAND_COVERAGE_OUTPUT;
+      delete env.CLAND_TIMING_OUTPUT;
+      delete env.CLAND_TIMING_OWNER;
       delete env.NODE_TEST_CONTEXT;
       delete env.CLAND_TEST_QUARANTINE;
       delete env.CLAND_TEST_QUARANTINE_RECEIPT;
@@ -371,11 +375,16 @@ process.chdir(cwd);`);
       if (durationManifest && args.includes('--test') && !incomplete) {
         const budgetStarted = performance.now();
         try {
-          const records = (await readFile(timingsPath, 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line) as TestTiming | { overheadMs: number });
+          const records = readTimingReceipts(timingFs, timingsPath, parseReporterTimings, 'jsonl');
+          if (!records) throw new Error('duration reporter receipt missing, invalid or over 16 MiB');
           const tests: TestTiming[] = [];
           for (const record of records) {
             if ('overheadMs' in record) budgetOverheadMs += record.overheadMs;
             else { tests.push(record); observed.push(record); }
+          }
+          if (process.env.CLAND_TIMING_OUTPUT && process.env.CLAND_TIMING_OWNER) {
+            const owner = JSON.parse(process.env.CLAND_TIMING_OWNER) as Omit<TimingReceipt, 'samples' | 'platform'>;
+            publishTimingReceipt(timingFs, process.env.CLAND_TIMING_OUTPUT, { ...owner, platform: process.platform, samples: tests });
           }
           const checked = checkDurations(tests, durationManifest, tiers ? Object.fromEntries(tiers) : {});
           regressions.push(...checked.regressions);

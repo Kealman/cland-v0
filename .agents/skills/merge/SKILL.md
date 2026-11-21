@@ -17,6 +17,13 @@ missing test command does not block check-only preflight.
 See [enqueue preflight](../../../docs/hub/running.md#enqueue-preflight) for the
 authorized enforcement and cleanup boundary.
 
+<!-- cland-workflow-change: T-2035 document exact-head Linux timing admission -->
+For duration-manifest projects, code enqueue requires a fresh structured
+exact-head Linux timing receipt. New passing identities measured at least
+4 seconds need allowances; the refusal supplies 1.5x stanzas. A missing receipt
+refuses even when the configured check is absent. Deploy and restart the
+timing-capable hub, then obtain new Linux proof; older runners cannot provide it.
+See [enqueue preflight](../../../docs/hub/running.md#enqueue-preflight).
 Enqueue also posts advisory `merge-demo-warning` notices in the candidate's topic (Agents fallback), to the Coordinator and item lead, naming overlapping epic/files regardless of `follows`. An open epic is under demo with an active unexpired lease, or all task children closed and last ticket landed on dev without a hub QA demo verdict; stage QA is separate. Closed epics and recorded demos without active leases are excluded. Unreadable lease/history evidence posts `merge-demo-warning-unavailable`; enqueue succeeds while authorization, lane and freshness refusals remain enforced. Inspect warnings when sequencing demo and landing. See hub/README.md for the contract.
 
 Use the hub's `merge` tool with `item: T-<n>`, or `cland merge T-<n>` from the supervising Lead's or Coordinator's shell. Task work reaches the task base (`dev` by default) only through this gate.

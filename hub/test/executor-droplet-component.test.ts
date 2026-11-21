@@ -373,7 +373,7 @@ test('uploaded status bounds cause ingestion and keeps the recorded exit through
     let closed = 0;
     const rows: Array<{ code: number; cause: string; state: string }> = [];
     const fakeFs = {
-      existsSync: (path: string) => !path.endsWith('/platform') && !path.endsWith('/tier-receipts.json'),
+      existsSync: (path: string) => ['/receipt/done', '/receipt/exit', '/receipt/cause'].includes(path),
       readFileSync: (path: string) => {
         if (path.endsWith('/done')) return '2026-11-17T00:00:00Z';
         if (path.endsWith('/exit')) return mode === 'green read failure' ? '0' : '75';

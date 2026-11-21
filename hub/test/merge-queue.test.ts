@@ -2,7 +2,10 @@ import { fixtureCommand as cland } from './fixture-command.ts';
 import { beforeEach } from 'node:test';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
 import { stageCase } from './stage-case-fixture.ts';
+import { ownedDatabases, ownedTracker } from './owned-tracker.ts';
 const preflightCase = 'preflight findings and cancellation refuse before queue mutation while fresh requests enqueue';
+const timingCase = 'enqueue requires durable exact-head Linux timing proof and allowances before mutation';
+const timingConstructorCases = (['tracker', 'store'] as const).map(kind => ({ kind, name: `timing seed retains ${kind} database after constructor and close rejection` }));
 const preflightCleanupCase = 'preflight guard stays installed when owned cleanup rejects';
 const skippedPreflightCase = 'enqueue records skipped preflight when no verification check is configured';
 const protectedReplyCases = ['native', 'retained', 'secondary cleanup', 'oversize', 'oversize secondary'].map(mode => ({ mode, name: `enqueue protects ${mode} rejection at the public reply boundary` }));
@@ -15,7 +18,7 @@ beforeEach(async t => {
   if (!('assert' in t)) throw new Error('native guard requires a test context');
   // These exact cases retain the same complete guard through their stronger
   // whole-case positive-close fence; nesting guards would restore out of order.
-  if (t.name === skippedPreflightCase || t.name === preflightCleanupCase || protectedReplyCases.some(testCase => testCase.name === t.name) || t.name === batchGitCase || cleanupProjectionCases.some(testCase => testCase.name === t.name)) { ownedGuardAdmissions.add(t.name); return; }
+  if (t.name === timingCase || timingConstructorCases.some(testCase => testCase.name === t.name) || t.name === skippedPreflightCase || t.name === preflightCleanupCase || protectedReplyCases.some(testCase => testCase.name === t.name) || t.name === batchGitCase || cleanupProjectionCases.some(testCase => testCase.name === t.name)) { ownedGuardAdmissions.add(t.name); return; }
   if (t.name === preflightCase) await preflightNativeGuard(t);
   else await fixtureNativeGuard(t);
 });
@@ -41,7 +44,7 @@ import { verificationFixture } from './verification-fixture.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { Store } from '../src/hub/store.ts';
 import { caseDeadlines } from './case-deadlines.ts';
-import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { beforeDirectories, guardDirectoryRemoval, ownDirectory } from './process-cleanup.ts';
 import { MergeError } from '../src/merge.ts';
 import { TaskMerges } from '../src/hub/merge.ts';
 import { DatabaseSync } from 'node:sqlite';
@@ -53,7 +56,6 @@ import { PruneProcesses } from '../src/prune-processes.ts';
 import cp from 'node:child_process';
 import { drainFixtureCleanup } from './process-cleanup.ts';
 import { pruneCase, fakePrune } from './prune-case.ts';
-import { ownedDatabases } from './owned-tracker.ts';
 import { SuiteCommandFailure } from '../src/suite-command.ts';
 import { EnqueueNativeIncomplete } from '../src/hub/enqueue-preflight.ts';
 import { enqueuePreflight } from '../src/hub/enqueue-preflight-native.ts';
@@ -177,8 +179,108 @@ test(preflightCase, t => {
   }));
 });
 
-async function fixture(t: TestContext, options: ProjectHubOptions & { verification?: string } = {}, files = ['hub/src/parser.ts'], seed?: (tracker: Tracker) => Promise<void>, adoptRoot?: (root: string) => void, captureDispose?: (dispose: () => Promise<void>) => void) {
-  const { verification = 'test="true"', ...hubOptions } = options;
+const timingModes = ['missing', 'wrong OS', 'unknown OS', 'slow', 'allowed', 'existing'] as const;
+type TimingMode = typeof timingModes[number];
+type SeedDatabase = { owner: Pick<ReturnType<typeof stageCase>, 'requireClose'>; open(kind: 'tracker' | 'store', path: string): DatabaseSync };
+async function timingFixture(scope: ReturnType<typeof stageCase>, mode: TimingMode, native: Partial<Pick<SeedDatabase, 'open'>> = {}, adopt?: (root: string) => void) {
+  const head = 'b'.repeat(40), file = 'hub/test/new.test.ts';
+  const receipt = { run: 'timing-proof', head, tree: head, platform: 'linux', command: 'true', step: 'test', samples: [{ file, name: 'slow case', seconds: 4, outcome: 'pass' as const }] };
+  const databases: SeedDatabase = { owner: scope, open: native.open ?? ((_kind, path) => new DatabaseSync(path)) };
+  return fixture(scope.fixtures, { seedDatabase: databases }, undefined, async tracker => {
+    if (mode === 'missing') return;
+    let store: Store | undefined, closed = false;
+    const close = () => { if (store && !closed) { store.close(); closed = true; } };
+    const open = ownedDatabases(scope, () => store ? Promise.resolve().then(close) : undefined);
+    store = new Store(join(tracker.root, '.cland/hub.db'), path => open(path, path => databases.open('store', path)));
+    try {
+      store.setMeta('suite-job:timing-proof', JSON.stringify({ position: 0, job: {
+        id: receipt.run, head, tree: head, executor: 'droplet', branch: 't/parser', cwd: tracker.root, topic: 'agents', to: [], actor: { name: 'fixture', sessionId: 'fixture', shell: true }, mode: 'auto',
+        log: join(tracker.root, '.cland/run/suites/timing-proof/suite.log'), result: join(tracker.root, '.cland/run/suites/timing-proof/result.json'), gate: join(tracker.root, '.cland/run/suites/timing-proof/ready'),
+        pid: null, started: null, outcome: { code: 0, cause: '' }, state: 'finished', reported: true, cleaned: true, error: null, artifact: null,
+        ...(mode === 'unknown OS' ? {} : { platform: { os: mode === 'wrong OS' ? 'darwin' : 'linux', arch: 'fixture', release: 'fixture', node: 'fixture', nvim: 'none' } }),
+        timingReceipts: [receipt], timingSummary: [{ ...receipt, samples: 1 }],
+      } }));
+    } finally { close(); }
+  }, root => { scope.adoptRoot(root); adopt?.(root); });
+}
+
+test(timingCase, t => {
+  assert.ok(ownedGuardAdmissions.delete(t.name));
+  const scope = stageCase(t);
+  return scope.run(async step => {
+    const head = 'b'.repeat(40), base = 'a'.repeat(40), file = 'hub/test/new.test.ts', key = `${file}::slow case`;
+    for (const mode of timingModes) {
+      const f = await step(() => scope.wait(`${mode} fixture`, () => timingFixture(scope, mode)));
+      f.manifests.set(`${head}:hub/test/durations.json`, JSON.stringify({ version: 1, source: { artifacts: [], commit: base }, budget: { testSeconds: 5, fileSeconds: 60 }, tests: {}, files: {}, allow: mode === 'allowed' ? { [key]: { seconds: 6, reason: 'measured' } } : {} }));
+      if (mode === 'existing') f.manifests.set(`${base}:${file}`, "test('slow case', () => {});");
+      const result = await step(() => scope.wait(`${mode} admission receipt`, () => f.ui.request({ type: 'merge', item: f.item.id })));
+      const queue = await value<{ entries: unknown[] }>(f.ui, { type: 'merge.queue' });
+      if (mode === 'missing' || mode === 'wrong OS' || mode === 'unknown OS' || mode === 'slow') {
+        assert.equal(result.ok, false);
+        assert.match(result.error ?? '', mode !== 'slow' ? /missing exact-head Linux timing receipt/ : /4 s or more require allowances/);
+        if (mode === 'slow') { assert.match(result.error ?? '', /"seconds": 6/); assert.ok(result.error?.includes(key)); }
+        assert.deepEqual(queue.entries, []);
+      } else { assert.equal(result.ok, true, result.error); assert.equal(queue.entries.length, 1); }
+    }
+  });
+});
+
+for (const { kind, name } of timingConstructorCases) test(name, async t => {
+  assert.ok(ownedGuardAdmissions.delete(t.name));
+  const scope = stageCase(t);
+  const captured = new Set<DatabaseSync>();
+  const nativeClose = new Map<DatabaseSync, () => void>();
+  const primary = new Error(`injected ${kind} constructor rejection`), secondary = new Error('injected database close rejection');
+  const observerFailure = new Error('capture observer retains unclosed database');
+  const onlyObserverFailure = (error: unknown): boolean => error === observerFailure
+    || error instanceof AggregateError && error.errors.length > 0 && error.errors.every(onlyObserverFailure);
+  let root = '', blocked = true, faulted = false, boundary: unknown;
+  // Rescue only after the original control has settled, including its red round.
+  // This cannot supply the body's positive-close assertions.
+  t.after(async () => {
+    blocked = false;
+    try { await scope.close(); } catch (error) { if (!faulted || !onlyObserverFailure(error)) throw error; }
+    for (const db of captured) if (db.isOpen) nativeClose.get(db)!();
+    assert.ok([...captured].every(db => !db.isOpen));
+    await scope.close();
+    await scope.restore();
+  });
+  await scope.run(async step => {
+    boundary = scope.nativeBoundary();
+    await step(() => scope.wait('constructor rejection receipt', () => assert.rejects(() => timingFixture(scope, 'slow', { open: (opened, path) => {
+      const db = new DatabaseSync(path);
+      if (opened !== kind) return db;
+      captured.add(db); nativeClose.set(db, db.close.bind(db));
+      const exec = db.exec.bind(db); let calls = 0;
+      scope.patch(db, 'exec', (sql: string) => { if (++calls === 2) { faulted = true; throw primary; } return exec(sql); });
+      scope.patch(db, 'close', () => { if (blocked) throw secondary; nativeClose.get(db)!(); });
+      return db;
+    } }, acquired => {
+      root = acquired;
+      guardDirectoryRemoval(root, () => { if ([...captured].some(db => db.isOpen)) throw observerFailure; });
+    }), error => error === primary)));
+    assert.equal(faulted, true);
+    assert.equal(captured.size, 1);
+  });
+  await assert.rejects(scope.close(), error => error === secondary);
+  await assert.rejects(scope.restore(), /close unconfirmed/);
+  assert.equal(scope.nativeBoundary(), boundary, 'the positively controlled launch guard remains installed');
+  assert.ok([...captured].every(db => db.isOpen));
+  const remove = ownDirectory(undefined, root);
+  await assert.rejects(remove(), error => error instanceof AggregateError
+    && error.errors.some(error => error instanceof Error && error.message === 'stage resource close unconfirmed; root retained')
+    && error.errors.includes(observerFailure));
+  assert.equal((await stat(root)).isDirectory(), true);
+  blocked = false;
+  await scope.close();
+  assert.ok([...captured].every(db => !db.isOpen));
+  await scope.restore();
+  await remove();
+  await assert.rejects(stat(root), { code: 'ENOENT' });
+});
+
+async function fixture(t: TestContext, options: ProjectHubOptions & { verification?: string; seedDatabase?: SeedDatabase } = {}, files = ['hub/src/parser.ts'], seed?: (tracker: Tracker) => Promise<void>, adoptRoot?: (root: string) => void, captureDispose?: (dispose: () => Promise<void>) => void) {
+  const { verification = 'test="true"', seedDatabase, ...hubOptions } = options;
   const root = await tempProject(t);
   adoptRoot?.(root);
   await mkdir(join(root, '.cland'), { recursive: true });
@@ -200,13 +302,20 @@ async function fixture(t: TestContext, options: ProjectHubOptions & { verificati
     if (args[0] === 'merge-base') return 'a'.repeat(40);
     if (args[0] === 'diff') return args.includes('--name-only') ? files.join('\0') + '\0' : 'parser patch';
     if (args[0] === 'show') return manifests.get(args.at(-1)!) ?? null;
+    if (args[0] === 'ls-tree') {
+      const ref = args[args.indexOf('--') - 1]!;
+      return args.slice(args.indexOf('--') + 1).filter(file => manifests.has(`${ref}:${file}`)).join('\0');
+    }
     if (args[0] === 'patch-id') return 'stable-patch';
     if (args[0] === 'log') return args.includes('--raw') && history.read ? history.read() : [...surfaces].map(([item, paths]) => `${'c'.repeat(40)}\0${item}\0\0${paths.map(path => `\n:100644 100644 ${'a'.repeat(40)} ${'b'.repeat(40)} M\0${path}\0`).join('')}`).join('\0');
     return null;
   };
   if (seed) {
     // Seed durable landed history through the tracker before the serving hub opens it.
-    const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), clock, git, stageTree: async () => 'fixture-stage-tree', readBase: async () => 'dev', env: fixtureEnvironment(root, process.env) });
+    const trackerOptions = { root, db: join(root, '.cland/hub.db'), clock, git, stageTree: async () => 'fixture-stage-tree', readBase: async () => 'dev', env: fixtureEnvironment(root, process.env) };
+    const tracker = seedDatabase
+      ? ownedTracker(seedDatabase.owner, { ...trackerOptions, openDatabase: path => seedDatabase.open('tracker', path) })
+      : new Tracker(trackerOptions);
     try { await seed(tracker); } finally { await tracker.stop(); }
   }
   const { discovery, dispatcher, stop, fakes, dispose } = await projectHub(t, root, {}, { clock, stageTree: async () => 'fixture-stage-tree', scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...hubOptions });

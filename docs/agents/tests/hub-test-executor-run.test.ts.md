@@ -1,5 +1,13 @@
 # hub/test/executor-run.test.ts
 
+The committed-tracker delivery case preserves the exact lock-release/trap/first
+test-echo adjacency and the release-before-execution proof. Timing output and
+owner exports sit after that echo and before the same native test command.
+Assert the per-run sidecar path and parse the command's owner metadata, binding
+run id, head, candidate tree, command and step to the durable admitted run.
+The release-string inventory in state-paths-inventory remains byte-identical;
+command start/end log consumers see the same frames.
+
 The cancel case retains its native `exit` receipt assertion (`143`) after the
 sole report and confirmed provider resource release. An incomplete package
 handoff preserves that status file while withholding `done`; publishing `exit`

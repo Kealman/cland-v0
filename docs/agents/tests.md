@@ -2387,6 +2387,13 @@ controls and a valid marker can still select fake binaries, like the fake-host g
 
 ## Implementer test selection
 
+Duration-manifest code enqueue consumes structured exact-head Linux timing
+proof independently of budget report mode. Obtain it after deploying and
+restarting the timing-capable hub; missing proof refuses, and new passing
+identities measured at least 4 seconds need the supplied measured allowance.
+See [enqueue preflight](../hub/running.md#enqueue-preflight) for compatibility,
+bounded sidecars, compact status summaries and per-run detail lookup.
+
 Typed file-start receipts in verification commands have a startup watchdog:
 30 seconds of shared load-scaled setup headroom, capped at half the admitted
 no-output timeout. Each load-gate and Web repetition child also owns this guard

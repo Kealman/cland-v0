@@ -29,6 +29,10 @@ The [enqueue preflight](../docs/hub/running.md#enqueue-preflight) runs the merge
 candidate check outside serialization, protects bounded output before publishing
 its tail and retains checkouts whose native command closure is unconfirmed.
 An absent resolved check is reported explicitly as skipped in the enqueue result.
+Duration-manifest projects also require structured exact-head Linux timing
+proof before code enqueue. New passing identities measured at 4 seconds or
+more need allowances; refusals provide measured 1.5x stanzas. See the same
+reference for timing-capable runner deployment and receipt lookup.
 Calibrated nightly soak deadlines, durable file rotation, unexecuted heartbeat
 receipts and timeout execution inventories are described
 in [Running](../docs/hub/running.md#soak-deadline-accounting).

@@ -1,5 +1,22 @@
 # hub/test/merge-queue.test.ts
 
+The structured timing admission case seeds only the disposable fixture's
+persisted Suites producer. Public merge replies and FIFO entries prove missing
+proof and unallowed new 4-second identities refuse before mutation, while an
+allowance or an identity in pinned base source admits. Native launches remain
+positively guarded through the owned fixture cleanup.
+
+The timing fixture enrolls shared ownedTracker/ownedDatabases capture before
+either wrapper constructor. Its stageCase owner requires native database closure
+before directory disposal or seam restoration. Rejection controls fault the
+actual tracker/store seed opens after capture, retain the exact primary error,
+then reject native close. Exercise the real guarded directory cleanup and
+refused restoration while the captured handle remains open; release that same
+close, observe isOpen=false, restore the guard and observe removal. A teardown
+rescue closes observer-captured handles only after the original control has
+settled, keeping the intentionally red baseline safe; it supplies none of the
+body's ownership assertions. Keep all six original enqueue outcome controls.
+
 The no-check control exercises the real configuration resolver and native
 preflight adapter through the public enqueue frame, with fake Git/checkouts and
 execution boundaries. Its disposable project has neither check nor test. Assert

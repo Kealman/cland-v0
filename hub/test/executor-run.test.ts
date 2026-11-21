@@ -49,6 +49,22 @@ for (const dirty of ['tracker', 'source'] as const) test(`remote delivery ${dirt
       assert.ok(script.includes('tier T0: exit %s'));
       assert.ok(script.includes(`rmdir ${join(directory, 'home/runner/tmp/cland-suite.lock')}; trap - EXIT\necho '$ npm test'`));
       assert.ok(script.includes("/bin/sh -c 'npm test' || suite_command_exit=$?"));
+      const echo = script.indexOf("echo '$ npm test'");
+      const execute = script.indexOf("/bin/sh -c 'npm test' || suite_command_exit=$?");
+      assert.ok(echo >= 0 && execute > echo, 'the same test command is announced before execution');
+      const beforeExecution = script.slice(echo, execute);
+      assert.ok(beforeExecution.includes(`export CLAND_TIMING_OUTPUT="$HOME/runs/${job.id}"/timing-receipts.json`));
+      const prefix = "export CLAND_TIMING_OWNER='";
+      const ownerLine = beforeExecution.split('\n').find(line => line.startsWith(prefix));
+      assert.ok(ownerLine, 'timing ownership is exported before this test command executes');
+      assert.ok(ownerLine.endsWith("'"), 'the exported owner has its closing shell quote');
+      const status = await f.ui.request({ type: 'hub.status', history: true });
+      assert.equal(status.ok, true, status.error);
+      const recorded = (status.value as HubStatus).suites!.find(run => run.id === job.id);
+      assert.ok(recorded?.tree, 'the durable admitted run carries its candidate tree');
+      assert.deepEqual(JSON.parse(ownerLine.slice(prefix.length, -1)), {
+        run: job.id, head, tree: recorded.tree, command: 'npm test', step: 'test',
+      });
       assert.equal((await exec('git', ['status', '--porcelain'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout, '');
       const delivery = await readFile(join(f.root, '.cland/run/suites', job.id, 'delivery.log'), 'utf8');
       assert.match(delivery, /dependencies match snapshot\nNeovim pin matches snapshot/);

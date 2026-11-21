@@ -9,12 +9,14 @@ import { tierReceipt } from '../src/verification-tier-receipts.ts';
 
 test('worker publication retains producing tier receipts through signal and cleanup diagnostics', async () => {
   const rows = [tierReceipt({ id: 'run', tree: 'tree' }, { name: 'T1', command: 'unit' }, 0)];
+  const timings = [{ run: 'run', head: 'head', tree: 'tree', command: 'unit', step: 'T1', platform: 'linux', samples: [{ file: 'unit', name: 'case', seconds: 4, outcome: 'pass' as const }] }];
   for (const signal of [null, 'SIGTERM']) {
     const receipts: WorkerCompletion[] = [];
     await runWorkerWithAdmission({ gate: async () => true, signal: () => signal, clock: new FakeClock(1000),
-      run: async () => ({ ...compatibilityCleanupOutcome({ code: 0, cause: '' }, 'cleanup denied'), tierReceipts: rows }),
+      run: async () => ({ ...compatibilityCleanupOutcome({ code: 0, cause: '' }, 'cleanup denied'), tierReceipts: rows, timingReceipts: timings }),
       log: () => {}, persist: async receipt => { receipts.push(receipt); } });
     assert.deepEqual(receipts[0]!.tierReceipts, rows);
+    assert.deepEqual(receipts[0]!.timingReceipts, timings);
     assert.equal(receipts[0]!.code, signal ? 143 : 0);
   }
 });

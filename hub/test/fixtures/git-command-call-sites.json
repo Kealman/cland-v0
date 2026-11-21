@@ -666,6 +666,13 @@
       "disposition": "Runtime argv is forwarded; both read and writer classes remain supported."
     },
     {
+      "file": "hub/src/hub/merge.ts",
+      "call": "this.#rootGit(this.tracker.root, args, false, undefined, this.#env)",
+      "argv": null,
+      "expected": "forwarded",
+      "disposition": "Timing admission forwards immutable ls-tree/show reads through the shared no-lazy-fetch read owner; final argv is classified by that owner."
+    },
+    {
       "file": "hub/src/hub/releases.ts",
       "call": "territoryGitAsync(territoryPath(this.tracker.root), ['rev-parse', '--verify', `refs/heads/${item.receipt.base}`], undefined, undefined, this.#env)",
       "argv": [

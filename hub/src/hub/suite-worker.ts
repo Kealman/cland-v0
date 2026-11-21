@@ -1,4 +1,6 @@
 import { SUITE_INFRASTRUCTURE_EXIT, suiteCommandOutcome } from '../suite-infrastructure.ts';
+import * as timingFs from 'node:fs';
+import { readTimingReceipts, parseTimingReceipts } from '../suite-timing-receipts.ts';
 import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { verificationSteps, verificationStepCommand } from '../verification-plan.ts';
 import { receiptStep, type TierReceipt } from '../verification-tier-receipts.ts';
@@ -90,6 +92,8 @@ async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | nul
       currentCommandId = commandId;
       process.stdout.write(`suite command start ${JSON.stringify({ id: commandId, name, line })}\n`);
       const env: NodeJS.ProcessEnv = { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' };
+      env.CLAND_TIMING_OUTPUT = join(dirname(job.result), 'timing-receipts.json');
+      env.CLAND_TIMING_OWNER = JSON.stringify({ run: job.id, head: job.head, tree: job.tree ?? '', command: line, step: name });
       env.CLAND_SUITE_EXECUTOR = 'local';
       if (job.limits) { env.CLAND_SUITE_LIMITS = JSON.stringify(job.limits); env.CLAND_SUITE_LIMITS_CWD = job.cwd; }
       if (job.workers !== undefined) env.CLAND_SUITE_WORKERS = String(job.workers);
@@ -144,7 +148,8 @@ async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | nul
       }
     } catch (error) { ({ code, cause } = compatibilityCleanupOutcome(selected ? { code, cause } : null, error)); }
   }
-  return { code, cause, tierReceipts, ...(platform ? { platform } : {}), ...(inspections.length ? { inspections } : {}) };
+  const timingReceipts = readTimingReceipts(timingFs, join(dirname(job.result), 'timing-receipts.json'), parseTimingReceipts);
+  return { code, cause, tierReceipts, ...(timingReceipts ? { timingReceipts } : {}), ...(platform ? { platform } : {}), ...(inspections.length ? { inspections } : {}) };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await suiteWorker(process.argv[2]!);

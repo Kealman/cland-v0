@@ -21,6 +21,8 @@ import type { MergeQueue } from './merge-queue.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
 import { checkedEnqueue, validateEnqueueCandidate, EnqueueNativeIncomplete } from './enqueue-preflight.ts';
 import { enqueuePreflight, type EnqueueCandidate } from './enqueue-preflight-native.ts';
+import { checkEnqueueTimings, type TimingLookup } from './enqueue-timings.ts';
+import { durationAllowanceOwner } from '../suite-durations.ts';
 
 type LandedResult = { dependencies?: DependencyInstall; item: string; commit: string; base: string; cleanup: string; budgetLines?: string[]; followUp?: { step: string; error: string } };
 
@@ -92,12 +94,16 @@ export class TaskMerges {
   readonly #git: typeof territoryGitAsync;
   readonly #rootGit: typeof territoryGitAsync;
   readonly #enqueuePreflight: typeof enqueuePreflight;
+  readonly #timings: TimingLookup;
+  readonly #timingNow: () => number;
   readonly log: LogFn;
   readonly #territoryLock: typeof withTerritoryLockAsync;
   readonly afterMerge: (item: string, resumed: Resumed) => Promise<void>;
-  constructor(tracker: Tracker, worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync, queue?: MergeQueue, squash: typeof squashTask = squashTask, git: typeof territoryGitAsync = territoryGitAsync, rootGit?: Git, preflight: typeof enqueuePreflight = enqueuePreflight) {
+  constructor(tracker: Tracker, worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync, queue?: MergeQueue, squash: typeof squashTask = squashTask, git: typeof territoryGitAsync = territoryGitAsync, rootGit?: Git, preflight: typeof enqueuePreflight = enqueuePreflight, timings: TimingLookup = { receipt: () => null, id: () => null }, timingNow: () => number = Date.now) {
     this.#git = git;
     this.#enqueuePreflight = preflight;
+    this.#timings = timings;
+    this.#timingNow = timingNow;
     // The admission fact shares the hub's read-only probe boundary. Recovery
     // and territory writes retain their separate native/injected Git runner.
     this.#rootGit = rootGit ? async (_cwd, args, _marked, input) => await rootGit(args, input) ?? '' : git;
@@ -200,7 +206,8 @@ export class TaskMerges {
         }, this.#env);
         return checkedEnqueue(backend, async (checked, receipt) => {
           resumed(validateCancellation);
-          const result = await this.#merge(id, actor, resumed, override, authorize, queuedCandidate, { candidate: checked, validate: validateCancellation, identity: backend.identity });
+          const validateTiming = await checkEnqueueTimings(checked.taskHead, checked.base, { git: args => this.#rootGit(this.tracker.root, args, false, undefined, this.#env), identity: backend.identity, timings: this.#timings, owner: fallback => durationAllowanceOwner(this.tracker.root, id, { fallbackOwner: fallback, readOwner: async key => this.tracker.summary(key) ?? undefined }), now: this.#timingNow() });
+          const result = await this.#merge(id, actor, resumed, override, authorize, queuedCandidate, { candidate: checked, validate: () => { validateCancellation(); validateTiming(); }, identity: backend.identity });
           return receipt.skipped && 'queued' in result ? { ...result, preflight: receipt.skipped } : result;
         });
       }

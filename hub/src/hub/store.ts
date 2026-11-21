@@ -493,8 +493,12 @@ export class Store implements HygieneMemory {
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on;');
     this.#db.exec(SCHEMA);
     this.cardSignIns=new LoginCardIntents(this.#db);
+    // Refresh only this derived projection. Older hubs keep compatible meta rows.
     // Persisted triggers also maintain the index when an older hub writes meta.
-    this.#db.exec(`create trigger if not exists suite_summary_insert after insert on meta when new.key glob 'suite-job:*' begin
+    this.#db.exec(`begin immediate;
+    drop trigger if exists suite_summary_insert;
+    drop trigger if exists suite_summary_update;
+    create trigger if not exists suite_summary_insert after insert on meta when new.key glob 'suite-job:*' begin
       insert into suite_job_summaries select key, ${suiteHistoryProjection} from meta where key = new.key on conflict(key) do update set value = excluded.value;
     end;
     create trigger if not exists suite_summary_update after update of value on meta when new.key glob 'suite-job:*' begin
@@ -502,7 +506,8 @@ export class Store implements HygieneMemory {
     end;
     create trigger if not exists suite_summary_delete after delete on meta when old.key glob 'suite-job:*' begin
       delete from suite_job_summaries where key = old.key;
-    end;`);
+    end;
+    commit;`);
     this.users = new Users(this.#db);
     this.hosts = new HostRecords(this.#db);
     this.remotes = new RemoteState(this.#db, this.users);
@@ -853,6 +858,10 @@ export class Store implements HygieneMemory {
   }
 
   suiteJob(id: string): string | null { return this.meta(`suite-job:${id}`); }
+  suiteJobWithoutTimings(id: string): string | null {
+    const row = this.#prepare("select json_remove(value, '$.job.timingReceipts', '$.job.shards') as value from meta where key = ?").get(`suite-job:${id}`) as Row | undefined;
+    return row ? row.value as string : null;
+  }
 
   /** Finished suites are separate rows, never part of the frequently rewritten active snapshot. */
   suiteJobHistory(): string[] {

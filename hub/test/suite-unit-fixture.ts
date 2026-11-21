@@ -180,13 +180,13 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   async function tick(ms = 1000) { await clock.advance(ms); }
   const status = (id: string) => suites.status().find(job => job.id === id)!;
   const result = (id: string) => when(() => status(id)?.reported ? status(id) : undefined);
-  async function finish(id: string, code = 0, log = '# tests 1\n# pass 1\n', report = true, tierReceipts?: NonNullable<RunStatus['tierReceipts']>) {
+  async function finish(id: string, code = 0, log = '# tests 1\n# pass 1\n', report = true, tierReceipts?: NonNullable<RunStatus['tierReceipts']>, timingReceipts?: NonNullable<RunStatus['timingReceipts']>) {
     await suites.settled();
-    if (status(id).executor === 'droplet') machine.finish(id, code, log, tierReceipts);
+    if (status(id).executor === 'droplet') machine.finish(id, code, log, tierReceipts, timingReceipts);
     else {
       const run = delivered.get(id); assert.ok(run, 'observe worker admission before completion');
       await writeFile(run.log, log);
-      receipts.set(id, { state: 'done', code, ...(tierReceipts ? { tierReceipts } : {}), finished: clock.now().toISOString(), platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'v0.12.5' } });
+      receipts.set(id, { ...(timingReceipts ? { timingReceipts } : {}), state: 'done', code, ...(tierReceipts ? { tierReceipts } : {}), finished: clock.now().toISOString(), platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'v0.12.5' } });
     }
     await tick();
     if (report) return machine.waits.run(result(id));
