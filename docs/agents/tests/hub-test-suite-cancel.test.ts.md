@@ -49,6 +49,27 @@ first and last in the snapshot. Both retain every verified eligible sibling befo
 incomplete tree, apply the same self/ancestor fence, then confirm that the
 known child drains after reparenting while the unknown sibling is unsignalled.
 
+The acquisition-rejection variants replace every `TerminationOwner` reservation
+boundary with a fake. Grace capture rejects with an ordinary error and removes
+the parent from the synthetic OS table. The expanded variant also removes the
+first child, leaving its sibling and nested descendant reparented. Publish the
+complete verified reachable set before any acquisition await. The first cancel
+must reject; retry terminates every retained survivor and observes ESRCH for
+each discovery. Neither variant sends real PID signals or uses shared locks.
+
+These new callers pass their TestContext to `systemProcessProbe`. That optional
+path installs shared `fixtureWork` before acquisition, separately bounds root
+setup and native spawn receipt, and retains the returned ChildProcess until
+both its callback and native close settle. Cancellation kills through that
+handle and joins the whole admitted callback before guarded root removal.
+Incomplete close retains roots. A positively guarded fake-native control aborts
+the callback while holding close and invokes the real `ownDirectory` remover
+independently of ordinary disposal. An added guard asserts and records that
+the captured child's native close has arrived before that removal attempt
+passes the drain barrier. The root stays present while close is held; releasing
+that same close permits guard entry, remover completion and ENOENT. Existing
+callers keep their prior path.
+
 The loaded diagnosis established the product branch: a cancelled-report receipt
 coexisted with the original live native identity, state Ss and parent PID 1.
 The initial test-only zombie explanation does not explain that receipt. The

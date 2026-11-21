@@ -7,9 +7,15 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownDirectory } from './process-cleanup.ts';
+import type { TestContext } from 'node:test';
+import { fixtureWork } from './fixture-work.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
+import { testWaitMs } from './until.ts';
+import { scratchGitEnvironment } from './fixture-environment.ts';
 
 const entry = fileURLToPath(new URL('../src/system-processes.ts', import.meta.url));
-export async function systemProcessProbe(body: string, platform: 'darwin' | 'linux' = 'darwin', options: { suiteRoot?: boolean } = {}) {
+export async function systemProcessProbe(body: string, platform: 'darwin' | 'linux' = 'darwin', options: { suiteRoot?: boolean; context?: TestContext } = {}) {
+  const owner = options.context ? fixtureWork(options.context) : undefined;
   const source = `
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
@@ -118,6 +124,40 @@ const { endProcess: nativeEndProcess, systemProcesses } = await import(${JSON.st
 const endProcess = (p, ...args) => nativeEndProcess({ ...p, pidIdentity: Object.hasOwn(p, 'pidIdentity') ? p.pidIdentity : nativeBirth(rows.find(r => r.pid === p.pid)) }, ...args);
 ${body}
 `;
+  if (owner) return owner.run(async scope => {
+    const root = await within(scope.root(async () => mkdtempSync(join(tmpdir(), 'cland-process-identity-'))), testWaitMs(5000));
+    if (options.suiteRoot) await within(scope.root(async () => {
+      const suiteRoot = join(realpathSync('/tmp'), `cland-suite-${basename(root)}`);
+      mkdirSync(suiteRoot, { mode: 0o700 });
+      return suiteRoot;
+    }), testWaitMs(5000));
+    const command = await scope.acquire(async () => {
+      const completed = Promise.withResolvers<{ error: Error | null; stderr: string }>();
+      const closed = Promise.withResolvers<{ code: number | null; signal: NodeJS.Signals | null }>();
+      const started = Promise.withResolvers<void>();
+      let didClose = false, tail = '';
+      // cland-allow-child-env: isolated OS override probe uses fixtureEnvironment then scratchGitEnvironment after the final overlay; no accounts or provider calls
+      const child = execFile(process.execPath, ['--input-type=module', '-e', source], {
+        timeout: 10_000, cwd: root, signal: scope.signal, killSignal: 'SIGKILL',
+        env: scratchGitEnvironment(root, fixtureEnvironment(root, process.env), { excludesFile: join(root, 'gitignore') }),
+      }, (error, _stdout, stderr) => { tail = stderr.slice(-5000); completed.resolve({ error, stderr: tail }); });
+      child.once('spawn', () => started.resolve());
+      child.once('error', error => started.reject(error));
+      void started.promise.catch(() => {});
+      child.once('close', (code, signal) => { didClose = true; closed.resolve({ code, signal }); });
+      const result = Promise.all([completed.promise, closed.promise]);
+      const incomplete = () => new Error(`process probe incomplete: exit ${child.exitCode}; signal ${child.signalCode}; ${tail}`);
+      return { started: started.promise, result, stop: async () => {
+        if (!didClose) child.kill('SIGKILL');
+        await within(result, testWaitMs(5000), undefined, incomplete);
+      }, incomplete };
+    }, command => command.stop());
+    await scope.step(() => within(command.started, testWaitMs(5000), undefined, command.incomplete));
+    await scope.step(async () => {
+      const [output, exit] = await within(command.result, 11_000, undefined, command.incomplete);
+      if (output.error || exit.code !== 0 || exit.signal) throw new Error(`process probe exit ${exit.code}; signal ${exit.signal}; ${output.stderr || String(output.error)}`);
+    });
+  });
   // Acquire and register every root before yielding: a signal cleanup must not
   // finish while an asynchronous mkdir can still publish an unowned sibling.
   const root = mkdtempSync(join(tmpdir(), 'cland-process-identity-'));

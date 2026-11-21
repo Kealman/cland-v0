@@ -225,6 +225,7 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
     let freezeDeadline: number | undefined;
     const extend = async (current: SystemProcess[], deadline?: number) => {
       let incomplete: Error | undefined;
+      const discovered = new Set<number>();
       for (let changed = true; changed;) {
         changed = false;
         const children = resumed(() => {
@@ -241,15 +242,19 @@ export async function endProcess(p: { pid: number | null; pidStarted?: string | 
             incomplete ??= new Error(`descendant native identity cannot be verified: ${row.identityError ?? 'native birth unavailable'}; ${absenceFailure}`);
             continue;
           }
-          await owner.capture(row.pid, deadline);
+          // Retain the entire verified reachable set before acquisition can
+          // reject: ancestors may exit during the first await, losing siblings
+          // or nested descendants that have not yet been published.
           resumed(() => {
             if (!options.claim || options.claim(row)) {
               owned.set(row.pid, row); changed = true;
               options.onCaptured?.([{ pid: row.pid, pidStarted: row.started, pidIdentity: row.identity! }]);
             }
           });
+          discovered.add(row.pid);
         }
       }
+      for (const pid of discovered) await owner.capture(pid, deadline);
       if (incomplete) throw incomplete;
     };
     const inspect = async (deadline = options.deadline) => {

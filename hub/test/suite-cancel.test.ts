@@ -10,7 +10,7 @@ import { cland, eventually, testWaitMs, projectHub, startDaemon, spawnSpoke, tem
 import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
-import { onCleanup, ownProcess } from './process-cleanup.ts';
+import { onCleanup, ownProcess, ownDirectory, guardDirectoryRemoval } from './process-cleanup.ts';
 import type { Artifact } from '../src/protocol.ts';
 import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
 import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
@@ -24,6 +24,104 @@ import { waitTimeoutMs } from './until.ts';
 import { processAlive } from '../src/adapters/processes.ts';
 import { processIdentityAsync } from '../src/process-identity.ts';
 import { fixtureEnvironment, scratchGitEnvironment } from './fixture-environment.ts';
+import cp, { type ChildProcess } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import { syncBuiltinESMExports } from 'node:module';
+import type { TestContext } from 'node:test';
+import { fixtureWork } from './fixture-work.ts';
+import { fakeNativeGuard } from './fake-native-guard.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
+
+test('owned process probe cancellation retains its root until the child close receipt', async t => {
+  const owner = fixtureWork(t);
+  let release = () => {};
+  let restoreNative = () => {};
+  owner.release(() => release());
+  owner.restore(() => restoreNative());
+  await owner.run(async scope => {
+    let guard: Awaited<ReturnType<typeof fakeNativeGuard>>;
+    guard = await fakeNativeGuard(restore => { restoreNative = () => { try { guard.verify(); } finally { restore(); } }; });
+    const abort = new AbortController();
+    const launched = Promise.withResolvers<string>();
+    const stopped = Promise.withResolvers<void>();
+    const child = new EventEmitter() as ChildProcess;
+    let nativeClosed = false;
+    child.once('close', () => { nativeClosed = true; });
+    child.kill = () => { stopped.resolve(); return true; };
+    cp.execFile = ((_file: string, _args: string[], options: { cwd: string }, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
+      release = () => { callback(null, '', ''); child.emit('close', 0, null); };
+      queueMicrotask(() => { child.emit('spawn'); launched.resolve(options.cwd); });
+      return child;
+    }) as typeof cp.execFile;
+    syncBuiltinESMExports();
+    const context = { signal: abort.signal, after: t.after.bind(t) } as TestContext;
+    let settled = false;
+    const probe = await scope.acquire(async () => {
+      const probing = systemProcessProbe('', 'darwin', { context }).finally(() => { settled = true; });
+      return { outcome: probing.then(() => null, error => error) };
+    }, probe => probe.outcome.then(() => {}));
+    const root = await scope.step(() => within(launched.promise, testWaitMs(5000)));
+    const remove = ownDirectory(undefined, root);
+    const guardReceipt = Promise.withResolvers<boolean>();
+    guardDirectoryRemoval(root, () => {
+      guardReceipt.resolve(nativeClosed);
+      assert.equal(nativeClosed, true, 'the real remover must drain the captured child before reaching this independent guard');
+    });
+    abort.abort(new Error('injected callback cancellation'));
+    await scope.step(() => within(stopped.promise, testWaitMs(5000)));
+    // Invoke the actual remover while close is held, independently of ordinary
+    // disposal. Its existing drain guard must fence this attempt too.
+    const removal = await scope.acquire(async () => ({
+      outcome: remove().then(() => null, error => error),
+    }), removal => removal.outcome.then(() => {}));
+    assert.equal(settled, false, 'cancellation waits for the actual returned child close');
+    assert.ok((await stat(root)).isDirectory(), 'guarded removal retains the root while the child is open');
+    release();
+    assert.equal(await scope.step(() => within(guardReceipt.promise, testWaitMs(5000))), true, 'removal guard receipt follows that same child close');
+    assert.equal(await scope.step(() => within(removal.outcome, testWaitMs(5000))), null, 'the held guarded removal completes after close');
+    assert.ok(await scope.step(() => within(probe.outcome, testWaitMs(5000))), 'interrupted callback rejects');
+    await assert.rejects(stat(root), { code: 'ENOENT' }, 'root removal follows native close and callback join');
+  });
+});
+
+for (const expanded of [false, true]) test(`cancel retry retains verified grace ${expanded ? 'siblings and nested descendants' : 'child'} after acquisition rejects and ancestors exit`, async t => {
+  await systemProcessProbe(`
+const { TerminationOwner } = await import(${JSON.stringify(new URL('../src/termination-owner.ts', import.meta.url).href)});
+const { LocalExecutor } = await import(${JSON.stringify(new URL('../src/executor/local.ts', import.meta.url).href)});
+// All reservation boundaries are fake; only the grace-child acquisition rejects.
+TerminationOwner.prototype.acquire = async () => {};
+TerminationOwner.prototype.release = async () => {};
+let rejected = false;
+TerminationOwner.prototype.capture = async pid => {
+  assert.equal(pid, 420101);
+  if (!rejected) {
+    rejected = true;
+    rows = rows.filter(r => r.pid !== 420100 && (!${expanded} || r.pid !== 420101)).map(r => ({ ...r, parent: 1 }));
+    throw new Error('injected acquisition rejection');
+  }
+};
+rows = [row(420100, 1, 420100)];
+const executor = new LocalExecutor([], () => {}, () => {});
+const run = { id: 'rejected-grace', cwd: process.cwd(), head: 'a'.repeat(40), mode: 'auto', log: 'suite.log', result: 'result.json', gate: 'gate' };
+const lease = executor.restore(run, { pid: 420100, started: start, identity: nativeBirth(rows[0]), outcome: null });
+onSignal = (pid, signal) => {
+  if (pid === 420100 && signal === 'SIGTERM') {
+    rows.push(row(420101, 420100, 420101));
+    if (${expanded}) rows.push(row(420102, 420100, 420102), row(420103, 420101, 420103));
+    return false;
+  }
+};
+await assert.rejects(executor.cancel(lease, 'SIGTERM'), /injected acquisition rejection/);
+assert.equal(rejected, true, 'the grace acquisition fault was reached');
+const survivors = ${expanded} ? [420102, 420103] : [420101];
+assert.deepEqual(rows.map(r => [r.pid, r.parent]), survivors.map(pid => [pid, 1]), 'verified discoveries survive their ancestors and rejected acquisition');
+onSignal = () => {};
+await executor.cancel(lease, 'SIGTERM');
+assert.deepEqual(rows, [], 'retry confirms death of the retained reparented child');
+for (const pid of survivors) assert.ok(signals.some(s => s.pid === pid && s.signal === 'SIGTERM'), 'each retained survivor receives verified cleanup');
+for (const pid of [420101, ...survivors]) assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' }, 'positive absence receipt for every verified discovery');
+`, 'darwin', { context: t });
+});
 
 for (const unreadableFirst of [false, true]) test(`cancel retry retains verified partial validation with unreadable sibling ${unreadableFirst ? 'first' : 'last'} before reparenting`, async () => {
   await systemProcessProbe(`
