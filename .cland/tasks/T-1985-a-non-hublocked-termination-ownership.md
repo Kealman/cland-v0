@@ -2,8 +2,8 @@
 id: T-1985
 kind: task
 title: A non-HubLocked termination-ownership acquisition rejection drops an already native-verified grace child before it is retained, so a reparented descendant can escape cancellation
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1697
 branch: t/T-1985-a-non-hublocked-termination-ownership
 created: 2026-11-18T19:54:52.553Z
-updated: 2026-11-21T08:09:58.334Z
+updated: 2026-11-21T12:17:04.833Z
+closed: 2026-11-21T12:17:04.833Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ Retain a verified grace child's identity before any acquisition step that can re
 
 - [x] C1. With an injected non-HubLocked acquisition rejection after a grace child's native identity is verified, followed by parent exit, the child stays tracked and is confirmed dead (native exit or ESRCH absence) or the cancel stays incomplete (test, red before).
   - done: impl-1985 · 2026-11-21T08:03:03.462Z
+  - verified: rev-35 [reviewer] · run rev-35-1985-evidence-2 · 2026-11-21T11:34:31.382Z · commit cd7f1fcc57eaa1a2351af1e5acc7be149fe91b06
 - [x] C2. T-1758's partial-validation and grace sibling-order regressions pass unchanged (test).
   - done: impl-1985 · 2026-11-21T07:56:15.814Z
+  - verified: rev-35 [reviewer] · run rev-35-1985-evidence-2 · 2026-11-21T11:34:31.382Z · commit cd7f1fcc57eaa1a2351af1e5acc7be149fe91b06
 
 ## Comments
 
@@ -89,3 +92,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source3 clear, findings=[]; A-22411. Residual M2 resolved: control invokes the actual guarded ownDirectory remover under held child close, requires an independent guard receipt tied to that same native close and completion of the removal attempt, then interrupted callback rejection and ENOENT. Existing assertions remain. Product/helper exactly match accepted source2; complete verified reachable-set retention and owned probe lifecycle carry unchanged. Original T-1758 test suffix is byte-identical to base c0198410b; no dev merge. A-22408 reports seven targeted local synthetic checks and final lint/typecheck, not a configured/full-suite receipt; older evidence remains separately scoped. Both C1/C2 checked, run-dependent verification pending. No Reviewer execution/edit. Hold releases; Coordinator-owned full verify all follows at unchanged head under the item-specific plan, then final same-head evidence review. No Implementer verify submission.
+
+### rev-35 · 2026-11-21T09:45:25.442Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1985-evidence-1
+commit: cd7f1fcc57eaa1a2351af1e5acc7be149fe91b06
+scope: evidence
+findings: [{"severity":"medium","text":"Configured evidence incomplete: Coordinator cancelled run563338a3 for scheduling before required suite-cancel/T3 cases executed. No observed source/test defect; final acceptance awaits the already ordered same-head full retry."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Final evidence incomplete/not clear; A-22459. task.view confirms563338a3/A-22458 cancelled, exit143 at exact source3-reviewedcd7f1fcc5. Coordinator368dd3a5 explicitly cancelled for dev-cover/queue scheduling, unrelated to T-1985, and ordered same-head full resubmission after cover. Actual finishes: all241T1 pass; T2 67started/65pass/2inflight/376unstarted. No suite-cancel events; all273T3/18T4/55Web unexecuted. Partial2089base and2893completed accounting are retained distinctly, not a suite pass. No observed criterion failure or new source defect: C1/C2 remain checked/unverified, no false failure/verification marks for unexecuted tests. Source3 clearance remains current; no edit or new source review needed for unchanged-head retry. Linuxc8ams3 Node24.21 Nvim0.12.5; browserunknown. No Reviewer execution/edit/submission. Hold releases; preserve cancelled occasion and follow Coordinator retry order without duplicate.
+
+### rev-35 · 2026-11-21T11:34:31.382Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1985-evidence-2
+commit: cd7f1fcc57eaa1a2351af1e5acc7be149fe91b06
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-22477, findings=[]. Full01fecbe0/A-22476 finished/passed at source3-reviewedcd7f1fcc5; refs unchanged. Typed starts/pass finishes confirm all7 required regressions; new3 each base+5 distinct load passes, unchanged4 T-1758 each base pass. Actual successful file receipts match all241T1/443T2/273T3/55Web; T0 exit0. Producer9440pass/13prerequisite skips/0fail/cancel; no18T4 runtime claim. Linux x64 c-8ams3 Node24.21 Nvim0.12.5, isolated HeadlessShell1248/Chrome for Testing156.0.8078.4. Canonical0875a8e9 differs by definition from Git38f9c96b. Report-only budgets/lint not enforced timing proof. Verify C1/C2 current. Prior cancelled563338a3/A-22458 remains partial/cancelled under Coordinator scheduling order, preserved A-22459; no relabelled occasion. No Reviewer execution/edit/rerun. Hold releases, no duplicate run or manual Coordinator relay.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T12:17:04.833Z
+
+Merged 55479f075e6dbcec4f98201f16c3e8fd2cd8b42b onto dev.

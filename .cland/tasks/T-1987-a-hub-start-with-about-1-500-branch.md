@@ -2,8 +2,8 @@
 id: T-1987
 kind: task
 title: A hub start with about 1,500 branch freshness answers serves task.view within a named bound once T-1984 and T-1646 have both landed
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1699
 branch: t/T-1987-a-hub-start-with-about-1-500-branch
 created: 2026-11-18T20:13:06.075Z
-updated: 2026-11-21T09:26:33.379Z
+updated: 2026-11-21T11:44:17.590Z
+closed: 2026-11-21T11:44:17.590Z
 ---
 
 ## Summary
@@ -168,3 +169,7 @@ First actual Linux latency sample remains A-22444 256.190149ms; this later305.65
 Configured scope:T0/allT1/fallback-allT2/changed-fileT3 duration check/Web exit0; otherT3 remains merge-batch evidence,T4 unrequested. Aggregate7266tests/7265pass/0fail/0cancelled/1skip; macOS-only selector skip retained (including repeated skip receipts). Linuxx64 6.8.0-149-generic,Node24.21/Neovim0.12.5,dropletc-8ams3 workers2; Web uses chromium_headless_shell-1248 chrome-headless-shell,Google Chrome for Testing156.0.8078.4. Earlierfcf14f70 setup failure and84066c69 duration-gate exit1 remain failures; their individual passing work facts were retained without treating either run as green. Reviewer ran no tests, native/browser/stress or source edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T11:44:17.590Z
+
+Merged 14f80deb9676e8edd46c34bf4367b42891040199 onto dev.

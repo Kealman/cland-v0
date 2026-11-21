@@ -2,8 +2,8 @@
 id: T-1986
 kind: task
 title: suite-cancel detached-child case passes 20/20 under a CPU burner at load ≥10 on macOS after T-1758's retained-capture fix (one report-wait timeout unexplained)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1700
 branch: t/T-1986-suite-cancel-detached-child-case-passes
 created: 2026-11-18T20:05:12.173Z
-updated: 2026-11-21T08:35:19.496Z
+updated: 2026-11-21T11:09:11.413Z
+closed: 2026-11-21T11:09:11.413Z
 ---
 
 ## Summary
@@ -93,3 +94,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; no findings. A-22431/afa78492 matches unchanged source-clear head/canonical executable tree: T0/T1/fallbackT2/selectedT3/Web exit0,7282pass/1Mac-only MCP selector skip/0fail/cancel. Independently checked all19 suite-cancel generated finishes, including changed capture/reparent diagnostic assertions and both actual detached-child cleanup cases. OneT3file/base execution, restT3merge batch/T4unexecuted; noncachedLinuxx64c8ams3 Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156.0.8078.4; budgets/lint report-only. C1 adopts current rev-41 evidence1/A-22417 complete20/20macOS loaded audit; no duplicate raw campaign audit claimed. Earlier incomplete captureA-22410 retained/excluded, durations not erased. C2 verified from structured producer diagnostics/current synthetic assertion and complete ordinary/campaign receipts: no new failed cancellation occurred, original historical timeout cause remains unknown, no invented cause-driven product/timing fix or assertion relaxation. A-22400 source and A-22417 campaign limits retained. No Reviewer runtime/probes/edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T11:09:11.413Z
+
+Merged 9657c2b1c9f0bb7bfa959b141b18499f2b2b0b4b onto dev.

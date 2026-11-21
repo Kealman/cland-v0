@@ -2,8 +2,8 @@
 id: T-2046
 kind: task
 title: Every fixed test wait goes through the shared load-scaled helper, with a per-wait load factor (E-1881 C3 rework, A-22306)
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1691
 branch: t/T-2046-every-fixed-test-wait-goes-through-the
 created: 2026-11-21T03:32:07.872Z
-updated: 2026-11-21T09:17:41.969Z
+updated: 2026-11-21T12:55:31.810Z
+closed: 2026-11-21T12:55:31.810Z
 ---
 
 ## Summary
@@ -29,15 +30,18 @@ Route every fixed test wait through the shared load-scaled helper, with the fact
 
 - [x] C1. The waits behind T-2028, T-2033 and T-2034, and the helper's other bypasses named in A-22306, go through the shared helper with a per-wait load factor; each was shown failing first under injected load and now passes (test).
   - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final · 2026-11-21T07:37:24.634Z · commit 71dc49862363f2b686cd167c9def8241bc50e466
-  - done: impl-2046 · 2026-11-21T08:47:13.802Z
   - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final2 · 2026-11-21T09:17:41.848Z · commit 879df801bf87a7f706bad73b4ffc2189e896146b
+  - done: impl-2046 · 2026-11-21T11:28:47.331Z
+  - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final3 · 2026-11-21T12:01:50.221Z · commit 50d5745686ab27675e8bb8370a89915a5414f5c7
 - [x] C2. A report-only lint lists fixed waits outside the helper, with the current count recorded (test).
   - verified: rev-35 [reviewer] · run rev-35-2046-source-2 · 2026-11-21T04:58:00.998Z · commit 6fab755a9f9fdf3751d8f9eb787b2f93175d21ca
   - verified: rev-40 [reviewer] · run rev-40-20261121-2046-M3-source · 2026-11-21T05:49:46.661Z · commit 71dc49862363f2b686cd167c9def8241bc50e466
   - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final · 2026-11-21T07:37:24.634Z · commit 71dc49862363f2b686cd167c9def8241bc50e466
-  - done: impl-2046 · 2026-11-21T08:47:13.988Z
   - verified: rev-40 [reviewer] · run rev-40-20261121-2046-M45-source · 2026-11-21T08:49:52.184Z · commit 879df801bf87a7f706bad73b4ffc2189e896146b
   - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final2 · 2026-11-21T09:17:41.848Z · commit 879df801bf87a7f706bad73b4ffc2189e896146b
+  - done: impl-2046 · 2026-11-21T11:28:47.514Z
+  - verified: rev-40 [reviewer] · run rev-40-20261121-2046-merge-source · 2026-11-21T11:30:21.002Z · commit 50d5745686ab27675e8bb8370a89915a5414f5c7
+  - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final3 · 2026-11-21T12:01:50.221Z · commit 50d5745686ab27675e8bb8370a89915a5414f5c7
 
 ## Comments
 
@@ -177,3 +181,41 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected-head final clear; no findings. A-22448/63d4441c exact head/canonical executable tree passed T0/all239T1/fallback442T2/selectedT3(candidate7+runner64)/mappedT4oneparent/Web55:7326pass/1Mac-selector skip/0fail/cancel. Named CJS/ESM timer/native-close, explicit/legacy exact bound, real argv, condition/Discord/browser and original reload/Hosts receipts independently pass; A-22438 current-head whole timeouts19 and refreshed importer22/17/4/1 remain local required evidence. C1/C2 verified. C2 census1963/zero refusals and planted control current. Coordinator82b46a05 boundary retained: fresh projectConfig admissions without provenance stay exact too; separate Tech debt owns propagation, not claimed fixed. NoncachedLinuxx64c8ams3 Node24.21/Nvim0.12.5; HeadlessShell1248/CfT156.0.8078.4. RemainingT3merge batch/restT4 and T4repetitions unexecuted; budgets report-only. Earlier failed13518715/batch33dcd1f7 and dirty epoch/provenance gaps retained; no old-head green reused. No Reviewer runtime/probes/edits.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-2046 · 2026-11-21T11:21:01.180Z
+
+Coordinator-authorized merge0a55e5aa: merged origin/dev411a30431 as8b6d33a2b, resolving only suite-runner conflict by keeping all T-1911 tests plus optional load-injection argument. Pinned snapshot_size change received precommit matching config-set/host-pools-config/executor-prepare-component and frozen CLI usage/help checks:93 pass, native0/null (candidate tree99a93a38430af7b910a34a38b55b84f8b4b31d18). Coordinator77c53678 then authorized merged interaction fix50d574568: run-suite delegates repetition defaults; load/Web owners sample at each child admission, explicit startupMs stays exact. Shared waitTimeoutMs accepts optional supplied environment; startup helper accepts omitted factor for current sampling and rejects invalid explicit numeric factors. All function consumers searched: suite-command preserves its finite explicit production setup factor; runner initial/repetition startup and load/Web fallbacks migrated; new until policy controls cover supplied env/current load/cap/overrides and converted missing factor rejection. Dev CLAND_TEST_LOAD_FACTOR readers searched by git grep: remaining production reader suite-command explicit suiteLoadFactor path, centralized policy reader, test injection/deletion/assertion controls, and docs. No new wire/config fields. Existing native/browser/timeout assertions retained. Final-head native files and all T1/static checks pending.
+
+### rev-40 · 2026-11-21T11:30:21.002Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261121-2046-merge-source
+commit: 50d5745686ab27675e8bb8370a89915a5414f5c7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear; Standards0/Spec0 findings. Merge retains landed T-1911 cases and optional load-injection/native argv proof. Runner delegates repetition defaults; load/Web owners sample shared helper per child from supplied env, preserving explicitstartupMs and no-output cap. Optional env is backward compatible; invalid explicit factors refuse, production suite-command finite factor path unchanged. Two red/green interaction controls and raw-reader/consumer inventory checked; docs/provenance match. A-22474 current-head runner68/remote46/T1 2106/T2 78 plus lint/typecheck native0/null inspected, separate precommit rule33config/help93 proof scoped correctly. C2 reverified:1965report-onlycensus/0refusals. Prior82b46a05/T-2051 boundary retained. C1 final pending fresh same-head mode-free result, no current-headWeb/fullT3/T4 claimed. No Reviewer runtime/probes/edits.
+
+Criteria: C2 verified.
+
+### rev-40 · 2026-11-21T12:01:50.221Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261121-2046-final3
+commit: 50d5745686ab27675e8bb8370a89915a5414f5c7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final clear; no findings. A-22483/1bd00799 matches source-clear head/canonical executable tree: T0/allT1/fallbackT2/sixselectedT3(151 identities)/mappedT4base/Web exit0,7451pass/1Mac-selector skip/0fail/cancel. Independently checked all151 selectedT3 finishes and exact supplied-env/default/refusal/explicit-timeout, repetition startup/cleanup/finalizer/normalWeb10of10, native argv, CJS/ESM and browser receipts. C1/C2 verified; current1965report-onlycensus/0refusals and planted base+5 passes. Current-head local merge proofs remain scopedA-22474; precommit rule33candidate evidence separate. NoncachedLinuxx64c8ams3 Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156.0.8078.4. RemainingT3 merge batch/restT4 and T4repetitions unexecuted; budgets advisory, no measured latency/speedup claim.82b46a05/T-2051 admitted provenance exception unchanged, previous greens/failures keep their heads/outcomes. No Reviewer runtime/probes/edits.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T12:55:31.810Z
+
+Merged b793535d7e39dfb2f2f18bbfe113c3ca7fc88bc3 onto dev.

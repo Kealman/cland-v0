@@ -2,8 +2,8 @@
 id: T-1911
 kind: task
 title: The first-test-start watchdog does not cover load-gate repetitions and Web repetition children
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels: []
@@ -14,7 +14,8 @@ blocked_by:
 topic: topic-1694
 branch: t/T-1911-the-first-test-start-watchdog-does-not
 created: 2026-11-16T13:42:11.941Z
-updated: 2026-11-21T08:43:12.675Z
+updated: 2026-11-21T11:12:47.187Z
+closed: 2026-11-21T11:12:47.187Z
 ---
 
 ## Summary
@@ -113,3 +114,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; no findings. Exact-head/canonical-tree A-22436/bf11fedd positive T0/T1/fallbackT2/selectedT3/Web;7331pass/1Mac-only selector skip/0fail/cancel. Independently checked all66 suite-runner finishes and named load/Web startup stalls, stop/sweep rejected-cleanup/root repair, normalWeb10/10/reap, and pure parser/ordered-failure controls including5/5 repetitions. C1/C2 verified with source3 assertions unchanged. Startup30s is FakeClock after consumed file-start, not measured wall latency; historical red report provenance limits retained. NoncachedLinuxx64c8ams3 Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156.0.8078.4. Only1T3file/base execution; restT3merge batch/T4unexecuted; lint/budgets/ratchet report-only. No Reviewer runtime/probes/edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T11:12:47.187Z
+
+Merged 2fcc28bca18d6936452e484306bec937485b9dc1 onto dev.

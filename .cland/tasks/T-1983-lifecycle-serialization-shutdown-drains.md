@@ -2,8 +2,8 @@
 id: T-1983
 kind: task
 title: lifecycle-serialization "shutdown drains a held found resume" times out at its fixed 2 s test bound on macOS dev, alone and at low load
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1695
 branch: t/T-1983-lifecycle-serialization-shutdown-drains
 created: 2026-11-18T18:59:49.929Z
-updated: 2026-11-21T08:53:22.835Z
+updated: 2026-11-21T11:13:59.144Z
+closed: 2026-11-21T11:13:59.144Z
 ---
 
 ## Summary
@@ -126,3 +127,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; no findings. Same-head/executable-tree A-22440/6532e3ef passed T0/allT1/fallbackT2/Web:7267pass/1Mac-only selector skip/0fail/cancel. Independently checked all13 lifecycle generated names and each4 ownership controls' base+5 positive finishes/5of5 load gates. Unchanged explicit2000ms bound/assertions, repaired cleanup/root/native-seam proof retained. C1 uses current accepted controlled-admission diagnosis/source2A-22415; C2 uses current macOS40/40 campaign auditA-22428, separate from Linux configured proof. Prior epochs, missing timing/provenance, paused burner and excluded preliminary attempt retained; no historical cause/latency speedup invented. NoncachedLinuxx64c8ams3 Node24.21/Nvim0.12.5; HeadlessShell1248/CfT156.0.8078.4. T3 merge batch/T4unexecuted; budgets/lint report-only. No Reviewer runtime/probes/edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T11:13:59.144Z
+
+Merged c07fd81ddba64108affd45d0df20ad1343d83182 onto dev.

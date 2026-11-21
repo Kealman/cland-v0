@@ -2,8 +2,8 @@
 id: T-2048
 kind: task
 title: Prepared executor snapshot is built on c-8, so a --size c-4 run can't restore it (blocks the T-2036 sizing measurement)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1693
 branch: t/T-2048-prepared-executor-snapshot-is-built-on-c
 created: 2026-11-21T03:51:03.851Z
-updated: 2026-11-21T08:40:39.538Z
+updated: 2026-11-21T11:11:11.627Z
+closed: 2026-11-21T11:11:11.627Z
 ---
 
 ## Summary
@@ -176,3 +177,7 @@ Prior failed identities now each have a base pass: omitted and aborted preparati
 Run completed T0,T1,T2,fullT3 andWeb exit0; T4 not requested. Aggregate reports9422tests,9409pass,0fail,0cancelled,13skipped; provenance lists platform/prerequisite exclusions including repeated load-gate skips. Linuxx64 6.8.0-149-generic,Node24.21.0,Neovim0.12.5,droplet c-8 ams3,workers2. Browser receipt: Playwright chromium_headless_shell-1248 chrome-headless-shell,Google Chrome for Testing156.0.8078.4; Web executed. Budget/test-lint/T3-ratchet advisories remain report-only; no timing comparison or universal-platform pass inferred. Provider lifetime3740990ms/cost estimate$0.2597909722 belongs to verification, not a real c-4 preparation measurement. Fake-provider C2 is the approved criterion; real preparation, measured price/time/cost and hub restart stay Coordinator-owned after landing per item comment. Reviewer ran no tests, browser/cloud or source edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T11:11:11.627Z
+
+Merged 3321d5e2b8652638ff81b628d4063e5b62478903 onto dev.

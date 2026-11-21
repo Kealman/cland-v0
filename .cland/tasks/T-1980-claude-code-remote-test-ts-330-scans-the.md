@@ -2,8 +2,8 @@
 id: T-1980
 kind: task
 title: claude-code-remote.test.ts:330 scans the fake host's run directory while processes.json is atomically replaced, and fails with ENOENT on the temporary file
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1696
 branch: t/T-1980-claude-code-remote-test-ts-330-scans-the
 created: 2026-11-18T15:22:04.049Z
-updated: 2026-11-21T08:54:13.474Z
+updated: 2026-11-21T11:14:48.534Z
+closed: 2026-11-21T11:14:48.534Z
 ---
 
 ## Summary
@@ -118,3 +119,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; A-22443, findings=[]. Run8da41079/A-22441 finished/passed at source3-reviewed05db4b655; refs unchanged. Typed starts/pass finishes confirm affected recovery identity and both ownership controls (each base+5 distinct load passes). Actual file receipts: all241T1/443T2/55Web plus selected T3 claude-code-remote46/46; T0 also exit0. Producer7311pass/1platform skip/0fail/cancel. Remaining272T3 deferred merge batch, no18T4 runtime proof; report-only budgets/lint do not enforce timing. Linux x64 droplet c-8/ams3 Node24.21 Nvim0.12.5, isolated HeadlessShell1248/Chrome for Testing156.0.8078.4. Canonical verification treedcbaea2a differs from Git83338f6f by definition. C2's separate macOS20-target+one-full-file stress evidence remains current via A-22426/Coordinator8e65b199. Verify C1/C2 at exact commit; prior failures retained. No Reviewer execution/edit. Hold releases; no duplicate run/manual Coordinator relay, integrated T3 remains merge batch.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T11:14:48.534Z
+
+Merged 411a304315ce2e5d89dfb3838757f83350cc9bb4 onto dev.

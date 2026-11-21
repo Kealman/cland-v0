@@ -2,8 +2,8 @@
 id: T-1981
 kind: task
 title: publishSessionEvidence reports "publication outcome unknown" for an implementer's publish that created nothing, hiding the hub's reply
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1808
 topic: topic-1698
 branch: t/T-1981-publishsessionevidence-reports
 created: 2026-11-18T18:12:25.052Z
-updated: 2026-11-21T08:19:51.968Z
+updated: 2026-11-21T11:45:09.656Z
+closed: 2026-11-21T11:45:09.656Z
 ---
 
 ## Summary
@@ -98,3 +99,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, no findings. A-22424 independently audits exact-head/canonical-tree A-22419/42a11723: T0/T1/fallback allT2/Web exit0,7266pass/1Mac-only selector skip/0fail/cancel. Uncached Linuxx64c8ams3 Node24.21.0/Nvim0.12.5; HeadlessShell1248/CfT156.0.8078.4. T3 merge batch, T4 unexecuted; budgets/lint report-only. All21 evidence-publish generated names pass; new implementer dot-file publication/refusal-removal/legacy cleanup names have base+5 positive finishes each with5/5 load gates. Existing transport unknown/retained-byte case positively passes. C1/C2 verified from named receipts/unchanged source; earlier classifier-disabled red remains reported local evidence, not reconstructed raw provenance. C2/C3 use Coordinator5bbc6f2b scope: valid exact dot-file succeeds, no distinct failure reproduced; original impl-1758 cause unknown and no-audit-row fact separate from confirmed T-2015artifact-source. C3 current source mark re-established. No Reviewer tests/native/browser/probes/edits.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-21T11:45:09.656Z
+
+Merged a28f8ecf978b654c98e28bb7eb738394da7b6022 onto dev.
