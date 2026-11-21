@@ -2,8 +2,8 @@
 id: T-1901
 kind: task
 title: Enqueue preflight for interaction reds
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-1679
 branch: t/T-1901-enqueue-preflight-for-interaction-reds
 created: 2026-11-16T07:29:47.119Z
-updated: 2026-11-21T03:04:04.456Z
+updated: 2026-11-21T05:27:29.985Z
+closed: 2026-11-21T05:27:29.985Z
 ---
 
 ## Summary
@@ -28,11 +29,13 @@ Kind: product. Triage ticket H-13 of A-19813, part of E-1888 (the v0.4.0 retrosp
 ## Acceptance criteria
 
 - [x] C1. Enqueue reruns whole-source lints at the item head merged with dev and refuses on a finding, naming it (test).
-  - done: impl-1901 · 2026-11-21T00:59:26.513Z
   - verified: rev-35 [reviewer] · run rev-35-1901-evidence-2 · 2026-11-21T03:04:04.273Z · commit 895ad015203dd1656d03442f1d9c1512dfecfd6c
+  - done: impl-1901 · 2026-11-21T03:58:41.550Z
+  - verified: rev-35 [reviewer] · run rev-35-1901-evidence-3 · 2026-11-21T04:39:49.631Z · commit 4d23f97bdebb6ebd5d77f9817f3b525c97ad2ce0
 - [x] C3. A non-empty importer T3 subset runs before ready (test).
-  - done: impl-1901 · 2026-11-21T00:59:26.648Z
   - verified: rev-35 [reviewer] · run rev-35-1901-evidence-2 · 2026-11-21T03:04:04.273Z · commit 895ad015203dd1656d03442f1d9c1512dfecfd6c
+  - done: impl-1901 · 2026-11-21T03:58:41.786Z
+  - verified: rev-35 [reviewer] · run rev-35-1901-evidence-3 · 2026-11-21T04:39:49.631Z · commit 4d23f97bdebb6ebd5d77f9817f3b525c97ad2ce0
 
 ## Dependencies
 
@@ -177,3 +180,47 @@ finding_counts: {"high":0,"medium":0,"low":1}
 Final same-head evidence clear: source4/A-22298 plus configured66f497e2/A-22307 establish C1/C3. A-22309 records exact head/provenance, all240T1/443T2/273T3/55Web passing file finishes, critical named test receipts,31 identities each base+5 distinct loaded passes, the repaired native conflict case,12 prerequisite skips and unexecuted18T4 files. Aggregate/raw-progress accounting is kept separate; one low outside-bar F2 is reported as S/Bugs for C-325 follow-up under Coordinator84cb23b0, with no additional T-1901 round. No high/medium findings. Earlier fad1a58f remains red. No Reviewer runs/probes/edits or manual merge/enqueue.
 
 Criteria: C1 verified, C3 verified.
+
+### impl-1901 · 2026-11-21T03:49:00.941Z
+
+Coordinator c7f844a9 authorizes conflict-only dev merge after enqueue refusal. Merging captured origin/dev b9573ba7be4ec5b83bf9cdd2afacf5dbbbfd2437; six conflicts resolved by retaining task importers/C1 preflight and dev's batchMemberPaths/fullBatchReason tests, affected batch selection/sharding and stage help. Consumer search covers raw symbols taskImporterSelection, batchMemberPaths, fullBatchReason, batchTests, SUITE_USAGE and suite-interactions/enqueue-preflight importers across hub/test+nvim/test. Matching tests: suite-importer-ready, suite-selection, suite-persistence, suite-task-selection, dev-t3-coverage, merge-queue, dev-t3-coverage-component, roles-clauses, cli-usage-merge, suite-t3-interactions, suite-load-gate-plan, suite-cover, merge-batches; plus requested merge-policy, cli-help and cli-usage-compatibility. All T1 will run plus matching T2; native slot requested for three matching T3 files. No change to native lifecycle/preflight behavior intended. Fresh merge-only delta review and mode-free verify follow; original66f497e2 remains green only at priorhead895ad0152.
+
+### impl-1901 · 2026-11-21T03:58:41.978Z
+
+Conflict-only merge committed/pushed at4d23f97bdebb6ebd5d77f9817f3b525c97ad2ce0, tree9e84270057bc8e7df2c0fbf0b42ed2237a7309c1; parents895ad0152 and devb9573ba7b. Six resolutions preserve task importers/preflight, batch selection/sharding and stage help; all original tests retained. A-22317 records exact merge parents, symbol/importer consumer search, selection argv and checks at final source: all240T1+10affectedT2,2232/2232pass; whole native merge-policy26,cli-usage-merge2,suite-selection161,durations-runner20 allpass; full typecheck/lint(static included)exit0,0refusals,764report-only. macOSDarwin27arm64/Node24.21.0; no new-head configured/Linux/Web/T4/browser pass. Prior full66f497e2 remains green at895ad0152 only. Native slot released; no local processes remain. Fresh merge-only delta review requested next; mode-free verify follows clear verdict and local:none per Coordinatorc7f844a9.
+
+### rev-35 · 2026-11-21T04:02:10.821Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1901-delta-1
+commit: 4d23f97bdebb6ebd5d77f9817f3b525c97ad2ce0
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge-only delta source clear. A-22320 confirms exact parents895ad0152+b9573ba7, retained task importers plus dev batch/stage policies, exact shipped/frozen SUITE_USAGE, both test sets/imports and byte-identical preflight/native lifecycle/core plumbing. A-22317 local checks are qualified pre-merge-commit final-content receipts, not a new-head configured pass. No findings or Reviewer runs/probes/edits. C1/C3 new-head freshness awaits actual mode-free result per Coordinatorc7f844a9, only after local:none and quiet closure; first-parent full green66f497e2 remains prior-head proof and remaining full T3 belongs to batch. No full rerun requested.
+
+### impl-1901 · 2026-11-21T04:31:00.770Z
+
+Mode-free same-head be1106f4-5897-4827-9582-4728f322ca94/A-22326 exited0 at4d23f97bdebb6ebd5d77f9817f3b525c97ad2ce0 after clear delta A-22320. Producer aggregate7455 tests/7454pass/1prerequisite skip/0fail/cancel/todo; T0/T1/T2/selectedT3/Web exit0. Duration receipt:15 selected T3/T4 files,167passing identities,159.489s selected phase wall excluding machine wait,one base execution,no repetitions; remaining full T3 explicitly deferred to merge batch. This is task-selection evidence, not a new full-suite/T4 pass. Linux x64 droplet c-8/ams3,Node24.21.0,nvim0.12.5,lifetime1493s,cost$0.1037; Headless Shell1248/Chrome for Testing156.0.8078.4. Verification tree076ce42db4b0eb74b77f79a16598e730a803d759 distinct from Git tree9e84270057bc8e7df2c0fbf0b42ed2237a7309c1. Retained exact test finishes independently confirm skip admission/cancel fence and all four importer-ready controls each base pass+5distinct loaded passes. Skip prerequisite is local macOS stage selector on Linux (one base plus5loaded skip receipts; keep aggregate distinct). Budget allowances and lint notices remain report-only. Prior full66f497e2 remains green at895ad0152; priorfad1a58f stays red. Head fixed; reviewer owns final criterion freshness.
+
+### rev-35 · 2026-11-21T04:39:49.631Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1901-evidence-3
+commit: 4d23f97bdebb6ebd5d77f9817f3b525c97ad2ce0
+scope: evidence
+findings: [{"severity":"low","text":"Carried F2, already reported S/Bugs for C-325 outside the T-1901 bar: the same three output controls have finish-only records (three base plus fifteen loaded), with no started ID missing its finish. Producer ordinary aggregate7454 passes and raw base7457 pass finishes remain separate accounting boundaries. Exact cause remains unclassified; preserve positive named receipts and reconcile this in the existing follow-up, not another T-1901 round.","file":".cland/artifacts/A-22326-suite-be1106f4-5897-4827-9582-4728f322ca94-auto-at-4d23f97.log"}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Final current-head evidence clear under Coordinatorc7f844a9's mode-free-after-conflict plan. A-22331 audits delta sourceA-22320 plus be1106f4/A-22326: all240T1/443T2/55Web and15 selectedT3 files pass; required preflight/skip/cancel and importer-ready controls have base+5 distinct pass receipts. Remaining258T3 and18T4 are unexecuted here; fullT3 stays with batch and first-parent66f497e2 remains separately scoped prior proof. Sole macOS prerequisite identity is skipped, including its5 loaded attempts. Carried low F2 accounting follow-up stays outside bar, no new round; no high/medium. Aggregate/progress boundaries and provenance are explicit. C1/C3 verified current, no Reviewer runs/probes/edits or merge/enqueue.
+
+Criteria: C1 verified, C3 verified.
+
+### coord · 2026-11-21T05:27:29.985Z
+
+Merged d9fa6d95d63eff6a23f4ec1df65da9049702c273 onto dev.
