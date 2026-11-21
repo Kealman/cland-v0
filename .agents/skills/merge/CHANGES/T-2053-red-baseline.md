@@ -1,0 +1,1 @@
+T-2053: describe per-file passing baseline evidence from red runs, including positive file completion and the failed/incomplete-file fence. Missing completion stays unknown; stage coverage and merge routing remain unchanged.

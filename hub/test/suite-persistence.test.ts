@@ -293,7 +293,7 @@ test('3000 large legacy archives start from bounded summaries and hydrate only b
     const value = JSON.stringify({ position: n, job: { id: String(n), executor: 'local', state: 'finished', cleaned: true, reported: true,
       outcome: { code: 0, cause: '' }, head: 'head', branch: 'branch', to: [], actor: null, mode: 'auto', topic: 'topic',
       tierPlan: [payload], selection: { mode: 'full', files: [payload], reason: 'legacy', loadGateKnownTests: [payload], loadGateRerun: { head: 'head', recent: [payload], passed: [payload] } },
-      timingIdentities: [payload], lease: { resource: payload } } });
+      timingIdentities: [payload], batchPassingIdentities: [payload], lease: { resource: payload } } });
     bytes += Buffer.byteLength(value);
     insert.run(`suite-job:${n}`, value);
   }

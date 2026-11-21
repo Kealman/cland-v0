@@ -506,6 +506,44 @@ for (const red of [false, true]) test(`partial T3 baseline preserves unrelated p
   }));
 }));
 
+for (const failure of ['file', 'identity'] as const) test(`red full T3 baseline retains passing files and fences ${failure} failure and incomplete files across restart`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const f = await step(() => setup('red baseline fixture', () => suiteUnit(fixtures)));
+  const passing = Array.from({ length: 20 }, (_, i) => `hub/test/pass-${i}.test.ts`);
+  const failed = 'hub/test/failed.test.ts', incomplete = 'hub/test/incomplete.test.ts';
+  const files = [...passing, failed, incomplete];
+  await step(() => setup('persist batch receipts', async () => {
+    for (const file of files) await writeFile(join(f.root, file), '');
+    await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries(files.map(file => [file, 'T3' as const])) }));
+    const seed = await f.launch(); await f.finish(seed.id);
+    const original = (await f.suites.receipt(seed.id)).job;
+    const older = { ...original, id: 'older-green', sequence: 1, occasion: 'stage' as const, branch: 'dev', integrated: true,
+      selection: { mode: 'full' as const, files: [], reason: 'stage' },
+      tierPlan: [{ tier: 'T3' as const, files, tests: files.length, seconds: 1, projectedWall: 1, workers: 1, missing: 0 }],
+      timingIdentities: files.flatMap(file => [`${file}::known`, `${file}::old-only`]) };
+    const log = join(f.root, 'red-baseline.log');
+    const lines = files.flatMap(file => [
+      `suite timing ${JSON.stringify({ file, name: 'known', outcome: file === failed && failure === 'identity' ? 'fail' : 'pass', seconds: 0.01 })}`,
+      ...(file === incomplete ? [] : [`suite progress ${JSON.stringify({ event: 'finish', id: file, file, name: file, type: 'file', at: 1, nesting: 0, outcome: file === failed && failure === 'file' ? 'fail' : 'pass', seconds: 0.01 })}`]),
+    ]);
+    await writeFile(log, lines.join('\n') + '\n');
+    const red = { ...older, id: 'red-full', sequence: 2, occasion: 'batch' as const, batch: { id: 'prior', members: [] },
+      log, artifact: null, outcome: { ...original.outcome!, code: 1 } };
+    await f.reopen([older, red]);
+  }));
+  for (const restart of [false, true]) await step(() => setup('select next batch baseline', async () => {
+    if (restart) {
+      await writeFile(join(f.root, 'red-baseline.log'), 'retained log no longer available\n');
+      await f.reopen();
+    }
+    const result = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true, occasion: 'batch', batch: { id: 'next', members: [] } }, () => {});
+    assert.ok('dryRun' in result);
+    for (const file of passing) assert.equal(loadGateRepetitions(`${file}::known`, result.selection, {}), 0, file);
+    for (const file of passing) assert.equal(loadGateRepetitions(`${file}::new`, result.selection, {}), 5, 'unobserved identities remain new');
+    for (const file of [failed, incomplete]) assert.equal(loadGateRepetitions(`${file}::known`, result.selection, {}), 5, file);
+    for (const file of files) assert.equal(loadGateRepetitions(`${file}::old-only`, result.selection, {}), 5, 'older identities cannot leak through a newer receipt');
+  }));
+}));
+
 for (const history of ['same-tier', 'other-tier', 'other-tier-legacy', 'skipped'] as const) test(`partial baseline history bounds ${history} visits independently of tier receipts`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
   const { f, a, b } = await step(() => setup('complete history setup', async () => {
     const f = await suiteUnit(fixtures);

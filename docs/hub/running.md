@@ -1843,9 +1843,12 @@ Tier metadata is additive: verifies made before the updated producing runner
 are missing evidence and keep T1. No log text establishes eligibility. See
 [structured tier receipts](verification-tier-receipts.md).
 When T3 is selected,
-identities absent from the latest per-file same-tier green batch or stage receipt
+identities absent from the latest per-file same-tier passing batch or stage receipt
 get five repetitions. A partial T3 batch preserves older proofs for other files;
-a newer red file receipt fences older green proof. A T1-only batch supplies no
+a newer red run contributes passing identities from files with positive passing
+file completion and no failed, skipped, todo or unfinished identity. Failed or
+incomplete files fence older green proof; missing completion stays unknown.
+Passing red-run identities are checkpointed across restart. A T1-only batch supplies no
 T3 proof. Cancelled, cached, unreported and diagnostic runs are excluded.
 Missing evidence treats identities as new. `batchBaselineFileRuns` retains
 per-file receipt ids; the per-tier summary names its newest contributing receipt.

@@ -303,7 +303,7 @@ Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the c
 | Run kind | Plan after T0 |
 | --- | --- |
 | Queue-enabled task, no mode | All T1, selected T2; fallback is all T2 in both packages; added/changed T3/T4 files, T3 importers and mapped T4 guards once |
-| Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; T1 omitted with complete exact-head member receipts), plus Web after T1 (after configured tiers without T1) for web/ diffs; affected T3 importers unless a full trigger applies; five repetitions of identities lacking per-file same-tier green proof |
+| Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; T1 omitted with complete exact-head member receipts), plus Web after T1 (after configured tiers without T1) for web/ diffs; affected T3 importers unless a full trigger applies; five repetitions of identities lacking per-file same-tier passing proof |
 | Ordinary integrated `dev` or explicit `all` | T1–T3 |
 | Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
 | Periodic dev (`dev-t3`) | T2 and T3, one droplet; no load repetitions |
@@ -618,9 +618,13 @@ checks immutable merged-tree lint and duration budgets, and verifies a detached
 candidate with the hub-owned `batch` occasion. That run selects
 T0 first through the candidate's resolved `[verification] check` command, then
 `[merge] batch_tiers` (default T1 and T3), with five load repetitions only for T3
-identities absent from the latest per-file, same-tier green batch or stage receipt.
+identities absent from the latest per-file, same-tier passing batch or stage receipt.
 A newer partial receipt cannot erase another file's older proof. A newer red
-receipt fences older proof for its files. Cancelled, cached, diagnostic and
+receipt retains passing identities only for files with a positive passing file
+completion and no failed, skipped, todo or unfinished identity. Failed or
+incomplete files fence older proof; missing completion evidence stays unknown.
+The red-run passing identities are checkpointed for reuse across restart.
+Cancelled, cached, diagnostic and
 unreported runs supply no baseline. Tier migration never borrows another tier's
 identity. Internal `batchBaselineFileRuns` records each selected receipt; the
 per-tier summary names the newest contributing receipt, with older per-file
@@ -646,8 +650,9 @@ This exact-head T1 omission applies equally to light and full-T3 batches. Light
 reports name `T1 coverage: exact-head member verifies`, `batch runtime` or
 `not configured`; affected T3 does not require duplicate T1 execution.
 The baseline is selected separately for each planned tier; a newer T1-only batch
-cannot replace the T3 baseline. A red receipt fences its selected files' older
-proof; cancelled, cached, unreported and diagnostic runs supply none. With no
+cannot replace the T3 baseline. A red receipt fences failed or incomplete files'
+older proof and contributes completed passing files; cancelled, cached,
+unreported and diagnostic runs supply none. With no
 qualifying receipt, that tier's identities are new. A partial mask supplies only
 its selected file identities, never a full-stage load baseline, stage or release
 cover, or periodic-dev suppression proof. Older unmasked selections retain their

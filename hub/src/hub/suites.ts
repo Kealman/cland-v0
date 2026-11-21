@@ -118,6 +118,7 @@ export type SuiteJob = {
   tierPlan?: TierPlan; tierReported?: boolean; durationBase?: string; budgetReported?: boolean;
   loadProofs?: string[];
   timingIdentities?: string[];
+  batchPassingIdentities?: string[];
   batchBaselineRuns?: Partial<Record<TierPlan[number]['tier'], string | null>>;
   batchBaselineFileRuns?: Record<string, string>;
   batchBaselineSourceRuns?: string[];
@@ -1100,16 +1101,50 @@ export class Suites {
         const files = new Set(priorFiles.filter(file => remaining.has(file) && (!mask || mask.includes(file))));
         if (!files.size) continue;
         runs[row.tier] ??= summary.id;
-        // A later red receipt fences this file; never resurrect its older proof.
+        // Resolve every selected file here, including failed/incomplete files:
+        // their older green proof must never be resurrected.
         for (const file of files) { remaining.delete(file); fileRuns[file] = summary.id; }
-        if (summary.outcome!.code !== 0) continue;
-        const receipt = await this.#receiptIdentities(summary);
+        const receipt = summary.outcome!.code === 0 ? await this.#receiptIdentities(summary) : await this.#redBatchIdentities(summary);
         for (const identity of receipt.tests) if (files.has(identity.split('::')[0]!)) tests.add(identity);
         if (!remaining.size) break;
       }
       this.#options.log?.({ event: 'batch-baseline-scan', tier: row.tier, summaries, receipts, unresolvedFiles: remaining.size });
     }
     return { selection: { run: null, tests: [...tests].sort() }, runs, fileRuns };
+  }
+  async #redBatchIdentities(summary: SuiteJob): Promise<NonNullable<SuiteSelection['loadGateBaseline']>> {
+    const job = this.#full(summary);
+    if (job.batchPassingIdentities) return { run: job.id, tests: job.batchPassingIdentities };
+    let pending = this.#stageReads.get(job.id);
+    if (!pending) {
+      pending = (async () => {
+        const finished = new Set<string>(), blocked = new Set<string>(), identities = new Set<string>();
+        const started = new Map<string, string>();
+        for await (const line of suiteLogLines(this.#evidencePath(job))) {
+          if (line.startsWith('suite timing ')) for (const test of timingReceipts(line)) {
+            if (test.outcome === 'pass') identities.add(`${test.file}::${test.name}`);
+            else blocked.add(test.file);
+          }
+          if (!line.startsWith('suite progress ')) continue;
+          const progress = suiteProgress(line, 0, { fileEnvelopes: true });
+          for (const test of progress?.unfinished ?? []) started.set(`${test.file}::${test.id}`, test.file);
+          for (const test of progress?.completed ?? []) {
+            started.delete(`${test.file}::${test.id}`);
+            if (test.outcome !== 'pass') blocked.add(test.file);
+            else if (test.type === 'file') finished.add(test.file);
+          }
+        }
+        for (const file of started.values()) blocked.add(file);
+        job.batchPassingIdentities = [...identities].filter(identity => {
+          const file = identity.split('::')[0]!;
+          return finished.has(file) && !blocked.has(file);
+        }).sort();
+        this.#save(job);
+        return job.batchPassingIdentities;
+      })().finally(() => { this.#stageReads.delete(job.id); });
+      this.#stageReads.set(job.id, pending);
+    }
+    return { run: job.id, tests: await pending.catch(() => []) };
   }
   async #stageIdentities(occasion: VerifyOccasion = 'stage'): Promise<NonNullable<SuiteSelection['loadGateBaseline']>> {
     const summary = this.#jobs.findLast(job => job.occasion === occasion && job.integrated && job.branch === 'dev'
