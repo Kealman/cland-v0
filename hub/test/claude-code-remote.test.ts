@@ -22,6 +22,7 @@ import { systemProcesses } from '../src/system-processes.ts';
 import { spawn } from 'node:child_process';
 import { ownProcess } from './process-cleanup.ts';
 import { deliverRuntime, agentVersionHandoff } from '../src/host/code-delivery.ts';
+import { recoveryScanOwner } from './recovery-scan.ts';
 
 async function remoteClaudeFixture(t:TestContext, options:{memoryFloor?:boolean;upgrade?:boolean;nativeRefusal?:'aborted'|'spawn-error'|'pre-wire';sentAbort?:boolean;lostNativeReply?:boolean;refuseRoot?:boolean;failPrune?:boolean;failedResult?:boolean;failedAdoption?:boolean;stopCrash?:boolean;rollback?:boolean;settings?:(settings:{hooks:{SessionEnd:unknown[]}})=>void;awaitSignals?:boolean;signals?:Array<{pid:number;identity:string}>;stopHooks?:Pick<import('../src/host/agent/processes.ts').ProcessHooks,'beforeRemainingObservation'|'beforeSignals'>;setup?:(f:Awaited<ReturnType<typeof sshHostFixture>>,fake:Awaited<ReturnType<typeof fakeClaude>>)=>Promise<void>}={}) {
  let replySocket:import('node:net').Socket|undefined,nativeAbortHeld=false;
@@ -312,8 +313,12 @@ test('agent restart does not inherit Claude dynamic child acquisition from its s
 });
 
 test('hub restart after tree closure re-adopts its durable generation and releases the job',{timeout:8 * testWaitMs() + 120000},async t=>{
+ const owner=recoveryScanOwner(t),{scope}=owner;
+ await scope.run(async admit=>{
  const {ProcessTable}=await import('../src/adapters/processes.ts');
- const d=await remoteClaudeFixture(t);
+ const d=await scope.wait('remote recovery fixture setup',()=>admit(()=>remoteClaudeFixture(scope.fixtures)));
+ owner.adoptRoot(d.f.root);owner.adoptRoot(d.fake.home);
+ await scope.wait('native recovery action',()=>admit(async()=>{
  await eventually('worker turn settled before closure',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined);
  const table=new ProcessTable(join(d.f.root,'.cland/hub.db'));d.f.addCleanup(async()=>table.close());
  const process=table.get('worker')!;
@@ -327,10 +332,9 @@ test('hub restart after tree closure re-adopts its durable generation and releas
  await eventually('durable recovered cleanup retired the row',()=>table.get('worker')?.status==='exited'||table.get('worker')?.status==='stopped'||undefined,{ timeoutMs: 3000, behaviour: "post-signal receipt deadline" });
  await assert.rejects(stat(job),{code:'ENOENT'});
  await assert.rejects(stat(join(d.f.fake.run,'claude',generation+'.json')),{code:'ENOENT'});
- const scan=async(root:string):Promise<void>=>{for(const entry of await readdir(root,{withFileTypes:true})){
-   const path=join(root,entry.name);if(entry.isDirectory())await scan(path);else if(entry.isFile())assert.equal((await readFile(path)).includes(d.credential()),false,'recovered cleanup leaves no credential copy');
- }};
- await scan(d.f.fake.home);await scan(d.fake.home);
+ }));
+ await admit(()=>owner.scan([d.f.fake.home,d.fake.home],d.credential()));
+ });
 });
 
 for(const mode of ['release','release-restart','forget-restart'] as const)test(`lost native ${mode} reply settles without replaying native stop`,{timeout:8 * testWaitMs() + 120000},async t=>{

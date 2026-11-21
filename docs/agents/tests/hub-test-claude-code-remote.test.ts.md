@@ -17,6 +17,19 @@ restarts the embedded hub, then observes the durable retired row after re-adopt
 and native cleanup. It checks removed job/agent records and scans host, fake
 account and generation roots. The happy control repeats release to prove a no-op.
 
+The recovery scan also holds a scratch `processes.json.new-held` writer until
+directory listing observes that entry, then joins its atomic rename before
+opening the listed path. This deterministically exercises a vanished file,
+while retaining the generation, released-job and credential-content assertions.
+Only ENOENT from reading a listed file is skipped; other errors still fail.
+`recoveryScanOwner` enrolls the whole case before fixture acquisition, bounds
+setup, native recovery and scan separately, and releases/joins the scratch
+writer on cancellation. Both fixture roots retain a removal guard requiring a
+positive writer-close receipt. Filesystem-only controls in
+`fixture-socket-path.test.ts` exercise that same owner: actual guarded removal
+waits for the held scan, and a rejected writer close retains the root until a
+successful retry. A scan failure remains primary if writer drainage also fails.
+
 A real frame reply-loss control drops remove-claude after its persisted effect.
 The failed stop retains private settings; retry releases idempotently without
 repeating native stop, then scans all declared roots clean. This optional shared

@@ -1,13 +1,14 @@
 // T2: native Unix listener allocation and close under a deep, multibyte TMPDIR; no child or hub.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { statSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { mkdir, stat, access, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fixtureSocketPath } from '../../test-support/socket-path.ts';
 import { tempProject } from './harness.ts';
-import { beforeDirectories } from './process-cleanup.ts';
+import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { removeFixtureSockets, enableFixtureHostSockets, fixtureHostSocketDirectory } from '../../shared/fixture-sockets.ts';
 import { dirname } from 'node:path';
 import { hostPaths } from '../src/host/records.ts';
@@ -22,7 +23,61 @@ import { within } from '../src/executor/droplet/deadline.ts';
 import { testWaitMs } from './until.ts';
 import { removeWorktreeWithFixtures, type FixtureProcesses } from '../src/fixture-processes.ts';
 import fsPromises from 'node:fs/promises';
+import { recoveryScanOwner } from './recovery-scan.ts';
 import { syncBuiltinESMExports } from 'node:module';
+
+test('recovery scan guarded removal joins a cancelled held scan and writer',async t=>{
+ const listed=Promise.withResolvers<void>(),releaseScan=Promise.withResolvers<void>(),removing=Promise.withResolvers<void>();
+ let root='',held=false,releaseObserved=false,remove:(()=>Promise<void>)|undefined;
+ const owner=recoveryScanOwner(t,{
+   beforeRead:async path=>{if(path.endsWith('.new-held')){held=true;listed.resolve();await releaseScan.promise;}},
+   releaseOnClose:()=>{
+     try{if(held){
+       assert.equal(statSync(root).isDirectory(),true,'root remains while original scan is held');
+       assert.equal(owner.writerClosed(),false,'no writer-close receipt inferred from release');
+       releaseObserved=true;
+     }}finally{releaseScan.resolve();}
+   },
+ });
+ const sequence=owner.scope.run(async admit=>{
+   root=await owner.scope.wait('scan control root setup',()=>admit(()=>tempProject(owner.scope.fixtures)));
+   guardDirectoryRemoval(root,async()=>{removing.resolve();});owner.adoptRoot(root);
+   remove=ownDirectory(undefined,root);
+   await admit(()=>owner.scan([root],'absent-credential'));
+ });
+ const failed=assert.rejects(sequence,/fixture work admission closed/);void failed.catch(()=>{});
+ await within(listed.promise,testWaitMs(),undefined,()=>new Error('scan listing receipt missing'));
+ const removal=remove!();void removal.catch(()=>{});
+ await within(removing.promise,testWaitMs(),undefined,()=>new Error('guarded removal entry missing'));
+ await removal;await failed;
+ assert.equal(releaseObserved,true,'guarded removal observed the retained root before releasing the scan');
+ assert.equal(owner.writerClosed(),true,'writer closed before guarded removal completed');
+ await assert.rejects(stat(root),{code:'ENOENT'});
+});
+
+test('recovery scan retains its primary failure and root after rejected writer close',async t=>{
+ const scanFailure=new Error('planted credential scan failure'),closeFailure=new Error('planted writer close failure');
+ let rejectClose=true,root='',remove:(()=>Promise<void>)|undefined;
+ const owner=recoveryScanOwner(t,{
+   beforeRead:async()=>{throw scanFailure;},
+   afterWriterJoin:async()=>{if(rejectClose)throw closeFailure;},
+ });
+ await assert.rejects(owner.scope.run(async admit=>{
+   root=await owner.scope.wait('rejected close root setup',()=>admit(()=>tempProject(owner.scope.fixtures)));
+   owner.adoptRoot(root);remove=ownDirectory(undefined,root);
+   await admit(()=>owner.scan([root],'absent-credential'));
+ }),error=>{
+   assert.ok(error instanceof AggregateError);
+   assert.equal(error.cause,error.errors[0]);
+   assert.equal(error.errors[0].cause,scanFailure,'selected scan failure remains primary');
+   assert.equal(error.errors[1].cause,closeFailure,'drain rejection is secondary');return true;
+ });
+ await assert.rejects(remove!(),/scan writer close unconfirmed/);
+ assert.equal((await stat(root)).isDirectory(),true,'actual removal guard retains root after rejected close');
+ assert.equal(owner.writerClosed(),false);
+ rejectClose=false;await owner.closeWriter();assert.equal(owner.writerClosed(),true);
+ await remove!();await assert.rejects(stat(root),{code:'ENOENT'});
+});
 import fs from 'node:fs';
 import { readdir } from 'node:fs/promises';
 

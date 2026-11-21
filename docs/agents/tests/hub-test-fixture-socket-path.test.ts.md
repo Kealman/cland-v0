@@ -1,5 +1,13 @@
 # hub/test/fixture-socket-path.test.ts
 
+The recovery scan controls use `recoveryScanOwner`, the same whole-case owner
+as the remote restart test, with filesystem-only writers. One enters real
+guarded directory removal while the scan is held, confirms the root is retained,
+then releases the scan and observes successful writer closure before removal.
+The other injects a scan failure and rejected writer close: the scan reason
+remains primary, guarded removal refuses, and only a positive close retry permits
+removal. No child process or native harness is needed for these controls.
+
 The registration alias control uses an allocated scratch directory and a
 symlink alias inside its owner. On macOS it also presents that same allocation
 through `/var` when its canonical path starts with `/private/var`. Each persisted
