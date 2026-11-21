@@ -6,6 +6,7 @@ import { constants } from 'node:fs';
 import { assertPublishable } from '../../.agents/skills/qa/qa-demo-policy.ts';
 import { scanCapture } from '../../site/scripts/capture-safety.ts';
 import { evidenceSnapshotStagingPrefix } from './state-paths.ts';
+import { HubRefusal } from '../../shared/socket-client.ts';
 
 export type EvidenceArgs = { path: string; title: string; kind: string; topic: string; retryKey?: string };
 export type ScanReceipt = { path: string; exitCode: number | null; controlMatched: boolean; matches: string[] };
@@ -114,9 +115,14 @@ export async function publishEvidence<T>(args: EvidenceArgs, artifactCreate: (ar
     result = await artifactCreate({ ...args, path: target });
     publicationCompleted = true;
   } catch (error) {
-    failure = error instanceof Error && safeErrors.has(error) ? error : refuse(publicationStarted
-      ? 'publication outcome unknown; snapshot retained; reconcile session artifacts before retrying'
-      : 'snapshot or scan failed; private diagnostic withheld');
+    if (publicationStarted && error instanceof HubRefusal) {
+      publicationCompleted = true; // The hub positively refused; no reader remains.
+      failure = refuse(`hub refused (${error.refusalCode ?? 'unknown'}): ${error.message}`);
+    } else {
+      failure = error instanceof Error && safeErrors.has(error) ? error : refuse(publicationStarted
+        ? 'publication outcome unknown; snapshot retained; reconcile session artifacts before retrying'
+        : 'snapshot or scan failed; private diagnostic withheld');
+    }
   }
   let disposition: SnapshotDisposition = { state: root ? 'retained' : 'not-created', cleanup: 'not-needed' };
   // A rejected transport may still have a reader copying this snapshot.
@@ -141,13 +147,15 @@ export async function publishEvidence<T>(args: EvidenceArgs, artifactCreate: (ar
 }
 
 /** Use the authenticated tool transport of the calling cland session, with no credential output. */
-export async function publishSessionEvidence(args: EvidenceArgs): Promise<unknown> {
+export async function publishSessionEvidence(args: EvidenceArgs,
+  context = { env: process.env, cwd: process.cwd() }): Promise<unknown> {
   const { sessionOf } = await import('./cli/actor.ts');
-  const actor = sessionOf(process.env);
+  const actor = sessionOf(context.env);
   if (!actor) throw refuse('run inside the publishing cland session');
   const { hubDiscovery, readDiscovery } = await import('./project.ts');
-  const discovery = readDiscovery(hubDiscovery(process.cwd()));
+  const discovery = readDiscovery(hubDiscovery(context.cwd, context.env));
   if (!discovery) throw refuse('no running hub');
   const { askHubFrame } = await import('./cli/socket-client.ts');
-  return publishEvidence(args, payload => askHubFrame(discovery, { type: 'artifact.create', ...payload, as: actor }));
+  return publishEvidence({ ...args, path: resolve(context.cwd, args.path) },
+    payload => askHubFrame(discovery, { type: 'artifact.create', ...payload, as: actor }, undefined, context.env));
 }

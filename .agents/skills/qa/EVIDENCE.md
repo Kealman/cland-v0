@@ -14,7 +14,11 @@ console.log(JSON.stringify(result));
 ```
 
 Run a saved script with Node 24.13 or newer within the 24.x line. Use the actual
-item topic. A lost reply leaves the snapshot retained because the hub may still
+item topic. A definitive hub refusal reports
+`Evidence refused: hub refused (<code>): <reason>` and removes the snapshot;
+older hub replies without a code use `unknown`. Stop on that refusal. A cleanup
+failure preserves the refusal and reports the observed snapshot disposition.
+A lost reply leaves the snapshot retained because the hub may still
 be copying it. Reconcile through the session's artifact list before any retry;
 do not request a second artifact with a fresh key. The installed library form `publishEvidence(args, artifactCreate)` also accepts
 the publishing session's tool callback. Test callbacks are fakes.
@@ -23,6 +27,8 @@ The helper copies every regular file (including hidden and nested files) into a
 private snapshot, scans UTF-8 and UTF-16LE bytes plus relative filenames, then
 publishes those same bytes. Symlinks, special files, empty directories and
 snapshots exceeding 50 MiB refuse. Stop capture writers before calling it.
+Directory payloads need a Markdown entry file for the hub's folder publication;
+a folder containing only `README.txt` receives an `artifact-source` refusal.
 It runs both existing policies, `assertPublishable` and `scanCapture`, unchanged.
 Both must detect a synthetic control generated for that invocation. Only an
 exit-0 receipt for the exact snapshot, with that control matched and no matches,

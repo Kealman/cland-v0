@@ -5,11 +5,70 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, access, copyFile } fr
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { publishEvidence, scanEvidence, type EvidenceArgs, type SnapshotLifecycle } from '../src/evidence-publish.ts';
+import { publishEvidence, publishSessionEvidence, scanEvidence, type EvidenceArgs, type SnapshotLifecycle } from '../src/evidence-publish.ts';
 import { guardedLeaseCase } from './executor-lease-fixture.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
 import { Report } from '../src/init/files.ts';
 import { provisionSkills } from '../src/init/skills.ts';
+import { HubRefusal } from '../../shared/socket-client.ts';
+import { projectHub, inProcessSpoke } from './harness.ts';
+import { sessionShell } from './session-credential-fixture.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+
+test('an implementer publishes a scanned Markdown dot-file from its worktree', t => evidenceCase(t, async ({root, step}) => {
+  const hub = await step(() => projectHub(t, root));
+  try {
+    const coord = await step(() => inProcessSpoke(t, {discover: true, cwd: root, name: 'coord', role: 'coordinator'}));
+    const worktree = join(root, 'worktree');
+    await step(() => mkdir(worktree));
+    const impl = await step(() => inProcessSpoke(t, {discover: true, cwd: worktree, name: 'impl-1758', role: 'implementer'}));
+    try {
+      const made = await step(() => coord.call<{topic: {id: string}}>('topic.create', {title: 'Evidence reproduction'}));
+      const topic = made.topic.id;
+      await step(() => coord.call('send', {topic, to: ['impl-1758'], text: 'Publish evidence here'}));
+      await step(() => impl.waitForEvent(e => e.params.content === 'Publish evidence here'));
+      await step(() => writeFile(join(worktree, '.evidence-T-1758.md'), '# Clean reproduction'));
+      const env = fixtureEnvironment(root, process.env, sessionShell(root, {CLAND_SESSION_NAME: 'impl-1758', CLAND_ROLE: 'implementer'}));
+      const result = await step(() => publishSessionEvidence({path: './.evidence-T-1758.md', kind: 'file', title: 'Reproduction', topic}, {env, cwd: worktree})) as {artifact: {path: string; creatorRole: string}};
+      assert.equal(result.artifact.creatorRole, 'implementer');
+      assert.equal(await step(() => readFile(result.artifact.path, 'utf8')), '# Clean reproduction');
+      await step(() => assert.rejects(publishSessionEvidence({path: './.evidence-T-1758.md', kind: 'file', title: '', topic}, {env, cwd: worktree}), {
+        message: 'Evidence refused: hub refused (artifact-title): an artifact needs a title',
+        snapshot: {state: 'removed', cleanup: 'complete'},
+      }));
+    } finally { await step(() => impl.close()); await step(() => coord.close()); }
+  } finally { await step(() => hub.stop()); }
+}));
+
+test('evidence publication reports a definitive hub refusal and removes its snapshot', t => evidenceCase(t, async ({root, step, publish}) => {
+  const path = join(root, 'report.md');
+  await step(() => writeFile(path, 'clean'));
+  let snapshot = '';
+  await step(() => assert.rejects(publish({path, title: 'Report', kind: 'file', topic: 'test'}, async args => {
+    snapshot = args.path;
+    throw new HubRefusal('a folder needs a Markdown entry or an explicit entry file', 'artifact-source');
+  }), error => {
+    assert.equal((error as Error).message, 'Evidence refused: hub refused (artifact-source): a folder needs a Markdown entry or an explicit entry file');
+    assert.deepEqual((error as {snapshot?: unknown}).snapshot, {state: 'removed', cleanup: 'complete'});
+    return true;
+  }));
+  await step(() => assert.rejects(access(snapshot), {code: 'ENOENT'}));
+}));
+
+test('evidence publication preserves a legacy hub refusal through cleanup failure', t => evidenceCase(t, async ({root, step, publish}) => {
+  const path = join(root, 'report.md');
+  await step(() => writeFile(path, 'clean'));
+  let snapshot = '';
+  await step(() => assert.rejects(publish({path, title: 'Report', kind: 'file', topic: 'test'}, async args => {
+    snapshot = args.path;
+    throw new HubRefusal('publication not permitted'); // Previous wire shape without code.
+  }, undefined, {removeRoot: async () => { throw new Error('private cleanup error'); }}), error => {
+    assert.equal((error as Error).message, 'Evidence refused: hub refused (unknown): publication not permitted');
+    assert.deepEqual((error as {snapshot?: unknown}).snapshot, {state: 'retained', cleanup: 'failed'});
+    return true;
+  }));
+  assert.equal(await step(() => readFile(snapshot, 'utf8')), 'clean');
+}));
 
 function evidenceCase(t: TestContext, body: (fixture: {
   root: string; step: FixtureStep;
