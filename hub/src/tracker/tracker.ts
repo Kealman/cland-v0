@@ -1918,8 +1918,10 @@ export class Tracker {
     const epic = this.#require(id).id;
     const head = tip ?? await this.#resolve('refs/heads/dev', 'the epic demo tip');
     if (!head) throw new TrackerError('epic demo needs dev');
-    const fresh = await epicDemoFreshness(this.#git, this.#demoTasks(epic), commit, head);
+    const tasks = this.#demoTasks(epic);
+    const fresh = await epicDemoFreshness(this.#git, tasks, commit, head);
     if (!tip && head !== await this.#resolve('refs/heads/dev', 'the epic demo tip after checking')) throw new TrackerError('dev changed while checking demo freshness; retry');
+    this.#fresh.noteDemo(commit, head, tasks, fresh.current);
     return fresh;
   }
 

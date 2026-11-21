@@ -159,6 +159,8 @@ Each successful criterion operation emits a subscribed `task` event with `criter
 
 Verdicts can include criteria in the same write: `cland task comment T-n "checked" --verdict review --scope full --result clear --run rev-1 --verified C1,C3` (or `--verified all`); a not-clear verdict takes repeatable `--failed "C2=reason"`. MCP `task.comment` takes `verified: "C1,C3" | "all"` or `failed: [{ criterion: "C2", note: "reason" }]`. Reviewer and QA only, with their criterion verify grant. Unknown ids refuse the verdict; its topic report lists the marks. See [review and QA](../review-and-qa.md#criteria-in-a-verdict).
 
+Planning-container marks use demo freshness rather than exact-head equality: a descendant `dev` commit stays current when intervening commits do not touch files changed by the container's task merges. Tracker- and brief-only commits therefore keep marks current when those paths are outside that surface. An intervening edit to a surface file makes them stale. A completed demo check is retained for its commit, dev tip and task membership, so verdict and criterion replies and `task.view` share that result.
+
 ## Categories
 
 Categories gather work that belongs to no release or epic. List their ids with `cland task list --kind category --state open --json`; use the category's id as `--parent C-<n>` on `cland task create`, or file an existing item with `cland task link T-<n> --parent C-<n>`. Resolve ids from the list instead of hard-coding numbers.

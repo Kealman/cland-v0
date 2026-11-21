@@ -108,6 +108,116 @@ test('demo surfaces follow reparented and removed task membership after a cached
   } finally { await tracker.stop(); }
 });
 
+for (const overlap of [false, true]) test(`epic verdict and criterion replies retain demo freshness across tracker and brief commits${overlap ? ' with older work failing' : ''}`, async t => {
+  const f = await trackerFileCase(async ({owner, root, step}) => {
+    const a = 'a'.repeat(40), b = 'b'.repeat(40), c = 'c'.repeat(40);
+    let tip = b;
+    let held = overlap;
+    const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>(), settled = Promise.withResolvers<void>();
+    owner.releaseOnClose(() => release.resolve());
+    const record = (sha: string, item: string, paths: string[]) => `${sha}\0${item}\0\0${paths.map(path => `\n:100644 100644 ${a} ${b} M\0${path}\0`).join('')}`;
+    const tracker = ownedTracker(owner, {root, db: ':memory:', clock: new FakeClock(Date.now()),
+      log: entry => { if (entry.event === 'task-freshness-settled') settled.resolve(); },
+      git: async args => {
+        if (args[0] === 'for-each-ref') return `${tip} refs/heads/dev`;
+        if (args[0] === 'rev-parse') {
+          if (held && !args.at(-1)!.includes('dev')) {
+            held = false; entered.resolve(); await release.promise;
+            throw new Error('controlled older demo computation failure');
+          }
+          return args.at(-1)!.includes('dev') ? tip : a;
+        }
+        if (args[0] === 'merge-base') return '';
+        if (args[0] === 'log') {
+          if (args.includes('--first-parent')) return record(a, 'T-2', ['surface.ts']);
+          return tip === b ? record(b, '', ['.cland/tasks/E-1.md', 'qa/briefs/E-1.md']) : record(c, '', ['surface.ts']);
+        }
+        throw new Error(`unexpected fake Git operation: ${args[0]}`);
+      }, readBase: async () => 'dev', scheduleTips: () => ({poke() {}, stop() {}}), watch: () => ({close() {}}),
+    });
+    const oldMark = overlap ? `  - verified: qa [qa] · run older · ${new Date().toISOString()} · commit ${a}\n` : '';
+    await step(() => writeFile(join(root, '.cland/tasks/E-1.md'), `---\nid: E-1\nkind: epic\ntitle: Demo\n---\n\n## Definition of done\n- [ ] C1. Demo evidence\n${oldMark}- [ ] C2. Retained evidence\n${oldMark}`));
+    await step(() => writeFile(join(root, '.cland/tasks/T-2.md'), '---\nid: T-2\nkind: task\ntitle: Surface owner\nparent: E-1\n---\n'));
+    await step(() => tracker.start({deferReadyChecks: true}));
+    await step(() => tracker.refreshFreshness());
+    if (overlap) {
+      tracker.view('E-1');
+      await step(() => entered.promise);
+    }
+    return {tracker, a, release, settled, move: () => { tip = c; }};
+  }, t);
+  await f.run(t, async () => {
+    const {tracker, a, release, settled} = f.value;
+    const qa = {name: 'qa', id: 'qa', role: 'qa'};
+    const reply = await handleTaskRequest(tracker, {type: 'task.comment', id: 'write', item: 'E-1', text: 'Demo checked',
+      verdict: {verdict: 'qa', result: 'clear', run: 'demo', commit: a, verified: 'all'}}, qa) as {item: ReturnType<Tracker['view']>};
+    const fresh = {total: 2, done: 0, verified: 2, stale: 0, failed: 0};
+    assert.deepEqual(reply.item.criteriaCounts, fresh);
+    assert.equal(reply.item.criteria[0]!.marks[0]!.kind === 'verified' && reply.item.criteria[0]!.marks[0]!.current, true);
+    assert.deepEqual(tracker.view('E-1').criteriaCounts, fresh);
+    if (overlap) {
+      release.resolve();
+      await f.owner.wait('older demo worker settlement publication', () => settled.promise);
+      assert.deepEqual(tracker.view('E-1').criteriaCounts, fresh);
+      assert.deepEqual(reply.item.criteriaCounts, fresh);
+    }
+    const retained = await handleTaskRequest(tracker, {type: 'task.criterion', id: 'retain', item: 'E-1', op: 'edit', criterion: 'C1', text: 'Updated description'},
+      {name: 'human', id: 'human', role: null, human: true}) as {item: ReturnType<Tracker['view']>};
+    assert.deepEqual(retained.item.criteriaCounts, fresh);
+    f.value.move();
+    await tracker.refreshFreshness();
+    assert.equal((await tracker.demoFreshness('E-1', a)).current, false);
+    const edited = await handleTaskRequest(tracker, {type: 'task.criterion', id: 'edit', item: 'E-1', op: 'edit', criterion: 'C1', text: 'Revised description'},
+      {name: 'human', id: 'human', role: null, human: true}) as {item: ReturnType<Tracker['view']>};
+    const stale = {total: 2, done: 0, verified: 0, stale: 2, failed: 0};
+    assert.deepEqual(edited.item.criteriaCounts, stale);
+    assert.deepEqual(tracker.view('E-1').criteriaCounts, stale);
+    assert.equal(edited.item.criteria[0]!.marks[0]!.kind === 'verified' && edited.item.criteria[0]!.marks[0]!.current, false);
+  });
+});
+
+for (const phase of ['queued', 'running', 'retry']) test(`completed demo proof preserves every waiting item after superseding ${phase} work`, t => {
+  const owner = stageCase(t);
+  return owner.run(async () => {
+    const a = 'a'.repeat(40), b = 'b'.repeat(40), c = 'c'.repeat(40);
+    const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+    let published = Promise.withResolvers<string[]>();
+    owner.releaseOnClose(() => release.resolve());
+    let fresh: Freshness | undefined, tip = b;
+    owner.requireClose(async () => { await fresh?.stop(); });
+    fresh = new Freshness({
+      git: async args => {
+        if (args[0] === 'for-each-ref') return `${tip} refs/heads/dev`;
+        entered.resolve(); await release.promise;
+        throw new Error('controlled superseded Git failure');
+      }, readBase: async () => 'dev', tipsMoved() {}, settled: ids => { published.resolve(ids); },
+    });
+    await owner.wait('demo cache setup', () => fresh!.refresh());
+    assert.equal(fresh.demo('E-1', a, ['T-2']), undefined);
+    assert.equal(fresh.demo('E-3', a, ['T-2']), undefined);
+    if (phase !== 'queued') await owner.wait('older computation entered', () => entered.promise);
+    if (phase === 'retry') {
+      release.resolve();
+      await owner.wait('failed work published before explicit proof', () => published.promise);
+      published = Promise.withResolvers<string[]>();
+      assert.equal(fresh.demo('E-5', a, ['T-2']), false);
+    }
+    fresh.noteDemo(a, b, ['T-2'], true);
+    assert.equal(fresh.demo('E-1', a, ['T-2']), true);
+    release.resolve();
+    assert.deepEqual((await owner.wait('all waiting items published', () => published.promise)).sort(), phase === 'retry' ? ['E-1', 'E-3', 'E-5'] : ['E-1', 'E-3']);
+    assert.equal(fresh.demo('E-1', a, ['T-2']), true);
+    assert.equal(fresh.demo('', a, ['T-9']), undefined, 'different membership cannot borrow proof');
+    tip = c;
+    await owner.wait('moved tip observed', () => fresh!.refresh());
+    fresh.noteDemo(a, b, ['T-2'], true);
+    assert.equal(fresh.demo('', a, ['T-2']), undefined, 'old tip proof cannot settle the new tip');
+    await owner.wait('cache positively stopped', () => fresh!.stop());
+    fresh.noteDemo(a, c, ['T-2'], true);
+    assert.equal(fresh.demo('', a, ['T-2']), undefined, 'stopped cache refuses new proof');
+  });
+});
+
 test('a moved task tip makes only its own exact-tip criteria stale in summaries and views', async t => {
   await fixtureNativeGuard(t);
   const root = await tempProject(t), a = 'a'.repeat(40), b = 'b'.repeat(40);

@@ -1,5 +1,24 @@
 # hub/test/tracker-summary.test.ts
 
+The epic verdict reply regression uses fake Git history and an in-memory index.
+Through `handleTaskRequest`, it writes QA marks at a build behind dev by tracker
+and brief changes, checks literal verified/stale counts in the immediate reply
+and `Tracker.view`, then retains those marks through a criterion edit. After a
+surface-file edit it checks demo freshness and the stale counts and mark flags
+in both the criterion reply and the view. The native-launch guard stays active
+through tracker shutdown and fixture cleanup. Each callback uses
+`trackerFileCase` for separately bounded setup and complete work ownership,
+with `ownedTracker` registered before construction so database-close receipts
+gate root disposal and native-guard restoration.
+
+The overlapping variant holds the older background Git resolution before the
+explicit verdict check, then releases its failure and observes worker settlement
+before asserting reply/view counts again. Direct `Freshness` cases retain all
+waiting-item ids through queued, running and retry supersession; they also check
+that changed membership, a moved dev tip and stopped caches cannot borrow that
+proof. Their `stageCase` owner releases controlled holds, joins work and observes
+cache shutdown before restoring the native guard.
+
 The ten-branch churn case uses `tip-churn-fixture.ts`: 1,650 synthetic rows,
 fifty epic trees and 1,600 branch tips, ten of which move. It records summary
 work through the raw summary's blocker query and title-bearing SQLite row

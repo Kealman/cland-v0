@@ -19,7 +19,7 @@ export const TIP_CHECK_MS = 2000;
 /** How soon after a tracker change the tips are read again, ms (changes in a burst share one read). */
 const POKE_MS = 50;
 
-type Want = { commit: string; tip: string; base: string | null; ancestry: boolean; settledOnly?: boolean; demoTasks?: string[]; ids: Set<string> };
+type Want = { commit: string; tip: string; base: string | null; ancestry: boolean; settledOnly?: boolean; demoTasks?: string[]; demoProof?: boolean; ids: Set<string> };
 type DeltaJob = { want: Want; baseTip: string; current: boolean };
 type Worker = { demo: boolean; working: boolean; promise: Promise<void> | null };
 
@@ -199,6 +199,22 @@ export class Freshness {
     return this.#current(id, 'dev', commit, false, tasks);
   }
 
+  /** Retain an explicit demo check for the same build, dev tip and membership as reads. */
+  noteDemo(commit: string, tip: string, tasks: string[], current: boolean): void {
+    if (this.#stopped || this.tip('dev') !== tip) return;
+    const key = demoKey(commit, tip, tasks);
+    this.#results.set(key, current);
+    // Keep the worker's waiting ids/publication ownership, but supersede its
+    // queued, in-flight or retry computation with this completed explicit receipt.
+    const want = this.#wants.get(key) ?? this.#retries.get(key)?.want;
+    if (want) {
+      want.demoProof = current;
+      this.#wants.set(key, want);
+      this.#startWork();
+    }
+    this.#retries.delete(key);
+  }
+
   /** Immutable ancestry between a landing and a tested build, computed off the request path. */
   contains(id: string, commit: string, tip: string, settledOnly = false): boolean | undefined {
     if (commit === tip) return true;
@@ -230,7 +246,7 @@ export class Freshness {
     }
     if (commit === tip) return true;
     const base = ancestry || demoTasks ? null : this.#base;
-    const key = keyOf(commit, tip, base, base ? (tips.get(base) ?? null) : null) + (ancestry ? ' ancestor' : demoTasks ? ` demo ${demoTasks.join(',')}` : '');
+    const key = demoTasks ? demoKey(commit, tip, demoTasks) : keyOf(commit, tip, base, base ? (tips.get(base) ?? null) : null) + (ancestry ? ' ancestor' : '');
     const known = this.#results.get(key);
     if (known !== undefined) {
       if (id) this.#retries.get(key)?.want.ids.add(id);
@@ -356,7 +372,7 @@ export class Freshness {
         let value: boolean;
         let failed = false;
         try {
-          value = await this.#compute(want);
+          value = want.demoProof ?? await this.#compute(want);
         } catch (err) {
           this.#fail('compute', err);
           value = false;
@@ -366,6 +382,7 @@ export class Freshness {
         if (this.#wants.get(key) !== want) continue;
         this.#wants.delete(key);
         if (this.#stopped) continue;
+        if (want.demoProof !== undefined) { value = want.demoProof; failed = false; }
         this.#results.set(key, value);
         if (want.ancestry && !want.settledOnly) this.#ancestryChanged?.(want.commit, want.tip, value);
         if (failed && (want.ancestry || want.demoTasks)) this.#retries.set(key, { want, after: performance.now() + this.#intervalMs });
@@ -480,6 +497,7 @@ export function pending(annotated: IndexedVerdict[]): boolean {
 }
 
 const keyOf = (commit: string, tip: string, base: string | null, baseTip: string | null): string => [commit, tip, base ?? '', baseTip ?? ''].join(' ');
+const demoKey = (commit: string, tip: string, tasks: string[]): string => `${keyOf(commit, tip, null, null)} demo ${tasks.join(',')}`;
 
 function sameTips(a: ReadonlyMap<string, string>, b: ReadonlyMap<string, string>): boolean {
   if (a.size !== b.size) return false;
