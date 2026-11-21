@@ -387,3 +387,5 @@ Artifact inline content is limited to 65,536 UTF-8 bytes; use `path` for larger
 material. `artifact.create retryKey` / `cland artifact new --retry-key` provides
 an actor-scoped durable receipt on supporting hubs; reuse identical arguments
 after a lost reply. See [artifact admission and retry receipts](../docs/hub/artifacts.md#inline-admission-and-retry-receipts).
+
+Executor preparation uses `verification.droplet.snapshot_size`, inheriting `prepare_size` when unset. This project selects c-4; paid host builders retain c-8. Matching inputs rebuild an oversized snapshot; verify admission rejects a disk mismatch before T0 and names fitting catalog sizes. See [prepared snapshots](../docs/hub/running.md#controls-and-the-prepared-snapshot).

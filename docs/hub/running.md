@@ -446,6 +446,7 @@ provisioning and cleanup add to billed lifetime. Read measured costs in each run
 | `daily_spend_usd` | `5` | `3` |
 | `[verification.droplet] size` | `c-8` | default |
 | `prepare_size` | `c-8` | default |
+| `snapshot_size` | inherits `prepare_size` | `c-4` |
 | `regions` | `["lon1", "nyc1", "sfo2"]` | default |
 | `image` | `ubuntu-24-04-x64` | default |
 
@@ -603,9 +604,7 @@ marker can use fake binaries, as with the fake-host gate. The executor
 code and droplet `run.sh` come from the running hub, so deployed changes require
 a hub restart before real runs use them.
 
-`prepare_size` selects the builder; its disk must be no larger than `size`'s disk
-so the resulting snapshot fits a run. Prepare refuses an oversized builder
-before creating anything. The builder uses the same lease, tags, watchdog and
+`snapshot_size` selects the verification snapshot builder; when unset it inherits `prepare_size` (default c-8), preserving existing projects. This project pins `snapshot_size = "c-4"`, the smallest requested verification size. `prepare_size` continues to select the paid host-pool builder, including explicit overrides. DigitalOcean restores a snapshot only onto a disk at least its minimum disk size; a c-4 snapshot therefore supports c-4 and c-8 runs. Prepare refuses a builder disk larger than the configured run disk before creating anything and, with `snapshot_size` set, rebuilds a matching-key snapshot whose minimum disk exceeds the selected builder disk. Without that override, a matching snapshot retains legacy reuse without a provider call, including drainage of an already admitted key computation during shutdown. When a prepared snapshot exists, verification admission refuses an incompatible disk before T0 and names fitting catalog sizes; regional capacity is checked separately. Without a snapshot, admission and dry-run planning retain their existing behavior; acquisition still requires preparation. The builder uses the same lease, tags, watchdog and
 release as a run, installs the exact versions with digest checks, delivers from
 the territory and runs the root's configured prepare command as `runner` (or
 reports `prepare: not set`). It powers off before snapshotting,

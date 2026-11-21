@@ -103,6 +103,7 @@ for (const failure of ['omitted', 'aborted'] as const) {
     const { f, backend, owner, entered } = await interfaceFixture(t, true);
     const setupClock = new FakeClock();
     const abort = new AbortController();
+    const providerReads = f.api.requests.length;
     const preparing = owner.track(backend.prepare({}));
     await owner.setup(entered);
     const observing = owner.setup(new Promise<void>(() => {}), { clock: setupClock, signal: abort.signal });
@@ -112,6 +113,7 @@ for (const failure of ['omitted', 'aborted'] as const) {
     await rejected;
     await owner.dispose();
     assert.equal((await owner.join(preparing)).state, 'current', 'disposal joins the actual preparation result');
+    assert.equal(f.api.requests.length, providerReads, 'legacy matching-image reuse does no provider work during drainage');
     assert.equal(owner.pending(), 0);
     assert.equal(setupClock.pending, 0);
     assert.deepEqual(f.api.droplets, []);

@@ -36,7 +36,8 @@ async function publish(root: string, store: Store | undefined, snapshot: Snapsho
   await durableJson(storage?.recordPath ?? snapshotPath(root), snapshot);
   store?.setMeta('executor-snapshot', JSON.stringify(snapshot));
 }
-const belongs = (image: SnapshotImage, record: SnapshotRecovery): boolean => image.id === record.candidate?.image || image.name === record.name && image.resource_id === String(record.builder);
+export const snapshotFromBuilder = (image: SnapshotImage, name: string, builder: number): boolean => image.name === name && image.resource_id === String(builder);
+const belongs = (image: SnapshotImage, record: SnapshotRecovery): boolean => image.id === record.candidate?.image || record.builder !== undefined && snapshotFromBuilder(image, record.name, record.builder);
 
 /** Each retry establishes provider state before changing an uncertain pointer.
  * Final actions with no visible image keep a tombstone: a delayed catalogue may

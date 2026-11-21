@@ -15,7 +15,7 @@ import { restoreWatchdogDeletions, accountRelease, durableJson, leaseDir, liveLe
 import { testTiming, type WatchdogOptions } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots, claimSnapshotStorage, recoverPoolSnapshots } from './snapshot-recovery.ts';
-import { prepareBase, prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
+import { prepareBase, prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, snapshotFitsDisk, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
 import { compactLeaseHistory, hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend, sweepProjects } from './spend.ts';
 import { DropletRun } from './run.ts';
 import { recordReadinessCleanupFailure } from './readiness-deadline.ts';
@@ -159,8 +159,10 @@ export class DropletExecutor implements Executor {
   async validateSize(size: string, snapshot?: ProjectConfig): Promise<void> {
     const config = snapshot ?? await this.#config();
     const api = (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock));
-    const selected = (await api.sizes()).find(s => s.slug === size);
+    const sizes = await api.sizes();
+    const selected = sizes.find(s => s.slug === size);
     if (!selected) throw new Error(`droplet size ${size} is unavailable`);
+    await this.#validateSnapshotDisk(size, sizes);
     if (!selected.available) throw new ProviderCapacityUnavailable(`droplet size ${size} is unavailable`);
     if (!Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
     const regions = await api.regions();
@@ -235,7 +237,22 @@ export class DropletExecutor implements Executor {
     const available = config.verification.droplet.regions.filter(region => selected.regions.includes(region) && regions.some(row => row.slug === region && row.available && row.sizes.includes(size)));
     for (const region of config.verification.droplet.regions) if (!available.includes(region)) this.logger({ event: 'executor-region-skipped', region, reason: `region unavailable for size ${size}` });
     if (!available.length) throw new ProviderCapacityUnavailable(`droplet size ${size} unavailable in regions ${config.verification.droplet.regions.join(', ')}; use cland verify executor local`);
+    await this.#validateSnapshotDisk(size, sizes);
     return selected;
+  }
+
+  async #validateSnapshotDisk(size: string, sizes: Size[]): Promise<void> {
+    const snapshot = await readSnapshot(this.root);
+    // Planning remains available before preparation; acquisition still requires
+    // an image. Only an existing image can constrain the requested disk.
+    if (!snapshot) return;
+    this.#requireSnapshotDisk(size, snapshot.minDiskSize, sizes);
+  }
+
+  #requireSnapshotDisk(size: string, minimum: number, sizes: Size[]): void {
+    if (snapshotFitsDisk(minimum, sizes.find(row => row.slug === size)?.disk)) return;
+    const fitting = sizes.filter(row => snapshotFitsDisk(minimum, row.disk)).map(row => row.slug).sort();
+    throw new Error(`prepared snapshot disk does not fit size ${size}; fitting sizes: ${fitting.join(", ") || "none"}; run cland executor prepare`);
   }
 
   /** Remote-required submissions check spend; acquire always reserves atomically. */
@@ -279,7 +296,7 @@ export class DropletExecutor implements Executor {
     const selected = sizes.find(s => s.slug === size && s.available);
     if (!selected) throw new ProviderCapacityUnavailable(`droplet size ${size} is unavailable`);
     if (!Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
-    if (input.minDiskSize !== undefined && (!Number.isFinite(selected.disk) || selected.disk! < input.minDiskSize)) throw new Error(`prepared snapshot disk does not fit size ${size}`);
+    if (input.minDiskSize !== undefined) this.#requireSnapshotDisk(size, input.minDiskSize, sizes);
     const offered = await api.regions(runDeadline);
     const candidates = regions.filter(r => selected.regions.includes(r) && offered.some(o => o.slug === r && o.available && o.sizes.includes(size)));
     const region = candidates[0];
@@ -458,16 +475,19 @@ export class DropletExecutor implements Executor {
     const step = 'base' in input ? progress ?? (() => {}) : input.step ?? (() => {});
     const recoveries = await readRecoveries(this.root);
     if (recoveries.some(record => record.phase !== 'cleanup' || record.requested && record.actionState !== 'completed' && record.actionState !== 'errored')) throw new Error('snapshot recovery pending; see cland executor status');
-    const { prepare_size, size, regions, image } = config.verification.droplet;
+    const { snapshot_size, prepare_size, size, regions, image } = config.verification.droplet;
+    // An absent override retains legacy no-provider reuse, including a key
+    // computation already admitted when shutdown begins.
     const current = await readSnapshot(this.root);
-    if (current && sameKey(current.key, key)) return prepareSnapshot({ dependencies: this.dependencies, env: this.#env, root: this.root, provision: config.verification.provision, prepare: config.verification.prepare, project: projectName(config.name), regions, tags: [], key, store: this.store, log: this.logger, signal: this.#prepareAbort?.signal, step, builder: async () => { throw new Error('current snapshot needs no builder'); }, release: lease => this.release(lease) });
+    if (snapshot_size === undefined && current && sameKey(current.key, key)) return prepareSnapshot({ dependencies: this.dependencies, env: this.#env, root: this.root, provision: config.verification.provision, prepare: config.verification.prepare, project: projectName(config.name), regions, tags: [], key, store: this.store, log: this.logger, signal: this.#prepareAbort?.signal, step, builder: async () => { throw new Error('current snapshot needs no builder'); }, release: lease => this.release(lease) });
+    const builderSize = snapshot_size ?? prepare_size;
     const sizes = await (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock)).sizes();
-    const builder = sizes.find(s => s.slug === prepare_size && s.available);
+    const builder = sizes.find(s => s.slug === builderSize && s.available);
     const run = sizes.find(s => s.slug === size && s.available);
-    if (!builder || !run || !Number.isFinite(builder.disk) || !Number.isFinite(run.disk)) throw new Error('prepare_size and size need available disks');
-    if (builder.disk! > run.disk!) throw new Error(`verification.droplet.prepare_size ${prepare_size} disk exceeds run size ${size}`);
-    return prepareSnapshot({ dependencies: this.dependencies, env: this.#env, root: this.root, provision: config.verification.provision, prepare: config.verification.prepare, project: projectName(config.name), regions, tags: ['cland', projectTag(this.root, config.name)], key, maxDiskSize: run.disk!, store: this.store, log: this.logger, signal: this.#prepareAbort?.signal, step,
-      builder: user_data => this.#acquire({ id: 'executor-prepare' }, new Date(this.clock.now().getTime() + config.verification.lifetimeMs).toISOString(), { size: prepare_size, regions, image, user_data }, config), release: lease => this.release(lease) });
+    if (!builder || !run || !Number.isFinite(builder.disk) || !Number.isFinite(run.disk)) throw new Error('snapshot builder and size need available disks');
+    if (builder.disk! > run.disk!) throw new Error(`verification snapshot builder ${builderSize} disk exceeds run size ${size}`);
+    return prepareSnapshot({ dependencies: this.dependencies, env: this.#env, root: this.root, provision: config.verification.provision, prepare: config.verification.prepare, project: projectName(config.name), regions, tags: ['cland', projectTag(this.root, config.name)], key, maxDiskSize: builder.disk!, store: this.store, log: this.logger, signal: this.#prepareAbort?.signal, step,
+      builder: user_data => this.#acquire({ id: 'executor-prepare' }, new Date(this.clock.now().getTime() + config.verification.lifetimeMs).toISOString(), { size: builderSize, regions, image, user_data }, config), release: lease => this.release(lease) });
   }
 
   /** Pool builds share executor admission, watchdog and spend, but never its image pointer. */

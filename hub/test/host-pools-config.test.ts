@@ -6,6 +6,17 @@ import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts'
 import { assertPaidTerms, paidTerms } from '../src/host/paid-terms.ts';
 import { isClientRequest } from '../src/protocol.ts';
 
+test('verification snapshot size is optional and leaves paid host builder terms unchanged', () => {
+  const legacy = parseConfig('[verification.droplet]\nprepare_size="c-16"\n[hosts.agents]\nprovider="fake"', 'test', {});
+  assert.equal(legacy.verification.droplet.snapshot_size, undefined);
+  assert.equal(paidTerms(legacy, 'agents', true).builder?.prepare_size, 'c-16');
+  const config = parseConfig('[verification.droplet]\nsnapshot_size="c-4"\n[hosts.agents]\nprovider="fake"', 'test', {});
+  assert.equal(config.verification.droplet.snapshot_size, 'c-4');
+  assert.equal(paidTerms(config, 'agents', true).builder?.prepare_size, 'c-8');
+  assert.equal(parseConfig(renderConfig(config), 'test', {}).verification.droplet.snapshot_size, 'c-4');
+  for (const value of ['""', '"bad slug"', '4']) assert.throws(() => parseConfig(`[verification.droplet]\nsnapshot_size=${value}`, 'test', {}), /snapshot_size must be a nonempty slug/);
+});
+
 test('paid admission frames preserve legacy requests and reject malformed expectations', () => {
   for (const type of ['host.prepare', 'login.add']) {
     const frame = { type, id: 'test', pool: 'agents', harness: 'codex' };

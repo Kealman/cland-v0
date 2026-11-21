@@ -261,7 +261,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
       actions.set(action.id, { action, type, polls: 0, complete: async () => {
         if (type === 'snapshot') {
           const create = requests.find(r => r.method === 'POST' && r.path === '/v2/droplets' && r.body?.name === droplets.find(d => d.id === resource)?.name)?.body;
-          const image: SnapshotImage = { id: nextId++, name: String(body!.name), resource_id: String(resource), regions: [String(create?.region)], size_gigabytes: 1.5, min_disk_size: 50, created_at: clock.now().toISOString() };
+          const image: SnapshotImage = { id: nextId++, name: String(body!.name), resource_id: String(resource), regions: [String(create?.region)], size_gigabytes: 1.5, min_disk_size: sizes.find(size => size.slug === create?.size)?.disk ?? 50, created_at: clock.now().toISOString() };
           const directory = join(stateRoot, `image-${image.id}`);
           if (!scripted) await cp(machineDirs.get(resource)!, directory, { recursive: true, filter: fixtureCopyFilter });
           imageDirs.set(image.id, directory); images.push(image);

@@ -7,7 +7,7 @@ import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import files from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { guardedLeaseCase } from './executor-lease-fixture.ts';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { projectHub, tempProject, inProcessSpoke, eventually, flushProjectLogs } from './harness.ts';
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
 import { syntheticProviderEnvironment } from './synthetic-provider.ts';
@@ -18,7 +18,7 @@ import { drive } from './remote-clock.ts';
 import { onCleanup, beforeDirectories, guardDirectoryRemoval, ownDirectory } from './process-cleanup.ts';
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
 import { executorSnapshotNotice, Dispatcher } from '../src/hub/dispatch.ts';
-import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { DropletExecutor, projectName } from '../src/executor/droplet/droplet.ts';
 import { keyHash, readSnapshot, snapshotPath, type Snapshot } from '../src/executor/droplet/prepare.ts';
 import { readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { Machine } from '../src/executor/droplet/machine.ts';
@@ -33,6 +33,35 @@ import { EventEmitter } from 'node:events';
 import { copyFixtureCase } from './executor-copy-fixture.ts';
 import { MachineRequestError } from '../src/executor/droplet/machine.ts';
 import { readRecoveries } from '../src/executor/droplet/snapshot-recovery.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+
+test('prepare replaces a matching oversized snapshot so c-4 and c-8 restore it', async t => {
+  await fixtureNativeGuard(t);
+  const f = await fixture(t);
+  await f.stop();
+  f.api.sizes.push({ slug: 'c-4', available: true, price_hourly: 0.125, disk: 25, regions: ['lon1', 'nyc1'] });
+  for (const region of f.api.regions) region.sizes.push('c-4');
+  const config = join(f.root, '.cland/config.toml');
+  await writeFile(config, (await readFile(config, 'utf8')) + 'snapshot_size = "c-4"\n');
+  await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+  const name = `cland-${projectName(basename(f.root))}-${keyHash(f.key)}`;
+  await f.api.seedSnapshot({ id: 900, name, resource_id: 'old-builder', regions: ['lon1'], size_gigabytes: 1, min_disk_size: 50, created_at: f.clock.now().toISOString() }, f.key);
+  await writeFile(snapshotPath(f.root), JSON.stringify({ image: 900, name, key: f.key, keyHash: keyHash(f.key), regions: ['lon1'], sizeGb: 1, minDiskSize: 50, created: f.clock.now().toISOString() }));
+  const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, f.dependencies);
+  const prepared = await drive(f, executor.prepare());
+  assert.equal(prepared.state, 'prepared');
+  assert.equal(prepared.snapshot.minDiskSize, 25);
+  assert.notEqual(prepared.snapshot.image, 900);
+  assert.equal(f.api.images.some(image => image.id === 900), false, 'old image retired after replacement');
+  for (const size of ['c-4', 'c-8']) {
+    await executor.validateSize(size);
+    const lease = await drive(f, executor.acquire({ id: `restore-${size}`, size }, new Date(f.clock.now().getTime() + 60000).toISOString()));
+    assert.equal(lease.snapshot?.image, prepared.snapshot.image);
+    await drive(f, executor.release(lease));
+  }
+  assert.equal(f.api.requests.find(r => r.method === 'POST' && r.path === '/v2/droplets')?.body?.size, 'c-4');
+  assert.equal((await drive(f, executor.prepare())).state, 'current');
+});
 
 test('copy timeout drains a byte-bounded stderr tail through native completion', async t => copyFixtureCase(t, async (root, _setup, step) => {
   const lease = { lease: 'fixture', address: '192.0.2.1' } as Parameters<Machine['put']>[0];
@@ -87,7 +116,7 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}, a
     await api.close();
   };
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\nprepare = "npm ci"\n[verification.droplet]\nregions=["lon1", "nyc1", "sfo2"]\n');
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\nprepare = "npm ci"\n[verification.droplet]\nprepare_size = \"c-8\"\nregions=["lon1", "nyc1", "sfo2"]\n');
   api.sizes[0]!.regions.push('sfo2'); api.regions.push({ slug: 'sfo2', available: true, sizes: ['c-8'] });
   let failure = '';
   let keyInput: typeof import('../src/executor/droplet/prepare.ts').prepareKey = async () => structuredClone(key);
@@ -760,7 +789,7 @@ test('prepare refuses an oversized builder before create and reports one job whi
   const { root, api, ui } = f;
   api.sizes.push({ slug: 'big', available: true, price_hourly: 0.5, disk: 100, regions: ['lon1'] });
   const config = join(root, '.cland/config.toml');
-  await writeFile(config, (await readFile(config, 'utf8')) + 'prepare_size = "big"\n');
+  await writeFile(config, (await readFile(config, 'utf8')).replace('prepare_size = "c-8"', 'prepare_size = "big"'));
   assert.equal((await ui.request({ type: 'hub.reload' })).ok, true);
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
   await drive(f, eventually('oversized disk refuses', async () => {

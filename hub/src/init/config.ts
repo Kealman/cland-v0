@@ -27,7 +27,7 @@ export type ProjectConfig = {
   release: { webBundle: boolean; homebrew: { tap: string } };
   setup: { declinedInstalls: HarnessId[]; declinedAccounts: string[] };
   merge: { batchInteraction: 'report' | 'run'; queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
-  verification: { provision: string; prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; coordinatorSuites: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; suiteRetentionMinAgeDays: number; suiteRetentionPassLimit:number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { provision: string; prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; coordinatorSuites: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; suiteRetentionMinAgeDays: number; suiteRetentionPassLimit:number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; snapshot_size?: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -179,7 +179,7 @@ dev_t3_every = ${JSON.stringify(c.verification.devT3Every)}
 ${c.verification.droplet.workers === undefined ? "# workers inherits verification.workers" : `workers = ${c.verification.droplet.workers}`}
 size = ${JSON.stringify(c.verification.droplet.size)}
 prepare_size = ${JSON.stringify(c.verification.droplet.prepare_size)}
-regions = ${JSON.stringify(c.verification.droplet.regions)}
+${c.verification.droplet.snapshot_size === undefined ? "" : `snapshot_size = ${JSON.stringify(c.verification.droplet.snapshot_size)}\n`}regions = ${JSON.stringify(c.verification.droplet.regions)}
 image = ${JSON.stringify(c.verification.droplet.image)}
 
 [merge]
@@ -452,7 +452,7 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     if (!droplet || typeof droplet !== 'object' || Array.isArray(droplet) || droplet instanceof Date) throw new Error('verification.droplet must be a table');
     const values = droplet as Record<string, unknown>;
     if (values.workers !== undefined) c.verification.droplet.workers = workerCount(values.workers, 'verification.droplet.workers');
-    for (const key of ['size', 'image', 'prepare_size'] as const) if (values[key] !== undefined) {
+    for (const key of ['size', 'image', 'prepare_size', 'snapshot_size'] as const) if (values[key] !== undefined) {
       if (typeof values[key] !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(values[key])) throw new Error(`verification.droplet.${key} must be a nonempty slug`);
       c.verification.droplet[key] = values[key];
     }

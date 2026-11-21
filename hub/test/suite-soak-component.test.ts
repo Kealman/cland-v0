@@ -18,6 +18,22 @@ import { suiteCase } from './suite-case-fixture.ts';
 import { DigitalOceanError } from '../src/executor/droplet/api.ts';
 import type { Artifact, Message } from '../src/protocol.ts';
 
+test('snapshot disk incompatibility refuses c-4 admission before T0 and names fitting sizes', async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted' }));
+  f.api.sizes.push({ slug: 'c-4', available: true, price_hourly: 0.125, disk: 25, regions: ['lon1'] });
+  f.api.regions[0]!.sizes.push('c-4');
+  const path = join(f.root, '.cland/run/executor/snapshot.json');
+  const snapshot = JSON.parse(await readFile(path, 'utf8'));
+  await writeFile(path, JSON.stringify({ ...snapshot, minDiskSize: 50 }));
+  const result = await f.ui.request({ type: 'suite.start', as: { name: 'impl', sessionId: 'remote-impl', shell: true }, cwd: f.root, mode: 'auto', report: f.topic, to: ['impl'], size: 'c-4' });
+  assert.equal(result.ok, false);
+  assert.match(result.error!, /prepared snapshot disk does not fit size c-4; fitting sizes: c-8/);
+  const status = (await f.ui.request({ type: 'hub.status', history: true })).value as { suites: unknown[] };
+  assert.deepEqual(status.suites, []);
+  assert.equal(f.api.requests.some(r => r.method === 'POST'), false);
+});
+
 test('periodic cover ancestry requires a positive native Git descendant receipt', async t => {
   const run = caseDeadlines(t);
   const machine = await run.wait('setup', () => scratchMachine(run.fixtures, { identity: true }));

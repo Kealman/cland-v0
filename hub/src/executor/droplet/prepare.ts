@@ -15,7 +15,7 @@ import { durableJson, leaseDir, type DropletLease } from './lease.ts';
 import { Machine, machineEnv, shellQuote } from './machine.ts';
 import { pause, testTiming } from './watchdog.ts';
 import { ReadinessDeadlineError, recordReadinessCleanupFailure } from './readiness-deadline.ts';
-import { saveRecovery, recoverSnapshot, type SnapshotRecovery } from './snapshot-recovery.ts';
+import { saveRecovery, recoverSnapshot, snapshotFromBuilder, type SnapshotRecovery } from './snapshot-recovery.ts';
 import type { Released } from '../executor.ts';
 
 const exec = promisify(execFile);
@@ -25,6 +25,7 @@ export type Snapshot = { image: number; name: string; key: PrepareKey; keyHash: 
 export const snapshotPath = (root: string): string => join(root, '.cland/run/executor/snapshot.json');
 export const keyHash = (key: PrepareKey): string => hash(JSON.stringify(key)).slice(0, 12);
 export const sameKey = (a: PrepareKey, b: PrepareKey): boolean => a.node === b.node && a.base === b.base && a.lock === b.lock && a.recipe === b.recipe && a.provision === b.provision && a.provisionPath === b.provisionPath;
+export const snapshotFitsDisk = (minimum: number, disk: number | undefined): boolean => Number.isFinite(minimum) && minimum > 0 && Number.isFinite(disk) && disk! >= minimum;
 
 export async function recipeDigest(): Promise<string> { return hash(await readFile(fileURLToPath(new URL('./provision.sh', import.meta.url)))); }
 
@@ -125,7 +126,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
   const step = (value: string) => { stage = value; options.step(value); };
   const started = clock.now().getTime();
   const old = await readSnapshot(root, options.storage);
-  if (old && (options.keysEqual ?? sameKey)(old.key, key)) {
+  if (old && (options.keysEqual ?? sameKey)(old.key, key) && (options.maxDiskSize === undefined || snapshotFitsDisk(old.minDiskSize, options.maxDiskSize))) {
     if (!options.storage || options.regions.every(region => old.regions.includes(region))) return prepared('current', old, started, { lifetimeMs: 0, costUsd: 0 }, clock);
     const api = dependencies.api ?? new DigitalOceanApi(env, clock);
     // A region is placement, not image content: transfer the retained image.
@@ -195,7 +196,8 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     recovery.action = action.id; await saveRecovery(root, recovery, options.storage);
     await pollAction(api, action, limit, options.signal, env, clock, dependencies.wait);
     recovery.actionState = 'completed'; await saveRecovery(root, recovery, options.storage);
-    image = (await api.snapshots(limit)).find(candidate => candidate.name === name);
+    const producer = builder.resource!;
+    image = (await api.snapshots(limit)).find(candidate => snapshotFromBuilder(candidate, name, producer));
     if (!image) throw new Error('completed snapshot image missing');
     step('transfer');
     image = await ensureRegions(api, image.id, image.regions, options.regions, limit, options.signal, env, clock, wait, options.tags);

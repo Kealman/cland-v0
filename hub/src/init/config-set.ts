@@ -14,6 +14,7 @@ type Table = Record<string, unknown>;
 export function configKeys(): string[] {
   const example = defaultConfig('');
   example.verification.droplet.workers = example.verification.workers;
+  example.verification.droplet.snapshot_size = example.verification.droplet.prepare_size;
   example.visibility = DEFAULT_VISIBILITY;
   let section = '';
   const keys: string[] = [];

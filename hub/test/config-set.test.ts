@@ -275,6 +275,16 @@ test('config set changes plan approval through the project hub and keeps every o
   assert.deepEqual(parseConfig(await readFile(path, 'utf8'), root), { ...original, plan: { ...original.plan, approval: 'human' } });
 });
 
+test('config set saves verification snapshot size without changing the paid builder', async t => {
+  const { root, path } = await fixture(t);
+  const result = await cland(root, 'config', 'set', 'verification.droplet.snapshot_size', 'c-4', '--json');
+  assert.equal(result.code, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { key: 'verification.droplet.snapshot_size', value: 'c-4', applies: 'now' });
+  const config = parseConfig(await readFile(path, 'utf8'), root);
+  assert.equal(config.verification.droplet.snapshot_size, 'c-4');
+  assert.equal(config.verification.droplet.prepare_size, 'c-8');
+});
+
 test('config set parses numbers and lists, applies reloadable values now and reports pending startup edits', async t => {
   const { root, path } = await fixture(t);
   const regions = await cland(root, 'config', 'set', 'verification.droplet.regions', '["lon1"]', '--json');
