@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T16:31:40.584Z
-updated: 2026-11-20T16:31:40.584Z
+updated: 2026-11-21T03:32:17.861Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Find what the Inbox card waits on after the delta and inbox publication under su
 
 - [ ] C1. The case waits on the publication event rather than a fixed 3 s locator timeout, with assertions unchanged (test).
 - [ ] C2. The case passes 5/5 under the two-worker load gate on macOS (test).
+
+## Comments
+
+### coord · 2026-11-21T03:32:17.861Z
+
+Superseded by T-2046 (all fixed waits through the shared load-scaled helper, per-wait factor; human 2026-11-21, ask cdaedf29). Close as covered when T-2046 lands.

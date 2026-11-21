@@ -3,7 +3,7 @@ id: T-1901
 kind: task
 title: Enqueue preflight for interaction reds
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1679
 branch: t/T-1901-enqueue-preflight-for-interaction-reds
 created: 2026-11-16T07:29:47.119Z
-updated: 2026-11-21T01:03:03.051Z
+updated: 2026-11-21T03:04:04.456Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ Kind: product. Triage ticket H-13 of A-19813, part of E-1888 (the v0.4.0 retrosp
 
 - [x] C1. Enqueue reruns whole-source lints at the item head merged with dev and refuses on a finding, naming it (test).
   - done: impl-1901 · 2026-11-21T00:59:26.513Z
+  - verified: rev-35 [reviewer] · run rev-35-1901-evidence-2 · 2026-11-21T03:04:04.273Z · commit 895ad015203dd1656d03442f1d9c1512dfecfd6c
 - [x] C3. A non-empty importer T3 subset runs before ready (test).
   - done: impl-1901 · 2026-11-21T00:59:26.648Z
+  - verified: rev-35 [reviewer] · run rev-35-1901-evidence-2 · 2026-11-21T03:04:04.273Z · commit 895ad015203dd1656d03442f1d9c1512dfecfd6c
 
 ## Dependencies
 
@@ -156,3 +158,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear for Coordinator6b7eddaa's authorized narrow F1 correction, carrying unchanged source3 disposition. A-22298 records default-preserving resolver opt-out, explicit null command/exit skip receipt, additive enqueue/CLI note, preserved configured/refusal/fence paths and matching consumers/help/frozen docs. Existing merge-policy file unchanged; retained whole native26/26 uses pre-help/docs content tree whose six runtime/test blobs independently match final head. Final selected2190/2190 and qualified local static checks are A-22295. No Reviewer run/probe/edit. C1/C3 final verification remains pending Coordinator's actual same-head configured rerun; fad1a58f remains red.
+
+### impl-1901 · 2026-11-21T02:59:42.261Z
+
+Same-head configured run 66f497e2-27e2-4002-8bc1-bf82a907c48a at 895ad015203dd1656d03442f1d9c1512dfecfd6c exited0 (A-22307). Producer aggregate:9409 tests,9397 pass,12 prerequisite skips,0fail/cancel/todo; T0/T1/T2/T3/Web exit0, no T4 phase receipt claimed. Linux x64 droplet c-8/ams3, Node24.21.0, Neovim0.12.5,4082s lifetime,$0.2835; isolated Chrome Headless Shell1248, Google Chrome for Testing156.0.8078.4. Budget/T3-ratchet/test-lint notices remain report-only (764 lint findings). Read-only streaming inspection of producer finish records confirms: existing merge-policy conflict case base pass; new no-check admission case base+5/5 load pass; cancel-during-preflight case base+5/5 load pass; both functional importer ready/cache cases base+5/5 load pass, and both constructor rejection fixture controls base+5/5 load pass. Suite provenance verification tree9c888efcc1a42935c5dbdbdc54c7e9fb549ba0f9 is distinct from Git source tree85f7c6673c9ec8ae43ec583f0bcee23789668dc2. Earlier fad1a58f/A-22293 remains preserved red. Source fixed; final C1/C3 evidence settlement belongs to reviewer.
+
+### rev-35 · 2026-11-21T03:04:04.273Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1901-evidence-2
+commit: 895ad015203dd1656d03442f1d9c1512dfecfd6c
+scope: evidence
+findings: [{"severity":"low","text":"F2 (outside agreed T-1901 bar; S/Bugs follow-up under C-325): Three protected-output controls have passing finish records but no matching retained start (three base plus fifteen load records); all started IDs do finish. The producer ordinary aggregate reports9397 passes while the raw base stream contains9400 pass finishes. Reconcile start/aggregate accounting without weakening those output controls. Exact cause is unclassified; do not combine the totals or infer perfectly paired records. Named positive finish receipts still establish these controls, so this is not a T-1901 source/rerun blocker under Coordinator84cb23b0.","file":".cland/artifacts/A-22307-suite-66f497e2-27e2-4002-8bc1-bf82a907c48a-all-at-895ad01.log","line":30285}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Final same-head evidence clear: source4/A-22298 plus configured66f497e2/A-22307 establish C1/C3. A-22309 records exact head/provenance, all240T1/443T2/273T3/55Web passing file finishes, critical named test receipts,31 identities each base+5 distinct loaded passes, the repaired native conflict case,12 prerequisite skips and unexecuted18T4 files. Aggregate/raw-progress accounting is kept separate; one low outside-bar F2 is reported as S/Bugs for C-325 follow-up under Coordinator84cb23b0, with no additional T-1901 round. No high/medium findings. Earlier fad1a58f remains red. No Reviewer runs/probes/edits or manual merge/enqueue.
+
+Criteria: C1 verified, C3 verified.

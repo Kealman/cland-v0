@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T15:30:56.396Z
-updated: 2026-11-20T15:30:56.396Z
+updated: 2026-11-21T03:32:17.404Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Find what "remote group started" waits for in this case and why it can take over
 
 - [ ] C1. The waiting point is named from evidence, and the case no longer depends on a 30 s real-time wait for the remote group start (test).
 - [ ] C2. The case passes 5/5 under the two-worker load gate on macOS (test).
+
+## Comments
+
+### coord · 2026-11-21T03:32:17.404Z
+
+Superseded by T-2046 (all fixed waits through the shared load-scaled helper, per-wait factor; human 2026-11-21, ask cdaedf29). Close as covered when T-2046 lands.

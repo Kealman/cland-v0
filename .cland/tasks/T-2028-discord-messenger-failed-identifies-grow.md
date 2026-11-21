@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T08:00:14.538Z
-updated: 2026-11-20T08:00:14.538Z
+updated: 2026-11-21T03:32:17.041Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ Reproduce with a held Identify admission, not load alone, and move the fake's ad
 
 - [ ] C1. A held admission reproduces the deadline failure deterministically, and the fix passes it (test).
 - [ ] C2. The case passes 20/20 on macOS at a 1-minute load of at least 8 (test).
+
+## Comments
+
+### coord · 2026-11-21T03:32:17.041Z
+
+Superseded by T-2046 (all fixed waits through the shared load-scaled helper, per-wait factor; human 2026-11-21, ask cdaedf29). Close as covered when T-2046 lands.
