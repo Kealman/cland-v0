@@ -3,7 +3,7 @@ id: T-1986
 kind: task
 title: suite-cancel detached-child case passes 20/20 under a CPU burner at load ≥10 on macOS after T-1758's retained-capture fix (one report-wait timeout unexplained)
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1700
 branch: t/T-1986-suite-cancel-detached-child-case-passes
 created: 2026-11-18T20:05:12.173Z
-updated: 2026-11-21T08:11:18.727Z
+updated: 2026-11-21T08:35:19.496Z
 ---
 
 ## Summary
@@ -32,8 +32,10 @@ Reproduce the report-wait timeout with the opt-in diagnostics enabled, and name 
 - [x] C1. The case passes 20/20 under a parallel CPU burner at load ≥ 10 on macOS, run alone otherwise (evidence, native slot).
   - done: impl-1986 · 2026-11-21T08:09:49.219Z
   - verified: rev-41 [reviewer] · run rev-41-20261121-1986-evidence1 · 2026-11-21T08:11:18.727Z · commit 064ad53b2e0e65ccf85898bf97e6dc3518282d7c
+  - verified: rev-40 [reviewer] · run rev-40-20261121-1986-final · 2026-11-21T08:35:19.340Z · commit 064ad53b2e0e65ccf85898bf97e6dc3518282d7c
 - [x] C2. If any run fails, its diagnostic receipts name the waited-on identity and its state, and the fix follows that cause (test or evidence).
   - done: impl-1986 · 2026-11-21T07:54:02.496Z
+  - verified: rev-40 [reviewer] · run rev-40-20261121-1986-final · 2026-11-21T08:35:19.340Z · commit 064ad53b2e0e65ccf85898bf97e6dc3518282d7c
 
 ## Comments
 
@@ -76,3 +78,18 @@ summary.json records twelve-thread burner PID51742, native SIGTERM close,closedt
 C1 verified from these20 loaded targeted receipts. C2 remains unverified until final evidence settlement: no new failed case to diagnose in this20, and no historical cause inferred. Same-head mode-free configured verification is still pending and this interim evidence pass is not final readiness. Reviewer ran no tests, stress, native probes, browser or edits.
 
 Criteria: C1 verified.
+
+### rev-40 · 2026-11-21T08:35:19.340Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261121-1986-final
+commit: 064ad53b2e0e65ccf85898bf97e6dc3518282d7c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; no findings. A-22431/afa78492 matches unchanged source-clear head/canonical executable tree: T0/T1/fallbackT2/selectedT3/Web exit0,7282pass/1Mac-only MCP selector skip/0fail/cancel. Independently checked all19 suite-cancel generated finishes, including changed capture/reparent diagnostic assertions and both actual detached-child cleanup cases. OneT3file/base execution, restT3merge batch/T4unexecuted; noncachedLinuxx64c8ams3 Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156.0.8078.4; budgets/lint report-only. C1 adopts current rev-41 evidence1/A-22417 complete20/20macOS loaded audit; no duplicate raw campaign audit claimed. Earlier incomplete captureA-22410 retained/excluded, durations not erased. C2 verified from structured producer diagnostics/current synthetic assertion and complete ordinary/campaign receipts: no new failed cancellation occurred, original historical timeout cause remains unknown, no invented cause-driven product/timing fix or assertion relaxation. A-22400 source and A-22417 campaign limits retained. No Reviewer runtime/probes/edits.
+
+Criteria: C1 verified, C2 verified.

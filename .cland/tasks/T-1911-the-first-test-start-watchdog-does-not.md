@@ -3,7 +3,7 @@ id: T-1911
 kind: task
 title: The first-test-start watchdog does not cover load-gate repetitions and Web repetition children
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels: []
@@ -14,7 +14,7 @@ blocked_by:
 topic: topic-1694
 branch: t/T-1911-the-first-test-start-watchdog-does-not
 created: 2026-11-16T13:42:11.941Z
-updated: 2026-11-21T08:12:41.594Z
+updated: 2026-11-21T08:43:12.675Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ Route repetition progress through the same shared watchdog: one guard per repeti
 
 - [x] C1. A load-gate repetition child that starts a file but never starts its first test is stopped within the named startup bound, with the shared stall evidence (test, red before the fix).
   - done: impl-1911 · 2026-11-21T08:11:19.787Z
+  - verified: rev-40 [reviewer] · run rev-40-20261121-1911-final · 2026-11-21T08:43:12.418Z · commit c2ab4700d40ad84141834d4271bbab2fb7919b72
 - [x] C2. A Web repetition that never starts its first test is stopped the same way, and a normal repetition run is unaffected (test).
   - done: impl-1911 · 2026-11-21T08:11:20.179Z
+  - verified: rev-40 [reviewer] · run rev-40-20261121-1911-final · 2026-11-21T08:43:12.418Z · commit c2ab4700d40ad84141834d4271bbab2fb7919b72
 
 ## Comments
 
@@ -92,3 +94,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source3 clear; Standards0/Spec0 findings. M2-R resolved by ownRepetition independent result/restoration, enrolled in named original work before observation; stop/sweep errors aggregate after original result while fenced cleanup preserves failed roots. Pure ordered failure and two actual drainFixtureCleanup/guardDirectoryRemoval controls prove held-writer join, actual stdout/stderr restoration, selected diagnostics/completed bytes retention and real removal after repair. M1 bounded parser and M3 exact consumed owner/file receipts remain unchanged/resolved; original native startup/cleanup/marker and normalWeb10/10 assertions retained. A-22416 selected local output5/5 and T1 15/15, reported lint/typecheckgreen, macOSNode24.21.0/no browser; not configured evidence or measured startup wall latency. C1/C2 runtime marks pending same-head Coordinator-authorized mode-free verification/named finishes. No full suite requested by Reviewer, no runs/probes/edits.
+
+### impl-1911 · 2026-11-21T08:42:51.865Z
+
+Configured mode-free run bf11fedd-1c62-4872-984e-a71e6dff8db4 exited 0 at source-clear c2ab4700d40ad84141834d4271bbab2fb7919b72, tree 471fc9acb4f15c1e0b3cf53acf8e9b4c2a6b983f. A-22436 durable log: T0, all T1, fallback all T2, selected changed T3 suite-runner (66 passing identities, one base execution/no repetitions), Web pass; full T3 deferred to merge batch. Total 7332 tests, 7331 pass, zero failures/cancelled, 1 prerequisite skip. Independently checked typed pass finishes for both startup cases, stop/sweep rejection controls and normal Web10/10 case. Droplet Linux x64 6.8.0-149-generic, Node24.21.0; Chromium Headless Shell1248 / Google Chrome for Testing156.0.8078.4. Duration budgets/ratchet report-only. Droplet c-8 ams3 lifetime1425s, cost$0.0989. No cache; branch clean/unchanged. Same-head final Reviewer settlement pending; no resubmission.
+
+### rev-40 · 2026-11-21T08:43:12.418Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261121-1911-final
+commit: c2ab4700d40ad84141834d4271bbab2fb7919b72
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; no findings. Exact-head/canonical-tree A-22436/bf11fedd positive T0/T1/fallbackT2/selectedT3/Web;7331pass/1Mac-only selector skip/0fail/cancel. Independently checked all66 suite-runner finishes and named load/Web startup stalls, stop/sweep rejected-cleanup/root repair, normalWeb10/10/reap, and pure parser/ordered-failure controls including5/5 repetitions. C1/C2 verified with source3 assertions unchanged. Startup30s is FakeClock after consumed file-start, not measured wall latency; historical red report provenance limits retained. NoncachedLinuxx64c8ams3 Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156.0.8078.4. Only1T3file/base execution; restT3merge batch/T4unexecuted; lint/budgets/ratchet report-only. No Reviewer runtime/probes/edits.
+
+Criteria: C1 verified, C2 verified.

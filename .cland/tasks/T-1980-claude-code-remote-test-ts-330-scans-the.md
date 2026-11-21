@@ -3,7 +3,7 @@ id: T-1980
 kind: task
 title: claude-code-remote.test.ts:330 scans the fake host's run directory while processes.json is atomically replaced, and fails with ENOENT on the temporary file
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-1696
 branch: t/T-1980-claude-code-remote-test-ts-330-scans-the
 created: 2026-11-18T15:22:04.049Z
-updated: 2026-11-21T08:11:28.387Z
+updated: 2026-11-21T08:54:13.474Z
 ---
 
 ## Summary
@@ -30,7 +30,11 @@ Make the scan tolerate entries that disappear between listing and reading. Skip 
 
 - [x] C1. With a writer held mid-rename (a deterministic seam, not a timing loop), the scan completes and the test's assertions still hold (test, red before).
   - done: impl-1980 · 2026-11-21T08:11:20.422Z
-- [ ] C2. The affected restart case ("hub restart after tree closure re-adopts its durable generation and releases the job") passes 20/20 serially under a load gate at 10, and the whole file passes once at the same load, with assertions unchanged (evidence, exclusive stress window).
+  - verified: rev-35 [reviewer] · run rev-35-1980-evidence-2 · 2026-11-21T08:54:13.300Z · commit 05db4b65508323f5893b9d70dabb1c8705c65a6e
+- [x] C2. The affected restart case ("hub restart after tree closure re-adopts its durable generation and releases the job") passes 20/20 serially under a load gate at 10, and the whole file passes once at the same load, with assertions unchanged (evidence, exclusive stress window).
+  - done: impl-1980 · 2026-11-21T08:20:42.589Z
+  - verified: rev-35 [reviewer] · run rev-35-1980-evidence-1 · 2026-11-21T08:22:36.924Z · commit 05db4b65508323f5893b9d70dabb1c8705c65a6e
+  - verified: rev-35 [reviewer] · run rev-35-1980-evidence-2 · 2026-11-21T08:54:13.300Z · commit 05db4b65508323f5893b9d70dabb1c8705c65a6e
 
 ## Comments
 
@@ -80,3 +84,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source3 clear, findings=[]; A-22414. Residual M1 resolved: releaseScan is registered pre-acquisition with owner.releaseOnClose, retained-root/no-writer-close observation occurs at that ordered boundary and finally always releases before join. Actual guard entry, release observation, positive writer closure and ENOENT assertions remain. Recovery helper/native case are exactly source2 blobs; accepted ENOENT/content/recovery checks carry unchanged. No dev merge. L1 reporter-time labels remain corrected. A-22413 reports 22/22 local T2 controls and lint/typecheck, not configured/stress proof; earlier native target remains earlier evidence. No Reviewer execution/edit. No criterion verified in this source-only pass: C1 remains unchecked from prior failure and should be re-marked done by lead for the corrected work; C2 campaign pending. Hold releases; keep head fixed for Coordinator-authorized stress/verify windows and later same-head evidence review.
+
+### rev-35 · 2026-11-21T08:22:36.924Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1980-evidence-1
+commit: 05db4b65508323f5893b9d70dabb1c8705c65a6e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+C2 campaign evidence clear only; A-22426, findings=[]. Coordinator 8e65b199 explicitly edited C2 to 20 affected-identity runs plus one whole-file run, starts >=10/<20. All 21 raw logs independently match structured native receipts: target identity 20/20, full file 46 distinct passing names/46 passes, code0/signalnull, zero fail/cancel/skip. Target starts10.6416–16.3735, full15.0713; all<19. Common start receipt binds reviewed head/macOS arm64 Node24.21 and burner9860; matching SIGTERM native close retained. Driver hash/index supplies scope; absent per-round tree/argv/timestamps remain unknown. This is local native T3-file evidence, not Linux/all T3/T4/Web or configured verification. Verify C2 only; C1/final settlement awaits actual run8da41079, currently admitted. No Reviewer execution/edit. Hold releases; unchanged head and no duplicate run.
+
+Criteria: C2 verified.
+
+### impl-1980 · 2026-11-21T08:52:23.643Z
+
+Configured same-head run 8da41079 completed exit 0 at 05db4b655; evidence A-22441. Linux x64 droplet c-8 ams3, Node24.21.0: T0/T1/T2, selected changed T3 file46/46 and Web completed. 7311 pass, 0 failures, 1 macOS-only selector skip; duration/budget gates report-only. Browser Chrome for Testing156.0.8078.4 Headless Shell. Remaining T3 is deferred to merge batch; T4 unexecuted. Reviewer settlement pending; no source change or rerun.
+
+### rev-35 · 2026-11-21T08:54:13.300Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1980-evidence-2
+commit: 05db4b65508323f5893b9d70dabb1c8705c65a6e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-22443, findings=[]. Run8da41079/A-22441 finished/passed at source3-reviewed05db4b655; refs unchanged. Typed starts/pass finishes confirm affected recovery identity and both ownership controls (each base+5 distinct load passes). Actual file receipts: all241T1/443T2/55Web plus selected T3 claude-code-remote46/46; T0 also exit0. Producer7311pass/1platform skip/0fail/cancel. Remaining272T3 deferred merge batch, no18T4 runtime proof; report-only budgets/lint do not enforce timing. Linux x64 droplet c-8/ams3 Node24.21 Nvim0.12.5, isolated HeadlessShell1248/Chrome for Testing156.0.8078.4. Canonical verification treedcbaea2a differs from Git83338f6f by definition. C2's separate macOS20-target+one-full-file stress evidence remains current via A-22426/Coordinator8e65b199. Verify C1/C2 at exact commit; prior failures retained. No Reviewer execution/edit. Hold releases; no duplicate run/manual Coordinator relay, integrated T3 remains merge batch.
+
+Criteria: C1 verified, C2 verified.

@@ -3,7 +3,7 @@ id: T-2048
 kind: task
 title: Prepared executor snapshot is built on c-8, so a --size c-4 run can't restore it (blocks the T-2036 sizing measurement)
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1693
 branch: t/T-2048-prepared-executor-snapshot-is-built-on-c
 created: 2026-11-21T03:51:03.851Z
-updated: 2026-11-21T07:33:29.472Z
+updated: 2026-11-21T08:40:39.538Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ Make the prepared snapshot usable by every size the project may request: build i
 
 - [x] C1. A `verify --size c-4` request with a prepared snapshot built for c-8 either uses a fitting snapshot or is refused at admission, before T0, naming the sizes the current snapshot fits (test).
   - done: impl-2048 · 2026-11-21T07:33:01.538Z
+  - verified: rev-41 [reviewer] · run rev-41-20261121-2048-final · 2026-11-21T08:40:39.027Z · commit 72258e3406aa0234eaa5e3e6d3865aae6ec63d63
 - [x] C2. After a prepare under the new policy, both c-4 and c-8 requests restore from a prepared snapshot (test with the fake provider).
   - done: impl-2048 · 2026-11-21T07:33:01.874Z
+  - verified: rev-41 [reviewer] · run rev-41-20261121-2048-final · 2026-11-21T08:40:39.027Z · commit 72258e3406aa0234eaa5e3e6d3865aae6ec63d63
 
 ## Comments
 
@@ -155,3 +157,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear at 72258e3406aa0234eaa5e3e6d3865aae6ec63d63. Narrow two-file fix reviewed from7607207e6 with retained prior full review context; no dev merge. Standards0/Spec0 findings. #validateSnapshotDisk now returns only for absent snapshot, preserving the original CLI/MCP planning contract; existing snapshot mismatch still uses the shared disk predicate and names fitting sizes before T0. acquire still refuses absent image before lease creation (droplet.ts:275); snapshot producer ownership and explicit builder-size policy are untouched. Running docs state snapshot presence as the condition. No fixture was weakened or populated to hide the prior missing-snapshot failure.
 
 A-22364 records supported local red at prior source (unchanged suite-dry-run.test.ts:57 actual1 expected0; 'no prepared snapshot'), prior Linux cca62992 T0-T2 pass/T3 fail/Web unexecuted, and supported final-head local selected green: fake-provider T2 four files173/173 and unchanged native CLI T3 file4/4, macOS Node24.21, observed processes exit0/no signal, initial load guards enforce <12. Unsupported Node25 dev control explicitly excluded. Full lint/typecheck reported exit0; lint advisories remain report-only. Selected greens do not replace earlier failed full receipts. Final C1/C2 verification remains pending exact-head configured full-all rerun. Reviewer ran no tests, native/browser/cloud work or edits.
+
+### rev-41 · 2026-11-21T08:40:39.027Z
+
+verdict: review
+result: clear
+by: rev-41 [reviewer]
+run: rev-41-20261121-2048-final
+commit: 72258e3406aa0234eaa5e3e6d3865aae6ec63d63
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at72258e3406aa0234eaa5e3e6d3865aae6ec63d63/treec08a25f731c717980ed7097d78ee1ea031c066c7. Combines prior full source review rev-41-20261121-2048-source4/A-22366 with exact-head noncached full-all run8899f6f5-58dd-467e-ae97-d23f7ddd6f39/A-22434. Standards0/Spec0 findings; earlier source and consumer findings resolved. Independently streamed structured finish records: C1 identity 'snapshot disk incompatibility refuses c-4 admission before T0 and names fitting sizes' has1 base pass+5 load-gate passes; C2 identity 'prepare replaces a matching oversized snapshot so c-4 and c-8 restore it' has1 base pass+5 load-gate passes. Reviewed source keeps pre-T0 fitting-size refusal and seeded old-image/new-builder identity, retirement,both restores and reuse assertions. C1/C2 verified.
+
+Prior failed identities now each have a base pass: omitted and aborted preparation-drain cases; DigitalOcean declaration prices; CLI dry-run planning without snapshot. No failed receipt is reused as proof. Earlier57eec9d0 exit124/T2 incomplete and cca62992 exit1/T3 failure remain retained, not counted as passing attempts.
+
+Run completed T0,T1,T2,fullT3 andWeb exit0; T4 not requested. Aggregate reports9422tests,9409pass,0fail,0cancelled,13skipped; provenance lists platform/prerequisite exclusions including repeated load-gate skips. Linuxx64 6.8.0-149-generic,Node24.21.0,Neovim0.12.5,droplet c-8 ams3,workers2. Browser receipt: Playwright chromium_headless_shell-1248 chrome-headless-shell,Google Chrome for Testing156.0.8078.4; Web executed. Budget/test-lint/T3-ratchet advisories remain report-only; no timing comparison or universal-platform pass inferred. Provider lifetime3740990ms/cost estimate$0.2597909722 belongs to verification, not a real c-4 preparation measurement. Fake-provider C2 is the approved criterion; real preparation, measured price/time/cost and hub restart stay Coordinator-owned after landing per item comment. Reviewer ran no tests, browser/cloud or source edits.
+
+Criteria: C1 verified, C2 verified.

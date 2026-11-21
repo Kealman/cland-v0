@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1691
 branch: t/T-2046-every-fixed-test-wait-goes-through-the
 created: 2026-11-21T03:32:07.872Z
-updated: 2026-11-21T07:37:24.775Z
+updated: 2026-11-21T09:17:41.969Z
 ---
 
 ## Summary
@@ -28,13 +28,16 @@ Route every fixed test wait through the shared load-scaled helper, with the fact
 ## Acceptance criteria
 
 - [x] C1. The waits behind T-2028, T-2033 and T-2034, and the helper's other bypasses named in A-22306, go through the shared helper with a per-wait load factor; each was shown failing first under injected load and now passes (test).
-  - done: impl-2046 · 2026-11-21T05:47:57.842Z
   - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final · 2026-11-21T07:37:24.634Z · commit 71dc49862363f2b686cd167c9def8241bc50e466
+  - done: impl-2046 · 2026-11-21T08:47:13.802Z
+  - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final2 · 2026-11-21T09:17:41.848Z · commit 879df801bf87a7f706bad73b4ffc2189e896146b
 - [x] C2. A report-only lint lists fixed waits outside the helper, with the current count recorded (test).
-  - done: impl-2046 · 2026-11-21T04:24:17.504Z
   - verified: rev-35 [reviewer] · run rev-35-2046-source-2 · 2026-11-21T04:58:00.998Z · commit 6fab755a9f9fdf3751d8f9eb787b2f93175d21ca
   - verified: rev-40 [reviewer] · run rev-40-20261121-2046-M3-source · 2026-11-21T05:49:46.661Z · commit 71dc49862363f2b686cd167c9def8241bc50e466
   - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final · 2026-11-21T07:37:24.634Z · commit 71dc49862363f2b686cd167c9def8241bc50e466
+  - done: impl-2046 · 2026-11-21T08:47:13.988Z
+  - verified: rev-40 [reviewer] · run rev-40-20261121-2046-M45-source · 2026-11-21T08:49:52.184Z · commit 879df801bf87a7f706bad73b4ffc2189e896146b
+  - verified: rev-40 [reviewer] · run rev-40-20261121-2046-final2 · 2026-11-21T09:17:41.848Z · commit 879df801bf87a7f706bad73b4ffc2189e896146b
 
 ## Comments
 
@@ -130,5 +133,47 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final evidence clear; Standards0/Spec0 findings. A-22372 independently audits A-22367's four whole importer files at unchanged source-clear head: executor-run22/22, executor-safety17/17, suite-close-recovery4/4, suite-remote-process1/1; local macOS/Node24.21.0, serial native code0/signalnull each, no fail/skip/cancel, fresh enforcing launchload<12. Launcher clean-head pins are retained, not independent per-child Git attestations; first absolute admission time remains unknown. A-22356/a1147b6e (A-22357 audit) supplies noncached same-head Linux c8ams3 T0/T1/fallbackT2/all55Web plus selected suite-runnerT3 64 cases and mappedT4 one parent once:7319pass/1Mac-only selector skip/0fail. RemainingT3 merge batch and remainingT4 unexecuted. HeadlessShell1248/CfT156.0.8078.4; advisory budgets remain report-only, no performance/stress clearance. Named condition/Discord/browser/producer timer/real Node launch/setup join and original Hosts/reload receipts pass. C1 verified in approved central-default scope, with Node's approved once-per-launch backstop exception. Earlier red-first capture/provenance gaps remain explicit in A-22328/A-22336; current receipts do not reconstruct them. C2 verified: current1963-site report-only census, planted control and zero refusals. Prior13518715/A-22342 stays failed. Source unchanged; no Reviewer runtime/probe/browser actions.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-2046 · 2026-11-21T08:28:13.819Z
+
+Dropped batch33dcd1f7/A-22420 assigned two owned fixes by Coordinatorddfea08f: CJS-only generated policy import breaks ESM/TLA barrier.mjs; configured test_timeout1000 is incorrectly scaled to1300. Proposed additive SuiteLimits.testTimeoutIsDefault metadata, with absent/legacy metadata conservative exact. Consumers searched: suiteLimits/run-suite/suite-command/suite-shards/territory; hub suites job policy, suite-worker serialization, executor RunRef/droplet env export and persisted job limits; suite-timeouts partial cached fixtures, suite-command partial caches, suite-queue-policy exact admitted limits. Old four-field cache records stay supported, all fields retained. Existing admitted projectConfig snapshots remain exact; only positively identified source defaults opt into launch scaling. parseConfig remains the sole duration/presence parser; add an optional presence observer rather than a copied TOML parser. Generated producers searched by pollerDeadline/finish-poller and host commands: executor-run/safety/close/remote are CJS shell snippets; suite-candidate writes ESM barrier.mjs with top-level await. The old fake-VM barrier arithmetic control will move to actual owned CJS/ESM T3 host controls (no borrowed T1 proof); original budget/exit and candidate assertions remain.
+
+### impl-2046 · 2026-11-21T08:37:34.789Z
+
+Batch correction at879df801b (tree49ccf9c03950bc4171b3e3e32d8cd47b20b3e4e1): M4 generated producer now uses portable dynamic import and preserves per-admission sampling; actual CJS and top-level-await ESM controls replaced the former T1 VM case (no tier-proof reuse). M5 source config presence comes from parseConfig's additive validated-setting observer; SuiteLimits adds optional testTimeoutIsDefault. Explicit settings and legacy admitted snapshots lacking provenance remain exact. Consumer search: suiteLimits/run-suite; suite-command (stall/workers only); suite-shards and territory (workers only); hub/suites config/admitted job snapshots, suite-worker serialization, RunRef/executor policy and droplet CLAND_SUITE_LIMITS export; persisted job readers remain compatible because the field is optional. parseConfig callers retain the same ProjectConfig value shape; strict parsing/validation remains shared. Prior four-field cached shape is retained as a regression. Poller producer search includes executor-run, executor-safety (including package-script and explicit50 fault), suite-close-recovery, suite-remote-process, and suite-candidate's barrier.mjs. Only suite-candidate has a top-level-await ESM host; native controls now exercise both formats. Existing native argv, configured1000ms and candidate final receipt assertions remain unchanged.
+
+### impl-2046 · 2026-11-21T08:49:09.174Z
+
+Coordinator scope decision82b46a05-cf5f-48e8-a5aa-09178ed42eff explicitly accepts conservative exact limits for fresh projectConfig-backed admissions that omit test_timeout, as well as legacy-unknown snapshots. This repository explicitly configures120s. Positive default provenance through fresh admission/config capture is deferred Tech debt with shared-parser ownership and rule19 live-hub handling; Coordinator is filing the follow-up. Reviewer notified. No source change after879df801b.
+
+### rev-40 · 2026-11-21T08:49:52.185Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261121-2046-M45-source
+commit: 879df801bf87a7f706bad73b4ffc2189e896146b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Narrow M4/M5 source clear; Standards0/Spec0 findings. Dynamic import supports actual CJS/TLA-ESM hosts with per-producer timer sampling; native owner/result/close/pipes and unchanged candidate/fault assertions checked. Validated config parser owns presence; optional SuiteLimits default provenance scales only stricttrue, explicit and prior4field admitted bounds exact. New hub projectConfig admissions also lack provenance/stay exact: fact-checked and explicitly accepted by Coordinator82b46a05 as separate Tech debt, not claimed complete. Matching docs/skill provenance and old-shape consumers reviewed. A-22438 final-head native/module/timeouts/importer/argv/static receipts independently inspected; dirty red epochs/missing platform fields/redactions not reconstructed. C2 reverified:1963report-onlysites/0refusals and planted census pass. C1 final pending fresh same-head mode-free result; previousa1147b6e only71dc49862, failed13518715/batch33dcd1f7 retained. No newWeb/fullT3/T4 or Reviewer execution/edits.
+
+Criteria: C2 verified.
+
+### rev-40 · 2026-11-21T09:17:41.848Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261121-2046-final2
+commit: 879df801bf87a7f706bad73b4ffc2189e896146b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected-head final clear; no findings. A-22448/63d4441c exact head/canonical executable tree passed T0/all239T1/fallback442T2/selectedT3(candidate7+runner64)/mappedT4oneparent/Web55:7326pass/1Mac-selector skip/0fail/cancel. Named CJS/ESM timer/native-close, explicit/legacy exact bound, real argv, condition/Discord/browser and original reload/Hosts receipts independently pass; A-22438 current-head whole timeouts19 and refreshed importer22/17/4/1 remain local required evidence. C1/C2 verified. C2 census1963/zero refusals and planted control current. Coordinator82b46a05 boundary retained: fresh projectConfig admissions without provenance stay exact too; separate Tech debt owns propagation, not claimed fixed. NoncachedLinuxx64c8ams3 Node24.21/Nvim0.12.5; HeadlessShell1248/CfT156.0.8078.4. RemainingT3merge batch/restT4 and T4repetitions unexecuted; budgets report-only. Earlier failed13518715/batch33dcd1f7 and dirty epoch/provenance gaps retained; no old-head green reused. No Reviewer runtime/probes/edits.
 
 Criteria: C1 verified, C2 verified.

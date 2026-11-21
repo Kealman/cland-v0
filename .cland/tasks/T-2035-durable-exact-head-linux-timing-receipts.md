@@ -3,7 +3,7 @@ id: T-2035
 kind: task
 title: Durable exact-head Linux timing receipts, and the enqueue refusal of unallowed new identities of 4 s or more (split from T-1901 C2)
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1689
 branch: t/T-2035-durable-exact-head-linux-timing-receipts
 created: 2026-11-20T17:39:51.105Z
-updated: 2026-11-21T07:33:54.509Z
+updated: 2026-11-21T09:37:55.251Z
 ---
 
 ## Summary
@@ -25,8 +25,8 @@ Kind: product. Part of E-1888 (approved in triage A-19813, ask 8e3dd5ab); carrie
 
 ## Acceptance criteria
 
-- [x] C1. A local and a droplet run each record a durable structured timing receipt (identity, seconds, outcome, platform, head, tree) that Suites exposes after the run and after a hub restart, with no log parsing (test).
-  - done: impl-2035 · 2026-11-21T01:31:31.917Z
+- [ ] C1. A local and a droplet run each record a durable structured timing receipt (identity, seconds, outcome, platform, head, tree) that Suites exposes after the run and after a hub restart, with no log parsing (test).
+  - failed: rev-35 [reviewer] · 2026-11-21T09:37:55.251Z · note Configured full run fails the unchanged T3 generated-script consumer at executor-run.test.ts:50 after timing exports break release/trap/echo adjacency; migrate preserving lock/receipt proof.
 - [x] C2. A new identity measured at 4 s or more on Linux with no allowance is refused before enqueue, with the allowance stanza (test).
   - done: impl-2035 · 2026-11-21T06:05:22.024Z
 
@@ -79,3 +79,18 @@ Source2 clear, findings=[]; A-22355. M1 resolved: both actual seed acquisitions 
 ### impl-2035 · 2026-11-21T07:33:54.509Z
 
 Same-head local receipts complete at clear source2 head5ab9cb2bc/tree2df555bed04592398ac05478d79b68a688922da2. A-22363 retains all243T1/2094pass plus four fake T2/88pass; A-22365 retains five CLI-subject T2/30pass. Total2094T1+118T2=2212pass,0fail/cancel/skip, macOS Darwin27arm64 Node24.21. All launches enforced os.loadavg()[0]<12 (T1 2.4638671875; fakeT2 2.80224609375; nativeCLI 1.9130859375). Native slot granted e01e28eb and released immediately after batch. Same-head full lint/static/typecheck0 remains A-22354; original reds/draft receipts stay distinct. No actual configured/Linux/T3/T4/Web receipt yet; Coordinator-owned full verify all and Reviewer final evidence verdict pending. Head fixed and worktree clean; claim retained.
+
+### rev-35 · 2026-11-21T09:37:55.251Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-2035-evidence-1
+commit: 5ab9cb2bc5204a662bcc9241076f9455b8db3c0c
+scope: evidence
+findings: [{"severity":"medium","text":"M1: New timing exports break an unchanged T3 generated-script adjacency assertion; A-22452 fails actual false/expected true. Migrate the raw-script consumer while preserving positive lock-release/trap-before-test and timing-receipt proof, audit the release inventory, then fresh source review and configured rerun.","file":"hub/test/executor-run.test.ts","line":50}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Failed same-head run not clear; A-22453. A-22452/8e26acec failed executor-run remote-delivery identity at6.115710807s: assert.ok(script.includes(release/trap immediately followed by npm-test echo)) actualfalse/expectedtrue. Timing exports inserted between these markers; actual execution still releases before test, but T3 raw-script consumer was not migrated. Implementer confirms (7481735f); inventory raw release-string consumer also audited. Preserve positive release/trap/test/receipt semantics under Coordinator d9da24b9's authorized correction. Actual completed files:243T1+444T2 pass;246hubT3 finish245pass/1fail;27nvimT3 unstarted,55Web/18T4 unexecuted. Required timing/restart/admission/constructor controls base+5 load pass remain partial, not final proof. Linuxc8ams3 Node24.21 Nvim0.12.5; browser unknown. C1 failed; C2 unverified, no partial marks on red. No Reviewer execution/edit. Hold releases; authorized whole executor-run native check, fresh source review, then Coordinator full rerun; no duplicate configured submission.
+
+Criteria: C1 failed (Configured full run fails the unchanged T3 generated-script consumer at executor-run.test.ts:50 after timing exports break release/trap/echo adjacency; migrate preserving lock/receipt proof.).
