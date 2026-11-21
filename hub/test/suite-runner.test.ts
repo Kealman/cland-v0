@@ -158,7 +158,7 @@ for (const fault of ['stop', 'sweep']) test(`repetition ${fault} rejection joins
     }));
   });
 });
-function run(t: TestContext, dir: string, file: string, mode?: 'hub' | 'nvim' | 'all', stopWhenQueued = false, extraEnv: NodeJS.ProcessEnv = {}) {
+function run(t: TestContext, dir: string, file: string, mode?: 'hub' | 'nvim' | 'all', stopWhenQueued = false, extraEnv: NodeJS.ProcessEnv = {}, load?: number) {
   const options = { cwd: dir, lockDirs: { hub: lockPath(dir, 'hub'), nvim: lockPath(dir, 'nvim') } };
   // Pause at the queue diagnostic boundary, after every recovery guard is released.
   // An external SIGSTOP immediately after ticket publication can strand a .break guard.
@@ -168,14 +168,17 @@ process.stderr.write = (chunk, ...args) => { const result = write(chunk, ...args
   // manifests must never apply to generated tests in this temporary project.
   const cleanupFault = extraEnv.CLAND_TEST_RAW_REMOVE_FAILURE === '1' ? `import fs from 'node:fs/promises'; import { syncBuiltinESMExports } from 'node:module';
 const remove = fs.rm; fs.rm = async (path, options) => { if (String(path).endsWith('coverage-map.json.raw')) throw Object.assign(new Error('planted raw removal failure'), { code: 'EACCES' }); return remove(path, options); }; syncBuiltinESMExports();` : '';
-  const code = `${stop} ${cleanupFault} const { runSuite, runPackageSuite } = await import(${JSON.stringify(runner)}); process.exitCode = await ${mode ? `runPackageSuite(${JSON.stringify(mode)}, [${JSON.stringify(file)}], ${JSON.stringify(options)})` : `runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd: dir, lockDir: lockPath(dir), ...(extraEnv.CLAND_SUITE_SELECTION ? { selection: JSON.parse(extraEnv.CLAND_SUITE_SELECTION) } : {}) })})`};`;
+  const sampling = load === undefined ? '' : `import os from 'node:os'; import { syncBuiltinESMExports } from 'node:module'; os.loadavg = () => [${load}, ${load}, ${load}]; os.availableParallelism = () => 10; syncBuiltinESMExports(); delete process.env.CLAND_TEST_LOAD_FACTOR;`;
+  const code = `${sampling} ${stop} ${cleanupFault} const { runSuite, runPackageSuite } = await import(${JSON.stringify(runner)}); process.exitCode = await ${mode ? `runPackageSuite(${JSON.stringify(mode)}, [${JSON.stringify(file)}], ${JSON.stringify(options)})` : `runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd: dir, lockDir: lockPath(dir), ...(extraEnv.CLAND_SUITE_SELECTION ? { selection: JSON.parse(extraEnv.CLAND_SUITE_SELECTION) } : {}) })})`};`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { cwd: dir, env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', ...extraEnv }), stdio: ['ignore', 'pipe', 'pipe'] });
+  const closed = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolve => child.once('close', (code, signal) => resolve({ code, signal })));
   t.after(async () => { if (child.exitCode === null && child.signalCode === null) { child.kill('SIGCONT'); child.kill('SIGTERM'); } if (child.signalCode !== 'SIGKILL') await done; });
   let output = '';
   child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString(); });
   child.stderr.on('data', (chunk: Buffer) => { output += chunk.toString(); });
   const done = new Promise<number | null>((resolve, reject) => { child.on('error', reject); child.on('close', resolve); });
-  return { child, done, output: () => output };
+  void done.catch(() => {}); // The owner may join native close before reading a spawn rejection.
+  return { child, done, closed, output: () => output };
 }
 async function until(check: () => boolean | Promise<boolean>) {
   for (let n = 0; n < 800; n++) { if (await check()) return; await delay(25); }
@@ -1094,14 +1097,80 @@ for (const [resource, source] of [
   assert.match(output, /T1 test touches machine resources.*wait\.test\.ts/);
 });
 
+test('runner passes a load-scaled Node timeout at launch without freezing inner waits', async t => {
+  let suite: ReturnType<typeof run> | undefined;
+  let closing: Promise<{ code: number | null; signal: NodeJS.Signals | null }> | undefined;
+  let result: Promise<number | null> | undefined;
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => {
+    if (suite && suite.child.exitCode === null && suite.child.signalCode === null) { suite.child.kill('SIGCONT'); suite.child.kill('SIGTERM'); }
+  } });
+  await owner.run(async step => {
+    const { dir, file } = await owner.wait('separate fixture and source setup', () => step(async () => {
+      const dir = await fixture(owner.fixtures); owner.adoptRoot(dir);
+      const file = join(dir, 'launch-timeout.test.mjs');
+      await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict';
+test('launch timeout receipt', () => {
+  assert.ok(process.execArgv.includes('--test-timeout=192000'), JSON.stringify(process.execArgv));
+  assert.equal(process.env.CLAND_TEST_LOAD_FACTOR, undefined);
+  console.log('native timeout receipt ' + JSON.stringify({ args: process.execArgv.filter(arg => arg.startsWith('--test-timeout=')) }));
+});`);
+      return { dir, file };
+    }));
+    // Capture synchronously inside the admitted step, before cancellation can release.
+    await step(async () => {
+      suite = run(owner.fixtures, dir, file, undefined, false, {}, 6);
+      const captured = suite;
+      // Own both original promises before yielding, including cancellation
+      // between this acquisition and the next body step.
+      closing = owner.wait('captured native runner and pipe close', () => captured.closed);
+      result = owner.wait('captured original runner result', () => captured.done);
+      void closing.catch(() => {}); void result.catch(() => {});
+    });
+    const active = suite!;
+    const receipt = await closing!;
+    assert.deepEqual(receipt, { code: 0, signal: null });
+    assert.ok(active.child.stdout.destroyed && active.child.stderr.destroyed, 'native close includes both pipes');
+    assert.equal(await result!, 0, active.output());
+    assert.match(active.output(), /launch timeout receipt/);
+    t.diagnostic(active.output());
+    t.diagnostic(`native runner close receipt ${JSON.stringify(receipt)}`);
+  });
+});
+
+test('runner timeout setup cancellation joins its original write before directory cleanup', async t => {
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>(), written = Promise.withResolvers<string>();
+  let close!: () => Promise<unknown>;
+  const owner = caseDeadlines(t, { ownership: {
+    beforeDirectories(context, cleanup) { close = cleanup; beforeDirectories(context, cleanup); }, guardDirectoryRemoval,
+  }, releaseOnClose: () => release.resolve() });
+  const original = owner.run(async step => {
+    await owner.wait('held original setup', () => step(async () => {
+      const dir = await fixture(owner.fixtures); owner.adoptRoot(dir);
+      entered.resolve();
+      await release.promise;
+      const file = join(dir, 'late-source.mjs');
+      await writeFile(file, 'committed');
+      written.resolve(await readFile(file, 'utf8'));
+    }));
+    await step(async () => { assert.fail('cancelled setup must never launch a child'); });
+  });
+  const rejected = assert.rejects(original, /fixture work admission closed/);
+  await owner.wait('original setup entered', () => entered.promise);
+  await close();
+  await rejected;
+  const bytes = await written.promise;
+  assert.equal(bytes, 'committed', 'cleanup joined the original filesystem receipt');
+  t.diagnostic(`original setup write receipt ${JSON.stringify({ bytes })}`);
+});
+
 test('suite children receive load headroom and retain an explicit override', async t => {
   const dir = await fixture(t);
   const file = join(dir, 'factor.test.mjs');
   await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict';
 test('setup factor receipt', () => {
   const factor = Number(process.env.CLAND_TEST_LOAD_FACTOR);
-  assert.ok(Number.isFinite(factor) && factor >= 1, 'runner exports setup factor');
   if (process.env.EXPECT_FACTOR) assert.equal(factor, Number(process.env.EXPECT_FACTOR));
+  else assert.ok(!process.env.CLAND_TEST_LOAD_FACTOR, 'runner leaves per-wait sampling enabled');
 });`);
   for (const override of ['', '3']) {
     const suite = run(t, dir, file, undefined, false, { CLAND_TEST_LOAD_FACTOR: override, EXPECT_FACTOR: override });

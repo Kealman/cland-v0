@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { testDeadlineMs } from '../until.ts';
 import { readFile, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fakeHost } from './fake-host.ts';
@@ -52,7 +53,7 @@ export function sameOwner(a: HostOwner | undefined, b: HostOwner): boolean {
   return a?.directory === b.directory && a.boot === b.boot;
 }
 export type Control = { operation: string; forwards: Forward[]; owner: HostOwner; token?: string };
-export function controlRequest(path: string, request: Control, timeoutMs = 3000): Promise<void> {
+export function controlRequest(path: string, request: Control, timeoutMs = testDeadlineMs(3000)): Promise<void> {
   return new Promise((resolve, reject) => {
     const socket = net.createConnection({ path });
     socket.setTimeout(timeoutMs, () => socket.destroy(new Error('fake ssh control timed out')));

@@ -2,6 +2,7 @@ import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
 import type { TestContext } from 'node:test';
 import { bounded, speechExchange } from './exchange.ts';
+import { testDeadlineMs } from '../../until.ts';
 
 export type SpeechReply = { status?: number; body?: unknown; retryAfter?: string; delayMs?: number; location?: string };
 export type SpeechRequest = { method: string; path: string; keyPresent: boolean; fields: Record<string, string>; file?: { bytes: Buffer; mime: string; filename: string } };
@@ -58,7 +59,7 @@ export async function fakeSpeech(t: TestContext, replies: SpeechReply[] = [],
     void listening.catch(() => {}); // Also observe synchronous listen failure before the bounded await.
     if (setup.listen) setup.listen(server, setupSignal);
     else server.listen(0, '127.0.0.1');
-    await bounded(listening, setup.timeoutMs ?? 2_000, 'fake speech setup incomplete');
+    await bounded(listening, testDeadlineMs(2000, undefined, setup.timeoutMs), 'fake speech setup incomplete');
     const address = server.address();
     if (!address || typeof address === 'string') throw new Error('fake speech bind failed');
     return { url: `http://127.0.0.1:${address.port}`, requests, closedRequests, ...exchange };

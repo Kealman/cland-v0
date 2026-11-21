@@ -1,6 +1,7 @@
 // T2: native factory, sealed frames and loopback Discord gateway/REST.
 import { testWaitMs, waitTimeoutMs } from './until.ts';
 import assert from 'node:assert/strict';
+import os from 'node:os';
 import { test } from 'node:test';
 import { discordAdmissionObserver } from './fakes/discord/admission.ts';
 import { discordHubFixtureOwner } from './fakes/discord/hub.ts';
@@ -12,6 +13,30 @@ import { fakeDiscordFixture, DISCORD_TEST_TOKEN, DISCORD_IDS } from './fakes/dis
 import { FakeClock } from './fake-clock.ts';
 import { abortable, within } from '../src/executor/droplet/deadline.ts';
 import type { RemoteStatusRow } from '../src/protocol.ts';
+
+test('held Discord admission survives a load increase below CPU saturation', async t => {
+  const saved = process.env.CLAND_TEST_LOAD_FACTOR;
+  delete process.env.CLAND_TEST_LOAD_FACTOR;
+  t.mock.method(os, 'availableParallelism', () => 10);
+  t.mock.method(os, 'loadavg', () => [6, 6, 6]);
+  t.mock.timers.enable({ apis: ['setTimeout'], now: 0 });
+  const admission = discordAdmissionObserver(t);
+  try {
+    const scheduled = admission.observe(2);
+    void scheduled.catch(() => {});
+    const publication = setTimeout(() => admission.log({ event: 'discord-identify-scheduled', connection: 2, delay: 4999 }), 2500);
+    t.mock.timers.tick(2500);
+    clearTimeout(publication);
+    assert.deepEqual(await scheduled, { event: 'discord-identify-scheduled', connection: 2, delay: 4999 });
+    assert.equal(admission.pending(), 0);
+    assert.equal(admission.listeners(), 0);
+  } finally {
+    await admission.close();
+    t.mock.timers.reset();
+    if (saved === undefined) delete process.env.CLAND_TEST_LOAD_FACTOR;
+    else process.env.CLAND_TEST_LOAD_FACTOR = saved;
+  }
+});
 async function receipt<T>(read: () => Promise<T>, matches: (value: T) => boolean, what = 'exact Discord receipt'): Promise<T> {
   let value: T | undefined;
   await until(async () => { value = await read(); return matches(value); }, { what, timeoutMs: 2000 });

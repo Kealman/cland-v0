@@ -2,11 +2,29 @@ import { fileURLToPath } from 'node:url';
 import { lintTests, testLintReport } from '../src/test-lint.ts';
 import { testLintPolicy, lintRefusalLines, shrinkTestLint } from '../src/test-lint-policy.ts';
 import { readDurationManifest } from '../src/suite-durations.ts';
+import { fixedTestWaits } from '../src/fixed-test-waits.ts';
+import { glob, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 const args = process.argv.slice(2);
 const details = args.includes('--details');
 const cwd = args.find(arg => !['--shrink', '--details'].includes(arg)) ?? fileURLToPath(new URL('../../', import.meta.url));
 await readDurationManifest(cwd); // Duplicate diagnostics are advisory, outside refusal counts.
+let fixedCount = 0;
+let fixedComplete = true;
+try {
+  for await (const file of glob(['hub/test/**/*.ts', 'web/test/**/*.ts', 'nvim/test/**/*.ts'], { cwd })) {
+    if (file === 'hub/test/until.ts') continue; // The shared default is the census boundary.
+    for (const finding of fixedTestWaits(file, await readFile(join(cwd, file), 'utf8'))) {
+      fixedCount++;
+      console.log(`fixed test wait (report only): ${finding.file}:${finding.line} ${finding.message}`);
+    }
+  }
+} catch {
+  fixedComplete = false;
+  console.log('fixed test wait census incomplete (report only); no admission or exit-status effect');
+}
+console.log(`fixed test waits outside shared helper (report only): ${fixedComplete ? fixedCount : `unknown; partial count ${fixedCount}`}`);
 if (args.includes('--shrink')) await shrinkTestLint(cwd);
 for (const line of testLintReport(await lintTests(cwd), { detailedReachable: true, summaryOnly: !details })) console.log(line);
 const reports = await testLintPolicy(cwd, { reportOnly: true });

@@ -5,6 +5,28 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { lintTests, lintTestSource, testLintFacts, testLintReport, touchesMachineResources } from '../src/test-lint.ts';
+import { fixedTestWaits } from '../src/fixed-test-waits.ts';
+
+test('fixed timeout census includes defaults and browser APIs and stays advisory', () => {
+ const planted = `
+test('case', { timeout: 5000 }, body);
+locator.waitFor({ timeout: 3000 });
+context.setDefaultTimeout(3000);
+within(work, 2000);
+AbortSignal.timeout(1000);
+function observe(timeoutMs = 2000) {}
+until(ready, { timeoutMs: 1000 });
+within(work, options.timeoutMs ?? 2000);
+`;
+ assert.equal(fixedTestWaits('web/test/planted.ts', planted).length, 8);
+ for (const source of [
+  'locator.waitFor({ timeout: waitTimeoutMs(3000) });',
+  'within(work, testSetupWaitMs());',
+  `const text = 'context.setDefaultTimeout(3000)';`,
+  '// within(work, 2000)',
+ ]) assert.deepEqual(fixedTestWaits('hub/test/planted.ts', source), []);
+ assert.ok(fixedTestWaits('hub/test/planted.ts', planted).every(f => f.reportOnly));
+});
 
 // Shared planted source inputs are data, never executed by these tests.
 const sources = JSON.parse(await readFile(new URL('./fixtures/test-lint-sources.json', import.meta.url), 'utf8')) as Record<string, string>;

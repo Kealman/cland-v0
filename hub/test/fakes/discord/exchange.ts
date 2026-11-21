@@ -7,7 +7,7 @@ import { DiscordApi } from '../../../src/remote/discord-api.ts';
 import { within } from '../../../src/executor/droplet/deadline.ts';
 import { onCleanup, beforeDirectories, ownDirectory } from '../../process-cleanup.ts';
 import { discordFixtureOwner, DISCORD_TEST_TOKEN } from './fake-api.ts';
-import { testSetupWaitMs } from '../../until.ts';
+import { testSetupWaitMs, testDeadlineMs } from '../../until.ts';
 
 /** Native operation bounds stay live while the injected scheduling clock is frozen. */
 export function discordExchangeOwner(t: TestContext, options: Parameters<typeof discordFixtureOwner>[1] & { timeoutMs?: number; drainClock?: Clock } = {}) {
@@ -29,9 +29,9 @@ export function discordExchangeOwner(t: TestContext, options: Parameters<typeof 
     const attempt = (async () => {
       abort.abort(new Error('Discord exchange disposed: aborted'));
       const results = await Promise.allSettled([
-        measure('stop', () => within(Promise.all(stops.map(stop => Promise.resolve().then(stop))), 2000, options.drainClock, () => new Error('Discord exchange stop incomplete'))),
+        measure('stop', () => within(Promise.all(stops.map(stop => Promise.resolve().then(stop))), testDeadlineMs(2000, options.drainClock), options.drainClock, () => new Error('Discord exchange stop incomplete'))),
         measure('fake', async () => { await fixture?.close(); }),
-        measure('native', () => within((async () => { while (pending.size) await Promise.allSettled([...pending]); })(), 2000, options.drainClock, () => new Error('Discord exchange native drainage incomplete'))),
+        measure('native', () => within((async () => { while (pending.size) await Promise.allSettled([...pending]); })(), testDeadlineMs(2000, options.drainClock), options.drainClock, () => new Error('Discord exchange native drainage incomplete'))),
       ]);
       const failures = results.filter(r => r.status === 'rejected').map(r => r.reason);
       if (failures.length) throw new AggregateError(failures, `Discord exchange disposal incomplete: ${JSON.stringify(drainReceipts)}`);
@@ -51,12 +51,12 @@ export function discordExchangeOwner(t: TestContext, options: Parameters<typeof 
   onCleanup(t, close);
   beforeDirectories(t, close);
   fixture = discordFixtureOwner(t, { ...options, signal: options.signal ? AbortSignal.any([abort.signal, options.signal]) : abort.signal });
-  const run = <T>(action: (signal: AbortSignal) => Promise<T>, budgetMs = 2000, deadlineClock?: Clock): Promise<T> => {
+  const run = <T>(action: (signal: AbortSignal) => Promise<T>, budgetMs?: number, deadlineClock?: Clock): Promise<T> => {
     const native = Promise.resolve().then(() => { abort.signal.throwIfAborted(); return action(abort.signal); });
     pending.add(native); void native.catch(() => {});
     void native.finally(() => pending.delete(native)).catch(() => {});
     const timeout = new Error('Discord exchange operation incomplete');
-    const bounded = within(native, budgetMs, deadlineClock, () => timeout)
+    const bounded = within(native, testDeadlineMs(2000, deadlineClock, budgetMs), deadlineClock, () => timeout)
       .catch(async error => { if (error === timeout) await close(); throw error; });
     void bounded.catch(() => {});
     return bounded;

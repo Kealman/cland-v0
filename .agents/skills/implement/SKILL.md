@@ -20,6 +20,18 @@ named `behaviour` for a product deadline; setup waits use load headroom. New
 advisory findings do not change admission or lint exit status. See
 [test lint reports](../../../docs/agents/tests.md#test-lint-reports).
 
+<!-- cland-workflow-change: T-2046 describe per-operation setup defaults and advisory census -->
+Shared setup waits sample current load per operation; use `testDeadlineMs` for
+fake defaults and retain injected-clock fault bounds. Browser fixtures refresh
+action/locator defaults per operation; when its config setting is absent, the
+Node timeout backstop scales once per runner launch. Explicit configured bounds
+and admitted limits without default provenance stay exact. Test lint also lists remaining numeric timeout sites across test
+helpers in report mode. That census never changes lint or admission exit status.
+Repetition import watchdog defaults sample at each child admission from the
+runner environment; pass an explicit startup budget only for a controlled bound.
+Omit the startup helper's factor for shared sampling; converting an unset value
+to NaN is refused.
+
 For evidence publication, use `publishSessionEvidence` from the shared
 [scan-and-publish helper](../qa/EVIDENCE.md).
 It scans the exact private snapshot and calls artifact.create only after a clean

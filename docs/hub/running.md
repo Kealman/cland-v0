@@ -1125,7 +1125,15 @@ transport while launch/inject/turn/stop/resume retain frame coverage.
 Package suites pass `--test-timeout` to every Node test phase. The default is
 120 seconds per test; `[verification].test_timeout` in `.cland/config.toml`
 sets a positive duration (`s`, `m`, `h` or `d`). A timed-out test fails by name.
+An explicit configured duration stays exact, including a value equal to the
+default. Only an absent source setting scales the default with current load at
+runner launch. Admitted limits without default provenance stay exact.
 An explicit test-level timeout still overrides Node's default.
+
+Delivered-tree load and Web repetition startup defaults sample current load per
+child admission from the supplied runner environment. Explicit `startupMs`
+controls stay exact. An omitted factor selects that shared default; an explicitly
+passed NaN or below-one factor is refused instead of silently becoming 1.
 
 Structured file-start receipts also arm one shared per-file startup/import
 watchdog in the verification command worker and the delivered tree's package
@@ -2410,10 +2418,12 @@ cases and the real-window account-limits test retain the 1000 ms production defa
 number sets the default budget for `eventually` and the gated verifier's startup
 wait. Without it (or with an invalid value), `eventually` retains 15 seconds and
 the verifier startup wait gets 30 seconds to prepare its worktree and start its
-harness under load. Setup `until` and `eventually` budgets also use the phase's
-`CLAND_TEST_LOAD_FACTOR`: run-suite derives it from one-minute load plus phase
-workers divided by available parallelism (minimum 1 locally, 2 on droplets),
-unless a finite override of at least 1 is set. Injected wait clocks and named
+harness under load. Setup `until` and `eventually` budgets also use the
+current load: `max(executor floor, 1 + one-minute load / availableParallelism())`
+on each wait (floor 1 locally, 2 on droplets). Run-suite no longer exports a
+factor frozen at phase start. `CLAND_TEST_LOAD_FACTOR` remains an explicit
+override of at least 1; invalid explicit factors fall back to 1. Injected wait
+clocks and named
 `behaviour` deadlines stay exact; an explicit `loadFactor` can exercise scaling
 with a fake clock. Positional `eventually` budgets remain supported and scale
 as setup waits. `remoteEventually` keeps its remote scaling without a second

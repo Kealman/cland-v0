@@ -284,7 +284,7 @@ const workerCount = (value: unknown, field: string): number => {
 const positive = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined);
 
 /** The file's values over the defaults. Legacy wrong types are ignored unless strict validation is requested. */
-export function parseConfig(text: string, fallbackName: string, env: NodeJS.ProcessEnv = process.env, { strict = false }: { strict?: boolean } = {}): ProjectConfig {
+export function parseConfig(text: string, fallbackName: string, env: NodeJS.ProcessEnv = process.env, { strict = false, onConfiguredTestTimeout }: { strict?: boolean; onConfiguredTestTimeout?: () => void } = {}): ProjectConfig {
   const doc = parse(text) as Record<string, unknown>;
   const c = defaultConfig(fallbackName);
   c.hosts = readHostPools(doc.hosts);
@@ -411,6 +411,7 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
       if (typeof verification[key] !== 'string') throw new Error('not a duration');
       c.verification[field] = durationMs(verification[key]);
     } catch { throw new Error(`verification.${key} must be a positive duration (s, m, h or d)`); }
+    if (key === 'test_timeout') onConfiguredTestTimeout?.();
   }
   if (verification.suite_retention_pass_limit !== undefined) {
     if (!Number.isSafeInteger(verification.suite_retention_pass_limit) || (verification.suite_retention_pass_limit as number) < 1 || (verification.suite_retention_pass_limit as number) > SUITE_RETENTION_PASS_LIMIT) throw new Error(`verification.suite_retention_pass_limit must be an integer from 1 to ${SUITE_RETENTION_PASS_LIMIT}`);

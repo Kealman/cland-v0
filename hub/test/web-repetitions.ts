@@ -24,7 +24,7 @@ export async function runWebRepetitions(options: { files: string[] | undefined; 
   const files = admittedWebRepetitions(options.files, options.planned, emit);
   if (!files) return;
   if (!files.length) { await repeatWebFiles([], async () => { throw new Error('empty plan'); }, emit, options.interrupted); return; }
-  const startupMs = options.startupMs ?? fileStartupTimeoutMs((await suiteLimits(cwd, 'local', options.env)).stallTimeoutMs, Number(options.env.CLAND_TEST_LOAD_FACTOR));
+  const stallTimeoutMs = options.startupMs === undefined ? (await suiteLimits(cwd, 'local', options.env)).stallTimeoutMs : undefined;
   await prepareRunnerFixture(root);
   const state = new Int32Array(new SharedArrayBuffer(8));
   const load = new Worker(`const { parentPort, workerData } = require('node:worker_threads');
@@ -68,7 +68,7 @@ process.chdir(${JSON.stringify(cwd)});`);
       const identity = captureProcess(child.pid);
       if (!identity) { void done.catch(() => {}); throw new Error('cannot establish Web repetition process identity'); }
       options.active.add(identity);
-      const guard = watchSuitePhase({ exit: done, startupMs, ...(options.clock ? { clock: options.clock } : {}),
+      const guard = watchSuitePhase({ exit: done, startupMs: options.startupMs ?? fileStartupTimeoutMs(stallTimeoutMs!, undefined, options.env), ...(options.clock ? { clock: options.clock } : {}),
         observed: row => options.observed?.(owned, row),
         owner: { id: owned, report: emit },
         commandState: () => ({ commandPid: identity.pid, exit: child.exitCode === null && child.signalCode === null ? null : { code: child.exitCode, signal: child.signalCode }, stdout: child.stdout!.readableEnded ? 'closed' : 'open', stderr: child.stderr!.readableEnded ? 'closed' : 'open' }),

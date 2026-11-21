@@ -13,7 +13,7 @@ import { execFile } from 'node:child_process';
 import { parseArgs, promisify } from 'node:util';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { availableParallelism, loadavg } from 'node:os';
+import { waitTimeoutMs } from './until.ts';
 import { cland, eventually, inProcessSpoke, spawnSpoke, projectHub, startDaemon, tempProject, testWaitMs, type ProjectHubOptions } from './harness.ts';
 import { beforeDirectories, cleanupProcesses, ownProcess, onCleanup } from './process-cleanup.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
@@ -30,7 +30,7 @@ const token = 'cland-test-remote-suite-token';
 /** Failure budgets for real SSH/worker receipts, scaled by runnable work per CPU.
  * These do not delay success or advance the scripted machine's product clock. */
 export function remoteWaitMs(baseMs = 30_000): number {
-  return Math.ceil(testWaitMs(baseMs) * Math.max(1, loadavg()[0]! / availableParallelism()));
+  return waitTimeoutMs(testWaitMs(baseMs));
 }
 export function remoteEventually<T>(what: string, check: () => Promise<T | undefined> | T | undefined, baseMs?: number): Promise<T> {
   return eventually(what, check, { timeoutMs: remoteWaitMs(baseMs), loadFactor: 1 });

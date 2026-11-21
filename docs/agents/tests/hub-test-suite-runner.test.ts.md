@@ -1,5 +1,20 @@
 # hub/test/suite-runner.test.ts
 
+The merged repetition import cases retain their original exact 30-second fake
+clock assertions and real child-close/root cleanup receipts. Load and Web
+owners now choose shared current-load defaults at each child admission when no
+explicit `startupMs` was supplied; they do not retain a runner-launch budget.
+The pure policy controls are in until.test.ts. The runner's optional load
+injection argument and its native Node argv assertion remain intact.
+
+The load-scaled Node timeout case enrolls `caseDeadlines` before acquiring its
+root or writing source. Setup has its own named bound. Cancellation closes
+admission and stops the captured runner; teardown joins the original setup/body
+and native child/pipe-close receipt before directory removal. Its held-setup
+control releases a late source write during cleanup and observes its exact bytes
+before cleanup returns. The actual child still asserts its `process.execArgv`;
+successful timeout arguments and native close code/signal are also emitted.
+
 This T3 file owns native runner lifecycle checks: lock ownership, interruption,
 stale-process recovery, bundle prerequisites and Web repetition child cleanup.
 The process boundary is necessary to observe actual child exits and owned

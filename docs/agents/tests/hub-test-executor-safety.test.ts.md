@@ -16,7 +16,8 @@ Restart's scheduler reads its own saved lease as well as the lease file, so the
 fixture must update both durable deadline copies. Keep this fixture edit after
 shutdown; do not change product expiry, name reservations or cleanup guarantees.
 
-Finish barriers use `fakes/finish-poller.ts`: a five-minute independent backstop
+Finish barriers use `fakes/finish-poller.ts`: a five-minute base scaled by the
+shared policy when the producer arms its independent backstop. That backstop
 exits 124 if no finish receipt arrives. Normal completion clears the polling
 interval and does not wait for the unreferenced backstop. Fixture teardown stops
 owned writers before removal and asserts an empty native cwd census. Fake

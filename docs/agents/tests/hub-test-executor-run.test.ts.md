@@ -12,7 +12,8 @@ config, and prove the T0 timing wrapper is delivered before runtime tier wrapper
 Assert actual exit and output receipts, stop-on-failure and confirmed provider
 resource release. Command-plan policy permutations belong in T1.
 
-Finish barriers use `fakes/finish-poller.ts` with a five-minute backstop that
+Finish barriers use `fakes/finish-poller.ts` with a five-minute base scaled by
+the shared policy when the producer arms its timer; the backstop
 exits 124. Fake provider close drains owned machine writers and asserts an empty
 native cwd census before removing its canonical root, including failure and
 cancellation teardown. See the executor-safety guide for the positive census

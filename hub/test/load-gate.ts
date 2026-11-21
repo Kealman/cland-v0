@@ -34,7 +34,7 @@ export async function runLoadGate(options: {
   interrupted: () => boolean; active: Set<ProcessIdentity>;
 }): Promise<{ failed: boolean; extraWallMs: number; failures: LoadRepetitionFailure[]; rerun: (identity: string) => Promise<void> }> {
   if (!Number.isSafeInteger(options.workers) || options.workers < 1) throw new Error('load gate workers must be a positive integer');
-  const startupMs = options.startupMs ?? fileStartupTimeoutMs((await suiteLimits(options.cwd, 'local', options.env)).stallTimeoutMs, Number(options.env.CLAND_TEST_LOAD_FACTOR));
+  const stallTimeoutMs = options.startupMs === undefined ? (await suiteLimits(options.cwd, 'local', options.env)).stallTimeoutMs : undefined;
   process.stderr.write(`load gate workers ${options.workers}; five sequential repetitions per new test\n`);
   let phaseFinished: number | undefined;
   void options.phase.then(() => { phaseFinished = performance.now(); }, () => { phaseFinished = performance.now(); });
@@ -123,7 +123,7 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         throw new Error('cannot establish load gate runner identity');
       }
       options.active.add(identity);
-      const guard = watchSuitePhase({ exit: done, startupMs, ...(options.clock ? { clock: options.clock } : {}),
+      const guard = watchSuitePhase({ exit: done, startupMs: options.startupMs ?? fileStartupTimeoutMs(stallTimeoutMs!, undefined, options.env), ...(options.clock ? { clock: options.clock } : {}),
         observed: row => options.observed?.(receipt, row),
         owner: { id: receipt, report: line => process.stdout.write(line + '\n') },
         commandState: () => ({ commandPid: identity.pid, exit: child.exitCode === null && child.signalCode === null ? null : { code: child.exitCode, signal: child.signalCode }, stdout: child.stdout!.readableEnded ? 'closed' : 'open', stderr: child.stderr!.readableEnded ? 'closed' : 'open' }),

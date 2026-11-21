@@ -52,6 +52,8 @@ assertion failure controls together. The generated hung worker persists its own
 PID and its Node test runner PID before waiting indefinitely. Read a complete
 JSON receipt, capture those identities while live, then assert both PIDs are
 reaped after the exact job's terminal result and native timeout diagnostic.
+Its explicit `verification.test_timeout="1s"` remains exactly 1000 ms under load;
+only absent source settings authorize scaling Node's default backstop.
 
 The hung case registers cleanup before constructing the suite fixture. On early
 failure it asks that fixture's verifier to cancel the exact job and waits for

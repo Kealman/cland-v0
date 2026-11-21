@@ -16,8 +16,8 @@ import { PROTOCOL_VERSION, parseFrame, type SuiteSlotResult } from '../src/proto
 import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, realpath, stat, writeFile, glob } from 'node:fs/promises';
-import { availableParallelism, loadavg } from 'node:os';
-import { suiteLoadFactor } from './until.ts';
+import { loadavg } from 'node:os';
+import { runnerTestTimeoutArgument } from '../src/suite-wait-budget.ts';
 import { join, resolve, matchesGlob } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
@@ -186,12 +186,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
         machineWait = Date.now() - phaseStarted;
       }
       const env: NodeJS.ProcessEnv = { ...suiteTestEnv(options.selection), TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token, TEST_SUITE_CWD: holder.worktree };
-      env.CLAND_TEST_LOAD_FACTOR = String(suiteLoadFactor({
-        load: loadavg()[0]!, parallelism: availableParallelism(),
-        workers: options.workers?.[index] ?? Number(args.find(arg => arg.startsWith('--test-concurrency='))?.split('=')[1] ?? 1),
-        ...(env.CLAND_SUITE_EXECUTOR ? { executor: env.CLAND_SUITE_EXECUTOR } : {}),
-        ...(env.CLAND_TEST_LOAD_FACTOR ? { override: env.CLAND_TEST_LOAD_FACTOR } : {}),
-      }));
+      // Do not freeze the host load into an override inherited by every wait.
       // Selection belongs to this runner, not its tests or any nested package run.
       delete env.CLAND_SUITE_SELECTION;
       delete env.CLAND_SUITE_SELECTION_FILE;
@@ -239,7 +234,8 @@ process.chdir(cwd);`);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const limits = await suiteLimits(cwd);
       const reporters = args.includes('--test') ? [
-        `--test-timeout=${limits.testTimeoutMs}`,
+        // Missing provenance in older admitted policies cannot relax an explicit bound.
+        runnerTestTimeoutArgument(limits.testTimeoutMs, limits.testTimeoutIsDefault === true),
         '--test-reporter=spec', '--test-reporter-destination=stdout',
         `--test-reporter=${fileURLToPath(new URL('./skip-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout',
       ] : [];
@@ -304,7 +300,7 @@ process.chdir(cwd);`);
         commandState: () => ({ commandPid: runnerIdentity.pid, exit: nativeExit,
           stdout: active!.stdout!.readableEnded ? 'closed' : 'open', stderr: active!.stderr!.readableEnded ? 'closed' : 'open' }),
         report: line => process.stderr.write(line + '\n'),
-        startupMs: fileStartupTimeoutMs(limits.stallTimeoutMs, Number(env.CLAND_TEST_LOAD_FACTOR)),
+        startupMs: fileStartupTimeoutMs(limits.stallTimeoutMs, undefined, env),
         ...(webPhase ? { web: { fileSeconds: webSeconds,
         workers: options.workers?.[index] ?? Number(args.find(arg => arg.startsWith('--test-concurrency='))?.split('=')[1] ?? 1),
         } } : {}),
@@ -322,7 +318,7 @@ process.chdir(cwd);`);
       const repeats = loadGate ? runLoadGate({
         ...(options.selection ? { selection: options.selection } : {}),
         discovery: loadDiscovery, root, cwd, env, manifest: durationManifest!,
-        startupMs: fileStartupTimeoutMs(limits.stallTimeoutMs, Number(env.CLAND_TEST_LOAD_FACTOR)), ...(options.clock ? { clock: options.clock } : {}),
+        ...(options.clock ? { clock: options.clock } : {}),
         quarantine,
         timeoutMs: limits.testTimeoutMs, workers: limits.loadGateWorkers, phase: done,
         interrupted: () => interruption.signal !== null, active: loadRunners,
@@ -398,7 +394,7 @@ process.chdir(cwd);`);
         const repeatStarted = performance.now();
         try {
           await runWebRepetitions({ files: options.selection.webRepetitionFiles, planned: args.filter(arg => arg.startsWith('web/test/')),
-            startupMs: fileStartupTimeoutMs(limits.stallTimeoutMs, Number(env.CLAND_TEST_LOAD_FACTOR)), ...(options.clock ? { clock: options.clock } : {}),
+            ...(options.clock ? { clock: options.clock } : {}),
             root, cwd, env, interrupted: () => interruption.signal !== null, active: loadRunners, emit: line => process.stdout.write(line + '\n') });
         } catch (error) {
           process.stdout.write(`${WEB_REPETITION_REPORT} not run; ${String(error).replace(/\s+/g, ' ')}; missing load proof\n`);

@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
 import { fakeHarness, FAKE_FLAVOURS, type FakeFlavour, type FakeHarness } from './fakes/harness.ts';
 import { realClock, type Clock } from '../src/hub/clock.ts';
-import { eventually, testWaitMs } from './until.ts';
+import { eventually, testWaitMs, waitTimeoutMs } from './until.ts';
 export { until, eventually, testWaitMs } from './until.ts';
 // The test harness for the two seams:
 //   1. the spoke's MCP surface — in-memory for T2, a real stdio process for binary contracts/lifecycle
@@ -266,7 +266,7 @@ function spokeSession(client: Client, cwd: string, log: () => string = () => '')
     return parsed;
   };
 
-  const waitForEvent = (predicate: (e: ChannelEvent) => boolean, timeoutMs = 5000): Promise<ChannelEvent> => {
+  const waitForEvent = (predicate: (e: ChannelEvent) => boolean, timeoutMs = waitTimeoutMs(testWaitMs(5000))): Promise<ChannelEvent> => {
     const hit = events.find(predicate);
     if (hit) return Promise.resolve(hit);
     if (closed) return Promise.reject(new Error('the spoke closed before the channel event'));
@@ -327,7 +327,7 @@ export async function assignRole(cwd: string, name: string, role: string): Promi
 }
 
 /** Poll `who()` through `viewer` until `name` has left presence (a close is processed asynchronously). */
-export async function waitForAbsence(viewer: Session, name: string, timeoutMs = 5000): Promise<void> {
+export async function waitForAbsence(viewer: Session, name: string, timeoutMs = waitTimeoutMs(testWaitMs(5000))): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     // a viewer between connections answers no `sessions`: that says nothing about `name`
@@ -726,7 +726,7 @@ export async function connectSocket(path: string): Promise<SocketClient> {
   return {
     send: (frame) => socket.write(`${JSON.stringify(frame)}\n`),
     write: (raw) => socket.write(raw),
-    next: (timeoutMs = 5000) => {
+    next: (timeoutMs = waitTimeoutMs(testWaitMs(5000))) => {
       const f = frames.shift();
       if (f) return Promise.resolve(f);
       return new Promise((resolve, reject) => {
@@ -807,7 +807,7 @@ export function frameClient(write: (line: string) => void, onData: (fn: (chunk: 
     frames,
     send,
     close,
-    request: (frame, timeoutMs = 5000, signal) =>
+    request: (frame, timeoutMs = waitTimeoutMs(testWaitMs(5000)), signal) =>
       new Promise((resolve, reject) => {
         signal?.throwIfAborted();
         const id = `r${nextId++}`;
@@ -834,7 +834,7 @@ export function frameClient(write: (line: string) => void, onData: (fn: (chunk: 
         try { send({ ...frame, id }); }
         catch (error) { cleanup(); reject(error); }
       }),
-    waitFor: (predicate, timeoutMs = 5000, signal) => {
+    waitFor: (predicate, timeoutMs = waitTimeoutMs(testWaitMs(5000)), signal) => {
       if (signal?.aborted) return Promise.reject(signal.reason);
       const hit = frames.find(predicate);
       if (signal?.aborted) return Promise.reject(signal.reason);

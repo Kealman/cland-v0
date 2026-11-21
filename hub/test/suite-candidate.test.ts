@@ -1,8 +1,14 @@
+// T3 lifecycle: real candidate/package completion and native CJS/ESM producer loading.
 import { pollerDeadline } from './fakes/finish-poller.ts';
-import { beforeDirectories, cleanupProcesses, fixtureProcessCensus } from './process-cleanup.ts';
+import { beforeDirectories, cleanupProcesses, fixtureProcessCensus, guardDirectoryRemoval, ownDirectory } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { execFile, type ChildProcess } from 'node:child_process';
+import { caseDeadlines } from './case-deadlines.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { testDeadlineMs } from './until.ts';
 import { join } from 'node:path';
 import { fixture } from './suite-fixture.ts';
 import { cacheRepository } from './suite-support.ts';
@@ -14,6 +20,59 @@ ${pollerDeadline()}
 writeFileSync('.cland/entered', '');
 while (!existsSync('.cland/finish')) await new Promise(r => setTimeout(r, 10));
 appendFileSync('executions', 'run\\n'); writeFileSync('.cland/completed', '');`;
+
+for (const format of ['cjs', 'mjs'] as const) test(`generated finish producer arms current budgets in ${format} host`, async t => {
+  let child: ChildProcess | undefined;
+  let completion: Promise<{ code: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string; callbackCode: number | null; errorCode?: string }> | undefined;
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => {
+    if (child?.pid && child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
+  } });
+  await owner.run(async step => {
+    const prepared = await owner.wait('producer fixture and source setup', () => step(async () => {
+      const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-producer-host-')));
+      ownDirectory(owner.fixtures, root); owner.adoptRoot(root);
+      const file = join(root, `producer.${format}`);
+      const imports = format === 'mjs' ? "import assert from 'node:assert/strict'; import os from 'node:os';" : "const assert=require('node:assert/strict'); const os=require('node:os');";
+      const body = `
+delete process.env.CLAND_TEST_LOAD_FACTOR; delete process.env.CLAND_TEST_WAIT_MS; delete process.env.CLAND_SUITE_EXECUTOR;
+let load=10; os.loadavg=()=>[load,load,load]; os.availableParallelism=()=>10;
+const budgets=[]; let armed; let unrefs=0;
+globalThis.setTimeout=(_callback,ms)=>{budgets.push(ms);armed.resolve(ms);return {unref(){unrefs++;return this;}}};
+armed=Promise.withResolvers();
+${pollerDeadline()}
+assert.equal(await armed.promise,600000);
+load=20; armed=Promise.withResolvers();
+${pollerDeadline()}
+assert.equal(await armed.promise,900000);
+armed=Promise.withResolvers();
+${pollerDeadline(123)}
+assert.equal(await armed.promise,123); assert.equal(unrefs,3);
+console.log(JSON.stringify({type:'producer-host-receipt',format:${JSON.stringify(format)},budgets,unrefs}));`;
+      await writeFile(file, `${imports}\n${format === 'mjs' ? body : `(async()=>{${body}})().catch(error=>{console.error(error);process.exitCode=1;});`}`);
+      return { root, file };
+    }));
+    await step(async () => {
+      const result = Promise.withResolvers<{ stdout: string; stderr: string; callbackCode: number | null; errorCode?: string }>();
+      child = execFile(process.execPath, [prepared.file], { cwd: prepared.root, env: fixtureEnvironment(prepared.root, process.env), timeout: testDeadlineMs(15000), maxBuffer: 65536, signal: t.signal }, (error, stdout, stderr) => {
+        result.resolve({ stdout, stderr, callbackCode: error ? typeof error.code === 'number' ? error.code : null : 0, ...(error && typeof error.code === 'string' ? { errorCode: error.code } : {}) });
+      });
+      const captured = child;
+      const closed = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolve => captured.once('close', (code, signal) => resolve({ code, signal })));
+      completion = owner.wait('original native producer and pipes closed', async () => {
+        const [output, close] = await Promise.all([result.promise, closed]);
+        assert.ok(captured.stdout?.destroyed && captured.stderr?.destroyed, 'native close includes producer pipes');
+        return { ...output, ...close };
+      });
+      void completion.catch(() => {});
+    });
+    const receipt = await completion!;
+    t.diagnostic(`producer native receipt ${JSON.stringify(receipt)}`);
+    assert.equal(receipt.code, 0, receipt.stderr);
+    assert.equal(receipt.signal, null);
+    assert.equal(receipt.callbackCode, 0);
+    assert.deepEqual(JSON.parse(receipt.stdout), { type: 'producer-host-receipt', format, budgets: [600000, 900000, 123], unrefs: 3 });
+  });
+});
 
 for (const phase of ['queued', 'running'] as const) {
   for (const path of ['.cland/tasks/note.md', '.cland/RULES.md']) {

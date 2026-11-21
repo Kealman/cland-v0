@@ -1,8 +1,215 @@
 // T1: deadline policy and fake-time waits; no sockets or native children.
-import test from 'node:test';
+import test, { beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { waitTimeoutMs, testSetupWaitMs, suiteLoadFactor, until, eventually } from './until.ts';
+import os from 'node:os';
+import { waitTimeoutMs, testSetupWaitMs, testDeadlineMs, suiteLoadFactor, until, eventually } from './until.ts';
 import { FakeClock } from './fake-clock.ts';
+import { browserWaitDefaults } from './browser-wait-defaults.ts';
+import { runnerTestTimeoutArgument } from '../src/suite-wait-budget.ts';
+import { EventEmitter } from 'node:events';
+import { suiteLimits, suiteLimitsFromSource } from '../src/suite-limits.ts';
+import { fileStartupTimeoutMs } from '../src/file-startup-watchdog.ts';
+
+let savedExecutor: string | undefined;
+beforeEach(() => {
+ savedExecutor = process.env.CLAND_SUITE_EXECUTOR;
+ delete process.env.CLAND_SUITE_EXECUTOR;
+});
+
+test('startup defaults sample supplied runner environment and current load per admission', t => {
+ t.mock.method(os, 'availableParallelism', () => 10);
+ let load = 0;
+ t.mock.method(os, 'loadavg', () => [load, load, load]);
+ const env: NodeJS.ProcessEnv = { CLAND_SUITE_EXECUTOR: 'droplet' };
+ assert.equal(fileStartupTimeoutMs(600000, undefined, env), 60000);
+ delete env.CLAND_SUITE_EXECUTOR;
+ load = 10;
+ assert.equal(fileStartupTimeoutMs(600000, undefined, env), 60000);
+ load = 20;
+ assert.equal(fileStartupTimeoutMs(600000, undefined, env), 90000);
+ env.CLAND_TEST_LOAD_FACTOR = '4';
+ assert.equal(fileStartupTimeoutMs(600000, undefined, env), 120000);
+ assert.equal(fileStartupTimeoutMs(100000, undefined, env), 50000, 'no-output cap remains exact');
+ assert.equal(fileStartupTimeoutMs(600000, 1, env), 30000, 'explicit controlled factor remains exact');
+});
+
+test('startup policy refuses a converted missing or invalid explicit factor', () => {
+ const env: NodeJS.ProcessEnv = {};
+ assert.throws(() => fileStartupTimeoutMs(600000, Number(env.CLAND_TEST_LOAD_FACTOR)), /load factor must be finite and at least 1/);
+ for (const factor of [NaN, Infinity, 0, -1]) assert.throws(() => fileStartupTimeoutMs(600000, factor), /load factor must be finite and at least 1/);
+});
+afterEach(() => {
+ if (savedExecutor === undefined) delete process.env.CLAND_SUITE_EXECUTOR;
+ else process.env.CLAND_SUITE_EXECUTOR = savedExecutor;
+});
+
+test('explicit configured and legacy admitted Node timeouts stay exact under load', async () => {
+ const saved = process.env.CLAND_TEST_LOAD_FACTOR;
+ process.env.CLAND_TEST_LOAD_FACTOR = '3';
+ try {
+  const explicit = suiteLimitsFromSource('[verification]\ntest_timeout="1s"', 'fixture');
+  assert.equal(runnerTestTimeoutArgument(explicit.testTimeoutMs, explicit.testTimeoutIsDefault === true), '--test-timeout=1000');
+  const equalToDefault = suiteLimitsFromSource('verification.test_timeout="120s"', 'fixture');
+  assert.equal(runnerTestTimeoutArgument(equalToDefault.testTimeoutMs, equalToDefault.testTimeoutIsDefault === true), '--test-timeout=120000');
+  const absent = suiteLimitsFromSource('[verification]\nworkers=2', 'fixture');
+  assert.equal(runnerTestTimeoutArgument(absent.testTimeoutMs, absent.testTimeoutIsDefault === true), '--test-timeout=360000');
+  const legacy = { testTimeoutMs: 1000, stallTimeoutMs: 600000, workers: 1, loadGateWorkers: 2 };
+  const admitted = await suiteLimits('/scratch/legacy', 'local', { CLAND_SUITE_LIMITS_CWD: '/scratch/legacy', CLAND_SUITE_LIMITS: JSON.stringify(legacy) });
+  assert.deepEqual(admitted, legacy, 'previous cached shape remains readable');
+  assert.equal(runnerTestTimeoutArgument(admitted.testTimeoutMs, admitted.testTimeoutIsDefault === true), '--test-timeout=1000');
+ } finally {
+  if (saved === undefined) delete process.env.CLAND_TEST_LOAD_FACTOR;
+  else process.env.CLAND_TEST_LOAD_FACTOR = saved;
+ }
+});
+
+for (const baseMs of [2000, 30000]) test(`condition receipt survives its former ${baseMs} ms bound under injected load`, async t => {
+ const saved = process.env.CLAND_TEST_LOAD_FACTOR;
+ delete process.env.CLAND_TEST_LOAD_FACTOR;
+ t.mock.method(os, 'availableParallelism', () => 10);
+ t.mock.method(os, 'loadavg', () => [10, 10, 10]);
+ t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 0 });
+ let receipt = false;
+ const work = eventually('durable setup receipt', () => receipt ? 'committed' : undefined, { timeoutMs: baseMs });
+ void work.catch(() => {});
+ try {
+  await Promise.resolve();
+  receipt = true;
+  t.mock.timers.tick(baseMs + 1);
+  assert.equal(await work, 'committed');
+ } finally {
+  t.mock.timers.reset();
+  if (saved === undefined) delete process.env.CLAND_TEST_LOAD_FACTOR;
+  else process.env.CLAND_TEST_LOAD_FACTOR = saved;
+ }
+});
+
+test('browser navigation listeners and predicates retain native Frame identity', async t => {
+ const locator = { locator() { return this; } };
+ const frame = { locator: () => locator, page: (): object => rawPage };
+ const rawPage = Object.assign(new EventEmitter(), {
+  locator: () => locator,
+  mainFrame: () => frame,
+  frames: () => [frame],
+  context: (): { pages: () => object[] } => ({ pages: () => [rawPage] }),
+  waitForEvent(event: string, options: { predicate: (value: typeof frame) => boolean }): Promise<typeof frame> {
+   return new Promise((resolve, reject) => rawPage.once(event, value => {
+    if (options.predicate(value)) resolve(value);
+    else reject(new Error('native Frame predicate mismatch'));
+   }));
+  },
+ });
+ const page = browserWaitDefaults(rawPage, { setDefaultTimeout() {} });
+ let documents = 0, predicateFrame: object | undefined;
+ const listener = (value: typeof frame) => { if (value === page.mainFrame()) documents++; };
+ page.on('framenavigated', listener);
+ const reloaded = page.waitForEvent('framenavigated', { predicate(value) {
+  predicateFrame = value;
+  return value === page.mainFrame();
+ } });
+ const observed = reloaded.then(value => ({ value, error: undefined }), error => ({ value: undefined, error: String(error) }));
+ rawPage.emit('framenavigated', frame);
+ const receipt = await observed;
+ assert.equal(documents, 1, 'one raw native navigation reaches the unchanged equality guard');
+ assert.equal(receipt.error, undefined);
+ assert.equal(receipt.value, page.mainFrame());
+ assert.equal(predicateFrame, page.mainFrame());
+ assert.equal(page, rawPage);
+ assert.equal(page.mainFrame().page(), page);
+ assert.equal(page.frames()[0], frame);
+ assert.equal(page.context().pages()[0], page);
+ assert.equal(page.locator(), locator);
+ assert.ok(page.listeners('framenavigated').includes(listener), 'native listener identity remains available');
+ page.off('framenavigated', listener);
+ assert.ok(!page.listeners('framenavigated').includes(listener));
+ t.diagnostic(`T1 identity receipt ${JSON.stringify({ documents, predicateMatches: predicateFrame === page.mainFrame(), pageMatches: page === rawPage })}`);
+});
+
+test('new native frames and popups keep identity and sample defaults on later actions', async t => {
+ const saved = process.env.CLAND_TEST_LOAD_FACTOR;
+ delete process.env.CLAND_TEST_LOAD_FACTOR;
+ let load = 0, timeout = 0;
+ t.mock.method(os, 'availableParallelism', () => 10);
+ t.mock.method(os, 'loadavg', () => [load, load, load]);
+ const locator = { locator() { return this; }, waitFor() { return timeout; } };
+ const frame = { locator: () => locator };
+ const popup = Object.assign(new EventEmitter(), { locator: () => locator, mainFrame: () => frame, frames: () => [frame] });
+ const raw = Object.assign(new EventEmitter(), {
+  locator: () => locator, mainFrame: () => frame, frames: () => [frame],
+  nextPopup: async () => popup,
+ });
+ const page = browserWaitDefaults(raw, { setDefaultTimeout(ms) { timeout = ms; } });
+ let observedPopup: object | undefined, observedFrame: object | undefined;
+ page.on('popup', value => { observedPopup = value; });
+ popup.on('frameattached', value => { observedFrame = value; });
+ try {
+  raw.emit('popup', popup);
+  assert.equal(observedPopup, popup);
+  assert.equal(await page.nextPopup(), popup);
+  load = 10;
+  assert.equal(popup.locator().waitFor(), 6000);
+  const attachedLocator = { locator() { return this; }, waitFor() { return timeout; } };
+  const attached = { locator: () => attachedLocator };
+  popup.emit('frameattached', attached);
+  assert.equal(observedFrame, attached);
+  load = 20;
+  assert.equal(attached.locator().waitFor(), 9000);
+  assert.equal(attached.locator(), attachedLocator);
+ } finally {
+  if (saved === undefined) delete process.env.CLAND_TEST_LOAD_FACTOR;
+  else process.env.CLAND_TEST_LOAD_FACTOR = saved;
+ }
+});
+
+test('browser defaults refresh for a retained locator at each operation', async t => {
+ const saved = process.env.CLAND_TEST_LOAD_FACTOR;
+ delete process.env.CLAND_TEST_LOAD_FACTOR;
+ let load = 0, timeout = 0;
+ t.mock.method(os, 'availableParallelism', () => 10);
+ t.mock.method(os, 'loadavg', () => [load, load, load]);
+ const locator = { locator() { return this; }, async all() { return [this]; }, waitFor(options?: { timeout: number }) { return options?.timeout ?? timeout; } };
+ const page = browserWaitDefaults({ locator: () => locator }, { setDefaultTimeout(ms) { timeout = ms; } });
+ try {
+  const retained = page.locator();
+  assert.equal(retained.waitFor(), 3000);
+  load = 10;
+  assert.equal(retained.waitFor(), 6000);
+  assert.equal(retained.waitFor({ timeout: 100 }), 100);
+  assert.equal(retained.locator(), retained);
+  const [fromAll] = await retained.all();
+  assert.equal(fromAll, retained);
+  load = 20;
+  assert.equal(fromAll!.waitFor(), 9000, 'async locator collections retain per-operation sampling');
+ } finally {
+  if (saved === undefined) delete process.env.CLAND_TEST_LOAD_FACTOR;
+  else process.env.CLAND_TEST_LOAD_FACTOR = saved;
+ }
+});
+
+test('each setup deadline samples current load even below CPU saturation', t => {
+ const saved = process.env.CLAND_TEST_LOAD_FACTOR;
+ delete process.env.CLAND_TEST_LOAD_FACTOR;
+ t.mock.method(os, 'availableParallelism', () => 10);
+ let load = 0;
+ t.mock.method(os, 'loadavg', () => [load, load, load]);
+ try {
+  assert.equal(waitTimeoutMs(2000), 2000);
+  load = 6;
+  assert.equal(waitTimeoutMs(2000), 3200);
+  load = 10;
+  assert.equal(waitTimeoutMs(30000), 60000);
+  assert.equal(waitTimeoutMs(3000), 6000);
+  assert.equal(waitTimeoutMs(5000), 10000);
+  assert.equal(runnerTestTimeoutArgument(5000), '--test-timeout=10000');
+  assert.equal(testDeadlineMs(2000), 4000);
+  assert.equal(testDeadlineMs(2000, new FakeClock()), 2000);
+  assert.equal(testDeadlineMs(2000, undefined, 2500), 2500);
+  assert.equal(waitTimeoutMs(2000, 1), 2000, 'behaviour bounds stay exact');
+ } finally {
+  if (saved === undefined) delete process.env.CLAND_TEST_LOAD_FACTOR;
+  else process.env.CLAND_TEST_LOAD_FACTOR = saved;
+ }
+});
 
 test('eventually keeps its observation cadence and returns a falsy receipt', async () => {
  const clock = new FakeClock(0);
@@ -118,7 +325,8 @@ test('fractional setup factors yield integer deadlines without shortening headro
  } finally { keys.forEach((key, i) => { if (saved[i] === undefined) delete process.env[key]; else process.env[key] = saved[i]; }); }
 });
 
-test('wait deadline policy preserves local, droplet, explicit and invalid scaling',()=>{
+test('wait deadline policy preserves local, droplet, explicit and invalid scaling',t=>{
+ t.mock.method(os, 'loadavg', () => [0, 0, 0]);
  const keys=['CLAND_TEST_LOAD_FACTOR','CLAND_SUITE_EXECUTOR'] as const;
  const saved=keys.map(key=>process.env[key]);
  try {

@@ -1171,11 +1171,11 @@ without an event API. It yields to I/O between observations and owns one deadlin
 including asynchronous predicate time. The failure names `what`; the final
 assertion still states the behaviour proved. `timeoutMs` defaults to the harness
 wait budget (15 seconds, or `CLAND_TEST_WAIT_MS`). The deadline is multiplied by
-`CLAND_TEST_LOAD_FACTOR`. Before each phase, run-suite exports
-`max(1, (one-minute load + phase workers) / availableParallelism())`, with a
-minimum of 2 on droplets. A finite override of at least 1 takes precedence;
-invalid overrides use the computed factor. Outside run-suite the defaults stay
-2 on droplets and 1 locally; invalid factors there fall back to 1.
+the current setup load factor. Each wait samples
+`max(executor floor, 1 + one-minute load / availableParallelism())`; the floor
+is 1 locally and 2 on droplets. This provides headroom below CPU saturation and
+does not freeze load at tier start. An explicit `CLAND_TEST_LOAD_FACTOR` of at
+least 1 overrides sampling; invalid factors fall back to 1.
 `eventually(what, check, timeoutMs)` uses the same setup scaling and retains its
 50 ms observation cadence. Its third argument also accepts the options below.
 Both helpers own an independent deadline while an asynchronous check is pending;
@@ -1187,8 +1187,37 @@ An injected `clock` keeps the deadline exact unless the caller explicitly suppli
 for example `{ timeoutMs: 1000, behaviour: 'outage rendered within one second' }`.
 Existing `loadFactor: 1` calls remain exact. Use these only for the behaviour under
 test; name setup readiness in `what`. `remoteEventually` keeps its existing
-load-aware remote budget without applying the suite factor twice. Tests of the
+shared remote budget without applying the factor twice. Tests of the
 helpers use fake time, without waiting for real time.
+
+Fake setup owners use `testDeadlineMs(baseMs, clock?, explicitMs?)`: real default
+deadlines sample current load, injected clocks and explicit fault bounds stay
+exact. Browser fixtures refresh the default action and locator timeout before
+each Page/Locator operation, including retained locators. Browser objects retain
+native identity: public methods are decorated in place, and new
+Frame/popup event owners are enrolled before user listeners. Event payloads and
+returned Frames/Pages therefore use the same original references. Explicit action
+timeouts remain caller-owned. Browser assertions use Node assertions rather
+than Playwright expect. When source config omits `verification.test_timeout`,
+the runner scales Node's default `--test-timeout` at runner launch; Node accepts
+that default only at launch. An explicit setting stays exact, even when equal
+to the default. An admitted limits snapshot without default provenance also
+stays exact; absence of metadata does not authorize a larger bound.
+
+Load and Web repetition owners sample the same current-load policy when each
+child's import watchdog is admitted. The runner passes no frozen default budget
+to those owners. An explicit repetition `startupMs` remains exact; the default
+uses the runner's supplied environment and the no-output cap. The startup helper
+rejects an explicit nonfinite or below-one factor, so `Number(undefined)` cannot
+silently remove setup headroom. Omit the factor to sample current load.
+
+`npm run test:lint` lists a report-only census of numeric timeout properties,
+timeout parameter defaults, `within`, `setTimeout`, `AbortSignal.timeout` and
+Playwright default timeout setters across hub, Web and Neovim tests and helpers.
+It skips the shared `until.ts` defaults. This syntax census includes deliberate
+fault and product bounds and does not infer data flow through aliases or computed
+expressions. Its count and individual locations never change lint exit status
+or admission; they record remaining literal sites for review.
 
 The heartbeat reconnect regression in `hub/test/hygiene.test.ts` is the worked
 example. Its hand-written loop slept 25 ms after each probe. It now waits for

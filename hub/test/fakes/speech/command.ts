@@ -8,6 +8,7 @@ import { CommandProvider } from '../../../src/speech/command.ts';
 import { transcribeNote } from '../../../src/speech/index.ts';
 import { bounded } from './exchange.ts';
 import { eventually } from '../../harness.ts';
+import { testDeadlineMs } from '../../until.ts';
 const input = { audio: Buffer.from([79, 103, 103, 83, 0, 255]), mime: 'audio/ogg', filename: 'voice.ogg' };
 export async function commandFixture(t: TestContext, source: string) {
   const root = await mkdtemp(join(tmpdir(), 'cland-speech-command-'));
@@ -63,7 +64,7 @@ export async function commandFixture(t: TestContext, source: string) {
         read();
       });
       return own((async () => {
-        try { return await bounded(ready, setup.timeoutMs ?? 2_000, 'command readiness incomplete'); }
+        try { return await bounded(ready, testDeadlineMs(2000, undefined, setup.timeoutMs), 'command readiness incomplete'); }
         finally { clearInterval(poll); watcher.close(); local.abort(); await bounded(Promise.allSettled([...reads]), 1_000, 'command readiness reads incomplete'); }
       })());
     },

@@ -11,9 +11,14 @@ export function testWaitMs(fallbackMs = 15_000): number {
   return Number.isFinite(configured) && configured > 0 ? configured : fallbackMs;
 }
 
+/** Fake owners share real setup headroom without scaling injected fault clocks. */
+export function testDeadlineMs(fallbackMs: number, clock?: Clock, explicitMs?: number): number {
+  return explicitMs ?? (clock ? fallbackMs : waitTimeoutMs(testWaitMs(fallbackMs)));
+}
+
 /** Real acquisition tolerates loaded workers; injected setup clocks retain exact fault bounds. */
 export function testSetupWaitMs(clock?: Clock, explicitMs?: number): number {
-  return explicitMs ?? (clock ? 1_000 : waitTimeoutMs(testWaitMs(5_000)));
+  return testDeadlineMs(clock ? 1_000 : 5_000, clock, explicitMs);
 }
 
 export type WaitOptions = {

@@ -3,8 +3,11 @@ import type { TestProgress } from './suite-progress.ts';
 import { waitTimeoutMs } from './suite-wait-budget.ts';
 
 /** Startup/import readiness, independent of test behaviour and output volume. */
-export function fileStartupTimeoutMs(stallTimeoutMs: number, loadFactor: number): number {
-  return Math.min(stallTimeoutMs / 2, waitTimeoutMs(30_000, loadFactor));
+export function fileStartupTimeoutMs(stallTimeoutMs: number, loadFactor?: number, env: NodeJS.ProcessEnv = process.env): number {
+  // Omitting the factor samples the current shared policy. Converting an absent
+  // environment value to NaN must not silently turn setup headroom into factor 1.
+  if (loadFactor !== undefined && (!Number.isFinite(loadFactor) || loadFactor < 1)) throw new Error('file startup load factor must be finite and at least 1; omit it to sample current load');
+  return Math.min(stallTimeoutMs / 2, waitTimeoutMs(30_000, loadFactor, env));
 }
 
 /** Local commands carry a cause; delivered-tree phases carry the same log fact. */

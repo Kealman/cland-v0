@@ -11,7 +11,8 @@ import type { Page } from 'playwright-core';
 import { accountFixtureEnvironment } from '../../hub/test/account-fixture-env.ts';
 import { clandWithEnv, projectHub, tempProject, type ProjectHubOptions } from '../../hub/test/harness.ts';
 import { onCleanup, ownProcess, captureProcess, guardDirectoryRemoval } from '../../hub/test/process-cleanup.ts';
-import { until } from '../../hub/test/until.ts';
+import { until, waitTimeoutMs } from '../../hub/test/until.ts';
+import { browserWaitDefaults } from '../../hub/test/browser-wait-defaults.ts';
 import { browserCache, webPrerequisite } from './prerequisite.ts';
 import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
@@ -91,7 +92,7 @@ export async function webFixture(t: TestContext, options: { project?: () => Prom
   const prerequisite = await webPrerequisite();
   if (!prerequisite.available) throw new Error(prerequisite.reason);
   const { chromium } = await import('playwright-core');
-  const server = await chromium.launchServer({ executablePath: prerequisite.executablePath, headless: true, env, timeout: 15_000 });
+  const server = await chromium.launchServer({ executablePath: prerequisite.executablePath, headless: true, env, timeout: waitTimeoutMs(15_000) });
   const child = server.process();
   const exited = once(child, 'exit'); // Armed before any shutdown, including assertion failure.
   const identity = captureProcess(child.pid);
@@ -131,7 +132,7 @@ export async function webFixture(t: TestContext, options: { project?: () => Prom
     try { await observation?.drain(); } catch (error) { drainageErrors.push(error); }
     let before: number[] = [];
     try { before = await census(); } finally {
-      const killGuard = setTimeout(() => { void server.kill().catch(() => {}); }, 5000);
+      const killGuard = setTimeout(() => { void server.kill().catch(() => {}); }, waitTimeoutMs(5000));
       try { await browser?.close(); } finally {
         try { await server.close(); await exited; } finally {
           clearTimeout(killGuard);
@@ -160,7 +161,7 @@ export async function webFixture(t: TestContext, options: { project?: () => Prom
   assert.match(child.spawnfile, /(?:chrome-headless-shell|headless_shell)/);
   const profile = child.spawnargs.find(arg => arg.startsWith('--user-data-dir='));
   assert.ok(profile?.startsWith(`--user-data-dir=${root}/`), 'profile belongs to the scratch root');
-  browser = await chromium.connect(server.wsEndpoint(), { timeout: 15_000 });
+  browser = await chromium.connect(server.wsEndpoint(), { timeout: waitTimeoutMs(15_000) });
   const tracePaths: string[] = [];
   const contexts = new Set<unknown>();
   async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>, beforeNavigate?: (page: Page) => void | Promise<void>, device: { phone?: boolean; serviceWorkers?: 'allow' | 'block' } = {}) {
@@ -169,7 +170,7 @@ export async function webFixture(t: TestContext, options: { project?: () => Prom
       serviceWorkers: device.serviceWorkers ?? 'block', ...(options.timezoneId ? { timezoneId: options.timezoneId } : {}),
     });
     assert.ok(!contexts.has(context), 'fresh context'); contexts.add(context);
-    context.setDefaultTimeout(3000);
+    context.setDefaultTimeout(waitTimeoutMs(3000));
     let passed = false;
     let tracing = false;
     try {
@@ -191,7 +192,7 @@ export async function webFixture(t: TestContext, options: { project?: () => Prom
           const [printed, ...qr] = result.stdout.trimEnd().split('\n');
           assert.equal(decodeTerminalQr(qr.join('\n')), printed, 'QR encodes the printed sign-in link');
           assert.match(printed!, /^https:\/\/phone\.example\/auth\?token=[a-f0-9]{64}$/);
-          const status = await askHubFrame(hub.discovery, { type: 'hub.status' }, 3000, {}) as { web: { port: number } };
+          const status = await askHubFrame(hub.discovery, { type: 'hub.status' }, waitTimeoutMs(3000), {}) as { web: { port: number } };
           const link = new URL(printed!);
           // The tunnel is synthetic: redeem its exact path/token on this fixture's loopback edge.
           url = `http://127.0.0.1:${status.web.port}${link.pathname}${link.search}`;
@@ -200,12 +201,12 @@ export async function webFixture(t: TestContext, options: { project?: () => Prom
           assert.match(url, /^http:\/\/127\.0\.0\.1:\d+\/auth\?token=[a-f0-9]{64}$/);
         }
       } else {
-        ({ url } = await askHubFrame(hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string });
+        ({ url } = await askHubFrame(hub.discovery, { type: 'web.link' }, waitTimeoutMs(3000), {}) as { url: string });
       }
       const origin = new URL(url).origin;
       const requests: string[] = [];
       context.on('request', request => requests.push(request.url()));
-      const page = await context.newPage();
+      const page = browserWaitDefaults(await context.newPage(), context);
       await syncPageClock(page);
       await beforeNavigate?.(page);
       await page.goto(url, { waitUntil: 'load' });
