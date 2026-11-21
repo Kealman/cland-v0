@@ -2,8 +2,8 @@
 id: T-1897
 kind: task
 title: c-4 control run and per-second load metrics
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1681
 branch: t/T-1897-c-4-control-run-and-per-second-load
 created: 2026-11-16T07:29:46.333Z
-updated: 2026-11-20T19:05:30.722Z
+updated: 2026-11-21T01:00:50.220Z
+closed: 2026-11-21T01:00:50.220Z
 ---
 
 ## Summary
@@ -30,7 +31,8 @@ implements the human's 2026-10-17 decision. The human approved this change on 20
 ## Acceptance criteria
 
 - [x] C1. Droplet run logs carry load, CPU and iowait at about 1 s resolution (test).
-  - done: impl-1897 · 2026-11-20T19:04:09.978Z
+  - done: impl-1897 · 2026-11-20T21:43:43.988Z
+  - verified: rev-40 [reviewer] · run rev-40-20261121-1897-final · 2026-11-20T23:35:50.692Z · commit 6fa48265056f00c04b20c4956d5281d074924a64
 
 ## Dependencies
 
@@ -134,3 +136,52 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source5 clear: Standards no findings; Spec no findings within Coordinator dc44cfdb's agreed final-round bar. M6 resolved: parent without its own packageClosure retains copied interrupted-child loss/cause disclosures; its own provenance/accounting replacement remains. Actual filesystem child-finalize/aggregate/rename/parent-finalize regression checks attributed native137/unknown causes, one marker per child and one parent footer through repeated aggregation/finalization. Prior closure/report/card fence and normal cadence/framing remain unchanged and source-clear; no new field/collector added. Coordinator096ec159's accepted interrupted-series loss remains explicit, collection follow-up outside this item. C1 final verification pending exact-head configured run; no criterion marked verified from selected local checks. A-22240 is partial macOS arm64 Node24.21 T1/T2 and lint/typecheck evidence, no configured/Linux/native/T3/T4/browser/provider proof. Reviewer ran no tests/probes/browser.
+
+### rev-40 · 2026-11-20T21:31:37.541Z
+
+verdict: review
+result: not clear
+by: rev-40 [reviewer]
+run: rev-40-20261120-1897-evidence1
+commit: e8b22da3dd32931c363601d8a0088bd4fcf4a534
+scope: evidence
+findings: [{"severity":"medium","text":"Configured full run fails cancel receipt assertion: Error ENOENT reading remote/exit after cancelled report. New incomplete package handoff intentionally omits exit/done; this native consumer still reads the old receipt. Lead/Coordinator attribution required before correction/retry; failed run cannot clear.","file":"hub/test/executor-run.test.ts","line":136}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full configured evidence not clear. A-22271/run34ef46a7 matches reviewed head and canonical tree34cf6ea8ab9937858a9ed3fb77bc8be4f6813264 (only excluded tracker/rulebook differences). Actual error atline47964: 'Error: ENOENT: no such file or directory, open .../exit'; stack points executor-run.test.ts136. Cancel subtest and its parent fail; lost sibling passes. New incomplete handoff omits exit/done, making this a concrete legacy receipt consumer for lead/Coordinator attribution; no unrelated-flake or cadence-failure inference. Named cadence/framing/supervisor/closure-fence/aggregate-disclosure controls pass, but C1 remains unverified and no deployed launcher/sizing proof claimed. T0/T1/T2 exit0; T3 exit1; Web unexecuted (browser null), T4 unexecuted. Producer aggregate8810tests8799pass2fail9skip; separate completed-before-interruption inventory8850/8839/2/9, not conflated. Noncached Linuxx64 c-8ams3 Node24.21.0 Nvim0.12.5; host check not repeated remotely, budgets/lint report-only. Source5 cap retained; await authorized attribution/correction direction before further source/run. Reviewer ran no tests/native/browser.
+
+### impl-1897 · 2026-11-20T21:33:45.303Z
+
+Coordinator-attributed cancellation regression from full run34ef46a7/A-22271 reproduced locally red on e8b22da3d under granted native slot: lost passed; cancel failed ENOENT reading remote run/exit at executor-run.test.ts136 (13.545s cancel, Node test command20.528s, exit1). Direct trace: incomplete finish returns before sole native exit receipt write. Consumer search covers runStatusProgram (exit read only after done), executor-run.test.ts136 direct legacy read, executor-droplet-component VM exit fakes and executor-prepare-component script-order assertion. Other host-agent exit paths are unrelated fixture triggers. Correction preserves exit status independently of done; update ordering assertion to actual done publication, preserving the no-premature-final-report fence.
+
+### rev-40 · 2026-11-20T21:44:36.479Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261120-1897-native-cancel-source
+commit: 6fa48265056f00c04b20c4956d5281d074924a64
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Narrow configured-test correction source clear, Standards0/Spec0 findings. Independently confirmed Coordinator9eb28f37/48ffb8a9 authorization under source5 cap. Native exit is preserved before incomplete return; done remains closure-gated, runStatusProgram reads exit only after done, and present/absent exit controls cannot manufacture terminal/green status. Actual done-publication ordering and positive missing-anchor control retained. Original executor-run143/one-report/resource-release assertions unchanged; sampler/disclosure/confirmed-release code unchanged. Docs match status-vs-completion boundary. A-22275 selected local macOSarm64 Node24.21 exact red then targeted3/3 andwholefile22/22green,focusedT2 92passes,lint/typecheck exit0; this is not configured/Linux/T3suite/Web proof. C1 final remains unverified pending Coordinator-owned full run at this new head. A-22271 remains failed historical receipt; no passing reuse. Reviewer ran no tests/native/browser.
+
+### rev-40 · 2026-11-20T23:35:50.692Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261121-1897-final
+commit: 6fa48265056f00c04b20c4956d5281d074924a64
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, no findings. Exact corrected-head full rundeb2a5b9/A-22289 binds canonical treec7175a41c713ddc6faecf29af2d40e6ec89a145d; read-only comparison finds only excluded tracker/rulebook differences. Positive structured finishes verify supervisor1930,framing1935,stop1940,cadence1945,status fence16775,uploaded delivery/order17145,accounting/restart/deletion fence29064,child disclosure retry29564,native cancel38951 andparent38953. C1 verified under Coordinator's normal-cadence/interrupted-disclosure scope; source and closure gates remain clear. T0/T1/T2/T3/Web exit0,9299pass12platform-prerequisite skips0fail/cancel; T4unexecuted. Noncached Linuxx64 c-8ams3 workers2 Node24.21.0 Nvim0.12.5, Web Headless Shell1248/CfT156.0.8078.4. Host check not repeated remotely; budget/lint/T3 advisories report-only, no performance clearance. This is functional/exact-head suite proof; hosting launcher deploy/restart and T-2036 sizing remain separate, no deployed measurement claimed. A-22271 stays failed at earlierhead with its unexecuted phases retained. Reviewer ran no tests/native/browser.
+
+Criteria: C1 verified.
+
+### coord · 2026-11-21T01:00:50.220Z
+
+Merged d788c486ee3c87ed90ea52d788137f14550dad1e onto dev.

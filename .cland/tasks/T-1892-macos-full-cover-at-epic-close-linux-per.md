@@ -2,8 +2,8 @@
 id: T-1892
 kind: task
 title: macOS full cover at epic close; Linux per stage
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1680
 branch: t/T-1892-macos-full-cover-at-epic-close-linux-per
 created: 2026-11-16T07:29:45.299Z
-updated: 2026-11-20T20:36:21.734Z
+updated: 2026-11-20T23:14:06.754Z
+closed: 2026-11-20T23:14:06.754Z
 ---
 
 ## Summary
@@ -32,14 +33,18 @@ changes T-469 (2026-10-16) stage-gate contract. The human approved this change o
 - [x] C1. An after-stage gate closes on a green sharded Linux cover and, when the plan names one, a green macOS targeted run (test).
   - done: impl-1892 · 2026-11-20T18:54:55.885Z
   - verified: rev-40 [reviewer] · run rev-40-20261120-1892-final · 2026-11-20T20:36:21.218Z · commit 2baa101846c3f7666b38afa600eaa1ba209108c2
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1892-final2 · 2026-11-20T22:26:44.778Z · commit b0188a93e6914acca6bd37f2a567638ea4257400
 - [x] C2. The epic DoD gate still requires a green macOS full cover at the DoD tree (test).
   - done: impl-1892 · 2026-11-20T18:09:51.053Z
   - verified: rev-40 [reviewer] · run rev-40-20261120-1892-final · 2026-11-20T20:36:21.218Z · commit 2baa101846c3f7666b38afa600eaa1ba209108c2
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1892-final2 · 2026-11-20T22:26:44.778Z · commit b0188a93e6914acca6bd37f2a567638ea4257400
 - [x] C3. running.md and the plan-epic and qa skills state the new gate (docs check).
   - done: impl-1892 · 2026-11-20T18:09:51.624Z
   - verified: rev-40 [reviewer] · run rev-40-20261120-1892-source · 2026-11-20T18:19:53.607Z · commit efb8cab095b54814c72da2bab038a0a5406045ca
   - verified: rev-40 [reviewer] · run rev-40-20261120-1892-source2 · 2026-11-20T18:57:42.573Z · commit 2baa101846c3f7666b38afa600eaa1ba209108c2
   - verified: rev-40 [reviewer] · run rev-40-20261120-1892-final · 2026-11-20T20:36:21.218Z · commit 2baa101846c3f7666b38afa600eaa1ba209108c2
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1892-delta · 2026-11-20T21:54:49.828Z · commit b0188a93e6914acca6bd37f2a567638ea4257400
+  - verified: rev-40 [reviewer] · run rev-40-20261120-1892-final2 · 2026-11-20T22:26:44.778Z · commit b0188a93e6914acca6bd37f2a567638ea4257400
 
 ## Dependencies
 
@@ -118,3 +123,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, no findings. A-22259/run283d5414 binds reviewed head/canonical treebf227ef0ada8695824dcd66066a624b2351d747d; read-only tree comparison confirms only excluded tracker/rulebook paths differ. C1 positive finishes: exact targeted Mac union/receipt9134; publication landing+optional target/full/wrong-tree/wrong-path closure control28543; native-fixture Linux-only stage closure45348. Corrected item-summary settlement21655 and T3 suite-close union/summary44246 pass. C2 epic DoD missing/targeted/wrong-tree refusals and full-Mac acceptance16120 pass. C3 current-head source2 docs proof retained. Local-Mac MCP selector is skipped on Linux, not passed; unchanged selector has retained selected local Mac preview evidence A-22209, while completion/closure controls above use explicit simulated receipts. Configured full T0/T1/T2/T3/Web exit0,9307tests9294pass13skip0fail/cancel; T4 unexecuted. Twelve other skips are platform/prerequisite cases; repeated selector load-gate skip rows are not extra base skips. Noncached Linuxx64 c-8ams3 Node24.21.0 Nvim0.12.5; Web Headless Shell1248/CfT156.0.8078.4. Host gate not repeated remotely; budgets/lint report-only, no performance clearance. A-22226 remains failed old-head evidence. Reviewer ran no tests/native/browser.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-40 · 2026-11-20T21:54:49.828Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261120-1892-delta
+commit: b0188a93e6914acca6bd37f2a567638ea4257400
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Conflict-only merge delta clear, Standards0/Spec0 findings. Parents2baa10184/e569ca6f2 confirmed; Coordinator066f925e/6947d90f authorizes mode-free verification after delta review, no repeat full suite. Three conflict resolutions retain targeted Mac handling ahead of whole-selection guard, then require whole selection on job/cache source; targeted receipts remain separate from full DoD proof. Both stageTargets and batchTests.T3 retained in hub/wire types; diagnosticTestFile remains shared. Incoming T-1655 classification retained. Tracker/plan stage/DoD code/tests unchanged; C3 docs/skills remain consistent and reverified. A-22277 local macOSNode24.21 T1/T2 plus granted serial native selected checks/lint/typecheck are partial, not new-head configured proof. C1/C2 final await authorized mode-free result at this head; A-22259 remains old-head full pass, A-22226 failed. Reviewer ran no tests/native/browser.
+
+Criteria: C3 verified.
+
+### rev-40 · 2026-11-20T22:26:44.778Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261120-1892-final2
+commit: b0188a93e6914acca6bd37f2a567638ea4257400
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head clear, no findings. Authorized mode-free runef9634ee/A-22281 binds reviewed head/canonical tree9ac3ecd5bcc0eb8fd89947345c43116b5c4d8cde; read-only comparison confirms only excluded tracker/rulebook paths differ. Positive structured finishes verify target union/exact receipts9345, optional-target/publication closure28981, full-Mac DoD refusal/acceptance16347, pushed summary21895, native-fixture Linux closure37531/union37333. Incoming partial-mask refusal1465,restart8907,periodic partial-batch14444/fresh-cover14448 pass. C3 current-head delta docs proof retained. T0/T1/allfallbackT2/Web exit0; selectedT3 14files163identities andselectedT4 1file1identity once/no repetitions, not fullT3/T4. RemainingT3 batch,remainingT4 unexecuted. Aggregate7415pass1Mac-only-selector skip0fail/cancel; repeated skip rows not extra base tests. Noncached Linuxx64 c-8ams3 Node24.21.0 Nvim0.12.5, Web Headless Shell1248/CfT156.0.8078.4. Injected/simulated OS receipts are not real Mac/provider deployment proof. Coordinator066f925e/6947d90f replaces full retry with mode-free for this conflict-only merge; A-22259 old-head full pass/A-22226 failure retained. Host check not repeated remotely, budgets/lint report-only, no performance claim. Reviewer ran no tests/native/browser.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-20T23:14:06.754Z
+
+Merged 7dfafa84fbdd6d69e7b742cc8582d796268db8e4 onto dev.

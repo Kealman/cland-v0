@@ -2,8 +2,8 @@
 id: T-1655
 kind: task
 title: host-allow-list 'immediate merge revokes every host lease' runs 5.1–6.7 s on macOS against its 5 s budget
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels: []
@@ -14,7 +14,8 @@ regression_of: T-1597
 topic: topic-1684
 branch: t/T-1655-host-allow-list-immediate-merge-revokes
 created: 2026-11-03T05:03:24.374Z
-updated: 2026-11-20T20:31:21.407Z
+updated: 2026-11-20T21:37:32.123Z
+closed: 2026-11-20T21:37:32.123Z
 ---
 
 ## Summary
@@ -131,3 +132,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, C1 verified via documented T3 tier/budget alternative. Exact generated immediate-merge identity has positive pass finish at A-22257line36741:3.7079788060000003s, below10s T3 default/10.017s dated allowance. One base execution, no repetitions; Linux evidence, not five ordinary-load macOS passes or speedup. Whole host-allow-list file12/12pass; previous failing Git census has positive pass finishline2524. Run51e46e7d binds this reviewed head/canonical tree832f6d35afb2df21045d180d377603214f5ec0b1; read-only comparison finds no differences beyond excluded tracker/rulebook paths. Noncached Linuxx64 c-8ams3 Node24.21.0 Nvim0.12.5. T0/T1/fallbackallT2/12selectedT3files/Web exit0,7361pass zero fail/cancel/skip; remainingT3 deferred to batch, T4 unexecuted. Web Headless Shell1248/CfT156.0.8078.4. Host gate at canonical tree not repeated remotely; budgets/lint report-only, no unrelated performance clearance. A-22224 remains failed old-head evidence with its later phases unexecuted; A-22206 remains older-head proof. No new source findings; Reviewer ran no tests/native/browser.
 
 Criteria: C1 verified.
+
+### coord · 2026-11-20T21:37:32.123Z
+
+Merged e569ca6f27d01e246c17e4bd9e45ac0190d2b0c1 onto dev.
