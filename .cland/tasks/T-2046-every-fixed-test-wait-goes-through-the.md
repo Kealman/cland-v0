@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1691
 branch: t/T-2046-every-fixed-test-wait-goes-through-the
 created: 2026-11-21T03:32:07.872Z
-updated: 2026-11-21T12:55:31.810Z
+updated: 2026-11-21T18:00:46.857Z
 closed: 2026-11-21T12:55:31.810Z
 ---
 
@@ -219,3 +219,7 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-11-21T12:55:31.810Z
 
 Merged b793535d7e39dfb2f2f18bbfe113c3ca7fc88bc3 onto dev.
+
+### coord · 2026-11-21T18:00:46.857Z
+
+Post-landing check, 1 of 2 (Coordinator): macOS local full cover 811111ae (occasion epic, fresh) at dev 767b8ce4f, which contains T-2046 (b793535d7), is green: 9,614 pass, 0 fail, 1 skip, T0–T4 and Web (A-22525). No load-timing failure. One more macOS full cover on dev is needed to complete this check.
