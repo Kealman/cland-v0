@@ -3,17 +3,17 @@ id: T-2053
 kind: task
 title: One red full-T3 batch fences every T3 file from the next batch's load-gate baseline, so that batch repeats every identity and times out at 75 min
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1888
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1706
+branch: t/T-2053-one-red-full-t3-batch-fences-every-t3
 created: 2026-11-21T09:44:13.651Z
-updated: 2026-11-21T09:44:13.651Z
+updated: 2026-11-21T18:07:03.458Z
 ---
 
 ## Summary

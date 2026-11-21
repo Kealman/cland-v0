@@ -3,18 +3,18 @@ id: T-2049
 kind: task
 title: A QA verdict's task.comment reply counts its own fresh criterion marks as stale while the item read and demo freshness say current
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
   - qa-found
 assignee: null
-parent: C-325
+parent: E-1888
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1707
+branch: t/T-2049-a-qa-verdict-s-task-comment-reply-counts
 created: 2026-11-21T07:44:31.768Z
-updated: 2026-11-21T07:44:31.768Z
+updated: 2026-11-21T18:07:08.069Z
 ---
 
 ## Summary

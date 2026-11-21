@@ -3,7 +3,7 @@ id: T-2042
 kind: task
 title: One-day median of sharded covers and batches at or under 20 min (split from T-1896 C3; after T-1896 lands and the hub restarts)
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-1888
 blocked_by:
   - T-1896
 topic: null
-branch: null
+branch: t/T-2042-one-day-median-of-sharded-covers-and
 created: 2026-11-20T20:54:26.471Z
-updated: 2026-11-20T20:54:28.309Z
+updated: 2026-11-21T18:07:01.717Z
 ---
 
 ## Summary

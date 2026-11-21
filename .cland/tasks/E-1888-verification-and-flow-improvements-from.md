@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-1533
 branch: null
 created: 2026-11-16T07:28:34.087Z
-updated: 2026-11-21T12:22:00.250Z
+updated: 2026-11-21T18:05:56.556Z
 ---
 
 ## Goal
@@ -65,7 +65,6 @@ stages:
     lanes:
       - - T-1893
         - T-1896
-        - T-2042
       - - T-1901
       - - T-1892
       - - T-1897
@@ -73,4 +72,15 @@ stages:
         - T-2036
       - - T-2035
       - - T-2054
+  - name: stage 4
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-2053
+        - T-2051
+      - - T-2050
+      - - T-2049
+      - - T-2052
+      - - T-2042
 ```

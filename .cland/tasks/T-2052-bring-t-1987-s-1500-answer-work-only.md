@@ -3,17 +3,17 @@ id: T-2052
 kind: task
 title: Bring T-1987's 1500-answer work-only startup case under its 5 s budget, or renew its C-216 allowance, before it expires on 2026-11-28
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - needs-triage
 assignee: null
-parent: C-216
+parent: E-1888
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-2052-bring-t-1987-s-1500-answer-work-only
 created: 2026-11-21T08:56:13.794Z
-updated: 2026-11-21T08:56:13.794Z
+updated: 2026-11-21T18:06:59.237Z
 ---
 
 ## Summary

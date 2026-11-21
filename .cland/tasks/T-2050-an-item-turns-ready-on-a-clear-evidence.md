@@ -3,17 +3,17 @@ id: T-2050
 kind: task
 title: An item turns ready on a clear evidence verdict while its same-head verify is still launching, with no result
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-1888
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-2050-an-item-turns-ready-on-a-clear-evidence
 created: 2026-11-21T08:26:55.956Z
-updated: 2026-11-21T08:26:55.956Z
+updated: 2026-11-21T18:06:54.167Z
 ---
 
 ## Summary
