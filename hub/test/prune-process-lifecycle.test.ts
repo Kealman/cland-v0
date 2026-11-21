@@ -18,6 +18,35 @@ import { PruneProcesses } from '../src/prune-processes.ts';
 import { pruneCrashCase } from './prune-crash-case.ts';
 import { gitCommandPolicy } from '../src/git-command-policy.ts';
 import { pruneInspectionTrace, inspectionReceipt, type InspectionTrace } from './prune-inspection-trace.ts';
+import { assertPruneProbeBudget } from './prune-probe-budget.ts';
+import { systemProcessProbe } from './system-process-probe.ts';
+
+test('held native exit adds batched polling rounds without exhausting the stop probe budget', async () => {
+  await systemProcessProbe(`
+const { pruneInspectionTrace, inspectionReceipt } = await import(${JSON.stringify(new URL('./prune-inspection-trace.ts', import.meta.url).href)});
+const { assertPruneProbeBudget } = await import(${JSON.stringify(new URL('./prune-probe-budget.ts', import.meta.url).href)});
+const trace = inspectionReceipt();
+const observer = pruneInspectionTrace({ patch(object, key, value) { object[key] = value; syncBuiltinESMExports(); } });
+rows = [row(1, 0, 1), row(420100, 1, 420100)];
+let killed = false, exitPolls = 0;
+onSignal = (pid, signal) => {
+  if (signal === 'SIGTERM') return false;
+  if (signal === 'SIGKILL') { killed = true; return false; }
+};
+onTable = () => {
+  if (killed && ++exitPolls === 15) rows = rows.filter(row => row.pid !== 420100);
+};
+// Only polling sleeps are accelerated; probe/lock ownership timers retain
+// their normal bounds. Every process boundary in this child is synthetic.
+const timer = globalThis.setTimeout;
+globalThis.setTimeout = (callback, ms, ...args) => timer(callback, ms === 50 || ms === 20 ? 0 : ms, ...args);
+assert.equal(await observer.run(trace, () => endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, { inspection: 'owned-tree', deadline: Date.now() + 1000 })), true);
+assert.equal(exitPolls, 15, 'held exit positively produced fifteen post-KILL snapshots');
+assert.ok(trace.steps.filter(step => step.kind === 'ps').length > 18, 'held exit exceeds the former ps total cap');
+assertPruneProbeBudget(trace, 1000);
+assert.ok(!rows.some(row => row.pid === 420100), 'exact synthetic owner exited');
+`, 'darwin');
+});
 
 test('hub crash after durable writer release is reconciled by restart before territory admission', pruneCrashCase);
 
@@ -133,7 +162,7 @@ for (const route of ['territory', 'local-host', 'read-only', 'legacy-read', 'leg
   assert.ok(terminations.some(row => row.inspection.steps.some(step => step.kind === 'ps' && step.completed !== undefined)), 'the native inspection close observer positively engaged');
   assert.ok(terminations.every(row => row.inspection.omitted === 0), `the work-count receipt is complete; ${diagnostic()}`);
   const probeSpawns = terminations.flatMap(row => row.inspection.steps).filter(step => ['ps', 'pgrep', 'perl'].includes(step.kind));
-  assert.ok(probeSpawns.filter(step => step.kind === 'ps').length <= 18 && probeSpawns.filter(step => step.kind === 'pgrep').length <= 8 && probeSpawns.filter(step => step.kind === 'perl').length <= 24 && probeSpawns.length <= 48, `single-Git cancellation batches native probes: at most 18 ps, 8 pgrep, 24 perl and 48 total probe spawns; actual ps=${probeSpawns.filter(step => step.kind === 'ps').length}, pgrep=${probeSpawns.filter(step => step.kind === 'pgrep').length}, perl=${probeSpawns.filter(step => step.kind === 'perl').length}, total=${probeSpawns.length}; ${diagnostic()}`);
+  for (const row of terminations) assertPruneProbeBudget(row.inspection, row.budgetMs!);
   const snapshots = probeSpawns.filter(step => step.parsedRows !== undefined);
   assert.ok(snapshots.length > 0 && snapshots.every(step => step.selector === 'pids' && step.parsedRows! > 0 && step.parsedRows! <= 65 && step.selectedPids! <= 65 && !step.rowOutputTruncated), `each authoritative ps round parses at most 65 owned-tree/caller rows (64 caller links plus one Git); old Linux203–204 was aggregate stdout lines across repeated probes, not a per-round bound; native pgrep still enumerates the table; ${diagnostic()}`);
   assert.ok(f.records.some(row => row.event === 'merge-cleanup-failed' && String(row.error).includes(retainedLock)), `leftover Git lock is reported; ${diagnostic()}`);

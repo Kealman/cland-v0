@@ -19,18 +19,24 @@ termination attempts, twelve producer events per attempt and sixteen child
 receipts, with omitted children counted explicitly.
 Failure assertion text also embeds that receipt, including the original report
 events, so a reporter dropping diagnostic-only frames cannot discard it.
-Fixture-only tracing captures up to64 native probe/close/signal/checkpoint steps
+Fixture-only tracing captures up to512 native probe/close/signal/checkpoint steps
 per attempt and aggregates Linux proc-read count/timing without retaining file
 contents. Whole-table versus selected-PID census, native spawn classes and
 observed row counts are named; missing close stays pending and omitted steps
 are counted. Successful base cases retain the same trace for comparison.
-The single-Git fixture caps18 ps,8 pgrep,24 perl and48 total native probe spawns per stop.
-The ps allowance includes authoritative rounds, fresh signal-start probes and
-macOS caller-ancestry reads; Linux ancestry uses direct proc stat reads. The
-pgrep allowance includes repeated discovery through grace and freeze. macOS
-Perl calls batch before/after birth brackets and fresh per-signal native births;
-Linux reads proc stat directly and does not spawn Perl. These are
-work caps for this fixed lifecycle, not production deadlines.
+The single-Git fixture checks each inspection round: at most one pgrep, one
+selected-PID ps snapshot and two batched Perl birth brackets on macOS (Linux
+reads proc stat directly). Fresh signal probes are checked separately, at most
+one ps and one Perl per signal, with at most TERM, STOP and KILL. The initial
+macOS caller-ancestry reads are bounded to64 single-PID links. Snapshot rounds
+are bounded by eight fixed phase observations plus the native stop budget
+divided by the shortest polling delay (20ms; grace/exit polling sleeps50ms).
+Additional exit polls therefore do not fail a fixed aggregate spawn cap.
+The pure companion `prune-probe-budget.test.ts` replays extra polls and rejects
+per-PID probes, full-table scans and excessive rounds. The synthetic OS case in
+this native file holds exit for fifteen post-KILL snapshots through the real
+endProcess path; it accelerates only polling sleeps and proves the former
+18-ps cap is exceeded while batching and final owner absence remain intact.
 Each authoritative snapshot parses at most65 rows: up to64 protected caller
 links plus the one owned Git. The observer counts these rows through the shared
 process-table parser in `parsedRows`, retaining raw stdout-line count in

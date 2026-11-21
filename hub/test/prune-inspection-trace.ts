@@ -15,7 +15,7 @@ export const inspectionReceipt = (): InspectionTrace => ({ steps: [], omitted: 0
 export function pruneInspectionTrace(scope: ReturnType<typeof stageCase>) {
   const active = new AsyncLocalStorage<InspectionTrace>();
   const add = (trace: InspectionTrace, step: Step) => {
-    if (trace.steps.length >= 64) { trace.omitted++; return undefined; }
+    if (trace.steps.length >= 512) { trace.omitted++; return undefined; }
     trace.steps.push(step); return step;
   };
   const spawn = cp.spawn;
