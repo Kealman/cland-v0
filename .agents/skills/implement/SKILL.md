@@ -142,4 +142,11 @@ Clause procedure (project implementer):
 
 ## Verdict procedure
 
+<!-- cland-workflow-change: T-2050 document completed verification readiness -->
+Automatic ready waits for a finished passed receipt at the exact task tip when
+the running project config has a test or tier command; a same-tree cache hit
+projected at that tip qualifies. A latest in-flight, red, cancelled or incomplete
+receipt keeps review. No configured test command or an empty base diff retains
+verdict-only readiness. A declined review/QA request grants no suite exemption.
+
 - On a not-clear verdict, fix the findings, commit and push a new head, then request review again before a new verification run and request affected QA again yourself. A clear source verdict starts verification; the Reviewer settles the final verdict on its same-head result. A final clear verdict needs no relay to the Coordinator: the hub checks freshness and sends the nearest supervising Lead (or the Coordinator) the one `ready` status event. Keep your claim until merge; report only if blocked.

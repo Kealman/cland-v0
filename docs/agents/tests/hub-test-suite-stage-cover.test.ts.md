@@ -1,5 +1,11 @@
 # hub/test/suite-stage-cover.test.ts
 
+T-2050 explicitly supplies the committed task's same-head completed receipt through
+the Tracker seam before its review-to-ready wait. Configured verification commands
+and the real integrated stage-cover producer stay enabled. The fixture lookup
+rebind preserves the dispatcher's stage-cover supplier, so the later Linux/macOS
+cover and stage-advance assertions still use the original scheduler evidence.
+
 T-1892: the native fake-machine compatibility case closes and advances on the
 sharded Linux cover despite an older Mac full cover at another tree. A later
 local full cover stays independent; it does not reopen the completed stage.

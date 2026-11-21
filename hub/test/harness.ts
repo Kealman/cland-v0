@@ -454,6 +454,8 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  /** Bind fixture-owned receipts at the public Tracker seam after dispatcher binding. */
+  configureTracker?: (tracker: import('../src/tracker/tracker.ts').Tracker) => void;
   gitCommandRecovery?: NonNullable<NonNullable<Parameters<typeof serveProject>[1]>['gitCommandRecovery']>;
   /** Test-only cleanup observation; expiry must not abandon the owned late stop. */
   startupCleanup?: { clock?: Clock; timeoutMs?: number };
@@ -586,7 +588,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   // callers can override individual facts without restoring the other native probes.
   const gatewayProcesses = fakePollerProcesses();
   gatewayProcesses.rows.set(process.pid, { alive: true, started: 'fixture-hub-start', identity: 'fixture-hub-birth' });
-  const { processes: requestedProcesses, startupCleanup: _startupCleanup, ...hubOptions } = options;
+  const { processes: requestedProcesses, startupCleanup: _startupCleanup, configureTracker: _configureTracker, ...hubOptions } = options;
   // Unknown start identity keeps a live native holder conservative too; an
   // invented stamp could make another reader mistake this fixture for PID reuse.
   const lockProcesses = requestedProcesses ?? { alive: pidAlive, started: () => null };
@@ -629,6 +631,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   assert.ok(daemon.discovery, 'projectHub must bind both real edges');
   assert.ok(runtimeEnvironment, 'projectHub must capture the host owner runtime environment');
   stopFixtureHub = async () => { await settleRetainedMergeStop(() => daemon.stop()); await processLog.close(); };
+  options.configureTracker?.(daemon.tracker);
   const dispatcher: Pick<Dispatcher, 'open'> = {
     open: (peer, transport) => resources.run(() => {
       const conversation = daemon.hub.dispatcher.open(peer, transport);

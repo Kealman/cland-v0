@@ -78,6 +78,7 @@ import { recoverGitCommands } from '../git-command-owner.ts';
 export type ListenMode = 'required' | 'optional' | 'never';
 
 export type Daemon = {
+  tracker: Tracker;
   layout: Layout;
   /** What `hub.json` says; null when the hub has no listeners (and so wrote no `hub.json`). */
   discovery: LocalDiscovery | null;
@@ -743,7 +744,7 @@ export async function serveProject(root: string, options: { gitCommandRecovery?:
     tracker.resumeFreshness();
     tracker.resumeReadyChecks();
     lintWarmer.request(devTip);
-    return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; }, get cleanupIncomplete() { return mergeCleanupRetained; } };
+    return { tracker, layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; }, get cleanupIncomplete() { return mergeCleanupRetained; } };
   }
 
   log({ event: 'hub-startup-step', step: 'binding web listener', pid: process.pid });
@@ -825,6 +826,6 @@ export async function serveProject(root: string, options: { gitCommandRecovery?:
     const fixtures = await sweepOrphans(root, log, 'fixture', { pending: () => stopping !== null, ...(env.CLAND_TEST_ORPHAN_ROOT ? { hubScopeRoot: env.CLAND_TEST_ORPHAN_ROOT } : {}) });
     log({ event: 'orphan-sweep-completed', ended: [...ended, ...fixtures].map(p => p.process.pid) });
   }).catch(err => log({ event: 'orphan-sweep-failed', reason: err instanceof Error ? err.message : 'OS process inspection failed; unverified candidates were preserved' }));
-  return { layout: l, discovery, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; }, get cleanupIncomplete() { return mergeCleanupRetained; } };
+  return { tracker, layout: l, discovery, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; }, get cleanupIncomplete() { return mergeCleanupRetained; } };
   });
 }

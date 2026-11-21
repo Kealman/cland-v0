@@ -25,6 +25,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { Freshness, type MovedBranches } from '../src/tracker/freshness.ts';
 
+
 // Cold seed/startup/warmup are file setup; only the moved-tip work is observed.
 const churnFixture = await trackerFileCase(async ({owner, root, step}) => {
   const fixture = await step(() => tipChurnFixture(root, owner)), database = sqliteProbe();
@@ -36,6 +37,56 @@ const churnFixture = await trackerFileCase(async ({owner, root, step}) => {
   await step(() => fixture.refresh());
   return {fixture, database, logs, tracker};
 });
+
+for (const state of ['launching', 'running', 'failed', 'cancelled', 'passed', 'missing', 'older green', 'unfinished green', 'empty diff', 'no command'] as const) {
+  test(`ready requires completed green verification: ${state}`, async t => {
+    await fixtureNativeGuard(t);
+    const root = await tempProject(t), head = 'b'.repeat(40), base = 'a'.repeat(40);
+    const clock = new FakeClock();
+    const tracker = new Tracker({ root, db: ':memory:', clock,
+      watch: () => ({ close() {} }), scheduleTips: () => ({ poke() {}, stop() {} }),
+      readBase: async () => 'dev',
+      git: async args => {
+        if (args[0] === 'for-each-ref') return `${base} refs/heads/dev\n${head} refs/heads/t/ready`;
+        if (args[0] === 'rev-parse') return head;
+        if (args[0] === 'merge-base') return base;
+        if (args[0] === 'diff') return state === 'empty diff' ? '' : 'changed source';
+        if (args[0] === 'patch-id') return 'stable-patch';
+        throw new Error(`unexpected Git: ${args[0]}`);
+      } });
+    t.after(() => tracker.stop());
+    let receipt: import('../src/hub/suites.ts').VerifyResult = { id: 'run', executor: 'local', head, artifact: null,
+      state: state === 'launching' || state === 'running' ? state : 'finished',
+      result: state === 'failed' || state === 'cancelled' ? state : state === 'passed' || state === 'older green' || state === 'unfinished green' ? 'passed' : null,
+      finished: state === 'launching' || state === 'running' ? null : '2026-11-21T00:00:00Z',
+    };
+    if (state === 'older green') receipt.head = base;
+    if (state === 'unfinished green') receipt.finished = null;
+    tracker.useVerify(() => state === 'missing' && receipt.id === 'run' ? null : receipt, () => [], () => state !== 'no command');
+    await tracker.start();
+    const human = { id: 'human', name: 'human', role: null };
+    const item = await tracker.create(human, { title: 'Verified readiness', size: 'S', branch: 't/ready' });
+    await tracker.edit(human, item.id, { status: 'review' });
+    await tracker.comment({ id: 'reviewer', name: 'reviewer', role: 'reviewer' }, item.id, 'Source clear',
+      { verdict: 'review', scope: 'full', result: 'clear', run: 'source', commit: head });
+    await tracker.refreshFreshness();
+    await until(() => tracker.view(item.id).verdicts.some(v => v.current === true), { what: 'fresh review' });
+    // A persisted edit joins the writer queue behind the freshness ready check.
+    await tracker.edit(human, item.id, { title: 'Verified readiness' });
+    const exempt = state === 'empty diff' || state === 'no command';
+    assert.equal(tracker.view(item.id).status, state === 'passed' || exempt ? 'ready' : 'review');
+    receipt = { ...receipt, id: 'completed', head, state: 'finished', result: 'passed', finished: '2026-11-21T00:00:00Z',
+      cached: { run: 'previous-tree-run', head: base, tree: 'c'.repeat(40) } };
+    tracker.verifyChanged(item.id, 't/ready');
+    if (exempt) return;
+    await until(async () => { await clock.advance(100); return tracker.view(item.id).status === 'ready'; }, { what: 'durable ready after green receipt' });
+    assert.equal(tracker.view(item.id).status, 'ready');
+    receipt = { ...receipt, state: 'running', result: null, finished: null };
+    tracker.verifyChanged(item.id, 't/ready');
+    await until(async () => { await clock.advance(100); return tracker.view(item.id).status === 'review'; }, { what: 'durable demotion after new run' });
+    assert.equal(tracker.view(item.id).status, 'review');
+  });
+}
 
 test('tip invalidations identify moved and absent branches while dev and base changes retain shared invalidation', async t => {
   await fixtureNativeGuard(t);

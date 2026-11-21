@@ -1,5 +1,10 @@
 # Hub documentation
 
+Task readiness uses completed green verification at the exact tip when the running
+project config has a test or tier command, alongside current verdicts and criteria.
+No test command or an empty base diff retains verdict-only readiness; same-tree
+cache receipts qualify at their submitted tip. See [tracker readiness](../docs/agents/issue-tracker.md).
+
 Implementation notes (read with the matching subsystem reference):
 
 - [Remote commands and credentials](../docs/hub/implementation/remote.md)

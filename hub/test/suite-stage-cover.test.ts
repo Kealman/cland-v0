@@ -1,6 +1,7 @@
 // T3: real local and delivered remote workers supply OS receipts across a stage merge.
 // This is the single two-platform stage frame proof; cache permutations live in suite-stage-rules.
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { readyVerificationFixture } from './ready-verification-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -9,7 +10,7 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
 import { cland, eventually, nativeProjectHub as projectHub, inProcessSpoke, tempProject } from './harness.ts';
-import type { ItemView } from '../src/tracker/tracker.ts';
+import type { ItemView, Tracker } from '../src/tracker/tracker.ts';
 
 const exec = promisify(execFile);
 
@@ -19,12 +20,17 @@ async function linuxMachines(f: Awaited<ReturnType<typeof integrated>>) {
 }
 
 test('after-stage gates close on sharded Linux, retain history and advance without a Mac full cover', async t => {
+  let tracker!: Tracker;
+  const stageHub: typeof projectHub = (context, root, extra, options) => projectHub(context, root, extra, {
+    ...options, configureTracker: current => { tracker = current; options?.configureTracker?.(current); },
+  });
   // Fake machines still run the real uploaded shell and receipt collection. Only
   // their measured OS is simulated, so this proof also runs on either host OS.
   const settings = await tempProject(t);
   const preload = join(settings, 'platform.cjs');
   await writeFile(preload, `if(process.argv.some(a=>a.endsWith('suite-worker.ts'))){require('node:os').platform=()=> 'darwin';require('node:module').syncBuiltinESMExports()}\n`);
-  const f = await integrated(t, '[hygiene]\nloop_breaker_max=2\n', 2, undefined, { hub: projectHub, territory: true, env: { NODE_OPTIONS: `--require=${preload}` } });
+  const f = await integrated(t, '[hygiene]\nloop_breaker_max=2\n', 2, undefined, { hub: stageHub, territory: true, env: { NODE_OPTIONS: `--require=${preload}` } });
+  const completeReady = readyVerificationFixture(tracker, f.clock);
   await linuxMachines(f);
   const create = async (kind: string, title: string, parent?: string) => {
     const response = await f.ui.request({ type: 'task.create', kind, title, parent, ...(kind === 'task' ? { size: 'S' } : {}) });
@@ -48,6 +54,9 @@ test('after-stage gates close on sharded Linux, retain history and advance witho
   const work = (claimed.value as { worktree: { path: string } }).worktree.path;
   await writeFile(join(work, 'feature'), 'stage feature\n');
   for (const args of [['add', 'feature'], ['commit', '-qm', 'Stage feature']]) await exec('git', args, { env: fixtureEnvironment(work, process.env), cwd: work });
+  const head = (await exec('git', ['rev-parse', 'HEAD'], { env: fixtureEnvironment(work, process.env), cwd: work })).stdout.trim();
+  const reviewed = ((await f.ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item;
+  completeReady(item.id, reviewed.branch!, head);
   const reviewer = await inProcessSpoke(t, { discover: true, cwd: f.root, name: 'stage-rev', role: 'reviewer' });
   t.after(() => reviewer.close());
   assert.equal((await reviewer.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'source' })).ok, true);

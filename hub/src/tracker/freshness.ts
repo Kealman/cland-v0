@@ -168,6 +168,12 @@ export class Freshness {
     return branch ? (this.#tips?.get(branch) ?? null) : null;
   }
 
+  /** Reuse the same in-flight patch computation as verdict freshness. */
+  async emptyTaskDiff(branch: string | null): Promise<boolean> {
+    const tip = this.tip(branch), base = this.base();
+    return !!tip && !!base && await this.#patch(base, tip) === 'empty';
+  }
+
   /** A tip the hub just resolved itself (a verdict's commit): known at once, without waiting for the next read. */
   noteTip(branch: string, tip: string): void {
     if (!this.#tips || this.#tips.get(branch) === tip) return;

@@ -137,3 +137,16 @@ receipts settle the tests. Raw external writes model tracker updates from editor
 and Git merges without needing a Git process.
 
 The open startup paging test injects a 1,800-byte row budget through the Tracker constructor and traverses twelve multibyte-title rows through handleTaskRequest. It asserts UTF-8 byte boundaries, numeric identity order despite reversed rank, complete unique membership and literal default (122,880) and first-reply cap (131,072) values.
+
+T-2050 exercises automatic ready through the Tracker public API with fake Git,
+fake time, injected verification receipts and a positively controlled native
+launch guard. A durable writer-queue edit observes the initial ready decision;
+subsequent receipt changes wait with bounds for persisted ready/review statuses.
+Keep this block below the awaited file-level churn setup: registering a test
+before that setup can attach its cleanup to the earlier case and fail a focused
+single-name run with `fixture work admission closed`, even when the case passes.
+Launching, running, red, cancelled, missing, older-head and missing-finished-time
+receipts stay in review. Finished green and projected same-tree cached receipts
+permit ready, while a later pending submission demotes it. No command and an
+empty base diff retain verdict-only readiness. All fixtures use disposable roots;
+no live hub database or native Git is consulted.

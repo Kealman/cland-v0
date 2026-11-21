@@ -3,6 +3,7 @@ import { basename, join, resolve } from 'node:path';
 import { defaultConfig, parseConfig } from './init/config.ts';
 import { readTierAssignments } from './suite-shards.ts';
 import type { TierCommands } from './verification-plan.ts';
+import { verificationTierKeys } from './verification-plan.ts';
 
 export type VerificationCommands = TierCommands;
 
@@ -27,7 +28,7 @@ export async function verificationCommands(cwd: string, root: string, env: NodeJ
   const candidate = await read(cwd);
   const fallback = resolve(cwd) === resolve(root) ? candidate : await read(root);
   const commands = { prepare: candidate.prepare || fallback.prepare, check: candidate.check || fallback.check, test: candidate.test || fallback.test };
-  const tierKeys = [['test_unit', 'T1'], ['test_component', 'T2'], ['test_integration', 'T3'], ['test_soak', 'T4']] as const;
+  const tierKeys = verificationTierKeys;
   if (candidate.test && !tierKeys.some(([key]) => candidate[key])) return commands;
   const tiers: NonNullable<TierCommands['tiers']> = {};
   for (const [key, tier] of tierKeys) {

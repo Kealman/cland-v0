@@ -1,5 +1,15 @@
 # Issue tracker: cland
 
+Automatic `ready` requires both the current verdict/criteria gate and a finished,
+passed verification receipt at the exact branch tip, with a completion timestamp,
+when the running project config sets `verification.test` or any tier command.
+A cached same-tree pass projected at that tip qualifies. A latest queued,
+launching, running, failed, cancelled, unavailable or incomplete run does not;
+a new pending run returns an otherwise ready item to review. No configured test
+command, or an empty task diff against its merge base, keeps verdict-only readiness.
+Declining a review/QA request grants no suite exemption. Explicit status-edit
+authority and merge admission checks retain their existing scope.
+
 Every command and group listed by `cland --help` accepts `--help` or `-h`
 immediately after its name, including `cland task --help`, `cland hub -h` and
 `cland session --help`. Every task subcommand also accepts these immediate flags,

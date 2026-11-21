@@ -370,6 +370,7 @@ export class Tracker {
   #readyAdmission: ((view:ItemView)=>Promise<void>) | undefined;
   useReadyAdmission(check:(view:ItemView)=>Promise<void>):void {this.#readyAdmission=check;}
   #verify: (item: string, branch: string | null) => VerifyResult | null = () => null;
+  #requiresVerify: () => boolean = () => false;
   #stageCovers: () => StageCover[] = () => [];
   #stageAncestors = new Map<string, boolean | undefined>();
   #stageAncestorTip: string | null = null;
@@ -750,35 +751,46 @@ export class Tracker {
       const parsed = this.#parseItem(text, file, this.ladder);
       const prepare = () => {
         const current = this.#viewOf(id, file, parsed);
-        if (current.kind === 'task' && current.state === 'open' && current.branch && current.topic && current.claim) {
-          let missing: ItemView['criteria'] | null = null;
-          try { missing = missingDoneCriteria(this.#mergeViewOf(current)); }
-          catch (err) { if (!(err instanceof MergeError)) throw err; }
-          if (missing !== null && missing.every(c => c.id !== null)) {
-            const notice: MissingDoneNotice = { item: current.id, topic: current.topic, claimant: current.claim.session, claimantId: this.#identityOf(current.claim.sessionId),
-              criteria: missing.map(c => ({ id: c.id!, text: c.text })) };
-            for (const listener of this.#missingDoneListeners) listener(notice);
+        const prepareWrite = (verificationReady: boolean) => {
+          if (current.kind === 'task' && current.state === 'open' && current.branch && current.topic && current.claim) {
+            let missing: ItemView['criteria'] | null = null;
+            try { missing = missingDoneCriteria(this.#mergeViewOf(current)); }
+            catch (err) { if (!(err instanceof MergeError)) throw err; }
+            if (verificationReady && missing !== null && missing.every(c => c.id !== null)) {
+              const notice: MissingDoneNotice = { item: current.id, topic: current.topic, claimant: current.claim.session, claimantId: this.#identityOf(current.claim.sessionId),
+                criteria: missing.map(c => ({ id: c.id!, text: c.text })) };
+              for (const listener of this.#missingDoneListeners) listener(notice);
+            }
           }
-        }
-        const desired = this.#readyStatus(current);
-        if (!desired || current.status === desired) return;
-        return this.#mutate(id, { id: 'hub', name: 'hub', role: null }, 'ready', item => {
-          const now = this.#viewOf(id, file, item);
-          if (this.#readyStatus(now) !== desired) throw new ReadyChanged();
-          this.#setStatus(item, desired);
-        }, resumed, undefined, undefined, undefined, async () => {
-          // Native writes may yield for seconds. Re-read Git and file evidence just before rename;
-          // a verdict, hand edit or commit observed after preparation invalidates that preparation.
-          if(desired==='ready')await this.#readyAdmission?.(this.#viewOf(id,file,parsed));
-          const latest = await this.#files.readFile(join(this.#dir, file), 'utf8');
-          await this.#fresh.refresh(resumed);
-          const afterGit = await this.#files.readFile(join(this.#dir, file), 'utf8');
-          await this.#refreshPlans(resumed(() => this.#parseItem(afterGit, file, this.ladder)), resumed);
-          resumed(() => {
-            const now = this.#viewOf(id, file, this.#parseItem(afterGit, file, this.ladder));
-            if (this.#revisions.get(id) !== revision || afterGit !== latest || latest !== text || this.#readyStatus(now) !== desired) throw new ReadyChanged();
+          let desired = this.#readyStatus(current);
+          if (desired === 'ready' && !verificationReady) desired = current.status === 'ready' ? 'review' : null;
+          if (!desired || current.status === desired) return;
+          return this.#mutate(id, { id: 'hub', name: 'hub', role: null }, 'ready', item => {
+            const now = this.#viewOf(id, file, item);
+            if (desired === 'ready' && this.#readyStatus(now) !== desired) throw new ReadyChanged();
+            this.#setStatus(item, desired);
+          }, resumed, undefined, undefined, undefined, async () => {
+            // Native writes may yield for seconds. Re-read Git and file evidence just before rename;
+            // a verdict, hand edit or commit observed after preparation invalidates that preparation.
+            if(desired==='ready')await this.#readyAdmission?.(this.#viewOf(id,file,parsed));
+            const latest = await this.#files.readFile(join(this.#dir, file), 'utf8');
+            await this.#fresh.refresh(resumed);
+            const afterGit = await this.#files.readFile(join(this.#dir, file), 'utf8');
+            await this.#refreshPlans(resumed(() => this.#parseItem(afterGit, file, this.ladder)), resumed);
+            const verifyBefore = JSON.stringify(this.#verify(id, current.branch));
+            const verificationReady = await this.#readyVerification(resumed(() => this.#viewOf(id, file, this.#parseItem(afterGit, file, this.ladder))));
+            resumed(() => {
+              const now = this.#viewOf(id, file, this.#parseItem(afterGit, file, this.ladder));
+              let settled = this.#readyStatus(now);
+              if (settled === 'ready' && !verificationReady) settled = now.status === 'ready' ? 'review' : null;
+              if (this.#revisions.get(id) !== revision || afterGit !== latest || latest !== text || settled !== desired
+                || verifyBefore !== JSON.stringify(this.#verify(id, current.branch))) throw new ReadyChanged();
+            });
           });
-        });
+        };
+        const verification = this.#readyVerification(current);
+        return typeof verification === 'boolean' ? prepareWrite(verification)
+          : verification.then(ready => resumed(() => prepareWrite(ready)));
       };
       // Split the budget only at actual ancestor I/O; a parent may be a release
       // with no plan to read. Otherwise parsing and mutation admission stay together.
@@ -792,6 +804,14 @@ export class Tracker {
       this.#readyAgain.add(id);
       // Re-read on the next queue admission. Watcher/index events also converge on this check.
     }); }
+  }
+
+  #readyVerification(view: ItemView): boolean | Promise<boolean> {
+    if (!this.#requiresVerify()) return true;
+    const receipt = this.#verify(view.id, view.branch);
+    if (receipt?.state === 'finished' && receipt.result === 'passed' && receipt.finished
+      && receipt.head === this.#fresh.tip(view.branch)) return true;
+    return this.#fresh.emptyTaskDiff(view.branch);
   }
 
   /** Client row compaction must never change the identity of a posted verdict. */
@@ -2510,9 +2530,11 @@ export class Tracker {
   #mergeQueue: (id: string) => ItemView['mergeQueue'] = () => undefined;
   useMergeQueue(lookup: (id: string) => ItemView['mergeQueue']): void { this.#mergeQueue = lookup; }
 
-  useVerify(lookup: (item: string, branch: string | null) => VerifyResult | null, stageCovers: () => StageCover[] = () => []): void {
+  useVerify(lookup: (item: string, branch: string | null) => VerifyResult | null, stageCovers: () => StageCover[] = this.#stageCovers, requiresVerify: () => boolean = this.#requiresVerify): void {
     this.#coverIndex = undefined;
     this.#verify = lookup; this.#stageCovers = stageCovers;
+    this.#requiresVerify = requiresVerify;
+    for (const item of this.#index.list()) this.#scheduleReady(item.id);
     // The dispatcher binds restored receipts after the startup projection exists.
     if (this.#explorer) for (const item of this.#index.list()) this.#explorer.update(item.id, this.#rawSummary(item));
     this.#stageCoversChanged();
@@ -2541,7 +2563,7 @@ export class Tracker {
       for (const change of this.#verifyChanges.values()) for (const id of this.#index.verifyItems(change.item, change.branch)) ids.add(id);
       const integrated = [...this.#verifyChanges.values()].some(change => change.branch === 'dev');
       this.#verifyChanges.clear();
-      for (const id of ids) this.#announce(id, false, undefined, true);
+      for (const id of ids) { this.#announce(id, false, undefined, true); this.#scheduleReady(id); }
       if (integrated && this.#stageCoverDependents.size) this.#stageCoversChanged();
     });
   }

@@ -2,6 +2,10 @@ import type { SuiteSelection } from './suite-selection.ts';
 import type { VerifyOccasion } from './protocol.ts';
 
 export type VerificationTier = 'T1' | 'T2' | 'T3' | 'T4' | 'Web';
+export const verificationTierKeys = [['test_unit', 'T1'], ['test_component', 'T2'], ['test_integration', 'T3'], ['test_soak', 'T4']] as const;
+export function hasVerificationTests(config: { test: string } & Record<typeof verificationTierKeys[number][0], string>): boolean {
+  return !!config.test || verificationTierKeys.some(([key]) => !!config[key]);
+}
 export type VerificationStep = { name: 'check' | 'test' | VerificationTier; command: string };
 export type TierCommands = { prepare: string; check: string; test: string; tiers?: Partial<Record<VerificationTier, string>>; plan?: VerificationStep[] };
 

@@ -1,4 +1,5 @@
 import { suiteInfrastructureCauses } from '../suite-infrastructure.ts';
+import { hasVerificationTests } from '../verification-plan.ts';
 import { requireCandidateOwnership } from '../batch-candidate-ownership.ts';
 import { selectHostPool } from '../host/pools.ts';
 import { which } from '../doctor/report.ts';
@@ -481,7 +482,11 @@ export class Dispatcher {
         throw error;
       }
     });
-    options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null, () => this.#suites?.stageCovers() ?? []);
+    options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null, () => this.#suites?.stageCovers() ?? [],
+      () => {
+        const verification = options.projectConfig?.().verification;
+        return !!verification && hasVerificationTests(verification);
+      });
     options.core.inbox.pairingCodes.onChange(() => this.#guard.changed());
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {

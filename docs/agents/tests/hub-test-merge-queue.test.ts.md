@@ -1,5 +1,13 @@
 # hub/test/merge-queue.test.ts
 
+T-2050 keeps the shared fixture's configured test command and nonempty code diff.
+`readyVerificationFixture` supplies a completed passed receipt for the explicitly
+admitted task head before source review. A later head gets its own explicit
+completion before the next ready wait; lookup never follows moved refs by itself.
+`projectHub.configureTracker` binds this map after dispatcher policy binding and
+after the fixture's shutdown owner is armed. It preserves integrated cover and
+verification-requirement suppliers. No command is run by this receipt producer.
+
 The structured timing admission case seeds only the disposable fixture's
 persisted Suites producer. Public merge replies and FIFO entries prove missing
 proof and unallowed new 4-second identities refuse before mutation, while an

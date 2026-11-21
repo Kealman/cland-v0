@@ -1,4 +1,5 @@
 import { fixtureCommand as cland } from './fixture-command.ts';
+import { readyVerificationFixture } from './ready-verification-fixture.ts';
 import { beforeEach } from 'node:test';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
 import { stageCase } from './stage-case-fixture.ts';
@@ -327,15 +328,19 @@ async function fixture(t: TestContext, options: ProjectHubOptions & { verificati
       : new Tracker(trackerOptions);
     try { await seed(tracker); } finally { await tracker.stop(); }
   }
-  const { discovery, dispatcher, stop, fakes, dispose } = await projectHub(t, root, {}, { clock, stageTree: async () => 'fixture-stage-tree', scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...hubOptions });
+  let completeReady!: ReturnType<typeof readyVerificationFixture>;
+  const { discovery, dispatcher, stop, fakes, dispose } = await projectHub(t, root, {}, { clock, stageTree: async () => 'fixture-stage-tree', scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...hubOptions,
+    configureTracker: tracker => { completeReady = readyVerificationFixture(tracker, clock); hubOptions.configureTracker?.(tracker); },
+  });
   captureDispose?.(dispose);
   await tips.refresh();
   const ui = await connectUi(t, discovery);
   const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', sessionId: 'review-id', role: 'reviewer' });
   const { item } = await value<{ item: ItemView }>(ui, { type: 'task.create', title: 'Parser', size: 'M', branch: 't/parser' });
+  completeReady(item.id, 't/parser', heads.get('t/parser')!);
   assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'review-1' })).ok, true);
   await until(async () => { await clock.advance(100); return (await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.status === 'ready'; }, { what: 'reviewed task ready', timeoutMs: 1500 });
-  return { root, ui, dispatcher, item, clock, heads, surfaces, manifests, history, rev, tips, stop, fakes, enqueuedAt: clock.now().toISOString() };
+  return { root, ui, dispatcher, item, clock, heads, surfaces, manifests, history, rev, tips, stop, fakes, completeReady, enqueuedAt: clock.now().toISOString() };
 }
 
 for (const { rejectConstructor, name } of cleanupProjectionCases) test(name, t => {
@@ -643,9 +648,10 @@ test('cancel drops the queued entry with a notice to requester and lead', async 
 });
 
 test('changed heads, not-clear verdicts and closed items drop pinned requests', async t => {
-  const { ui, item, rev, heads, clock, tips } = await fixture(t);
+  const { ui, item, rev, heads, clock, tips, completeReady } = await fixture(t);
   for (const change of ['head', 'verdict', 'closed'] as const) {
     if (change !== 'head') {
+      completeReady(item.id, 't/parser', heads.get('t/parser')!);
       assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: `clear-${change}` })).ok, true);
       await until(async () => { await clock.advance(100); return (await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.status === 'ready'; }, { what: 'new reviewed head ready', timeoutMs: 1500 });
     }
