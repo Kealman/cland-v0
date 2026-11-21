@@ -14,6 +14,21 @@ import { stallCommandEvidence } from './suite-stall-evidence.ts';
 import { parseStartupOwner } from './suite-startup-owner.ts';
 
 const nativeProcesses = { processIdentityAsync, processStartedAsync, systemProcesses, stdioWriters, endProcess };
+type CommandClosureFacts = { pid: number | null; birth: string | null; captured: Array<{ pid: number; started: string; identity: string }>; unverified: number[]; nativeClose: { code: number | null; signal: NodeJS.Signals | null } | null };
+export type SuiteCommandClosed = CommandClosureFacts & { state: 'closed' };
+export type SuiteCommandClosure = SuiteCommandClosed | CommandClosureFacts & { state: 'incomplete'; reason: 'native-tree-unverified'; whenClosed: Promise<SuiteCommandClosed> };
+export class SuiteCommandFailure extends Error {
+  readonly closure: SuiteCommandClosure;
+  constructor(primary: unknown, closure: SuiteCommandClosure, secondary: readonly unknown[] = [], publicMessage?: string) {
+    super(publicMessage ?? (primary instanceof Error ? primary.message : String(primary)), { cause: primary });
+    this.closure = closure;
+    commandFailures.set(this, { primary, secondary });
+  }
+}
+export type SuiteCommandResult = { code: number; cause: string; inspection?: SuiteInspectionReceipt; closure?: SuiteCommandClosure };
+/** Private producing-owner facts; never part of result serialization. */
+const commandFailures = new WeakMap<object, { primary: unknown; secondary: readonly unknown[] }>();
+export function commandFailure(owner: object): { primary: unknown; secondary: readonly unknown[] } | undefined { return commandFailures.get(owner); }
 export interface SuiteInspectionReceipt {
   firstFailureAt: number;
   failures: number;
@@ -35,7 +50,21 @@ export class SuiteCommandPublicationError extends Error {
 }
 const inspectionErrorClass = (error: unknown): string => error instanceof TypeError ? 'TypeError' : error instanceof Error ? 'Error' : 'NonError';
 const unobservedBoundMs = 5000;
-export async function suiteCommand(line: string, cwd: string, env: NodeJS.ProcessEnv = process.env, native = nativeProcesses, reportInspection?: (receipt: SuiteInspectionReceipt) => void): Promise<{ code: number; cause: string; inspection?: SuiteInspectionReceipt }> {
+export type SuiteCommandOutput = { forward?: boolean; observe?: (chunk: string) => void; requireClosure?: boolean };
+export async function suiteCommand(line: string, cwd: string, env: NodeJS.ProcessEnv = process.env, native = nativeProcesses, reportInspection?: (receipt: SuiteInspectionReceipt) => void, outputOptions?: ((chunk: string) => void) | SuiteCommandOutput): Promise<SuiteCommandResult> {
+  const launch = { attempted: false };
+  try { return await runSuiteCommand(line, cwd, env, native, reportInspection, outputOptions, launch); }
+  catch (error) {
+    if (typeof outputOptions !== 'object' || !outputOptions.requireClosure || error instanceof SuiteCommandFailure) throw error;
+    // Before launch there is a positive no-child boundary. A failed launch
+    // whose native outcome is unknown never supplies deletion authority.
+    const closure: SuiteCommandClosure = launch.attempted
+      ? { state: 'incomplete', pid: null, birth: null, captured: [], unverified: [], nativeClose: null, reason: 'native-tree-unverified', whenClosed: new Promise(() => {}) }
+      : { state: 'closed', pid: null, birth: null, captured: [], unverified: [], nativeClose: null };
+    throw new SuiteCommandFailure(error, closure);
+  }
+}
+async function runSuiteCommand(line: string, cwd: string, env: NodeJS.ProcessEnv, native: typeof nativeProcesses, reportInspection: ((receipt: SuiteInspectionReceipt) => void) | undefined, outputOptions: ((chunk: string) => void) | SuiteCommandOutput | undefined, launch: { attempted: boolean }): Promise<SuiteCommandResult> {
   const { stallTimeoutMs, workers } = await suiteLimits(cwd, 'local', env);
   // Test-process startup/import readiness needs load headroom, independently of
   // test behaviour. Never let setup headroom consume the no-output guard.
@@ -45,10 +74,16 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     ...(env.CLAND_TEST_LOAD_FACTOR ? { override: env.CLAND_TEST_LOAD_FACTOR } : {}),
   }));
   await writeSuiteCause('', env);
-  const child = spawn('/bin/sh', ['-c', line], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const requireClosure = typeof outputOptions === 'object' && outputOptions.requireClosure === true;
+  launch.attempted = true;
+  const child = spawn('/bin/sh', ['-c', line], { cwd, env, ...(requireClosure ? { detached: true } : {}), stdio: ['ignore', 'pipe', 'pipe'] });
   const birth = child.pid ? native.processIdentityAsync(child.pid, env) : Promise.resolve(null);
   const identity = child.pid ? native.processStartedAsync(child.pid) : Promise.resolve(null);
   let cause = '';
+  let outputFailed = false;
+  let outputFailure: unknown;
+  let outputWasPrimary = false;
+  let selectedStop: ReturnType<typeof stallCommandEvidence> | undefined;
   let interrupted = false;
   let ending: Promise<void> | undefined;
   const stopped = Promise.withResolvers<void>();
@@ -56,6 +91,9 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   let observeTimer: NodeJS.Timeout | undefined;
   let closed = false;
   let exit: { code: number | null; signal: NodeJS.Signals | null } | undefined;
+  let nativeClose: { code: number | null; signal: NodeJS.Signals | null } | undefined;
+  const unverified = new Set<number>();
+  const nativeClosed = Promise.withResolvers<void>();
   child.once('exit', (code, signal) => { exit = { code, signal }; resumeStartup(); });
   const owned = new Map<number, { pid: number; started: string; identity: string }>();
   // Preserve proof across parent exit/reparenting. Cwd, command text and group
@@ -72,11 +110,12 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
         const parent = byPid.get(row.parent);
         if (parent && parent.identity != null && owned.get(parent.pid)?.identity === parent.identity && !owned.has(row.pid)) {
           if (row.identity) { owned.set(row.pid, { pid: row.pid, started: row.started, identity: row.identity }); changed = true; }
+          else if (requireClosure) unverified.add(row.pid);
         }
       }
     }
     for (const [pid, proof] of owned) {
-      if (pid !== child.pid && byPid.get(pid)?.identity !== proof.identity) owned.delete(pid);
+      if (!requireClosure && pid !== child.pid && byPid.get(pid)?.identity !== proof.identity) owned.delete(pid);
     }
   };
   let observing: Promise<void> = Promise.resolve();
@@ -110,15 +149,16 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   const unfinished = new Map<string, string>();
   const ended = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
     child.once('error', reject);
-    child.once('close', (code, signal) => { resumeStartup(); resolve({ code, signal }); });
+    child.once('close', (code, signal) => { nativeClose = { code, signal }; nativeClosed.resolve(); resumeStartup(); resolve({ code, signal }); });
   });
   const stop = (reason: string) => {
     if (ending || interrupted) return;
     const evidence = stallCommandEvidence(reason, { commandPid: child.pid ?? null, exit: exit ?? null, stdout: child.stdout.readableEnded ? 'closed' : 'open', stderr: child.stderr.readableEnded ? 'closed' : 'open' });
+    selectedStop = evidence;
     cause = evidence.cause;
-    process.stderr.write(evidence.line + '\n');
-    if (evidence.startupLine) process.stderr.write(evidence.startupLine + '\n');
-    process.stderr.write(cause + '\n');
+    emitOutput(evidence.line + '\n', process.stderr);
+    if (evidence.startupLine) emitOutput(evidence.startupLine + '\n', process.stderr);
+    emitOutput(cause + '\n', process.stderr);
     clearTimeout(timer);
     clearTimeout(observeTimer);
     startup.stop();
@@ -132,11 +172,12 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
       const rows = await native.systemProcesses(undefined, Date.now() + 3000);
       for (const row of await native.stdioWriters([child.stdout, child.stderr], rows, env)) {
         if (row.identity) owned.set(row.pid, { pid: row.pid, started: row.started, identity: row.identity });
+        else if (requireClosure) unverified.add(row.pid);
       }
       // Do not dump argv or the environment. Only current, birth-matched owners
       // belong in this bounded diagnostic; a stale census is not a live receipt.
       const live = rows.filter(row => row.identity && owned.get(row.pid)?.identity === row.identity);
-      process.stderr.write(`suite stall processes ${JSON.stringify({ commandPid: child.pid, total: live.length, processes: live.slice(0, 32).map(row => ({ pid: row.pid, name: row.command.split(/\s/)[0]!.split('/').pop()!.slice(0, 80) })) })}\n`);
+      emitOutput(`suite stall processes ${JSON.stringify({ commandPid: child.pid, total: live.length, processes: live.slice(0, 32).map(row => ({ pid: row.pid, name: row.command.split(/\s/)[0]!.split('/').pop()!.slice(0, 80) })) })}\n`, process.stderr);
       // The root may be gone while inherited pipes are still open. Retained
       // identities still authorize cleanup; endProcess rechecks each before signalling.
       for (const proof of owned.values()) {
@@ -153,7 +194,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   };
   const arm = () => {
     clearTimeout(timer);
-    if (ending || interrupted) return;
+    if (ending || interrupted || closed) return;
     timer = setTimeout(() => {
       const minutes = Number((stallTimeoutMs / 60000).toFixed(3));
       stop(`stalled: no output for ${minutes} min; last started tests: ${[...unfinished.values()].slice(-8).join(' | ') || '(none reported)'}`);
@@ -170,9 +211,24 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     innerOwners.clear();
     if (deferredStartup) { const reason = deferredStartup; deferredStartup = undefined; stop(reason); }
   };
+  const emitOutput = (chunk: string, stream: NodeJS.WriteStream) => {
+    if (outputFailed) return;
+    try {
+      const observe = typeof outputOptions === 'function' ? outputOptions : outputOptions?.observe;
+      observe?.(chunk);
+      if (typeof outputOptions === 'function' || outputOptions?.forward !== false) stream.write(chunk);
+    } catch (error) {
+      // Event callbacks never throw out of the native owner. Do not publish the
+      // callback's arbitrary exception payload; stop joins the captured tree.
+      outputFailed = true;
+      outputFailure = error;
+      outputWasPrimary = selectedStop === undefined;
+      queueMicrotask(() => stop('command output observer failed'));
+    }
+  };
   const output = (chunk: string, stream: NodeJS.WriteStream) => {
     arm();
-    stream.write(chunk);
+    emitOutput(chunk, stream);
     let pending = (partial.get(stream) ?? '') + chunk;
     let newline: number;
     while ((newline = pending.indexOf('\n')) >= 0) {
@@ -209,13 +265,37 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
   });
   arm();
   observe();
-  let selected: { code: number; cause: string; inspection?: SuiteInspectionReceipt } | undefined;
+  let closureWait: Promise<SuiteCommandClosed> | undefined;
+  const closedReceipt = async (): Promise<SuiteCommandClosed | null> => {
+    if (!nativeClose || !child.stdout.readableEnded || !child.stderr.readableEnded) return null;
+    const rows = await native.systemProcesses(undefined, Date.now() + 3000);
+    if (rows.some(row => row.group === child.pid || unverified.has(row.pid)
+      || owned.has(row.pid) && (!row.identity || owned.get(row.pid)!.identity === row.identity))) return null;
+    return { state: 'closed', pid: child.pid ?? null, birth: await birth.catch(() => null), captured: [...owned.values()], unverified: [...unverified], nativeClose };
+  };
+  const closureReceipt = async (): Promise<SuiteCommandClosure> => {
+    const receipt = await closedReceipt().catch(() => null);
+    if (receipt) return receipt;
+    // Keep the original pipe endpoints and observed launch owner alive. The
+    // only release is positive native close plus an authoritative empty census;
+    // failed observations retain the obligation and never authorize a signal.
+    closureWait ??= (async () => {
+      await nativeClosed.promise;
+      for (;;) {
+        const observed = await closedReceipt().catch(() => null);
+        if (observed) return observed;
+        await new Promise<void>(resolve => setTimeout(resolve, 1000));
+      }
+    })();
+    return { state: 'incomplete', pid: child.pid ?? null, birth: await birth.catch(() => null), captured: [...owned.values()], unverified: [...unverified], nativeClose: nativeClose ?? null, reason: 'native-tree-unverified', whenClosed: closureWait };
+  };
+  let selected: SuiteCommandResult | undefined;
   let failed = false;
   let primaryFailure: unknown;
   try {
     const outcome = await Promise.race([ended, stopped.promise.then(async () => {
       await ending;
-      child.stdout.destroy(); child.stderr.destroy();
+      if (!requireClosure) { child.stdout.destroy(); child.stderr.destroy(); }
       return { code: 1, signal: null };
     })]);
     await ending;
@@ -225,17 +305,28 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
     startup.stop();
     await observing;
     noteUnobserved();
-    selected = { code: cause ? 1 : outcome.code ?? 1, cause: cause || (outcome.signal ? `command terminated by ${outcome.signal}` : '') };
+    selected = { code: cause || outputFailed ? 1 : outcome.code ?? 1, cause: cause || (outputFailed ? 'command output observer failed' : outcome.signal ? `command terminated by ${outcome.signal}` : '') };
     if (!selected.cause) {
       try { selected.cause = await readSuiteCause(env); }
       catch (error) { selected.cause = `secondary diagnostic: suite cause receipt unavailable: ${String(error).slice(0, 1024)}`; }
     }
     if (inspection) selected.inspection = inspection;
+    if (requireClosure) selected.closure = await closureReceipt();
+    if (outputFailed || selectedStop) commandFailures.set(selected, {
+      primary: outputWasPrimary ? outputFailure : selectedStop,
+      secondary: outputFailed && !outputWasPrimary ? [outputFailure] : [],
+    });
     return selected;
   } catch (error) {
     failed = true;
-    primaryFailure = error;
-    throw error;
+    const primary = outputWasPrimary ? outputFailure : selectedStop ?? error;
+    const secondary = [...(outputFailed && !outputWasPrimary ? [outputFailure] : []), ...(primary !== error ? [error] : [])];
+    if (requireClosure) primaryFailure = new SuiteCommandFailure(primary, await closureReceipt(), secondary, outputFailed || selectedStop ? cause || 'command output observer failed' : undefined);
+    else if (outputFailed) {
+      primaryFailure = new Error(cause || 'command output observer failed', { cause: primary });
+      commandFailures.set(primaryFailure as Error, { primary, secondary });
+    } else primaryFailure = error;
+    throw primaryFailure;
   } finally {
     try {
       closed = true;
@@ -254,7 +345,15 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
       }
       if (diagnostics.length) {
         if (selected) selected.cause = [selected.cause, ...diagnostics].filter(Boolean).join('; ');
-        else if (failed && inspection) throw new SuiteCommandPublicationError(primaryFailure, inspection, diagnostics);
+        else if (failed && inspection) {
+          const publication = new SuiteCommandPublicationError(primaryFailure, inspection, diagnostics);
+          const facts = primaryFailure && typeof primaryFailure === 'object' ? commandFailure(primaryFailure) : undefined;
+          if (requireClosure) throw new SuiteCommandFailure(facts ? facts.primary : primaryFailure,
+            primaryFailure instanceof SuiteCommandFailure ? primaryFailure.closure : await closureReceipt(), [...facts?.secondary ?? [], publication],
+            primaryFailure instanceof Error ? primaryFailure.message : 'command failed');
+          if (facts) commandFailures.set(publication, { primary: facts.primary, secondary: [...facts.secondary, publication] });
+          throw publication;
+        }
       }
     } finally {
       for (const { signal, handler } of handlers) process.off(signal, handler);

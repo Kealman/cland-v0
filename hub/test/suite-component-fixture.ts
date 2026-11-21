@@ -13,15 +13,23 @@ import { checkTestLint, TestLintError } from '../src/test-lint-policy.ts';
 import type { DurationBudgetContext } from '../src/suite-duration-budget.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import { FakeClock } from './fake-clock.ts';
-import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, tempProject, type ProjectHubOptions } from './harness.ts';
 import type { ResultMessage } from './suite-fixture.ts';
 import { verificationFixture } from './verification-fixture.ts';
+import { ownedDatabases } from './owned-tracker.ts';
+import { beforeDirectories, fenceFixtureCleanup } from './process-cleanup.ts';
 
-export async function fixture(t: TestContext, code = 0, config = '', withDurations = false) {
+type FixtureOptions = Pick<ProjectHubOptions, 'git' | 'readBase' | 'openDatabase'> & { tiers?: boolean; patch?: (target: object, key: PropertyKey, value: unknown) => void };
+export async function fixture(t: TestContext, code = 0, config = '', withDurations = false, options: FixtureOptions = {}) {
+  // Register before tempProject enrolls directory removal and before any native
+  // open/constructor. A rejected close retains this fence and all caller seams.
+  fenceFixtureCleanup(t);
+  let closeReturnedHub: (() => Promise<void>) | undefined;
+  const open = ownedDatabases({ requireClose: close => beforeDirectories(t, close) }, () => closeReturnedHub?.());
   const root = await tempProject(t, 'cland-suite-component-');
   await mkdir(join(root, '.cland'), { recursive: true });
   await verificationFixture(root, { typecheck: 'true', testScript: 'true' });
-  await writeFile(join(root, '.cland/config.toml'), `${config}\n[verification]\ncheck="npm run typecheck"\ntest="npm test"\nbudget=1\nlock_path=${JSON.stringify(join(root, 'suite.lock'))}\n`);
+  await writeFile(join(root, '.cland/config.toml'), `${config}\n[verification]\ncheck="npm run typecheck"\ntest="npm test"\nbudget=1\nlock_path=${JSON.stringify(join(root, 'suite.lock'))}\n${options.tiers ? 'test_unit="fake-unit"\ntest_component="fake-component"\ntest_integration="fake-integration"\n' : ''}`);
   const clock = new FakeClock();
   const facts = { head: 'a'.repeat(40), branch: 'candidate', tree: 'b'.repeat(40),
     selection: { mode: 'full', files: [], reason: 'fixture' } as SuiteSelection };
@@ -55,23 +63,26 @@ export async function fixture(t: TestContext, code = 0, config = '', withDuratio
     },
   };
   const receipts = new Map<string, RunStatus>(), executions: RunRef[] = [];
+  const mock = (target: object, key: string, value: unknown) => options.patch ? options.patch(target, key, value) : t.mock.method(target, key as never, value as never);
   const exists = (file: string) => access(file).then(() => true, () => false);
-  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
-  t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
-  t.mock.method(LocalExecutor.prototype, 'occupied', () => exists(join(root, 'suite.lock')));
-  t.mock.method(LocalExecutor.prototype, 'restore', (run: RunRef): Lease => ({ kind: 'local', run: run.id, created: clock.now().toISOString(), deadline: clock.now().toISOString(), resource: run }));
-  t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string): Promise<Lease> => ({ kind: 'local', run: run.id, created: clock.now().toISOString(), deadline, resource: run }));
-  t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
+  mock(LocalExecutor.prototype, 'reconcile', async () => {});
+  mock(LocalExecutor.prototype, 'holder', async () => null);
+  mock(LocalExecutor.prototype, 'occupied', () => exists(join(root, 'suite.lock')));
+  mock(LocalExecutor.prototype, 'restore', (run: RunRef): Lease => ({ kind: 'local', run: run.id, created: clock.now().toISOString(), deadline: clock.now().toISOString(), resource: run }));
+  mock(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string): Promise<Lease> => ({ kind: 'local', run: run.id, created: clock.now().toISOString(), deadline, resource: run }));
+  mock(LocalExecutor.prototype, 'deliver', async () => {});
   let workerCode = code;
-  t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => {
+  mock(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => {
     executions.push(structuredClone(run));
     await writeFile(run.log, `selection ${JSON.stringify(run.selection)}\n# tests 1\n# pass ${workerCode === 0 ? 1 : 0}\n`);
     receipts.set(run.id, { state: 'done', code: workerCode, finished: clock.now().toISOString(), platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'none' } });
   });
-  t.mock.method(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
-  t.mock.method(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
-  t.mock.method(LocalExecutor.prototype, 'cancel', async () => {});
-  let hub = await projectHub(t, root, {}, { clock, candidate, durationContext: withDurations ? durationContext : null, selectSuite: async () => structuredClone(facts.selection) });
+  mock(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
+  mock(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
+  mock(LocalExecutor.prototype, 'cancel', async () => {});
+  const hubOptions = { openDatabase: (path: string) => open(path, options.openDatabase), ...(options.git ? { git: options.git } : {}), ...(options.readBase ? { readBase: options.readBase } : {}), clock, candidate, durationContext: withDurations ? durationContext : null, selectSuite: async () => structuredClone(facts.selection) };
+  let hub = await projectHub(t, root, {}, hubOptions);
+  closeReturnedHub = () => hub.stop();
   let ui = await connectUi(t, hub.discovery, 'cli');
   await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' });
   await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' });
@@ -99,7 +110,7 @@ export async function fixture(t: TestContext, code = 0, config = '', withDuratio
     assert.equal(result.ok, true, result.error);
     return result.value as { id: string; pid: number | null; position: number; cached?: { run: string; head: string; tree: string } };
   };
-  return { root, facts, trees, candidate, clock, legacyKeys, durationContext, topic, spoke, executions, receipts, results, launch, settle,
+  return { root, facts, trees, candidate, clock, legacyKeys, durationContext, item, topic, spoke, executions, receipts, results, launch, settle,
     env: sessionShell(root, { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'suite-caller', CLAND_ROLE: 'implementer' }),
     get ui() { return ui; },
     code(value: number) { workerCode = value; },
@@ -109,7 +120,9 @@ export async function fixture(t: TestContext, code = 0, config = '', withDuratio
     async reopen() {
       await hub.verificationSettled();
       ui.close(); await hub.stop();
-      hub = await projectHub(t, root, {}, { clock, candidate, durationContext: withDurations ? durationContext : null, selectSuite: async () => structuredClone(facts.selection) });
+      closeReturnedHub = undefined;
+      hub = await projectHub(t, root, {}, hubOptions);
+      closeReturnedHub = () => hub.stop();
       ui = await connectUi(t, hub.discovery, 'cli');
     },
   };

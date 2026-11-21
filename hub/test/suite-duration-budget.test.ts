@@ -84,7 +84,7 @@ test('task duration summary counts the allowance stanza printed for mixed T3/T4 
     { file, name: 'slow', seconds: 8, outcome: 'pass' },
     { file: soak, name: 'soak', seconds: 90, outcome: 'pass' },
   ], { fileCount: 2, wallMs: 1234, platform: 'linux', executor: 'droplet', owner: 'E-1282' });
-  assert.match(lines[0]!, /^duration check: 2 changed T3\/T4 files; 2 passing identities; added wall 1\.234 s/);
+  assert.match(lines[0]!, /^duration check: 2 selected T3\/T4 files; 2 passing identities; added wall 1\.234 s/);
   assert.match(lines[0]!, /platform linux; executor droplet/);
   assert.match(lines[0]!, /; 1 allowance stanza$/);
   assert.doesNotMatch(lines[0]!, /no stanza/);

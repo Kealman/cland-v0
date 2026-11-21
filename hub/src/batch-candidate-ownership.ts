@@ -4,6 +4,45 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { territoryGitAsync } from './territory.ts';
 import { committedTreeOrThrow } from './verification-tree.ts';
 import { removeWorktreeWithFixtures, type FixtureProcesses } from './fixture-processes.ts';
+import type { SuiteCommandClosure, SuiteCommandClosed } from './suite-command.ts';
+import { durableJson } from './executor/droplet/lease.ts';
+
+type CommandFence = { id: string; closed: boolean };
+const commandFences = new WeakMap<CandidateOwnership, CommandFence>();
+const commandMarker = (owner: CandidateOwnership) => join(owner.gitdir, 'cland-check-owner.json');
+const commandHost = () => ({ read: (path: string) => smallFile(path, 262144), write: async (path: string, text: string) => durableJson(path, JSON.parse(text)) });
+async function commandRecord(owner: CandidateOwnership, host: Pick<CandidateOwnershipHost, 'read'>): Promise<string | null> {
+  try { return await host.read(commandMarker(owner)); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
+}
+/** Durable obligation before command admission; a copied record never supplies
+ * this live owner's positive close authority and cannot authorize a signal. */
+export async function beginCandidateCommand(candidate: Candidate, host: Pick<CandidateOwnershipHost, 'read' | 'write'> = commandHost()): Promise<{ complete(receipt: SuiteCommandClosed): Promise<void>; retain(receipt: SuiteCommandClosure): Promise<void> }> {
+  const owner = candidate.owner;
+  if (!owner || await commandRecord(owner, host) !== null) throw new Error('candidate command closure unconfirmed; root preserved');
+  const fence = { id: randomUUID(), closed: false };
+  commandFences.set(owner, fence);
+  const write = (state: string, receipt?: SuiteCommandClosure) => host.write(commandMarker(owner), JSON.stringify({ version: 1, owner: owner.id, command: fence.id, state,
+    ...(receipt ? { native: { state: receipt.state, pid: receipt.pid, birth: receipt.birth, captured: receipt.captured, unverified: receipt.unverified, nativeClose: receipt.nativeClose } } : {}) }));
+  await write('pending');
+  return {
+    complete: async receipt => {
+      if (receipt.state !== 'closed' || commandFences.get(owner) !== fence) throw new Error('candidate command closure unconfirmed; root preserved');
+      await write('closed', receipt);
+      fence.closed = true;
+    },
+    retain: receipt => write('incomplete', receipt),
+  };
+}
+async function requireCommandClosure(candidate: Candidate, host: Pick<CandidateOwnershipHost, 'read'>): Promise<void> {
+  const owner = candidate.owner!;
+  const text = await commandRecord(owner, host);
+  const fence = commandFences.get(owner);
+  if (text === null && !fence) return; // No check command was admitted for this checkout.
+  if (text === null) throw new Error('candidate command closure unconfirmed; root preserved');
+  const row = JSON.parse(text) as { version: number; owner: string; command: string; state: string };
+  if (!fence?.closed || row.version !== 1 || row.owner !== owner.id || row.command !== fence.id || row.state !== 'closed') throw new Error('candidate command closure unconfirmed; root preserved');
+}
 
 export type CandidateOwnership = { id: string; root: string; cwd: string; gitdir: string; rootBirth: string; birth: string; gitBirth: string; head: string; tree: string };
 type Candidate = { cwd: string; head: string; tree: string; owner?: CandidateOwnership };
@@ -17,12 +56,12 @@ export type CandidateOwnershipHost = {
   read(path: string): Promise<string>;
   write(path: string, text: string): Promise<void>;
 };
-async function smallFile(path: string): Promise<string> {
+async function smallFile(path: string, limit = 16384): Promise<string> {
   const file = await open(path, 'r');
   try {
-    const buffer = Buffer.alloc(16_385);
+    const buffer = Buffer.alloc(limit + 1);
     const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
-    if (bytesRead > 16_384) throw new Error('candidate ownership file exceeds 16 KiB');
+    if (bytesRead > limit) throw new Error(limit === 16384 ? 'candidate ownership file exceeds 16 KiB' : 'candidate ownership file exceeds byte limit');
     return buffer.subarray(0, bytesRead).toString('utf8');
   } finally { await file.close(); }
 }
@@ -75,8 +114,10 @@ export async function requireCandidateOwnership(root: string, candidate: Candida
 /** The same ownership fence surrounds process guarding and its final removal callback. */
 export async function removeOwnedBatchCandidate<T>(root: string, candidate: Candidate, env: NodeJS.ProcessEnv, remove: () => Promise<T>, host?: CandidateOwnershipHost, processes?: FixtureProcesses): Promise<T> {
   await requireCandidateOwnership(root, candidate, env, host);
+  await requireCommandClosure(candidate, host ?? commandHost());
   return removeWorktreeWithFixtures(candidate.owner!.cwd, async () => {
     await requireCandidateOwnership(root, candidate, env, host);
+    await requireCommandClosure(candidate, host ?? commandHost());
     return remove();
   }, processes);
 }

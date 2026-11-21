@@ -30,11 +30,236 @@ import { tierReceipt } from '../src/verification-tier-receipts.ts';
 import { verificationSteps } from '../src/verification-plan.ts';
 import { requireMergeClosedItemWording } from '../src/merge-closed-item-wording.ts';
 import { removeWorktreeWithFixtures, type FixtureProcesses } from '../src/fixture-processes.ts';
-import { CandidateOwnershipUnavailable, captureCandidateOwnership, requireCandidateOwnership, removeOwnedBatchCandidate, type CandidateOwnershipHost } from '../src/batch-candidate-ownership.ts';
+import { CandidateOwnershipUnavailable, captureCandidateOwnership, requireCandidateOwnership, removeOwnedBatchCandidate, beginCandidateCommand, type CandidateOwnershipHost } from '../src/batch-candidate-ownership.ts';
 import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
 import { tempProject } from './harness.ts';
 import { dependencyInstall } from '../src/dependency-install.ts';
 import { fullBatchReason } from '../src/batch-selection.ts';
+import { checkedEnqueue, EnqueueBaseMoved, validateEnqueueCandidate, EnqueueCancellations, EnqueueNativeIncomplete } from '../src/hub/enqueue-preflight.ts';
+import { SuiteCommandFailure, type SuiteCommandClosed } from '../src/suite-command.ts';
+import { enqueuePreflight } from '../src/hub/enqueue-preflight-native.ts';
+
+test('native check rejection keeps its private primary when closure checkpointing also rejects', t => guardedMemberCase(t, async (_t, step, wait) => {
+  for (const retained of [false, true]) {
+    const primary = new Error('Authorization: Bearer synthetic-adapter-primary' + (retained ? '\n' + 'bounded fixture detail '.repeat(2000) : ''));
+    const secondary = new Error('token=synthetic-checkpoint-secondary');
+    const completion = Promise.withResolvers<SuiteCommandClosed>();
+    const closed: SuiteCommandClosed = { state: 'closed', pid: 43001, birth: 'birth', captured: [], unverified: [], nativeClose: { code: 1, signal: null } };
+    let caught: unknown;
+    _t.after(async () => { completion.resolve(closed); if (caught instanceof EnqueueNativeIncomplete) await caught.settled; });
+    const member: MergeQueueEntry = { item: 'T-1', branch: 't/1', head: 'head', verdictBase: 'dev', enqueued: '', by: { id: 'coord', name: 'coord', role: 'coordinator' } };
+    const candidate: BatchCandidate = { base: 'base', head: 'head', tree: 'tree', cwd: '/owned/check', budgetLines: [] };
+    const backend = enqueuePreflight('/owned', async () => ({ member, base: 'base' }), {}, {
+      prepareMergeBatch: async () => candidate, committedTreeOrThrow: async () => 'base-tree', checkoutMergeBatch: async () => {},
+      verificationCommands: async () => ({ check: 'fake-check', test: '', prepare: '' }), forward: () => {}, removeMergeBatch: async () => {},
+      beginCandidateCommand: async () => ({ complete: async () => { if (!retained) throw secondary; }, retain: async () => { throw secondary; } }),
+      suiteCommand: async () => { throw new SuiteCommandFailure(primary, retained ? { ...closed, state: 'incomplete', reason: 'native-tree-unverified', whenClosed: completion.promise } : closed); },
+    });
+    await step(() => wait('primary and secondary ownership', async () => {
+      try { await checkedEnqueue(backend, async () => assert.fail('check rejection cannot enqueue')); } catch (error) { caught = error; }
+      assert.ok(caught instanceof Error);
+      const causes: unknown[] = [];
+      for (let current: unknown = caught; current instanceof Error && !causes.includes(current); current = current.cause) causes.push(current);
+      assert.ok(causes.includes(primary), 'checkpoint failure must never replace the native producing primary');
+      assert.match(caught.message, /fake-check/, 'nested protected retention must keep the responsible command');
+      assert.ok(!caught.message.includes('synthetic-adapter-primary'));
+      assert.ok(!caught.message.includes('synthetic-checkpoint-secondary'));
+      if (caught instanceof EnqueueNativeIncomplete) { completion.resolve(closed); await caught.settled; }
+    }));
+  }
+}));
+
+test('enqueue rejection protects public diagnostics while retaining exact private primary and cleanup causes', t => guardedMemberCase(t, async (_t, step, wait) => {
+  for (const retained of [false, true]) {
+    const primary = new Error('Authorization: Bearer synthetic-private-primary');
+    const secondary = new Error('token=synthetic-private-secondary');
+    await step(() => wait('private rejection ownership', () => assert.rejects(() => checkedEnqueue({
+      prepare: async () => 'candidate', check: async () => { if (retained) throw new EnqueueNativeIncomplete('/owned/check', primary, Promise.resolve()); throw primary; },
+      remove: async () => { throw secondary; },
+    }, async () => assert.fail('failed checks never enqueue')), error => {
+      assert.ok(error instanceof Error);
+      assert.equal(error.cause, primary);
+      assert.equal(Object.getOwnPropertyDescriptor(error, 'cause')?.enumerable, false);
+      assert.equal(primary.message, 'Authorization: Bearer synthetic-private-primary', 'a public diagnostic must not mutate the private primary');
+      if (!retained) assert.deepEqual((error as Error & { secondary?: readonly unknown[] }).secondary, [secondary]);
+      assert.ok(!error.message.includes('synthetic-private-primary'));
+      assert.ok(!error.message.includes('synthetic-private-secondary'));
+      return true;
+    })));
+  }
+}));
+
+test('incomplete enqueue checks retain the real guarded checkout until the native owner closes', t => guardedMemberCase(t, async (_t, step, wait) => {
+  const member: MergeQueueEntry = { item: 'T-1', branch: 't/1', head: '1'.repeat(40), verdictBase: 'dev', enqueued: '', by: { id: 'coord', name: 'coord', role: 'coordinator' } };
+  const candidate: BatchCandidate & { taskHead: string; baseTree: string } = { base: 'base', head: 'head', tree: 'tree', cwd: '/owned/candidate', budgetLines: [], taskHead: member.head, baseTree: 'base-tree' };
+  const observed = { root: '/owned', cwd: candidate.cwd, gitdir: '/owned/.git/worktrees/candidate', rootBirth: 'root-birth', birth: 'candidate-birth', gitBirth: 'git-birth', head: candidate.head, tree: candidate.tree };
+  const files = new Map<string, string>();
+  const host: CandidateOwnershipHost = { inspect: async () => ({ ...observed }), write: async (path, text) => { files.set(path, text); },
+    read: async path => { if (!files.has(path)) throw Object.assign(new Error('absent fixture marker'), { code: 'ENOENT' }); return files.get(path)!; } };
+  const processes: FixtureProcesses = { rows: async () => [], paths: async () => ({ cwd: null, files: [] }), sameUser: async () => true, missing: () => false, end: async () => true };
+  const completion = Promise.withResolvers<SuiteCommandClosed>();
+  const closed: SuiteCommandClosed = { state: 'closed', pid: 43001, birth: 'birth', captured: [], unverified: [43002], nativeClose: { code: 1, signal: null } };
+  let retained: EnqueueNativeIncomplete | undefined;
+  _t.after(async () => { completion.resolve(closed); await retained?.settled; });
+  let removals = 0, queued = 0;
+  const remove = () => removeOwnedBatchCandidate('/owned', candidate, {}, async () => { removals++; }, host, processes);
+  const backend = enqueuePreflight('/owned', async () => ({ member, base: 'base' }), {}, {
+    prepareMergeBatch: async () => candidate, checkoutMergeBatch: async (_root, value) => { await captureCandidateOwnership('/owned', value, {}, host); assert.ok(value.owner); candidate.owner = value.owner; },
+    committedTreeOrThrow: async () => 'base-tree', verificationCommands: async () => ({ check: 'check', test: '', prepare: '' }),
+    beginCandidateCommand: value => beginCandidateCommand(value, host), forward: () => {}, removeMergeBatch: remove,
+    suiteCommand: async () => ({ code: 1, cause: 'check stopped', closure: { state: 'incomplete', pid: 43001, birth: 'birth', captured: [], unverified: [43002], nativeClose: null, reason: 'native-tree-unverified', whenClosed: completion.promise } }),
+  });
+  await step(() => wait('retained check and positive closure', async () => {
+    try { await checkedEnqueue(backend, async () => { queued++; }); }
+    catch (error) { assert.ok(error instanceof EnqueueNativeIncomplete, String(error)); retained = error; }
+    assert.ok(retained);
+    assert.match(retained.message, /check stopped/);
+    assert.match(retained.message, /checkout retained: \/owned\/candidate/);
+    assert.equal(queued, 0);
+    await assert.rejects(remove, /command closure unconfirmed/);
+    assert.equal(removals, 0, 'the actual removal guard preserves the root after incomplete native settlement');
+    completion.resolve(closed);
+    await retained.settled;
+    assert.equal(removals, 1, 'the same live command owner checkpoints closure before real guarded removal');
+  }));
+}));
+
+test('the real candidate removal guard retains unclosed check commands and inherited closure claims', t => guardedMemberCase(t, async (_t, step, wait) => {
+  const candidate: BatchCandidate = { base: 'base', head: 'head', tree: 'tree', cwd: '/owned/candidate', budgetLines: [] };
+  const observed = { root: '/owned', cwd: candidate.cwd, gitdir: '/owned/.git/worktrees/candidate', rootBirth: 'root-birth', birth: 'candidate-birth', gitBirth: 'git-birth', head: candidate.head, tree: candidate.tree };
+  const files = new Map<string, string>();
+  const host: CandidateOwnershipHost = { inspect: async () => ({ ...observed }), write: async (path, text) => { files.set(path, text); },
+    read: async path => { if (!files.has(path)) throw Object.assign(new Error('absent fixture marker'), { code: 'ENOENT' }); return files.get(path)!; } };
+  const processes: FixtureProcesses = { rows: async () => [], paths: async () => ({ cwd: null, files: [] }), sameUser: async () => true, missing: () => false, end: async () => true };
+  let removals = 0;
+  await step(() => wait('candidate ownership and native fence', async () => {
+    await captureCandidateOwnership('/owned', candidate, {}, host);
+    const fence = await beginCandidateCommand(candidate, host);
+    const remove = (value = candidate) => removeOwnedBatchCandidate('/owned', value, {}, async () => { removals++; }, host, processes);
+    await assert.rejects(remove, /command closure unconfirmed/);
+    assert.equal(removals, 0);
+    const commandPath = '/owned/.git/worktrees/candidate/cland-check-owner.json';
+    const pending = files.get(commandPath)!;
+    files.delete(commandPath);
+    await assert.rejects(remove, /command closure unconfirmed/, 'losing the pending checkpoint grants no cleanup authority');
+    files.set(commandPath, pending);
+    await fence.complete({ state: 'closed', pid: 43001, birth: 'check-birth', captured: [], unverified: [], nativeClose: { code: 1, signal: null } });
+    await assert.rejects(() => remove({ ...candidate, owner: { ...candidate.owner! } }), /command closure unconfirmed/);
+    assert.equal(removals, 0, 'copied receipt and native fields grant no fresh cleanup authority');
+    await remove();
+    assert.equal(removals, 1, 'the admitted owner can remove only after positive command closure');
+  }));
+}));
+
+test('cancel during preflight fences that request while a fresh request can enqueue', t => guardedMemberCase(t, async (_t, step, wait) => {
+  const cancellations = new EnqueueCancellations();
+  let queued = 0, removed = 0;
+  const request = (cancelDuringCheck: boolean) => {
+    const validate = cancellations.capture('T-1');
+    return checkedEnqueue({
+      prepare: async () => 'candidate',
+      check: async () => {
+        cancellations.cancel(cancelDuringCheck ? 'T-1' : 'T-2');
+        return { command: 'check', code: 0, tail: '' };
+      },
+      remove: async () => { removed++; },
+    }, async () => { validate(); queued++; return 'queued'; });
+  };
+  await step(() => wait('cancelled admission', () => assert.rejects(() => request(true), /cancelled during preflight/)));
+  assert.equal(queued, 0);
+  assert.equal(removed, 1);
+  assert.equal(await step(() => wait('fresh admission', () => request(false))), 'queued');
+  assert.equal(queued, 1);
+  assert.equal(removed, 2);
+}));
+
+test('enqueue accepts metadata-only base movement but rejects a changed verification tree or task head', t => guardedMemberCase(t, async (_t, step, wait) => {
+  const checked = { taskHead: 'task', base: 'old-dev', baseTree: 'tree' };
+  const reads: string[] = [];
+  const identity = async (head: string) => { reads.push(head); return head === 'metadata-dev' ? 'tree' : 'changed-tree'; };
+  await step(() => wait('base validation', async () => {
+    await validateEnqueueCandidate(checked, { head: 'task', baseTip: 'old-dev' }, identity);
+    await validateEnqueueCandidate(checked, { head: 'task', baseTip: 'metadata-dev' }, identity);
+    await assert.rejects(() => validateEnqueueCandidate(checked, { head: 'task', baseTip: 'code-dev' }, identity), EnqueueBaseMoved);
+    await assert.rejects(() => validateEnqueueCandidate(checked, { head: 'new-task', baseTip: 'metadata-dev' }, identity), /task head changed/);
+  }));
+  assert.deepEqual(reads, ['metadata-dev', 'code-dev']);
+}));
+
+test('enqueue runs the configured check on the merged tree and preserves cleanup failure evidence', t => guardedMemberCase(t, async (_t, step, wait) => {
+  const member: MergeQueueEntry = { item: 'T-1', branch: 't/1', head: '1'.repeat(40), verdictBase: 'dev', enqueued: '', by: { id: 'coord', name: 'coord', role: 'coordinator' } };
+  const events: string[] = [];
+  const backend = enqueuePreflight('/isolated', async () => ({ member, base: 'current-dev' }), { HOME: '/human', GIT_DIR: '/foreign', DIGITALOCEAN_TOKEN: 'synthetic-not-a-credential' }, {
+    prepareMergeBatch: (root, id, members, env, _provider, base) => prepareMergeBatch(root, id, members, env, {
+      git: async args => {
+        if (args[0] === 'rev-parse') return args[1] === '--is-bare-repository' ? 'false' : member.head;
+        if (args[0] === 'merge-tree') { assert.deepEqual(args.slice(-2), ['current-dev', member.head]); return 'merged-tree\0'; }
+        if (args[0] === 'commit-tree') return 'merged-commit';
+        throw new Error(`unexpected Git ${args[0]}`);
+      },
+      facts: async (tree, head, base, closing) => {
+        assert.deepEqual([tree, head, base, closing], ['merged-tree', member.head, 'current-dev', ['T-1']]);
+        return { context: null, workers: 1 };
+      },
+      identity: async () => 'verification-tree', checkout: async () => {}, remove: async () => {},
+    }, base),
+    committedTreeOrThrow: async (_root, base) => { assert.equal(base, 'current-dev'); return 'base-verification-tree'; },
+    checkoutMergeBatch: async (_root, candidate) => { assert.equal(candidate.head, 'merged-commit'); events.push('checkout'); },
+    verificationCommands: async cwd => { assert.match(cwd, /enqueue-/); return { check: 'npm run check', test: '', prepare: '' }; },
+    beginCandidateCommand: async () => ({ complete: async () => {}, retain: async () => { assert.fail('closed fixture needs no retention'); } }),
+    forward: text => { assert.doesNotMatch(text, /synthetic-fixture-value/); },
+    suiteCommand: async (command, cwd, env, _native, _inspection, output) => {
+      assert.equal(command, 'npm run check');
+      assert.equal(env?.HOME, join(cwd, 'home'));
+      assert.equal(env?.GIT_DIR, undefined);
+      assert.equal(env?.DIGITALOCEAN_TOKEN, undefined);
+      events.push('check');
+      const observe = typeof output === 'function' ? output : output?.observe;
+      observe?.('x'.repeat(32000)); observe?.('\nAuthorization: Bearer synthetic-fixture-value\nsrc/parser.ts:7: finding');
+      return { code: 1, cause: 'check failed', closure: { state: 'closed', pid: 43001, birth: 'check-birth', captured: [], unverified: [], nativeClose: { code: 1, signal: null } } };
+    },
+    removeMergeBatch: async () => { events.push('remove'); throw new Error('cleanup unavailable'); },
+  });
+  await step(() => wait('merged candidate refusal', () => assert.rejects(() => checkedEnqueue(backend, async () => { assert.fail('must not enqueue'); }), error => {
+    assert.ok(error instanceof MergeError);
+    assert.equal(error.code, 'merge-test-lint');
+    assert.match(error.message, /npm run check: exit 1/);
+    assert.match(error.message, /src\/parser.ts:7: finding/);
+    assert.doesNotMatch(error.message, /synthetic-fixture-value/);
+    assert.match(error.message, /secondary diagnostic: preflight cleanup failed/);
+    assert.ok(error.message.length < 17000);
+    return true;
+  })));
+  assert.deepEqual(events, ['checkout', 'check', 'remove']);
+}));
+
+test('enqueue checks the merged candidate before mutation and cleans up findings and moved bases', async t => guardedMemberCase(t, async (_t, step, wait) => {
+  for (const scenario of ['finding', 'moved once', 'moved twice', 'green', 'cleanup', 'check throws'] as const) {
+    const events: string[] = [];
+    let round = 0, mutations = 0;
+    const work = () => checkedEnqueue({
+      prepare: async () => { events.push(`prepare ${++round}`); return round; },
+      check: async candidate => { events.push(`check ${candidate}`); if (scenario === 'check throws') throw new Error('checkout incomplete'); return { command: 'npm run check', code: scenario === 'finding' ? 1 : 0, tail: 'src/parser.ts:7: lint finding' }; },
+      remove: async candidate => { events.push(`remove ${candidate}`); if (scenario === 'cleanup') throw new Error('cleanup incomplete'); },
+    }, async candidate => {
+      events.push(`locked ${candidate}`);
+      if (scenario === 'moved twice' || scenario === 'moved once' && candidate === 1) throw new EnqueueBaseMoved();
+      mutations++;
+      return 'queued';
+    });
+    await step(() => wait(scenario, async () => {
+      if (scenario === 'finding') await assert.rejects(work, /npm run check.*exit 1[\s\S]*src\/parser.ts:7/);
+      else if (scenario === 'cleanup') await assert.rejects(work, /cleanup incomplete/);
+      else if (scenario === 'check throws') await assert.rejects(work, /checkout incomplete/);
+      else if (scenario === 'moved twice') await assert.rejects(work, /dev moved during preflight/);
+      else assert.equal(await work(), 'queued');
+    }));
+    assert.equal(mutations, ['finding', 'moved twice', 'cleanup', 'check throws'].includes(scenario) ? 0 : 1);
+    assert.deepEqual(events, ['finding', 'cleanup', 'check throws'].includes(scenario) ? ['prepare 1', 'check 1', 'remove 1'] : scenario.startsWith('moved')
+      ? ['prepare 1', 'check 1', 'remove 1', 'locked 1', 'prepare 2', 'check 2', 'remove 2', 'locked 2']
+      : ['prepare 1', 'check 1', 'remove 1', 'locked 1']);
+  }
+}));
 
 /** Enroll before acquisition; even late fixture hooks must join the whole body. */
 function joinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep) => Promise<void>) {
@@ -899,7 +1124,7 @@ for (const unresolved of [false, true]) for (const refusal of ['legacy', 'marked
   const markers = new Map<string, string>();
   const host: CandidateOwnershipHost = {
     inspect: async () => ({ root: f.root, cwd: legacy.cwd, gitdir: join(f.root, 'fake-gitdir'), rootBirth: 'root', birth, gitBirth: 'git', head: legacy.head, tree: legacy.tree }),
-    read: async path => markers.get(path) ?? '', write: async (path, text) => { markers.set(path, text); },
+    read: async path => { if (!markers.has(path) && path.endsWith('/cland-check-owner.json')) throw Object.assign(new Error('absent fixture marker'), { code: 'ENOENT' }); return markers.get(path) ?? ''; }, write: async (path, text) => { markers.set(path, text); },
   };
   if (refusal === 'marked') {
     await step(() => captureCandidateOwnership(f.root, legacy, {}, host));
@@ -979,7 +1204,7 @@ test('candidate cleanup accepts the var to private-var alias and preserves repla
   const candidate: BatchCandidate = { base: 'base', head: 'head', tree: 'tree', cwd: '/var/scratch/candidate', budgetLines: [] };
   let observation = { root: '/private/var/scratch', cwd: '/private/var/scratch/candidate', gitdir: '/private/var/scratch/.git/worktrees/candidate', rootBirth: 'root-native-birth', birth: 'candidate-native-birth', gitBirth: 'gitdir-native-birth', head: candidate.head, tree: candidate.tree };
   const markers = new Map<string, string>();
-  const host: CandidateOwnershipHost = { inspect: async () => ({ ...observation }), read: async path => markers.get(path) ?? '', write: async (path, text) => { markers.set(path, text); } };
+  const host: CandidateOwnershipHost = { inspect: async () => ({ ...observation }), read: async path => { if (!markers.has(path) && path.endsWith('/cland-check-owner.json')) throw Object.assign(new Error('absent fixture marker'), { code: 'ENOENT' }); return markers.get(path) ?? ''; }, write: async (path, text) => { markers.set(path, text); } };
   await step(() => captureCandidateOwnership('/scratch', candidate, {}, host));
   await step(() => requireCandidateOwnership('/scratch', candidate, {}, host));
   let removed = 0, inspected = 0;

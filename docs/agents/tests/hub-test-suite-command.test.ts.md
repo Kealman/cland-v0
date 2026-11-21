@@ -1,5 +1,23 @@
 # hub/test/suite-command.test.ts
 
+Observer controls assert exact private exception identity and secondary cleanup
+identity through both fulfilled and rejected settlements; JSON/public streams
+must not contain either payload. The detached-writer control captures a known
+birth, closes both pipes positively, then supplies an existing row whose birth
+is unreadable outside the original group. Assert an incomplete receipt and
+refusal through the real checkout removal guard. Reconcile by authoritative
+absence and, separately, a positively observed different birth. Keep every late
+closure promise enrolled before assertions, so cleanup cannot restore seams
+while its original observation continues.
+
+Protected-output controls observe the real supervisor's forwarded streams,
+inject a throwing observer, and assert native settlement without publishing its
+payload. Closure controls inject an inherited writer and an error before native
+close. Both retain structured incomplete receipts until the same owner observes
+native close, pipe EOF and an empty authoritative process census. Run the whole
+callback under stageCase; preserve the fake seams and positive native guard
+until its command and any deferred closure obligation have joined.
+
 The scoped CLI guard regression uses an in-memory callback fake as its
 underlying launch. It proves the exact scoped callback is delegated once,
 while unscoped/altered entries, custom promisification and spawn are refused;

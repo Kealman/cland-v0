@@ -1,5 +1,70 @@
 ## Running
 
+### Enqueue preflight
+
+With the merge queue enabled, code enqueue prepares the reviewed item head
+merged with current dev, projects the item's closure through the shared wording
+lint, and runs the candidate's configured `[verification].check` in an isolated
+checkout. This repository configures `npm run check`, including whole-source
+lints, typechecking and build. If the resolved candidate/root check is empty,
+enqueue retains immutable tier/test lint and projected wording checks but runs
+no command. It continues with the optional `preflight` result field set to
+`preflight skipped: no verification check configured`; the CLI prints that note
+after its queued line. This applies even when the project has no verification
+commands at all. Check-only admission does not require `verification.test`;
+ordinary verification retains its existing test/tier-command requirements.
+A skip is not a passing command receipt.
+Findings from configured checks refuse before any
+queue mutation and name the command, native exit and a protected output tail of
+at most 16 KiB. The supervisor suppresses raw stdout/stderr forwarding for this
+check. It retains at most 1 MiB of command output and cause, protects the complete
+capture with the shared redactor, then cuts the tail. If that bound is exceeded,
+it drains further output and displays an explicit withholding marker instead of
+an unrecognizable raw suffix. Output observer failures stay inside the native
+owner and join its cleanup before settlement. Its exact private exception stays
+with that owner, separate from public diagnostics. A prior selected native stop
+receipt remains primary; later observer or cleanup failures are secondary.
+Thrown check failures, incomplete retention and cleanup failures use the same
+bounded shared-redactor projection before merge replies. The protected header
+is at most 4 KiB; primary and secondary diagnostics each retain at most 16 KiB.
+Each capture withholds above 1 MiB instead of releasing a raw suffix. Private
+causes are nonenumerable or held in a private owner map, never wire fields.
+This enforcement was authorized in human triage A-19813 (ask 8e3dd5ab,
+2026-11-16). Tracker/docs immediate merges retain their existing path.
+
+The long check runs outside territory serialization. Its owned checkout is
+removed before locked admission. Under that lock, a changed task head refuses;
+a changed dev tip is accepted only if its verification tree is unchanged
+(tracker/rulebook metadata outside that tree). Other dev movement releases the
+lock and reruns once; a second movement refuses with `dev moved during preflight`.
+Cleanup failure prevents admission, retaining the first check failure and a
+secondary cleanup diagnostic when both fail. A native command result alone does
+not authorize removal: the command owner must observe native close, closed
+pipes and an authoritative process census confirming its captured tree and
+isolated group are gone. An incomplete receipt refuses enqueue, names the
+retained checkout and keeps its live cleanup obligation until positive closure.
+A durable command fence precedes launch and records closure before removal;
+copied or recovered fence fields do not inherit the live owner's authority.
+Shutdown joins that obligation. Missing or failed observations retain the root.
+A captured descendant that remains listed with an unreadable current birth
+also retains the fence, even outside the original process group. Only an
+authoritative absence or a positively observed different birth releases it.
+No timing-receipt allowance gate is part of this preflight.
+
+CLI and spoke merge requests wait up to 30 minutes for this preflight; cancel
+requests retain their one-minute reply deadline. These are client reply waits,
+not command runtime bounds or evidence that a timed-out request did not enqueue.
+The configured check uses the shared suite command supervisor and its stall and
+joined-cleanup behaviour. Its HOME, XDG paths and Git configuration are sealed
+to the disposable checkout with the shared fixture environment builder.
+
+Cancelling an item advances its in-memory cancellation revision even before it
+has a queue entry. The original preflight joins its check and cleanup, then
+refuses with `cancelled during preflight`; a fresh request captures the new
+revision and can enqueue. Admission checks the revision again under the lock
+immediately before mutation. Hub shutdown joins admitted preflight work from
+its first asynchronous read, retaining the existing incomplete-stop boundary.
+
 From the repository root:
 
 ```sh

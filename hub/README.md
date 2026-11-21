@@ -25,6 +25,10 @@ The [remote command reference](../docs/hub/remote-commands.md) describes local
 approval-code validation and known-invalid versus unknown request refusals.
 The [closed-item wording guard](../docs/hub/running.md) covers Markdown docs and
 site MDX prose against the candidate checkout's tracker.
+The [enqueue preflight](../docs/hub/running.md#enqueue-preflight) runs the merged
+candidate check outside serialization, protects bounded output before publishing
+its tail and retains checkouts whose native command closure is unconfirmed.
+An absent resolved check is reported explicitly as skipped in the enqueue result.
 Calibrated nightly soak deadlines, durable file rotation, unexecuted heartbeat
 receipts and timeout execution inventories are described
 in [Running](../docs/hub/running.md#soak-deadline-accounting).
@@ -173,6 +177,7 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Adapters and sessions](../docs/hub/adapters-and-sessions.md): managed Claude Bash guard refuses computed and unquoted-glob rm/rmdir targets; OpenCode server launch bounds port selections at eight, including repeated ports, within its launch deadline.
 - [The tracker](../docs/hub/the-tracker.md)
 - [Running](../docs/hub/running.md): executor API endpoint declarations, per-token request budgets, shared dependency preparation for local batch/probe checkouts and shared test gates for executor/host/bootstrap SSH binary overrides.
+- [Enqueue preflight](../docs/hub/running.md#enqueue-preflight): isolated merged-head checks, projected closure and bounded dev-movement retries before queue mutation.
 - [Artifacts](../docs/hub/artifacts.md) (includes offline QA brief lint; per-test Markdown guide references are checked by full path at the selected commit, with [report-only run-copy advice](../docs/agents/qa-brief-lint.md#corrected-run-copies))
 - [Coordinator account refusal procedure](../docs/hub/coordinator-account-refusal-procedure.md)
 - [Coordinator session procedure](../docs/hub/coordinator-session-procedure.md)

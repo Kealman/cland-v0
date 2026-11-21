@@ -16,7 +16,7 @@ export async function clandRunner(cwd: string): Promise<{ inheritedLease: boolea
 }
 
 /** Resolve once at admission. A candidate's explicit whole test takes precedence over root tiers. */
-export async function verificationCommands(cwd: string, root: string, env: NodeJS.ProcessEnv = process.env): Promise<VerificationCommands> {
+export async function verificationCommands(cwd: string, root: string, env: NodeJS.ProcessEnv = process.env, options: { requireTest?: boolean } = {}): Promise<VerificationCommands> {
   const read = async (dir: string) => {
     const text = await readFile(join(dir, '.cland/config.toml'), 'utf8').catch(error => {
       if (error.code === 'ENOENT') return null;
@@ -40,7 +40,7 @@ export async function verificationCommands(cwd: string, root: string, env: NodeJ
     if (runner.includes("supportsWebPhase = true") && [...await readTierAssignments(cwd) ?? []].some(([, tier]) => tier === 'Web')) tiers.Web = 'node hub/test/run-suite.ts --tier Web';
     return { ...commands, tiers };
   }
-  if (!commands.test) throw new Error("no [verification] test for this project; set it: cland config set verification.test '<command>'");
+  if (!commands.test && options.requireTest !== false) throw new Error("no [verification] test for this project; set it: cland config set verification.test '<command>'");
   return commands;
 }
 

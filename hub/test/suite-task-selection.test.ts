@@ -11,26 +11,59 @@ import { packageShards, serializeTierManifest, type TierManifest } from '../src/
 import { occasionSelection } from '../src/verification-occasion.ts';
 import { packageSuitePlan } from './run-suite.ts';
 import { verificationCommands } from '../src/verification-commands.ts';
+import { taskImporterSelection } from '../src/suite-interactions.ts';
+import { stageCase } from './stage-case-fixture.ts';
+
+test('task importer selection reaches the T3 execution file plan', t => {
+  const scope = stageCase(t);
+  return scope.wait('whole importer planner case', () => scope.run(async step => {
+    const f = await step(() => scope.wait('planner setup', async () => plannerFixture(scope.fixtures, serializeTierManifest({ version: 1, tests: {
+      'hub/test/unit.test.ts': 'T1', 'hub/test/component.test.ts': 'T2',
+      'hub/test/native.test.ts': 'T3', 'hub/test/other.test.ts': 'T3',
+    } }), scope.patch)));
+    await step(() => scope.wait('importer selection and final plans', async () => {
+    const selection: SuiteSelection = { mode: 'hub-selected', files: ['hub/src/parser.ts'], tests: ['hub/test/component.test.ts'], tiers: ['T1', 'T2'], reason: 'coverage' };
+    const tiers = new Map([['hub/test/native.test.ts', 'T3'], ['hub/test/other.test.ts', 'T3']] as const);
+    const selected = await taskImporterSelection('/memory', selection, tiers, async (_root, changed, candidates) => {
+      assert.deepEqual(changed, ['hub/src/parser.ts']);
+      assert.deepEqual(candidates, ['hub/test/native.test.ts', 'hub/test/other.test.ts']);
+      return ['hub/test/native.test.ts'];
+    });
+    assert.deepEqual(selected.durationCheck?.files, ['hub/test/native.test.ts']);
+    assert.deepEqual(selected.tiers, ['T1', 'T2', 'T3']);
+    assert.deepEqual(selected.tests, selection.tests);
+    assert.deepEqual(await f.plan(tierSuiteSelection(selected, 'T3')), ['hub/test/native.test.ts']);
+    assert.deepEqual((await taskImporterSelection('/memory', selection, tiers, async () => [])).tiers, ['T1', 'T2']);
+    const fallback = await taskImporterSelection('/memory', selection, tiers, async () => { throw new Error('graph unavailable'); });
+    assert.deepEqual(fallback.durationCheck?.files, ['hub/test/native.test.ts', 'hub/test/other.test.ts']);
+    assert.deepEqual(await f.plan(tierSuiteSelection(fallback, 'T3')), ['hub/test/native.test.ts', 'hub/test/other.test.ts']);
+    }));
+  }));
+});
 
 // T1 planners need the complete repository inventory, not hundreds of native
 // empty-file writes and reads. Model those immutable files at the filesystem edge.
 const source = await fs.readFile(new URL('./tiers.json', import.meta.url), 'utf8');
 const fixture = (t: TestContext) => plannerFixture(t, source);
-function plannerFixture(t: TestContext, source: string) {
+function plannerFixture(t: TestContext, source: string, patch?: (target: object, key: PropertyKey, value: unknown) => void) {
   const root = join(tmpdir(), 'task-tier-plan-memory');
   const manifest = JSON.parse(source) as TierManifest;
   const files = new Map(Object.keys(manifest.tests).map(file => [file, '']));
   files.set('hub/test/tiers.json', source);
   files.set('.cland/config.toml', '[verification]\ncheck = "npm run check"\ntest = "npm test"\n');
   const read = fs.readFile;
-  t.mock.method(fs, 'readFile', (async (...args: Parameters<typeof fs.readFile>) => {
+  const install = (key: 'readFile' | 'glob', value: unknown) => {
+    if (patch) patch(fs, key, value);
+    else t.mock.method(fs, key, value as never);
+  };
+  install('readFile', (async (...args: Parameters<typeof fs.readFile>) => {
     const path = String(args[0]);
     if (!path.startsWith(root + '/')) return read(...args);
     const text = files.get(path.slice(root.length + 1));
     if (text === undefined) throw Object.assign(new Error(`missing fixture file: ${path}`), { code: 'ENOENT' });
     return text;
   }) as typeof fs.readFile);
-  t.mock.method(fs, 'glob', (async function* (pattern, options) {
+  install('glob', (async function* (pattern, options) {
     assert.equal(options?.cwd, root, 'planner reads only its fixture repository');
     const patterns = typeof pattern === 'string' ? [pattern] : pattern;
     const exact = new Set(patterns.filter(pattern => !['*', '?', '{', '['].some(token => pattern.includes(token))));
@@ -38,7 +71,7 @@ function plannerFixture(t: TestContext, source: string) {
     for (const file of files.keys()) if (exact.has(file) || wildcard.some(pattern => matchesGlob(file, pattern))) yield file;
   }) as typeof fs.glob);
   syncBuiltinESMExports();
-  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  if (!patch) t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
   const tier = (file: string) => { const value = manifest.tests[file]!; return typeof value === 'string' ? value : value.tier; };
   const phases = (selection: SuiteSelection) => packageShards(root, selection.mode, undefined, selection, { workers: 2 });
   const plan = async (selection: SuiteSelection) => (await phases(selection)).flatMap(phase => phase.targets).sort();

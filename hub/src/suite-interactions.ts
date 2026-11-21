@@ -7,6 +7,21 @@ const paths = (output: string) => output.split('\0').filter(Boolean);
 
 export { importingTests, importingTestsFromSource } from './suite-import-graph.ts';
 
+/** Task importer evidence is executed before ready, independently of batch policy. */
+export async function taskImporterSelection(cwd: string, selection: SuiteSelection, assignments: ReadonlyMap<string, string>, scan = importingTests): Promise<SuiteSelection> {
+  const candidates = [...assignments].filter(([, tier]) => tier === 'T3').map(([file]) => file).sort();
+  const uncertain: string[] = [];
+  let selected: string[];
+  try { selected = await scan(cwd, selection.files, candidates, file => { uncertain.push(file); }); }
+  catch { selected = candidates; }
+  const importers = [...new Set([...selected, ...uncertain])].sort();
+  if (!importers.length) return selection;
+  const files = [...new Set([...selection.durationCheck?.files ?? [], ...importers])].sort();
+  return { ...selection, durationCheck: { ...selection.durationCheck, files },
+    tiers: [...new Set([...selection.tiers ?? [], 'T3' as const])].sort(),
+    reason: `${selection.reason}; task T3 importers: ${files.join(', ')}` };
+}
+
 /** The same pinned sibling delta feeds interaction reports and landing policy. */
 export async function batchMemberPaths(heads: readonly string[], git: Git): Promise<string[]> {
   const changed = new Set<string>();

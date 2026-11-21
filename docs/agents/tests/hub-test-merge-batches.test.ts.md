@@ -1,5 +1,30 @@
 # hub/test/merge-batches.test.ts
 
+Rejection ownership controls keep the exact private primary and secondary
+objects without mutating their messages, while public projections redact both.
+Checkpoint rejection beside a native check failure must preserve the native
+primary through the cause chain. Both closed and retained command paths are
+covered; pre-enrolled teardown resolves and joins controlled closure holds even
+after an assertion fails.
+
+The native-check adapter control carries an incomplete structured receipt through
+checkedEnqueue, then exercises removeOwnedBatchCandidate itself. Assert zero
+queue mutations and removal refusal while the writer is unresolved; release the
+producer's positive closure and observe guarded removal exactly once. The paired
+ownership control copies the persisted fence and candidate fields and must still
+refuse inherited cleanup authority. These are fake native-boundary receipts,
+not native process evidence.
+
+T-1901's enqueue controls use the guarded member owner with fake repository and
+command boundaries. Assert the exact merged dev/head inputs, projected closure,
+configured command, bounded output tail, cleanup before mutation, retained
+primary failure, one moved-base retry and refusal on the second move. Base
+validation accepts equal verification trees and refuses changed task heads.
+These are in-process admission controls; they do not execute a native check.
+
+Cancellation advances the item's revision during the fake check. Keep the
+original request's explicit refusal and zero queue mutations, observed cleanup,
+and a fresh-request success; cancellation of another item stays independent.
 Sharded batch controls fake every machine and reservation boundary. They retain
 all members while one child is missing, land only after every child reports
 green, and retain no landing on a red child. Existing controller cases explicitly

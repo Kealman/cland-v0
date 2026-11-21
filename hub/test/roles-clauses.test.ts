@@ -83,10 +83,10 @@ for (const [source, definitions] of sources) {
         assert.match(clause, /On `cover-quiet`, do other work or end the turn until `test-slot-available`; no polling/);
         assert.match(testProcedures, /Do other work or end the turn until `test-slot-available` arrives; no polling/);
         assert.match(clause, /Mark every criterion done before requesting the final review/);
-        assert.match(clause, /Tasks: T0–T2, Web, changed T3\/T4 once; web\/ batches add Web/);
-        assert.match(testProcedures, /Changed T3\/T4 files and mapped T4 guards run once; remaining T3 smoke runs in batches and integrated runs/);
+        assert.match(clause, /Tasks: T0–T2, Web, changed T3\/T4 and T3 importers once; web\/ batches add Web/);
+        assert.match(testProcedures, /Changed T3\/T4 files, T3 importers and mapped T4 guards run once; other T3 smoke runs in batches and integrated runs/);
         assert.match(clause, /docs\/agents\/tests\.md#implementer-test-selection/);
-        assert.match(clause, /fallback all T2; changed T3\/T4 once, remaining T3 deferred/);
+        assert.match(clause, /fallback all T2; changed T3\/T4 and T3 importers once, other T3 deferred/);
         assert.match(clause, /`startDaemon` only for assertions about hub process lifecycle, named in the test/);
         assert.match(testProcedures, /startup, shutdown, signals, crash\/restart, lock\/discovery\/PID identity, orphan sweeping, watchdog behavior, or CLI behavior with the hub down or unreachable/);
         assert.match(clause, /Request review yourself from `reviewer` in the item topic/);

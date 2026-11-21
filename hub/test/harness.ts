@@ -480,6 +480,7 @@ export type ProjectHubOptions = {
   publishRelease?: import('../src/hub/dispatch.ts').DispatcherOptions['publishRelease'];
   devT3Repository?: import('../src/hub/dev-t3-probe.ts').ProbeRepository;
   batchRepository?: import('../src/hub/merge-batch-territory.ts').BatchRepository;
+  enqueuePreflight?: typeof import('../src/hub/enqueue-preflight-native.ts').enqueuePreflight;
   /** Replace external account probes while retaining the registry and poll scheduling. */
   accountReader?: import('../src/accounts/poller.ts').AccountReader;
   /** Snapshot warming is independent of the tracker's injected Git facts. */
@@ -522,6 +523,16 @@ export const fixtureLockIdentity = (env: NodeJS.ProcessEnv, native = false): Ret
 
 /** Default project fixture: fake harnesses and probes, with production discovery and socket edges.
  * Explicit adapters and facts take precedence. Hub process lifecycle assertions use startDaemon. */
+export const fakeEnqueuePreflight: NonNullable<ProjectHubOptions['enqueuePreflight']> = (root, entry) => ({
+  identity: async head => head,
+  prepare: async () => {
+    const { member, base } = await entry();
+    return { base, head: member.head, taskHead: member.head, baseTree: base, tree: member.head, cwd: join(root, '.cland/run/fake-enqueue'), budgetLines: [] };
+  },
+  check: async () => ({ command: 'fixture check', code: 0, tail: '' }),
+  remove: async () => {},
+});
+
 export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; hostOwner: Dispatcher['hostOwner']; hostEnvironment: NodeJS.ProcessEnv; stopped: Promise<void>; stop: () => Promise<void>; dispose: () => Promise<void>; verificationSettled: () => Promise<void> }> {
   // Register ownership before acquisition: a caller timeout can run after hooks
   // while serveProject is still opening watchers and edges. Join that startup
@@ -591,6 +602,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     readBase: async () => null,
     hasTerritory: async () => false,
     territoryLock: async <T>(_root: string, operation: () => Promise<T>) => operation(),
+    enqueuePreflight: fakeEnqueuePreflight,
   } : {};
   const droplet = options.probes !== 'native'
     ? { ...options.droplet, processes: options.droplet?.processes ?? lockProcesses }

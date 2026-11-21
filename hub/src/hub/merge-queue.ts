@@ -4,6 +4,7 @@ import type { DependencyInstall, MergeQueueEntry } from '../protocol.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import { branchTips, gitIn, resolveCommit, type Git } from '../tracker/verdict-git.ts';
 import { MergeError } from '../merge.ts';
+import { EnqueueCancellations } from './enqueue-preflight.ts';
 import type { Store } from './store.ts';
 import type { Clock } from './clock.ts';
 import type { Resumed } from './worktrees.ts';
@@ -21,6 +22,7 @@ export class MergeQueue {
   readonly enabled: () => boolean;
   readonly #unwatch: Array<() => void>;
   #stopped = false;
+  readonly #cancellations = new EnqueueCancellations();
   readonly dropped: (entry: MergeQueueEntry, reason: string) => void;
   readonly warn: (view: ItemView, warnings: DemoWarning[]) => void;
   constructor(store: Store, tracker: Tracker, clock: Clock, enabled: () => boolean, git?: Git, env?: NodeJS.ProcessEnv, dropped: (entry: MergeQueueEntry, reason: string) => void = () => {}, warn: (view: ItemView, warnings: DemoWarning[]) => void = () => {}) {
@@ -88,10 +90,13 @@ export class MergeQueue {
 
   cancel(item: string): { item: string; cancelled: boolean } {
     item = this.tracker.resolveId(item) ?? item;
+    this.#cancellations.cancel(item);
     const entry = this.entries().find(entry => entry.item === item);
     if (entry) this.drop(entry, 'cancelled');
     return { item, cancelled: !!entry };
   }
+
+  captureCancellation(item: string): () => void { return this.#cancellations.capture(item); }
 
   drop(entry: MergeQueueEntry, reason: string): void {
     this.store.transaction(() => {

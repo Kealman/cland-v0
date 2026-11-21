@@ -6,6 +6,10 @@ reviewed branches independently pass dev but conflict on parser.txt. Enqueue the
 first, then assert the second response is merge-conflict with the first item's
 identity and actual paths, with identical refs and FIFO entries. An independent
 branch and repeated request still enqueue. No suite or batch execution is needed.
+This fixture deliberately has no verification commands. The no-check preflight
+must continue to the original enqueue/conflict gates; its first admission must
+not require a test command. The explicit skipped-result control lives in the
+T2 merge-queue file, keeping this existing native test unchanged.
 
 All child environments come from the existing prepared-project/harness builders
 and fixtureEnvironment with scratch Git configuration. Cleanup waits for the

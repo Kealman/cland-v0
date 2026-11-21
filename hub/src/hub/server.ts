@@ -38,6 +38,7 @@ export type HubBaseOptions = CoreOptions & {
   publishRelease?: DispatcherOptions['publishRelease'];
   devT3Repository?: DispatcherOptions['devT3Repository'];
   batchRepository?: DispatcherOptions['batchRepository'];
+  enqueuePreflight?: DispatcherOptions['enqueuePreflight'];
   git?: DispatcherOptions['git'];
   droplet?: DropletDependencies;
   deferExecutorRecovery?: DispatcherOptions['deferExecutorRecovery'];
@@ -129,6 +130,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.hasTerritory ? { hasTerritory: options.hasTerritory } : {}),
     ...(options.devT3Repository ? { devT3Repository: options.devT3Repository } : {}),
     ...(options.batchRepository ? { batchRepository: options.batchRepository } : {}),
+    ...(options.enqueuePreflight ? { enqueuePreflight: options.enqueuePreflight } : {}),
     ...(options.territoryLock ? { territoryLock: options.territoryLock } : {}),
     ...(options.artifactFiles ? { artifactFiles: options.artifactFiles } : {}),
     secret: options.secret,

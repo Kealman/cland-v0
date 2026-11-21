@@ -7,6 +7,16 @@ metadata:
 
 Lane order uses `follows` between epics, separate from `blocked_by`. A follow is met when its predecessor closes, or has task children all closed with its last ticket merged. When every ticket of the predecessor’s last stage is in review, cut the following epic’s tickets with `to-tickets` and write its `plan-epic`; launch the first stage on the last merge once blockers are closed and follows met. The predecessor’s QA demo runs in parallel. Until either demo verdict is recorded or the predecessor closes, the merge gate holds follower tickets whose diff overlaps files changed by that predecessor’s merges on dev; tickets with no overlap can merge.
 
+Code enqueue runs the configured check on an isolated merged head before taking
+the territory lock. A finding refuses before queue mutation; inspect its command
+and output tail. Dev verification-tree movement retries once, then refuses.
+Without a resolved candidate/root check it reports
+`preflight skipped: no verification check configured` in the enqueue result and
+continues through the existing gates; this supplies no verification pass. A
+missing test command does not block check-only preflight.
+See [enqueue preflight](../../../docs/hub/running.md#enqueue-preflight) for the
+authorized enforcement and cleanup boundary.
+
 Enqueue also posts advisory `merge-demo-warning` notices in the candidate's topic (Agents fallback), to the Coordinator and item lead, naming overlapping epic/files regardless of `follows`. An open epic is under demo with an active unexpired lease, or all task children closed and last ticket landed on dev without a hub QA demo verdict; stage QA is separate. Closed epics and recorded demos without active leases are excluded. Unreadable lease/history evidence posts `merge-demo-warning-unavailable`; enqueue succeeds while authorization, lane and freshness refusals remain enforced. Inspect warnings when sequencing demo and landing. See hub/README.md for the contract.
 
 Use the hub's `merge` tool with `item: T-<n>`, or `cland merge T-<n>` from the supervising Lead's or Coordinator's shell. Task work reaches the task base (`dev` by default) only through this gate.
@@ -21,7 +31,7 @@ Default subscriptions give each Lead its subtree outside descendant leads and th
 
 Request source review first. Only after a clear source verdict does the Implementer run `cland verify` (the transition alias is `cland suite`) at the exact reviewed head. A fix or merge that changes the head needs a new source review before a new run. An unchanged head may reuse an earlier green run through the tree-hash cache. Require the same-head successful result and the Reviewer’s final verdict before merging; queueing or a source verdict alone is not a pass. The gate still relies on current hub-written review/QA verdicts. See `docs/agents/tests.md`.
 
-With `[merge] queue = true`, a task verify runs T0–T2 plus changed T3/T4 files and tiers.json mapped T4 read-path guards once (duration procedure: `docs/agents/tests.md`) when both the candidate and hosting hub enable it. The hub supplies T3 in the merge batch. At stage close, epic close or before release, the Coordinator runs `cland verify all --occasion stage|epic|release --report <topic>` on clean root `dev` at fetched `origin/dev`. QA may set `epic` for its integrated demo. These occasions include T4 and may shard across remote slots; hub-owned batches with cland tier commands may shard under the same slot/spend policy; local and whole-test-only batches use one machine. The nightly soak includes T4 on one droplet. Read `docs/agents/tests.md` for selection, spend, stage-platform evidence and cache rules.
+With `[merge] queue = true`, a task verify runs T0–T2 plus changed T3/T4 files, T3 importers and tiers.json mapped T4 read-path guards once (duration procedure: `docs/agents/tests.md`) when both the candidate and hosting hub enable it. The hub supplies T3 in the merge batch. At stage close, epic close or before release, the Coordinator runs `cland verify all --occasion stage|epic|release --report <topic>` on clean root `dev` at fetched `origin/dev`. QA may set `epic` for its integrated demo. These occasions include T4 and may shard across remote slots; hub-owned batches with cland tier commands may shard under the same slot/spend policy; local and whole-test-only batches use one machine. The nightly soak includes T4 on one droplet. Read `docs/agents/tests.md` for selection, spend, stage-platform evidence and cache rules.
 
 Periodic dev T3 runs only when the verification candidate tree differs from the last started run's tree; tracker-only commits retain that tree. Eligibility uses the shared exclusions in `hub/src/verification-tree.ts`. See `docs/agents/tests.md`, "Periodic dev T2/T3 and release gate".
 

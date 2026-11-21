@@ -10,7 +10,9 @@ import { PassThrough } from 'node:stream';
 import fs from 'node:fs/promises';
 import nativeFs from 'node:fs';
 import { fakeNativeGuard } from './fake-native-guard.ts';
-import { suiteCommand, type SuiteInspectionReceipt } from '../src/suite-command.ts';
+import { suiteCommand, SuiteCommandFailure, commandFailure, type SuiteCommandClosure, type SuiteInspectionReceipt } from '../src/suite-command.ts';
+import { captureCandidateOwnership, beginCandidateCommand, removeOwnedBatchCandidate, type CandidateOwnershipHost } from '../src/batch-candidate-ownership.ts';
+import type { BatchCandidate } from '../src/hub/merge-batches.ts';
 import { startupOwnerLine } from '../src/suite-startup-owner.ts';
 import { suiteWorker } from '../src/hub/suite-worker.ts';
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
@@ -19,6 +21,167 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { clandCliLaunch } from './tier-cli.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { ProtectedCommandCapture } from '../src/suite-command-output.ts';
+
+for (const reconciled of ['absence', 'birth reuse'] as const) test(`a captured detached writer with unknown current birth retains the real checkout fence${reconciled === 'birth reuse' ? ' until observed birth reuse' : ''}`, t => {
+  const scope = stageCase(t);
+  const child = Object.assign(new EventEmitter(), { pid: 43001, stdout: new PassThrough(), stderr: new PassThrough(), kill() { return true; } });
+  const captured = Promise.withResolvers<void>();
+  const row = { pid: child.pid, parent: 1, group: child.pid, started: 'start', identity: 'birth', state: 'S', command: 'fake check' };
+  const writer = { ...row, pid: 43002, parent: child.pid, group: 44000, identity: 'writer-birth' };
+  let phase: 'captured' | 'unknown' | 'absent' | 'reused' = 'captured';
+  let ended = false, result: ReturnType<typeof suiteCommand> | undefined, late: Promise<unknown> | undefined;
+  const close = () => { if (!ended) { ended = true; child.stdout.end(); child.stderr.end(); child.emit('close', 0, null); } };
+  scope.releaseOnClose(() => { phase = 'absent'; close(); });
+  scope.requireClose(async () => { phase = 'absent'; close(); await result?.catch(() => {}); await late; });
+  return scope.wait('whole captured-writer fence case', () => scope.run(async step => {
+    scope.patch(fs, 'readFile', async () => { throw Object.assign(new Error('fixture absent'), { code: 'ENOENT' }); });
+    scope.patch(cp, 'spawn', () => child);
+    const candidate: BatchCandidate = { base: 'base', head: 'head', tree: 'tree', cwd: '/owned/candidate', budgetLines: [] };
+    const observed = { root: '/owned', cwd: candidate.cwd, gitdir: '/owned/.git/worktrees/candidate', rootBirth: 'root', birth: 'cwd', gitBirth: 'git', head: candidate.head, tree: candidate.tree };
+    const files = new Map<string, string>();
+    const host: CandidateOwnershipHost = { inspect: async () => observed, write: async (path, text) => { files.set(path, text); }, read: async path => {
+      if (!files.has(path)) throw Object.assign(new Error('fixture absent'), { code: 'ENOENT' }); return files.get(path)!;
+    } };
+    await captureCandidateOwnership('/owned', candidate, {}, host);
+    const fence = await beginCandidateCommand(candidate, host);
+    let removals = 0;
+    const remove = () => removeOwnedBatchCandidate('/owned', candidate, {}, async () => { removals++; }, host,
+      { rows: async () => [], paths: async () => ({ cwd: null, files: [] }), sameUser: async () => true, missing: () => false, end: async () => true });
+    result = suiteCommand('fake check', candidate.cwd, {}, {
+      processIdentityAsync: async () => 'birth', processStartedAsync: async () => 'start',
+      systemProcesses: async () => {
+        if (phase === 'captured') { captured.resolve(); return [row, writer]; }
+        return phase === 'unknown' ? [{ ...writer, parent: 1, identity: null, identityError: 'controlled unreadable birth' }]
+          : phase === 'reused' ? [{ ...writer, parent: 1, identity: 'positively-observed-new-birth' }] : [];
+      },
+      stdioWriters: async () => [], endProcess: async () => { assert.fail('unknown birth grants no signal authority'); },
+    }, undefined, { forward: false, requireClosure: true });
+    await step(() => scope.wait('initial ancestry census', () => captured.promise));
+    // Arm EOF observers before closing the pipes; closure is assessed only after
+    // both actual stream-end receipts, so unknown birth is the deciding boundary.
+    const eof = Promise.all([new Promise<void>(resolve => child.stdout.once('end', resolve)), new Promise<void>(resolve => child.stderr.once('end', resolve))]);
+    phase = 'unknown'; child.stdout.end(); child.stderr.end();
+    await step(() => scope.wait('pipe EOF', () => eof));
+    close();
+    const outcome = await step(() => scope.wait('command result', () => result!));
+    const closure = outcome.closure;
+    if (closure?.state === 'incomplete') late = closure.whenClosed.then(receipt => fence.complete(receipt));
+    assert.equal(closure?.state, 'incomplete', 'an existing unknown-birth row is not an absence or reuse receipt');
+    if (closure?.state !== 'incomplete') assert.fail('missing incomplete receipt');
+    await fence.retain(closure);
+    await assert.rejects(remove, /closure unconfirmed/);
+    assert.equal(removals, 0);
+    phase = reconciled === 'absence' ? 'absent' : 'reused';
+    await step(() => scope.wait('positive writer absence or different birth', () => late!));
+    await remove();
+    assert.equal(removals, 1);
+  }));
+});
+
+for (const mode of ['inherited writer', 'native error before close', 'unverified open pipes'] as const) test(`protected command closure retains ${mode} until a positive receipt`, t => {
+  const scope = stageCase(t);
+  const child = Object.assign(new EventEmitter(), { pid: 43001, stdout: new PassThrough(), stderr: new PassThrough(), kill() { return true; } });
+  const inspected = Promise.withResolvers<void>();
+  const row = { pid: child.pid, parent: 1, group: child.pid, started: 'start', identity: 'birth', state: 'S', command: 'fake command' };
+  const writer = { ...row, pid: 43002, parent: child.pid, identity: mode === 'unverified open pipes' ? null : 'writer-birth' };
+  let rootLive = true, writerLive = true, closed = false;
+  let result: ReturnType<typeof suiteCommand> | undefined, closure: SuiteCommandClosure | undefined;
+  const close = () => {
+    rootLive = false;
+    if (!closed) { closed = true; child.stdout.end(); child.stderr.end(); child.emit('close', 1, null); }
+  };
+  const release = () => { writerLive = false; close(); };
+  scope.releaseOnClose(release);
+  scope.requireClose(async () => { release(); await result?.catch(() => {}); if (closure?.state === 'incomplete') await closure.whenClosed; });
+  return scope.wait('whole native closure case', () => scope.run(async step => {
+    scope.patch(fs, 'readFile', async () => { throw Object.assign(new Error('fixture absent'), { code: 'ENOENT' }); });
+    scope.patch(cp, 'spawn', () => child);
+    result = suiteCommand('fake check', '/scratch/protected', {}, {
+      processStartedAsync: async () => 'start', processIdentityAsync: async () => 'birth',
+      systemProcesses: async () => { inspected.resolve(); return [...(rootLive ? [row] : []), ...(writerLive ? [writer] : [])]; },
+      stdioWriters: async () => writerLive ? [writer] : [], endProcess: async proof => {
+        assert.equal(mode, 'unverified open pipes');
+        assert.equal(proof.pid, child.pid, 'unknown writer identity never authorizes a signal');
+        rootLive = false; child.emit('exit', 1, null); return true;
+      },
+    }, undefined, { forward: false, requireClosure: true, observe: () => { if (mode === 'unverified open pipes') throw new Error('controlled observer failure'); } });
+    const settlement = result.then(value => value, error => error);
+    await step(() => scope.wait('captured process census', () => inspected.promise));
+    if (mode === 'inherited writer') close();
+    else if (mode === 'native error before close') child.emit('error', new Error('native fixture failure'));
+    else child.stdout.write('trigger protected owner cleanup\n');
+    const outcome = await step(() => scope.wait('native result', () => settlement));
+    if (mode === 'native error before close') assert.ok(outcome instanceof SuiteCommandFailure);
+    closure = outcome.closure;
+    assert.equal(closure?.state, 'incomplete', 'a result or error cannot substitute for native tree closure');
+    if (closure?.state !== 'incomplete') assert.fail('missing incomplete native receipt');
+    if (mode === 'unverified open pipes') {
+      assert.ok(closure.unverified.includes(writer.pid));
+      assert.equal(closure.nativeClose, null);
+      assert.equal(child.stdout.destroyed, false, 'an incomplete owner keeps the original pipe endpoints');
+      assert.equal(outcome.code, 1);
+    } else assert.ok(closure.captured.some(value => value.pid === writer.pid));
+    release();
+    const receipt = await step(() => scope.wait('positive native closure', () => closure!.state === 'incomplete' ? closure!.whenClosed : Promise.reject(new Error('unexpected receipt'))));
+    assert.equal(receipt.state, 'closed');
+    assert.deepEqual(receipt.nativeClose, { code: 1, signal: null });
+    assert.equal(receipt.pid, child.pid);
+  }));
+});
+
+for (const { throws, cleanupReject, name } of [
+  { throws: false, cleanupReject: false, name: 'never forwards raw credential chunks' },
+  { throws: true, cleanupReject: false, name: 'contains observer failure and joins cleanup' },
+  { throws: true, cleanupReject: true, name: 'preserves observer primary across cleanup rejection' },
+]) test(`protected command output ${name}`, t => {
+  const scope = stageCase(t);
+  const child = Object.assign(new EventEmitter(), { pid: 43001, stdout: new PassThrough(), stderr: new PassThrough(), kill() { return true; } });
+  const launched = Promise.withResolvers<void>();
+  const primary = new Error('Authorization: Bearer private-observer-value');
+  const secondary = new Error('token=private-cleanup-value');
+  let result: ReturnType<typeof suiteCommand> | undefined, ended = false;
+  const close = () => {
+    if (ended) return;
+    ended = true; child.stdout.end(); child.stderr.end(); child.emit('exit', 0, null); child.emit('close', 0, null);
+  };
+  scope.releaseOnClose(close);
+  scope.requireClose(async () => { close(); await result?.then(async value => {
+    if (value.closure?.state === 'incomplete') await value.closure.whenClosed;
+  }, async error => { if (error instanceof SuiteCommandFailure && error.closure.state === 'incomplete') await error.closure.whenClosed; }); });
+  return scope.wait('whole protected output case', () => scope.run(async step => {
+    const forwarded: string[] = [], capture = new ProtectedCommandCapture();
+    scope.patch(process.stdout, 'write', (chunk: string) => { forwarded.push(String(chunk)); return true; });
+    scope.patch(process.stderr, 'write', (chunk: string) => { forwarded.push(String(chunk)); return true; });
+    scope.patch(fs, 'readFile', async () => { throw Object.assign(new Error('fixture absent'), { code: 'ENOENT' }); });
+    scope.patch(cp, 'spawn', () => { launched.resolve(); return child; });
+    const row = { pid: child.pid, parent: 1, group: child.pid, started: 'start', identity: 'birth', state: 'S', command: 'fake command' };
+    result = suiteCommand('fake check', '/scratch/protected', {}, {
+      processStartedAsync: async () => 'start', processIdentityAsync: async () => 'birth',
+      systemProcesses: async () => ended ? [] : [row], stdioWriters: async () => [], endProcess: async () => { close(); if (cleanupReject) throw secondary; return true; },
+    }, undefined, { forward: false, requireClosure: true, observe: chunk => { if (throws) throw primary; capture.write(chunk); } });
+    const settlement = result.then(value => value, error => error);
+    await step(() => scope.wait('launch receipt', () => launched.promise));
+    assert.doesNotThrow(() => child.stdout.write('Authorization: Bearer private-command-value\n'));
+    if (!throws) close();
+    const outcome = await step(() => scope.wait('native completion', () => settlement));
+    assert.equal(ended, true, 'cleanup joins the native command before settlement');
+    if (cleanupReject) assert.ok(outcome instanceof SuiteCommandFailure);
+    else {
+      assert.equal(outcome.code, throws ? 1 : 0);
+      if (throws) assert.match(outcome.cause, /output observer failed/);
+      assert.doesNotMatch(outcome.cause, /private-observer-value/);
+    }
+    if (throws) {
+      assert.equal(commandFailure(outcome)?.primary, primary, 'the exact private producing exception survives settlement');
+      assert.deepEqual(commandFailure(outcome)?.secondary, cleanupReject ? [secondary] : []);
+      assert.doesNotMatch(JSON.stringify(outcome), /private-observer-value|private-cleanup-value/);
+    }
+    assert.doesNotMatch(forwarded.join(''), /private-command-value|private-observer-value|private-cleanup-value/);
+    if (!throws) assert.match(capture.finish(), /\[redacted\]/);
+  }));
+});
 
 test('native guard permits only the scoped CLI callback launch and fences other entry points', async t => {
   let calls = 0;

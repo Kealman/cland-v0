@@ -1,6 +1,12 @@
 import { fixtureCommand as cland } from './fixture-command.ts';
 import { beforeEach } from 'node:test';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
+import { stageCase } from './stage-case-fixture.ts';
+const preflightCase = 'preflight findings and cancellation refuse before queue mutation while fresh requests enqueue';
+const preflightCleanupCase = 'preflight guard stays installed when owned cleanup rejects';
+const skippedPreflightCase = 'enqueue records skipped preflight when no verification check is configured';
+const protectedReplyCases = ['native', 'retained', 'secondary cleanup', 'oversize', 'oversize secondary'].map(mode => ({ mode, name: `enqueue protects ${mode} rejection at the public reply boundary` }));
+const preflightNativeGuard = (t: TestContext) => fixtureNativeGuard(t, { fenced: true });
 const cleanupProjectionCases = [false, true].map(rejectConstructor => ({ rejectConstructor,
   name: `queue cleanup projection ${rejectConstructor ? 'joins constructor rejection with captured databases' : 'exposes retained cleanup separately from a blocked batch'}` }));
 const ownedGuardAdmissions = new Set<string>();
@@ -9,15 +15,16 @@ beforeEach(async t => {
   if (!('assert' in t)) throw new Error('native guard requires a test context');
   // These exact cases retain the same complete guard through their stronger
   // whole-case positive-close fence; nesting guards would restore out of order.
-  if (t.name === batchGitCase || cleanupProjectionCases.some(testCase => testCase.name === t.name)) { ownedGuardAdmissions.add(t.name); return; }
-  await fixtureNativeGuard(t);
+  if (t.name === skippedPreflightCase || t.name === preflightCleanupCase || protectedReplyCases.some(testCase => testCase.name === t.name) || t.name === batchGitCase || cleanupProjectionCases.some(testCase => testCase.name === t.name)) { ownedGuardAdmissions.add(t.name); return; }
+  if (t.name === preflightCase) await preflightNativeGuard(t);
+  else await fixtureNativeGuard(t);
 });
 // T2: durable merge queue admission through projectHub and its public merge/task frames.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, inProcessSpoke, projectHub, tempProject, until, type ProjectHubOptions } from './harness.ts';
+import { connectUi, inProcessSpoke, projectHub, tempProject, until, fakeEnqueuePreflight, type ProjectHubOptions } from './harness.ts';
 import { manualTips } from './freshness-harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { dispatcherSpoke, value } from './validation-support.ts';
@@ -43,7 +50,73 @@ import { afterCleanup } from './process-cleanup.ts';
 import { HubCore } from '../src/hub/core.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import { PruneProcesses } from '../src/prune-processes.ts';
+import cp from 'node:child_process';
+import { drainFixtureCleanup } from './process-cleanup.ts';
 import { pruneCase, fakePrune } from './prune-case.ts';
+import { ownedDatabases } from './owned-tracker.ts';
+import { SuiteCommandFailure } from '../src/suite-command.ts';
+import { EnqueueNativeIncomplete } from '../src/hub/enqueue-preflight.ts';
+import { enqueuePreflight } from '../src/hub/enqueue-preflight-native.ts';
+import { verificationCommands } from '../src/verification-commands.ts';
+
+test(skippedPreflightCase, t => {
+  assert.ok(ownedGuardAdmissions.delete(t.name));
+  const scope = stageCase(t);
+  let f: Awaited<ReturnType<typeof fixture>> | undefined;
+  return scope.wait('whole missing-check admission case', () => scope.run(async step => {
+    const open = ownedDatabases(scope, () => f?.stop());
+    let removed = 0;
+    f = await step(() => scope.wait('fixture setup without verification commands', () => fixture(scope.resources, {
+      verification: '', openDatabase: open,
+      enqueuePreflight: (root, entry, env) => enqueuePreflight(root, entry, env, {
+        prepareMergeBatch: async (_root, _id, members, _env, _provider, base) => ({ base: base!, head: members[0]!.head, tree: 'fixture-tree', cwd: root, budgetLines: [] }),
+        checkoutMergeBatch: async () => {}, committedTreeOrThrow: async () => 'fixture-tree', verificationCommands,
+        suiteCommand: async () => assert.fail('a skipped check must never execute a command'),
+        beginCandidateCommand: async () => assert.fail('a skipped check must never admit a native command owner'),
+        forward: () => assert.fail('a skipped check has no command output'), removeMergeBatch: async () => { removed++; },
+      }),
+    })));
+    const result = await step(() => scope.wait('durable skipped-preflight enqueue', () => value<{ item: string; queued: number; preflight?: string }>(f!.ui, { type: 'merge', item: f!.item.id })));
+    assert.equal(result.queued, 1);
+    assert.equal(result.preflight, 'preflight skipped: no verification check configured');
+    assert.equal(removed, 1, 'the prepared candidate still closes before admission');
+    const queue = await value<{ entries: Array<{ item: string }> }>(f.ui, { type: 'merge.queue' });
+    assert.deepEqual(queue.entries.map(value => value.item), [f.item.id]);
+  }));
+});
+
+for (const { mode, name } of protectedReplyCases) test(name, t => {
+  assert.ok(ownedGuardAdmissions.delete(t.name));
+  const scope = stageCase(t);
+  let f: Awaited<ReturnType<typeof fixture>> | undefined;
+  const retained = Promise.withResolvers<void>();
+  scope.releaseOnClose(() => retained.resolve());
+  return scope.wait('whole protected rejection case', () => scope.run(async step => {
+    const open = ownedDatabases(scope, () => f?.stop());
+    const primary = new Error(`Authorization: Bearer ${mode === 'oversize' ? 'synthetic-rejection-value'.repeat(60000) : 'synthetic-rejection-value'}\nsynthetic-source.ts:7: primary finding`);
+    const secondary = new Error('token=' + 'synthetic-cleanup-value'.repeat(mode === 'oversize secondary' ? 60000 : 1) + '\nsecondary fixture failure');
+    let removals = 0;
+    f = await step(() => scope.wait('fixture setup', () => fixture(scope.resources, {
+      openDatabase: open,
+      enqueuePreflight: (...args) => ({ ...fakeEnqueuePreflight(...args), check: async () => {
+        if (mode === 'retained') throw new EnqueueNativeIncomplete('/owned/retained-check', primary, retained.promise);
+        throw new SuiteCommandFailure(primary, { state: 'closed', pid: 43001, birth: 'birth', captured: [], unverified: [], nativeClose: { code: 1, signal: null } });
+      }, remove: async () => { removals++; if (mode === 'secondary cleanup' || mode === 'oversize secondary') throw secondary; } }),
+    })));
+    const reply = await step(() => scope.wait('protected public refusal', () => f!.ui.request({ type: 'merge', item: f!.item.id })));
+    assert.equal(reply.ok, false);
+    const text = reply.error ?? '';
+    assert.ok(!text.includes('synthetic-rejection-value'), 'public native/retention error must redact its private primary');
+    assert.ok(!text.includes('synthetic-cleanup-value'), 'public secondary cleanup error must be protected');
+    assert.ok(Buffer.byteLength(text) <= 38 * 1024, 'public diagnostics have a fixed byte bound');
+    if (mode.startsWith('oversize')) assert.match(text, /withheld/);
+    if (mode !== 'oversize') assert.match(text, /synthetic-source\.ts:7/);
+    if (mode === 'retained') assert.match(text, /checkout retained: \/owned\/retained-check/);
+    assert.deepEqual((await value<{ entries: unknown[] }>(f.ui, { type: 'merge.queue' })).entries, []);
+    assert.equal(removals, mode === 'retained' ? 0 : 1);
+    retained.resolve();
+  }));
+});
 
 async function checkoutClandFixture(cwd: string) {
   // Fake batch checkouts carry the runner that real cland candidates contain.
@@ -51,12 +124,66 @@ async function checkoutClandFixture(cwd: string) {
   await verificationFixture(cwd);
 }
 
-async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = ['hub/src/parser.ts'], seed?: (tracker: Tracker) => Promise<void>, adoptRoot?: (root: string) => void, captureDispose?: (dispose: () => Promise<void>) => void) {
+test(preflightCleanupCase, t => {
+  assert.ok(ownedGuardAdmissions.delete(t.name));
+  const scope = stageCase(t);
+  let allowClose = false;
+  const control = { after() {} } as unknown as TestContext;
+  scope.releaseOnClose(() => { allowClose = true; });
+  scope.requireClose(() => drainFixtureCleanup(control));
+  return scope.wait('whole rejected-cleanup case', () => scope.run(async step => {
+    onCleanup(control, async () => { if (!allowClose) throw new Error('controlled writer close rejected'); });
+    await step(() => scope.wait('native guard setup', () => preflightNativeGuard(control)));
+    const guarded = cp.spawn;
+    await assert.rejects(() => drainFixtureCleanup(control), /controlled writer close rejected/);
+    assert.equal(cp.spawn, guarded, 'rejected close must retain the installed native guard');
+    allowClose = true;
+    await drainFixtureCleanup(control);
+    assert.notEqual(cp.spawn, guarded, 'positive cleanup releases the nested guard');
+  }));
+});
+
+test(preflightCase, t => {
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const scope = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => { release.resolve(); } });
+  return scope.wait('owned enqueue case', () => scope.run(async step => {
+    let mode: 'red' | 'held' | 'green' = 'red', removals = 0;
+    const f = await step(() => scope.wait('fixture setup', () => fixture(scope.fixtures, {
+      enqueuePreflight: (...args) => ({ ...fakeEnqueuePreflight(...args),
+        check: async () => {
+          if (mode === 'held') { entered.resolve(); await release.promise; }
+          return { command: 'candidate check', code: mode === 'red' ? 1 : 0, tail: 'src/parser.ts:7: planted finding' };
+        },
+        remove: async () => { removals++; },
+      }),
+    }, undefined, undefined, root => scope.adoptRoot(root))));
+    const red = await step(() => scope.wait('finding refusal', () => f.ui.request({ type: 'merge', item: f.item.id })));
+    assert.equal(red.ok, false);
+    assert.match(red.error ?? '', /candidate check: exit 1[\s\S]*src\/parser.ts:7/);
+    assert.deepEqual((await value<{ entries: unknown[] }>(f.ui, { type: 'merge.queue' })).entries, []);
+    mode = 'held';
+    const pending = step(() => scope.wait('cancelled merge receipt', () => f.ui.request({ type: 'merge', item: f.item.id })));
+    await scope.wait('check entered', () => entered.promise);
+    assert.deepEqual(await value(f.ui, { type: 'merge', item: f.item.id, cancel: true }), { item: f.item.id, cancelled: false });
+    release.resolve();
+    const cancelled = await pending;
+    assert.equal(cancelled.ok, false);
+    assert.match(cancelled.error ?? '', /cancelled during preflight/);
+    assert.deepEqual((await value<{ entries: unknown[] }>(f.ui, { type: 'merge.queue' })).entries, []);
+    mode = 'green';
+    assert.deepEqual(await step(() => scope.wait('fresh request enqueue', () => value(f.ui, { type: 'merge', item: f.item.id }))), { item: f.item.id, queued: 1 });
+    assert.equal((await value<{ entries: unknown[] }>(f.ui, { type: 'merge.queue' })).entries.length, 1);
+    assert.equal(removals, 3);
+  }));
+});
+
+async function fixture(t: TestContext, options: ProjectHubOptions & { verification?: string } = {}, files = ['hub/src/parser.ts'], seed?: (tracker: Tracker) => Promise<void>, adoptRoot?: (root: string) => void, captureDispose?: (dispose: () => Promise<void>) => void) {
+  const { verification = 'test="true"', ...hubOptions } = options;
   const root = await tempProject(t);
   adoptRoot?.(root);
   await mkdir(join(root, '.cland'), { recursive: true });
   const repository = parseConfig(await readFile(new URL('../../.cland/config.toml', import.meta.url), 'utf8'), 'repository', {});
-  await writeFile(join(root, '.cland/config.toml'), `[merge]\nqueue = ${repository.merge.queue}\n[verification]\ntest="true"\n`);
+  await writeFile(join(root, '.cland/config.toml'), `[merge]\nqueue = ${repository.merge.queue}\n[verification]\n${verification}\n`);
   const clock = new FakeClock();
   const tips = manualTips();
   const heads = new Map([['dev', 'a'.repeat(40)], ['t/parser', 'b'.repeat(40)]]);
@@ -82,7 +209,7 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}, files = 
     const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), clock, git, stageTree: async () => 'fixture-stage-tree', readBase: async () => 'dev', env: fixtureEnvironment(root, process.env) });
     try { await seed(tracker); } finally { await tracker.stop(); }
   }
-  const { discovery, dispatcher, stop, fakes, dispose } = await projectHub(t, root, {}, { clock, stageTree: async () => 'fixture-stage-tree', scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...options });
+  const { discovery, dispatcher, stop, fakes, dispose } = await projectHub(t, root, {}, { clock, stageTree: async () => 'fixture-stage-tree', scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...hubOptions });
   captureDispose?.(dispose);
   await tips.refresh();
   const ui = await connectUi(t, discovery);

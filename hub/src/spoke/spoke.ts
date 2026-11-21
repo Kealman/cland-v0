@@ -1,4 +1,5 @@
 import type { Clock } from '../hub/clock.ts';
+import { MERGE_PREFLIGHT_REPLY_MS } from '../merge.ts';
 // The spoke: the MCP stdio server a session's harness spawns, and the hub client behind it. Every tool
 // answers JSON text; a failure is `{ ok: false, error }` with isError set.
 //
@@ -204,7 +205,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
         }
         case 'merge': {
           if (typeof args.item !== 'string') throw new Error('merge needs an item id');
-          const value = await hub.request({ type: 'merge', item: args.item, ...(args.cancel === undefined ? {} : { cancel: args.cancel as boolean }), ...(args.override === undefined ? {} : { override: args.override as string }) }, 60_000) as Record<string, unknown>;
+          const value = await hub.request({ type: 'merge', item: args.item, ...(args.cancel === undefined ? {} : { cancel: args.cancel as boolean }), ...(args.override === undefined ? {} : { override: args.override as string }) }, args.cancel ? 60_000 : MERGE_PREFLIGHT_REPLY_MS) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
         case 'artifact.keep':

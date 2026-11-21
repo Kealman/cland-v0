@@ -3,7 +3,7 @@ import { PruneProcesses } from '../prune-processes.ts';
 import { dependencyInstallBetween, dependencyInstallText } from '../dependency-install.ts';
 import type { DependencyInstall } from '../protocol.ts';
 // The Coordinator's merge gate: one queued territory operation, provenance and cached freshness, then Git and
-// the tracker's close. No check command runs here (D16); conflicts go back to the Implementer (D9).
+// the tracker's close. Enqueue checks run before serialization; conflicts return to the item lead.
 import type { Git } from '../tracker/verdict-git.ts';
 import { checkQueuedMerge } from './merge-queue-preflight.ts';
 import { requireMergeWorktree } from '../territory.ts';
@@ -19,10 +19,12 @@ import { landedTask, reconcileTaskCheckout, restoreTaskCheckout, squashTask, ter
 import type { Resumed, TaskWorktrees } from './worktrees.ts';
 import type { MergeQueue } from './merge-queue.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
+import { checkedEnqueue, validateEnqueueCandidate, EnqueueNativeIncomplete } from './enqueue-preflight.ts';
+import { enqueuePreflight, type EnqueueCandidate } from './enqueue-preflight-native.ts';
 
 type LandedResult = { dependencies?: DependencyInstall; item: string; commit: string; base: string; cleanup: string; budgetLines?: string[]; followUp?: { step: string; error: string } };
 
-type MergeResult = LandedResult | { item: string; queued: number };
+type MergeResult = LandedResult | { item: string; queued: number; preflight?: string };
 // Cancellation and native close must fit inside serve's two-second signal budget.
 export const MERGE_CLEANUP_STOP_MS = 1500;
 export type MergeCleanupStop = { status: 'complete' } | { status: 'incomplete'; items: string[]; settled: Promise<void> };
@@ -64,7 +66,9 @@ export class TaskMerges {
     if (!this.#cleanupWork.size) return { status: 'complete' };
     // Cancellation begins at stop, inside the CLI's existing two-second budget.
     for (const owner of this.#prunes) void owner.cancel().catch(() => {});
-    const settled = this.#cleanupSettlement ??= Promise.allSettled([...this.#cleanupWork.keys()]).then(() => {});
+    const settled = this.#cleanupSettlement ??= (async () => {
+      while (this.#cleanupWork.size) await Promise.allSettled([...this.#cleanupWork.keys()]);
+    })();
     let deadline: NodeJS.Timeout | undefined;
     try {
       return await Promise.race([
@@ -87,11 +91,13 @@ export class TaskMerges {
   readonly #squash: typeof squashTask;
   readonly #git: typeof territoryGitAsync;
   readonly #rootGit: typeof territoryGitAsync;
+  readonly #enqueuePreflight: typeof enqueuePreflight;
   readonly log: LogFn;
   readonly #territoryLock: typeof withTerritoryLockAsync;
   readonly afterMerge: (item: string, resumed: Resumed) => Promise<void>;
-  constructor(tracker: Tracker, worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync, queue?: MergeQueue, squash: typeof squashTask = squashTask, git: typeof territoryGitAsync = territoryGitAsync, rootGit?: Git) {
+  constructor(tracker: Tracker, worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync, queue?: MergeQueue, squash: typeof squashTask = squashTask, git: typeof territoryGitAsync = territoryGitAsync, rootGit?: Git, preflight: typeof enqueuePreflight = enqueuePreflight) {
     this.#git = git;
+    this.#enqueuePreflight = preflight;
     // The admission fact shares the hub's read-only probe boundary. Recovery
     // and territory writes retain their separate native/injected Git runner.
     this.#rootGit = rootGit ? async (_cwd, args, _marked, input) => await rootGit(args, input) ?? '' : git;
@@ -158,6 +164,52 @@ export class TaskMerges {
 
   merge(id: string, actor: Actor, resumed: Resumed, override?: string, authorize: () => void = () => {}, queuedCandidate?: { head: string; base: string }): Promise<MergeResult> {
     if (this.#stopped) return Promise.reject(new Error('merge owner stopped'));
+    const work = this.#mergeWithPreflight(id, actor, resumed, override, authorize, queuedCandidate);
+    this.#cleanupWork.set(work, id);
+    void work.then(() => this.#cleanupWork.delete(work), error => {
+      if (error instanceof EnqueueNativeIncomplete) {
+        const retained = error.settled;
+        this.#cleanupWork.set(retained, id);
+        void retained.then(() => this.#cleanupWork.delete(retained), () => {
+          this.#cleanupWork.delete(retained);
+          try { this.log({ event: 'merge-preflight-retained-cleanup-failed', id }); } catch { /* keep the retained cleanup's original outcome */ }
+        });
+      }
+      this.#cleanupWork.delete(work);
+    });
+    return work;
+  }
+
+  async #mergeWithPreflight(id: string, actor: Actor, resumed: Resumed, override: string | undefined, authorize: () => void, queuedCandidate?: { head: string; base: string }): Promise<MergeResult> {
+    if (this.#stopped) throw new Error('merge owner stopped');
+    id = this.tracker.resolveId(id) ?? id;
+    const validateCancellation = this.queue?.captureCancellation(id) ?? (() => {});
+    if (!queuedCandidate && override === undefined && this.queue?.enabled() && !this.tracker.mergeReceipt(id)) {
+      const view = await this.#view(id, resumed);
+      resumed(() => { authorize(); this.#message(view); });
+      const initial = await this.queue.candidate(view, resumed);
+      if (refusedOverridePaths(initial.files).length) {
+        const backend = this.#enqueuePreflight(this.tracker.root, async () => {
+          resumed(validateCancellation);
+          const current = await this.#view(id, resumed);
+          resumed(() => { authorize(); this.#message(current); });
+          const candidate = await this.queue!.candidate(current, resumed);
+          if (candidate.head !== initial.head || candidate.base !== initial.base || current.branch !== view.branch) throw new MergeError('merge-changed', 'task head or branch changed during preflight');
+          return { base: candidate.baseTip, member: { item: current.id, branch: current.branch!, head: candidate.head,
+            verdictBase: candidate.base, enqueued: '', by: actor } };
+        }, this.#env);
+        return checkedEnqueue(backend, async (checked, receipt) => {
+          resumed(validateCancellation);
+          const result = await this.#merge(id, actor, resumed, override, authorize, queuedCandidate, { candidate: checked, validate: validateCancellation, identity: backend.identity });
+          return receipt.skipped && 'queued' in result ? { ...result, preflight: receipt.skipped } : result;
+        });
+      }
+    }
+    return this.#merge(id, actor, resumed, override, authorize, queuedCandidate);
+  }
+
+  #merge(id: string, actor: Actor, resumed: Resumed, override: string | undefined, authorize: () => void, queuedCandidate?: { head: string; base: string }, preflight?: { candidate: EnqueueCandidate; validate(): void; identity(head: string): Promise<string> }): Promise<MergeResult> {
+    if (this.#stopped) return Promise.reject(new Error('merge owner stopped'));
     id = this.tracker.resolveId(id) ?? id;
     return this.worktrees.serial(async (): Promise<MergeResult> => {
       const state: { landed: { commit: string; base: string; budgetLines?: string[] } | null } = { landed: null };
@@ -169,6 +221,10 @@ export class TaskMerges {
       try {
         await this.#territoryLock(this.tracker.root, async () => {
           resumed(authorize);
+          resumed(() => {
+            preflight?.validate();
+            if (preflight && !this.queue?.enabled()) throw new MergeError('merge-changed', 'merge queue setting changed during preflight; try again');
+          });
           await requireMergeWorktree(this.tracker.root, resumed, this.#env, this.#rootGit);
           const pendingPublish = await access(join(this.tracker.root, '.cland', 'publish.tmp')).then(() => true, err => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; });
           if (pendingPublish) throw new MergeError('merge-recovery', `finish pending cland publish before merging ${id}`);
@@ -232,6 +288,8 @@ export class TaskMerges {
           if (!queuedCandidate && this.queue?.enabled() && override === undefined) {
             const candidate = await this.queue.candidate(checked, resumed);
             if (refusedOverridePaths(candidate.files).length) {
+              if (!preflight) throw new MergeError('merge-changed', 'enqueue preflight missing');
+              await validateEnqueueCandidate(preflight.candidate, candidate, preflight.identity);
               await checkQueuedMerge(candidate.baseTip, candidate.head, checked.branch!, checked.id, this.queue.entries(),
                 (args, input) => this.#git(this.tracker.root, args, false, input, this.#env));
               const validateLane = await this.#laneHold(checked, candidate.files, candidate.baseTip, resumed);
@@ -241,6 +299,7 @@ export class TaskMerges {
               resumed(() => {
                 validateLane();
                 authorize();
+                preflight?.validate();
                 this.#message(finalView);
                 if (!this.queue?.enabled()) throw new MergeError('merge-changed', 'merge queue setting changed during enqueue; try again');
                 if (finalView.branch !== checked.branch || this.tracker.freshnessTip(finalView.branch) !== candidate.head || this.tracker.freshnessTip(candidate.base) !== candidate.baseTip || finalView.verdictBase !== candidate.base) throw new MergeError('merge-changed', `${id}: task branch changed during enqueue; try again`);

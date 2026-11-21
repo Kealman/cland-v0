@@ -1,5 +1,29 @@
 # hub/test/merge-queue.test.ts
 
+The no-check control exercises the real configuration resolver and native
+preflight adapter through the public enqueue frame, with fake Git/checkouts and
+execution boundaries. Its disposable project has neither check nor test. Assert
+the explicit skipped-preflight result, positive durable FIFO entry and one
+candidate cleanup; command launch, command ownership and output are forbidden.
+The existing native queued-conflict case stays unchanged in merge-policy.
+
+Protected rejection controls inspect actual public merge replies for native,
+retained, cleanup and oversized primary/secondary payloads. Keep the independent
+finding and retained-path assertions, a fixed public byte bound, zero queue
+mutations and exact cleanup count. The fixture captures native database handles
+before its constructors and retains the positive native guard through shutdown.
+
+T-1901's owned preflight case injects the complete projectHub preflight backend.
+Observe the fake check's entered receipt before cancelling, join its completion
+and cleanup, then assert the original refusal and the durable empty queue. The
+fresh request must produce a queued reply and exactly one queue entry. The
+finding control retains command/file/line diagnostics. Keep the whole-case
+owner and positive native guard through fixture shutdown and directory cleanup.
+Its fenced guard control rejects an owned writer cleanup, observes that the
+launch guard remains installed, then supplies a positive close and drains the
+same cleanup owner before restoration. A settled cleanup rejection grants no
+restoration or removal authority.
+
 The retained-cleanup projection case seeds only the disposable fixture store,
 then reads `merge.queue` and `hub.status`. It checks that the candidate path,
 last error and next retry are visible independently of a null active batch;

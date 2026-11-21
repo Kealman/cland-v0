@@ -1,5 +1,5 @@
 import { importSpecifiers } from './suite-imports.ts';
-import { taskInteractionSelection } from './suite-interactions.ts';
+import { taskInteractionSelection, taskImporterSelection } from './suite-interactions.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, readFile } from 'node:fs/promises';
@@ -250,7 +250,8 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
   const config = source === null ? defaultConfig('suite') : parseConfig(source, 'suite', env);
   const taskSelection = taskSuiteSelection(selection, branch, requested, config.merge.queue);
   if (taskSelection.tiers?.join(',') !== 'T1,T2') return taskSelection;
-  const sampled = taskDurationSelection(taskSelection, await readTierAssignments(cwd) ?? new Map(), await readTierLoadGuards(cwd));
+  const assignments = await readTierAssignments(cwd) ?? new Map();
+  const sampled = await taskImporterSelection(cwd, taskDurationSelection(taskSelection, assignments, await readTierLoadGuards(cwd)), assignments);
   if (!sampled.durationCheck) return sampled;
   const manifest = await readDurationManifest(cwd);
   const owner = await durationAllowanceOwner(cwd, branch.split('/')[1]!.match(/^[A-Z]+-\d+/)?.[0] ?? '', {

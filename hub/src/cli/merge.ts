@@ -5,6 +5,7 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { MergeBatchStatus, MergeQueueEntry } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 import { MERGE_USAGE } from './usage.ts';
+import { MERGE_PREFLIGHT_REPLY_MS } from '../merge.ts';
 
 export { MERGE_USAGE } from './usage.ts';
 export async function runMerge(args: string[], cwd = process.cwd(), out: (text: string) => void = text => { process.stdout.write(text); }): Promise<number> {
@@ -22,9 +23,10 @@ export async function runMerge(args: string[], cwd = process.cwd(), out: (text: 
       ? result.entries.map((entry, index) => `${index + 1} ${entry.item} ${entry.branch} ${entry.head} since ${entry.enqueued} by ${entry.by.name}${entry.dependencies ? `\n  ${dependencyInstallText(entry.dependencies)}` : ''}\n`).join('') : 'merge queue empty\n'));
     return 0;
   }
-  const result = await askHubFrame(d, { type: 'merge', item: positionals[0], ...(values.override === undefined ? {} : { override: values.override }), ...(values.cancel ? { cancel: true } : {}) }, 60_000) as { dependencies?: DependencyInstall; item: string; queued?: number; cancelled?: boolean; commit?: string; base?: string; cleanup?: string; budgetLines?: string[]; followUp?: { error: string } };
+  const result = await askHubFrame(d, { type: 'merge', item: positionals[0], ...(values.override === undefined ? {} : { override: values.override }), ...(values.cancel ? { cancel: true } : {}) }, values.cancel ? 60_000 : MERGE_PREFLIGHT_REPLY_MS) as { dependencies?: DependencyInstall; item: string; queued?: number; preflight?: string; cancelled?: boolean; commit?: string; base?: string; cleanup?: string; budgetLines?: string[]; followUp?: { error: string } };
   const text = result.queued !== undefined ? `queued ${result.queued}` : result.cancelled !== undefined ? result.cancelled ? 'cancelled' : 'not queued' : `merged ${result.commit} onto ${result.base}; ${result.followUp?.error ?? `worktree ${result.cleanup}`}`;
   out(values.json ? `${JSON.stringify(result)}\n` : `${result.item}: ${text}\n`);
+  if (!values.json && result.preflight) out(result.preflight + '\n');
   if (!values.json && result.dependencies) out(dependencyInstallText(result.dependencies) + '\n');
   if (!values.json) for (const line of result.budgetLines ?? []) out(line + '\n');
   return 0;
