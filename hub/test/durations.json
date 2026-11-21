@@ -13091,6 +13091,13 @@
     "hub/test/verification-tier-receipts.test.ts::uploaded writer atomically publishes ordered native exits": 0.002693
   },
   "allow": {
+    "hub/test/startup-listener-scale.test.ts::1500 startup freshness answers keep summary hydration and dependent work linear": {
+      "seconds": 15.418,
+      "owner": "C-216",
+      "added": "2026-11-21",
+      "expires": "2026-11-28",
+      "reason": "T-1987: fixture-only 1500-branch startup census, including setup, assertions and owned cleanup; fake Git, no native hub child or provider. Two Linux x64 Node24.21.0 droplet passing samples: 10.278319785 s at 86f77941f, run fcf14f70-b808-4e68-bf62-79ba5b0c31bf (A-22429), and 8.039 s at 69847d6e3, run 84066c69-1ad6-45ec-b712-fc747963e33f (A-22444). Cap is 1.5x the worst retained sample rounded up to milliseconds. The earlier run failed the separate latency case's setup observation; its work-only passing sample remains retained. Local macOS work-only sample 3.251339583 s is context, not a Linux projection. Both droplet samples replay through the production checker. Seven-day standing-owner allowance approved by Coordinator; 2000 ms task.view behaviour bound and shared duration policy unchanged. Follow-up due before 2026-11-26."
+    },
     "hub/test/host-allow-list.test.ts::immediate merge revokes every host lease before landing the task": {
       "seconds": 10.017,
       "owner": "C-216",
