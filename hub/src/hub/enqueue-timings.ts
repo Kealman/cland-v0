@@ -21,6 +21,8 @@ export async function checkEnqueueTimings(head: string, base: string, services: 
   const proof = services.timings.receipt(head, tree);
   const missing = () => new MergeError('merge-budget', `missing exact-head Linux timing receipt for ${head} (tree ${tree}); run Linux verification after the timing-capable hub has restarted`);
   if (!proof) throw missing();
+  const baseManifest = await exists(base, DURATION_MANIFEST)
+    ? parseDurationManifest(await services.git(['show', `${base}:${DURATION_MANIFEST}`])) : null;
   const known: string[] = [];
   const sources = new Map<string, Awaited<ReturnType<typeof sourceTestIdentities>> | null>();
   for (const row of proof.receipts) for (const sample of row.samples) {
@@ -28,8 +30,10 @@ export async function checkEnqueueTimings(head: string, base: string, services: 
     if (!sources.has(sample.file)) sources.set(sample.file, await exists(base, sample.file)
       ? await sourceTestIdentities(sample.file, await services.git(['show', `${base}:${sample.file}`]), true) : null);
     const source = sources.get(sample.file);
-    if (source?.dynamic) throw new MergeError('merge-budget', `new timing identity unknown in base source: ${sample.file}::${sample.name}`);
-    if (source?.patterns.some(pattern => new RegExp(pattern, 's').test(sample.name))) known.push(`${sample.file}::${sample.name}`);
+    const key = `${sample.file}::${sample.name}`;
+    if (source?.patterns.some(pattern => new RegExp(pattern, 's').test(sample.name)) ||
+      (source?.dynamic && baseManifest && (Object.hasOwn(baseManifest.tests, key) || Object.hasOwn(baseManifest.allow, key)))) known.push(key);
+    else if (source?.dynamic) throw new MergeError('merge-budget', `new timing identity unknown in base source: ${sample.file}::${sample.name}`);
   }
   const owner = await services.owner(durationLegacyOwner(manifest));
   const result = enqueueTimingPolicy({ run: proof.id, head, tree, receipts: proof.receipts, known, allow: manifest.allow, owner: owner ?? 'OWNER_REQUIRED', now: services.now });

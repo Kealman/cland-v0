@@ -6,6 +6,14 @@ proof and unallowed new 4-second identities refuse before mutation, while an
 allowance or an identity in pinned base source admits. Native launches remain
 positively guarded through the owned fixture cleanup.
 
+Mixed-source controls admit a four-second literal base identity even when the
+same source contains computed test titles. An unmatched identity in that mixed
+source retains the unknown-in-base refusal and leaves the FIFO empty.
+Ternary-title controls use the Claude TERM-resistant SessionEnd identity:
+separate base baseline and base allowance records establish it as known, while
+either record added only in the head still refuses and leaves the FIFO empty.
+The shared source parser is unchanged; all manifest reads use fake immutable Git.
+
 The timing fixture enrolls shared ownedTracker/ownedDatabases capture before
 either wrapper constructor. Its stageCase owner requires native database closure
 before directory disposal or seam restoration. Rejection controls fault the

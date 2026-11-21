@@ -179,12 +179,14 @@ test(preflightCase, t => {
   }));
 });
 
-const timingModes = ['missing', 'wrong OS', 'unknown OS', 'slow', 'allowed', 'existing'] as const;
+const timingModes = ['missing', 'wrong OS', 'unknown OS', 'slow', 'allowed', 'existing', 'mixed literal', 'mixed unknown', 'ternary baseline', 'ternary allowance', 'ternary head baseline', 'ternary head allowance'] as const;
 type TimingMode = typeof timingModes[number];
+const ternaryTiming = { file: 'hub/test/claude-code-remote.test.ts', name: 'Claude TERM-resistant SessionEnd hook is captured and killed by native birth' };
+const timingSample = (mode: TimingMode) => mode.startsWith('ternary') ? ternaryTiming : { file: 'hub/test/new.test.ts', name: 'slow case' };
 type SeedDatabase = { owner: Pick<ReturnType<typeof stageCase>, 'requireClose'>; open(kind: 'tracker' | 'store', path: string): DatabaseSync };
 async function timingFixture(scope: ReturnType<typeof stageCase>, mode: TimingMode, native: Partial<Pick<SeedDatabase, 'open'>> = {}, adopt?: (root: string) => void) {
-  const head = 'b'.repeat(40), file = 'hub/test/new.test.ts';
-  const receipt = { run: 'timing-proof', head, tree: head, platform: 'linux', command: 'true', step: 'test', samples: [{ file, name: 'slow case', seconds: 4, outcome: 'pass' as const }] };
+  const head = 'b'.repeat(40);
+  const receipt = { run: 'timing-proof', head, tree: head, platform: 'linux', command: 'true', step: 'test', samples: [{ ...timingSample(mode), seconds: 4, outcome: 'pass' as const }] };
   const databases: SeedDatabase = { owner: scope, open: native.open ?? ((_kind, path) => new DatabaseSync(path)) };
   return fixture(scope.fixtures, { seedDatabase: databases }, undefined, async tracker => {
     if (mode === 'missing') return;
@@ -208,16 +210,23 @@ test(timingCase, t => {
   assert.ok(ownedGuardAdmissions.delete(t.name));
   const scope = stageCase(t);
   return scope.run(async step => {
-    const head = 'b'.repeat(40), base = 'a'.repeat(40), file = 'hub/test/new.test.ts', key = `${file}::slow case`;
+    const head = 'b'.repeat(40), base = 'a'.repeat(40);
     for (const mode of timingModes) {
+      const { file, name } = timingSample(mode), key = `${file}::${name}`;
       const f = await step(() => scope.wait(`${mode} fixture`, () => timingFixture(scope, mode)));
-      f.manifests.set(`${head}:hub/test/durations.json`, JSON.stringify({ version: 1, source: { artifacts: [], commit: base }, budget: { testSeconds: 5, fileSeconds: 60 }, tests: {}, files: {}, allow: mode === 'allowed' ? { [key]: { seconds: 6, reason: 'measured' } } : {} }));
+      f.manifests.set(`${head}:hub/test/durations.json`, JSON.stringify({ version: 1, source: { artifacts: [], commit: base }, budget: { testSeconds: 5, fileSeconds: 60 }, tests: mode === 'ternary head baseline' ? { [key]: 6.35 } : {}, files: {}, allow: mode === 'allowed' || mode === 'ternary head allowance' ? { [key]: { seconds: 6, reason: 'measured' } } : {} }));
       if (mode === 'existing') f.manifests.set(`${base}:${file}`, "test('slow case', () => {});");
+      if (mode === 'mixed literal') f.manifests.set(`${base}:${file}`, "test('slow case', () => {}); for (const label of ['a', 'b']) test(label + ' case', () => {});");
+      if (mode === 'mixed unknown') f.manifests.set(`${base}:${file}`, "test('other case', () => {}); for (const label of ['a', 'b']) test(label + ' case', () => {});");
+      if (mode.startsWith('ternary')) {
+        f.manifests.set(`${base}:${file}`, "for (const asynchronous of [false, true]) test(asynchronous ? 'Claude hook born across root exit remains unacquired' : 'Claude TERM-resistant SessionEnd hook is captured and killed by native birth', () => {});");
+        f.manifests.set(`${base}:hub/test/durations.json`, JSON.stringify({ version: 1, source: { artifacts: [], commit: base }, budget: { testSeconds: 5, fileSeconds: 60 }, tests: mode === 'ternary baseline' ? { [key]: 6.35 } : {}, files: {}, allow: mode === 'ternary allowance' ? { [key]: { seconds: 15.69, reason: 'measured', owner: 'E-880' } } : {} }));
+      }
       const result = await step(() => scope.wait(`${mode} admission receipt`, () => f.ui.request({ type: 'merge', item: f.item.id })));
       const queue = await value<{ entries: unknown[] }>(f.ui, { type: 'merge.queue' });
-      if (mode === 'missing' || mode === 'wrong OS' || mode === 'unknown OS' || mode === 'slow') {
+      if (mode === 'missing' || mode === 'wrong OS' || mode === 'unknown OS' || mode === 'slow' || mode === 'mixed unknown' || mode === 'ternary head baseline' || mode === 'ternary head allowance') {
         assert.equal(result.ok, false);
-        assert.match(result.error ?? '', mode !== 'slow' ? /missing exact-head Linux timing receipt/ : /4 s or more require allowances/);
+        assert.match(result.error ?? '', mode === 'mixed unknown' || mode.startsWith('ternary head') ? /new timing identity unknown in base source/ : mode !== 'slow' ? /missing exact-head Linux timing receipt/ : /4 s or more require allowances/);
         if (mode === 'slow') { assert.match(result.error ?? '', /"seconds": 6/); assert.ok(result.error?.includes(key)); }
         assert.deepEqual(queue.entries, []);
       } else { assert.equal(result.ok, true, result.error); assert.equal(queue.entries.length, 1); }

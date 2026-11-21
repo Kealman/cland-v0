@@ -77,6 +77,10 @@ run ids. `Suites.timingReceiptForRun(id)` reads the named child's own receipt;
 parent lookups never synthesize combined samples or replace child producer ids.
 
 Admission compares passing samples with the pinned base's source identities.
+Matching a literal base identity is sufficient even when that file also has
+computed test titles. An unmatched dynamic name is also known when its exact
+identity has a test baseline or allowance in the pinned base duration manifest;
+records added only in the item head do not establish an existing identity.
 New identities measured at least 4 seconds need an allowance covering the peak.
 Refusals provide an `allow` stanza with 1.5x headroom, seven-day dates and the
 standing owner when available (`OWNER_REQUIRED` otherwise). Unresolved dynamic
