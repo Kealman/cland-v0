@@ -2,8 +2,8 @@
 id: T-2054
 kind: task
 title: The enqueue preflight puts its scratch HOME inside the candidate worktree, so npm's logs make the worktree unremovable and every enqueue fails
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1901
 topic: topic-1704
 branch: t/T-2054-the-enqueue-preflight-puts-its-scratch
 created: 2026-11-21T12:21:17.741Z
-updated: 2026-11-21T12:38:56.984Z
+updated: 2026-11-21T14:47:45.542Z
+closed: 2026-11-21T14:47:45.542Z
 ---
 
 ## Summary
@@ -30,11 +31,16 @@ Give the preflight command a scratch HOME (and XDG and npm cache directories) ou
 
 - [x] C1. An enqueue preflight whose check runs a real npm script leaves the candidate worktree clean, and the candidate is removed (test with a real npm child, red before).
   - done: impl-2054 · 2026-11-21T12:37:18.856Z
+  - verified: rev-35 [reviewer] · run rev-35-2054-evidence-1 · 2026-11-21T13:47:57.007Z · commit 6c427d4c875faaeb7b1ea235eee4aa482ceccd0a
+  - verified: rev-35 [reviewer] · run rev-35-2054-evidence-2 · 2026-11-21T14:20:43.921Z · commit 7e7c8d96da85eed58e8e09f2c7d6274b17ebc285
 - [x] C2. The scratch HOME and its contents are removed with the candidate on success, failure and cancel (test).
   - done: impl-2054 · 2026-11-21T12:37:19.070Z
+  - verified: rev-35 [reviewer] · run rev-35-2054-evidence-1 · 2026-11-21T13:47:57.007Z · commit 6c427d4c875faaeb7b1ea235eee4aa482ceccd0a
+  - verified: rev-35 [reviewer] · run rev-35-2054-evidence-2 · 2026-11-21T14:20:43.921Z · commit 7e7c8d96da85eed58e8e09f2c7d6274b17ebc285
 - [x] C3. An item comment records the literal failure and the contents (names only) of the stale `enqueue-78b3a77c` candidate worktree as the reproduced cause.
   - done: impl-2054 · 2026-11-21T12:28:07.264Z
   - verified: rev-35 [reviewer] · run rev-35-2054-source-2 · 2026-11-21T12:38:56.984Z · commit 6c427d4c875faaeb7b1ea235eee4aa482ceccd0a
+  - verified: rev-35 [reviewer] · run rev-35-2054-delta-1 · 2026-11-21T13:53:04.931Z · commit 7e7c8d96da85eed58e8e09f2c7d6274b17ebc285
 
 ## Comments
 
@@ -83,3 +89,60 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source2 clear, findings=[]; A-22493. M1 resolved by pre-acquisition stageCase/fenced cleanup: deferred release handles late native receipts, required-close joins retained checkpoint/removal before root hooks. New rejected-assertion control invokes actual fixture drainage, beforeRemove requires retainedJoined, then root ENOENT; no raw late after hook. M2 setup identity probes now named/bounded; L1 README default-cache qualifier corrected. Production/T1 fake-owner changes exactly source1 blobs; no dev merge. C3 comment records literal refusal and names-only npm artifacts under revised criterion; live cleanup/next enqueue are Coordinator post-landing work. Verify C3 only; C1/C2 await same-head configured evidence. A-22492 reports local native8/8 plus lint/typecheck; self-join failed round retained, prior T1 evidence remains prior. No Reviewer execution/edit/live cleanup. Hold releases; fixed head for Coordinator full verify all, no Implementer submission.
 
 Criteria: C3 verified.
+
+### impl-2054 · 2026-11-21T13:46:30.073Z
+
+Same-head full verification 7b7ce05a / A-22504 at 6c427d4c875faaeb7b1ea235eee4aa482ceccd0a: T0, T1, T2, T3 and Web exit 0; no T4 run. Linux x64 6.8.0-149-generic droplet c-8 ams3, Node 24.21.0, Neovim 0.12.5, Chrome Headless Shell / Google Chrome for Testing 156.0.8078.4. 9466 pass, 0 fail, 13 skipped per aggregate receipt; budget findings report-only. Inspected structured suite timing records in durable log: every one of the 8 merge-batch-dependencies cases has outcome pass, including npm success/failure/cancel/incomplete/stray-write/rejected-assertion and both existing dependency cases. This is actual full-run evidence, not a cache hit. Head unchanged. Reviewer owns final same-head settlement; Coordinator owns post-landing live cleanup.
+
+### rev-35 · 2026-11-21T13:47:57.007Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2054-evidence-1
+commit: 6c427d4c875faaeb7b1ea235eee4aa482ceccd0a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-22505, findings=[]. Full7b7ce05a/A-22504 finished/passed at source2-reviewed6c427d4c8; refs unchanged. Typed starts/pass finishes confirm all6 new real-npm cleanup identities each base+5 distinct load passes (success/failure/cancel/incomplete/stray write/rejected assertion), plus2 dependency preservation base passes. Source2 reviewed actual guarded HOME/XDG removal/retained continuation fence. File finishes match all241T1/443T2/273T3/55Web; T0 exit0. Producer9466pass/13prerequisite skips/0fail/cancel; no18T4 runtime claim. Linux x64 c-8ams3 Node24.21 Nvim0.12.5, isolated HeadlessShell1248/Chrome for Testing156.0.8078.4. Canonical2959e552 differs by definition from Git8bc3680e. Report-only budgets/lint not enforced timing proof. Verify C1/C2; C3 remains current from source2. Original Git128/intermediate failed controls retained. No Reviewer execution/edit/live cleanup. Hold releases; no duplicate run/manual relay. Live stale candidate cleanup/next enqueue remains Coordinator post-landing operation.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-35 · 2026-11-21T13:53:04.931Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2054-delta-1
+commit: 7e7c8d96da85eed58e8e09f2c7d6274b17ebc285
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear, findings=[]; A-22507. Parents verified: full-green6c427d4 and dev9b8107d85 under Coordinatorb3ac71ce rule11 request. Union95paths:89 exactdev/4 exacttask, only README/running docs combine; task production/native/T1 blobs byte-identical to full-green parent. README keeps HOME/XDG/default-cache paragraph plus upstream timing policy/wait wording; running.md preserves environment fence and upstream timing/deployment/wait sections, stale no-timing-gate text replaced. A-22506 reports merged-head full lint/typecheck and five actual README reader files64/64 T1/T2; no new native/browser/full-suite claim. C3 documentary criterion remains source-established, refreshed here only. C1/C2 await new-head runtime evidence; old full7b7ce05a/A-22504 stays old-head. No Reviewer execution/edit/merge. Hold releases; ask Coordinator window, then exactly authorized mode-free verify. No new all requested; live cleanup remains Coordinator post-landing.
+
+Criteria: C3 verified.
+
+### impl-2054 · 2026-11-21T14:19:16.750Z
+
+Merged-head mode-free receipt b4fcc966 / A-22508 at 7e7c8d96d: actual Linux droplet T0/T1/all fallback T2/selected T3/Web exit 0; 7408 passing, 1 skip. Inspected structured suite timing: all 8 merge-batch-dependencies cases outcome pass. Native npm success/failure/cancel/incomplete/stray-write/rejected-assertion each passed once, with both dependency controls. Executor c-8 ams3 Linux6.8.0-149-generic, Node24.21.0, Neovim0.12.5; browser Chrome Headless Shell Google Chrome for Testing156.0.8078.4. Not cached. Budget findings remain report-only. Remaining T3 belongs to merge batch; no T4 receipt claimed. Reviewer owns final new-head settlement. Prior full run7b7ce05a remains prior-head proof only.
+
+### rev-35 · 2026-11-21T14:20:43.921Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2054-evidence-2
+commit: 7e7c8d96da85eed58e8e09f2c7d6274b17ebc285
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final clear under Coordinatorb3ac71ce accepted mode-free-after-conflict bar; A-22509, findings=[]. b4fcc966/A-22508 finished/passed at delta-reviewed7e7c8d96, refs unchanged. All8 required native npm/dependency identities have matching base start/pass receipts. Actual files all243T1/444T2/55Web plus4selectedT3 (merge-batch-dependencies/suite-candidate/suite-runner/executor-run) pass; T0 exit0. Remaining269T3 deferred batch,18T4 unexecuted; nested generated launch-timeout fixture is not another project tier file. Producer7408pass/1platform skip/0fail/cancel; task selected phases one base/no repetitions. Linuxc8ams3 Node24.21 Nvim0.12.5, isolated HeadlessShell1248/Chrome156.0.8078.4; canonicalf08391d7 distinct from Gitf08f42f8. Report-only timing/lint advisory. Prior full7b7ce05a stays parent-head evidence, not merged-head full proof. Refresh C1/C2; C3 current from delta1. No Reviewer execution/edit/live cleanup. Hold releases; no new all/manual relay, integrated T3/live cleanup remain assigned.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-21T14:47:45.542Z
+
+Merged 4cafa60404a8c2e68a68431a3f25d129954d48d6 onto dev.

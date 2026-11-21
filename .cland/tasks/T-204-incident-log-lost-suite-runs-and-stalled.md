@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-21T12:22:23.034Z
+updated: 2026-11-21T14:49:47.805Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -694,3 +694,7 @@ Restart #93 (2026-11-21, on coord's GO under rule 19; the human asked cland-impl
 ### human · 2026-11-21T12:22:23.034Z
 
 Restart #94, rollback (2026-11-21, on coord's GO): on 55479f075 T-1901's enqueue preflight (hub/src/hub/enqueue-preflight-native.ts, HOME inside the candidate worktree, npm logs make it unclean) failed every cland merge enqueue at 12:19:56Z with 'git worktree remove ... contains modified or untracked files'. Hub r93 pid 32672 stopped 12:21:24Z; job cland-hub-r94 pid 11318 started from the 782f2a58e worktree (jobs/92748b6f/tmp/hub-782f2a58e) with the root as cwd, serving 12:21:39.612Z, gap 15 s. Binding listeners 4 ms, web listener 424 ms. Port 64199, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Droplet run c3f2d6c5 (T-2035 full) reattached; T-2046 enqueued successfully at 12:22:04Z on the rolled-back code. The stale .cland/run/merge-batches/enqueue-78b3a77c worktree is kept as evidence for the fix. Forward restart to follow once the fix lands.
+
+### human · 2026-11-21T14:49:47.805Z
+
+Restart #95, forward (2026-11-21, on coord's GO after T-2054's preflight scratch-HOME fix landed): hub r94 pid 11318 (782f2a58e worktree) stopped 14:48:29Z; job cland-hub-r95 pid 49858 started from the root at 4cafa6040 (dev = origin/dev, root clean, merge queue empty, no runs), serving 14:48:41.712Z, gap 12 s. web/dist rebuilt before the stop (stale against the tip). Binding listeners 4 ms, web listener 294 ms. Port 54388, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 14:48:42.057Z. task view 0.14 s, no tracker-storage-stalled lines. Rollback worktree 782f2a58e kept until coord confirms a live enqueue on #95.

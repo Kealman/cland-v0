@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1693
 branch: t/T-2048-prepared-executor-snapshot-is-built-on-c
 created: 2026-11-21T03:51:03.851Z
-updated: 2026-11-21T11:11:11.627Z
+updated: 2026-11-21T15:09:39.170Z
 closed: 2026-11-21T11:11:11.627Z
 ---
 
@@ -181,3 +181,7 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-11-21T11:11:11.627Z
 
 Merged 3321d5e2b8652638ff81b628d4063e5b62478903 onto dev.
+
+### coord · 2026-11-21T15:09:39.170Z
+
+Post-landing real prepare (coord, 2026-11-21, on hub #95 at 4cafa6040, rule 19). `cland executor prepare` built the snapshot on a c-4 builder (cland-v0-7bf8f807, ams3), the policy this item introduced. The result is cland-v0-78867cd50056, image 255701106, base 4cafa6040, regions ams3, blr1, fra1, nyc1 and sfo2, duration 1,149 s. The hub reported `builder lifetime unconfirmed; cost $unconfirmed`. The ledger's daily total stayed at $8.2067 spent plus $0.1875 reserved (cap $14), so the confirmed cost isn't visible yet. My estimate is about $0.04 of c-4 builder time plus snapshot storage. `executor status` now shows the snapshot `current`. The c-4 control run for T-2036, f98eed3f, is admitted against it.
