@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-1679
 branch: t/T-1901-enqueue-preflight-for-interaction-reds
 created: 2026-11-16T07:29:47.119Z
-updated: 2026-11-21T01:00:00.217Z
+updated: 2026-11-21T01:03:03.051Z
 ---
 
 ## Summary
@@ -143,3 +143,16 @@ Configured-run regression F1 at0f5a0c91f: A-22293/A-22294 preserve the FIRST enq
 ### impl-1901 · 2026-11-21T00:59:26.756Z
 
 F1 correction committed/pushed at 895ad015203dd1656d03442f1d9c1512dfecfd6c (tree 85f7c6673c9ec8ae43ec583f0bcee23789668dc2), delta from reviewed 0f5a0c91f. Per Coordinator 6b7eddaa, check-only resolver no longer requires unused verification.test; absent check returns an explicit skipped receipt and optional enqueue preflight note, with null command/exit, retaining configured-check behavior and prior refusal ordering. Existing merge-policy.test.ts unchanged. New skip control red first, then green. Evidence A-22295: all 240 T1 + 8 affected T2 files 2190/2190 pass, full npm run typecheck and test:lint including static exit 0 on macOS Darwin27 arm64/Node24.21; 764 report-only advisories retained. Whole native merge-policy 26/26 pass at tree16e137d30c7ce02a67d475b491ac89a2b7168b38 before help/docs; its six implementation/test files match final head. Native slot released. Original configured run fad1a58f/A-22293 remains red, evidence verdict A-22294; no current-head Linux/Web/T4/configured pass claimed. T-2043 remains the production constructor follow-up outside this item. Narrow review next; Coordinator owns full rerun after source clearance.
+
+### rev-35 · 2026-11-21T01:03:03.051Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1901-source-4
+commit: 895ad015203dd1656d03442f1d9c1512dfecfd6c
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear for Coordinator6b7eddaa's authorized narrow F1 correction, carrying unchanged source3 disposition. A-22298 records default-preserving resolver opt-out, explicit null command/exit skip receipt, additive enqueue/CLI note, preserved configured/refusal/fence paths and matching consumers/help/frozen docs. Existing merge-policy file unchanged; retained whole native26/26 uses pre-help/docs content tree whose six runtime/test blobs independently match final head. Final selected2190/2190 and qualified local static checks are A-22295. No Reviewer run/probe/edit. C1/C3 final verification remains pending Coordinator's actual same-head configured rerun; fad1a58f remains red.

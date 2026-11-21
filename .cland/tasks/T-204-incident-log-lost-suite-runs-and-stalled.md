@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-20T07:46:13.886Z
+updated: 2026-11-21T01:02:56.240Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -682,3 +682,7 @@ Restart #90, rollback (2026-11-19, on coord's GO after the human's answer to ask
 ### human · 2026-11-20T07:46:13.886Z
 
 Restart #91, forward (2026-11-20, on coord's GO after the human's answer to ask f2511c79): hub r90 pid 73080 (rollback code 5e3a2005c) stopped 07:44:46Z; job cland-hub-r91 pid 37092 started from the root at 3d2de496f (dev = origin/dev), serving 07:44:58.844Z, gap 12 s. Binding listeners 4 ms, web listener 271 ms. Port 59880, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 07:44:59.310Z, injected 07:45:03.569Z. T-1856's droplet run bba8a07d still tracked after the start. .cland/run/suites 122,360 before and 122,363 after: the dev T3 search loop (T-2023/T-2024) no longer adds entries. First live retention pass 27,828 ms, removed 0 (unindexed scanned 4,096: age-floor 3,912, indexed 184). No tracker-storage-stalled lines. Rollback remains the 5e3a2005c worktree.
+
+### human · 2026-11-21T01:02:56.240Z
+
+Restart #92 (2026-11-21, on coord's request; tonight's landings T-1893, T-1896, T-1892, T-1897 need the hub to run its own tree): hub r91 pid 37092 (3d2de496f) stopped 01:01:49Z; job cland-hub-r92 pid 53112 started from the root at 782f2a58e (dev = origin/dev, root clean, merge queue empty, no runs), serving 01:02:02.174Z, gap 13 s. Binding listeners 4 ms, web listener 282 ms. Port 50497, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 38 ok / 5 warn / 0 fail; web/dist rebuilt before the stop; package files changed in script lines only, no install. Coord bridge-connected 01:02:03.524Z. No tracker-storage-stalled lines. Rollback worktree prepared at 3d2de496f (jobs/92748b6f/tmp/hub-3d2de496f).
