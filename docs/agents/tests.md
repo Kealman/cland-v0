@@ -2360,7 +2360,9 @@ controls and a valid marker can still select fake binaries, like the fake-host g
 
 Typed file-start receipts in verification commands have a startup watchdog:
 30 seconds of shared load-scaled setup headroom, capped at half the admitted
-no-output timeout. Its first-test/suite or empty-file completion receipt disarms
+no-output timeout. Each load-gate and Web repetition child also owns this guard
+and joins its native cleanup before releasing its startup ownership marker.
+Its first-test/suite or empty-file completion receipt disarms
 it; test behaviour deadlines remain unchanged. See the suite-command per-test
 guide for fake-clock coverage and docs/hub/running.md for diagnostic evidence.
 

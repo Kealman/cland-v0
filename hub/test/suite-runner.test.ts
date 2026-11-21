@@ -4,15 +4,18 @@ import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, utimes, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
-import { ownDirectory, ownProcess, onCleanup, captureProcess, cleanupProcesses, type ProcessIdentity } from './process-cleanup.ts';
+import { ownDirectory, ownProcess, onCleanup, captureProcess, cleanupProcesses, cleanupOwnedProcesses, fenceFixtureCleanup, drainFixtureCleanup, type ProcessIdentity } from './process-cleanup.ts';
+import { ownRepetition } from './repetition-owner.ts';
 import { fileURLToPath } from 'node:url';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { runWebRepetitions } from './web-repetitions.ts';
+import { runLoadGate } from './load-gate.ts';
+import { FakeClock } from './fake-clock.ts';
 import { sweep, type Holder } from '../src/suite-lock.ts';
 import { suiteProgress } from '../src/suite-progress.ts';
 import { commandIn, scratchMachine } from './init-machine.ts';
@@ -28,6 +31,133 @@ async function fixture(t: TestContext) {
   return dir;
 }
 const lockPath = (dir: string, mode?: 'hub' | 'nvim') => join(dir, mode === 'hub' ? 'cland-suite.lock' : mode === 'nvim' ? 'cland-suite-nvim.lock' : 'lock');
+
+for (const path of ['load', 'Web'] as const) test(`${path} repetition stops an import before its first test at the shared startup bound`, async t => {
+  let interrupted = false;
+  const active = new Set<ProcessIdentity>();
+  let stopping: Promise<unknown> | undefined;
+  let ownedRoot: string | undefined;
+  let repetition: ReturnType<typeof ownRepetition<unknown>> | undefined;
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => {
+    interrupted = true;
+    stopping = repetition?.cleanup(
+      () => cleanupOwnedProcesses([...active]),
+      () => cleanupProcesses(ownedRoot, [...active], undefined, undefined, undefined, { discover: true }),
+    ) ?? Promise.resolve();
+    void stopping.catch(() => {});
+  } });
+  fenceFixtureCleanup(owner.fixtures);
+  await owner.run(async step => {
+    const dir = await step(() => owner.wait('setup: acquire and adopt fixture', async () => {
+      const acquired = await fixture(owner.fixtures); owner.adoptRoot(acquired); return acquired;
+    }));
+    const root = join(dir, 'repeats');
+    ownedRoot = root;
+    const file = 'held.test.mjs';
+    const receipt = join(dir, 'imported.json');
+    await step(() => owner.wait('setup: write repetition fixture', async () => {
+      await mkdir(root);
+      await writeFile(join(dir, file), `import {appendFile} from 'node:fs/promises';
+    await appendFile(${JSON.stringify(receipt)}, JSON.stringify({pid: process.pid}) + '\\n');
+    setInterval(() => {}, 1000); await new Promise(() => {});`);
+      const discovery = join(dir, 'discovery');
+      await writeFile(discovery, JSON.stringify({ file, name: 'held' }) + '\n');
+    }));
+    const discovery = join(dir, 'discovery');
+    const clock = new FakeClock();
+    let output = '';
+    const consumed = new Set<string>();
+    const stdout = process.stdout.write;
+    const stderr = process.stderr.write;
+    let operation: Promise<unknown> | undefined;
+    onCleanup(owner.fixtures, async () => {
+      interrupted = true;
+      await stopping;
+    });
+    await step(() => owner.wait('setup: launch and consume exact file starts', async () => {
+      const common = { root, cwd: dir, env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: undefined, TEST_SUITE_CWD: dir, CLAND_TEST_LOAD_FACTOR: '1' }), active, interrupted: () => interrupted, clock,
+        observed: (childOwner: string, row: import('../src/suite-progress.ts').TestProgress) => {
+          if (row.event === 'start' && row.type === 'file' && row.file === file) consumed.add(childOwner);
+        } };
+      repetition = ownRepetition(async () => {
+        process.stdout.write = process.stderr.write = ((chunk: string | Uint8Array) => { output += String(chunk); return true; }) as typeof stdout;
+        return path === 'load'
+          ? runLoadGate({ ...common, discovery, workers: 1, timeoutMs: 180000, phase: Promise.resolve(0), manifest: { version: 1, tests: {} } as import('../src/suite-durations.ts').DurationManifest })
+          : runWebRepetitions({ ...common, files: [file], planned: [file], emit: line => { output += line + '\n'; } });
+      }, () => { process.stdout.write = stdout; process.stderr.write = stderr; });
+      const admitted = repetition;
+      operation = owner.wait('repetition result and global restoration', () => admitted.result);
+      void operation.catch(() => {});
+      await until(() => consumed.size === (path === 'Web' ? 2 : 1));
+      await until(async () => (await readFile(receipt, 'utf8').catch(() => '')).trim().split('\n').filter(Boolean).length === (path === 'Web' ? 2 : 1));
+    }));
+    await step(() => owner.wait('behaviour: startup bound and native cleanup', async () => {
+      await clock.advance(29999);
+      assert.doesNotMatch(output, /suite stall startup/);
+      await clock.advance(1);
+      assert.match(output, /suite stall startup stalled: held.test.mjs no test started within 30 s/);
+      interrupted = true;
+      await operation;
+      assert.equal(active.size, 0, 'owned children drained before result');
+      for (const row of (await readFile(receipt, 'utf8')).trim().split('\n')) {
+        const held = JSON.parse(row);
+        assert.throws(() => process.kill(held.pid, 0), { code: 'ESRCH' });
+      }
+      assert.match(output, /suite startup owner .*"event":"finish"/);
+    }));
+  });
+});
+for (const fault of ['stop', 'sweep']) test(`repetition ${fault} rejection joins restoration and retains guarded root until repair`, async t => {
+  const held = Promise.withResolvers<void>(), entered = Promise.withResolvers<void>(), refused = Promise.withResolvers<void>();
+  let refuse = true;
+  const scope = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => { refuse = false; held.resolve(); } });
+  await scope.run(async step => {
+    const dir = await step(() => scope.wait('setup: guarded cleanup root', async () => {
+      const acquired = await fixture(scope.fixtures); scope.adoptRoot(acquired); return acquired;
+    }));
+    // Drive the real removal owner explicitly; the supervisor owns emergency repair.
+    const context = new Proxy(t, { get(target, key) {
+      if (key === 'after') return () => {};
+      const value = Reflect.get(target, key, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    } });
+    fenceFixtureCleanup(context);
+    const root = join(dir, 'guarded');
+    await step(() => scope.wait('setup: register guarded directory', async () => { await mkdir(root); ownDirectory(context, root); }));
+    const stdout = process.stdout.write, stderr = process.stderr.write;
+    let closed = false;
+    const operation = ownRepetition(async () => {
+      process.stdout.write = process.stderr.write = (() => true) as typeof stdout;
+      entered.resolve(); await held.promise;
+      await writeFile(join(root, 'completed'), 'durable writer completion'); closed = true;
+    }, () => { process.stdout.write = stdout; process.stderr.write = stderr; });
+    const joined = scope.wait('writer and global restoration', () => operation.result);
+    void joined.catch(() => {});
+    guardDirectoryRemoval(root, async () => { await operation.result; assert.equal(closed, true); });
+    const failure = new Error(`controlled ${fault} rejection`);
+    onCleanup(context, () => operation.cleanup(
+      async () => { if (refuse && fault === 'stop') { refused.resolve(); throw failure; } },
+      async () => { if (refuse && fault === 'sweep') { refused.resolve(); throw failure; } },
+    ));
+    scope.fixtures.after(async () => { refuse = false; held.resolve(); await operation.result; await drainFixtureCleanup(context); });
+    await step(() => scope.wait('setup: writer entered', () => entered.promise));
+    await step(() => scope.wait('behaviour: rejected cleanup and guarded removal', async () => {
+      const cleanup = drainFixtureCleanup(context);
+      const rejected = assert.rejects(cleanup, error => {
+        assert.ok(error instanceof AggregateError); assert.deepEqual(error.errors, [failure]); return true;
+      });
+      await refused.promise;
+      assert.equal((await stat(root)).isDirectory(), true);
+      assert.equal(closed, false);
+      held.resolve(); await rejected; await joined;
+      assert.equal(closed, true);
+      assert.equal(process.stdout.write, stdout); assert.equal(process.stderr.write, stderr);
+      assert.equal(await readFile(join(root, 'completed'), 'utf8'), 'durable writer completion');
+      refuse = false; await drainFixtureCleanup(context);
+      await assert.rejects(stat(root), { code: 'ENOENT' });
+    }));
+  });
+});
 function run(t: TestContext, dir: string, file: string, mode?: 'hub' | 'nvim' | 'all', stopWhenQueued = false, extraEnv: NodeJS.ProcessEnv = {}) {
   const options = { cwd: dir, lockDirs: { hub: lockPath(dir, 'hub'), nvim: lockPath(dir, 'nvim') } };
   // Pause at the queue diagnostic boundary, after every recovery guard is released.

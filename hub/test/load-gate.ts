@@ -14,6 +14,10 @@ import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import { readQuarantineReceipt, type QuarantineManifest } from '../src/suite-quarantine.ts';
 import { admissionTimeoutMessage } from '../src/test-admission-outcome.ts';
+import { watchSuitePhase, type RepetitionProgressObserver } from './suite-phase.ts';
+import { fileStartupTimeoutMs } from '../src/file-startup-watchdog.ts';
+import type { Clock } from '../src/hub/clock.ts';
+import { suiteLimits } from '../src/suite-limits.ts';
 
 export const loadGateReporter = fileURLToPath(new URL('./load-gate-reporter.ts', import.meta.url));
 
@@ -22,12 +26,15 @@ export const loadGateReporter = fileURLToPath(new URL('./load-gate-reporter.ts',
  * even if the package runner dies before publishing their identities. */
 export async function runLoadGate(options: {
   selection?: SuiteSelection;
+  startupMs?: number; clock?: Clock;
+  observed?: RepetitionProgressObserver;
   discovery: string; root: string; cwd: string; env: NodeJS.ProcessEnv;
   manifest: DurationManifest; timeoutMs: number; workers: number; phase: Promise<number>;
   quarantine?: QuarantineManifest | null;
   interrupted: () => boolean; active: Set<ProcessIdentity>;
 }): Promise<{ failed: boolean; extraWallMs: number; failures: LoadRepetitionFailure[]; rerun: (identity: string) => Promise<void> }> {
   if (!Number.isSafeInteger(options.workers) || options.workers < 1) throw new Error('load gate workers must be a positive integer');
+  const startupMs = options.startupMs ?? fileStartupTimeoutMs((await suiteLimits(options.cwd, 'local', options.env)).stallTimeoutMs, Number(options.env.CLAND_TEST_LOAD_FACTOR));
   process.stderr.write(`load gate workers ${options.workers}; five sequential repetitions per new test\n`);
   let phaseFinished: number | undefined;
   void options.phase.then(() => { phaseFinished = performance.now(); }, () => { phaseFinished = performance.now(); });
@@ -97,7 +104,7 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
       const reporters = quarantine ? [`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout'] : [];
       await prepareRunnerFixture(options.root);
       if (options.interrupted()) break;
-      const child = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), '--test', `--test-timeout=${options.timeoutMs}`, `--test-name-pattern=${pattern}`, `--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${receipt}`, ...reporters, ...progress, resolve(options.cwd, event.file)], { cwd: options.root, env: runnerFixtureEnvironment(options.root, env), detached: true, stdio: ['ignore', 'inherit', 'pipe'] });
+      const child = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), '--test', `--test-timeout=${options.timeoutMs}`, `--test-name-pattern=${pattern}`, `--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${receipt}`, ...reporters, ...progress, resolve(options.cwd, event.file)], { cwd: options.root, env: runnerFixtureEnvironment(options.root, env), detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
       let stderrTail = Buffer.alloc(0);
       child.stderr!.on('data', (chunk: Buffer) => {
         process.stderr.write(chunk);
@@ -116,6 +123,13 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         throw new Error('cannot establish load gate runner identity');
       }
       options.active.add(identity);
+      const guard = watchSuitePhase({ exit: done, startupMs, ...(options.clock ? { clock: options.clock } : {}),
+        observed: row => options.observed?.(receipt, row),
+        owner: { id: receipt, report: line => process.stdout.write(line + '\n') },
+        commandState: () => ({ commandPid: identity.pid, exit: child.exitCode === null && child.signalCode === null ? null : { code: child.exitCode, signal: child.signalCode }, stdout: child.stdout!.readableEnded ? 'closed' : 'open', stderr: child.stderr!.readableEnded ? 'closed' : 'open' }),
+        report: line => process.stderr.write(line + '\n'), stalled: () => cleanupOwnedProcesses([identity]).then(() => {}) });
+      const progressDecoder = new StringDecoder('utf8');
+      child.stdout!.on('data', (chunk: Buffer) => { guard.output(progressDecoder.write(chunk)); process.stdout.write(chunk); });
       let timer: NodeJS.Timeout | undefined;
       let timedOut = false;
       let incomplete = false;
@@ -127,11 +141,11 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         const deadline = new Promise<null>(resolve => {
           timer = setTimeout(() => resolve(null), options.timeoutMs + 250);
         });
-        const outcome = await Promise.race([done, deadline]);
+        const outcome = await Promise.race([guard.result, deadline]);
         timedOut = outcome === null;
         clearTimeout(timer);
         if (timedOut) await cleanupOwnedProcesses([identity]);
-        const code = await done;
+        const code = await guard.result;
         const tierText = env.CLAND_TEST_TIER_ASSIGNMENTS ? await readFile(tierReceipt, 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; }) : '';
         const tierFailed = tierText.split('\n').some(line => line.startsWith('tier-mismatch {') && JSON.parse(line.slice('tier-mismatch '.length)).mode === 'enforce');
         // Preserve the phase's single deduplicated list, but decide this worker's
@@ -186,8 +200,11 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         }
       } finally {
         clearTimeout(timer);
+        guard.stop();
         await cleanupOwnedProcesses([identity]);
         await closed;
+        await guard.result;
+        guard.finished();
         if (incomplete) process.stderr.write(`incomplete: receipt missing; ${event.file} :: ${event.name}; repetition ${repetition + 1}\ntest process exit ${child.exitCode}; signal ${child.signalCode ?? 'none'}\nstderr tail:\n${stderrTail.toString() || '(empty)\n'}`);
         options.active.delete(identity);
       }

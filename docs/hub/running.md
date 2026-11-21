@@ -1129,7 +1129,11 @@ An explicit test-level timeout still overrides Node's default.
 
 Structured file-start receipts also arm one shared per-file startup/import
 watchdog in the verification command worker and the delivered tree's package
-runner, including on Linux droplets. If no test or suite starts in that file, it
+runner, including on Linux droplets. Load-gate and Web repetition children each
+use that same guard with their own captured cleanup owner and bounded startup
+ownership markers. Load-gate stdout is forwarded unchanged while its progress
+is observed; Web repetitions observe typed progress internally and retain their terminal summary.
+If no test or suite starts in that file, it
 fails with `<file> no test started within <n> s`. The base setup allowance is
 30 seconds, scaled by the shared suite load policy (load, configured workers,
 parallelism, executor floor and explicit `CLAND_TEST_LOAD_FACTOR`), and capped

@@ -1,5 +1,14 @@
 # hub/test/suite-phase.test.ts
 
+Repetition progress parsing retains at most 64 KiB of UTF-8 bytes per line while
+reading. Oversized lines are discarded through their newline; later fragmented
+typed progress still reaches the shared guard. The multibyte positive control
+asserts the retained-byte budget and proves consumption before advancing time.
+
+The pure repetition-owner rejection control holds the original operation while
+both cleanup steps reject. It proves restoration still joins the operation and
+the original failure precedes both secondary cleanup failures in the aggregate.
+
 T1 exercises the same phase owner that `run-suite.ts` uses in a delivered tree,
 including on a droplet. A FakeClock advances to 29,999 ms and 30,000 ms after a
 file starts without a first test. The phase emits its file-specific stall and

@@ -322,6 +322,7 @@ process.chdir(cwd);`);
       const repeats = loadGate ? runLoadGate({
         ...(options.selection ? { selection: options.selection } : {}),
         discovery: loadDiscovery, root, cwd, env, manifest: durationManifest!,
+        startupMs: fileStartupTimeoutMs(limits.stallTimeoutMs, Number(env.CLAND_TEST_LOAD_FACTOR)), ...(options.clock ? { clock: options.clock } : {}),
         quarantine,
         timeoutMs: limits.testTimeoutMs, workers: limits.loadGateWorkers, phase: done,
         interrupted: () => interruption.signal !== null, active: loadRunners,
@@ -397,6 +398,7 @@ process.chdir(cwd);`);
         const repeatStarted = performance.now();
         try {
           await runWebRepetitions({ files: options.selection.webRepetitionFiles, planned: args.filter(arg => arg.startsWith('web/test/')),
+            startupMs: fileStartupTimeoutMs(limits.stallTimeoutMs, Number(env.CLAND_TEST_LOAD_FACTOR)), ...(options.clock ? { clock: options.clock } : {}),
             root, cwd, env, interrupted: () => interruption.signal !== null, active: loadRunners, emit: line => process.stdout.write(line + '\n') });
         } catch (error) {
           process.stdout.write(`${WEB_REPETITION_REPORT} not run; ${String(error).replace(/\s+/g, ' ')}; missing load proof\n`);

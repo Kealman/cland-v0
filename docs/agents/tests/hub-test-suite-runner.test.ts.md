@@ -5,6 +5,28 @@ stale-process recovery, bundle prerequisites and Web repetition child cleanup.
 The process boundary is necessary to observe actual child exits and owned
 resources; pure selection and summary rules belong in `web-phase.test.ts`.
 
+The load and Web `repetition stops an import` cases hold a synthetic file before
+its first test. Install the caseDeadlines owner before acquiring the fixture and
+adopt its root inside that acquisition. Separately bound setup and behaviour.
+Observe each child's exact file-start through the guard's post-consumption
+observer, plus its persisted import PID, before advancing the injected
+startup clock to 30 seconds; retain the exact shared stall evidence, child PID
+reaped, empty active-owner set and matching ownership-finish marker assertions.
+Emergency teardown fences further repetitions, stops captured children, joins
+the original body and drains children before restoring globals or fixture removal.
+Run these cases under the native slot; the Web path starts its
+owned CPU worker. The existing normal Web repetition case retains its 10/10
+completion and cleanup assertions.
+
+The operation independently owns stdout/stderr restoration through ownRepetition;
+its result/finalizer is enrolled in the whole case's named work before setup
+waits. Closing the owner fences admission and tries captured stop and root sweep,
+collecting each cleanup failure while still joining the original result. Fenced
+fixture cleanup retains directories on any failed resource close. The generated
+stop/sweep rejection controls observe the injected rejection before releasing a
+held writer, then assert restoration, the original diagnostic, completed write
+under the retained root, and actual guarded removal only after repair.
+
 The setup-factor child regression checks a finite exported factor and explicit
 override through the actual runner subprocess in a disposable root. Run its
 single case with `--test-name-pattern='suite children receive load headroom'`

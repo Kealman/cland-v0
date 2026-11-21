@@ -7,6 +7,7 @@ import { startupOwnerLine } from '../src/suite-startup-owner.ts';
 import { suiteEvidence } from '../src/suite-log.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { suiteProgress } from '../src/suite-progress.ts';
+import { ownRepetition } from './repetition-owner.ts';
 
 test('runner phase stops a file with no first test and joins cleanup before failing native zero exit', async () => {
   const clock = new FakeClock();
@@ -22,7 +23,9 @@ test('runner phase stops a file with no first test and joins cleanup before fail
   let outcome: number | undefined;
   void phase.result.then(code => { outcome = code; });
   try {
-    phase.progress({ event: 'start', id: 'runner:1', file: 'held-import.test.ts', name: 'held-import.test.ts', type: 'file', nesting: 0, at: clock.now().getTime() });
+    const row = JSON.stringify({ event: 'start', id: 'runner:1', file: 'held-import.test.ts', name: 'held-import.test.ts', type: 'file', nesting: 0, at: clock.now().getTime() });
+    phase.output('unrelated output\nsuite progress {torn}\nsuite prog');
+    phase.output('ress ' + row + '\n');
     await clock.advance(29999);
     assert.deepEqual(failures, []);
     await clock.advance(1);
@@ -49,4 +52,50 @@ test('startup ownership markers leave suite counts, progress and durable evidenc
   assert.equal(suiteSummary(marker + counts), suiteSummary(counts));
   assert.equal(suiteProgress(marker, 0), null);
   assert.doesNotMatch(suiteEvidence(marker + 'later noise\n'.repeat(40)), /suite startup owner /);
+});
+
+test('repetition progress bounds kept UTF-8 bytes and recovers after oversized lines', async () => {
+  const clock = new FakeClock();
+  const exit = Promise.withResolvers<number>();
+  const observed: string[] = [], failures: string[] = [];
+  const phase = watchSuitePhase({ clock, startupMs: 30000, exit: exit.promise,
+    owner: { id: 'repeat:1', report: () => {} }, report: () => {},
+    commandState: () => ({ commandPid: 123, exit: null, stdout: 'open', stderr: 'open' }),
+    observed: row => observed.push(row.id),
+    stalled: async reason => { failures.push(reason); } });
+  try {
+    for (let n = 0; n < 100; n++) {
+      phase.output('é'.repeat(4096));
+      assert.ok(phase.bufferedBytes <= 65536);
+    }
+    // An oversized tail containing a convincing prefix cannot become a receipt.
+    const row = JSON.stringify({ event: 'start', id: 'repeat:1', file: 'held.test.ts', name: 'held.test.ts', type: 'file', nesting: 0, at: 0 });
+    phase.output('suite progress ' + row + '\n');
+    assert.deepEqual(observed, []);
+    phase.output('unrelated\nsuite prog');
+    phase.output('ress ' + row.slice(0, 40));
+    phase.output(row.slice(40) + '\n');
+    assert.deepEqual(observed, ['repeat:1'], 'receipt follows consumption by the guard');
+    await clock.advance(30000);
+    assert.deepEqual(failures, ['stalled: held.test.ts no test started within 30 s']);
+  } finally { phase.stop(); exit.resolve(0); await phase.result; }
+});
+
+test('rejected repetition cleanup joins original failure and restoration before reporting secondary errors', async () => {
+  const held = Promise.withResolvers<void>();
+  const entered = Promise.withResolvers<void>();
+  const original = new Error('original repetition failure'), stop = new Error('stop failed'), sweep = new Error('sweep failed');
+  let restored = false;
+  const owner = ownRepetition(async () => { await held.promise; throw original; }, () => { restored = true; });
+  const cleanup = owner.cleanup(async () => { throw stop; }, async () => { entered.resolve(); throw sweep; });
+  const failed = assert.rejects(cleanup, error => {
+    assert.ok(error instanceof AggregateError);
+    assert.deepEqual(error.errors, [original, stop, sweep]);
+    assert.equal(restored, true);
+    return true;
+  });
+  await entered.promise;
+  assert.equal(restored, false);
+  held.resolve();
+  await failed;
 });

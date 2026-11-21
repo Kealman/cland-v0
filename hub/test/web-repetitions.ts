@@ -10,13 +10,21 @@ import { admittedWebRepetitions, repeatWebFiles, webRepeatSummary } from '../src
 import { prepareRunnerFixture } from './fixture-directories.ts';
 import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import { captureProcess, cleanupOwnedProcesses, type ProcessIdentity } from './process-cleanup.ts';
+import { watchSuitePhase, type RepetitionProgressObserver } from './suite-phase.ts';
+import { fileStartupTimeoutMs } from '../src/file-startup-watchdog.ts';
+import type { Clock } from '../src/hub/clock.ts';
+import { StringDecoder } from 'node:string_decoder';
+import { suiteLimits } from '../src/suite-limits.ts';
 
 export async function runWebRepetitions(options: { files: string[] | undefined; planned: string[]; root: string; cwd: string; env: NodeJS.ProcessEnv;
+  startupMs?: number; clock?: Clock;
+  observed?: RepetitionProgressObserver;
   interrupted: () => boolean; active: Set<ProcessIdentity>; emit: (line: string) => void }): Promise<void> {
   const { root, cwd, emit } = options;
   const files = admittedWebRepetitions(options.files, options.planned, emit);
   if (!files) return;
   if (!files.length) { await repeatWebFiles([], async () => { throw new Error('empty plan'); }, emit, options.interrupted); return; }
+  const startupMs = options.startupMs ?? fileStartupTimeoutMs((await suiteLimits(cwd, 'local', options.env)).stallTimeoutMs, Number(options.env.CLAND_TEST_LOAD_FACTOR));
   await prepareRunnerFixture(root);
   const state = new Int32Array(new SharedArrayBuffer(8));
   const load = new Worker(`const { parentPort, workerData } = require('node:worker_threads');
@@ -50,8 +58,9 @@ process.chdir(${JSON.stringify(cwd)});`);
       delete env.CLAND_TEST_TIER_REPORT;
       const before = Atomics.load(state, 1);
       const child = spawn(process.execPath, ['--import', bootstrap, '--test', '--test-concurrency=1', '--test-timeout=180000',
+        `--test-reporter=${fileURLToPath(new URL('./skip-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout',
         `--test-reporter=${fileURLToPath(new URL('./web-repetition-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${receipt}`, resolve(cwd, file)],
-        { cwd: owned, env: runnerFixtureEnvironment(owned, env), detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
+        { cwd: owned, env: runnerFixtureEnvironment(owned, env), detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
       let tail = '';
       child.stderr!.on('data', chunk => { tail = (tail + String(chunk)).slice(-4000); });
       const closed = once(child, 'close');
@@ -59,11 +68,20 @@ process.chdir(${JSON.stringify(cwd)});`);
       const identity = captureProcess(child.pid);
       if (!identity) { void done.catch(() => {}); throw new Error('cannot establish Web repetition process identity'); }
       options.active.add(identity);
+      const guard = watchSuitePhase({ exit: done, startupMs, ...(options.clock ? { clock: options.clock } : {}),
+        observed: row => options.observed?.(owned, row),
+        owner: { id: owned, report: emit },
+        commandState: () => ({ commandPid: identity.pid, exit: child.exitCode === null && child.signalCode === null ? null : { code: child.exitCode, signal: child.signalCode }, stdout: child.stdout!.readableEnded ? 'closed' : 'open', stderr: child.stderr!.readableEnded ? 'closed' : 'open' }),
+        report: emit, stalled: () => cleanupOwnedProcesses([identity]).then(() => {}) });
+      const decoder = new StringDecoder('utf8');
+      child.stdout!.on('data', (chunk: Buffer) => {
+        guard.output(decoder.write(chunk));
+      });
       let timer: NodeJS.Timeout | undefined;
       try {
         if (options.interrupted()) await cleanupOwnedProcesses([identity]);
         else await writeFile(gate, 'ready');
-        const code = await Promise.race([done, new Promise<number>(resolve => { timer = setTimeout(() => resolve(124), 180_250); })]);
+        const code = await Promise.race([guard.result, new Promise<number>(resolve => { timer = setTimeout(() => resolve(124), 180_250); })]);
         clearTimeout(timer);
         await cleanupOwnedProcesses([identity]);
         await closed;
@@ -72,8 +90,11 @@ process.chdir(${JSON.stringify(cwd)});`);
         return { ...summary, code, cpu: Atomics.load(state, 1) > before && load.threadId !== -1 };
       } finally {
         clearTimeout(timer);
+        guard.stop();
         await cleanupOwnedProcesses([identity]);
         await closed;
+        await guard.result;
+        guard.finished();
         options.active.delete(identity);
       }
     }, emit, options.interrupted);
