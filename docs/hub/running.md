@@ -33,6 +33,13 @@ This enforcement was authorized in human triage A-19813 (ask 8e3dd5ab,
 2026-11-16). Tracker/docs immediate merges retain their existing path.
 
 The long check runs outside territory serialization. Its owned checkout is
+given scratch HOME, XDG and npm's default HOME-relative cache under
+`enqueue-environment` in its owned Git metadata directory, outside the checkout.
+Guarded worktree removal deletes that metadata and the scratch contents on
+success, failure and cancellation. Incomplete native closure retains both until
+the command owner confirms closure. Git still refuses removal if the command
+writes an untracked or modified file in the checkout.
+The checkout is
 removed before locked admission. Under that lock, a changed task head refuses;
 a changed dev tip is accepted only if its verification tree is unchanged
 (tracker/rulebook metadata outside that tree). Other dev movement releases the

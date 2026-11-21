@@ -29,6 +29,8 @@ The [enqueue preflight](../docs/hub/running.md#enqueue-preflight) runs the merge
 candidate check outside serialization, protects bounded output before publishing
 its tail and retains checkouts whose native command closure is unconfirmed.
 An absent resolved check is reported explicitly as skipped in the enqueue result.
+Preflight HOME, XDG and default HOME-relative npm cache writes stay in the candidate's owned Git
+metadata outside its checkout; guarded removal collects both after native closure.
 Duration-manifest projects also require structured exact-head Linux timing
 proof before code enqueue. New passing identities measured at 4 seconds or
 more need allowances; refusals provide measured 1.5x stanzas. See the same

@@ -39,6 +39,10 @@ import { checkedEnqueue, EnqueueBaseMoved, validateEnqueueCandidate, EnqueueCanc
 import { SuiteCommandFailure, type SuiteCommandClosed } from '../src/suite-command.ts';
 import { enqueuePreflight } from '../src/hub/enqueue-preflight-native.ts';
 
+function fakeEnqueueCheckout(candidate: BatchCandidate): void {
+  candidate.owner = { id: 'fixture-owner', root: '/owned', cwd: candidate.cwd, gitdir: '/owned/.git/worktrees/check', rootBirth: 'root', birth: 'checkout', gitBirth: 'metadata', head: candidate.head, tree: candidate.tree };
+}
+
 test('native check rejection keeps its private primary when closure checkpointing also rejects', t => guardedMemberCase(t, async (_t, step, wait) => {
   for (const retained of [false, true]) {
     const primary = new Error('Authorization: Bearer synthetic-adapter-primary' + (retained ? '\n' + 'bounded fixture detail '.repeat(2000) : ''));
@@ -50,7 +54,7 @@ test('native check rejection keeps its private primary when closure checkpointin
     const member: MergeQueueEntry = { item: 'T-1', branch: 't/1', head: 'head', verdictBase: 'dev', enqueued: '', by: { id: 'coord', name: 'coord', role: 'coordinator' } };
     const candidate: BatchCandidate = { base: 'base', head: 'head', tree: 'tree', cwd: '/owned/check', budgetLines: [] };
     const backend = enqueuePreflight('/owned', async () => ({ member, base: 'base' }), {}, {
-      prepareMergeBatch: async () => candidate, committedTreeOrThrow: async () => 'base-tree', checkoutMergeBatch: async () => {},
+      prepareMergeBatch: async () => candidate, committedTreeOrThrow: async () => 'base-tree', checkoutMergeBatch: async (_root, value) => fakeEnqueueCheckout(value),
       verificationCommands: async () => ({ check: 'fake-check', test: '', prepare: '' }), forward: () => {}, removeMergeBatch: async () => {},
       beginCandidateCommand: async () => ({ complete: async () => { if (!retained) throw secondary; }, retain: async () => { throw secondary; } }),
       suiteCommand: async () => { throw new SuiteCommandFailure(primary, retained ? { ...closed, state: 'incomplete', reason: 'native-tree-unverified', whenClosed: completion.promise } : closed); },
@@ -204,13 +208,13 @@ test('enqueue runs the configured check on the merged tree and preserves cleanup
       identity: async () => 'verification-tree', checkout: async () => {}, remove: async () => {},
     }, base),
     committedTreeOrThrow: async (_root, base) => { assert.equal(base, 'current-dev'); return 'base-verification-tree'; },
-    checkoutMergeBatch: async (_root, candidate) => { assert.equal(candidate.head, 'merged-commit'); events.push('checkout'); },
+    checkoutMergeBatch: async (_root, candidate) => { assert.equal(candidate.head, 'merged-commit'); fakeEnqueueCheckout(candidate); events.push('checkout'); },
     verificationCommands: async cwd => { assert.match(cwd, /enqueue-/); return { check: 'npm run check', test: '', prepare: '' }; },
     beginCandidateCommand: async () => ({ complete: async () => {}, retain: async () => { assert.fail('closed fixture needs no retention'); } }),
     forward: text => { assert.doesNotMatch(text, /synthetic-fixture-value/); },
     suiteCommand: async (command, cwd, env, _native, _inspection, output) => {
       assert.equal(command, 'npm run check');
-      assert.equal(env?.HOME, join(cwd, 'home'));
+      assert.equal(env?.HOME, '/owned/.git/worktrees/check/enqueue-environment/home');
       assert.equal(env?.GIT_DIR, undefined);
       assert.equal(env?.DIGITALOCEAN_TOKEN, undefined);
       events.push('check');

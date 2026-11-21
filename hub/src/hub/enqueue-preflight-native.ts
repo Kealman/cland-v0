@@ -32,7 +32,12 @@ export function enqueuePreflight(root: string, entry: () => Promise<{ member: Me
       const command = (await native.verificationCommands(candidate.cwd, root, env, { requireTest: false })).check;
       if (!command) return { command: null, code: null, tail: '', skipped: ENQUEUE_CHECK_SKIPPED };
       const capture = new ProtectedCommandCapture();
-      const executionEnv = scratchGitEnvironment(candidate.cwd, fixtureEnvironment(candidate.cwd, env), { excludesFile: join(candidate.cwd, '.cland/run/enqueue-gitignore') });
+      if (!candidate.owner) throw new Error('candidate command environment requires checkout ownership');
+      // Git removes this candidate-owned metadata only through guarded worktree
+      // removal. Account/cache writes never dirty the checkout, and an unclosed
+      // command retains its environment together with the candidate.
+      const environmentRoot = join(candidate.owner.gitdir, 'enqueue-environment');
+      const executionEnv = scratchGitEnvironment(environmentRoot, fixtureEnvironment(environmentRoot, env), { excludesFile: join(environmentRoot, 'gitignore') });
       delete executionEnv.NODE_TEST_CONTEXT;
       delete executionEnv.CLAND_SUITE_LEASE;
       const fence = await native.beginCandidateCommand(candidate);
