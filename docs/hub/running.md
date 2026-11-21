@@ -224,6 +224,57 @@ deciding-file lists remain in the log artifact. Confirmed lifetime and cost also
 appear in a readable accounting line immediately before the final provenance
 JSON footer; pending accounting stays explicitly unconfirmed.
 
+Updated droplet launchers append advisory `suite machine metrics` JSON lines to
+each run's `suite.log` about once per second during package execution, after the
+startup storage probe. Fields are `version: 1`, `at` (machine epoch milliseconds),
+`elapsedMs` (actual interval), `load` (Linux 1/5/15-minute load averages), and
+`cpuPct`, `iowaitPct`, `stealPct` (machine-wide tick deltas). CPU excludes idle,
+iowait and steal; guest counters are already included in user/nice. Missing or
+reset counters remain null. Scheduling under load can lengthen an interval;
+the recorded interval remains authoritative. These lines survive log evidence
+reduction; the existing aggregate `suite machine health` receipt is unchanged.
+The sampler timer runs inside the foreground package supervisor, under the
+existing package timeout and ten-second kill grace; no separate sampler child
+or unbounded shutdown wait is added. Metrics stream to a separate file during
+execution. After the foreground owner completes, a framed append copies them
+into the run log, preserving arbitrary package output without trailing newlines.
+This append has a three-second bound plus one-second kill grace; failure records
+incomplete telemetry and preserves the package outcome. Thus live package log
+collection does not include the series until this final append.
+The retained `suite machine metrics-incomplete` record names the append stage
+and its native exit code; it is distinct from a complete JSON sample.
+The supervisor arms TERM/INT observation before launching the package. It
+allows two seconds for local drainage after interruption; TERM is never a
+closure receipt. The pre-launch `package-pending` fence permits `done` only
+after an uninterrupted native close writes `package-closed`. Interruption or
+supervisor KILL retains that fence, records the foreground native exit when
+available, and delegates closure to the owning machine's deletion.
+Whenever finish executes, `exit` preserves the native status independently of
+completion, including before an incomplete handoff returns. The `done` marker
+remains gated by closure; final reporting stays fenced until release.
+Status adds only optional `packageClosure: { state: "incomplete", nativeExit: number | null }`;
+unknown exits stay null and an incomplete zero exit cannot pass. The hub keeps
+this receipt in the job and result through restart and withholds its final
+report and terminal task card until the lease's confirmed release, including after the normal
+accounting wait expires. Release attempts retain their existing per-attempt
+bound; this closure handoff keeps retrying instead of publishing pending
+accounting. Older runners without the fence/field keep their prior reply shape
+and accounting behaviour. This capability requires the hosting-hub restart
+described below before measurement runs use it.
+Per-second series are retained for normal completed runs. Interrupted runs,
+including supervisor KILL without shell finish, can lose the separate series.
+Their final log explicitly states `machine metrics unavailable: run interrupted
+before collection`, with the closure cause and foreground native exit (or
+unknown). This disclosure is generated from the durable handoff receipt after
+confirmed deletion; it does not imply zero load or available samples. Collecting
+those samples before deletion is a separate follow-up.
+Merged parent logs retain each interrupted child's disclosure under its shard
+header. Parent finalization replaces its own generated footer while preserving
+these child facts across aggregation and publication retries.
+Sampling is report-only and cannot change the suite outcome. The launcher is
+supplied by the running hub: deploy and restart it before requesting measurement
+runs; candidate-only changes cannot update an older hub's uploaded launcher.
+
 #### Close runs
 
 `cland verify all --occasion stage|epic|release --report <topic>` shards remote

@@ -1,5 +1,17 @@
 # hub/test/suite-accounting.test.ts
 
+The guarded incomplete-package case injects native exit 137 explicitly (the
+older scripted finish helper otherwise folds nonzero codes to 1). It holds
+provider deletion past the accounting deadline and restarts the scheduler. Both
+the final report and latest terminal task card stay fenced. After deletion the
+released lease/no-machine receipts precede the sole report and failed card with
+the original exit. Missing publication is separately bounded; the fixture keeps
+its guard through resource cleanup.
+The same final log must disclose interrupted-series loss, with cause and native
+exit, even when no shell-finish append occurred. Re-finalizing the log retains
+exactly one disclosure. This is the Coordinator's M5 disposition; pre-deletion
+collection is separate work, and the test never fabricates available samples.
+
 The unconfirmed-acquisition case enters its guarded caller owner before setup.
 The fallback observer is installed by `suiteUnit` before submission; bounded
 producer settlement precedes explicit notice assertions, so a missing notice

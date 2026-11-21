@@ -1,4 +1,5 @@
 import type { LogFn } from '../../log.ts';
+import { incompletePackageStatus } from './metrics.ts';
 import { readSuiteCauseBounded, SUITE_CAUSE_BYTES, SUITE_INFRASTRUCTURE_PREFIX } from '../../suite-infrastructure.ts';
 import { verificationSteps, verificationStepCommand } from '../../verification-plan.ts';
 import { parseTierReceipts, readTierReceipts, tierReceiptWriterProgram } from '../../verification-tier-receipts.ts';
@@ -34,7 +35,7 @@ export class DeliveryTransportError extends Error {
 const exec = promisify(execFile);
 /** Hosting-source program; delivered older trees need not contain the reader. */
 export function runStatusProgram(): string {
-  return `const fs=require('fs'),p=process.argv[1];const readCause=(${readSuiteCauseBounded.toString()});const platform=fs.existsSync(p+'/platform')?JSON.parse(fs.readFileSync(p+'/platform','utf8')):undefined;let status={state:'pending',platform};if(fs.existsSync(p+'/done')){const finished=fs.readFileSync(p+'/done','utf8').trim();status=finished?{state:'done',code:Number(fs.readFileSync(p+'/exit','utf8')),cause:readCause(fs,p+'/cause',${SUITE_CAUSE_BYTES},${JSON.stringify(SUITE_INFRASTRUCTURE_PREFIX)}),finished,platform}:{state:'running',platform};}else if(fs.existsSync(p+'/pgid')){let alive=true;try{process.kill(-Number(fs.readFileSync(p+'/pgid','utf8')),0)}catch{alive=false}status=alive?{state:'running',platform}:{state:'done',code:1,cause:'remote runner disappeared without a done marker',finished:new Date().toISOString(),platform};}if(fs.existsSync(p+'/tier-receipts.json')){const rows=(${readTierReceipts.toString()})(fs,p+'/tier-receipts.json',(${parseTierReceipts.toString()}));if(rows)status.tierReceipts=rows;}console.log(JSON.stringify(status));`;
+  return `const fs=require('fs'),p=process.argv[1];const readCause=(${readSuiteCauseBounded.toString()});const incomplete=(${incompletePackageStatus.toString()});const platform=fs.existsSync(p+'/platform')?JSON.parse(fs.readFileSync(p+'/platform','utf8')):undefined;let status={state:'pending',platform};if(fs.existsSync(p+'/done')){const finished=fs.readFileSync(p+'/done','utf8').trim();status=finished?{state:'done',code:Number(fs.readFileSync(p+'/exit','utf8')),cause:readCause(fs,p+'/cause',${SUITE_CAUSE_BYTES},${JSON.stringify(SUITE_INFRASTRUCTURE_PREFIX)}),finished,platform}:{state:'running',platform};}else if(fs.existsSync(p+'/package-incomplete')){status={...incomplete(fs,p+'/package-incomplete'),platform};}else if(fs.existsSync(p+'/pgid')){let alive=true;try{process.kill(-Number(fs.readFileSync(p+'/pgid','utf8')),0)}catch{alive=false}status=alive?{state:'running',platform}:fs.existsSync(p+'/package-pending')&&!fs.existsSync(p+'/package-closed')?{...incomplete(fs,p+'/package-incomplete'),platform}:{state:'done',code:1,cause:'remote runner disappeared without a done marker',finished:new Date().toISOString(),platform};}if(fs.existsSync(p+'/tier-receipts.json')){const rows=(${readTierReceipts.toString()})(fs,p+'/tier-receipts.json',(${parseTierReceipts.toString()}));if(rows)status.tierReceipts=rows;}console.log(JSON.stringify(status));`;
 }
 const remoteDir = (lease: DropletLease): string => {
   if (!/^[a-zA-Z0-9-]+$/.test(lease.run)) throw new Error('invalid remote run id');
@@ -187,9 +188,9 @@ git write-tree
       .replace('@RUN_ID@', lease.run).replace('@COMMANDS@', commands)
       .replace('@RUN_TIMEOUT@', String(testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', config.verification.runTimeoutMs, this.#env) / 1000));
     await writeFile(join(local, 'run.sh'), script, { mode: 0o600 });
-    for (const file of ['health.ts', 'temp.sh']) await writeFile(join(local, file), await readFile(fileURLToPath(new URL(`./${file}`, import.meta.url))));
+    for (const file of ['health.ts', 'metrics.ts', 'temp.sh']) await writeFile(join(local, file), await readFile(fileURLToPath(new URL(`./${file}`, import.meta.url))));
     const upload = (file: string, name = file) => this.#upload(lease, run, join(local, file), `runs/${lease.run}/${file}`, name, deadline);
-    for (const file of ['tree.bundle', 'env', 'run.sh', 'health.ts', 'temp.sh', ...(transport.file ? ['selection.json'] : [])]) await upload(file);
+    for (const file of ['tree.bundle', 'env', 'run.sh', 'health.ts', 'metrics.ts', 'temp.sh', ...(transport.file ? ['selection.json'] : [])]) await upload(file);
     const prepare = lines.prepare ? `CLAND_PREPARE_KEY=${quote(JSON.stringify(snapshot.key))} /bin/sh -c ${quote(lines.prepare)} 2>&1 || { prepare_exit=$?; echo "prepare failed (exit $prepare_exit)"; exit "$prepare_exit"; }` : "echo 'prepare: not set'";
     const timeout = () => {
       const remaining = Math.min(deadline, Date.parse(lease.deadline) - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env)) - this.#clock.now().getTime();

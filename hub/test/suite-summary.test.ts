@@ -5,6 +5,18 @@ import { suiteSummary } from '../src/hub/suites.ts';
 import { suiteEvidence } from '../src/suite-log.ts';
 import { soakExecutionSeconds } from '../src/suite-load-gate-plan.ts';
 import { suiteAccounting } from '../src/suite-accounting.ts';
+import { suiteProvenance } from '../src/suite-provenance.ts';
+
+test('interrupted metrics disclosure retains native zero and unknown without claiming samples', () => {
+  const input = { head: 'head', executor: 'droplet' as const };
+  assert.ok(!suiteProvenance(input, []).includes('machine metrics unavailable:'));
+  for (const [nativeExit, display] of [[137, '137'], [0, '0'], [null, 'unknown']] as const) {
+    const footer = suiteProvenance({ ...input, packageClosure: { state: 'incomplete', nativeExit } }, []);
+    const marker = 'machine metrics unavailable: run interrupted before collection; cause: package closure incomplete; foreground exit ' + display;
+    assert.ok(footer.includes(marker)); assert.ok(suiteEvidence(footer).includes(marker));
+    assert.ok(!footer.includes('suite machine metrics {'), 'unavailable is never an invented measurement');
+  }
+});
 
 test('accounting distinguishes confirmed spend from pending confirmation', () => {
   assert.equal(suiteAccounting({ executor: 'droplet', machine: { name: 'cland-run', size: 'c-8', region: 'ams3', lifetimeMs: 123000, costUsd: 0.0123 }, workers: 8 }),
@@ -21,10 +33,12 @@ function commandLog(line: string, output: string[], code: number, id = 'command-
 test('native runner timing survives semantic retention without changing test results', () => {
   const marker = 'suite runner started 2026-11-17T01:00:00Z';
   const malformed = 'suite runner started ordinary command noise';
-  const log = marker + '\n' + malformed + '\n' + commandLog('sh test.sh', ['assertion passed'], 0);
+  const metrics = 'suite machine metrics {"version":1,"at":1000,"elapsedMs":1000,"load":[2.5,1.25,0.75],"cpuPct":30,"iowaitPct":10,"stealPct":10}';
+  const log = marker + '\n' + malformed + '\n' + metrics + '\n' + commandLog('sh test.sh', ['assertion passed'], 0);
   const retained = suiteEvidence(log);
   assert.equal(soakExecutionSeconds(retained, '2026-11-17T01:00:03Z'), 3);
   assert.ok(retained.includes(marker));
+  assert.ok(retained.includes(metrics), 'machine samples survive semantic log reduction');
   assert.ok(!retained.includes(malformed));
   assert.equal(suiteSummary(retained), 'test exited 0: sh test.sh');
   assert.equal(soakExecutionSeconds(suiteEvidence(commandLog('sh test.sh', [], 0)), '2026-11-17T01:00:03Z'), null);

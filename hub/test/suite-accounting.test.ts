@@ -21,6 +21,7 @@ import { deriveCover } from '../src/hub/suite-cover.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { guardedLeaseCase } from './executor-lease-fixture.ts';
+import { appendSuiteProvenance } from '../src/suite-provenance.ts';
 
 type Fixture = Awaited<ReturnType<typeof suiteUnit>>;
 async function running(f: Fixture, id: string) {
@@ -306,6 +307,46 @@ test('distinct shard storage receipts retain their machine identities through ag
   await f.reopen(jobs); await f.tick(); await f.machine.waits.run(f.result(job.id));
   assert.deepEqual(f.reports.at(-1)!.shardHealth, expected, 'receipt alone recovers every child machine');
   assert.equal(machineHealthSummary(f.reports.at(-1)!.health, f.reports.at(-1)!.shardHealth), machineHealthSummary(cachedReport.health, cachedReport.shardHealth));
+});
+
+test('incomplete package closure fences final report beyond accounting expiry and restart until deletion', t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('closure fixture', async () => {
+      const f = await suiteUnit(scope.fixtures, { executor: 'droplet', remoteBudget: 1 }, '', true);
+      scope.adoptRoot(f.root); return f;
+    }));
+    const status = f.machine.dependencies.run.status.bind(f.machine.dependencies.run);
+    scope.patch(f.machine.dependencies.run, 'status', async (...args: Parameters<typeof status>) => {
+      const value = await status(...args);
+      return value.state === 'done' ? { ...value, state: 'lost', code: 137, packageClosure: { state: 'incomplete', nativeExit: 137 } } : value;
+    });
+    f.machine.script({ outcome: 'slow' });
+    const job = await step(() => scope.wait('closure running', async () => { const job = await remote(f); await running(f, job.id); return job; }));
+    f.api.faults.deleteError = 503;
+    await step(() => scope.wait('closure failure', () => f.machine.waits.run(f.finish(job.id, 137, '# tests 1\n# fail 1\n', false))));
+    await step(() => f.clock.advance(130000));
+    await step(() => scope.wait('expired accounting tick', () => f.tick()));
+    assert.equal(f.status(job.id).reported, false, 'accounting expiry is not machine deletion');
+    assert.equal(f.suites.latest('T-1', f.candidate.branch)?.result ?? null, null, 'the task card cannot publish a terminal result either');
+    assert.equal(f.api.droplets.length, 1);
+    await step(() => scope.wait('closure restart', () => f.reopen()));
+    await step(() => scope.wait('restored closure tick', () => f.tick()));
+    assert.equal(f.status(job.id).reported, false, 'persisted handoff survives restart');
+    assert.equal(f.suites.latest('T-1', f.candidate.branch)?.result ?? null, null, 'restart cannot reconstruct a terminal card before deletion');
+    f.api.faults.deleteError = 0;
+    await step(() => scope.wait('confirmed closure', async () => { await f.tick(); await f.machine.waits.run(f.result(job.id)); }));
+    const lease = (await step(() => readLeaseHistory(f.root))).find(lease => lease.run === job.id)!;
+    assert.equal(lease.state, 'released'); assert.equal(f.api.droplets.length, 0);
+    assert.equal(f.reports.filter(report => report.id === job.id).length, 1);
+    assert.equal(f.suites.latest('T-1', f.candidate.branch)?.result, 'failed', 'confirmed deletion publishes the terminal card');
+    assert.equal(f.status(job.id).outcome!.code, 137, JSON.stringify(f.status(job.id).outcome));
+    const finalLog = await step(() => f.log(job.id));
+    assert.match(finalLog, /machine metrics unavailable: run interrupted before collection; cause: package closure incomplete; foreground exit 137/);
+    const reported = f.reports.find(report => report.id === job.id)!;
+    await step(() => appendSuiteProvenance(reported.log, reported, finalLog, async () => {}));
+    assert.equal((await step(() => f.log(job.id))).split('machine metrics unavailable: run interrupted before collection').length - 1, 1, 'finalization retry retains one disclosure');
+  });
 });
 
 test('a finished run waits for confirmed lease accounting before publishing its receipt', async t => {

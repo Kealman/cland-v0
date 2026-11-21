@@ -104,6 +104,7 @@ export type SuiteJob = {
   reportFailedPermanently?: boolean;
   artifact: string | null; reported: boolean; error: string | null; cleaned?: boolean;
   accountingWaitStarted?: string; accountingPending?: boolean;
+  packageClosure?: import('../executor/executor.ts').RunStatus['packageClosure'];
   cancelled?: boolean; interruptedAt?: string; progressReported?: boolean;
   tree?: string | null; finished?: string;
   cached?: { run: string; head: string; tree: string; occasion?: VerifyOccasion | null; executor?: ExecutorKind };
@@ -134,6 +135,9 @@ export type SuiteSchedulerOptions = { flakyOwners?: (identities: string[]) => Re
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
+export function packageClosurePending(job: Pick<SuiteJob, 'packageClosure' | 'executor' | 'lease'>): boolean {
+  return !!job.packageClosure && job.executor === 'droplet' && (job.lease as DropletLease | undefined)?.state !== 'released';
+}
 const KEY = 'suite-jobs';
 // Hub-derived: callers cannot accidentally rotate the key when retrying a lost reply.
 const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion' | 'devT3Probe'>) => input.devT3Probe?.key ?? input.actor?.sessionId ?? (input.occasion === 'dev-t3' ? 'dev-t3' : input.occasion === 'soak' ? 'nightly-soak' : 'human');
@@ -413,7 +417,7 @@ export class Suites {
         isolatedSuiteEvidencePath(root, job.id, job.log, environment);
         isolatedSuiteEvidencePath(root, job.id, job.result, environment);
         await writeFile(job.log, 'log unavailable (outside isolated root)\n', { mode: 0o600 });
-        await writeFile(job.result, JSON.stringify({ ...job.outcome, finished: job.finished }), { mode: 0o600 });
+        await writeFile(job.result, JSON.stringify({ ...job.outcome, ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: job.finished }), { mode: 0o600 });
       })();
       this.#isolatedAdmissions.set(job.id, preparation);
       admissions.push(preparation);
@@ -494,7 +498,7 @@ export class Suites {
     if (!this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
     // A successful report checkpoints the log artifact across async I/O. Publish its
     // terminal card once with that artifact, or once the blocking error is persisted.
-    if (job.state === 'finished' && !job.reported && !job.error) return;
+    if (packageClosurePending(job) || job.state === 'finished' && !job.reported && !job.error) return;
     const later = (previous: SuiteJob | undefined) => !previous || this.#order.get(job.id)! >= this.#order.get(previous.id)!;
     // Task frames can also be built by unrelated tracker updates. Keep their lookup
     // at the last publishable checkpoint while the live job awaits cleanup/reporting.
@@ -1774,18 +1778,19 @@ export class Suites {
       throw error;
     });
     if (text === null) return false;
-    const result = JSON.parse(text) as { tierReceipts?: unknown; code: number; cause?: string; notRun?: 'infrastructure' | 'provider-capacity'; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
+    const result = JSON.parse(text) as { packageClosure?: SuiteJob['packageClosure']; tierReceipts?: unknown; code: number; cause?: string; notRun?: 'infrastructure' | 'provider-capacity'; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
     if (!Number.isInteger(result.code) || typeof result.finished !== 'string' || !Number.isFinite(Date.parse(result.finished)) || result.cause !== undefined && typeof result.cause !== 'string') throw new Error('invalid remote result receipt');
     // The receipt survives deletion of the machine and can predate the last job
     // checkpoint. Reconcile it before polling or relaunching a persisted holder.
     if (job.outcome?.notRun && (result.notRun !== job.outcome.notRun || result.code !== job.outcome.code || result.cause !== job.outcome.cause)) {
       // An older collector could persist bare terminal transport status between
       // the delivery failure checkpoint and its full-outcome rewrite.
-      await writeFile(`${job.result}.restore.tmp`, JSON.stringify({ ...result, ...job.outcome }), { mode: 0o600 });
+      await writeFile(`${job.result}.restore.tmp`, JSON.stringify({ ...result, ...job.outcome, ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}) }), { mode: 0o600 });
       await rename(`${job.result}.restore.tmp`, job.result);
     }
     if (!job.outcome?.notRun && (!job.outcome || !job.cancelled && !job.requesterDied && !job.timedOut)) job.outcome = { ...suiteCommandOutcome(result.code, result.cause ?? ''), ...(result.notRun ? { notRun: result.notRun } : {}) };
     job.finished = result.finished;
+    if (result.packageClosure) job.packageClosure = result.packageClosure;
     const tierReceipts = parseTierReceipts(result.tierReceipts);
     if (tierReceipts) job.tierReceipts = tierReceipts;
     if (result.platform) job.platform = result.platform;
@@ -1818,7 +1823,7 @@ export class Suites {
     await mkdir(dirname(job.log), { recursive: true });
     await mkdir(dirname(job.result), { recursive: true });
     await appendFile(job.log, `${job.outcome!.notRun ? `${diagnostic}; report inputs reconstructed from terminal refusal\n` : ''}${job.outcome!.cause}\n`, { mode: 0o600 });
-    if (!job.outcome!.notRun || missing.includes('result receipt')) await writeFile(job.result, JSON.stringify({ ...job.outcome, finished: job.finished }), { mode: 0o600 });
+    if (!job.outcome!.notRun || missing.includes('result receipt')) await writeFile(job.result, JSON.stringify({ ...job.outcome, ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: job.finished }), { mode: 0o600 });
   }
   async #confirmAccounting(job: SuiteJob): Promise<void> {
     const sources = job.shards ?? [job];
@@ -1871,6 +1876,7 @@ export class Suites {
         job.timedOut = true; job.outcome = { code: 124, cause: `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` }; this.#save(job);
       }
       const receipt = !restored && job.lease ? remote ? await this.#droplet.status(job.lease as DropletLease) : await this.#local.status(job.lease) : null;
+      if (receipt?.packageClosure) { job.packageClosure = receipt.packageClosure; this.#save(job); }
       if (receipt && (receipt.state === 'done' || receipt.state === 'lost')) {
         const tierReceipts = parseTierReceipts(receipt.tierReceipts);
         if (tierReceipts) job.tierReceipts = tierReceipts;
@@ -1879,7 +1885,7 @@ export class Suites {
       if (!restored && remote && job.lease && job.remoteLogStart !== undefined) {
         try { await this.#collectLog(job); }
         catch (error) { logError = error; }
-        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ ...(job.outcome?.notRun ? job.outcome : suiteCommandOutcome(receipt.code ?? 1, receipt.cause ?? '')), finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.tierReceipts ? { tierReceipts: receipt.tierReceipts } : {}), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
+        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ ...(job.outcome?.notRun ? job.outcome : suiteCommandOutcome(receipt.code ?? 1, receipt.cause ?? '')), ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.tierReceipts ? { tierReceipts: receipt.tierReceipts } : {}), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
       }
       if (receipt?.platform) job.platform = receipt.platform;
       if (receipt?.finished) job.finished = receipt.finished;
@@ -1929,7 +1935,7 @@ export class Suites {
         }
         // A recovered receipt can already contain the finalized partial results.
         // Do not replace it with a header-only receipt on a reporting retry.
-        if (!restored) await writeFile(job.result, JSON.stringify({ ...job.outcome, ...(job.tierReceipts ? { tierReceipts: job.tierReceipts } : {}), finished: job.finished ?? this.#clock.now().toISOString(), ...(job.platform ? { platform: job.platform } : {}), ...(job.health ? { health: job.health } : {}), ...(job.shardHealth ? { shardHealth: job.shardHealth } : {}) }));
+        if (!restored) await writeFile(job.result, JSON.stringify({ ...job.outcome, ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), ...(job.tierReceipts ? { tierReceipts: job.tierReceipts } : {}), finished: job.finished ?? this.#clock.now().toISOString(), ...(job.platform ? { platform: job.platform } : {}), ...(job.health ? { health: job.health } : {}), ...(job.shardHealth ? { shardHealth: job.shardHealth } : {}) }));
       }
       job.state = 'finished';
       this.#save(job);
@@ -1962,12 +1968,17 @@ export class Suites {
             // Retain the durable outcome/log while release retries. A bounded
             // window catches normal provider lag without holding a verdict
             // indefinitely; late confirmation gets its own correction notice.
-            const released = await this.#droplet.release(lease, Date.parse(job.accountingWaitStarted) + ACCOUNTING_WAIT_MS).catch(error => {
+            const released = await this.#droplet.release(lease, job.packageClosure ? Infinity : Date.parse(job.accountingWaitStarted) + ACCOUNTING_WAIT_MS).catch(error => {
               this.#options.log?.({ event: 'verification-release-deferred', id: job.id, lease: lease.lease, error: String(error) });
               return { lifetimeMs: lease.lifetimeMs ?? null, costUsd: lease.costUsd ?? null };
             });
             job.machine = { name: lease.name, size: lease.size, region: lease.region, ...resourceAccounting(job, lease, released) };
             this.#save(job);
+            if (packageClosurePending(job)) {
+              job.error = 'package closure incomplete; awaiting confirmed machine deletion';
+              this.#save(job);
+              return;
+            }
             if (released.lifetimeMs === null || released.costUsd === null) {
               if (this.#clock.now().getTime() - Date.parse(job.accountingWaitStarted) < ACCOUNTING_WAIT_MS) {
                 job.error = 'awaiting confirmed remote lease lifetime and cost';

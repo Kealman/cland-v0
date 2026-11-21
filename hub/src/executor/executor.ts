@@ -18,6 +18,8 @@ export type RunRef = {
 export type Lease = { kind: ExecutorKind; run: string; created: string; deadline: string; resource: unknown };
 export type Platform = { os: string; arch: string; release: string; node: string; nvim: string };
 export type RunStatus = {
+  /** Closure remains with the machine owner until its deletion is confirmed. */
+  packageClosure?: { state: 'incomplete'; nativeExit: number | null };
   tierReceipts?: import('../verification-tier-receipts.ts').TierReceipt[];
   state: 'pending' | 'running' | 'done' | 'lost' | 'paused' | 'unknown';
   code?: number; cause?: string; finished?: string; platform?: Platform;

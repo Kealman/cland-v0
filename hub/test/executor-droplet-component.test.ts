@@ -433,6 +433,33 @@ test('uploaded status carries bounded producer receipts without changing its nat
   });
 });
 
+test('supervisor KILL and incomplete closure retain native exit and fence machine ownership', t => {
+  const scope = guardedLeaseCase(t);
+  return scope.run(async step => {
+    const { runStatusProgram } = await step(() => scope.wait('closure status import', () => import('../src/executor/droplet/run.ts')));
+    for (const content of ['137\n', '124\n', '0\n', 'damaged', 'x'.repeat(100000), null]) for (const closeFailure of [false, true]) for (const exitPresent of [false, true]) {
+      const bytes = Buffer.from(content ?? '');
+      let kept = 0;
+      const rows: Array<{ state: string; code: number; packageClosure: { nativeExit: number | null } }> = [];
+      const fs = {
+        existsSync: (path: string) => path.endsWith('/pgid') || path.endsWith('/package-pending') || content !== null && path.endsWith('/package-incomplete') || exitPresent && path.endsWith('/exit'),
+        readFileSync: (path: string) => { assert.ok(path.endsWith('/pgid')); return '30001'; },
+        openSync: () => 9,
+        readSync: (_fd: number, target: Buffer, offset: number, length: number, position: number) => {
+          const part = bytes.subarray(position, position + Math.min(length, 2)); part.copy(target, offset); kept += part.length; assert.ok(kept <= 9); return part.length;
+        }, closeSync: () => { if (closeFailure) throw new Error('controlled close failure'); },
+      };
+      await step(async () => { runInNewContext(runStatusProgram(), { Buffer, require: () => fs,
+        process: { argv: ['node', '/receipt'], kill: () => { throw Object.assign(new Error('absent group'), { code: 'ESRCH' }); } },
+        console: { log: (text: string) => rows.push(JSON.parse(text)) } }); });
+      assert.equal(rows[0]!.state, 'lost', 'closure uncertainty cannot manufacture done');
+      const nativeExit = content === '137\n' ? 137 : content === '124\n' ? 124 : content === '0\n' ? 0 : null;
+      assert.equal(rows[0]!.packageClosure.nativeExit, nativeExit);
+      assert.equal(rows[0]!.code, nativeExit || 1, 'incomplete zero exit cannot become green');
+    }
+  });
+});
+
 
 test('executor CLI controls respect each caller role', async t => {
   const root = await tempProject(t);

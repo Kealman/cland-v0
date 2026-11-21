@@ -1,10 +1,13 @@
 // The same bounded receipt is produced on the machine and retained by the hub.
-import { closeSync, fsyncSync, mkdtempSync, openSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync, writeSync } from 'node:fs';
+import { closeSync, fsyncSync, mkdtempSync, openSync, readFileSync, readSync, realpathSync, renameSync, rmSync, writeFileSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { constants } from 'node:os';
 
-export type CpuSample = { totalTicks: number; iowaitTicks: number; stealTicks: number };
+import { cpuSample, cpuDelta, withMachineMetrics, appendMachineMetrics, ownPackage, type CpuSample } from './metrics.ts';
+export { cpuSample, cpuDelta, type CpuSample } from './metrics.ts';
 export type MachineHealth = {
   version: 1;
   temp: { root: string; kind: 'tmpfs' | 'disk'; capBytes: number | null; fallback: string | null };
@@ -12,19 +15,6 @@ export type MachineHealth = {
   cpu: (CpuSample & { iowaitPct: number; stealPct: number }) | null;
 };
 export type ShardMachineHealth = { run: string; shard: string; machine: { name?: string; size?: string; region?: string } | null; health: MachineHealth | null };
-export function cpuSample(text: string): CpuSample | null {
-  // guest and guest_nice are already counted in user/nice; don't sum them twice.
-  const line = /^cpu\s+(.+)$/m.exec(text)?.[1];
-  const ticks = line?.trim().split(/\s+/).slice(0, 8).map(Number);
-  if (!ticks || ticks.length !== 8 || ticks.some(n => !Number.isSafeInteger(n) || n < 0)) return null;
-  return { totalTicks: ticks.reduce((sum, n) => sum + n, 0), iowaitTicks: ticks[4]!, stealTicks: ticks[7]! };
-}
-export function cpuDelta(before: CpuSample | null, after: CpuSample | null): MachineHealth['cpu'] {
-  if (!before || !after) return null;
-  const totalTicks = after.totalTicks - before.totalTicks, iowaitTicks = after.iowaitTicks - before.iowaitTicks, stealTicks = after.stealTicks - before.stealTicks;
-  if (totalTicks <= 0 || iowaitTicks < 0 || stealTicks < 0 || iowaitTicks + stealTicks > totalTicks) return null;
-  return { totalTicks, iowaitTicks, stealTicks, iowaitPct: Math.round(iowaitTicks / totalTicks * 10000) / 100, stealPct: Math.round(stealTicks / totalTicks * 10000) / 100 };
-}
 export function machineHealthFromLog(log: string): MachineHealth | undefined {
   let health: MachineHealth | undefined;
   for (const line of log.split('\n')) {
@@ -72,7 +62,52 @@ function probe(root: string): MachineHealth['storage']['disk'] {
 function readCpu(): CpuSample | null {
   try { return cpuSample(readFileSync('/proc/stat', 'utf8')); } catch { return null; }
 }
-function receipt(action: string, dir: string) {
+async function receipt(action: string, dir: string) {
+  if (action === 'append') {
+    const fd = openSync(join(dir, 'metrics.log'), 'r'), chunk = Buffer.alloc(16384);
+    try { appendMachineMetrics(() => { const n = readSync(fd, chunk); return n ? chunk.toString('utf8', 0, n) : null; }, text => { writeSync(1, text); }); }
+    finally { closeSync(fd); }
+    return;
+  }
+  if (action === 'supervise') {
+    let fd: number | undefined;
+    try { fd = openSync(join(dir, 'metrics.log'), 'a'); } catch { /* advisory sink unavailable */ }
+    try {
+      let child: ChildProcess | undefined;
+      let interrupted: (signal: string) => void = () => {};
+      const result = await withMachineMetrics({ now: Date.now,
+        every: (ms, callback) => { const timer = setInterval(callback, ms); return () => clearInterval(timer); },
+        read: () => ({ stat: readFileSync('/proc/stat', 'utf8'), loadavg: readFileSync('/proc/loadavg', 'utf8') }),
+        write: line => { if (fd !== undefined) writeSync(fd, line); },
+      }, () => ownPackage({
+        observe: listener => {
+          interrupted = listener;
+          const term = () => listener('SIGTERM'), int = () => listener('SIGINT');
+          process.on('SIGTERM', term); process.on('SIGINT', int);
+          return () => { process.off('SIGTERM', term); process.off('SIGINT', int); };
+        },
+        after: (ms, callback) => { const timer = setTimeout(callback, ms); return () => clearTimeout(timer); },
+        handoff: () => { child?.unref(); },
+        launch: () => new Promise<number>(resolve => {
+          child = spawn('bash', [], { stdio: 'inherit' });
+          let launchFailed = false;
+          child.once('error', () => { launchFailed = true; });
+          child.once('close', (code, signal) => {
+            if (signal) interrupted(signal);
+            resolve(launchFailed ? 127 : code ?? (signal ? 128 + constants.signals[signal] : 1));
+          });
+        }),
+      }));
+      if (result.state === 'closed') {
+        writeFileSync(join(dir, 'package-closed.tmp'), 'closed\n');
+        renameSync(join(dir, 'package-closed.tmp'), join(dir, 'package-closed'));
+        process.exitCode = result.code;
+      } else process.exitCode = result.signal === 'SIGINT' ? 130 : result.signal ? 143 : 1;
+    } finally {
+      try { if (fd !== undefined) closeSync(fd); } catch { /* never replace the package outcome */ }
+    }
+    return;
+  }
   const path = join(dir, 'health.json');
   const save = (health: MachineHealth) => {
     writeFileSync(path + '.tmp', JSON.stringify(health)); renameSync(path + '.tmp', path);
@@ -94,4 +129,4 @@ function receipt(action: string, dir: string) {
     health.cpu = cpuDelta(before, readCpu()); save(health);
   }
 }
-if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) receipt(process.argv[2]!, process.argv[3]!);
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) await receipt(process.argv[2]!, process.argv[3]!);

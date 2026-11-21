@@ -1,5 +1,12 @@
 # hub/test/suite-log-backfill.test.ts
 
+The interrupted-child case uses actual child finalization, aggregate copy/rename
+and parent finalization. Two children supply native 137 and unknown disclosures;
+both remain attributed by their shard headers after two aggregation attempts
+and two parent finalization retries each. It keeps exactly one marker per child
+and one parent provenance footer. Setup and behaviour are separately bounded,
+and directory removal joins the owned pipelines first.
+
 `node --test hub/test/suite-log-backfill.test.ts` uses disposable stores, native
 large log files and scripted executor receipts. It launches no worker or browser.
 The retained-proof case checks one sequential stream per source and zero whole

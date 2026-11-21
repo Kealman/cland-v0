@@ -12,6 +12,39 @@ import { aggregateSuiteLogs, readSuiteEvidence } from '../src/suite-log.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { caseDeadlines } from './case-deadlines.ts';
+import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { appendSuiteProvenance } from '../src/suite-provenance.ts';
+
+test('interrupted child disclosures survive aggregation and parent finalization retries', t => {
+  const scope = caseDeadlines(t, { timeoutMs: 5000, ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return scope.run(async step => {
+    const root = await step(() => scope.wait('aggregate disclosure setup', async () => {
+      const root = await fs.mkdtemp(join(tmpdir(), 'cland-child-disclosures-'));
+      scope.adoptRoot(root); scope.fixtures.after(() => fs.rm(root, { recursive: true, force: true }));
+      return root;
+    }));
+    await step(() => scope.wait('aggregate disclosure behaviour', async () => {
+      const parent = join(root, 'parent.log'), first = join(root, 'first.log'), second = join(root, 'second.log');
+      const input = { head: 'head', executor: 'droplet' as const };
+      await fs.writeFile(parent, 'parent output\n');
+      await fs.writeFile(first, 'first child partial'); await fs.writeFile(second, 'second child partial');
+      await appendSuiteProvenance(first, { ...input, packageClosure: { state: 'incomplete', nativeExit: 137 } }, '', async () => {});
+      await appendSuiteProvenance(second, { ...input, packageClosure: { state: 'incomplete', nativeExit: null } }, '', async () => {});
+      const marker = 'machine metrics unavailable: run interrupted before collection; cause: package closure incomplete; foreground exit ';
+      assert.ok((await fs.readFile(first, 'utf8')).includes(marker + '137'), 'the child supplied the disclosure before aggregation');
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await aggregateSuiteLogs(parent, [{ log: first, shardName: 'first' }, { log: second, shardName: 'second' }], 'aggregate complete\n');
+        await fs.rename(parent + '.shards.tmp', parent);
+        for (let retry = 0; retry < 2; retry++) await appendSuiteProvenance(parent, input, await readSuiteEvidence(parent), async () => {});
+        const finalLog = await fs.readFile(parent, 'utf8');
+        assert.ok(finalLog.includes('--- first ---\nfirst child partial\n' + marker + '137'));
+        assert.ok(finalLog.includes('--- second ---\nsecond child partial\n' + marker + 'unknown'));
+        assert.equal(finalLog.split(marker).length - 1, 2, 'one disclosure per child across both retry boundaries');
+        assert.equal(finalLog.split('suite provenance ').length - 1, 1, 'one parent provenance footer');
+      }
+    }));
+  });
+});
 
 for (const commandOnly of [false, true]) test(`stall ${commandOnly ? 'command state without census' : 'census'} survives semantic retention and capped reporting after command noise`, async t => {
   const root = await fs.mkdtemp(join(tmpdir(), 'cland-stall-evidence-'));

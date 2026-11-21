@@ -1,5 +1,11 @@
 # hub/test/executor-droplet-component.test.ts
 
+The guarded supervisor-KILL status table keeps the prior runner shape and models
+the new optional packageClosure handoff. Native exit reads keep at most nine
+bytes, preserve known exits through close failure, leave missing/damaged exits
+unknown and forbid an incomplete zero exit from becoming green. A killed runner
+with an uncleared pre-launch fence is incomplete even without its final receipt.
+
 Local-SSH hold controls count the exact hold-enter/hold-leave event kinds. Index
 migration diagnostics can share the logger; they do not change the required hold
 counts, ordering, run identity, original diagnostic or running/lost result.

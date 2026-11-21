@@ -1,5 +1,11 @@
 # hub/test/executor-run.test.ts
 
+The cancel case retains its native `exit` receipt assertion (`143`) after the
+sole report and confirmed provider resource release. An incomplete package
+handoff preserves that status file while withholding `done`; publishing `exit`
+alone cannot release the final-report closure fence. Preserve this direct
+receipt consumer when changing uploaded finish/status scripts.
+
 This T3 transport seam uses sealed disposable projects and the fake provider's
 native shell delivery. Preserve admitted command facts after changing project
 config, and prove the T0 timing wrapper is delivered before runtime tier wrappers.
