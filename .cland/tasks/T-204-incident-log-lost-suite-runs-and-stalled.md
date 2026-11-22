@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-21T22:34:15.493Z
+updated: 2026-11-22T04:12:40.100Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -706,3 +706,7 @@ Restart #96 (2026-11-21, on the human's answer to ask 6c320816 option 1 and coor
 ### human · 2026-11-21T22:34:15.493Z
 
 Restart #97 (2026-11-21, under the human's answer to ask 6c320816 and coord's GO): hub r96b pid 12744 (678931704) stopped 22:33:12Z; job cland-hub-r97 pid 34280 runs T-2056's new reviewed head b2b66069b from a detached worktree (jobs/92748b6f/tmp/hub-b2b66069b) with the root as cwd, serving 22:33:25.051Z, gap 13 s. Binding listeners 4 ms, web listener 342 ms. Port 50875, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 22:33:26Z, injected 22:33:28Z. No runs in flight. The 678931704 worktree removed; 782f2a58e kept as rollback. Return to dev follows after T-2056, T-2053, T-2049 and T-2050 land.
+
+### human · 2026-11-22T04:12:40.100Z
+
+Restart #98, return to dev (2026-11-22, under the human's answer to ask 6c320816 and coord's GO): hub r97 pid 34280 (b2b66069b) stopped 04:11:12Z; job cland-hub-r98 pid 82177 runs dev commit d6f0b7da6 (covered by green integrated run 6a4791fb: 9,525 tests, 0 fail; contains T-2053, T-2049, T-2050, T-2056) from a detached worktree (jobs/92748b6f/tmp/hub-d6f0b7da6) with the root as cwd, serving 04:11:24.853Z, gap 12 s. The dev tip 0cb5b23bd (T-2055) was not used: no integrated cover yet (rule 6). Binding listeners 4 ms, web listener 335 ms. Port 53068, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 04:11:25Z, injected 04:11:28Z. The held T-2051 batch 634eeb9e (run 2443f456 had hit the 75-min deadline with 867 repeated T3 identities, T-2053's defect on #97) did not survive the restart; coord re-enqueues it. b2b66069b worktree removed; 782f2a58e kept.
