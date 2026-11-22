@@ -88,6 +88,7 @@ export class TaskMerges {
   }
 
   readonly tracker: Tracker;
+  readonly #readiness = new WeakMap<ItemView, () => void>();
   readonly queue: MergeQueue | undefined;
   readonly worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>;
   readonly #squash: typeof squashTask;
@@ -121,6 +122,7 @@ export class TaskMerges {
     let view: ItemView;
     try { view = await (evidence ? this.tracker.mergeViewAsync(id, resumed) : this.tracker.viewAsync(id, resumed)); }
     catch (err) { return resumed(() => { if (err instanceof MergeError) throw err; throw new MergeError('merge-item', err instanceof Error ? err.message : String(err)); }); }
+    if (evidence) this.#readiness.set(view, await this.tracker.mergeReadiness(view, resumed));
     return resumed(() => {
       if (view.kind !== 'task' || view.state !== 'open') throw new MergeError('merge-item', `${view.id} must be an open task`);
       if (!view.branch) throw new MergeError('merge-branch', `${view.id} has no branch`);
@@ -158,6 +160,7 @@ export class TaskMerges {
       if (criteria.length) this.log({ event: 'merge-criteria-overridden', id: view.id, override, criteria });
     }
     const { review, qa } = override === undefined ? gateVerdicts(view) : { review: null, qa: null };
+    if (override === undefined) this.#readiness.get(view)!();
     return `${view.title} (${view.id})\n\nItem: ${view.id}${review ? `\nReviewed-by: ${review.author} (${review.run})` : ''}${qa ? `\nQA-by: ${qa.author} (${qa.run})` : ''}`;
   }
 

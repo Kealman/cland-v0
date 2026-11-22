@@ -2,6 +2,15 @@
 
 ### Enqueue preflight
 
+Ordinary merge admission requires ready status and the Tracker readiness
+verification policy: a finished passed exact-head task receipt, including a
+same-tree cache projection. No configured test/tier command or an empty task
+diff exempts verification. `merge-verification` names the missing evidence,
+run and head; `merge-not-ready` names status. Batch runs do not replace member
+receipts. Deploy and restart the hub to activate this admission policy.
+Existing human tracker/docs overrides and already-landed recovery retain their
+paths.
+
 With the merge queue enabled, code enqueue prepares the reviewed item head
 merged with current dev, projects the item's closure through the shared wording
 lint, and runs the candidate's configured `[verification].check` in an isolated

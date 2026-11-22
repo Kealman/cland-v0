@@ -33,6 +33,8 @@ site MDX prose against the candidate checkout's tracker.
 The [enqueue preflight](../docs/hub/running.md#enqueue-preflight) runs the merged
 candidate check outside serialization, protects bounded output before publishing
 its tail and retains checkouts whose native command closure is unconfirmed.
+The same reference describes ready-status and completed same-head task receipt
+admission, its no-command/empty-diff dispositions and hub restart requirement.
 An absent resolved check is reported explicitly as skipped in the enqueue result.
 Preflight HOME, XDG and default HOME-relative npm cache writes stay in the candidate's owned Git
 metadata outside its checkout; guarded removal collects both after native closure.

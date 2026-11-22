@@ -1,5 +1,25 @@
 # hub/test/merge-queue.test.ts
 
+T-2055 exercises public merge admission with absent, launching, running, failed,
+cancelled, stale-head and incomplete receipts; passed and projected cache
+receipts admit. A separate status control refuses in-progress items despite a
+pass. Explicit claim fixtures restore ready status before enqueue. A prepared
+validator is exercised after a newer pending receipt to prove final-boundary
+rechecking. No-command public enqueue and empty-diff admission preserve the
+readiness dispositions; the T1 queue file checks actual empty-diff enqueue.
+
+After source-review M1, every new callback enters `admissionCase` before
+acquisition. It uses `stageCase` for the whole original callback and named
+setup/observation bounds. The file hook delegates only its exact listed names
+to this positive native guard. Fenced `scope.resources` owns the hub's
+partial-startup stop; it is registered before the captured database fallback.
+Directory/UI cleanup uses fenced `scope.fixtures`, after required hub/database
+closure, avoiding a directory-removal dependency on its own close receipt.
+`adoptRoot` guards actual removal; resource-close failure retains the root,
+seams and native guard. Shared stage owner controls are in tracker-summary:
+file setup/callback cancellation, rejected resource close and rejected Tracker
+construction with rejected then confirmed database closure.
+
 T-2050 keeps the shared fixture's configured test command and nonempty code diff.
 `readyVerificationFixture` supplies a completed passed receipt for the explicitly
 admitted task head before source review. A later head gets its own explicit

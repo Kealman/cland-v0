@@ -807,11 +807,31 @@ export class Tracker {
   }
 
   #readyVerification(view: ItemView): boolean | Promise<boolean> {
-    if (!this.#requiresVerify()) return true;
-    const receipt = this.#verify(view.id, view.branch);
-    if (receipt?.state === 'finished' && receipt.result === 'passed' && receipt.finished
-      && receipt.head === this.#fresh.tip(view.branch)) return true;
+    if (this.#verificationMissing(view) === null) return true;
     return this.#fresh.emptyTaskDiff(view.branch);
+  }
+
+  #verificationMissing(view: ItemView): string | null {
+    if (!this.#requiresVerify()) return null;
+    const head = this.#fresh.tip(view.branch);
+    const receipt = this.#verify(view.id, view.branch);
+    if (receipt?.state === 'finished' && receipt.result === 'passed' && receipt.finished && receipt.head === head) return null;
+    return `${view.id}: required passed verification at head ${head ?? 'unknown'}; ${receipt
+      ? `run ${receipt.id}, head ${receipt.head ?? 'unknown'}, ${receipt.state === 'finished' ? receipt.result ?? 'incomplete' : receipt.state}${receipt.finished ? '' : ', completion absent'}`
+      : 'receipt absent'}`;
+  }
+
+  /** Share readiness dispositions; recheck mutable receipts at the mutation boundary. */
+  async mergeReadiness(view: ItemView, resumed: <T>(work: () => T) => T): Promise<() => void> {
+    const head = this.#fresh.tip(view.branch);
+    const empty = this.#requiresVerify() && await this.#fresh.emptyTaskDiff(view.branch);
+    return resumed(() => () => {
+      if (this.#fresh.tip(view.branch) !== head) throw new MergeError('merge-changed', `${view.id}: head changed during readiness check`);
+      const missing = this.#verificationMissing(view);
+      if (!empty && missing) throw new MergeError('merge-verification', missing);
+      const status = this.summary(view.id)?.status;
+      if (status !== 'ready') throw new MergeError('merge-not-ready', `${view.id}: status ${status ?? 'unknown'}; ready required`);
+    });
   }
 
   /** Client row compaction must never change the identity of a posted verdict. */

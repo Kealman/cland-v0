@@ -83,6 +83,9 @@ Landing keeps the task branch unchanged, creates one squash commit, closes the i
 
 On refusal:
 
+- `merge-verification`: report the named task receipt, run and head to `lead T-<n>`. The Implementer obtains finished passed same-head verification before re-enqueue. A projected same-tree cache pass qualifies; no configured test/tier command or an empty task diff exempts verification. Integrated batch evidence cannot replace the member receipt.
+- `merge-not-ready`: report the current status to the item lead; wait for readiness before enqueue. These admission checks require the updated running hub after restart. The human's existing tracker/docs override retains its verdict/criteria bypass.
+
 - `forbidden` naming a level or subtree: report the request to `lead T-<n>` for your claimed node. The Coordinator keeps releases, sync, push, unscheduled merges and Lead launches.
 
 - Missing, invalid, not-clear or stale verdict: send the refusal to `lead T-<n>` with kind `report`; the lead requests the new verdict from the role named by the refusal. For an unclaimed item, request it yourself.

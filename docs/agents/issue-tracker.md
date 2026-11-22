@@ -121,6 +121,8 @@ A landed task is complete. Reopening it through `task edit --state open`, a non-
 
 Posting in a merged task's topic may reopen the discussion; it leaves the task and its merge complete and does not block `cland push` or `cland sync`. Unfinished checkout recovery or item/claim follow-ups still require `cland merge T-<n>` before publication.
 
+Merge admission requires ready status and a finished passed same-head task receipt when the running config has a test or tier command. Same-tree cache projections qualify; no command or an empty base diff exempts verification. `merge-verification` names absent, pending, red or cancelled evidence with run and head; `merge-not-ready` names status. Batch evidence stays separate. This policy requires the updated hub after restart; existing human tracker/docs overrides and landed-task recovery retain their paths.
+
 Re-run `cland merge T-<n>` to clean a stale worktree of a closed, landed task. It removes the original merged branch or a recreated branch whose tip is fully contained in the recorded integration base (`dev`). It keeps worktrees with uncommitted changes, unmerged commits, an unrelated branch, or a session inside. Cleanup never lands another squash or deletes another worktree. Move any unmerged work into a follow-up task before retrying cleanup.
 
 ## Review before verification
@@ -138,7 +140,7 @@ criteria still require `task.view` when reviewing an item.
 
 `send.to` accepts one recipient string or an array of strings (`string | string[]`); `to: "reviewer"` and `to: ["reviewer"]` route identically. Omit `to` or use `[]` for the human. Malformed values return `to must be a string or an array of strings` before permission checks.
 
-Before requesting review, the Implementer fetches and merges `origin/dev`, commits and pushes its head, sets the claimed item to `review`, and sends `review request T-<n>` to `reviewer` in its topic. After a clear source verdict it runs `cland verify` at the exact reviewed head. A fix or later merge that changes the head needs a new source review before a new run. An unchanged head may reuse an earlier green run through the tree-hash cache. The Reviewer leaves run-dependent criteria unverified until that same-head result arrives, then records the final verdict. The merge gate and verdict rules are unchanged; see [test guidance](tests.md) and [review and QA](../review-and-qa.md).
+Before requesting review, the Implementer fetches and merges `origin/dev`, commits and pushes its head, sets the claimed item to `review`, and sends `review request T-<n>` to `reviewer` in its topic. After a clear source verdict it runs `cland verify` at the exact reviewed head. A fix or later merge that changes the head needs a new source review before a new run. An unchanged head may reuse an earlier green run through the tree-hash cache. The Reviewer leaves run-dependent criteria unverified until that same-head result arrives, then records the final verdict. Merge admission independently enforces ready status and the task receipt as described above; see [test guidance](tests.md) and [review and QA](../review-and-qa.md).
 
 A plan stage also counts evidence-only tasks toward completion: closed `done`, no branch, no landing receipt and no `Item:` trailer on dev. A branch-backed task still needs a dev landing receipt, even with an empty branch. Required stage QA and platform covers remain in force; `task.view.merged` continues to mean an actual dev landing. See [stage QA](../review-and-qa.md#stage-qa-verdicts).
 

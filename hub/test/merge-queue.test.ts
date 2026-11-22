@@ -15,11 +15,18 @@ const cleanupProjectionCases = [false, true].map(rejectConstructor => ({ rejectC
   name: `queue cleanup projection ${rejectConstructor ? 'joins constructor rejection with captured databases' : 'exposes retained cleanup separately from a blocked batch'}` }));
 const ownedGuardAdmissions = new Set<string>();
 const batchGitCase = 'the production batch Git adapter preserves whitespace in unknown paths';
+const receiptStates = ['absent', 'launching', 'running', 'failed', 'cancelled', 'passed', 'cached', 'old head', 'incomplete'] as const;
+const admissionCases = new Set([
+  ...receiptStates.map(state => `merge admission requires completed task evidence: ${state}`),
+  ...['no command', 'empty diff'].map(disposition => `merge admission preserves disposition: ${disposition}`),
+  'merge refuses a passed receipt when the task status is not ready',
+  'a later pending receipt fences a previously prepared merge admission',
+]);
 beforeEach(async t => {
   if (!('assert' in t)) throw new Error('native guard requires a test context');
   // These exact cases retain the same complete guard through their stronger
   // whole-case positive-close fence; nesting guards would restore out of order.
-  if (t.name === timingCase || timingConstructorCases.some(testCase => testCase.name === t.name) || t.name === skippedPreflightCase || t.name === preflightCleanupCase || protectedReplyCases.some(testCase => testCase.name === t.name) || t.name === batchGitCase || cleanupProjectionCases.some(testCase => testCase.name === t.name)) { ownedGuardAdmissions.add(t.name); return; }
+  if (admissionCases.has(t.name) || t.name === timingCase || timingConstructorCases.some(testCase => testCase.name === t.name) || t.name === skippedPreflightCase || t.name === preflightCleanupCase || protectedReplyCases.some(testCase => testCase.name === t.name) || t.name === batchGitCase || cleanupProjectionCases.some(testCase => testCase.name === t.name)) { ownedGuardAdmissions.add(t.name); return; }
   if (t.name === preflightCase) await preflightNativeGuard(t);
   else await fixtureNativeGuard(t);
 });
@@ -45,7 +52,7 @@ import { verificationFixture } from './verification-fixture.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { Store } from '../src/hub/store.ts';
 import { caseDeadlines } from './case-deadlines.ts';
-import { beforeDirectories, guardDirectoryRemoval, ownDirectory } from './process-cleanup.ts';
+import { beforeDirectories, guardDirectoryRemoval, ownDirectory, fenceFixtureCleanup } from './process-cleanup.ts';
 import { MergeError } from '../src/merge.ts';
 import { TaskMerges } from '../src/hub/merge.ts';
 import { DatabaseSync } from 'node:sqlite';
@@ -61,6 +68,98 @@ import { SuiteCommandFailure } from '../src/suite-command.ts';
 import { EnqueueNativeIncomplete } from '../src/hub/enqueue-preflight.ts';
 import { enqueuePreflight } from '../src/hub/enqueue-preflight-native.ts';
 import { verificationCommands } from '../src/verification-commands.ts';
+import type { VerifyResult } from '../src/hub/suites.ts';
+
+type AdmissionFixture = Awaited<ReturnType<typeof fixture>>;
+type AdmissionObservation = <T>(name: string, start: () => Promise<T>) => Promise<T>;
+function admissionCase(t: TestContext, body: (setup: (options?: ProjectHubOptions & { verification?: string }, files?: string[]) => Promise<AdmissionFixture>, observe: AdmissionObservation) => Promise<void>) {
+  assert.ok(ownedGuardAdmissions.delete(t.name), 'exact callback delegates to its encompassing owner');
+  const scope = stageCase(t);
+  let acquired: AdmissionFixture | undefined;
+  // Keep directory cleanup ancillary; require the hub's partial-startup stop
+  // before database fallback closes and before any directory or guard release.
+  fenceFixtureCleanup(scope.fixtures);
+  fenceFixtureCleanup(scope.resources);
+  return scope.wait('whole merge admission callback', () => scope.run(async step => {
+    const observe: AdmissionObservation = (name, start) => step(() => scope.wait(name, start));
+    const open = ownedDatabases(scope, () => acquired?.stop());
+    const setup = (options: ProjectHubOptions & { verification?: string } = {}, files?: string[]) =>
+      observe('merge hub, review and UI setup', async () => {
+        acquired = await fixture(scope.fixtures, { ...options, openDatabase: open }, files, undefined, root => scope.adoptRoot(root), undefined, scope.resources);
+        return acquired;
+      });
+    await body(setup, observe);
+  }));
+}
+
+for (const state of receiptStates) test(`merge admission requires completed task evidence: ${state}`, t => admissionCase(t, async (setup, observe) => {
+  let tracker!: Tracker;
+  const f = await setup({ configureTracker: value => { tracker = value; } });
+  const head = f.heads.get('t/parser')!;
+  let receipt: VerifyResult | null = state === 'absent' ? null : {
+    id: 'task-proof', executor: 'local', head: state === 'old head' ? 'c'.repeat(40) : head, artifact: null,
+    state: state === 'launching' || state === 'running' ? state : 'finished',
+    result: ['passed', 'cached', 'old head', 'incomplete'].includes(state) ? 'passed' : state === 'failed' ? 'failed' : state === 'cancelled' ? 'cancelled' : null,
+    finished: state === 'launching' || state === 'running' || state === 'incomplete' ? null : f.clock.now().toISOString(),
+    ...(state === 'cached' ? { cached: { run: 'source-pass', head: 'c'.repeat(40), tree: 'same-tree' } } : {}),
+  };
+  tracker.useVerify(() => receipt);
+  // Explicit status editing must not manufacture verification evidence.
+  await observe('explicit ready edit', () => value(f.ui, { type: 'task.edit', item: f.item.id, status: 'ready' }));
+  const reply = await observe('merge admission reply', () => f.ui.request({ type: 'merge', item: f.item.id }));
+  const accepted = state === 'passed' || state === 'cached';
+  assert.equal(reply.ok, accepted, reply.error);
+  if (!accepted) {
+    assert.match(reply.error ?? '', /merge-verification/);
+    assert.ok(reply.error?.includes(head));
+    if (state !== 'old head' && state !== 'incomplete') assert.ok(reply.error?.includes(state));
+    if (receipt) assert.ok(reply.error?.includes(receipt.id));
+  }
+  const queue = await observe('durable merge queue', () => value<{ entries: unknown[] }>(f.ui, { type: 'merge.queue' }));
+  assert.equal(queue.entries.length, accepted ? 1 : 0);
+  if (!accepted) {
+    receipt = { id: 'completed-task-proof', executor: 'local', head, artifact: null,
+      state: 'finished', result: 'passed', finished: f.clock.now().toISOString() };
+    tracker.verifyChanged(f.item.id, 't/parser');
+    await observe('passed task receipt settles readiness', () => until(async () => { await f.clock.advance(100); return (await observe('current task view', () => tracker.viewAsync(f.item.id))).status === 'ready'; }, { what: 'passed task receipt settles readiness' }));
+    const admitted = await observe('merge admission reply', () => f.ui.request({ type: 'merge', item: f.item.id }));
+    assert.equal(admitted.ok, true, admitted.error);
+    assert.equal((await observe('durable merge queue', () => value<{ entries: unknown[] }>(f.ui, { type: 'merge.queue' }))).entries.length, 1);
+  }
+}));
+
+for (const disposition of ['no command', 'empty diff'] as const) test(`merge admission preserves disposition: ${disposition}`, t => admissionCase(t, async (setup, observe) => {
+  let tracker!: Tracker;
+  const f = await setup({ verification: disposition === 'no command' ? '' : 'test="true"', configureTracker: value => { tracker = value; } }, disposition === 'empty diff' ? [] : undefined);
+  tracker.useVerify(() => null);
+  if (disposition === 'no command') {
+    const result = await observe('merge admission reply', () => f.ui.request({ type: 'merge', item: f.item.id }));
+    assert.equal(result.ok, true, result.error);
+  }
+  else {
+    const view = await observe('current task view', () => tracker.viewAsync(f.item.id));
+    const validate = await observe('prepared readiness validator', () => tracker.mergeReadiness(view, work => work()));
+    assert.doesNotThrow(validate);
+  }
+}));
+
+test('merge refuses a passed receipt when the task status is not ready', t => admissionCase(t, async (setup, observe) => {
+  const f = await setup();
+  await observe('explicit status edit', () => value(f.ui, { type: 'task.edit', item: f.item.id, status: 'in progress' }));
+  const result = await observe('merge admission reply', () => f.ui.request({ type: 'merge', item: f.item.id }));
+  assert.equal(result.ok, false);
+  assert.match(result.error ?? '', /merge-not-ready.*in progress/);
+  assert.deepEqual((await observe('durable merge queue', () => value<{ entries: unknown[] }>(f.ui, { type: 'merge.queue' }))).entries, []);
+}));
+
+test('a later pending receipt fences a previously prepared merge admission', t => admissionCase(t, async (setup, observe) => {
+  let tracker!: Tracker;
+  const f = await setup({ configureTracker: value => { tracker = value; } });
+  const view = await observe('current task view', () => tracker.viewAsync(f.item.id));
+  const validate = await observe('prepared readiness validator', () => tracker.mergeReadiness(view, work => work()));
+  tracker.useVerify(() => ({ id: 'new-pending', executor: 'local', head: f.heads.get('t/parser')!, state: 'running', result: null, finished: null, artifact: null }));
+  assert.throws(validate, /merge-verification.*new-pending.*running/);
+}));
 
 test(skippedPreflightCase, t => {
   assert.ok(ownedGuardAdmissions.delete(t.name));
@@ -289,7 +388,7 @@ for (const { kind, name } of timingConstructorCases) test(name, async t => {
   await assert.rejects(stat(root), { code: 'ENOENT' });
 });
 
-async function fixture(t: TestContext, options: ProjectHubOptions & { verification?: string; seedDatabase?: SeedDatabase } = {}, files = ['hub/src/parser.ts'], seed?: (tracker: Tracker) => Promise<void>, adoptRoot?: (root: string) => void, captureDispose?: (dispose: () => Promise<void>) => void) {
+async function fixture(t: TestContext, options: ProjectHubOptions & { verification?: string; seedDatabase?: SeedDatabase } = {}, files = ['hub/src/parser.ts'], seed?: (tracker: Tracker) => Promise<void>, adoptRoot?: (root: string) => void, captureDispose?: (dispose: () => Promise<void>) => void, hubContext = t) {
   const { verification = 'test="true"', seedDatabase, ...hubOptions } = options;
   const root = await tempProject(t);
   adoptRoot?.(root);
@@ -310,7 +409,7 @@ async function fixture(t: TestContext, options: ProjectHubOptions & { verificati
       return heads.get(ref) ?? ([...heads.values()].includes(ref) ? ref : null);
     }
     if (args[0] === 'merge-base') return 'a'.repeat(40);
-    if (args[0] === 'diff') return args.includes('--name-only') ? files.join('\0') + '\0' : 'parser patch';
+    if (args[0] === 'diff') return args.includes('--name-only') ? files.join('\0') + '\0' : files.length ? 'parser patch' : '';
     if (args[0] === 'show') return manifests.get(args.at(-1)!) ?? null;
     if (args[0] === 'ls-tree') {
       const ref = args[args.indexOf('--') - 1]!;
@@ -329,7 +428,7 @@ async function fixture(t: TestContext, options: ProjectHubOptions & { verificati
     try { await seed(tracker); } finally { await tracker.stop(); }
   }
   let completeReady!: ReturnType<typeof readyVerificationFixture>;
-  const { discovery, dispatcher, stop, fakes, dispose } = await projectHub(t, root, {}, { clock, stageTree: async () => 'fixture-stage-tree', scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...hubOptions,
+  const { discovery, dispatcher, stop, fakes, dispose } = await projectHub(hubContext, root, {}, { clock, stageTree: async () => 'fixture-stage-tree', scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git, ...hubOptions,
     configureTracker: tracker => { completeReady = readyVerificationFixture(tracker, clock); hubOptions.configureTracker?.(tracker); },
   });
   captureDispose?.(dispose);
@@ -455,6 +554,7 @@ test('enqueue warns about exact landed files of an epic with an active demo with
   await value(ui, { type: 'task.edit', item: item.id, assignee: 'impl' });
   const claim = await impl.call<{ ok: boolean; error?: string }>('task.claim', { id: item.id });
   assert.equal(claim.ok, true, claim.error);
+  await value(ui, { type: 'task.edit', item: item.id, status: 'ready' });
   const epic = (await value<{ item: ItemView }>(ui, { type: 'task.create', title: 'Demo epic', kind: 'epic' })).item;
   const child = (await value<{ item: ItemView }>(ui, { type: 'task.create', title: 'Demo surface', size: 'S', parent: epic.id })).item;
   surfaces.set(child.id, ['hub/src/parser.ts', 'hub/src/demo-only.ts']);
@@ -633,6 +733,7 @@ test('cancel drops the queued entry with a notice to requester and lead', async 
   const { topic } = await value<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Parser queue', item: item.id });
   await value(ui, { type: 'task.edit', item: item.id, assignee: 'impl' });
   assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
+  await value(ui, { type: 'task.edit', item: item.id, status: 'ready' });
   const queued = await coordinator.call<{ ok: boolean; queued: number }>('merge', { item: item.id });
   assert.equal(queued.queued, 1);
   assert.equal((await coordinator.call<{ entries: unknown[] }>('merge.queue')).entries.length, 1);
@@ -1006,6 +1107,7 @@ for (const mode of ['ordinary', 'rename', 'shared', 'unavailable', 'refused-retr
   await value(ui, { type: 'task.edit', item: item.id, assignee: mode === 'shared' ? 'coord' : 'impl' });
   const claimed = await impl.call<{ ok: boolean; error?: string }>('task.claim', { id: item.id });
   assert.equal(claimed.ok, true, claimed.error);
+  await value(ui, { type: 'task.edit', item: item.id, status: 'ready' });
   const topic = (await value<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Landing', item: item.id })).topic.id;
   const claude = fakes['claude-code']!;
   if (mode === 'ordinary') {

@@ -807,6 +807,7 @@ export type ReleaseCode = 'release-item' | 'release-version' | 'release-tag' | '
 
 // hub/src/merge.ts
 export type MergeCode = 'merge-bare' | 'merge-git' | 'merge-item' | 'merge-branch' | 'merge-territory' | 'merge-base' | 'merge-unpublished' | 'merge-checkout'
+  | 'merge-verification' | 'merge-not-ready'
   | 'review-missing' | 'review-provenance' | 'review-role' | 'review-claimant' | 'review-not-clear' | 'review-stale' | 'review-pending'
   | 'qa-missing' | 'qa-provenance' | 'qa-role' | 'qa-claimant' | 'qa-not-clear' | 'qa-stale' | 'qa-pending'
   | 'merge-hold' | 'merge-budget' | 'merge-test-lint' | 'merge-tiers' | 'merge-shards' | 'merge-override-scope' | 'merge-conflict' | 'merge-dirty' | 'merge-changed' | 'merge-recovery' | 'verdict-missing' | 'criteria-incomplete';

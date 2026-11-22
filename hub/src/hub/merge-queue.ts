@@ -108,6 +108,7 @@ export class MergeQueue {
   }
 
   async candidate(view: ItemView, resumed: Resumed): Promise<{ head: string; base: string; baseTip: string; files: string[]; dependencies?: DependencyInstall }> {
+    const validateReady = await this.tracker.mergeReadiness(view, resumed);
     const base = view.verdictBase;
     if (!base || !view.branch || ['dev', 'main', base].includes(view.branch)) throw new MergeError('merge-branch', 'no task branch or integration base');
     const head = await resolveCommit(this.git, `refs/heads/${view.branch}`);
@@ -120,7 +121,11 @@ export class MergeQueue {
     const ancestor = files.some(file => /(^|\/)package\.json$/.test(file)) ? await this.git(['merge-base', baseTip, head]) : null;
     const dependencies = await dependencyInstallBetween(this.tracker.root, files, { before: ancestor?.trim() ?? baseTip, after: head },
       (revision, path) => ancestor === null ? Promise.resolve(null) : this.git(['show', `${revision}:${path}`]));
-    return resumed(() => ({ head, base, baseTip, files, ...(dependencies ? { dependencies } : {}) }));
+    return resumed(() => {
+      if (head !== this.tracker.freshnessTip(view.branch)) throw new MergeError('merge-changed', `${view.id}: resolved head ${head} differs from readiness head; refresh before retry`);
+      validateReady();
+      return { head, base, baseTip, files, ...(dependencies ? { dependencies } : {}) };
+    });
   }
 
   async demoWarnings(files: readonly string[], dev: string, resumed: Resumed): Promise<DemoWarning[]> {
