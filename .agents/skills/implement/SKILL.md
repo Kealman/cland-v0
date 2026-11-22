@@ -32,6 +32,11 @@ runner environment; pass an explicit startup budget only for a controlled bound.
 Omit the startup helper's factor for shared sampling; converting an unset value
 to NaN is refused.
 
+<!-- cland-workflow-change: T-2051 document hub admission default provenance -->
+Fresh hub admissions and queued config capture retain parser default provenance.
+Generated config writes an explicit timeout. This runtime policy requires a hub
+restart; legacy snapshots remain exact.
+
 For evidence publication, use `publishSessionEvidence` from the shared
 [scan-and-publish helper](../qa/EVIDENCE.md).
 It scans the exact private snapshot and calls artifact.create only after a clean

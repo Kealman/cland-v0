@@ -1207,7 +1207,10 @@ than Playwright expect. When source config omits `verification.test_timeout`,
 the runner scales Node's default `--test-timeout` at runner launch; Node accepts
 that default only at launch. An explicit setting stays exact, even when equal
 to the default. An admitted limits snapshot without default provenance also
-stays exact; absence of metadata does not authorize a larger bound.
+stays exact; absence of metadata does not authorize a larger bound. Fresh hub
+admission and queued config capture carry the parser's positive provenance.
+Generated config materializes an explicit bound, which stays exact. A hub
+restart is required to apply this runtime policy.
 
 Load and Web repetition owners sample the same current-load policy when each
 child's import watchdog is admitted. The runner passes no frozen default budget

@@ -163,12 +163,12 @@ test('the published queue counts a durable preparation lease without an explicit
 test('local_fallback defaults to true, validates booleans and survives rendering', () => {
   assert.equal(parseConfig('', 'test').verification.localFallback, true);
   for (const value of ['0', '"false"', '[]']) assert.throws(() => parseConfig(`[verification]\nlocal_fallback=${value}`, 'test'), /local_fallback.*boolean/);
-  for (const value of [false, true]) { const c = parseConfig(`[verification]\nlocal_fallback=${value}`, 'test'); assert.equal(c.verification.localFallback, value); assert.deepEqual(parseConfig(renderConfig(c), 'test'), c); }
+  for (const value of [false, true]) { const c = parseConfig(`[verification]\nlocal_fallback=${value}`, 'test'); assert.equal(c.verification.localFallback, value); c.verification.testTimeoutIsDefault = false; assert.deepEqual(parseConfig(renderConfig(c), 'test'), c); }
 });
 test('remote_budget defaults to four, validates positive integers and survives rendering', () => {
   assert.equal(parseConfig('', 'test').verification.remoteBudget, 4);
   for (const value of ['0', '-1', '1.5', '"2"']) assert.throws(() => parseConfig(`[verification]\nremote_budget=${value}`, 'test'), /remote_budget.*positive integer/);
-  const c = parseConfig('[verification]\nremote_budget=3', 'test'); assert.equal(c.verification.remoteBudget, 3); assert.deepEqual(parseConfig(renderConfig(c), 'test'), c);
+  const c = parseConfig('[verification]\nremote_budget=3', 'test'); assert.equal(c.verification.remoteBudget, 3); c.verification.testTimeoutIsDefault = false; assert.deepEqual(parseConfig(renderConfig(c), 'test'), c);
 });
 
 test('three remote callers run together beside the local slot, which a human takes next', async t => {

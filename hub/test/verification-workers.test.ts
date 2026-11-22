@@ -45,7 +45,10 @@ test('worker settings validate positive integers and survive managed config rend
   for (const value of ['0', '-1', '1.5', '"6"', 'true']) assert.throws(() => parseConfig(`[verification]\nload_gate_workers=${value}`, 'fixture'), /load_gate_workers must be a positive integer/);
   for (const source of ['', '[verification]\nworkers=5\nload_gate_workers=3', '[verification]\nworkers=5\n[verification.droplet]\nworkers=8']) {
     const config = parseConfig(source, 'fixture');
-    assert.deepEqual(parseConfig(renderConfig(config), 'fixture'), config);
+    const rendered = parseConfig(renderConfig(config), 'fixture');
+    assert.equal(config.verification.testTimeoutIsDefault, true);
+    assert.equal(rendered.verification.testTimeoutIsDefault, false, 'managed rendering writes an explicit timeout');
+    assert.deepEqual(rendered, { ...config, verification: { ...config.verification, testTimeoutIsDefault: false } });
   }
   for (const table of ['verification', 'verification.droplet']) for (const value of ['0', '-1', '1.5', '"6"', 'true']) {
     assert.throws(() => parseConfig(`[${table}]\nworkers=${value}`, 'fixture'), /workers must be a positive integer/);

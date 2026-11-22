@@ -52,7 +52,9 @@ test('init renders remote and speech defaults and update adds them while preserv
   const updated = JSON.parse(JSON.stringify(parse(readFileSync(path, 'utf8'))));
   assert.deepEqual(updated.remote, expectedRemote);
   assert.deepEqual(updated.speech, expectedSpeech);
-  assert.deepEqual(parseConfig(readFileSync(path, 'utf8'), 'scratch', {}), parseConfig(older, 'scratch', {}));
+  const expected = parseConfig(older, 'scratch', {});
+  expected.verification.testTimeoutIsDefault = false; // Generated config writes an explicit bound.
+  assert.deepEqual(parseConfig(readFileSync(path, 'utf8'), 'scratch', {}), expected);
   const once = readFileSync(path, 'utf8');
   provisionConfig(new Report(root), path, root);
   assert.equal(readFileSync(path, 'utf8'), once);
@@ -125,6 +127,7 @@ test('verification commands retain literal shell syntax through the config templ
   const config = parseConfig(`[verification]\n${Object.entries(commands).map(([key, value]) => `${key} = ${JSON.stringify(value)}`).join('\n')}`, 'scratch');
   for (const [key, value] of Object.entries(commands)) assert.equal(Reflect.get(config.verification, key), value);
   const rendered = renderConfig(config);
+  config.verification.testTimeoutIsDefault = false; // The template materializes test_timeout.
   assert.deepEqual(parseConfig(rendered, 'scratch'), config);
   assert.match(rendered, /# cland verify runs nothing until test or a tier command is set; use cland config set verification.test '<command>'\./);
   assert.match(rendered, /# prepare installs what check and test need; runs on the droplet builder and before every droplet run, never locally\.\n# Commands run under \/bin\/sh -c; prepare must be idempotent and write only ignored files\.\nprepare =/);

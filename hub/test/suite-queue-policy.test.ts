@@ -1,11 +1,11 @@
 // T2: the queue hands hub policy to in-process executors and an injected SuiteCandidate.
 // Candidate validation still reads its own config; no Git or package worker is spawned.
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import childProcess, { type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { syncBuiltinESMExports } from 'node:module';
-import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { tempProject, eventually } from './harness.ts';
@@ -18,6 +18,45 @@ import { LocalExecutor } from '../src/executor/local.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import type { DropletLease } from '../src/executor/droplet/lease.ts';
 import type { Lease, RunRef } from '../src/executor/executor.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { runnerTestTimeoutArgument } from '../src/suite-wait-budget.ts';
+
+test('fresh and queued admissions retain default timeout provenance in durable limits', async t => {
+  const scope = stageCase(t);
+  // Manual seams outlive TestContext's automatic mock restoration on abort.
+  const resources = new Proxy(scope.resources, { get(target, key) {
+    if (key === 'mock') return { method: scope.patch };
+    return Reflect.get(target, key, target);
+  } }) as TestContext;
+  const saved = process.env.CLAND_TEST_LOAD_FACTOR;
+  // Ancillary hooks run only after every registered resource close succeeds.
+  scope.fixtures.after(() => { if (saved === undefined) delete process.env.CLAND_TEST_LOAD_FACTOR; else process.env.CLAND_TEST_LOAD_FACTOR = saved; });
+  return scope.wait('whole timeout admission case', () => scope.run(async step => {
+    const f = await step(() => scope.wait('timeout fixture setup', () => suiteUnit(resources, {
+      deferRootRemoval: true,
+      onRoot(root) {
+        scope.adoptRoot(root);
+        scope.fixtures.after(() => rm(root, { recursive: true, force: true }));
+      },
+    })));
+    process.env.CLAND_TEST_LOAD_FACTOR = '3';
+    for (const queued of [false, true]) for (const explicit of [false, true]) {
+      f.configure('[verification]\ncheck="true"\ntest="true"\n' + ((queued ? !explicit : explicit) ? 'test_timeout="120s"\n' : ''));
+      f.hold(queued);
+      const admitted = await step(() => scope.wait('durable timeout admission', () => f.launch({ fresh: true })));
+      if (queued) {
+        f.configure('[verification]\ncheck="true"\ntest="true"\n' + (explicit ? 'test_timeout="120s"\n' : ''));
+        f.hold(false);
+        await step(() => scope.wait('queued capture tick', () => f.tick()));
+      }
+      await step(() => scope.wait('timeout scheduler settled', () => f.suites.settled()));
+      const job = (await step(() => scope.wait('persisted timeout limits', () => f.jobs()))).find(job => job.id === admitted.id)!;
+      assert.equal(job.limits?.testTimeoutIsDefault, !explicit);
+      assert.equal(runnerTestTimeoutArgument(job.limits!.testTimeoutMs, job.limits!.testTimeoutIsDefault === true), explicit ? '--test-timeout=120000' : '--test-timeout=360000');
+      await step(() => scope.wait('timeout job completion', () => f.finish(admitted.id)));
+    }
+  }));
+});
 
 const candidateConfig = '[verification]\nworkers=4\nload_gate_workers=4\ntest_timeout="11s"\nstall_timeout="12s"\n[verification.droplet]\nworkers=4\n';
 const hubConfig = '[verification]\ncheck="npm run typecheck"\ntest="true"\nworkers=1\nload_gate_workers=2\ntest_timeout="31s"\nstall_timeout="32s"\n[verification.droplet]\nworkers=2\n';
@@ -90,8 +129,8 @@ test('task queue executes the hub policy with explicit worker overrides', async 
     const reloaded = 'admittedWorkers' in row;
     assert.equal(run.workers, reloaded ? 5 : row.expected);
     assert.deepEqual(run.limits, reloaded
-      ? { workers: 5, loadGateWorkers: 3, testTimeoutMs: 41000, stallTimeoutMs: 42000 }
-      : { workers: row.expected, loadGateWorkers: 2, testTimeoutMs: 31000, stallTimeoutMs: 32000 });
+      ? { workers: 5, loadGateWorkers: 3, testTimeoutMs: 41000, stallTimeoutMs: 42000, testTimeoutIsDefault: false }
+      : { workers: row.expected, loadGateWorkers: 2, testTimeoutMs: 31000, stallTimeoutMs: 32000, testTimeoutIsDefault: false });
     const log = await readFile(run.log, 'utf8');
     assert.match(log, new RegExp(`Workers ${reloaded ? 5 : row.expected} · source ${'workers' in row ? 'explicit --workers' : 'hub config'} · admitted`));
   }

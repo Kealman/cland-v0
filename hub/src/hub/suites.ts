@@ -40,7 +40,7 @@ import { durationBudgetReport, durationBudgetSummary, type DurationBudgetContext
 import { baselineTimings, durationBudgetContext, durationHistory } from '../suite-duration-context.ts';
 import { readDurationManifest } from '../suite-durations.ts';
 import type { ProjectConfig } from '../init/config.ts';
-import { suiteLimits } from '../suite-limits.ts';
+import { suiteLimits, suiteLimitsFromConfig } from '../suite-limits.ts';
 import type { VerifyOccasion, SuiteStatus, VerificationQueue, VerificationHolder, DurationStats, SuiteSlot, SuiteSlotResult } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import type { Store } from './store.ts';
@@ -454,7 +454,7 @@ export class Suites {
     job.workerPolicy = { local: v.workers, droplet: v.droplet.workers ?? v.workers };
     job.workers = job.workersOverride ?? job.workerPolicy[job.executor];
     job.fallbackWorkers = job.workersOverride ?? job.workerPolicy.local;
-    job.limits = { testTimeoutMs: v.testTimeoutMs, stallTimeoutMs: v.stallTimeoutMs, loadGateWorkers: v.loadGateWorkers, workers: job.workers };
+    job.limits = suiteLimitsFromConfig(job.config, job.executor, job.workers);
     this.#save(job);
   }
   #save = (job?: SuiteJob) => {
@@ -726,7 +726,7 @@ export class Suites {
     }
     // Validate the candidate as before; only the hub owns execution policy.
     if (input.cwd !== this.#root) await suiteLimits(input.cwd, executor, this.#env);
-    const limits = config ? { testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers } : await suiteLimits(this.#root, executor, this.#env);
+    const limits = config ? suiteLimitsFromConfig(config, executor) : await suiteLimits(this.#root, executor, this.#env);
     let commands = repeatCommands ? structuredClone(repeatCommands) : pinned ? structuredClone(recordedCommands(pinned)) : await verificationCommands(input.cwd, this.#root, this.#env);
     const runner = await clandRunner(input.cwd);
     if (!runner && (input.mode === 'hub' || input.mode === 'nvim')) throw new Error("hub and nvim are cland's own suite phases; this project's test runs in full: cland verify");

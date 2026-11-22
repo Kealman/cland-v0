@@ -16,6 +16,7 @@ import { fixtureHubCommand } from './fixture-hub-cli.ts';
 import { defaultConfig, renderConfig, parseConfig } from '../src/init/config.ts';
 import { guardedLeaseCase } from './executor-lease-fixture.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
+import { stageCase } from './stage-case-fixture.ts';
 
 async function ownedConfigRoot(scope: ReturnType<typeof guardedLeaseCase>, step: FixtureStep, source: (root: string) => string) {
   return step(() => scope.wait('configuration root setup', async () => {
@@ -96,6 +97,27 @@ test('reload applies executor and droplet policy on a disposable running hub', a
     assert.ok(receipt.applied.includes('verification.executor'));
     assert.ok(receipt.applied.includes('verification.droplet'));
   });
+});
+
+test('reload retains validated timeout provenance when its duration is unchanged', async t => {
+  const scope = stageCase(t);
+  let source: ProjectConfiguration | undefined;
+  scope.requireClose(async () => { await source?.stop(); });
+  return scope.wait('whole timeout reload case', () => scope.run(async step => {
+    const root = await step(() => scope.wait('timeout reload root setup', () => tempProject(scope.fixtures)));
+    scope.adoptRoot(root);
+    const files = layout(root);
+    await step(() => scope.wait('timeout reload directory setup', () => mkdir(files.dir, { recursive: true })));
+    const text = '[project]\nname="fixture"\n[verification]\n';
+    await step(() => scope.wait('timeout config setup', () => writeFile(files.config, text)));
+    await step(() => scope.wait('timeout roles setup', () => writeFile(files.roles, DEFAULT_ROLES_TOML)));
+    const original = parseConfig(text, 'fixture', {});
+    source = new ProjectConfiguration(files, original, () => {}, {}, work => work(), () => {}, async () => null);
+    await step(() => scope.wait('explicit timeout write', () => writeFile(files.config, text + 'test_timeout="120s"\n')));
+    await step(() => scope.wait('timeout reload receipt', () => source!.reload()));
+    assert.equal(original.verification.testTimeoutIsDefault, true);
+    assert.equal(source.config().verification.testTimeoutIsDefault, false);
+  }));
 });
 
 test('reload applies local workers without restarting the hub', async t => {

@@ -1,15 +1,19 @@
 import { readFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
-import { defaultConfig, parseConfig } from './init/config.ts';
+import { parseConfig, type ProjectConfig } from './init/config.ts';
 
 export type SuiteLimits = { testTimeoutMs: number; stallTimeoutMs: number; workers: number; loadGateWorkers: number; testTimeoutIsDefault?: boolean };
+
+export function suiteLimitsFromConfig(config: ProjectConfig, executor: 'local' | 'droplet' = 'local', workers?: number): SuiteLimits {
+  const v = config.verification;
+  return { loadGateWorkers: v.loadGateWorkers, workers: workers ?? (executor === 'droplet' ? v.droplet.workers ?? v.workers : v.workers), testTimeoutMs: v.testTimeoutMs, stallTimeoutMs: v.stallTimeoutMs, ...(v.testTimeoutIsDefault === undefined ? {} : { testTimeoutIsDefault: v.testTimeoutIsDefault }) };
+}
 
 /** Only an absent source setting authorizes default scaling. Legacy admitted
  * snapshots without provenance stay exact in the runner. */
 export function suiteLimitsFromSource(text: string | null, name: string, executor: 'local' | 'droplet' = 'local', env: NodeJS.ProcessEnv = process.env): SuiteLimits {
-  let configured = false;
-  const config = text === null ? defaultConfig(name) : parseConfig(text, name, env, { onConfiguredTestTimeout: () => { configured = true; } });
-  return { loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers, testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, testTimeoutIsDefault: !configured };
+  const config = parseConfig(text ?? '', name, env);
+  return suiteLimitsFromConfig(config, executor);
 }
 
 /** Package runners and workers use the candidate's committed timeout and worker policy. */

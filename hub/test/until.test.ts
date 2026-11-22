@@ -7,7 +7,8 @@ import { FakeClock } from './fake-clock.ts';
 import { browserWaitDefaults } from './browser-wait-defaults.ts';
 import { runnerTestTimeoutArgument } from '../src/suite-wait-budget.ts';
 import { EventEmitter } from 'node:events';
-import { suiteLimits, suiteLimitsFromSource } from '../src/suite-limits.ts';
+import { suiteLimits, suiteLimitsFromSource, suiteLimitsFromConfig } from '../src/suite-limits.ts';
+import { defaultConfig } from '../src/init/config.ts';
 import { fileStartupTimeoutMs } from '../src/file-startup-watchdog.ts';
 
 let savedExecutor: string | undefined;
@@ -53,6 +54,11 @@ test('explicit configured and legacy admitted Node timeouts stay exact under loa
   assert.equal(runnerTestTimeoutArgument(equalToDefault.testTimeoutMs, equalToDefault.testTimeoutIsDefault === true), '--test-timeout=120000');
   const absent = suiteLimitsFromSource('[verification]\nworkers=2', 'fixture');
   assert.equal(runnerTestTimeoutArgument(absent.testTimeoutMs, absent.testTimeoutIsDefault === true), '--test-timeout=360000');
+  assert.equal(suiteLimitsFromConfig(defaultConfig('missing-file')).testTimeoutIsDefault, true);
+  const legacyConfig = defaultConfig('legacy-config');
+  delete legacyConfig.verification.testTimeoutIsDefault;
+  const legacyLimits = suiteLimitsFromConfig(JSON.parse(JSON.stringify(legacyConfig)));
+  assert.equal(runnerTestTimeoutArgument(legacyLimits.testTimeoutMs, legacyLimits.testTimeoutIsDefault === true), '--test-timeout=120000');
   const legacy = { testTimeoutMs: 1000, stallTimeoutMs: 600000, workers: 1, loadGateWorkers: 2 };
   const admitted = await suiteLimits('/scratch/legacy', 'local', { CLAND_SUITE_LIMITS_CWD: '/scratch/legacy', CLAND_SUITE_LIMITS: JSON.stringify(legacy) });
   assert.deepEqual(admitted, legacy, 'previous cached shape remains readable');
