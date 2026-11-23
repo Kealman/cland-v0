@@ -1,6 +1,8 @@
 // T2: merge rule failures, verdict permissions and request accounting with injected Git and FakeClock.
-import { beforeDirectories, onCleanup, ownDirectory, guardDirectoryRemoval } from './process-cleanup.ts';
-import { test, type TestContext } from 'node:test';
+import { beforeDirectories, onCleanup, ownDirectory, guardDirectoryRemoval, drainFixtureCleanup } from './process-cleanup.ts';
+import { mergeTest as test, mergeOwner } from './merge-case.ts';
+import { FakeClock } from './fake-clock.ts';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
@@ -29,6 +31,69 @@ import { durableJson } from '../src/executor/droplet/lease.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import fs from 'node:fs';
 import { publishOwnerTrace, readOwnerTrace } from './prune-owner-trace.ts';
+
+for (const trigger of ['startup timeout', 'observation cancellation', 'rejected resource close'] as const) {
+  test(`merge owner retains original work, root and seam on ${trigger}`, t => pruneCase(t, async (scope, step) => {
+    const abort = new AbortController();
+    const hooks: Array<() => unknown> = [];
+    const context = { name: `controlled merge ${trigger}`, signal: abort.signal,
+      after: (hook: () => unknown) => hooks.push(hook) } as unknown as TestContext;
+    const owner = mergeOwner(context);
+    const clock = new FakeClock();
+    const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+    let root = '', finished = false, closed = false, restored = false, refuse = trigger === 'rejected resource close';
+    let directRemoval: (() => Promise<void>) | undefined;
+    scope.releaseOnClose(() => { refuse = false; release.resolve(); });
+    scope.requireClose(async () => { refuse = false; release.resolve(); await drainFixtureCleanup(context); });
+    owner.release(() => { restored = true; });
+    const running = owner.run(async () => {
+      root = await tempProject(context, 'cland-merge-owner-');
+      // This independently invokes ownDirectory's real positive writer guard.
+      directRemoval = ownDirectory(context, root);
+      onCleanup(context, async () => {
+        assert.equal(finished, true, 'resource closure follows the original producer');
+        if (refuse) throw new Error('controlled merge resource close rejected');
+        closed = true;
+      });
+      await owner.step(trigger, async () => {
+        entered.resolve();
+        await release.promise;
+        await writeFile(join(root, 'late-writer'), 'completed');
+        finished = true;
+      }, { clock, timeoutMs: 10 });
+    });
+    void running.catch(() => {});
+    await step('original producer entered', () => entered.promise);
+    assert.equal(hooks.length, 1, 'actual cleanup hook registered before acquisition');
+    if (trigger === 'startup timeout') {
+      await clock.advance(10);
+      await assert.rejects(running, /startup timeout incomplete/);
+    } else if (trigger === 'observation cancellation') abort.abort();
+    else { release.resolve(); await running; }
+    let removed = false;
+    const removal = directRemoval!().then(() => { removed = true; });
+    void removal.catch(() => {});
+    const disposal = Promise.resolve(hooks[0]!());
+    void disposal.catch(() => {});
+    if (trigger === 'rejected resource close') {
+      await assert.rejects(removal, /controlled merge resource close rejected/);
+      await assert.rejects(disposal, /controlled merge resource close rejected/);
+    }
+    assert.equal((await stat(root)).isDirectory(), true, 'actual guarded removal retains the root');
+    assert.equal(removed, false);
+    assert.equal(restored, false, 'seam release needs positive resource closure');
+    assert.equal(closed, false);
+    refuse = false;
+    release.resolve();
+    if (trigger === 'observation cancellation') await assert.rejects(running, /fixture work admission closed/);
+    if (trigger !== 'rejected resource close') { await removal; await disposal; }
+    else await drainFixtureCleanup(context);
+    assert.equal(finished, true);
+    assert.equal(closed, true);
+    assert.equal(restored, true);
+    await assert.rejects(stat(root), { code: 'ENOENT' });
+  }));
+}
 
 test('ownership trace readers see a complete publication during a native-close rewrite', t => pruneCase(t, async (scope, step) => {
   const root = await step('trace fixture root', () => tempProject(scope.fixtures)); scope.adoptRoot(root);
@@ -883,6 +948,7 @@ test('dependency-changing landings require a root install and keep the shared tr
     await writeFile(join(f.root, 'node_modules/reader'), 'still reading');
     const work = await f.ticket(undefined, file);
     await review(f.rev, work.id);
+    await f.ready(work);
     const result = await f.merges.merge(work.id, human, work => work());
     assert.ok('commit' in result);
     const expected = file === 'README.md' ? undefined : { files: [file], command: 'npm install', cwd: f.root };
@@ -908,6 +974,7 @@ test('injected merge freshness fan-out is measured as a resumed 400 ms stretch',
   const { tracker, ui, rev, records, facts, clock, merges } = f;
   const work = await f.ticket();
   await review(rev, work.id);
+  await f.ready(work);
   const created = await ui.request({ size: 'M', type: 'task.create', title: 'A branch that will appear', branch: 't/later' });
   assert.equal(created.ok, true, created.error);
   const id = (created.value as { item: { id: string } }).item.id;
@@ -973,6 +1040,7 @@ test('in-process release and topic closure failures retry only remaining merge s
       const { root, tracker, ui, rev, facts, merges } = f;
       const work = await f.ticket();
       await review(rev, work.id);
+      await f.ready(work);
       const before = facts.landings.length;
       const topic = await ui.request({ type: 'topic.create', title: 'Follow-ups', item: work.id });
       assert.equal(topic.ok, true, topic.error);
@@ -1015,6 +1083,7 @@ test('injected merge logging failures retain the landed commit and retry only fo
   const { rev, facts, merges } = f;
   const work = await f.ticket();
   await review(rev, work.id);
+  await f.ready(work);
   const before = facts.landings.length;
   const result = await merges.merge(work.id, human, work => work()) as { commit: string; followUp?: { step: string } };
   assert.equal(result.followUp?.step, 'record');
@@ -1112,6 +1181,7 @@ for (const change of ['scripts', 'dependencies'] as const) test(`landing: ${chan
   f.facts.manifests.set(`${f.facts.heads.get('dev')}:package.json`, JSON.stringify(before));
   f.facts.manifests.set(`${f.facts.heads.get(work.branch!)}:package.json`, JSON.stringify(after));
   await review(f.rev, work.id);
+  await f.ready(work);
   const result = await f.merges.merge(work.id, human, work => work());
   assert.ok('commit' in result);
   assert.deepEqual(result.dependencies, change === 'scripts' ? undefined : { files: ['package.json'], command: 'npm install', cwd: f.root });

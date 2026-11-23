@@ -1,7 +1,7 @@
 // T3: native Git squash publication, CLI landing inspection and worktree/session cleanup boundaries.
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
-import { test } from 'node:test';
+import { mergeTest as test } from './merge-case.ts';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';

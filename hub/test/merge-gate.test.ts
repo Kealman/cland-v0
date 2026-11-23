@@ -2,7 +2,7 @@
 // The claim/review/verify/merge flow lives in scenarios/ticket-flow.test.ts.
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import { onCleanup } from './process-cleanup.ts';
-import { test } from 'node:test';
+import { mergeTest as test } from './merge-case.ts';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -13,6 +13,7 @@ import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { type ItemView } from '../src/tracker/tracker.ts';
 import { git, ok, json, project, task, requireQa, review, refused, observableProject } from './merge-support.ts';
 import { durationFixture, durationOwner } from './duration-fixture.ts';
+import { waitMergeReady } from './merge-readiness.ts';
 
 test('merge refuses every unclassified hub test in the merged candidate, then accepts explicit classifications', async t => {
   // T2 behaviour: the in-process hub checks an immutable scratch-repository merge.
@@ -96,6 +97,7 @@ test('merge refuses every unclassified hub test in the merged candidate, then ac
   ok(await cland(root, 'push'));
   // Keep the divergent history: dev's retirement must not force another merge.
   await review(rev, work.id, 'clear', 'classified');
+  await waitMergeReady(rev, work.id);
   const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
   assert.equal(git(root, 'rev-parse', 'dev'), merged.commit);
   assert.match(await readFile(join(root, 'hub/test/new.test.ts'), 'utf8'), /^\/\/ T3: native timeout expiry/);
@@ -270,6 +272,7 @@ test('a task moving during a batched freshness read is rejected at the merge dec
     return result;
   });
   await review(rev, work.id);
+  await waitMergeReady(rev, work.id);
   const before = git(root, 'rev-parse', 'dev');
   hold = true;
   const merging = ui.request({ type: 'merge', item: work.id }, 30_000);
@@ -286,6 +289,7 @@ test('a task moving during a batched freshness read is rejected at the merge dec
     return (read.value as { item: ItemView }).item.verdicts.at(-1)?.current === false ? true : undefined;
   });
   await review(rev, work.id, 'clear', 'fresh-review');
+  await waitMergeReady(rev, work.id);
   const merged = await ui.request({ type: 'merge', item: work.id }, 30_000);
   assert.equal(merged.ok, true, merged.error);
   assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'changed during the read\n');

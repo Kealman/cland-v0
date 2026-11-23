@@ -1,4 +1,5 @@
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { waitMergeReady } from './merge-readiness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,6 +42,7 @@ export async function task(root: string, title = 'Ship the parser', file = 'pars
 export async function review(rev: Awaited<ReturnType<typeof inProcessSpoke>>, id: string, result = 'clear', run = 'rev-1') {
   const r = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id, verdict: 'review', scope: 'full', result, run });
   assert.equal(r.ok, true, r.error);
+  if (result === 'clear') await waitMergeReady(rev, id);
 }
 
 export async function refused(ui: Awaited<ReturnType<typeof connectUi>>, root: string, id: string, code: string, files?: string[]) {

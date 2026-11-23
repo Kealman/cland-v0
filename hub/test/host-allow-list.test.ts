@@ -1,5 +1,6 @@
 // T3: native Git update hooks and per-host Unix git sockets in disposable territories.
-import test from 'node:test';
+import { mergeTest as test } from './merge-case.ts';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -15,7 +16,7 @@ import { TERRITORY_HOOK, refreshTerritoryHook, withTerritoryLockAsync } from '..
 import { TerritoryBusy } from '../src/territory-lock-context.ts';
 const exec = promisify(execFile);
 
-async function fixture(t: test.TestContext, receiveLockWaitMs?: number) {
+async function fixture(t: TestContext, receiveLockWaitMs?: number) {
   const root = await mkdtemp(join(tmpdir(), 'cland-allow-'));
   const env = fixtureEnvironment(root, process.env, {});
   const closers: (() => Promise<void>)[] = [];

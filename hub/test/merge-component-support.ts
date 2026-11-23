@@ -14,6 +14,7 @@ import { connectWsUi, inProcessSpoke, startHub, tempProject } from './harness.ts
 import { manualTips } from './freshness-harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { beforeDirectories, onCleanup } from './process-cleanup.ts';
+import { waitMergeReady } from './merge-readiness.ts';
 
 export const human = { id: 'human', name: 'human', role: null, human: true };
 export const resumed = <T>(work: () => T): T => work();
@@ -144,7 +145,8 @@ export async function componentProject(t: TestContext, options: { ownStop?: (sto
       return tracker.view(item.id);
     }
     const merge = (item: ItemView, override: string | undefined = 'fixture: exercise lane hold independently of verdict gate') => merges.merge(item.id, human, resumed, override);
-    return { root, tracker, facts, clock, tips, hub, ui, rev, ticket, merge, merges, records, stop };
+    const ready = (item: ItemView) => waitMergeReady(rev, item.id, () => clock.advance(100));
+    return { root, tracker, facts, clock, tips, hub, ui, rev, ticket, ready, merge, merges, records, stop };
   } catch (error) {
     try { await stop(); }
     catch (cleanup) { throw new AggregateError([error, cleanup], 'component fixture startup failed'); }

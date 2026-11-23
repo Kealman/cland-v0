@@ -1,5 +1,5 @@
 // T3: SIGKILL before the integration ref moves leaves a durable checkout snapshot recovered by a new hub process.
-import { test } from 'node:test';
+import { mergeTest as test } from './merge-case.ts';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';

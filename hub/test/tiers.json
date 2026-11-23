@@ -489,6 +489,7 @@
     "hub/test/merge-batch-dependencies.test.ts": "T3",
     "hub/test/merge-batches.test.ts": "T1",
     "hub/test/merge-budget.test.ts": "T1",
+    "hub/test/merge-case.test.ts": "T2",
     "hub/test/merge-checkout-lifecycle.test.ts": "T3",
     "hub/test/merge-checkout.test.ts": "T3",
     "hub/test/merge-gate.test.ts": "T3",

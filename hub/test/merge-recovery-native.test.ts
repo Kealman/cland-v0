@@ -1,7 +1,7 @@
 // T3: native Git publication/rollback and session-worktree cleanup; SIGKILL after ref movement proves process restart recovery.
 import { completeJournalLines } from './journal-lines.ts';
 import { onCleanup } from './process-cleanup.ts';
-import { test } from 'node:test';
+import { mergeTest as test } from './merge-case.ts';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';

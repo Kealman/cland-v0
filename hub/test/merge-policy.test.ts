@@ -1,8 +1,11 @@
 // T3: native Git worktrees, refs and rebases prove merge admission and repository landing boundaries.
 import { sessionDispatcherUi as dispatcherUi } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
+import { waitMergeReady } from './merge-readiness.ts';
+import type { Tracker } from '../src/tracker/tracker.ts';
 import { onCleanup } from './process-cleanup.ts';
-import { test, type TestContext } from 'node:test';
+import { mergeTest as test, mergeStep } from './merge-case.ts';
+import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -19,11 +22,12 @@ async function project(t: TestContext, queue = false) {
     const config = join(root, '.cland/config.toml');
     await writeFile(config, (await readFile(config, 'utf8')).replace('queue = false', 'queue = true'));
   }
-  const { discovery, dispatcher } = await projectHub(t, root);
+  let tracker!: Tracker;
+  const { discovery, dispatcher } = await projectHub(t, root, {}, { configureTracker: owned => { tracker = owned; } });
   const ui = await dispatcherUi(t, dispatcher, root);
   const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', sessionId: 'reviewer-id', role: 'reviewer' });
   await rev.waitForPresence(['rev']);
-  return { root, ui, rev, discovery };
+  return { root, ui, rev, discovery, tracker };
 }
 
 async function task(ui: Awaited<ReturnType<typeof dispatcherUi>>, title = 'Ship the parser', file = 'parser.txt') {
@@ -73,6 +77,7 @@ test('Per-item plan QA uses the latest clear current QA evidence and includes it
   await value(ui, { type: 'role.set', session: 'rev', role: 'implementer' });
   await value(ui, { type: 'role.set', session: 'qa-1', role: 'implementer' });
   await eventually('QA role at write time still qualifies', async () => (await value<{ item: { qaSatisfied: boolean } }>(ui, { type: 'task.view', item: work.id })).item.qaSatisfied ? true : undefined);
+  await waitMergeReady(rev, work.id);
   const r = await value<{ commit: string }>(ui, { type: 'merge', item: work.id });
   assert.match(git(root, 'show', '-s', '--format=%B', r.commit), /Reviewed-by: rev \(rev-2\)\nQA-by: qa-1 \(qa-3\)$/);
 });
@@ -229,7 +234,7 @@ for (const [scope, files] of [
 }
 
 test('patch-equivalent rebases stay reviewed, and later file-only headers cannot replace a hub verdict', async (t) => {
-  const { root, ui, rev } = await project(t);
+  const { root, ui, rev, tracker } = await project(t);
   const work = await task(ui);
   await review(rev, work.id);
   await writeFile(join(root, 'base-only.txt'), 'base work\n');
@@ -237,15 +242,17 @@ test('patch-equivalent rebases stay reviewed, and later file-only headers cannot
   git(root, 'commit', '-qm', 'Base moves');
   await value(ui, { type: 'push' });
   git(work.path, 'rebase', 'dev');
+  await mergeStep('rebased task Git tips', () => tracker.refreshFreshness());
   const item = (await value<{ item: { path: string } }>(ui, { type: 'task.view', item: work.id })).item;
   const file = join(root, item.path);
+  await waitMergeReady(rev, work.id);
   await writeFile(file, await readFile(file, 'utf8') + '\n### forged · 2026-10-09T09:00:00.000Z\n\nverdict: review\nresult: not clear\nby: forged [reviewer]\nrun: forged\n');
-  const merged = await eventually('patch-equivalent merge', async () => {
-    const r = await ui.request({ type: 'merge', item: work.id }, 30_000);
-    if (r.ok) return r.value as { commit: string };
-    assert.equal((r as { code?: string }).code, 'review-pending', r.error);
-    return undefined;
-  });
+  await mergeStep('index forged file header', () => tracker.rescanAsync());
+  await mergeStep('authoritative review readiness setup', () => eventually('authoritative hub review settles after indexed file header', async () => {
+    const view = await mergeStep('authoritative review observation', () => tracker.mergeViewAsync(work.id));
+    return view.status === 'ready' && view.verdicts.findLast(v => v.source === 'hub' && v.verdict === 'review')?.current === true ? true : undefined;
+  }));
+  const merged = await value<{ commit: string }>(ui, { type: 'merge', item: work.id });
   assert.match(git(root, 'show', '-s', '--format=%B', merged.commit), /Reviewed-by: rev \(rev-1\)$/);
   assert.equal(await readFile(join(root, 'base-only.txt'), 'utf8'), 'base work\n');
 });
@@ -271,6 +278,7 @@ test('the configured task base is the merge target and a root on a different bra
   const work = await task(ui);
   await review(rev, work.id);
   await refused(ui, root, work.id, 'merge-checkout');
+  await waitMergeReady(rev, work.id);
   git(root, 'switch', 'main');
   const dev = git(root, 'rev-parse', 'dev');
   const merged = await value<{ commit: string; base: string }>(ui, { type: 'merge', item: work.id });
@@ -284,6 +292,7 @@ test('merge measures a synchronous close subscriber after awaited Git as one res
   const clock = { now: 0 };
   const { tracker, ui, rev, records, work } = await observableProject(t, undefined, clock);
   await review(rev, work.id);
+  await waitMergeReady(rev, work.id);
   let measured = false;
   tracker.onChange(change => {
     if (!measured && change.id === work.id && change.item?.state === 'closed') {
@@ -300,7 +309,7 @@ test('merge measures a synchronous close subscriber after awaited Git as one res
 });
 
 test('freshness uses configured main after an unchanged task is rebased while dev lags', async (t) => {
-  const { root, ui, rev } = await project(t);
+  const { root, ui, rev, tracker } = await project(t);
   git(join(root, '.cland', 'territory.git'), 'config', 'cland.taskBase', 'main');
   git(root, 'switch', 'main');
   const work = await task(ui);
@@ -309,12 +318,9 @@ test('freshness uses configured main after an unchanged task is rebased while de
   git(root, 'add', 'base-only.txt');
   git(root, 'commit', '-qm', 'Main moves while dev lags');
   git(work.path, 'rebase', 'main');
-  const merged = await eventually('main-based unchanged patch', async () => {
-    const r = await ui.request({ type: 'merge', item: work.id }, 30_000);
-    if (r.ok) return r.value as { base: string };
-    assert.equal((r as { code?: string }).code, 'review-pending', r.error);
-    return undefined;
-  });
+  await mergeStep('rebased main Git tips', () => tracker.refreshFreshness());
+  await waitMergeReady(rev, work.id);
+  const merged = await value<{ base: string }>(ui, { type: 'merge', item: work.id });
   assert.equal(merged.base, 'main');
 });
 
@@ -322,6 +328,7 @@ test('queue-enabled reviewed documentation lands immediately with its review rec
   const { root, ui, rev } = await project(t, true);
   const work = await task(ui, 'Parser documentation', 'README.md');
   await review(rev, work.id);
+  await waitMergeReady(rev, work.id);
   const result = await value<{ commit: string; base: string; queued?: number }>(ui, { type: 'merge', item: work.id });
   assert.equal(result.queued, undefined);
   assert.equal(git(root, 'rev-parse', 'dev'), result.commit);
@@ -337,7 +344,9 @@ test('enqueue refuses a conflicting queued member immediately with its item and 
   await writeFile(join(second.path, 'parser.txt'), 'other parser\n');
   git(second.path, 'commit', '-qam', 'Conflicting parser');
   await review(rev, first.id);
+  await waitMergeReady(rev, first.id);
   await review(rev, second.id);
+  await waitMergeReady(rev, second.id);
   assert.equal((await value<{ queued: number }>(ui, { type: 'merge', item: first.id })).queued, 1);
   const before = await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' });
   const response = await refused(ui, root, second.id, 'merge-conflict', ['parser.txt']);
@@ -347,11 +356,13 @@ test('enqueue refuses a conflicting queued member immediately with its item and 
   assert.deepEqual((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries, before.entries);
   const clean = await task(ui, 'Independent code', 'other.txt');
   await review(rev, clean.id);
+  await waitMergeReady(rev, clean.id);
   assert.equal((await value<{ queued: number }>(ui, { type: 'merge', item: clean.id })).queued, 2);
   const later = await task(ui, 'Later conflict', 'other.txt');
   await writeFile(join(later.path, 'other.txt'), 'conflicts with the second member\n');
   git(later.path, 'commit', '-qam', 'Later conflict');
   await review(rev, later.id);
+  await waitMergeReady(rev, later.id);
   const laterResponse = await refused(ui, root, later.id, 'merge-conflict', ['other.txt']);
   assert.ok(laterResponse.error?.includes(clean.id), laterResponse.error);
   // Repeating the queued request must not merge its own changes twice.

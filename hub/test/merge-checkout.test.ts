@@ -1,5 +1,5 @@
 // T3: real Git conflicts, ref/index locks and checkout rollback preserve native bytes, staging and refs.
-import { test } from 'node:test';
+import { mergeTest as test } from './merge-case.ts';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';

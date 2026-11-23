@@ -1,4 +1,5 @@
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { mergeStep } from './merge-case.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -96,6 +97,7 @@ export async function observableProject(t: TestContext, run?: (real: Git) => Git
   const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), log: r => { sink?.(r); records.push(r); }, ...(clock ? { guard: { now: () => clock.now } } : {}) });
   onCleanup(t, () => hub.close());
   onCleanup(t, () => tracker.stop());
+  await mergeStep('observation tracker startup', () => tracker.start());
   const ui = await connectWsUi(t, hub);
   const human = { id: 'human', name: 'human', role: null };
   const id = (await tracker.create(human, { title: 'Observed parser' })).id;
