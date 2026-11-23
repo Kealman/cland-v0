@@ -1,5 +1,22 @@
 # hub/test/suite-persistence.test.ts
 
+Owned recovery fixtures enroll `ownedDatabases` before Store construction.
+Their stopper returns undefined until Store returns, permitting the captured
+raw-handle fallback after constructor rejection. Once acquired, shutdown joins
+Suites before closing Store and confirming every captured handle closed. The
+constructor-fault control preserves the exact primary error, refuses native
+close once, observes retained root/guard, then confirms the original close
+before actual root removal and guard restoration. The test's outer owner also
+captures its injected native handle so the red control cannot leak it.
+
+Deadline materialization controls use `stageCase` before fixture acquisition.
+They remove native result/log evidence or trigger the isolated-unavailable
+materializer, assert the exact rewritten result and published job, then recover
+again from the result after removing the job's deadline flag. Captured positive
+metadata survives both writers; legacy absence stays absent. The shared
+projection also serves terminal, mismatch-repair, Web, execution and progress
+writers. Native outcome and selected infrastructure facts remain unchanged.
+
 T-1892: keep the legacy full-cover byte oracle, bounded history traversal and
 restart assertions. `stageMissing` now requires Linux only, so Linux receipts
 leave no missing platform; absence of both platforms reports Linux alone.

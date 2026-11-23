@@ -2,8 +2,74 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cpuDelta, cpuSample, machineHealthFromLog } from '../src/executor/droplet/health.ts';
-import { startMachineMetrics, withMachineMetrics, appendMachineMetrics, ownPackage } from '../src/executor/droplet/metrics.ts';
+import { startMachineMetrics, withMachineMetrics, appendMachineMetrics, ownPackage, observePackageDeadline, readRunDeadline } from '../src/executor/droplet/metrics.ts';
 import { suiteEvidence } from '../src/suite-log.ts';
+
+test('deadline marker ingestion bounds bytes and keeps legacy or damaged receipts unknown', () => {
+  for (const content of ['run-timeout\n', '', '124\n', 'run-timeout\ntrailing', 'x'.repeat(1000)]) {
+    let kept = 0, closed = 0;
+    const fs = {
+      openSync: () => 7,
+      readSync: (_fd: number, bytes: Buffer, offset: number, length: number, position: number) => {
+        const chunk = Buffer.from(content).subarray(position, position + length);
+        kept += chunk.length; chunk.copy(bytes, offset); return chunk.length;
+      },
+      closeSync: () => { closed++; },
+    };
+    assert.equal(readRunDeadline(fs, 'marker'), content === 'run-timeout\n');
+    assert.ok(kept <= 13); assert.equal(closed, 1);
+    let diagnostics = 0;
+    assert.equal(readRunDeadline({ ...fs, closeSync: () => { throw Error('close rejected'); } }, 'marker', () => { diagnostics++; }), content === 'run-timeout\n');
+    assert.equal(diagnostics, 1, 'ancillary close rejection preserves the selected authority');
+  }
+});
+
+test('package deadline checkpoints its own expiry before interruption and cancels on close', () => {
+  let expire: () => void = () => {}, signal: (signal: string) => void = () => {};
+  const events: string[] = [];
+  const stop = observePackageDeadline({ timeoutMs: 100,
+    observe: listener => { signal = listener; return () => { events.push('unobserve'); }; },
+    after: (ms, callback) => { assert.equal(ms, 100); expire = callback; return () => { events.push('cancel'); }; },
+    expired: () => { events.push('receipt'); },
+  }, value => { events.push(value); });
+  expire();
+  assert.deepEqual(events, ['receipt', 'SIGTERM']);
+  stop(); expire();
+  assert.deepEqual(events, ['receipt', 'SIGTERM', 'cancel', 'unobserve']);
+  events.length = 0;
+  const stopCancelled = observePackageDeadline({ timeoutMs: 100,
+    observe: listener => { signal = listener; return () => {}; },
+    after: (_ms, callback) => { expire = callback; return () => {}; },
+    expired: () => assert.fail('ordinary cancellation cannot supply deadline authority'),
+  }, value => { events.push(value); });
+  signal('SIGTERM'); expire(); stopCancelled();
+  assert.deepEqual(events, ['SIGTERM']);
+});
+
+for (const diagnosticThrows of [false, true]) test(`deadline publication rejection still reaches bounded package handoff (diagnostic throws=${diagnosticThrows})`, async () => {
+  let expire = () => {}, handoff = () => {}, detached = false;
+  const events: string[] = [];
+  const native = Promise.withResolvers<number>();
+  const result = ownPackage({
+    observe: listener => observePackageDeadline({ timeoutMs: 100,
+      observe: () => () => {},
+      after: (_ms, callback) => { expire = callback; return () => {}; },
+      expired: () => { throw Error('controlled marker publication rejection'); },
+      publicationFailed: () => { events.push('secondary diagnostic'); if (diagnosticThrows) throw Error('controlled diagnostic rejection'); },
+    }, signal => { events.push(signal); listener(signal); }),
+    after: (ms, callback) => { assert.equal(ms, 2000); handoff = callback; return () => {}; },
+    launch: () => native.promise,
+    handoff: () => { detached = true; },
+  });
+  assert.doesNotThrow(() => expire());
+  assert.deepEqual(events, ['secondary diagnostic', 'SIGTERM']);
+  assert.equal(detached, false, 'interruption is not closure');
+  handoff();
+  assert.deepEqual(await result, { state: 'incomplete', signal: 'SIGTERM' });
+  assert.equal(detached, true);
+  native.resolve(143);
+  assert.deepEqual(await result, { state: 'incomplete', signal: 'SIGTERM' });
+});
 
 test('supervisor termination before launch or with a resistant child hands off incomplete ownership', async () => {
   let removed = false;

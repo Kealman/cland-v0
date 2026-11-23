@@ -38,7 +38,7 @@ for (const scenario of ['batch', 'member-T1', 'partial-batch', 'partial-fresh-co
         const notices: string[] = [];
         const fixture = await wait('fixture setup', () => suiteUnit(owner.fixtures, { machineReceiptsOnly: true,
           onSoakNotice: (_id, text) => { notices.push(text); },
-        }, 'dev_t3_every="8h"'));
+        }, 'shards=1\ndev_t3_every="8h"'));
         owner.adoptRoot(fixture.root);
         // Restore semantic mocks only after suiteUnit has stopped and removed its root.
         owner.fixtures.after(() => t.mock.restoreAll());

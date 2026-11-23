@@ -1,5 +1,19 @@
 # hub/test/executor-health-math.test.ts
 
+Publisher rejection controls compose the real deadline observer with `ownPackage`:
+the failure cannot escape the injected timer callback, and the existing
+two-second handoff remains incomplete until the machine owner takes over.
+Both successful and throwing diagnostic sinks retain that handoff; late native
+closure cannot replace it. Failed marker publication confers no authority.
+
+The package deadline observer uses injected timer/signal/receipt ports. Its
+expiry checkpoints before interruption; ordinary TERM and already queued ticks
+after close cannot confer deadline authority. Fixed marker reads retain at most
+13 bytes and accept only `run-timeout` plus a newline. Missing, code-only and
+oversized markers stay unknown; an ancillary close error retains selected
+authority and supplies a secondary diagnostic. Uploaded status VM controls live
+in `executor-droplet-component.test.ts`, including the previous wire shape.
+
 `node --test hub/test/executor-health-math.test.ts` is T1. Literal Linux counters
 and injected scheduling/read/write boundaries prove the `suite machine metrics`
 one-second series, load averages, CPU/iowait/steal percentages, and no writes

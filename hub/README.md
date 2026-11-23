@@ -204,6 +204,14 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Pinned verifier request heads](../docs/hub/pinned-verifier-request-heads.md)
 - [Merge queue landing reports (T-1503)](../docs/hub/merge-queue-landing-reports-t-1503.md)
 
+Periodic dev T3 uses configured remote shards under the shared slot and daily
+spend limits, falling back to one machine with a warning. A deadline with no
+observed failure reports inconclusive (timeout), names unexecuted or incomplete
+tiers and supplies no green T3 evidence or culprit search. Real failures remain
+red. These runtime changes require a hub restart after deployment.
+Deadline classification requires the hub timer or the remote supervisor's
+structured expiry marker; code-only 124 retains unknown deadline cause.
+
 Periodic dev T3 uses this repository's `dev_t3_every = "8h"` (new projects:
 disabled). A green batch at the same verification tree suppresses it only with
 structured T0/T3 and executed or member-verified T1 proof; its notice names the

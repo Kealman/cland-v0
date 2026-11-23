@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { constants } from 'node:os';
 
-import { cpuSample, cpuDelta, withMachineMetrics, appendMachineMetrics, ownPackage, type CpuSample } from './metrics.ts';
+import { cpuSample, cpuDelta, withMachineMetrics, appendMachineMetrics, ownPackage, observePackageDeadline, type CpuSample } from './metrics.ts';
 export { cpuSample, cpuDelta, type CpuSample } from './metrics.ts';
 export type MachineHealth = {
   version: 1;
@@ -80,12 +80,24 @@ async function receipt(action: string, dir: string) {
         read: () => ({ stat: readFileSync('/proc/stat', 'utf8'), loadavg: readFileSync('/proc/loadavg', 'utf8') }),
         write: line => { if (fd !== undefined) writeSync(fd, line); },
       }, () => ownPackage({
-        observe: listener => {
-          interrupted = listener;
-          const term = () => listener('SIGTERM'), int = () => listener('SIGINT');
-          process.on('SIGTERM', term); process.on('SIGINT', int);
-          return () => { process.off('SIGTERM', term); process.off('SIGINT', int); };
-        },
+        observe: listener => observePackageDeadline({
+          timeoutMs: Number(process.argv[4]) * 1000,
+          expired: () => {
+            writeFileSync(join(dir, 'deadline-expired.tmp'), 'run-timeout\n', { mode: 0o600 });
+            renameSync(join(dir, 'deadline-expired.tmp'), join(dir, 'deadline-expired'));
+          },
+          publicationFailed: error => {
+            const code = (error as NodeJS.ErrnoException | null)?.code;
+            writeSync(2, `suite deadline secondary diagnostic ${JSON.stringify({ stage: 'publish', code: typeof code === 'string' && /^[A-Z0-9_]{1,32}$/.test(code) ? code : null })}\n`);
+          },
+          after: (ms, callback) => { const timer = setTimeout(callback, ms); return () => clearTimeout(timer); },
+          observe: listener => {
+            interrupted = listener;
+            const term = () => listener('SIGTERM'), int = () => listener('SIGINT');
+            process.on('SIGTERM', term); process.on('SIGINT', int);
+            return () => { process.off('SIGTERM', term); process.off('SIGINT', int); };
+          },
+        }, listener),
         after: (ms, callback) => { const timer = setTimeout(callback, ms); return () => clearTimeout(timer); },
         handoff: () => { child?.unref(); },
         launch: () => new Promise<number>(resolve => {

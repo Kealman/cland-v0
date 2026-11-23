@@ -306,7 +306,7 @@ Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the c
 | Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; T1 omitted with complete exact-head member receipts), plus Web after T1 (after configured tiers without T1) for web/ diffs; affected T3 importers unless a full trigger applies; five repetitions of identities lacking per-file same-tier passing proof |
 | Ordinary integrated `dev` or explicit `all` | T1–T3 |
 | Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
-| Periodic dev (`dev-t3`) | T2 and T3, one droplet; no load repetitions |
+| Periodic dev (`dev-t3`) | T2, T3 and Web, configured remote shards; no load repetitions |
 | Nightly soak | T1–T4; five repetitions of identities absent from the last green soak |
 
 T4 files run only in their selected base soak phase. They never acquire extra
@@ -357,9 +357,10 @@ tree. This uses the shared exclusions in `hub/src/verification-tree.ts`, so
 tracker-only commits do not start another run. The cursor survives restart, and a queued,
 running or unreported periodic run prevents another. A refused admission is
 throttled for one interval. The hub requires clean root dev at freshly fetched
-origin/dev and retries unavailable candidates on later clock ticks. It uses one
-droplet under the ordinary shared remote budget and daily spend cap, selects T2
-and T3 without load repetitions, and never holds or rebuilds a merge batch.
+origin/dev and retries unavailable candidates on later clock ticks. It uses configured
+`[verification] shards` under the ordinary shared remote budget and daily spend cap,
+falling back to one machine with a warning when reservations or slots are unavailable.
+It selects T2, T3 and Web without load repetitions and never holds or rebuilds a merge batch.
 Nightly soak still runs T1–T4 independently.
 
 A periodic tick skips admission when a reported, executed green integrated dev
@@ -381,7 +382,7 @@ full periodic completion, or the first batch skip when no such baseline exists.
 That cursor survives restart and is not extended by later batch skips. The next
 deadline attempt bypasses the normal attempt interval even when a prior batch
 skip fell just before it. A persisted deadline attempt restores ordinary retry
-throttling on admission failure. Only full unsharded periodic selection with
+throttling on admission failure. Only full periodic selection with
 complete structured T0/T2/T3/Web producer proof resets the baseline; unknown
 or legacy success metadata does not. The attempt runs full periodic T0, T2,
 T3 and Web; unchanged dev retains the
@@ -422,6 +423,24 @@ block publication or the next periodic run. The previous
 green is pinned at admission and retained with the durable job. Infrastructure
 results use `result: "not-run"`, `notRun: "infrastructure"`, `cause` and an empty
 `failingFiles` list; the existing fields remain present.
+
+A deadline with no observed failure reports **inconclusive (timeout)**, with
+`result: "inconclusive"`, `cause: "timeout"` and additive `unexecutedTiers` in
+the message detail. Missing or interrupted producer receipts are named as
+unexecuted or incomplete tiers. It supplies no red regression cover, culprit
+search or green release T3 coverage; the native nonzero exit remains recorded. Real
+failures remain red even when another shard times out. Older result details
+without the additive field retain their existing interpretation. Runtime policy
+changes require deploying and restarting the hub.
+
+Capacity classification requires a positive producing-owner deadline receipt.
+The hub's admitted timer records `timedOut`; the remote supervisor's timer writes
+the bounded `deadline-expired` marker before handing interrupted package closure
+to machine deletion. Status carries optional `deadlineExpired: true`, retained
+in result checkpoints and restored as owner authority. Code-only legacy receipts
+and commands that intentionally exit 124 stay red with unknown deadline cause.
+The ordered producer policy names a tier incomplete after a later unresolved
+interruption; only subsequent matching positive completion can supersede it.
 
 A red periodic result starts a separate durable culprit search for T2 and T3
 failures alike, retaining the `DevT3Result` interface above. Each failing file

@@ -123,6 +123,37 @@ function periodic(): SuiteJob {
   return job;
 }
 
+test('sharded full periodic coverage requires every exact producer and planned file', () => {
+  const job = periodic();
+  job.plannedShards = 2;
+  job.tierPlan = [{ tier: 'T3', files: ['one', 'two'], tests: 2, seconds: 1, projectedWall: 1, workers: 1, missing: 0 }];
+  job.shards = ['one', 'two'].map((file, i) => {
+    const shard = periodic();
+    shard.id = `child-${i}`; shard.parentRun = job.id;
+    shard.tierPlan = [{ ...job.tierPlan![0]!, files: [file] }];
+    shard.tierReceipts = shard.commands!.plan!.map(step => tierReceipt(shard, step, 0));
+    return shard;
+  });
+  assert.equal(fullPeriodicDevT3Cover(job), true);
+  const archived = structuredClone(job);
+  archived.periodicT3Proof = { version: 1, run: job.id, head: job.head, tree: job.tree! };
+  delete archived.tierPlan;
+  for (const shard of archived.shards!) delete shard.tierPlan;
+  assert.equal(fullPeriodicDevT3Cover(archived, 'checkpoint'), true);
+  assert.equal(fullPeriodicDevT3Cover(archived), false);
+  archived.periodicT3Proof.tree = 'foreign';
+  assert.equal(fullPeriodicDevT3Cover(archived, 'checkpoint'), false);
+  for (const change of [
+    (j: SuiteJob) => { j.shards!.pop(); },
+    (j: SuiteJob) => { j.shards![0]!.tierReceipts = []; },
+    (j: SuiteJob) => { j.shards![0]!.outcome!.code = 124; },
+    (j: SuiteJob) => { j.shards![0]!.tierPlan![0]!.files = []; },
+  ]) {
+    const broken = structuredClone(job); change(broken);
+    assert.equal(fullPeriodicDevT3Cover(broken), false);
+  }
+});
+
 test('daily baseline requires a complete full periodic selection and producer plan', () => {
   assert.equal(fullPeriodicDevT3Cover(periodic()), true);
   for (const name of ['check', 'T2', 'T3', 'Web']) {

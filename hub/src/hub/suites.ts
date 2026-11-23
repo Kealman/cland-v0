@@ -22,6 +22,7 @@ import { missingDependencyHint } from '../dependency-install.ts';
 import { pinVerificationPlan, verificationSteps, verificationInterrupted, verificationStepResults } from '../verification-plan.ts';
 import { loadProofIdentities, skipT4LoadRepetitions, soakDeadlinePlan, soakCalibration, soakExecutionSeconds } from '../suite-load-gate-plan.ts';
 import { suiteProgress, progressLines } from '../suite-progress.ts';
+import { terminalDeadlineMetadata } from './suite-result-metadata.ts';
 import { tierExecution, executionLines } from '../suite-execution.ts';
 import { suiteCandidate, type SuiteCandidate } from './suite-candidate.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
@@ -76,6 +77,7 @@ export type SuiteJob = {
   flaky?: { owners: Record<string, string>; runs: string[]; commands?: import('../verification-commands.ts').VerificationCommands; rejected?: string };
   tierReceipts?: TierReceipt[];
   batchT3Proof?: { version: 1; run: string; head: string; tree: string };
+  periodicT3Proof?: { version: 1; run: string; head: string; tree: string };
   batchT1?: BatchT1;
   webPhase?: WebPhaseUnavailable;
   commands?: import('../verification-commands.ts').VerificationCommands;
@@ -423,7 +425,7 @@ export class Suites {
         isolatedSuiteEvidencePath(root, job.id, job.log, environment);
         isolatedSuiteEvidencePath(root, job.id, job.result, environment);
         await writeFile(job.log, 'log unavailable (outside isolated root)\n', { mode: 0o600 });
-        await writeFile(job.result, JSON.stringify({ ...job.outcome, ...(job.timingReceipts ? { timingReceipts: job.timingReceipts } : {}), ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: job.finished }), { mode: 0o600 });
+        await writeFile(job.result, JSON.stringify({ ...terminalDeadlineMetadata(job), ...job.outcome, ...(job.timingReceipts ? { timingReceipts: job.timingReceipts } : {}), ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: job.finished }), { mode: 0o600 });
       })();
       this.#isolatedAdmissions.set(job.id, preparation);
       admissions.push(preparation);
@@ -471,6 +473,10 @@ export class Suites {
         if (current.shards) current.timingShards = { state: 'sharded', runs: current.shards.map(shard => shard.id) };
         this.#baselineCheckpoint(current);
         if (current.state !== 'finished') continue;
+        if (!this.#summaries.has(current.id) && current.shards && current.occasion === 'dev-t3') {
+          if (fullPeriodicDevT3Cover(current)) current.periodicT3Proof = { version: 1, run: current.id, head: current.head, tree: current.tree! };
+          else delete current.periodicT3Proof;
+        }
         // Compute from the already-loaded producer, never by hydrating history.
         if (!this.#summaries.has(current.id) && current.shards && current.occasion === 'batch') {
           if (batchDevT3Cover(current, current.tree ?? '')) current.batchT3Proof = { version: 1, run: current.id, head: current.head, tree: current.tree! };
@@ -1397,8 +1403,8 @@ export class Suites {
   }
   #shouldPlanShards(job: SuiteJob): boolean {
     // Integrated is assigned by dispatch only to Coordinator root runs (or QA
-    // epic occasions). Soaks and periodic runs retain their single-slot policy.
-    return !job.batch?.diagnostic && (job.occasion !== 'batch' || Boolean(job.tierPlan?.length && job.commands?.tiers)) && job.occasion !== 'soak' && job.occasion !== 'dev-t3' && !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
+    // epic occasions). Soaks retain their single-slot policy.
+    return !job.batch?.diagnostic && (job.occasion !== 'batch' || Boolean(job.tierPlan?.length && job.commands?.tiers)) && job.occasion !== 'soak' && !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
       && job.branch === 'dev' && job.mode === 'all' && job.tree
       && job.selection?.mode === 'full' && job.selection.fetchedDev === job.head);
   }
@@ -1605,11 +1611,11 @@ export class Suites {
     const now = this.#clock.now().getTime();
     const last = this.#jobs.findLast(job => job.occasion === 'dev-t3');
     if (last && (!last.outcome || !last.reported)) return;
-    const lastStarted = this.#jobs.findLast(job => job.occasion === 'dev-t3' && (job.lease as DropletLease | undefined)?.execution?.started);
-    const startedAt = (lastStarted?.lease as DropletLease | undefined)?.execution?.startedAt ?? lastStarted?.admittedAt ?? lastStarted?.queued;
+    const lastStarted = this.#jobs.findLast(job => job.occasion === 'dev-t3' && (job.shards ?? [job]).some(source => (source.lease as DropletLease | undefined)?.execution?.started));
+    const startedAt = ((lastStarted?.shards ?? (lastStarted ? [lastStarted] : [])).find(source => (source.lease as DropletLease | undefined)?.execution?.started)?.lease as DropletLease | undefined)?.execution?.startedAt ?? lastStarted?.admittedAt ?? lastStarted?.queued;
     const anchor = this.#store.meta('dev-t3-attempt');
     if (!anchor) { this.#store.setMeta('dev-t3-attempt', String(now)); return; }
-    const lastGreen = this.#jobs.findLast(job => fullPeriodicDevT3Cover(job) && this.#store.resolveArtifact(job.artifact!)
+    const lastGreen = this.#jobs.findLast(job => fullPeriodicDevT3Cover(job, 'checkpoint') && this.#store.resolveArtifact(job.artifact!)
       && Date.parse(job.completedAt ?? job.finished ?? '') <= now);
     const greenAt = Date.parse(lastGreen?.completedAt ?? lastGreen?.finished ?? '') || 0;
     const storedSuppression = Number(this.#store.meta('dev-t3-batch-suppressed-since')) || 0;
@@ -1836,6 +1842,13 @@ export class Suites {
     this.#inspecting.set(job.id, work);
     return work;
   }
+  #recordRunDeadline(job: SuiteJob): void {
+    if (!job.outcome || job.outcome.code === 0 || job.timedOut) return;
+    job.timedOut = true;
+    if (job.outcome.notRun || job.cancelled || job.requesterDied) return;
+    const secondary = job.outcome.cause;
+    job.outcome = { ...job.outcome, cause: `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}${secondary ? `; secondary diagnostic: ${secondary}` : ''}` };
+  }
   async #restoreRemoteResult(job: SuiteJob): Promise<boolean> {
     if (job.executor !== 'droplet') return false;
     if (job.state === 'finished' && job.finished && job.outcome) return true;
@@ -1844,18 +1857,19 @@ export class Suites {
       throw error;
     });
     if (text === null) return false;
-    const result = JSON.parse(text) as { timingReceipts?: unknown; packageClosure?: SuiteJob['packageClosure']; tierReceipts?: unknown; code: number; cause?: string; notRun?: 'infrastructure' | 'provider-capacity'; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
+    const result = JSON.parse(text) as { deadlineExpired?: true; timingReceipts?: unknown; packageClosure?: SuiteJob['packageClosure']; tierReceipts?: unknown; code: number; cause?: string; notRun?: 'infrastructure' | 'provider-capacity'; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
     if (!Number.isInteger(result.code) || typeof result.finished !== 'string' || !Number.isFinite(Date.parse(result.finished)) || result.cause !== undefined && typeof result.cause !== 'string') throw new Error('invalid remote result receipt');
     // The receipt survives deletion of the machine and can predate the last job
     // checkpoint. Reconcile it before polling or relaunching a persisted holder.
     if (job.outcome?.notRun && (result.notRun !== job.outcome.notRun || result.code !== job.outcome.code || result.cause !== job.outcome.cause)) {
       // An older collector could persist bare terminal transport status between
       // the delivery failure checkpoint and its full-outcome rewrite.
-      await writeFile(`${job.result}.restore.tmp`, JSON.stringify({ ...result, ...job.outcome, ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}) }), { mode: 0o600 });
+      await writeFile(`${job.result}.restore.tmp`, JSON.stringify({ ...result, ...terminalDeadlineMetadata(job, result), ...job.outcome, ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}) }), { mode: 0o600 });
       await rename(`${job.result}.restore.tmp`, job.result);
     }
     if (!job.outcome?.notRun && (!job.outcome || !job.cancelled && !job.requesterDied && !job.timedOut)) job.outcome = { ...suiteCommandOutcome(result.code, result.cause ?? ''), ...(result.notRun ? { notRun: result.notRun } : {}) };
     job.finished = result.finished;
+    if (result.deadlineExpired === true) this.#recordRunDeadline(job);
     if (result.packageClosure) job.packageClosure = result.packageClosure;
     const tierReceipts = parseTierReceipts(result.tierReceipts);
     if (tierReceipts) job.tierReceipts = tierReceipts;
@@ -1891,7 +1905,7 @@ export class Suites {
     await mkdir(dirname(job.log), { recursive: true });
     await mkdir(dirname(job.result), { recursive: true });
     await appendFile(job.log, `${job.outcome!.notRun ? `${diagnostic}; report inputs reconstructed from terminal refusal\n` : ''}${job.outcome!.cause}\n`, { mode: 0o600 });
-    if (!job.outcome!.notRun || missing.includes('result receipt')) await writeFile(job.result, JSON.stringify({ ...job.outcome, ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: job.finished }), { mode: 0o600 });
+    if (!job.outcome!.notRun || missing.includes('result receipt')) await writeFile(job.result, JSON.stringify({ ...terminalDeadlineMetadata(job), ...job.outcome, ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: job.finished }), { mode: 0o600 });
   }
   async #confirmAccounting(job: SuiteJob): Promise<void> {
     const sources = job.shards ?? [job];
@@ -1955,7 +1969,7 @@ export class Suites {
       if (!restored && remote && job.lease && job.remoteLogStart !== undefined) {
         try { await this.#collectLog(job); }
         catch (error) { logError = error; }
-        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ ...(job.outcome?.notRun ? job.outcome : suiteCommandOutcome(receipt.code ?? 1, receipt.cause ?? '')), ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: receipt.finished ?? this.#clock.now().toISOString(), ...(job.timingReceipts ? { timingReceipts: job.timingReceipts } : {}), ...(receipt.tierReceipts ? { tierReceipts: receipt.tierReceipts } : {}), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
+        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ ...terminalDeadlineMetadata(job, receipt ?? undefined), ...(job.outcome?.notRun ? job.outcome : suiteCommandOutcome(receipt.code ?? 1, receipt.cause ?? '')), ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), finished: receipt.finished ?? this.#clock.now().toISOString(), ...(job.timingReceipts ? { timingReceipts: job.timingReceipts } : {}), ...(receipt.tierReceipts ? { tierReceipts: receipt.tierReceipts } : {}), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
       }
       if (receipt?.platform) job.platform = receipt.platform;
       if (receipt?.finished) job.finished = receipt.finished;
@@ -1967,8 +1981,9 @@ export class Suites {
         await appendFile(job.log, `remote machine ${(job.lease as DropletLease).name}: ${receipt.cause ?? 'lost'}; collection unavailable\n`, { mode: 0o600 });
       }
       if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.outcome?.notRun && !job.cancelled && !job.requesterDied && !job.timedOut) {
-        job.outcome = suiteCommandOutcome(receipt.code ?? 1, receipt.code === 124 ? `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` : receipt.cause ?? '');
+        job.outcome = suiteCommandOutcome(receipt.code ?? 1, receipt.cause ?? '');
       }
+      if (receipt?.deadlineExpired === true && (receipt.state === 'done' || receipt.state === 'lost')) this.#recordRunDeadline(job);
       // Status replies prove transport liveness, not test progress. Only new
       // stdout/stderr bytes reset the silence bound, including across restart.
       const executionStartedAt = (job.lease as DropletLease | undefined)?.execution?.startedAt;
@@ -2005,7 +2020,7 @@ export class Suites {
         }
         // A recovered receipt can already contain the finalized partial results.
         // Do not replace it with a header-only receipt on a reporting retry.
-        if (!restored) await writeFile(job.result, JSON.stringify({ ...job.outcome, ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), ...(job.tierReceipts ? { tierReceipts: job.tierReceipts } : {}), finished: job.finished ?? this.#clock.now().toISOString(), ...(job.platform ? { platform: job.platform } : {}), ...(job.health ? { health: job.health } : {}), ...(job.shardHealth ? { shardHealth: job.shardHealth } : {}) }));
+        if (!restored) await writeFile(job.result, JSON.stringify({ ...terminalDeadlineMetadata(job, receipt ?? undefined), ...job.outcome, ...(job.packageClosure ? { packageClosure: job.packageClosure } : {}), ...(job.tierReceipts ? { tierReceipts: job.tierReceipts } : {}), finished: job.finished ?? this.#clock.now().toISOString(), ...(job.platform ? { platform: job.platform } : {}), ...(job.health ? { health: job.health } : {}), ...(job.shardHealth ? { shardHealth: job.shardHealth } : {}) }));
       }
       job.state = 'finished';
       this.#save(job);
@@ -2083,7 +2098,7 @@ export class Suites {
         if (webPhase) {
           job.webPhase = webPhase;
           const result = JSON.parse(await readFile(job.result, 'utf8'));
-          await writeFile(`${job.result}.web.tmp`, JSON.stringify({ ...result, webPhase }), { mode: 0o600 });
+          await writeFile(`${job.result}.web.tmp`, JSON.stringify({ ...result, ...terminalDeadlineMetadata(job, result), webPhase }), { mode: 0o600 });
           await rename(`${job.result}.web.tmp`, job.result);
           this.#save(job);
         }
@@ -2093,7 +2108,7 @@ export class Suites {
         if (job.outcome.code === 124 && job.tierPlan?.length) {
           const execution = tierExecution(job.tierPlan, log);
           const result = JSON.parse(await readFile(job.result, 'utf8'));
-          await writeFile(`${job.result}.execution.tmp`, JSON.stringify({ ...result, execution }), { mode: 0o600 });
+          await writeFile(`${job.result}.execution.tmp`, JSON.stringify({ ...result, ...terminalDeadlineMetadata(job, result), execution }), { mode: 0o600 });
           await rename(`${job.result}.execution.tmp`, job.result);
           const lines = '\n' + [...executionLines(execution),
             ...executionLines(execution, 256).map(line => `suite execution summary ${line}`)].join('\n') + '\n';
@@ -2102,10 +2117,10 @@ export class Suites {
         const progress = remote ? suiteProgress(log, Date.parse(job.interruptedAt ?? job.finished ?? this.#clock.now().toISOString())) : null;
         if (progress) {
           const result = JSON.parse(await readFile(job.result, 'utf8'));
-          await writeFile(`${job.result}.progress.tmp`, JSON.stringify({ ...result, progress }), { mode: 0o600 });
+          await writeFile(`${job.result}.progress.tmp`, JSON.stringify({ ...result, ...terminalDeadlineMetadata(job, result), progress }), { mode: 0o600 });
           await rename(`${job.result}.progress.tmp`, job.result);
           if (job.outcome.code !== 0 && !log.includes('\nsuite interruption ')) {
-            const lines = `\nsuite interruption ${JSON.stringify({ at: job.interruptedAt })}\n${progressLines(progress, { timeout: job.outcome.code === 124 }).join('\n')}\n`;
+            const lines = `\nsuite interruption ${JSON.stringify({ at: job.interruptedAt })}\n${progressLines(progress, { timeout: job.occasion === 'dev-t3' ? job.timedOut === true : job.outcome.code === 124 }).join('\n')}\n`;
             await appendFile(job.log, lines); evidence = (evidence ?? log) + lines;
           }
         }

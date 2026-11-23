@@ -16,6 +16,128 @@ import { eventRow } from '../src/hub/journal.ts';
 import { heartbeatDigest } from '../src/hub/heartbeat.ts';
 import { reportSoakQuarantine } from '../src/hub/soak-quarantine.ts';
 import { suiteCase } from './suite-case-fixture.ts';
+import type { SuiteJob } from '../src/hub/suites.ts';
+import { deriveCover } from '../src/hub/suite-cover.ts';
+import { join } from 'node:path';
+import { serializeTierManifest } from '../src/suite-shards.ts';
+import { flakyReceiptCase as periodicCase, ownedSuiteUnit } from './flaky-receipt-fixture.ts';
+import { periodicMissingTiers } from '../src/hub/dev-t3-timeout.ts';
+
+test('periodic admission reserves configured shards and collects one green parent', t => periodicCase(t, async ({ setup, step }) => {
+  const reserved: string[][] = [];
+  const f = await setup(async fixtures => {
+    const fixture = await ownedSuiteUnit(t, fixtures, { machineReceiptsOnly: true, executor: 'droplet', remoteBudget: 3 }, 'shards=3\ndev_t3_every="1s"');
+    fixtures.mock.method(DropletExecutor.prototype, 'reserveShards', async (ids: string[]) => { reserved.push(ids); });
+    fixtures.mock.method(DropletExecutor.prototype, 'releaseShardReservations', async () => {});
+    return fixture;
+  });
+  for (const file of ['one', 'two', 'three']) await step('write shard input', () => writeFile(join(f.root, `hub/test/${file}.test.ts`), ''));
+  await step('classify shard inputs', async () => {
+    const path = join(f.root, 'hub/test/tiers.json');
+    const manifest = { version: 1 as const, tests: {} as Record<string, 'T3'> };
+    for (const file of ['one', 'two', 'three']) manifest.tests[`hub/test/${file}.test.ts`] = 'T3';
+    await writeFile(path, serializeTierManifest(manifest));
+  });
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
+  const run = await step('periodic admission', () => f.launch({ mode: 'all', integrated: true, occasion: 'dev-t3', executor: 'droplet', fresh: true }));
+  await step('shard dispatch settles', async () => { await f.tick(); await f.suites.settled(); });
+  const job = (await step('read pinned shards', () => f.jobs())).find(job => job.id === run.id)!;
+  assert.equal(job.shards?.length, 3, JSON.stringify({ state: job.state, skip: job.shardingSkipped, error: job.error, logs: f.logs }));
+  assert.deepEqual(reserved, [job.shards!.map(shard => shard.id)]);
+  for (const shard of job.shards!) {
+    await step('worker started receipt', () => f.machine.waits.run(f.machine.started(shard.id)));
+    f.machine.finish(shard.id, 0, '# tests 1\n# pass 1\n');
+  }
+  await step('collect shards', async () => { await f.tick(5000); await f.suites.settled(); });
+  const result = await step('durable parent result', () => f.machine.waits.run(f.result(run.id)));
+  assert.equal(result.outcome?.code, 0);
+  assert.equal(result.reported, true);
+  await step('restart and unchanged periodic tick', async () => { await f.reopen(); await f.tick(5000); await f.suites.settled(); });
+  assert.equal((await step('read unchanged run inventory', () => f.jobs())).length, 1);
+}));
+
+test('periodic deadline without failures is inconclusive and keeps missing tiers out of coverage', t => periodicCase(t, async ({ setup, step }) => {
+  const job = { id: 'timeout', occasion: 'dev-t3', head: 'head', tree: 'tree', integrated: true,
+    outcome: { code: 124, cause: 'run timeout 75m' },
+    commands: { plan: [{ name: 'T2', command: 'component' }, { name: 'T3', command: 'integration' }, { name: 'Web', command: 'web' }] },
+    tierReceipts: [{ tier: 'T2', exit: 0, completion: 'complete', run: 'timeout', tree: 'tree', command: 'component' }],
+  } as SuiteJob;
+  const result = await step('unknown command exit', () => devT3Result(job, '', { id: 'A-1', path: '/durable/log' }, async () => ''));
+  assert.equal(result.result, 'red', 'command exit 124 is not a producing-owner deadline');
+  assert.equal(deriveCover(job, '')?.cause, null, 'legacy code-only deadline cause stays unknown');
+  job.timedOut = true;
+  const timeout = await step('owner deadline result', () => devT3Result(job, '', { id: 'A-1', path: '/durable/log' }, async () => ''));
+  assert.equal(timeout.result, 'inconclusive');
+  assert.equal(timeout.cause, 'timeout');
+  assert.deepEqual(timeout.unexecutedTiers, ['T3', 'Web']);
+  assert.equal(deriveCover(job, ''), undefined, 'capacity timeout supplies no red regression cover');
+  const f = await setup(fixtures => ownedSuiteUnit(t, fixtures, { machineReceiptsOnly: true }));
+  const search = new DevT3Search(f.store, { currentDev: async () => 'head', probe: async () => assert.fail('timeout must not probe'), report: async () => assert.fail('timeout must not search') });
+  search.accept(timeout); await step('search suppression', () => search.tick());
+  assert.equal(f.store.meta('dev-t3-searches'), null);
+  f.store.setMeta('suite-job:timeout', JSON.stringify({ position: 0, job: { ...job, branch: 'dev', state: 'finished', reported: true, artifact: 'A-1' } }));
+  assert.equal(releaseT3Cover(f.store, 'tree'), null);
+  const failures = 'suite test failures [{"file":"hub/test/example.test.ts","name":"real failure"}]\n';
+  assert.equal((await devT3Result(job, failures, { id: 'A-1', path: '/durable/log' }, async () => '')).result, 'red');
+  const sharded = { ...job, outcome: { code: 1, cause: 'shard deadline' }, shards: [
+    { ...job, id: 'child-1', parentRun: job.id },
+    { ...job, id: 'child-2', parentRun: job.id, timedOut: false, outcome: { code: 0, cause: '' } },
+  ] };
+  assert.equal((await devT3Result(sharded, '', { id: 'A-1', path: '/durable/log' }, async () => '')).result, 'inconclusive');
+  sharded.shards[1]!.outcome!.code = 1;
+  assert.equal((await devT3Result(sharded, '', { id: 'A-1', path: '/durable/log' }, async () => '')).result, 'red', 'a failing sibling wins over capacity exhaustion');
+}));
+
+test('periodic missing tiers retain later interruptions until ordered positive completion', () => {
+  const pass = { tier: 'T3' as const, run: 'run', tree: 'tree', command: 'integration', exit: 0, completion: 'complete' as const };
+  const interrupted = { ...pass, exit: 124, completion: 'incomplete' as const };
+  const job = { id: 'run', tree: 'tree', commands: { plan: [{ name: 'T3', command: 'integration' }] }, tierReceipts: [pass, interrupted] } as SuiteJob;
+  assert.deepEqual(periodicMissingTiers(job), ['T3']);
+  job.tierReceipts = [interrupted, pass];
+  assert.deepEqual(periodicMissingTiers(job), []);
+  job.tierReceipts = [{ ...pass, tree: 'foreign' }];
+  assert.deepEqual(periodicMissingTiers(job), ['T3']);
+});
+
+test('remote owner deadline authority survives result checkpoint recovery without code inference', t => periodicCase(t, async ({ setup, step, fixtures }) => {
+  const f = await setup(context => ownedSuiteUnit(t, context, { machineReceiptsOnly: true }, 'shards=1'));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
+  const status = f.machine.dependencies.run.status;
+  fixtures.mock.method(f.machine.dependencies.run, 'status', async (lease: Parameters<typeof status>[0]) => ({ ...await status(lease), deadlineExpired: true as const }));
+  const run = await step('remote admission', () => f.launch({ mode: 'all', occasion: 'dev-t3', integrated: true, executor: 'droplet' }));
+  await step('worker start receipt', () => f.machine.waits.run(f.machine.started(run.id)));
+  await step('native timeout result collection', () => f.finish(run.id, 124));
+  const receipt = await step('retained result receipt', () => f.suites.receipt(run.id));
+  assert.equal(receipt.job.timedOut, true);
+  assert.equal(JSON.parse(await step('read result checkpoint', () => readFile(receipt.job.result, 'utf8'))).deadlineExpired, true);
+  await step('reopen before outcome checkpoint', async () => {
+    const jobs = await f.jobs();
+    const job = jobs.find(job => job.id === run.id)!;
+    job.outcome = null; job.reported = false; job.artifact = null; job.state = 'launching';
+    delete job.timedOut;
+    await f.reopen(jobs); await f.tick(); await f.suites.settled();
+  });
+  await step('recovered durable result', () => f.machine.waits.run(f.result(run.id)));
+  assert.equal((await step('recovered owner authority', () => f.suites.receipt(run.id))).job.timedOut, true);
+}));
+
+for (const restart of [false, true]) test(`old-shape remote completion keeps deadline authority unknown after hub restart=${restart}`, t => periodicCase(t, async ({ setup, step }) => {
+  const f = await setup(context => ownedSuiteUnit(t, context, { machineReceiptsOnly: true }, 'shards=1'));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
+  const run = await step('old-shape worker admission', () => f.launch({ mode: 'all', occasion: 'dev-t3', integrated: true, executor: 'droplet' }));
+  await step('old-shape worker execution receipt', () => f.machine.waits.run(f.machine.started(run.id)));
+  if (restart) await step('hub restart while old-shape worker runs', () => f.reopen());
+  await step('old-shape worker completion', () => f.finish(run.id, 124));
+  const receipt = await step('terminal old-shape receipt', () => f.suites.receipt(run.id));
+  assert.equal(receipt.job.timedOut, undefined);
+  const result = await step('old-shape periodic result', () => devT3Result(receipt.job, receipt.log, { id: 'A-1', path: '/durable/log' }, async () => ''));
+  assert.equal(result.result, 'red');
+  assert.equal(result.cause, undefined);
+  assert.equal(deriveCover(receipt.job, receipt.log)?.cause, null);
+}));
 
 test('cancelled soak preserves its durable outcome after late delivery rejection', t => suiteCase(t, async ({ setup, step, releaseOnClose }) => {
   const f = await setup(fixtures => suiteUnit(fixtures, { machineReceiptsOnly: true }));
@@ -176,7 +298,7 @@ test('soak configuration validates UTC HH:MM and preserves empty disable on rend
 });
 
 test('periodic dev T3 waits two hours, skips unchanged dev and survives restart without overlap', async t => {
-  const f = await suiteUnit(t, { machineReceiptsOnly: true }, 'dev_t3_every="2h"\nlifetime="6h"\nrun_timeout="5h"');
+  const f = await suiteUnit(t, { machineReceiptsOnly: true }, 'shards=1\ndev_t3_every="2h"\nlifetime="6h"\nrun_timeout="5h"');
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   await f.tick(); await f.suites.settled();
@@ -218,7 +340,7 @@ test('periodic tick skips a fresh green integrated cover naming its run across r
   const notices: string[] = [];
   const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true,
     remoteBudget: 1, onSoakNotice: (_id, text) => { notices.push(text); },
-  }, 'dev_t3_every="2h"'));
+  }, 'shards=1\ndev_t3_every="2h"'));
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   await f.tick(); await f.suites.settled();
@@ -248,7 +370,7 @@ for (const scenario of ['newer', 'older', 'unrelated', 'stale', 'red', 'partial'
     const notices: string[] = [];
     const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true, remoteBudget: 1,
       onSoakNotice: (_id, text) => { notices.push(text); },
-    }, 'dev_t3_every="2h"'));
+    }, 'shards=1\ndev_t3_every="2h"'));
     f.candidate.branch = 'dev';
     f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
     await f.tick(); await f.suites.settled();
@@ -296,7 +418,7 @@ test('periodic T3 configuration round-trips duration and disable settings', () =
 
 for (const notRun of ['infrastructure', 'provider-capacity'] as const) test(`periodic ${notRun} preserves green/red evidence and retries after restart`, async t => {
   const run = caseDeadlines(t);
-  const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true }, 'dev_t3_every="1s"'));
+  const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true }, 'shards=1\ndev_t3_every="1s"'));
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
   const tick = () => run.wait('periodic I/O settled', async () => { await f.tick(); await f.suites.settled(); });
@@ -358,7 +480,7 @@ for (const notRun of ['infrastructure', 'provider-capacity'] as const) test(`per
 
 test('restart from the first terminal-status receipt preserves the saved infrastructure outcome and cause', async t => {
   const run = caseDeadlines(t);
-  const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true }, 'dev_t3_every="1s"'));
+  const f = await run.wait('setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true }, 'shards=1\ndev_t3_every="1s"'));
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
   t.mock.method(f.machine.dependencies.run, 'deliver', async () => { throw new Error('bundle: object unavailable'); });
@@ -391,7 +513,7 @@ test('restart from the first terminal-status receipt preserves the saved infrast
 });
 
 test('periodic T2/T3 failures reach Bug filing through the culprit search', async t => {
-  const f = await suiteUnit(t, { machineReceiptsOnly: true }, 'dev_t3_every="1s"');
+  const f = await suiteUnit(t, { machineReceiptsOnly: true }, 'shards=1\ndev_t3_every="1s"');
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   await f.tick(); f.clock.block(1000); await f.tick(); await f.suites.settled();

@@ -4,6 +4,7 @@ import { failingTests } from './shared-defects.ts';
 import { isFileStartupStall } from '../file-startup-watchdog.ts';
 import { lintQuarantineManifest } from '../suite-quarantine.ts';
 import { flakyRerunCommands } from './batch-flakes.ts';
+import { periodicCapacityTimeout } from './dev-t3-timeout.ts';
 
 /** Legacy greens retain their wire shape; excused greens require their own tree. */
 export function greenWithReceipt(job: Pick<SuiteJob, 'id' | 'head' | 'tree' | 'outcome' | 'cover' | 'flaky' | 'commands' | 'tierReceipts' | 'shards'>, now: number): boolean {
@@ -24,6 +25,7 @@ export const incompleteCollection = (job: Pick<SuiteJob, 'outcome'>): boolean =>
 /** Outcome-derived incident data; separate from the executor's process receipt. */
 export function deriveCover(job: Readonly<SuiteJob>, log: string): CoverRecord | undefined {
   if (!job.integrated || job.parentRun || !job.outcome || job.outcome.notRun || incompleteCollection(job)) return undefined;
+  if (periodicCapacityTimeout(job, log)) return undefined;
   // Close-run collection labels receipts after their reporter terminator.
   const text = log.replace(/\x1b\[[0-9;]*m/g, '').replace(/ \[shard-\d+\]$/gm, '');
   const failed = failingTests(text);
@@ -32,6 +34,7 @@ export function deriveCover(job: Readonly<SuiteJob>, log: string): CoverRecord |
   if (/^cancelled: (?:queued head changed|submitted head |candidate tree changed)/.test(job.outcome.cause)) return { status: 'cancelled', cause: 'cancel-head', tests: failed };
   if (job.cancelled || job.requesterDied) return { status: 'cancelled', cause: 'cancel-requester', tests: failed };
   if (job.outcome.code === 0) return { status: 'green', cause: null, tests: [] };
+  if (job.occasion === 'dev-t3' && job.outcome.code === 124 && !job.timedOut && !hasFailure) return { status: 'red', cause: null, tests: failed };
   if (job.timedOut || job.outcome.code === 124 || /(?:^|: )(?:run timeout |stalled: no output for )/.test(job.outcome.cause)
     || isFileStartupStall(job.outcome.cause) || isFileStartupStall(text)
     || /failureType: ['"]testTimeoutFailure['"]/.test(text)) return { status: 'red', cause: 'timeout', tests: failed };

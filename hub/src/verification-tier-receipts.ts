@@ -7,6 +7,14 @@ export function completeTierPlanReason(proof: { id: string; tree?: string | null
   return tierPlanReason(proof, false);
 }
 
+/** Reporting uses the same ordered producer policy as admission, per planned step. */
+export function incompleteTierSteps(proof: Parameters<typeof completeTierPlanReason>[0]): VerificationStep[] {
+  const rows = parseTierReceipts(proof.tierReceipts);
+  return (proof.commands?.plan ?? []).filter(step => completeTierPlanReason({ ...proof,
+    commands: { plan: [step] }, tierReceipts: rows?.filter(row => row.tier === (step.name === 'check' ? 'T0' : step.name)),
+  }) !== null);
+}
+
 /** Red execution can stop after its first failure, but interruptions remain unknown. */
 export function terminalTierPlanReason(proof: Parameters<typeof completeTierPlanReason>[0]): string | null {
   return tierPlanReason(proof, true);

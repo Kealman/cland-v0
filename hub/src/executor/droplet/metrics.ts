@@ -61,6 +61,44 @@ export function appendMachineMetrics(read: () => string | null, write: (chunk: s
 /** TERM never means closed. Bound local drainage, then retain closure authority
  * with the owning machine; only an uninterrupted native close permits done. */
 export type PackageCompletion = { state: 'closed'; code: number } | { state: 'incomplete'; signal: string | null };
+/** Only this owner's admitted timer can publish run-deadline authority. */
+export function observePackageDeadline(io: {
+  timeoutMs: number;
+  observe(listener: (signal: string) => void): () => void;
+  after(ms: number, callback: () => void): () => void;
+  expired(): undefined;
+  publicationFailed?(error: unknown): undefined;
+}, listener: (signal: string) => void): () => void {
+  let active = true, cancel = () => {};
+  const unsubscribe = io.observe(signal => {
+    if (!active) return;
+    active = false; cancel(); listener(signal);
+  });
+  if (active && Number.isFinite(io.timeoutMs) && io.timeoutMs > 0) cancel = io.after(io.timeoutMs, () => {
+    if (!active) return;
+    active = false;
+    try { io.expired(); }
+    catch (error) {
+      try { io.publicationFailed?.(error); } catch { /* Diagnostic failure cannot cancel selected interruption. */ }
+    } finally { listener('SIGTERM'); }
+  });
+  return () => { active = false; cancel(); unsubscribe(); };
+}
+
+/** Fixed native marker; read one sentinel byte beyond its exact supported grammar. */
+export function readRunDeadline(fs: { openSync(path: string, flags: string): number; readSync(fd: number, bytes: Buffer, offset: number, length: number, position: number): number; closeSync(fd: number): void }, path: string, closeDiagnostic: () => void = () => {}): boolean {
+  let fd: number | undefined, expired = false;
+  try {
+    fd = fs.openSync(path, 'r');
+    const bytes = Buffer.alloc(13);
+    let kept = 0;
+    while (kept < bytes.length) { const n = fs.readSync(fd, bytes, kept, bytes.length - kept, kept); if (!n) break; kept += n; }
+    expired = bytes.toString('utf8', 0, kept) === 'run-timeout\n';
+  } catch { /* Missing/old/damaged producer stays unknown. */ }
+  finally { try { if (fd !== undefined) fs.closeSync(fd); } catch { closeDiagnostic(); } }
+  return expired;
+}
+
 export async function ownPackage(io: {
   observe(listener: (signal: string) => void): () => void;
   after(ms: number, callback: () => void): () => void;

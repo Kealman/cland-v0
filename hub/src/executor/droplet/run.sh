@@ -59,7 +59,9 @@ if (( seconds <= 0 )); then exit 124; fi
 # The sampler lives inside the existing foreground package timeout. There is
 # no independent sampler child or unbounded shutdown wait. The supervisor
 # observes TERM/INT before launch; uncertainty hands closure to the machine.
-timeout --kill-after=10s "${seconds}s" node "$run/health.ts" supervise "$run" >>"$run/suite.log" 2>&1 <<'COMMANDS'
+# The supervisor owns the admitted deadline. This outer bound is a shutdown
+# backstop, leaving its two-second handoff time before native forced cleanup.
+timeout --kill-after=10s "$(( ${seconds%.*} + 6 ))s" node "$run/health.ts" supervise "$run" "$seconds" >>"$run/suite.log" 2>&1 <<'COMMANDS'
 set -e
 while ! mkdir /tmp/cland-suite.lock 2>/dev/null; do sleep 1; done
 trap "rmdir /tmp/cland-suite.lock 2>/dev/null || true" EXIT

@@ -12,6 +12,7 @@ import { within } from '../src/executor/droplet/deadline.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { guardedLeaseCase } from './executor-lease-fixture.ts';
+import { flakyReceiptCase as deadlineCase } from './flaky-receipt-fixture.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
 import type { LogEntry } from '../src/log.ts';
 import { DigitalOceanApi, DigitalOceanError } from '../src/executor/droplet/api.ts';
@@ -359,6 +360,29 @@ for (const alreadyReleased of [false, true]) test(`confirmed release accounting 
     }
   });
 });
+
+test('uploaded status carries only exact owner deadline markers and retains old wire receipts', t => deadlineCase(t, async ({ step }) => {
+  const { runStatusProgram } = await step('status reader import', () => import('../src/executor/droplet/run.ts'));
+  for (const marker of [null, '124\n', 'run-timeout\n', 'run-timeout\nextra']) {
+    const content = Buffer.from(marker ?? '');
+    let status: { code: number; deadlineExpired?: true } | undefined;
+    const fs = {
+      existsSync: (path: string) => path.endsWith('/done') || path.endsWith('/exit') || marker !== null && path.endsWith('/deadline-expired'),
+      readFileSync: (path: string) => path.endsWith('/done') ? '2026-11-23T00:00:00Z' : '124',
+      openSync: (path: string) => { if (!path.endsWith('/deadline-expired')) throw Error('absent'); return 7; },
+      readSync: (_fd: number, bytes: Buffer, offset: number, length: number, position: number) => {
+        const chunk = content.subarray(position, position + length); chunk.copy(bytes, offset); return chunk.length;
+      },
+      closeSync: () => {},
+    };
+    runInNewContext(runStatusProgram(), { Buffer, require: () => fs,
+      process: { argv: ['node', '/receipt'], kill: () => assert.fail('unexpected signal') },
+      console: { log: (text: string) => { status = JSON.parse(text); } },
+    });
+    assert.equal(status?.code, 124);
+    assert.equal(status?.deadlineExpired, marker === 'run-timeout\n' ? true : undefined);
+  }
+}));
 
 test('uploaded status bounds cause ingestion and keeps the recorded exit through receipt failures', async t => {
   let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;

@@ -923,7 +923,7 @@ test('delivery survives a snapshot replacement during machine creation', async t
       assert.ok(telemetryUploads.has('metrics.ts'), 'pure sampler is delivered beside its native entry point');
       assert.match(telemetryUploads.get('health.ts')!, /withMachineMetrics/);
       const runner = telemetryUploads.get('run.sh')!;
-      assert.match(runner, /timeout --kill-after=10s "\$\{seconds\}s" node "\$run\/health.ts" supervise "\$run"/);
+      assert.ok(runner.includes('timeout --kill-after=10s "$(( ${seconds%.*} + 6 ))s" node "$run/health.ts" supervise "$run" "$seconds"'));
       assert.ok(!runner.includes('metrics_pid'), 'there is no independently stopped sampler child');
       const ordered = (script: string) => {
         const append = script.indexOf('node "$run/health.ts" append "$run"');
@@ -934,7 +934,7 @@ test('delivery survives a snapshot replacement during machine creation', async t
       assert.equal(ordered(runner.replace('node "$run/health.ts" append "$run"', 'removed')), false, 'missing append positively fails the ordering check');
       assert.match(runner, /timeout --kill-after=1s 3s node "\$run\/health.ts" append/);
       const pending = runner.indexOf(': >"$run/package-pending"');
-      assert.ok(pending >= 0 && pending < runner.indexOf('"${seconds}s"'), 'closure fence precedes package launch');
+      assert.ok(pending >= 0 && pending < runner.indexOf('node "$run/health.ts" supervise "$run" "$seconds"'), 'closure fence precedes package launch');
       const fence = runner.slice(runner.indexOf('if test -f "$run/package-pending"'), runner.indexOf('# The foreground timeout'));
       assert.match(fence, /package-incomplete/);
       assert.match(fence, /return\s+fi/);

@@ -1,5 +1,12 @@
 # hub/test/suite-soak-component.test.ts
 
+The fake periodic deadline publishes a durable Agents result with
+`result: "inconclusive"`, a timeout headline and missing/incomplete T2, T3 and
+Web tiers. The controlled fake clock expires the hub's admitted owner deadline;
+no planted native exit is treated as authority and no culprit search is created.
+The callback uses the fenced whole-case owner, including its fixture proxy.
+Single-worker reporting fixtures explicitly configure `shards=1`.
+
 Region-capacity probes name every configured region and the local-switch
 suggestion in the retained cause. The structured `provider-capacity` outcome
 still controls refusal: retain unavailable/not-run, no local fallback, no red

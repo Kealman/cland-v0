@@ -1,5 +1,25 @@
 # hub/test/suite-soak.test.ts
 
+Periodic admission reserves the configured three shards through the fake executor,
+observes each worker's start and completion and the reported parent, then reopens
+the scheduler to prove an unchanged tree does not repeat. Single-worker policy
+fixtures explicitly set `shards=1`. Capacity deadlines retain their native exit,
+report inconclusive, name missing tiers and produce neither incident cover nor
+culprit/release evidence. Sharded daily coverage requires every producer receipt
+and planned file; compact history uses the identity-bound periodic checkpoint.
+
+New callbacks use `flakyReceiptCase` and `ownedSuiteUnit`: acquisition hooks
+become required resource closers under fenced cleanup before roots or guard
+restoration. The shared rejected-close/construction-failure controls in
+`suite-stage-rules.test.ts` exercise that same owner. Code-only 124 is a negative
+deadline control. Native owner metadata survives result-only checkpoint
+recovery. Ordered pass/interruption controls share `incompleteTierSteps` with
+the admission policy, including foreign producer rejection.
+Old-shape remote completion controls run both before and after a hub reopen
+while the worker is in flight: absent deadline metadata remains unknown and a
+native 124 stays red. New marker authority has a separate result-only recovery
+control. The changed supervisor files are uploaded per run, outside the image.
+
 The corrected refusal and late-rejection cases use `suiteCase` to register
 normal/signal ownership before setup, adopt the acquired root and fence caller
 continuations. A positive launch guard covers callback/custom/sync/lower-spawn

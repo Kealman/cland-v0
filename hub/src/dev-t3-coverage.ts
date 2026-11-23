@@ -6,16 +6,19 @@ import { batchShardReceiptReason } from './batch-shard-receipts.ts';
 export const DEV_T3_BACKSTOP_MS = 24 * 60 * 60 * 1000;
 
 /** Only positively completed full periodic execution advances the daily baseline. */
-export function fullPeriodicDevT3Cover(job: SuiteJob): boolean {
+export function fullPeriodicDevT3Cover(job: SuiteJob, source: 'full' | 'checkpoint' = 'full'): boolean {
   if (job.occasion !== 'dev-t3' || !job.integrated || job.branch !== 'dev' || job.mode !== 'all'
     || !job.tree || job.state !== 'finished' || !job.reported || !job.artifact
     || job.outcome?.code !== 0 || job.outcome.notRun || job.cached || job.cancelled || job.requesterDied
-    || job.parentRun || job.batch || job.devT3Probe || job.webPhase || job.shards?.length
+    || job.parentRun || job.batch || job.devT3Probe || job.webPhase
     || !wholeSuiteSelection(job.selection)
     || job.selection.web === 'none' || !job.selection.tiers?.includes('T2') || !job.selection.tiers.includes('T3')) return false;
   const plan = job.commands?.plan;
+  const proof = job.periodicT3Proof;
+  const shards = source === 'checkpoint' && proof?.version === 1 && proof.run === job.id && proof.head === job.head && proof.tree === job.tree
+    ? null : batchShardReceiptReason(job);
   return Boolean(plan && ['check', 'T2', 'T3', 'Web'].every(name => plan.some(step => step.name === name))
-    && completeTierPlanReason(job) === null);
+    && (job.shards ? shards : completeTierPlanReason(job)) === null);
 }
 
 /** Candidate commits may be unrelated; the captured verification tree is identity. */

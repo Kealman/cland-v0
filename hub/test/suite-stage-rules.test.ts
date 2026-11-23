@@ -479,7 +479,7 @@ test('batch and close runs fall back whole with one warning for cap or slots', a
   // A cap rejection comes from the executor's public reservation seam.
   const { DropletExecutor } = await import('../src/executor/droplet/droplet.ts');
   t.mock.method(DropletExecutor.prototype, 'reserveShards', async () => { throw new Error('daily spend cap $0.1 would be exceeded'); });
-  for (const [cause, occasion] of [['cap', undefined], ['cap', 'stage'], ['slots', undefined], ['slots', 'stage']] as const) {
+  for (const [cause, occasion] of [['cap', undefined], ['cap', 'stage'], ['cap', 'dev-t3'], ['slots', undefined], ['slots', 'stage'], ['slots', 'dev-t3']] as const) {
     if (cause === 'slots') f.configure('[verification]\nexecutor="droplet"\nremote_budget=1');
     const before = f.acquisitions.length, notices = f.shardingNotices.length;
     const job = await f.launch({ mode: 'all', integrated: true, ...(occasion ? { occasion } : {}), fresh: true });

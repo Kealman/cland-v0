@@ -1201,7 +1201,7 @@ export class Dispatcher {
     const quarantine = recordQuarantineResults(JSON.parse(core.store.meta('quarantine-results') ?? '{}') as QuarantineHistory, job.id, quarantineResults(log), !!job.cached);
     const summary = suiteSummary(log, quarantine.lines, { logArtifact: artifact.id, outcome: job.outcome!, shards: job.shards ?? [] });
     const outcome = job.outcome!;
-    const interrupted = interruptionLines(log, { timeout: outcome.code === 124 });
+    const interrupted = interruptionLines(log, { timeout: job.occasion === 'dev-t3' ? job.timedOut === true : outcome.code === 124 });
     const selectionFallback = job.selection?.fallback ?? (job.selection?.reason.startsWith('fetch/diff unavailable:') ? `selection fallback: full; ${job.selection.reason}` : undefined);
     const fallback = selectionFallback ? `\n${Buffer.byteLength(selectionFallback) > 512 ? `Selection fallback: full details in log ${artifact.id}` : selectionFallback}` : '';
     const deferred = taskTierEvidence(job.selection, { enabled: this.#options.projectConfig?.().merge.queue ?? false, batchTiers: this.#options.projectConfig?.().merge.batchTiers, entries: this.#mergeQueue?.entries() ?? [], batch: this.#batches?.snapshot() ?? null }, job.item ?? null);
@@ -1242,7 +1242,7 @@ export class Dispatcher {
       const root = this.#options.tracker?.root ?? this.#options.control?.status().root;
       periodic.durationWarnings = root ? await readDurationAllowanceWarnings(root, () => core.clock.now().getTime()) : [];
       const merges = periodic.merges?.slice(0, 10).map(merge => `${merge.head} ${merge.subject}`).join(', ') ?? 'unavailable';
-      text = core.boundedText(`Periodic dev T3 ${periodic.result} · head ${periodic.head}\nPrevious green ${periodic.previousGreenHead ?? 'none'}\n${execution}\nLog ${artifact.id}: ${artifact.path}\n${periodic.durationWarnings.length ? periodic.durationWarnings.join('\n') + '\n' : ''}Failing files ${periodic.failingFiles.slice(0, 20).join(', ') || 'none identified'}\nMerges ${periodic.merges?.length ?? 'unknown'}: ${merges}\nComplete range and failing files in message detail\n${text}`);
+      text = core.boundedText(`Periodic dev T3 ${periodic.result}${periodic.result === 'inconclusive' ? ' (timeout)' : ''} · head ${periodic.head}\n${periodic.result === 'inconclusive' ? `Unexecuted or incomplete tiers: ${periodic.unexecutedTiers?.join(', ') || 'unknown'}; no green T3 coverage.\n` : ''}Previous green ${periodic.previousGreenHead ?? 'none'}\n${execution}\nLog ${artifact.id}: ${artifact.path}\n${periodic.durationWarnings.length ? periodic.durationWarnings.join('\n') + '\n' : ''}Failing files ${periodic.failingFiles.slice(0, 20).join(', ') || 'none identified'}\nMerges ${periodic.merges?.length ?? 'unknown'}: ${merges}\nComplete range and failing files in message detail\n${text}`);
       if (periodic.notRun) text = core.boundedText(`Periodic dev T3 ${incompleteInfrastructure ? 'incomplete' : 'not run'}${periodic.notRun === 'provider-capacity' ? ': provider capacity' : ` · ${periodic.notRun}`} · head ${periodic.head}\n${periodic.cause}\n${incompleteInfrastructure ? "Execution incomplete; completed receipts are retained in the log" : "No tests executed"}; retry at the next eligible tip after the interval.\nPrevious green ${periodic.previousGreenHead ?? 'none'}\n${execution}\nLog ${artifact.id}: ${artifact.path}`);
     }
     const result = core.store.transaction(() => {

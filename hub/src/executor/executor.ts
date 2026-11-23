@@ -24,6 +24,7 @@ export type RunStatus = {
   tierReceipts?: import('../verification-tier-receipts.ts').TierReceipt[];
   state: 'pending' | 'running' | 'done' | 'lost' | 'paused' | 'unknown';
   code?: number; cause?: string; finished?: string; platform?: Platform;
+  deadlineExpired?: true;
 };
 export type Released = { lifetimeMs: number | null; costUsd: number | null };
 /** Backend-owned preparation inputs (image keys, for example) stay behind the interface. */

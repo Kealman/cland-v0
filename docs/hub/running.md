@@ -351,7 +351,7 @@ reset counters remain null. Scheduling under load can lengthen an interval;
 the recorded interval remains authoritative. These lines survive log evidence
 reduction; the existing aggregate `suite machine health` receipt is unchanged.
 The sampler timer runs inside the foreground package supervisor, under the
-existing package timeout and ten-second kill grace; no separate sampler child
+admitted package deadline and ten-second outer kill grace; no separate sampler child
 or unbounded shutdown wait is added. Metrics stream to a separate file during
 execution. After the foreground owner completes, a framed append copies them
 into the run log, preserving arbitrary package output without trailing newlines.
@@ -369,7 +369,25 @@ available, and delegates closure to the owning machine's deletion.
 Whenever finish executes, `exit` preserves the native status independently of
 completion, including before an incomplete handoff returns. The `done` marker
 remains gated by closure; final reporting stays fenced until release.
-Status adds only optional `packageClosure: { state: "incomplete", nativeExit: number | null }`;
+The supervisor's admitted timer atomically writes `deadline-expired` before
+interrupting its package owner. Its two-second handoff remains fenced by machine
+deletion; the outer native timeout leaves at least five seconds of shutdown
+headroom, followed by its existing ten-second kill grace. The bounded marker
+reader emits optional `deadlineExpired: true` in status and result checkpoints;
+restart preserves that authority as `timedOut`. An ordinary command exit 124 or
+an old receipt without the marker establishes no deadline cause. Periodic such
+results remain red with unknown cause; genuine owner timeouts without observed
+failures report inconclusive and name incomplete tiers. This requires deploying
+and restarting the hub; its hosted upload supplies the new supervisor files.
+If marker publication fails, a bounded secondary diagnostic names the publication
+stage and a validated native error code when available. The selected
+interruption still reaches bounded handoff, even if diagnostic output also
+fails; missing marker bytes grant no deadline authority. All result writers,
+including missing-evidence and isolated-unavailable reconstruction, share the
+same positive-metadata projection. Later result-only recovery preserves that
+metadata without replacing a selected infrastructure or cancellation outcome.
+
+Status also adds optional `packageClosure: { state: "incomplete", nativeExit: number | null }`;
 unknown exits stay null and an incomplete zero exit cannot pass. The hub keeps
 this receipt in the job and result through restart and withholds its final
 report and terminal task card until the lease's confirmed release, including after the normal
@@ -1925,9 +1943,10 @@ review/verification. See the [merge skill](../../.agents/skills/merge/SKILL.md) 
 refusal ownership and recovery.
 
 `[verification] dev_t3_every = "8h"` enables this repository's hub-owned
-`dev-t3` occasion; `""` (the default) disables it. It selects T2 and T3 on one
-droplet without load repetitions, under the shared remote budget and daily
-spend cap. The first attempt is due one interval after activation; later runs
+`dev-t3` occasion; `""` (the default) disables it. It selects T2, T3 and Web on
+configured `[verification] shards` without load repetitions, under the shared
+remote budget and daily spend cap. Unavailable shard reservations or slots fall
+back to one droplet with a warning. The first attempt is due one interval after activation; later runs
 are due after the interval since the last attempt/start, only when dev's
 verification candidate tree differs from the last started run's tree. The shared
 exclusions in `hub/src/verification-tree.ts` make tracker-only commits ineligible.
@@ -1962,7 +1981,7 @@ full periodic completion, or the first batch skip when no such baseline exists.
 That cursor survives restart and is not extended by later batch skips. The next
 deadline attempt bypasses the normal attempt interval even when a prior batch
 skip fell just before it. A persisted deadline attempt restores ordinary retry
-throttling on admission failure. Only full unsharded periodic selection with
+throttling on admission failure. Only full periodic selection with
 complete structured T0/T2/T3/Web producer proof resets the baseline; unknown
 or legacy success metadata does not. The attempt runs full periodic T0, T2,
 T3 and Web; unchanged dev retains the

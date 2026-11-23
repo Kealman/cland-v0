@@ -17,6 +17,8 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { suiteCase } from './suite-case-fixture.ts';
 import { DigitalOceanError } from '../src/executor/droplet/api.ts';
 import type { Artifact, Message } from '../src/protocol.ts';
+import { flakyReceiptCase as periodicCase } from './flaky-receipt-fixture.ts';
+import { fenceFixtureCleanup } from './process-cleanup.ts';
 
 test('snapshot disk incompatibility refuses c-4 admission before T0 and names fitting sizes', async t => {
   const run = caseDeadlines(t);
@@ -158,7 +160,7 @@ test('red soak proposes each unchanged failing identity while a batch can still 
 
 for (const occasion of ['soak', 'dev-t3'] as const) test(`green ${occasion === 'soak' ? 'nightly' : 'periodic dev T3'} publishes a coverage map that selects task tests`, async t => {
   const run = caseDeadlines(t);
-  const schedule = occasion === 'soak' ? 'soak="12:00"' : 'dev_t3_every="1s"';
+  const schedule = occasion === 'soak' ? 'soak="12:00"' : 'shards=1\ndev_t3_every="1s"';
   const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted', config: `${schedule}\nlifetime="15m"\nrun_timeout="5m"` }));
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
@@ -335,7 +337,7 @@ test('nightly rotates files durably across restarts and reports omitted coverage
 test('periodic dev T3 skips tracker-only commits and runs a changed verification tree', async t => {
   const run = caseDeadlines(t);
   const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted',
-    config: 'dev_t3_every="1s"\nlifetime="6h"\nrun_timeout="5h"' }));
+    config: 'shards=1\ndev_t3_every="1s"\nlifetime="6h"\nrun_timeout="5h"' }));
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   const tick = () => run.wait('periodic admission settled', async () => {
@@ -373,11 +375,36 @@ test('periodic dev T3 skips tracker-only commits and runs a changed verification
   await tick();
 });
 
+test('periodic deadline publishes inconclusive timeout and missing tiers without a culprit search', t => periodicCase(t, async ({ setup, step }) => {
+  const f = await setup(fixtures => {
+    fenceFixtureCleanup(fixtures);
+    return fixture(fixtures, { machine: 'scripted', script: { outcome: 'slow' }, config: 'shards=1\ndev_t3_every="1s"\nrun_timeout="1s"' });
+  });
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
+  await step('schedule periodic run', async () => {
+    await f.clock.advance(1000); await drive(f, f.verificationSettled());
+    await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  });
+  const jobs = ((await step('read admitted jobs', () => f.ui.request({ type: 'hub.status', history: true }))).value as { suites: { id: string; occasion: string }[] }).suites;
+  const job = jobs.find(job => job.occasion === 'dev-t3')!;
+  await step('worker execution receipt', () => drive(f, f.machine.started(job.id)));
+  await step('expire admitted owner deadline and collect receipt', async () => { await f.clock.advance(123_000); await drive(f, f.verificationSettled()); });
+  const history = ((await step('read timeout notices', () => f.ui.request({ type: 'topic.history', topic: 'agents' }))).value as { messages: Message[] }).messages;
+  const result = history.find(message => message.detail?.event === 'verification-dev-t3-result')!;
+  assert.ok(result);
+  assert.match(result.text, /Periodic dev T3 inconclusive \(timeout\)/);
+  assert.match(result.text, /Unexecuted or incomplete tiers: T2, T3, Web/);
+  assert.doesNotMatch(result.text, /Periodic dev T3 red/);
+  assert.equal((result.detail as { result: string }).result, 'inconclusive');
+  assert.equal(history.some(message => message.detail?.event === 'verification-dev-t3-search'), false);
+}));
+
 test('periodic dev T3 posts a hub-owned structured red result to the Coordinator', async t => {
   // Reporting uses a short interval; exact two-hour admission is proved in T1.
   const log = 'suite test failures [{"file":"hub/test/example.test.ts","name":"failed"}]\n# tests 1\n# fail 1\n';
   const f = await fixture(t, { machine: 'scripted', script: { outcome: 'slow', log },
-    config: 'dev_t3_every="1s"\nlifetime="6h"\nrun_timeout="5h"' });
+    config: 'shards=1\ndev_t3_every="1s"\nlifetime="6h"\nrun_timeout="5h"' });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
@@ -411,7 +438,7 @@ test('periodic dev T3 posts a hub-owned structured red result to the Coordinator
 });
 
 for (const occasion of ['dev-t3', 'soak'] as const) test(`${occasion} delivery failure publishes infrastructure rather than a red headline or culprit search`, t => suiteCase(t, async ({ setup, step }) => {
-  const f = await setup(fixtures => fixture(fixtures, { machine: 'scripted', config: occasion === 'soak' ? 'soak="12:00"' : 'dev_t3_every="1s"' }));
+  const f = await setup(fixtures => fixture(fixtures, { machine: 'scripted', config: occasion === 'soak' ? 'soak="12:00"' : 'shards=1\ndev_t3_every="1s"' }));
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
   t.mock.method(f.dependencies.run!, 'deliver', async () => { throw new Error('bundle: captured object missing'); });
@@ -440,7 +467,7 @@ for (const occasion of ['dev-t3', 'soak'] as const) test(`${occasion} delivery f
 
 for (const capacity of ['regions', 'unavailable-size', 'absent-size'] as const) test(`periodic provider capacity refusal publishes not run with no red headline or culprit search (${capacity})`, async t => {
   const run = caseDeadlines(t);
-  const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted', config: 'dev_t3_every="1s"' }));
+  const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted', config: 'shards=1\ndev_t3_every="1s"' }));
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
   if (capacity === 'regions') for (const region of f.api.regions) region.available = false;
@@ -531,7 +558,7 @@ for (const explicitSize of [false, true]) test(`non-capacity admission remains a
 test('periodic T3 obeys the shared daily cap without changing the merge queue', async t => {
   const notices: string[] = [];
   const f = await suiteUnit(t, { onSoakNotice: (_id, text) => { notices.push(text); } },
-    'dev_t3_every="2h"\ndaily_spend_usd=0.1\nlifetime="15m"\nrun_timeout="5m"', true);
+    'shards=1\ndev_t3_every="2h"\ndaily_spend_usd=0.1\nlifetime="15m"\nrun_timeout="5m"', true);
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   await f.tick(); await f.suites.settled();
@@ -551,7 +578,7 @@ test('unavailable periodic merge range still publishes its result and permits th
   let rangeCalls = 0;
   // The two-hour admission boundary has its own T1 proof; this tests reporting.
   const f = await fixture(t, { machine: 'scripted',
-    config: 'dev_t3_every="1s"\nlifetime="6h"\nrun_timeout="5h"',
+    config: 'shards=1\ndev_t3_every="1s"\nlifetime="6h"\nrun_timeout="5h"',
     git: async args => {
       if (args[0] === 'log' && args.includes('--first-parent')) { rangeCalls++; throw new Error('Git timed out'); }
       return null;

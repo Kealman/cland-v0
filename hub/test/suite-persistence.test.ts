@@ -1,9 +1,10 @@
 // T1: durable suite history and inspection use an isolated store and fake time.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, rm, readFile, unlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, readFile, unlink, stat } from 'node:fs/promises';
+import { statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
 import { Store } from '../src/hub/store.ts';
@@ -15,6 +16,7 @@ import { caseDeadlines } from './case-deadlines.ts';
 import { heartbeatDigest } from '../src/hub/heartbeat.ts';
 import { devT3Result } from '../src/hub/dev-t3-result.ts';
 import { stageCase } from './stage-case-fixture.ts';
+import { ownedDatabases } from './owned-tracker.ts';
 
 test('legacy green report without a native finish receipt retains its report-only budget exit', async t => {
   const f = await fixture(t, 1, false, { job: { cleaned: true }, omitFinished: true });
@@ -80,18 +82,106 @@ for (const restart of [false, true]) for (const refused of [false, true]) test(`
   assert.equal(f.reports(), 1);
 });
 
-async function fixture(t: test.TestContext, count: number, reported: boolean, options: { owner?: ReturnType<typeof stageCase>; stageJobs?: (jobs: readonly SuiteJob[]) => Iterable<Readonly<SuiteJob>>; job?: Partial<SuiteJob>; omitFinished?: boolean; onJob?: (job: Readonly<SuiteJob>) => void; log?: (event: Record<string, unknown>) => void } = {}) {
+for (const isolated of [false, true]) for (const captured of [false, true]) test(`deadline metadata survives recovery materialization (isolated=${isolated}, captured=${captured})`, t => {
+  const owner = stageCase(t);
+  return owner.run(async step => {
+    const wait = <T>(name: string, work: () => Promise<T>) => owner.wait(name, () => step(work));
+    const f = await wait('fixture setup', () => fixture(owner.fixtures, 1, false, { owner, job: {
+      cleaned: false, occasion: 'dev-t3', ...(captured ? { timedOut: true } : {}), outcome: { code: 124, cause: 'native exit retained' },
+    } }));
+    if (isolated) {
+      const job = (JSON.parse(f.store.suiteJob('0')!) as { job: SuiteJob }).job;
+      job.log = join(f.root, '..', 'outside-captured-log');
+      job.result = join(f.root, '..', 'outside-captured-result');
+      f.store.setMeta('suite-jobs', JSON.stringify([job]));
+      f.env.CLAND_TEST_ORPHAN_ROOT = f.root;
+      await wait('isolated unavailable recovery', () => f.reopen());
+    } else {
+      await wait('remove missing evidence', async () => { await unlink(join(f.root, '0/result')); await unlink(join(f.root, '0/log')); });
+    }
+    f.allowReports();
+    await wait('recovery materialization and publication', async () => { await f.clock.advance(1000); await f.suites.settled(); });
+    const receipt = await wait('materialized receipt', async () => JSON.parse(f.store.suiteJob('0')!) as { job: SuiteJob });
+    assert.equal(receipt.job.reported, true);
+    const saved = JSON.parse(await wait('read materialized native result', () => readFile(receipt.job.result, 'utf8')));
+    assert.equal(saved.deadlineExpired, captured ? true : undefined);
+    assert.equal(saved.code, receipt.job.outcome!.code);
+    assert.equal(saved.cause, receipt.job.outcome!.cause);
+    const job = { ...receipt.job, outcome: null, state: 'launching' as const, reported: false, artifact: null };
+    delete job.timedOut;
+    f.store.setMeta('suite-jobs', JSON.stringify([job]));
+    await wait('result-only recovery after materialization', async () => { await f.reopen(); await f.clock.advance(1000); await f.suites.settled(); });
+    const restored = await wait('restored authority receipt', async () => JSON.parse(f.store.suiteJob('0')!) as { job: SuiteJob });
+    assert.equal(restored.job.reported, true);
+    assert.equal(restored.job.timedOut, captured ? true : undefined);
+    assert.equal(restored.job.outcome!.code, saved.code);
+    if (isolated) assert.equal(restored.job.outcome!.notRun, 'infrastructure');
+  });
+});
+
+test('recovery fixture captures a rejected Store constructor before root and guard release', t => {
+  const outer = stageCase(t);
+  return outer.run(async step => {
+    let refuseClose = true, connection: DatabaseSync | undefined, nativeClose: (() => void) | undefined, root = '', positivelyClosed = false;
+    const failure = new Error('controlled Store initialization rejection');
+    const inner = stageCase(outer.fixtures);
+    outer.releaseOnClose(() => { refuseClose = false; });
+    outer.requireClose(async () => {
+      if (connection?.isOpen) nativeClose!();
+      await inner.close(); await inner.restore();
+    });
+    const beforeGuard = outer.nativeBoundary();
+    await assert.rejects(inner.run(async admit => {
+      await inner.wait('rejected constructor setup', () => admit(() => fixture(inner.fixtures, 1, false, { owner: inner,
+        openDatabase: path => {
+          root = dirname(path);
+          const db = connection = new DatabaseSync(path), executeSql = db.exec.bind(db), close = db.close.bind(db);
+          nativeClose = close;
+          db.exec = sql => { if (sql.includes('journal_mode')) throw failure; executeSql(sql); };
+          db.close = () => {
+            if (refuseClose) throw Error('controlled captured connection close rejection');
+            assert.equal(statSync(root).isDirectory(), true, 'native close precedes root disposal');
+            close(); positivelyClosed = true;
+          };
+          return db;
+        },
+      })));
+    }), error => { assert.equal(error, failure, 'constructor primary is preserved exactly'); return true; });
+    assert.ok(connection);
+    const heldGuard = inner.nativeBoundary();
+    assert.notEqual(heldGuard, beforeGuard);
+    await assert.rejects(inner.close(), /controlled captured connection close rejection/);
+    assert.equal(connection.isOpen, true);
+    assert.equal((await outer.wait('retained root receipt', () => step(() => stat(root)))).isDirectory(), true);
+    await assert.rejects(inner.restore(), /resource close unconfirmed/);
+    assert.equal(inner.nativeBoundary(), heldGuard);
+    refuseClose = false;
+    await inner.close();
+    assert.equal(connection.isOpen, false);
+    assert.equal(positivelyClosed, true);
+    await assert.rejects(stat(root), { code: 'ENOENT' });
+    await inner.restore();
+    assert.equal(inner.nativeBoundary(), beforeGuard);
+  });
+});
+
+async function fixture(t: test.TestContext, count: number, reported: boolean, options: { openDatabase?: ConstructorParameters<typeof Store>[1]; owner?: ReturnType<typeof stageCase>; stageJobs?: (jobs: readonly SuiteJob[]) => Iterable<Readonly<SuiteJob>>; job?: Partial<SuiteJob>; omitFinished?: boolean; onJob?: (job: Readonly<SuiteJob>) => void; log?: (event: Record<string, unknown>) => void } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'suite-persistence-'));
   options.owner?.adoptRoot(root);
   let suites: Suites | undefined;
   let store: Store | undefined;
+  let open: ReturnType<typeof ownedDatabases> | undefined;
   if (options.owner) {
-    options.owner.requireClose(async () => { await suites?.close(); store?.close(); });
+    open = ownedDatabases(options.owner, () => {
+      const acquired = store;
+      if (!acquired) return undefined;
+      return (async () => { await suites?.close(); acquired.close(); })();
+    });
     t.after(() => rm(root, { recursive: true, force: true }));
   } else t.after(async () => { await suites?.close(); store?.close(); await rm(root, { recursive: true, force: true }); });
   const env = fixtureEnvironment(root, process.env);
   const database = join(root, 'hub.db');
-  store = new Store(database); const clock = new FakeClock();
+  store = new Store(database, open ? path => open!(path, options.openDatabase) : options.openDatabase); const clock = new FakeClock();
   if (options.owner) {
     options.owner.patch(LocalExecutor.prototype, 'reconcile', async () => {});
     options.owner.patch(LocalExecutor.prototype, 'holder', async () => null);
