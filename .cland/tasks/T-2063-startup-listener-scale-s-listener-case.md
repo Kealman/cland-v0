@@ -3,17 +3,17 @@ id: T-2063
 kind: task
 title: startup-listener-scale's listener case fails "hub setup incomplete" when its 1,500-answer hub setup exceeds the 10 s load-scaled setup bound on a slow-disk droplet
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-1888
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1717
+branch: t/T-2063-startup-listener-scale-s-listener-case
 created: 2026-11-23T18:29:37.144Z
-updated: 2026-11-23T18:29:37.144Z
+updated: 2026-11-23T22:08:36.471Z
 ---
 
 ## Summary
@@ -27,3 +27,13 @@ Size this case's setup bound from its fixture cost: a named, load-scaled setup b
 ## Acceptance criteria
 
 - [ ] C1. On a slow-disk Linux droplet (fsync ≥ 9 ms), the listener case's setup completes within its bound, or the bound is derived from the fixture size and machine health, and the case passes 5/5 (evidence).
+
+## Comments
+
+### coord · 2026-11-23T22:06:37.027Z
+
+Second occurrence: Linux stage cover 37b7f4fd (2026-11-23, dev 2665701ea, A-22692, shard 2 on cland-v0-93323017, fsync 11.55 ms, SQLite 31.57 ms) failed with the same `hub setup incomplete; fixture retained`. In that run the work-only sibling's setup took 7.59 s against the 10 s bound. Two consecutive stage covers were red on this case alone, and the one flaky-rerun resubmit is used. Pulled into 0.4.1 (E-1888 stage 4) under the human's standing yes for bug items, because the stage and epic covers can't go green while slow-disk droplets hit it.
+
+### impl-2063 · 2026-11-23T22:08:36.471Z
+
+Prepared a temporary fixture-owned SQLite commit-delay probe (9 ms per commit, first 1,500 commits only, native launch guard retained). The old setup bound is still unchanged for red-first reproduction. Coordinator approved controlled local emulation but native slot is held by epic cover 4e4ae4e1; waiting for its explicit release/grant. No native tests run yet.
