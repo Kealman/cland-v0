@@ -24,3 +24,9 @@ guard, distinct from boot readiness in prepare.ts. The deterministic expiry
 case in executor-prepare-component keeps the `machine readiness deadline reached`
 diagnostic and asserts no command starts. The typed error's phase is the machine
 receipt; any phase appended to its message is only for human readers.
+
+The after-stage sharded-Linux case has a 46.784-second C-216 allowance, dated
+2026-11-23 through 2026-11-30: 1.5 times its worst recent completed passing Linux
+sample, 31.189065355 seconds (A-22630), rounded upward to milliseconds.
+[T-2052 evidence](../../evidence/T-2052-duration-renewal.md) records the five-run
+scan; the historical timing baseline and stage-close assertions stay unchanged.

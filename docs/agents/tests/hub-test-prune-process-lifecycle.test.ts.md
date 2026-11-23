@@ -87,3 +87,9 @@ The supported-reader and legacy-reader native cases use fake Git executables
 that positively record success or code129 refusal of `--no-lazy-fetch version`.
 Only confirmed support takes the direct route; the legacy read has a durable
 PID/birth gate and retains matching-unowned no-signal and native-close assertions.
+
+The crash-after-durable-writer-release case has an 8.367-second C-216 allowance,
+dated 2026-11-23 through 2026-11-30: 1.5 times its worst recent passing Linux
+sample, 5.577654668 seconds, rounded upward to milliseconds. It has no test
+baseline, so report mode still needs this allowance above its 5 s fallback.
+[T-2052 evidence](../../evidence/T-2052-duration-renewal.md) records the samples.

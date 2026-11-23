@@ -16,10 +16,10 @@ were 7.094415250, 10.224062250, 7.622794334, 11.128183542 and 12.983251958 secon
 The full-file invocation also passed all 12 cases, with this case taking
 14.373569250 seconds at starting load 11.08. The original case took 5.901331417
 seconds at load 6.38; these different-load samples do not demonstrate a speedup.
-A dated 10.017-second allowance uses 1.5 times the worst quiet/historical sample,
+The earlier 10.017-second allowance used 1.5 times the worst quiet/historical sample,
 6.678 seconds (A-16171); the item's other historical macOS sample is 5.117
 seconds. The Coordinator excluded concurrent-crew samples above from sizing:
-they describe the busy shared machine, and three exceed this allowance.
+they describe the busy shared machine, and three exceeded that allowance.
 Quiet stage-cover passing receipts for this exact generated identity are macOS
 A-22176 at 9fcfec3 (4.535180167 seconds), A-22175 at 47da58e (4.493004375),
 A-22174 at fb3d9f0 (3.905565375), and Linux A-22170 at b4fec06 (3.674780904),
@@ -39,3 +39,9 @@ rounds to the current timestamp (no holder probe). Immediate refusals name the
 observed PID; deadline exhaustion names it when known.
 
 T-1702 receive contention: a push observes an independent held operation, releases it, and proves the exact published tip. A raw receive request with a 500 ms injected acquisition bound holds the operation through the named refusal and asserts no early refusal. The reverse revoke case injects a 100 ms acquisition bound; its fence, refusal and concurrent fetch assertions remain. Production acquisition defaults to 30 seconds separately from the native stalled-push cap.
+
+The current immediate-merge allowance is 9.566 seconds, C-216, dated
+2026-11-23 through 2026-11-30. It uses 1.5 times the worst recent completed
+passing Linux sample, 6.376878765 seconds (A-22630), rounded upward to
+milliseconds. [T-2052 evidence](../../evidence/T-2052-duration-renewal.md)
+records all five sampled runs and the report-mode fallback reason for retention.

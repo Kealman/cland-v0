@@ -15,11 +15,82 @@ import { stageCase } from './stage-case-fixture.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { testSetupWaitMs } from './until.ts';
+import { ownedDatabases } from './owned-tracker.ts';
 
 const branchCount = 1500;
 
 test('listener binds report each await while retained verdict freshness drains', { timeout: 120000 }, t => startupDrain(t, true));
 test('1500 startup freshness answers keep summary hydration and dependent work linear', { timeout: 120000 }, t => startupDrain(t, false));
+
+function censusDatabase(owner: ReturnType<typeof stageCase>, database: ReturnType<typeof sqliteProbe>, measure: boolean, stop?: () => Promise<void> | undefined) {
+  const owned = ownedDatabases(owner, stop);
+  return (path: string) => {
+    const db = owned(path, database.open);
+    // This case counts query work, not crash durability. Keep every SQL operation.
+    if (!measure) db.exec('pragma synchronous = off');
+    return db;
+  };
+}
+
+function censusResources(owner: ReturnType<typeof stageCase>, database: ReturnType<typeof sqliteProbe>, measure: boolean) {
+  let stopHub: (() => Promise<void>) | undefined;
+  return {
+    openDatabase: censusDatabase(owner, database, measure, () => stopHub?.()),
+    acquire: async <T extends { dispose: () => Promise<void> }>(start: () => Promise<T>) => {
+      const hub = await start();
+      stopHub = () => hub.dispose();
+      return hub;
+    },
+  };
+}
+
+test('work census closes its database when synchronization setup rejects', async t => {
+  const owner = stageCase(t);
+  let connection: ReturnType<ReturnType<typeof sqliteProbe>['open']> | undefined;
+  t.after(() => { if (connection?.isOpen) connection.close(); });
+  await owner.run(async step => {
+    const root = await owner.wait('rejected pragma root setup', () => step(async () => {
+      const root = await tempProject(owner.fixtures); owner.adoptRoot(root); return root;
+    }));
+    const database = sqliteProbe();
+    const open = database.open;
+    database.open = path => {
+      const db = connection = open(path);
+      owner.patch(db, 'exec', () => { throw new Error('injected synchronization setup failure'); });
+      return db;
+    };
+    assert.throws(() => censusDatabase(owner, database, false)(join(root, 'census.db')), /injected synchronization setup failure/);
+    assert.equal(connection?.isOpen, true, 'fault happened after acquisition');
+  });
+  await owner.close();
+  assert.equal(connection?.isOpen, false, 'rejected setup connection has a positive close receipt');
+});
+
+test('work census joins a late hub disposal after its setup observation expires', async t => {
+  const owner = stageCase(t);
+  let disposed = false;
+  let connection: ReturnType<ReturnType<typeof sqliteProbe>['open']> | undefined;
+  const release = Promise.withResolvers<void>();
+  owner.releaseOnClose(() => release.resolve());
+  await owner.run(async step => {
+    const root = await owner.wait('late hub root setup', () => step(async () => {
+      const root = await tempProject(owner.fixtures); owner.adoptRoot(root); return root;
+    }));
+    const resources = censusResources(owner, sqliteProbe(), false);
+    connection = resources.openDatabase(join(root, 'late.db'));
+    await assert.rejects(owner.wait('held hub acquisition', () => step(() => resources.acquire(async () => {
+      await release.promise;
+      return { dispose: async () => {
+        assert.equal(connection?.isOpen, true, 'hub disposal precedes database close');
+        connection!.close();
+        disposed = true;
+      } };
+    })), 1), /held hub acquisition incomplete/);
+  });
+  await owner.close();
+  assert.equal(disposed, true, 'late returned hub has a disposal receipt');
+  assert.equal(connection?.isOpen, false, 'late hub database is closed');
+});
 
 async function startupDrain(t: TestContext, measure: boolean) {
   const owner = stageCase(t);
@@ -69,6 +140,8 @@ async function startupDrain(t: TestContext, measure: boolean) {
   }));
   const entries: Record<string, unknown>[] = [];
   const database = sqliteProbe();
+  const resources = censusResources(owner, database, measure);
+  const openDatabase = resources.openDatabase;
   let census = false, summaries = 0, hydrated = 0, dependents = 0;
   const excess = Promise.withResolvers<{ summaries: number; hydrated: number }>();
   database.trace(owner.fixtures, (sql, method, _bindings, result) => {
@@ -103,7 +176,7 @@ async function startupDrain(t: TestContext, measure: boolean) {
   let read: (() => Promise<void>) | undefined, binding = 0, bound = 0, answers = 0, computations = 0, serving = false, freshnessBeforeServing = false;
   const hubSetupStarted = performance.now();
   const hubSetupBound = testSetupWaitMs();
-  const hub = await owner.wait('hub setup', () => step(() => projectHub(owner.resources, root, {}, { clock, openDatabase: database.open, readBase: async () => null, stageTree: async () => 'f'.repeat(40),
+  const hub = await owner.wait('hub setup', () => step(() => resources.acquire(() => projectHub(owner.resources, root, {}, { clock, openDatabase, readBase: async () => null, stageTree: async () => 'f'.repeat(40),
     git: async args => {
       if (args[0] === 'rev-parse') { computations++; entered.resolve(); }
       return args[0] === 'for-each-ref' ? [`${head} refs/heads/dev`, ...Array.from({ length: branchCount }, (_, n) => `${head} refs/heads/t/${n}`)].join('\n')
@@ -118,7 +191,7 @@ async function startupDrain(t: TestContext, measure: boolean) {
       if (entry.event === 'listening' && entry.socket) { bound = performance.now(); console.info(JSON.stringify({ socketBoundMs: bound - binding, answers })); }
       if (entry.event === 'task-freshness-settled') { answers += Number(entry.items); if (census) dependents += Number(entry.stageDependents); }
     },
-  })), hubSetupBound);
+  }))), hubSetupBound);
   console.info(JSON.stringify({ startupOutcome: 'hub acquired', setupMs: performance.now() - hubSetupStarted, setupBoundMs: hubSetupBound, computations, answers }));
   const ui = await owner.wait('transport setup', () => step(() => connectUi(owner.fixtures, hub.discovery)));
   // Arm the transport and the exact first-computation observer before starting

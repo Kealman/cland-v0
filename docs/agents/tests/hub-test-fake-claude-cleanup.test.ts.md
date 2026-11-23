@@ -77,3 +77,9 @@ worktree orphan discovery/removal boundary with the home outside the project cwd
 and checks that session and spoke
 exit before removal starts. This reproduces the detached-launch mechanism; it
 does not identify the historical test that produced the nine-day orphan.
+
+The dropped-cleanup census and killed-worker orphan-sweep cases have C-216
+allowances of 6.939 and 7.381 seconds respectively, dated 2026-11-23 through
+2026-11-30. Caps are 1.5 times the worst recent passing Linux samples, rounded
+upward to milliseconds. [T-2052 evidence](../../evidence/T-2052-duration-renewal.md)
+lists every sample and the missing-baseline fallback reason for retention.

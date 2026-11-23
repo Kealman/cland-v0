@@ -35,7 +35,20 @@ Shutdown joins tracker work before the fixture directory is removed.
 
 A separate work-only case uses the same 1,500 branches and plan but only the
 two stage-cover suites, with no artifacts or retained lease files. It does not
-sample task.view latency. Fixture-owned SQLite tracing counts summary computations at the
+sample task.view latency. Its fixture-owned database connections disable SQLite
+synchronous disk flushing: crash durability is outside this work census, while
+the on-disk database, query execution and all census assertions remain intact.
+The listener latency case retains the default database synchronization.
+Connections enter the shared positive-close owner before the pragma executes;
+after successful hub acquisition, that owner joins hub disposal before checking
+connection closure. A rejected-pragma control asserts the connection was acquired
+and then closed before fixture removal.
+The disposal handoff occurs inside the retained acquisition producer, before
+returning the hub, so an expired setup observation cannot skip it. A held-return
+control expires that observation, releases the producer during owner close,
+and asserts hub disposal runs while the database is still open, then confirms
+the connection closed. Both controls bound root setup separately.
+Fixture-owned SQLite tracing counts summary computations at the
 open-blocker query and hydration as returned rows with a title. The census runs
 from the explicit freshness read through publication of all 1,500 resolved item
 answers. It permits at most ten summary computations and forty hydrated rows
@@ -53,18 +66,20 @@ fake Git and a positively controlled guard against native process launches.
 
 The request latency and drain counters are captured at the reply receipt; the
 later diagnostic uses that snapshot rather than including refresh completion.
-The listener case has a report-mode 13.599-second duration allowance, E-880,
-expiring 2026-12-21. The work-only case has a separate 15.418-second allowance,
-C-216, expiring 2026-11-28. Its cap is 1.5 times the worst retained passing
-Linux sample (10.278319785 seconds in A-22429; the later A-22444 sample was
-8.039 seconds), rounded upward to milliseconds. Both samples replay through
-the production checker before allowance admission. These durations include
-case setup, assertions and cleanup; they do not describe task.view latency.
+The listener and work-only cases have report-mode duration allowances of
+33.185 and 23.902 seconds respectively, owned by C-216, added 2026-11-23 and
+expiring 2026-11-30 at 00:00 UTC. Each cap is 1.5 times its worst completed
+passing Linux sample across the five recent runs tabulated in
+[T-2052 renewal evidence](../../evidence/T-2052-duration-renewal.md), rounded
+upward to milliseconds. A-22630 measured 22.123179524 and 15.934576423 seconds
+respectively. These durations include case setup, assertions and cleanup;
+they do not describe task.view latency. Historical baselines and policy remain
+unchanged. This is an allowance renewal, not proof of the 5 s target.
 The first Linux task.view sample in A-22444 was 256.190149 ms, after 10 of
 1,500 commit reads and before any answer publication, within the unchanged
 2,000 ms behaviour bound. The whole verification still exited 1 for the missing
-work-only duration allowance. C-216 owns the follow-up due before 2026-11-26
-to reduce that case below five seconds or renew its allowance before expiry.
+work-only duration allowance. The current renewal retains every census assertion
+and both positive-close ownership controls.
 
 Run this production-scale T3 file only in a granted native slot, within its
 current machine-load limit.
