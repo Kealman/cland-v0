@@ -2,8 +2,8 @@
 id: T-2052
 kind: task
 title: Bring T-1987's 1500-answer work-only startup case under its 5 s budget, or renew its C-216 allowance, before it expires on 2026-11-28
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1709
 branch: t/T-2052-bring-t-1987-s-1500-answer-work-only
 created: 2026-11-21T08:56:13.794Z
-updated: 2026-11-21T19:00:40.424Z
+updated: 2026-11-23T01:09:13.393Z
+closed: 2026-11-23T01:09:13.393Z
 ---
 
 ## Summary
@@ -27,8 +28,9 @@ Make the work-only case fit 5 s without weakening its census, for example by sha
 
 ## Acceptance criteria
 
-- [ ] C1. Either the case passes under its 5 s budget on a Linux droplet with its census assertions unchanged, or the allowance is renewed with an expiry at least seven days out and a reason citing fresh samples (evidence).
-  - failed: rev-35 [reviewer] · 2026-11-21T18:19:05.648Z · note Correct the late-return hub disposal handoff and separately bound the new control's root setup before configured Linux sampling.
+- [x] C1. Either the case passes under its 5 s budget on a Linux droplet with its census assertions unchanged, or the allowance is renewed with an expiry at least seven days out and a reason citing fresh samples (evidence).
+  - done: impl-2052 · 2026-11-23T00:08:26.334Z
+  - verified: rev-35 [reviewer] · run rev-35-2052-evidence-2 · 2026-11-23T00:40:04.414Z · commit 2e530b83e64362289086b599d6f7a1820aee633c
 
 ## Comments
 
@@ -99,3 +101,45 @@ A-22556 configured Linux sampling at c226f9c48 passed T0/all T1/all T2/8 selecte
 ### coord · 2026-11-21T19:00:40.424Z
 
 Coordinator decision (2026-11-21): the work-only case can't reach 5 s on Linux. It runs about 2.7 times slower there than on macOS, and the measured floor is about 3.7 s on macOS (A-22558: hub acquisition about 1.35 s, plus about 2 s of freshness and publication). On 2026-11-23, take a fresh Linux sample through a mode-free verify at the reviewed head c226f9c48. Then renew both cases under C-216: work-only (last sample 11.38 s, run 8ae71246) and listener (16.65 s, over its 13.599 s allowance). Size each at 1.5 times the worst sample, with a seven-day expiry. After that, a narrow review, a final-head verify and the merge before 2026-11-26. The current allowance expires on 2026-11-28 and would fail every suite.
+
+### hub · 2026-11-23T00:02:03.957Z
+
+Merge-delta assessment (report-only)
+{"reviewed":"c226f9c48431b6489d1204bdf6e88b814ce5f7f0","head":"a189257d3774f2688a226ec49dad4a28b9f1676e","dev":"0a75e76680f9ca831b94346d347ec113e3d453cf","mergeBase":"d1b803566bd0a651207d1619ae4351d4def19685","mode":"report","rule":"conservative-runtime-coupling-v1","result":"overlapping","branchPaths":["docs/agents/tests/hub-test-startup-listener-scale.test.ts.md","hub/test/startup-listener-scale.test.ts"],"devPaths":[".agents/skills/implement/CHANGES/T-2050-ready.md",".agents/skills/implement/CHANGES/T-2051-admission-provenance.md",".agents/skills/implement/SKILL.md",".agents/skills/merge/CHANGES/T-2053-red-baseline.md",".agents/skills/merge/CHANGES/T-2055-readiness.md",".agents/skills/merge/SKILL.md",".cland/tasks/E-1888-verification-and-flow-improvements-from.md",".cland/tasks/T-204-incident-log-lost-suite-runs-and-stalled.md",".cland/tasks/T-2042-one-day-median-of-sharded-covers-and.md",".cland/tasks/T-2049-a-qa-verdict-s-task-comment-reply-counts.md",".cland/tasks/T-2050-an-item-turns-ready-on-a-clear-evidence.md",".cland/tasks/T-2051-fresh-suite-admissions-carry-positive.md",".cland/tasks/T-2052-bring-t-1987-s-1500-answer-work-only.md",".cland/tasks/T-2053-one-red-full-t3-batch-fences-every-t3.md",".cland/tasks/T-2055-merge-admission-accepts-a-task-without-a.md",".cland/tasks/T-2056-enqueue-timing-check-refuses-a-literal.md",".cland/tasks/T-2057-cland-init-writes-an-explicit-test.md",".cland/tasks/T-2058-test-import-graph-discovery-stops-on.md",".cland/tasks/T-2059-renew-or-retire-the-five-c-216-duration.md",".cland/tasks/T-2060-lead-handover-process-test-ts-a.md",".cland/tasks/T-2061-the-periodic-dev-t3-run-executes-t2-t3.md","docs/agents/issue-tracker.md","docs/agents/tests.md","docs/agents/tests/hub-test-merge-queue-unit.test.ts.md","docs/agents/tests/hub-test-merge-queue.test.ts.md","docs/agents/tests/hub-test-suite-queue-policy.test.ts.md","docs/agents/tests/hub-test-suite-stage-cover.test.ts.md","docs/agents/tests/hub-test-tracker-summary.test.ts.md","docs/agents/tests/index.md","docs/evidence/T-2050-ready-consumers.md","docs/evidence/T-2055-merge-consumers.md","docs/hub/running.md","hub/README.md","hub/src/cli/usage/merge.ts","hub/src/hub/daemon.ts","hub/src/hub/dispatch.ts","hub/src/hub/enqueue-timings.ts","hub/src/hub/merge-queue.ts","hub/src/hub/merge.ts","hub/src/hub/suite-history.ts","hub/src/hub/suites.ts","hub/src/init/config.ts","hub/src/merge.ts","hub/src/suite-limits.ts","hub/src/tracker/freshness.ts","hub/src/tracker/tracker.ts","hub/src/verification-commands.ts","hub/src/verification-plan.ts","hub/test/config-reload-component.test.ts","hub/test/executor-safety-config.test.ts","hub/test/fixtures/cli-usage/commands.json","hub/test/harness.ts","hub/test/init-config.test.ts","hub/test/merge-batches.test.ts","hub/test/merge-queue-unit.test.ts","hub/test/merge-queue.test.ts","hub/test/ready-verification-fixture.ts","hub/test/suite-persistence.test.ts","hub/test/suite-queue-policy.test.ts","hub/test/suite-remote-budget.test.ts","hub/test/suite-stage-cover.test.ts","hub/test/tracker-summary.test.ts","hub/test/until.test.ts","hub/test/verification-workers.test.ts","shared/wire/index.ts"],"overlap":[],"dependency":{"status":"known","importers":["hub/test/startup-listener-scale.test.ts"]},"patchIdCurrent":true}
+Reviewer merge-delta verdict remains required. Disjoint paths alone do not prove behavioral independence.
+
+### impl-2052 · 2026-11-23T00:08:53.850Z
+
+Renewal head 2e530b83e: all seven C-216 allowances dated 2026-11-23 through 2026-11-30, sized from 30 completed passing Linux samples across five unique recent runs including A-22630. Evidence A-22631 and docs/evidence/T-2052-duration-renewal.md; no baselines/policy changes. Config-pin/checker files 48/48 total; full lint and typecheck pass. C1 done via renewal; source review requested, final-head mode-free verify still pending.
+
+### rev-35 · 2026-11-23T00:13:40.588Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2052-source-4
+commit: 2e530b83e64362289086b599d6f7a1820aee633c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized dev integration plus renewal source clear. Mergea189257d3 parents reviewedc226f9c48/dev0a75e7668; fixture bytes unchanged from A-22549. Final delta modifies seven existing allowance entries and matching guides/evidence only; baselines/budget/report policy unchanged. All C-216 Nov23–30; independently scanned30 completed named T3 samples across5unique runs, matching start/pass finishes. A-22625/28 byte-identical same batch counted once. All caps equal ceil(1.5x worst to ms), worstA-22630; that periodic run remains code124/run timeout75m, not a whole-run pass. Caps23.902/33.185/6.939/7.381/9.566/8.367/46.784 follow Coordinatorbcbec646. Local config-pin48pass, lint/typecheck and grouped production report/enforce replay are author-attested transcript-only; raw local logs not retained per answer47f8a020, not independently claimed as configured evidence. C1 done/unverified pending actual final-head mode-free result. Audit A-22632 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-22632-t-2052-source4-integrated-seven-day-renewals-source-clear.md. No Reviewer execution/edit/submission; hold releases for Coordinator window, no full-suite request.
+
+### rev-35 · 2026-11-23T00:40:04.415Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2052-evidence-2
+commit: 2e530b83e64362289086b599d6f7a1820aee633c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head configured11ac38da/A-22633 code0/empty cause, canonical verification tree2f05c3cb3ea22756e133dcf82e6dedb865ff8561. Paired exact cases pass: work8.399221155s, listener12.560696668s, rejected-pragma0.004073875s, late-hub0.004966691s, stage17.598326248s. C1 verifies the C-216 Nov23–30 renewal branch from source4/A-22632 plus actual final-head admission, not under5s optimization. Four other renewed identities unexecuted here retain historical30-sample sizing proof; A-22630 stays timed out overall. Actual243T1/444T2/10selectedT3/55Web file passes;263T3 batch,18T4unexecuted. Hub aggregate7450tests/7449pass/1skip/0fail/cancel; raw7452 pass finishes kept separate due three existing finish-only output entries (A-22331 carried F2/C-325), not a new T2052 finding. Linuxc8ams3 Node24.21/Nvim0.12.5 Headless1248/CfT156.0.8078.4; report-only timing/lint, cached:null unknown; life/cost not wall. A-22634 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-22634-t-2052-final-evidence2-same-head-renewal-verified.md records exact scope/limits. No Reviewer execution/edit/submission or extra run requested.
+
+Criteria: C1 verified.
+
+### coord · 2026-11-23T01:09:13.393Z
+
+Merged 0e0f6c8771cb8fb0e5600243ffc460be1fc7de41 onto dev.
