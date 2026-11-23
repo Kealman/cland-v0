@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-22T06:01:23.706Z
+updated: 2026-11-23T07:28:48.718Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -714,3 +714,7 @@ Restart #98, return to dev (2026-11-22, under the human's answer to ask 6c320816
 ### human · 2026-11-22T06:01:23.706Z
 
 Restart #99, final return to dev (2026-11-22, under the human's answer to ask 6c320816 and coord's GO): hub r98 pid 82177 (d6f0b7da6 worktree) stopped 06:00:09Z; job cland-hub-r99 pid 97384 started from the root at 022d75601 (dev = origin/dev, root clean, merge queue empty, no runs; covered by green integrated run d6245a18: 9,544 tests, 0 fail, including T-2056, T-2053, T-2049, T-2050, T-2055, T-2051), serving 06:00:21.230Z, gap 12 s. Binding listeners 4 ms, web listener 303 ms. Port 56691, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. The worktree-era restarts #96-#98 are closed out: d6f0b7da6 and 782f2a58e worktrees removed, 3d2de496f kept.
+
+### human · 2026-11-23T07:28:48.718Z
+
+Restart #100 (2026-11-23, on coord's GO under rule 19: T-2061 sharded periodic dev T3 is hub runtime): hub r99 pid 97384 (022d75601) stopped 07:27:39Z; job cland-hub-r100 pid 48343 started from the root at cc55d9f30 (dev = origin/dev, root clean, merge queue empty, no runs; covered by green integrated run 77af614d: 9,564 tests, 0 fail), serving 07:27:51.357Z, gap 12 s. Binding listeners 4 ms, web listener 254 ms. Port 51342, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 38 ok / 0 fail, web/dist matches sources. task view 0.18-0.22 s, no tracker-storage-stalled lines.

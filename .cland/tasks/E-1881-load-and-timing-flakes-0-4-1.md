@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-1532
 branch: null
 created: 2026-11-16T07:28:32.737Z
-updated: 2026-11-21T18:03:33.388Z
+updated: 2026-11-23T17:35:11.289Z
 ---
 
 ## Goal
@@ -32,7 +32,6 @@ QA reads each child's verified criteria and the epic's cover evidence on dev, an
 - [ ] C2. A green Linux droplet cover and, at the epic's close, a green macOS cover exist at one dev tree that contains every child's landing (evidence).
   - verified: qa-1880 [qa] · run qa-20261121-1881-1 · 2026-11-21T18:03:33.388Z · commit 767b8ce4f2b6935b20f660f073f022a94128dd85
 
-- [ ] C3. The macOS covers on dev before T-1889 (the v0.4.0 baseline: 29 of 63 red, A-19803 §8.4) and after T-1889's landing name the load-timing failures each had, and the after-covers show the shared load-scaled waits removing that class (evidence, Coordinator; moved from T-1889 C3 on 2026-11-16).
 
 ## Plan
 
@@ -142,3 +141,7 @@ Commands: node hub/bin/cland.ts task list --under E-1881 --state open/closed; ta
 Evidence A-22527 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-22527-e-1881-evidence-only-qa-at-767b8ce.md. Export scanner initially refused browser-path paragraph; paths omitted, source logs retained, publication scan passed.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-23T17:34:56.504Z
+
+C3 removed by the human's decision. On 2026-11-23 17:34Z, the human answered ask 4e6ed26e: «Разрешаю тебе снять C3 с E-1881 с записанной причиной и закрыть эпик». This follows the earlier decision on ask cdaedf29 to close with the reason recorded, since C3 was not met (A-22306), with the follow-up work done as a separate 0.4.1 task. C3 was not met at the DoD build. QA verified C1 and C2 (A-22527), all 28 tasks are closed, and the T-2046 follow-up has landed.

@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1714
 branch: t/T-2061-the-periodic-dev-t3-run-executes-t2-t3
 created: 2026-11-22T17:59:44.060Z
-updated: 2026-11-23T06:23:22.270Z
+updated: 2026-11-23T09:58:57.543Z
 closed: 2026-11-23T06:23:22.270Z
 ---
 
@@ -161,3 +161,7 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-11-23T06:23:22.270Z
 
 Merged 6b54424ad4d9cd409048673f263ad5da1bd5572d onto dev.
+
+### coord · 2026-11-23T09:58:57.543Z
+
+Post-landing check on hub #100: periodic dev T3 run 72c25775 at cc55d9f30 ran on 2 shards and was green: 7,416 tests, 0 failed, all of T2, T3 and Web executed, about 36 minutes wall time against the two earlier single-droplet timeouts at 75 minutes (A-22663).
