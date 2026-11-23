@@ -12,9 +12,14 @@ The shared whole-case owner starts that guard before root acquisition, adopts
 late roots/resources, fences each filesystem continuation, and joins original
 work before removal or seam restoration. Root, tracker seed, suite/artifact
 seed, lease seed and transport setup each have a named five-second bound.
-Hub acquisition uses `testSetupWaitMs()` from the shared wait helper: the
-configured setup base (5,000 ms fallback) receives the executor/load factor,
-including the droplet's minimum factor of two. The returned hub logs its own
+Hub acquisition uses the named `retainedHubSetupUnits`: one base setup unit
+plus one per 500 retained answers, rounded up. Both 1,500-answer cases get four
+units of `testSetupWaitMs()`, sampled at acquisition. The configured setup base
+(5,000 ms fallback) receives the executor/load factor, including the droplet's
+minimum factor of two: the fallback hub setup bound there is 40,000 ms.
+This bounds fixture construction separately from listener and census assertions;
+the whole-case 120,000 ms backstop and report-mode duration allowances stay intact.
+The returned hub logs its own
 acquisition outcome, duration, bound and drain counters before transport setup;
 the separate request assertion retains its two-second behavior bound.
 
@@ -45,7 +50,8 @@ connection closure. A rejected-pragma control asserts the connection was acquire
 and then closed before fixture removal.
 The disposal handoff occurs inside the retained acquisition producer, before
 returning the hub, so an expired setup observation cannot skip it. A held-return
-control expires that observation, releases the producer during owner close,
+control uses the same `waitForHubSetup` path with an explicit one-millisecond
+fault bound, requires the `hub setup incomplete` failure, releases the producer during owner close,
 and asserts hub disposal runs while the database is still open, then confirms
 the connection closed. Both controls bound root setup separately.
 Fixture-owned SQLite tracing counts summary computations at the

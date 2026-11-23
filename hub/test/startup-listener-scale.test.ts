@@ -18,6 +18,12 @@ import { testSetupWaitMs } from './until.ts';
 import { ownedDatabases } from './owned-tracker.ts';
 
 const branchCount = 1500;
+// One base setup unit plus one per 500 retained answers. Sample load at acquisition.
+const retainedHubSetupUnits = 1 + Math.ceil(branchCount / 500);
+
+function waitForHubSetup<T>(owner: ReturnType<typeof stageCase>, start: () => Promise<T>, setupBoundMs: number) {
+  return owner.wait('hub setup', start, setupBoundMs);
+}
 
 test('listener binds report each await while retained verdict freshness drains', { timeout: 120000 }, t => startupDrain(t, true));
 test('1500 startup freshness answers keep summary hydration and dependent work linear', { timeout: 120000 }, t => startupDrain(t, false));
@@ -78,14 +84,14 @@ test('work census joins a late hub disposal after its setup observation expires'
     }));
     const resources = censusResources(owner, sqliteProbe(), false);
     connection = resources.openDatabase(join(root, 'late.db'));
-    await assert.rejects(owner.wait('held hub acquisition', () => step(() => resources.acquire(async () => {
+    await assert.rejects(waitForHubSetup(owner, () => step(() => resources.acquire(async () => {
       await release.promise;
       return { dispose: async () => {
         assert.equal(connection?.isOpen, true, 'hub disposal precedes database close');
         connection!.close();
         disposed = true;
       } };
-    })), 1), /held hub acquisition incomplete/);
+    })), 1), /hub setup incomplete/);
   });
   await owner.close();
   assert.equal(disposed, true, 'late returned hub has a disposal receipt');
@@ -175,8 +181,8 @@ async function startupDrain(t: TestContext, measure: boolean) {
   const entered = Promise.withResolvers<void>();
   let read: (() => Promise<void>) | undefined, binding = 0, bound = 0, answers = 0, computations = 0, serving = false, freshnessBeforeServing = false;
   const hubSetupStarted = performance.now();
-  const hubSetupBound = testSetupWaitMs();
-  const hub = await owner.wait('hub setup', () => step(() => resources.acquire(() => projectHub(owner.resources, root, {}, { clock, openDatabase, readBase: async () => null, stageTree: async () => 'f'.repeat(40),
+  const hubSetupBound = testSetupWaitMs() * retainedHubSetupUnits;
+  const hub = await waitForHubSetup(owner, () => step(() => resources.acquire(() => projectHub(owner.resources, root, {}, { clock, openDatabase, readBase: async () => null, stageTree: async () => 'f'.repeat(40),
     git: async args => {
       if (args[0] === 'rev-parse') { computations++; entered.resolve(); }
       return args[0] === 'for-each-ref' ? [`${head} refs/heads/dev`, ...Array.from({ length: branchCount }, (_, n) => `${head} refs/heads/t/${n}`)].join('\n')
