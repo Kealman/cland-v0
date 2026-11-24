@@ -2,8 +2,8 @@
 id: T-2069
 kind: task
 title: "Finished release-occasion covers are never reported: #reportSuite throws on every retry, so `cland release` finds no green T3 and the hub spins rewriting suite logs"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-1720
 branch: t/T-2069-a-green-two-shard-release-cover-posts
 created: 2026-11-24T05:43:40.612Z
-updated: 2026-11-24T09:03:05.468Z
+updated: 2026-11-24T10:04:38.188Z
+closed: 2026-11-24T10:02:08.721Z
 ---
 
 ## Summary
@@ -40,10 +41,13 @@ Two green release covers at dev 4cbdba6a7, tree bbc13c73, finished on 2026-11-24
 
 - [x] C1. A finished green `release`-occasion run submitted by a session caller posts one suite-result message, sets `reported`, and is found by `releaseT3Cover` for its tree (test).
   - done: impl-2069 · 2026-11-24T07:34:01.764Z
+  - verified: rev-35 [reviewer] · run rev-35-2069-evidence-1 · 2026-11-24T09:07:17.644Z · commit 277437db32c30253cc1a02fb98c797c3f65ec9e7
 - [x] C2. When `#reportSuite` throws, the hub logs one `suite-report-failed` event with the run id and error, and the heartbeat row shows the error text (test).
   - done: impl-2069 · 2026-11-24T07:34:01.930Z
+  - verified: rev-35 [reviewer] · run rev-35-2069-evidence-1 · 2026-11-24T09:07:17.645Z · commit 277437db32c30253cc1a02fb98c797c3f65ec9e7
 - [x] C3. Repeated report failures back off, and do not rewrite suite.log or re-read the coverage map on every inspection tick (test counting rewrites).
   - done: impl-2069 · 2026-11-24T07:34:02.092Z
+  - verified: rev-35 [reviewer] · run rev-35-2069-evidence-1 · 2026-11-24T09:07:17.645Z · commit 277437db32c30253cc1a02fb98c797c3f65ec9e7
 
 ## Comments
 
@@ -86,3 +90,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-22756 records consolidated source clear; M1–M3 resolved. reportCase retains complete setup/body/resource/root/seam ownership with pre-constructor DB capture and actual removal/refused-release/repair controls; optional fixture patch seams preserve other callers. Finalized logs now have run/head/tree/source/path-bound immutable copies and shared-source publication serialization on creation/retry; two-job legacy/restart control asserts correct separate bytes and two replacements/two snapshots only. First inspection per hub normalizes before shortcut. Actual #report rejection owns reportFailure/event/backoff; generic history/pre-report errors remain unclassified or secondary, successful report clears old failure before cleanup. Sole-role required-result fix/ordinary exclusion and docs retained. Coordinator maps constructor+close masking to existingT1995; not claimed fixed here. A-22755 local842T1/17controls/218separatefile passes/typecheck+lint0 are producer reports, not configured/live recovery proof. C1–C3 remain unverified pending same-head result. Read-only review/no execution; hold releases for mode-free verify after Coordinator grant. Coordinator retains live restart/recovery/fullT3; no source/dev merge/full task suite requested.
+
+### rev-35 · 2026-11-24T09:07:17.645Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2069-evidence-1
+commit: 277437db32c30253cc1a02fb98c797c3f65ec9e7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; A-22778 consolidates source2/A-22756 and completed27f04e26/A-22762. All8 new exact release/once-only cover, retry/backoff, shared legacy/restart snapshot, producer-phase and constructor/cancelled-close controls pass base+5 distinct loaded executions; heartbeat generic/structured failure case also passes. C1/C2/C3 verified. All243T1/fallback445T2/55Web plus243selectedT3 and mappedT4inbox guard pass;30T3 deferred,17T4 unexecuted. Matched producer progress:9428basepasses/12prerequisite skips,40loadedpasses/5loadedskips; all starts paired, no failure/cancel/todo;3knownF2finish-only entries separate. Linuxc8nyc1 Node24.21/Nvim0.12.5 Headless1248/CfT156.0.8078.4; timing/ratchet/lint report-only. Gitcfd6560a differs from verification6c5d1488;cache null unknown. No findings or reviewer execution. This proves test-hub paths, not production restart or recovery ofc4e171e7/68c47db0; Coordinator retains those post-landing outcomes/fullT3. No extra run/source change/manual relay requested.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-24T10:02:08.721Z
+
+Merged 2514c3d9ae4e13e765a0365dbb561f4147ab7e56 onto dev.
+
+### coord · 2026-11-24T10:04:38.188Z
+
+Live proof after landing, on hub #101 (pid 64841, started on 2514c3d9a at about 10:04Z). The stuck release cover 68c47db0, finished on 2026-11-24 at 05:48Z and unreported for over 4 h on hub #100, posted its suite-result to coord at 10:04:29Z: all exit 0, 9,675 tests, 0 fail, log A-22750. That's the self-addressed role send delivering after the fix. The other stuck run, c4e171e7, is being watched for its post.

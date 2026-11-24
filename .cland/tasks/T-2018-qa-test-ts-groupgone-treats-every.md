@@ -3,17 +3,17 @@ id: T-2018
 kind: task
 title: qa.test.ts groupGone treats every process-group probe error as absence; only ESRCH proves the group is gone
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2072
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1732
+branch: t/T-2018-qa-test-ts-groupgone-treats-every
 created: 2026-11-20T00:18:35.899Z
-updated: 2026-11-24T09:01:13.395Z
+updated: 2026-11-24T10:05:39.450Z
 ---
 
 ## Summary
