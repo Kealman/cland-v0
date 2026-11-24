@@ -67,9 +67,14 @@ test('scripted remote verification acquires, delivers, starts, collects and rele
       await deliver(...args);
     });
     assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);
+    const waitFor = f.ui.waitFor.bind(f.ui);
+    scope.patch(f.ui, 'waitFor', (...args: Parameters<typeof f.ui.waitFor>) => {
+      assert.equal(args[1], undefined, 'orchestration frame receipts must inherit load-scaled setup headroom');
+      return waitFor(...args);
+    });
     const submitted = await operation('orchestration submission', () => f.launch('--executor', 'droplet'));
     assert.equal(typeof submitted.id, 'string', JSON.stringify(submitted));
-    const reported = f.ui.waitFor(frame => frame.type === 'message' && (frame.message as Message).id === `suite:${submitted.id}`, 15000).then(frame => frame.message as Message);
+    const reported = f.ui.waitFor(frame => frame.type === 'message' && (frame.message as Message).id === `suite:${submitted.id}`).then(frame => frame.message as Message);
     // Observe the durable start receipt before advancing the execution deadline.
     await operation('orchestration machine start', () => Promise.race([f.machine.started(submitted.id), reported.then(report => { throw new Error(`remote run finished before its start receipt: ${report.text}`); })]));
     await f.ui.waitFor(frame => frame.type === 'verification.queue' && (frame.queue as { remote?: Array<{ id?: string }> }).remote?.some(run => run.id === submitted.id) === true);

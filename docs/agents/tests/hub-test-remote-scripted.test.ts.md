@@ -8,6 +8,12 @@ test census in the log. This proves remote byte zero starts after local delivery
 writes; the previous checkpoint skipped remote bytes and lost the census.
 No SSH, provider network, worker process or browser runs in these cases.
 
+The orchestration case observes the exact `suite:<run-id>` message receipt with
+the UI client's shared per-operation load-scaled setup default. Its fixture
+control rejects an explicit timeout override, so restoring the former 15000 ms
+bound fails deterministically before waiting. Keep the start receipt before
+advancing the fake execution clock and retain the final report assertions.
+
 The red/lost/slow case drives direct executor operations through `remote-clock`
 and tracks native publications. The fixture hub's startup sweep may hold the
 sealed spend ledger lock during acquisition: a retry requests fake time and
