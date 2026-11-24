@@ -9,13 +9,14 @@ export async function waitForWorkerAdmission(options: {
   clock: Clock;
 }): Promise<{ admitted: boolean; cause: string }> {
   const deadline = options.clock.now().getTime() + 15000;
-  while (!await options.gate()) {
+  for (;;) {
+    const ready = await options.gate();
     const signal = options.signal();
     if (signal) return { admitted: false, cause: `worker interrupted by ${signal}` };
+    if (ready) return { admitted: true, cause: '' };
     if (options.clock.now().getTime() >= deadline) return { admitted: false, cause: 'worker admission gate wait expired after 15000 ms' };
     await new Promise<void>(resolve => options.clock.setTimeout(resolve, 25));
   }
-  return { admitted: true, cause: '' };
 }
 
 type WorkerOutcome = { code: number; cause: string; platform?: Platform; tierReceipts?: import('./verification-tier-receipts.ts').TierReceipt[]; timingReceipts?: import('./suite-timing-receipts.ts').TimingReceipt[] };

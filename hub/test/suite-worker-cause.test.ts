@@ -2,10 +2,36 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { compatibilityCleanupOutcome } from '../src/hub/suite-worker.ts';
-import { compatibilityCleanupCause, runWorkerWithAdmission, type WorkerCompletion } from '../src/suite-worker-admission.ts';
+import { compatibilityCleanupCause, runWorkerWithAdmission, waitForWorkerAdmission, type WorkerCompletion } from '../src/suite-worker-admission.ts';
 import { suiteCommandOutcome } from '../src/suite-infrastructure.ts';
 import { FakeClock } from './fake-clock.ts';
 import { tierReceipt } from '../src/verification-tier-receipts.ts';
+
+test('an immediately ready gate refuses an already interrupted worker without running setup', async () => {
+  const clock = new FakeClock(1000);
+  const admission = { gate: async () => true, signal: () => 'SIGTERM', clock };
+  let setupCalls = 0;
+  const receipts: WorkerCompletion[] = [];
+  await runWorkerWithAdmission({
+    ...admission,
+    run: async () => { setupCalls++; return { code: 0, cause: '' }; },
+    log: () => {}, persist: async receipt => { receipts.push(receipt); },
+  });
+  assert.equal(setupCalls, 0);
+  assert.deepEqual(await waitForWorkerAdmission(admission), { admitted: false, cause: 'worker interrupted by SIGTERM' });
+  assert.deepEqual(receipts, [{ code: 143, cause: 'worker interrupted by SIGTERM', finished: '1970-01-01T00:00:01.000Z' }]);
+});
+
+test('an immediately ready gate admits an uninterrupted worker without waiting', async () => {
+  const clock = new FakeClock(1000);
+  clock.setTimeout = () => { throw new Error('ready admission must not wait'); };
+  let gateChecks = 0;
+  assert.deepEqual(await waitForWorkerAdmission({
+    gate: async () => { gateChecks++; return true; }, signal: () => null, clock,
+  }), { admitted: true, cause: '' });
+  assert.equal(gateChecks, 1);
+  assert.equal(clock.now().getTime(), 1000);
+});
 
 test('terminal logging failure preserves the persisted worker outcome and reports a secondary diagnostic', async () => {
   for (const outcome of [{ code: 0, cause: '' }, { code: 75, cause: 'suite infrastructure: ticket lost' }]) {
@@ -32,9 +58,10 @@ test('worker publication retains producing tier receipts through signal and clea
   const rows = [tierReceipt({ id: 'run', tree: 'tree' }, { name: 'T1', command: 'unit' }, 0)];
   const timings = [{ run: 'run', head: 'head', tree: 'tree', command: 'unit', step: 'T1', platform: 'linux', samples: [{ file: 'unit', name: 'case', seconds: 4, outcome: 'pass' as const }] }];
   for (const signal of [null, 'SIGTERM']) {
+    let observedSignal: string | null = null;
     const receipts: WorkerCompletion[] = [];
-    await runWorkerWithAdmission({ gate: async () => true, signal: () => signal, clock: new FakeClock(1000),
-      run: async () => ({ ...compatibilityCleanupOutcome({ code: 0, cause: '' }, 'cleanup denied'), tierReceipts: rows, timingReceipts: timings }),
+    await runWorkerWithAdmission({ gate: async () => true, signal: () => observedSignal, clock: new FakeClock(1000),
+      run: async () => { observedSignal = signal; return { ...compatibilityCleanupOutcome({ code: 0, cause: '' }, 'cleanup denied'), tierReceipts: rows, timingReceipts: timings }; },
       log: () => {}, persist: async receipt => { receipts.push(receipt); } });
     assert.deepEqual(receipts[0]!.tierReceipts, rows);
     assert.deepEqual(receipts[0]!.timingReceipts, timings);
