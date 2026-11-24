@@ -1,5 +1,9 @@
 # web/test/hosts-view.test.ts
 
+The held boot transition waits for the rendered waiting-host reason with the
+shared load-scaled 15-second setup budget. The provider stays gated until that
+positive row receipt, retaining the booting, placement and departure assertions.
+
 Web tier, disposable projectHub and lockfile-pinned Chrome Headless Shell with
 its own user-data-dir. Run on supported Node with inherited `CLAND_*` variables
 removed: `node --test web/test/hosts-view.test.ts`. The before hook builds missing

@@ -26,7 +26,7 @@ import { webFixture, resizePage, pausePageClock } from './harness.ts';
 import { connectUi, tempProject } from '../../hub/test/harness.ts';
 import { caseDeadlines } from '../../hub/test/case-deadlines.ts';
 import type { AskCard, Inbox, TopicMessage, HubFrame, HostsStatePool } from '../../shared/wire/index.ts';
-import { until, testWaitMs } from '../../hub/test/until.ts';
+import { until, testWaitMs, waitTimeoutMs } from '../../hub/test/until.ts';
 
 before(() => ensureWebBuild(fileURLToPath(new URL('../../', import.meta.url))));
 
@@ -549,7 +549,7 @@ test('Hosts Add moves the real inbox login wait through booting to placed', asyn
     closed.resolve({ admission: 'waiting-signin', state: 'closed', code: 0, signal: null });
     await until(() => records.provisions.get('waiting-host')?.state === 'booting', { what: 'pool runtime persisted booting host' });
     await clock.advance(1000);
-    await page.locator('[data-waiting-launch="waiting-worker"] [data-waiting-reason]').filter({ hasText: 'waiting for host waiting-host to boot' }).waitFor();
+    await page.locator('[data-waiting-launch="waiting-worker"] [data-waiting-reason]').filter({ hasText: 'waiting for host waiting-host to boot' }).waitFor({ timeout: waitTimeoutMs(15000) });
     records.provisions.ready({ ...records.provisions.get('waiting-host')!, state: 'ready' });
     booted.resolve();
     await clock.advance(1000);

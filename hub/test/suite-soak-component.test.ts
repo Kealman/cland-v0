@@ -170,9 +170,11 @@ for (const occasion of ['soak', 'dev-t3'] as const) test(`green ${occasion === '
   const testFile = 'hub/test/example.test.ts';
   await writeFile(join(f.root, testFile), '');
   const source = 'hub/src/tracker/change.ts';
+  let recordedAt: string | undefined;
   t.mock.method(f.dependencies.run!, 'collectCoverage', async (_lease: unknown, path: string) => {
+    recordedAt = f.clock.now().toISOString();
     await writeFile(path, JSON.stringify({ version: 1, head: f.candidate.head, tree: f.candidate.tree,
-      created: f.clock.now().toISOString(), testFiles: [testFile], files: {
+      created: recordedAt, testFiles: [testFile], files: {
         [source]: { functions: [{ name: 'example', start: 0, end: 40, startLine: 1, endLine: 3, tests: [testFile] }] },
       } }));
   });
@@ -208,7 +210,9 @@ for (const occasion of ['soak', 'dev-t3'] as const) test(`green ${occasion === '
     assert.equal(chip.fromKind, 'hub');
   }
   assert.equal(maps[0]!.pointer.head, f.candidate.head);
-  assert.equal(maps[0]!.pointer.created, f.clock.now().toISOString());
+  await f.clock.advance(25);
+  assert.ok(recordedAt, 'coverage producer recorded its publication time');
+  assert.equal(maps[0]!.pointer.created, recordedAt);
   const selected = await coverageSelection(f.root, [source], f.candidate.head, async (...args) => {
     if (args[0] === 'merge-base') return '';
     return args.length === 8

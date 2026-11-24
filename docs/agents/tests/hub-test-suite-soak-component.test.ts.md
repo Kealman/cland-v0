@@ -1,5 +1,9 @@
 # hub/test/suite-soak-component.test.ts
 
+Coverage publication records the producer's timestamp before writing the map.
+Advance the fake clock after publication and compare the durable pointer with
+that recorded time, so asynchronous assertion scheduling cannot change it.
+
 The fake periodic deadline publishes a durable Agents result with
 `result: "inconclusive"`, a timeout headline and missing/incomplete T2, T3 and
 Web tiers. The controlled fake clock expires the hub's admitted owner deadline;
