@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-1720
 branch: t/T-2069-a-green-two-shard-release-cover-posts
 created: 2026-11-24T05:43:40.612Z
-updated: 2026-11-24T07:39:22.319Z
+updated: 2026-11-24T09:03:05.468Z
 ---
 
 ## Summary

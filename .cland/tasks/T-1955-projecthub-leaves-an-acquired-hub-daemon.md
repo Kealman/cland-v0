@@ -3,17 +3,17 @@ id: T-1955
 kind: task
 title: projectHub leaves an acquired hub daemon and log without teardown when registerHubCards or the readiness assertion rejects
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2072
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1722
+branch: t/T-1955-projecthub-leaves-an-acquired-hub-daemon
 created: 2026-11-18T02:12:33.701Z
-updated: 2026-11-24T09:01:13.701Z
+updated: 2026-11-24T09:02:33.645Z
 ---
 
 ## Summary

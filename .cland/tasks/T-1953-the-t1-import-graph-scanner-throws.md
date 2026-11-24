@@ -3,17 +3,17 @@ id: T-1953
 kind: task
 title: "The T1 import-graph scanner throws \"incomplete import graph: indirect require\" on suite-remote-budget.test.ts's require-shaped fixture text, forcing conservative fallback"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2074
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1724
+branch: t/T-1953-the-t1-import-graph-scanner-throws
 created: 2026-11-17T21:19:05.454Z
-updated: 2026-11-24T09:01:16.060Z
+updated: 2026-11-24T09:02:48.469Z
 ---
 
 ## Summary

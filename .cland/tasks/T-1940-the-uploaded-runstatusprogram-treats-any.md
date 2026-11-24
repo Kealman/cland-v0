@@ -3,17 +3,17 @@ id: T-1940
 kind: task
 title: The uploaded runStatusProgram treats any process.kill(-pgid, 0) error as "runner gone", so EPERM or an unknown error becomes a confirmed "disappeared without a done marker"
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2075
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1728
+branch: t/T-1940-the-uploaded-runstatusprogram-treats-any
 created: 2026-11-17T09:02:50.786Z
-updated: 2026-11-24T09:01:19.201Z
+updated: 2026-11-24T09:03:10.362Z
 ---
 
 ## Summary

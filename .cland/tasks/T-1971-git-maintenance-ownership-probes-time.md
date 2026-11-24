@@ -3,17 +3,17 @@ id: T-1971
 kind: task
 title: Git-maintenance ownership probes time out after 200 ms under hub load and keep territory ownership for a collector that is already gone
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2076
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1727
+branch: t/T-1971-git-maintenance-ownership-probes-time
 created: 2026-11-18T12:31:16.257Z
-updated: 2026-11-24T09:01:20.887Z
+updated: 2026-11-24T09:03:06.632Z
 ---
 
 ## Summary

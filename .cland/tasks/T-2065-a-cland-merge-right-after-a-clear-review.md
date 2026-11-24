@@ -3,17 +3,17 @@ id: T-2065
 kind: task
 title: 'A `cland merge` right after a clear review verdict can refuse "review-pending: … still checking freshness; try again", a user-facing retry papercut'
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2074
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1725
+branch: t/T-2065-a-cland-merge-right-after-a-clear-review
 created: 2026-11-23T18:46:17.308Z
-updated: 2026-11-24T09:01:17.617Z
+updated: 2026-11-24T09:02:55.897Z
 ---
 
 ## Summary
