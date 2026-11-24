@@ -1,5 +1,12 @@
 # hub/test/qa-demo-policy.test.ts
 
+Both existing entry points exercise the shared policy's QA-demo and capture
+profiles. Generated in-memory positive controls cover every provider prefix,
+query/assignment family, private-key header, private path and raw/URL/JSON
+encoding. Exact wrapper diagnostics, capture's supplied-secret check and the
+intentional short-prose difference are pinned. Existing parsed/serialized nested
+Authorization metadata cases retain the QA-demo header-context regression.
+
 `hub/test/qa-demo-policy.test.ts` is T1 at the pure recorder policy seam. Missing expected facts and recorded step errors each had a failing control before the gate; the secret scanner has a positive control built from obviously fake values at runtime and asserts value-free diagnostics. No process, socket or browser is required.
 
 Publication controls separately reject synthetic header and standalone credentials in raw text, URL escapes, nested metadata and serialized JSON. Both failed with the Bearer guard removed before the fix. Five named prose/title controls failed against the old guard; they pass with the narrowed rule. Header context still rejects short values; standalone detection starts at 16 token characters. Existing escaped-whitespace and provider-key controls remain active. The T1 test imports only the pure shipped policy; `.claude/skills/qa` links to `.agents/skills/qa`, which init copies directly.

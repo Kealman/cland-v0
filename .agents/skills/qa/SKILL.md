@@ -7,7 +7,7 @@ A QA run has one file at its centre: the brief, `qa/briefs/T-<n>.md`, committed 
 
 Publish evidence through `publishSessionEvidence`, the shared
 [scan-and-publish helper](EVIDENCE.md), inside
-the publishing session. It combines both repository scanners and a generated
+the publishing session. It applies both profiles of the shared scanner and a generated
 positive control before artifact.create. A refusal stops publication; redact
 the source export and invoke the helper again. The recorder's pre-copy scan
 below remains an additional capture check.

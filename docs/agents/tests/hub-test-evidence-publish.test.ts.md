@@ -1,5 +1,9 @@
 # hub/test/evidence-publish.test.ts
 
+The provisioned-kit case imports the copied publication policy from the scratch
+host project and checks a generated private-path control and clean prose. This
+proves its shared scanner dependency travels with the kit without a host repo.
+
 T2 uses disposable files, fake artifact.create callbacks and a projectHub
 component with an in-process implementer session and fixture credentials over
 local sockets. No child, native launch or external network call runs. The public helper proves exact

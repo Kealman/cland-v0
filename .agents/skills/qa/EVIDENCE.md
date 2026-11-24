@@ -29,7 +29,12 @@ publishes those same bytes. Symlinks, special files, empty directories and
 snapshots exceeding 50 MiB refuse. Stop capture writers before calling it.
 Directory payloads need a Markdown entry file for the hub's folder publication;
 a folder containing only `README.txt` receives an `artifact-source` refusal.
-It runs both existing policies, `assertPublishable` and `scanCapture`, unchanged.
+It runs both entry points, `assertPublishable` and `scanCapture`, backed by
+one `secret-scan-policy.ts` implementation shipped with this kit. Both profiles
+reject provider keys, private-key headers, credential assignments, sign-in query
+values and private user paths. The QA-demo profile keeps contextual and
+token-length Bearer detection; the capture profile additionally rejects any
+nonempty Bearer value and the supplied exact secret, including short prose.
 Both must detect a synthetic control generated for that invocation. Only an
 exit-0 receipt for the exact snapshot, with that control matched and no matches,
 allows publication. No archive unpacking or OCR is performed.

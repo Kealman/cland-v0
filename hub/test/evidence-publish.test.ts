@@ -255,6 +255,10 @@ test('provisioned QA kit resolves its guide and installed helper outside the hos
   const publisher = await step(() => locator.loadEvidencePublisher(bin));
   assert.equal(publisher.publishEvidence, publishEvidence);
   assert.equal(typeof publisher.publishSessionEvidence, 'function');
+  const policy = await step(() => import(pathToFileURL(join(project, '.agents/skills/qa/qa-demo-policy.ts')).href)) as typeof import('../../.agents/skills/qa/qa-demo-policy.ts');
+  const control = ['/', 'home', '/', `fixture-${Math.random().toString(36).slice(2)}`].join('');
+  assert.throws(() => policy.assertPublishable(control), { message: 'secret scan refused publication' });
+  assert.doesNotThrow(() => policy.assertPublishable('Capture complete: 2 facts'));
 }));
 
 test('QA locator resolves a Homebrew wrapper through its adjacent libexec package', t => evidenceCase(t, async ({root, step}) => {

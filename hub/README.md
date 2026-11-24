@@ -38,7 +38,7 @@ Live executor switching and bounded remote reachability are described in
 [Remote executors](../docs/hub/running.md#remote-executors-droplets).
 Evidence publication uses the session-aware `publishSessionEvidence` library;
 see [scan and publication](../docs/agents/evidence-publication.md) for snapshot,
-positive-control, scanner and refusal behaviour.
+positive-control, shared scanner profiles and refusal behaviour.
 The [suite retention reference](../docs/hub/suite-retention.md) describes bounded
 background deletion, durable publisher pins, preserved evidence and the
 configurable age floor and pass cap, with an [exact consumer census](../docs/hub/suite-run-references.md).

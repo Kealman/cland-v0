@@ -2,6 +2,80 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { assertPublishable, validateDemoResult } from '../../.agents/skills/qa/qa-demo-policy.ts';
+import { scanCapture } from '../../site/scripts/capture-safety.ts';
+
+test('publication profiles deliberately differ on short scheme prose', () => {
+  const prose = ['bearer', 'and'].join(' ');
+  assert.doesNotThrow(() => assertPublishable(prose));
+  assert.throws(() => scanCapture(prose, 'unused-control'), {
+    message: 'Screenshot capture failed during scan; private diagnostic withheld.',
+  });
+});
+
+// Generate controls in memory for every pattern family, never credentials on disk.
+const families: Record<string, (fake: string) => string> = {
+  'header': fake => `Authorization: ${['Bear', 'er'].join('')} ${fake.slice(0, 1)}`,
+  'standalone': fake => `${['Bear', 'er'].join('')} ${fake}`,
+  'query token': fake => `?${['access', 'token'].join('_')}=${fake}`,
+  'query key': fake => `&${['api', 'key'].join('_')}=${fake}`,
+  'token assignment': fake => `token : ${fake}`,
+  'hyphen key assignment': fake => `api-key = ${fake}`,
+  'compact key assignment': fake => `apikey: ${fake}`,
+  'provider basic': fake => ['sk', fake].join('-'),
+  'provider project': fake => ['sk', 'proj', fake].join('-'),
+  'provider service': fake => ['sk', 'svcacct', fake].join('-'),
+  'provider anthropic': fake => ['sk', 'ant', fake].join('-'),
+  'provider droplet': fake => ['dop', 'v1', fake].join('_'),
+  ...Object.fromEntries(['p', 'o', 'u', 's', 'r'].map(kind => [
+    `provider github ${kind}`, (fake: string) => ['gh' + kind, fake].join('_'),
+  ])),
+  'provider github fine': fake => ['github', 'pat', fake].join('_'),
+  'provider google': fake => ['AI', 'za', fake].join(''),
+  'provider aws': fake => ['AK', 'IA', fake.toUpperCase().slice(0, 16)].join(''),
+  'environment token': fake => `${['FIXTURE', 'TOKEN'].join('_')}=${fake}`,
+  'environment key': fake => `${['FIXTURE', 'API', 'KEY'].join('_')}: ${fake}`,
+  'environment secret': fake => `${['FIXTURE', 'SECRET', 'ACCESS', 'KEY'].join('_')}=${fake}`,
+  ...Object.fromEntries(['', 'RSA ', 'EC ', 'OPENSSH '].map(kind => [
+    `private key ${kind || 'generic'}`, () => ['-----BEGIN ', kind, 'PRIVATE KEY-----'].join(''),
+  ])),
+  'private mac path': fake => ['/', 'Users', '/', fake].join(''),
+  'private linux path': fake => ['/', 'home', '/', fake].join(''),
+  'sign-in link': fake => ['http://fixture.test/auth?', 'token=', fake].join(''),
+};
+for (const [family, make] of Object.entries(families)) {
+  for (const profile of ['qa-demo', 'capture']) {
+    test(`${profile} refuses generated ${family} controls in raw and decoded captures`, () => {
+      const fake = `fixture${Math.random().toString(36).slice(2)}`.repeat(4);
+      const control = make(fake);
+      const scan = (text: string) => profile === 'qa-demo' ? assertPublishable(text) : scanCapture(text, 'unused-control');
+      const message = profile === 'qa-demo' ? 'secret scan refused publication'
+        : 'Screenshot capture failed during scan; private diagnostic withheld.';
+      for (const text of [control, encodeURIComponent(control), JSON.stringify({ message: control }),
+        control.replaceAll('/', '\\u002f').replaceAll(' ', '\\u0020')]) {
+        assert.throws(() => scan(text), { message });
+      }
+      assert.doesNotThrow(() => scan('Capture complete: 2 facts'));
+    });
+  }
+}
+
+test('capture profile retains exact-secret matching without exposing its value', () => {
+  const secret = `fixture-${Math.random().toString(36).slice(2)}`;
+  assert.throws(() => scanCapture(`capture ${secret}`, secret), {
+    message: 'Screenshot capture failed during scan; private diagnostic withheld.',
+  });
+});
+
+test('both publication profiles refuse private paths with their original fixed diagnostics', () => {
+  const fake = `fixture-${Math.random().toString(36).slice(2)}`;
+  for (const root of ['Users', 'home']) {
+    const text = `/${root}/${fake}/capture.txt`;
+    assert.throws(() => assertPublishable(text), { message: 'secret scan refused publication' });
+    assert.throws(() => scanCapture(text, fake + '-control'), {
+      message: 'Screenshot capture failed during scan; private diagnostic withheld.',
+    });
+  }
+});
 
 for (const header of [true, false]) {
   test(`demo publication refuses synthetic ${header ? 'header' : 'standalone'} credentials`, () => {

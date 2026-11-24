@@ -1,3 +1,5 @@
+import { assertNoPublicationSecrets } from '../../.agents/skills/qa/secret-scan-policy.ts';
+
 type CapturePhase = 'capture' | 'setup' | 'sign-in' | 'desktop' | 'phone' | 'scan' | 'export' | 'cleanup';
 const safeErrors = new WeakSet<Error>();
 
@@ -8,7 +10,8 @@ function failure(phase: CapturePhase): Error {
 }
 
 export function scanCapture(text: string, secret: string): void {
-  if (text.includes(secret) || /Bearer\s+\S+|(?:token|api[_-]?key)\s*[=:]\s*\S+|\/Users\/|\/home\/|auth\?token=/i.test(text)) throw failure('scan');
+  try { assertNoPublicationSecrets(text, 'capture', secret); }
+  catch { throw failure('scan'); }
 }
 
 /** Do not serialize or attach the original error: message, stack, cause, assertion
