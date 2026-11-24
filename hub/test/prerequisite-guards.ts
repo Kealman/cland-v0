@@ -2,6 +2,16 @@
 import { importEdges } from './import-edges.ts';
 import { isBuiltin } from 'node:module';
 import { dirname, resolve } from 'node:path';
+import { glob, readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+
+export async function siteImportSources(root: URL): Promise<Map<string, string>> {
+  const files = new Map<string, string>();
+  for (const area of ['site/test', 'site/src', 'site/scripts', 'hub/src', 'shared']) {
+    for await (const path of glob(`${area}/**/*.{ts,tsx,js,mjs}`, { cwd: root })) files.set(resolve(fileURLToPath(root), path), await readFile(new URL(path, root), 'utf8'));
+  }
+  return files;
+}
 
 export function siteImportFindings(entries: string[], files: Map<string, string>, allowed: Set<string>): string[] {
   const findings: string[] = [];

@@ -5,7 +5,19 @@ import { mkdtemp, mkdir, writeFile, symlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { siteImportFindings } from './prerequisite-guards.ts';
+import { siteImportFindings, siteImportSources } from './prerequisite-guards.ts';
+
+test('site source collection resolves users docs scripts and retains the hub package boundary', async () => {
+  const root = new URL('../../', import.meta.url);
+  const files = await siteImportSources(root);
+  const entry = fileURLToPath(new URL('site/test/users-docs.test.ts', root));
+  assert.deepEqual(siteImportFindings([entry], files, new Set()), []);
+  files.set(entry, "import '../../hub/src/site-boundary-control.ts'");
+  files.set(fileURLToPath(new URL('hub/src/site-boundary-control.ts', root)), "import 'hub-only-control'");
+  assert.deepEqual(siteImportFindings([entry], files, new Set()), [
+    `${fileURLToPath(new URL('hub/src/site-boundary-control.ts', root))}:1: hub-only-control is not a site dependency`,
+  ]);
+});
 
 test('site import guard catches a transitive hub-only package and computed imports', () => {
   const files = new Map([
