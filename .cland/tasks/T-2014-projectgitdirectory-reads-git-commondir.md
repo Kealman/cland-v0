@@ -2,8 +2,8 @@
 id: T-2014
 kind: task
 title: projectGitDirectory reads .git/commondir with an unbounded readFile; enforce the metadata byte bound while reading
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1738
 branch: t/T-2014-projectgitdirectory-reads-git-commondir
 created: 2026-11-19T20:18:03.512Z
-updated: 2026-11-24T11:01:58.625Z
+updated: 2026-11-24T14:20:09.144Z
+closed: 2026-11-24T14:20:09.144Z
 ---
 
 ## Summary
@@ -29,9 +30,11 @@ Read `.git/commondir` (and any sibling Git metadata that this parser reads) thro
 
 - [x] C1. An oversized `.git/commondir` fixture is refused while reading, with a structured outcome, and a normal one still parses (test).
   - done: impl-2014 · 2026-11-24T11:00:48.389Z
+  - verified: rev-35 [reviewer] · run rev-35-2014-evidence-1 · 2026-11-24T12:27:55.040Z · commit 417b8aa5378284d5ef2ccc519439bb87d40ef9df
 - [x] C2. Every caller of `projectGitDirectory` is listed with its disposition (rules 20 and 41).
   - done: impl-2014 · 2026-11-24T10:48:27.023Z
   - verified: rev-35 [reviewer] · run rev-35-2014-source-2 · 2026-11-24T11:01:58.625Z · commit 417b8aa5378284d5ef2ccc519439bb87d40ef9df
+  - verified: rev-35 [reviewer] · run rev-35-2014-evidence-1 · 2026-11-24T12:27:55.040Z · commit 417b8aa5378284d5ef2ccc519439bb87d40ef9df
 
 ## Comments
 
@@ -72,3 +75,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-22862: Standards0/Spec0. M1 resolved with stage owner before setup, bounded original work, required idempotent handle closes and reverse filesystem-before-native restoration. Held-read control under outer owner proves refused restoration through held/rejected close, then exact close and original-boundary restoration after repair. No actual descriptor/root leak proof claimed from in-memory fakes. Production reader and5 consumer dispositions unchanged; C2 verified, C1 pending configured same-head evidence. A-22861 explicitly scopes local6/6 and final typecheck/lint0, prior902T1 predates correction, no T3/Web/configured proof. No reviewer execution/edit. Hold releases; seek Coordinator mode-free window unchanged head; no dev merge/full task-head suite/duplicate run requested.
 
 Criteria: C2 verified.
+
+### rev-35 · 2026-11-24T12:27:55.040Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2014-evidence-1
+commit: 417b8aa5378284d5ef2ccc519439bb87d40ef9df
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-22932: same-head configured bd944e75/A-22929 finished passed, code0/cause empty. All6 exact metadata cases have paired base passes and5 distinct load passes each, including oversize commondir/gitdir, short-read/fallback, exact limit, primary+close failure and held-cancel/repaired-close restoration. C1 verified; C2 caller inventory remains current/reverified. Native maintenance16/16, maintenance CLI1/1, doctor CLI9/9 and isolation1/1 pass. Complete T0/all243T1/all446T2/245selectedT3/all55Web exit0;28T3 deferred, T4 unexecuted. Linux x64 droplet Node24.21.0, nvim0.12.5, Headless1248/CfT156.0.8078.4. Report-only budget/lint/ratchet, prerequisite skips and known separate F2 records explicitly retained; no full integrated claim. Verification and Git trees separately recorded. Read-only review, no tests/probes/reruns/source changes.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T14:20:09.144Z
+
+Merged 77dfa0b631d5b5a1d5b564b513ede0f6397cd6b1 onto dev.

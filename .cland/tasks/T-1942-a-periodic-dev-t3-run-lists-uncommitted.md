@@ -2,8 +2,8 @@
 id: T-1942
 kind: task
 title: A periodic dev T3 run lists uncommitted root files as its deciding files
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1733
 branch: t/T-1942-a-periodic-dev-t3-run-lists-uncommitted
 created: 2026-11-17T10:51:04.585Z
-updated: 2026-11-24T10:54:19.569Z
+updated: 2026-11-24T13:42:33.438Z
+closed: 2026-11-24T13:42:33.438Z
 ---
 
 ## Summary
@@ -29,9 +30,11 @@ An integrated run computes and reports its deciding files from the tested commit
 
 - [x] C1. With a dirty root that has an uncommitted tracker edit, a dev integrated run at a commit reports deciding files from that commit's diff only (test).
   - done: impl-1942 · 2026-11-24T10:45:24.699Z
+  - verified: rev-35 [reviewer] · run rev-35-1942-evidence-1 · 2026-11-24T12:13:38.267Z · commit 12739fecbf315ac9d141f6bdb9ba1e699df7e38a
 - [x] C2. Every reader of deciding files in integrated and batch runs is listed with its source of truth (rule 41).
   - done: impl-1942 · 2026-11-24T10:36:25.322Z
   - verified: rev-35 [reviewer] · run rev-35-1942-source-2 · 2026-11-24T10:54:19.569Z · commit 12739fecbf315ac9d141f6bdb9ba1e699df7e38a
+  - verified: rev-35 [reviewer] · run rev-35-1942-evidence-1 · 2026-11-24T12:13:38.267Z · commit 12739fecbf315ac9d141f6bdb9ba1e699df7e38a
 
 ## Comments
 
@@ -72,3 +75,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-22852: Standards0/Spec0. M1 resolved with suiteCase before acquisition, separately bounded setup/action, native fixtureCommand closure/birth ownership and joined selector continuation. New failure/cancellation controls assert structured native close independently of actual guarded removal refusal/sentinel/release/ENOENT. Original selector assertions retained, production blob unchanged. C2 inventory checked/verified; C1 done/unverified pending configured same-head receipts. A-22842 preserves failed over-specific signal expectation separately from final7/7 local native success; request reports full typecheck/lint0. No reviewer execution/edit. Hold releases; seek Coordinator mode-free window at unchanged head; no dev merge/full task-head suite/duplicate run requested.
 
 Criteria: C2 verified.
+
+### rev-35 · 2026-11-24T12:13:38.267Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1942-evidence-1
+commit: 12739fecbf315ac9d141f6bdb9ba1e699df7e38a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-22920: same-head configured a0e21f1a/A-22919 finished passed, result code0/cause empty. Exact committed/dirty/task regression and both independent native-close/guarded-removal controls have paired structured pass finishes (1.951254538/0.186126425/0.508288779 s); full fetch-selector file 7/7. C1 verified; C2 source inventory remains current and reverified. Complete T0/T1/all T2/253 selected T3/Web exit0; 20 T3 deferred and T4 unexecuted, no full integrated claim. Linux x64 droplet Node24.21.0, nvim0.12.5, Headless Shell1248/CfT156.0.8078.4. Producer records 9476 ordinary passes/12 prerequisites skipped plus5 loaded skips, none unfinished; exact required rows paired, three known F2 finish-only records kept separate. Budget/lint/ratchet report-only. Git and canonical verification trees separately recorded. No source change, reviewer test/probe or rerun.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T13:42:33.438Z
+
+Merged 3e5371bca5373797311a610cb21285eef12a9327 onto dev.

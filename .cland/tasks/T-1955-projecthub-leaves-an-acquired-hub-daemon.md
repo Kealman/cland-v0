@@ -2,8 +2,8 @@
 id: T-1955
 kind: task
 title: projectHub leaves an acquired hub daemon and log without teardown when registerHubCards or the readiness assertion rejects
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1722
 branch: t/T-1955-projecthub-leaves-an-acquired-hub-daemon
 created: 2026-11-18T02:12:33.701Z
-updated: 2026-11-24T11:11:28.443Z
+updated: 2026-11-24T12:53:41.628Z
+closed: 2026-11-24T12:53:41.628Z
 ---
 
 ## Summary
@@ -98,3 +99,7 @@ C2 verified: A-21000 census/source2 compatibility analysis and additive accessor
 T0/T1/fallback all T2/239 selected T3 importer files/Web exit 0; remaining T3 deferred to merge batch, T4 unexecuted. Linux x64 droplet c-8 nyc1, Node v24.21.0, Neovim v0.12.5, two workers, isolated Chrome for Testing 156.0.8078.4 headless shell/Playwright 1248. Platform/binary prerequisite skips retained; budgets/ratchet/lint advisory checks report-only, not enforced timing passes; no cache reuse. Detailed receipt/criteria map A-22875 at .cland/artifacts/A-22875-t-1955-final-evidence-review-clear-at-6301b9f28.md. No Reviewer tests/native/browser/provider work or source edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T12:53:41.628Z
+
+Merged 729550515ca5be097262c573543000af04dc6bb1 onto dev.

@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-24T10:06:19.418Z
+updated: 2026-11-24T12:09:02.332Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -722,3 +722,7 @@ Restart #100 (2026-11-23, on coord's GO under rule 19: T-2061 sharded periodic d
 ### human · 2026-11-24T10:06:19.418Z
 
 Restart #101 (2026-11-24, on coord's GO under rule 19 after T-2069 landed): hub r100 pid 48343 (cc55d9f30; RSS had grown to 2.08 GB under the T-2069 report-retry loop) stopped 10:03:47Z; job cland-hub-r101 pid 64841 started from the root at 2514c3d9a (dev = origin/dev, root clean, merge queue empty, seven droplet verifies in flight and all reattached), serving 10:04:02.024Z, gap 15 s. Binding listeners 4 ms, web listener 376 ms. Port 60929, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 10:04:02Z, injected 10:04:04Z. The two release covers stuck since 05:34Z/05:48Z (c4e171e7, 68c47db0; cause T-2069: a result sent from coord to the role tag coordinator resolved to no recipient) reported on their first retry at 10:04:29Z and 10:04:32Z and stopped rewriting their logs. Earlier today on #100: load 21-24 at 09:05-09:12Z from eight concurrent implementer test:lint runs plus impl-2001's T-2001-loaded.mjs (330% CPU) on top of the retry loop; five tracker-storage-stalled lines of 5-10 s (09:06-09:12Z); coord issued a LOAD STOP and a LINT SLOT rule; coord's cland merge T-2069 waited 13.6 min for the native command slot before its preflight ran.
+
+### human · 2026-11-24T12:09:02.332Z
+
+Restart #102 (2026-11-24, on coord's GO under rule 19; hub RSS had reached 3.08 GB at 12:01:59Z with ~100% CPU, answers of 20-130 s and an 8 s CPU profile showing 56% in TestLintWarmer #drain, the in-process TypeScript test lint rerun on every dev tip move): hub r101 pid 64841 (2514c3d9a) stopped 12:04:59Z; job cland-hub-r102 pid 15174 started from the root at 65c625080 (dev = origin/dev, root clean, next batch not yet started, five droplet verifies in flight and reattached), serving 12:05:24.899Z, gap 26 s (startup journal 10.9 s). Binding listeners 7 ms, web listener 493 ms. Port 65503, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 38 ok / 0 fail after the startup drain. Coord bridge-connected 12:05:25Z. No npm install or web rebuild needed.

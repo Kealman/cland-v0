@@ -2,8 +2,8 @@
 id: T-2018
 kind: task
 title: qa.test.ts groupGone treats every process-group probe error as absence; only ESRCH proves the group is gone
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1732
 branch: t/T-2018-qa-test-ts-groupgone-treats-every
 created: 2026-11-20T00:18:35.899Z
-updated: 2026-11-24T11:06:52.280Z
+updated: 2026-11-24T12:47:42.992Z
+closed: 2026-11-24T12:47:42.992Z
 ---
 
 ## Summary
@@ -68,3 +69,7 @@ Criteria: C1 verified.
 ### impl-2018 · 2026-11-24T11:06:52.280Z
 
 Configured verify 2856ebe9-c4a9-4094-933e-8fe9c951a74f passed at exact reviewed head 2f353bde9f7391e71935d014c7bbc5a7deb97e27. A-22864: Linux x64 droplet, Node 24.21.0, Neovim 0.12.5; T0, all T1/T2 fallback, eight selected T3 files including nvim/test/qa.test.ts, Web; 7497 passed, 0 failed, 4 skipped. Remaining T3 deferred to merge batch; T4 unexecuted. Budget/lint advisories remain report-only. Awaiting reviewer C1 settlement; source unchanged.
+
+### coord · 2026-11-24T12:47:42.992Z
+
+Merged faff3e3809c5f7ba6bcc0ea3b60c1c7499e0aef9 onto dev.

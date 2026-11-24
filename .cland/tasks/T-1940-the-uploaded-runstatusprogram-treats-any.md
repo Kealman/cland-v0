@@ -2,8 +2,8 @@
 id: T-1940
 kind: task
 title: The uploaded runStatusProgram treats any process.kill(-pgid, 0) error as "runner gone", so EPERM or an unknown error becomes a confirmed "disappeared without a done marker"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1728
 branch: t/T-1940-the-uploaded-runstatusprogram-treats-any
 created: 2026-11-17T09:02:50.786Z
-updated: 2026-11-24T10:54:35.294Z
+updated: 2026-11-24T12:03:47.633Z
+closed: 2026-11-24T12:03:47.633Z
 ---
 
 ## Summary
@@ -78,3 +79,7 @@ C1 verified from the actual generated-case finish `uploaded status requires ESRC
 T0/T1/fallback all T2/248 selected T3 importers/Web exit 0; remaining T3 deferred to merge batch and T4 unexecuted. Linux x64 droplet c-8 nyc1, Node v24.21.0, Neovim v0.12.5, two workers; isolated Chrome for Testing 156.0.8078.4 headless shell, Playwright 1248. Prerequisite skips retained (macOS facilities, missing OpenCode/zsh); budgets/ratchet/lint advisories report-only, not enforced timing passes. No cache reuse. Full evidence/scope: A-22853 at .cland/artifacts/A-22853-t-1940-final-evidence-review-clear-at-cd70d3aaf.md. Reviewer ran no tests/native/browser/provider work or source edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T12:03:47.633Z
+
+Merged 65c625080ed78dddc1565c247b405d991f9bb777 onto dev.

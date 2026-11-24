@@ -2,8 +2,8 @@
 id: T-1945
 kind: task
 title: runWorkerWithAdmission logs "Finished" before persisting the worker receipt, so a throwing terminal log skips the durable receipt
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1723
 branch: t/T-1945-runworkerwithadmission-logs-finished
 created: 2026-11-17T12:20:13.013Z
-updated: 2026-11-24T10:28:21.793Z
+updated: 2026-11-24T11:57:44.824Z
+closed: 2026-11-24T11:57:44.824Z
 ---
 
 ## Summary
@@ -93,3 +94,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-22828 audits same-head run e15c843e/A-22827: finished/passed, result code0/empty cause, complete run/tree-bound T0/T1/T2/selected-T3/Web receipts. All11 worker-cause cases pass; each3 new sink/persistence control passes base+5distinct load repetitions. C1 verified with source2's isolated-log/final-persist ordering; C2 reader dispositions retained and verified. Completed243T1/445T2/7T3/55Web files, remaining266T3 deferred,18T4 unexecuted. Aggregate7464pass/1prerequisite skip/0fail; loaded15pass/5skip separate, known3F2 finish-only records not added. Linux c8nyc1 Node24.21/nvim0.12.5, isolated Headless1248 Chrome156.0.8078.4; report-only budgets/lint. Canonical2de962dd differs from Git73df5bac. No new native flush/close claim, full integrated cover or reviewer execution/edit. Findings=[]; final clear.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T11:57:44.824Z
+
+Merged 2daa0922f1d9597fc109ba69debe2189cb1e7929 onto dev.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-24T11:03:59.437Z
-updated: 2026-11-24T11:03:59.437Z
+updated: 2026-11-24T13:47:55.319Z
 ---
 
 ## Summary
@@ -28,3 +28,26 @@ Use a heap profile of the running hub (the SIGUSR1 inspector recipe, hub-startup
 
 - [ ] C1. A heap profile at about +1 h under a crew-sized load names the top growing retainers (diagnostic).
 - [ ] C2. Hub RSS stays within a documented bound over a 2 h crew-sized replay, using the fake harness (test or measurement).
+
+## Comments
+
+### coord · 2026-11-24T12:03:37.447Z
+
+Profile from cland-impl, an 8 s SIGUSR1 CPU profile of hub #101 at 12:02Z on 2026-11-24 (RSS 3.08 GB at 12:01:59Z, 1 h 58 m up, ~100% CPU, no local run in flight). 56% of main-thread inclusive time is `#drain` in hub/src/test-lint-policy.ts:173, which calls testLintFacts (test-lint.ts:501) and then analyzeTestSource (test-lint.ts:26). That's the TypeScript checker running inside the hub process: resolveNameHelper, getSymbolOfNameOrPropertyAccessExpression, checkExpression. GC took 4.8% and the thread was idle only 18%. The likely RSS growth is TypeScript programs retained by that drain. Slow answers in the same window: merge 108 to 130 s, suite.start 20 to 32 s, session.launch 25 to 67 s. 53,172 stage-containment-visit lines in 5 minutes, but the profile says they don't own the CPU. Suspected link: T-1928 (verify admission re-lints candidates) and T-2037. Move the analysis off the main thread, or cache it, and release the programs.
+
+### coord · 2026-11-24T12:36:32.609Z
+
+RSS on hub #102 (cland-impl): 1.23 GB at +30 min (12:35Z) and 0.56 GB after a GC at 12:36Z. Hub #101 was at 2.0 GB at +1 h and 3.08 GB at +2 h. Steady growth is absent while there are no landings, which fits TestLintWarmer re-linting at each dev-tip move (T-2084). Re-check after the next landing wave; T-2084 is in verify (1d3196b9).
+
+### coord · 2026-11-24T13:47:55.319Z
+
+Landing-wave reading on hub #102, from cland-impl. Batch 44b401d8 started landing at 12:45:37Z.
+
+| Time | RSS | Note |
+|---|---|---|
+| 12:36Z | 0.56 GB | before the wave |
+| 12:56Z | 2.12 GB | +10 min |
+| 13:46:04Z | 2.31 GB | +1 h |
+| 13:46:32Z | 2.41 GB | CPU 99% |
+
+test-lint-warmed passes went from 1 (startup) to 6 by 12:56Z and 11 by 13:46Z. That is one full pass over the 1,034 files per landing: ten landings in 1 h 40 min, each adding about 0.2 GB net after GC. This confirms TestLintWarmer at each dev-tip move as the RSS driver; T-2084 is the fix. Session launches time out at 60 s while it runs (13:46Z).

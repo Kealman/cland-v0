@@ -2,8 +2,8 @@
 id: T-1914
 kind: task
 title: cland task import forwards the caller's ambient CLAND_LAUNCH_TOKEN on its nested hub frame even when an explicit environment or human actor is given
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1730
 branch: t/T-1914-cland-task-import-forwards-the-caller-s
 created: 2026-11-16T14:56:30.107Z
-updated: 2026-11-24T10:37:46.691Z
+updated: 2026-11-24T12:01:48.202Z
+closed: 2026-11-24T12:01:48.202Z
 ---
 
 ## Summary
@@ -82,3 +83,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged34b2bb595. Exact-head finished/passed18240152/A-22832; canonical4384f50e matches executable head. Independently checked all11import-github structured base outcomes pass, including human/session actual actor frames, task/crew explicit-env forwarding, held-work/setup-failure disposal and rejected-close retention/repair. Five enrolled actor/forwarding/rejected-close identities each5/5 load-gate; no other repetitions inferred. C1/C2 verified using source2 consumer/assertion audit A-22812 plus these receipts and retained red-before evidence. T0/T1/fallbackT2/selectedT3/Web exit0;9selected processfiles110identities once, restT3 mergebatch/T4unexecuted;7476pass/1Mac-selector skip/0fail. Noncached Linuxx64 c8nyc1 workers2 Node24.21.0/Nvim0.12.5, HeadlessShell1248/CfT156.0.8078.4. Advisory budgets remain report-only, no performance claim. A-22833 records both axes/provenance/line receipts. No findings or reviewer runs/edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T12:01:48.202Z
+
+Merged fa98700f79029d4ce7955f765f17f6c8f5b90a52 onto dev.

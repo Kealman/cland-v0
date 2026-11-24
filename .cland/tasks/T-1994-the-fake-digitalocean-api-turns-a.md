@@ -2,8 +2,8 @@
 id: T-1994
 kind: task
 title: The fake DigitalOcean API turns a rejected beforeCreate assertion into a 500, so the test times out at 120 s instead of failing
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1735
 branch: t/T-1994-the-fake-digitalocean-api-turns-a
 created: 2026-11-19T02:38:47.676Z
-updated: 2026-11-24T11:13:55.560Z
+updated: 2026-11-24T13:44:25.383Z
+closed: 2026-11-24T13:44:25.383Z
 ---
 
 ## Summary
@@ -27,10 +28,12 @@ When a test-supplied `beforeCreate` callback rejects, the fake API fails the tes
 
 ## Acceptance criteria
 
-- [ ] C1. A `beforeCreate` callback that throws an assertion fails its case with that assertion's message within the case's normal budget, never by timeout (test with a positive control, red on the current fake).
-  - failed: rev-40 [reviewer] · 2026-11-24T11:10:44.273Z · note Residual M1: post-join cleanup rejection can restore the native seam while provider closure is incomplete; hookCase requires fenced cleanup.
+- [x] C1. A `beforeCreate` callback that throws an assertion fails its case with that assertion's message within the case's normal budget, never by timeout (test with a positive control, red on the current fake).
+  - done: impl-1994 · 2026-11-24T11:44:19.121Z
+  - verified: rev-40 [reviewer] · run rev-40-20261124-1994-final · 2026-11-24T12:24:13.163Z · commit e9d32d3506c4820fa9f577377ddcef4aecb49760
 - [x] C2. Every caller that passes `beforeCreate` is listed with its disposition (rule 41) and still passes.
   - done: impl-1994 · 2026-11-24T10:50:09.835Z
+  - verified: rev-40 [reviewer] · run rev-40-20261124-1994-final · 2026-11-24T12:24:13.163Z · commit e9d32d3506c4820fa9f577377ddcef4aecb49760
 
 ## Comments
 
@@ -83,3 +86,39 @@ Residual M1-R corrected locally: hookCase proxy opts into fenceFixtureCleanup. S
 ### impl-1994 · 2026-11-24T11:13:55.560Z
 
 Correction to preceding evidence reference: the actual published artifact is A-22877, durable path /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-22877-t-1994-same-owner-cleanup-fence-red-and-green.md. A-22875 was an erroneous provisional reference; use A-22877.
+
+### rev-40 · 2026-11-24T11:45:05.808Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261124-1994-source3
+commit: e9d32d3506c4820fa9f577377ddcef4aecb49760
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source3 clear at e9d32d350. Residual M1-R resolved: hookCase's actual proxy owner is fenced before provider acquisition, so failed resource/directory cleanup retains native seam until successful repair. Same-hookCase control proves admitted held writer, original body joined before cleanup, exact guard identity/retained root after rejected close, same-owner repaired close/request completion/root removal before restoration. Earlier setup/action bounds, late ownership and M2 original-error preservation retained; fake source/four checked consumer migrations unchanged. A-22894 records both axes/ownership/evidence limits. C1/C2 remain unverified pending exact-head configured consumer receipts, T3 included. A-22877 functional red/33green local report retained; malformed earlier draft excluded, no configured/native coverage inferred. No findings/reviewer runs/edits.
+
+### impl-1994 · 2026-11-24T12:24:07.827Z
+
+Exact-head configured receipt 0a4fd93d-4369-4ecc-8c28-b1d50a230611 / A-22925 at e9d32d3506c4820fa9f577377ddcef4aecb49760 (tree f8c010871de45a5e32eacda9ebc810bf69c096fc): exit 0, T0/T1/T2/selected T3/Web exit 0; 7619 tests, 7617 pass, 0 fail/cancelled, 2 platform skips. Droplet Linux x64 6.8.0-149-generic, Node 24.21.0, Neovim 0.12.5, c-8 nyc1, lifetime 2043 s, cost $0.1418. Browser /home/runner/cland/node_modules/playwright-core/.local-browsers/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell, Google Chrome for Testing 156.0.8078.4. Parsed durable finish records apart from exit status: pacing 33/33, all nine named T-1994 controls passed base plus recorded 5/5 load repetitions each. Every beforeCreate consumer has a passing file receipt: accounting 26/26; safety-component 14/14; safety 17/17; remote-budget 19/19; demo-provisioning 2/2; demo 5/5; prepare-component 39/39; host-provider 89/89; close-recovery 4/4; remote-process 1/1; close 3/3; candidate-remote 1/1; executor-run 22/22; daemon 19/19. Close-component 18 pass + 1 macOS-selector skip; executor-droplet 13 pass + 1 macOS caffeinate skip (neither skip is a beforeCreate callback case). Skip-reason check report mode has missing=0. Duration advisories remain report-only, no speed claim. 27 selected T3/T4 files supplied 228 passing identities once; remaining T3 deferred to merge batch and other occasions. Reviewer receives same-head receipt automatically; final criteria/verdict settlement pending.
+
+### rev-40 · 2026-11-24T12:24:13.163Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261124-1994-final
+commit: e9d32d3506c4820fa9f577377ddcef4aecb49760
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchangede9d32d350. Exact-head0a4fd93d/A-22925 finished/passed, canonicalf8c01087 executable match. All9new observer/drainage/intentional-error/primary-cleanup/late-setup/same-owner repair controls have structured base pass17008–17040 and distinct5/5load receipts; pacing33positive cases. All16beforeCreate consumer files have positive bases;4migrated assertion-bearing exact cases independently pass21909/32460/40609/41086, nativeT3 included. C1/C2 verified. T0/T1/fallbackT2/selectedT3/Web exit0;27processfiles228positive identities once, restT3batch/T4unexecuted;7617pass/2unrelated platform skips/0fail. Noncached Linuxx64c8nyc1 workers2 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156.0.8078.4; budgets/lint advisory. A-22926 records named cases, consumer census/provenance/limits; prior incomplete draft excluded. No findings/reviewer runs/edits.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T13:44:25.383Z
+
+Merged 9b74cd0990529b09c06d2b3439864ca88300bc30 onto dev.

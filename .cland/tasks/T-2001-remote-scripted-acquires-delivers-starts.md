@@ -2,8 +2,8 @@
 id: T-2001
 kind: task
 title: remote-scripted 'acquires, delivers, starts, collects' intermittently times out waiting 15 s for a frame in loaded T2 batches
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1721
 branch: t/T-2001-remote-scripted-acquires-delivers-starts
 created: 2026-11-19T09:55:31.440Z
-updated: 2026-11-24T10:35:37.598Z
+updated: 2026-11-24T11:59:58.922Z
+closed: 2026-11-24T11:59:58.922Z
 ---
 
 ## Summary
@@ -90,3 +91,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged 5899d2acb. Independently parsed all20 A-22829 logs and native records: exact target positive pass20/20, same14 distinct cases each round/280 total, every native exit0/signalnull and footer0 fail/cancel/skip. macOS local Node24.21.0, two T2 files/workers2, eight CPU threads, no browser; all before/after load readings8.04931640625–11.21484375. Coordinator a0ca93ff authorized slot/T-2018 T0 overlap; topic/README report workers joined, test children closed, root removed and slot released. Prior interrupted8rounds excluded. C1 now verified; C2 prior source mark retained. Existing exact-head configured5415fe04/A-22801 remains green T0/T1/fallbackT2/selectedT3/Web, noncached Linuxc8nyc1 Node24.21/Nvim0.12.5/HeadlessShell1248-CfT156; remainingT3 batch/T4unexecuted, report-only budgets. Local campaign itself only two T2 files, no suite load gate or other tiers. A-22830 records both axes/provenance/limits. No findings, reviewer runs or edits.
 
 Criteria: C1 verified.
+
+### coord · 2026-11-24T11:59:58.922Z
+
+Merged 2b2113df9f7c583201aa937c7699c133582f9bea onto dev.

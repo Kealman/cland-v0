@@ -2,8 +2,8 @@
 id: T-1995
 kind: task
 title: openDatabase's cleanup close can throw and replace the original initialization error
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1726
 branch: t/T-1995-opendatabase-s-cleanup-close-can-throw
 created: 2026-11-19T03:19:07.689Z
-updated: 2026-11-24T11:11:39.158Z
+updated: 2026-11-24T12:55:14.213Z
+closed: 2026-11-24T12:55:14.213Z
 ---
 
 ## Summary
@@ -89,3 +90,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged00c594e49. Exact-head2d9986ea/A-22869 finished/passed; canonical44ba26b4 executable match. Independently checked four database-cleanup generated passes (pragma double-failure, init/successful cleanup, schema double-failure, seed-body double-failure) and four cleanup-failure generated passes (identity/existing cause, frozen/nonError variants), each with separate5/5 load-gate receipt. C1 verified; C2 source census mark retained. T0/T1/fallbackT2/selectedT3-importer command/Web exit0;252processfiles2021positive passing identities once/no repetitions, prerequisite skips retained; noT4 receipt. Noncached Linuxx64c8nyc1 workers2 Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156.0.8078.4. Budget/lint reports advisory, no performance/full-crossplatform claim. A-22876 contains both axes/provenance/receipts; inherited rollback aside remains separate. No findings/reviewer runs/edits.
 
 Criteria: C1 verified.
+
+### coord · 2026-11-24T12:55:14.213Z
+
+Merged 7e117f8bb8f10e8225d1189386ad5fa7cf03eb18 onto dev.

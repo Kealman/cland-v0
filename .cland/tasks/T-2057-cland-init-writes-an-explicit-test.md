@@ -3,7 +3,7 @@ id: T-2057
 kind: task
 title: Generated and managed configs write an explicit test_timeout (`cland init`, and any managed config rendering such as `config set`), so projects lose default provenance and T-2046's load scaling
 state: open
-status: planned
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-2074
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1751
+branch: t/T-2057-cland-init-writes-an-explicit-test
 created: 2026-11-21T23:29:11.442Z
-updated: 2026-11-24T09:01:17.746Z
+updated: 2026-11-24T14:04:51.453Z
 ---
 
 ## Summary
@@ -31,11 +31,30 @@ Keep an explicit user value exact. Existing projects are unchanged unless their 
 
 ## Acceptance criteria
 
-- [ ] C1. A project created by `cland init` gets the scaled default per-test timeout under load, and a project that sets `test_timeout` explicitly keeps it exact (test).
-- [ ] C2. Rendering a managed config setting (for example `config set` on a verification key) in a project that leaves `test_timeout` unset keeps it unset, or keeps default provenance, so load scaling survives (test).
+- [x] C1. A project created by `cland init` gets the scaled default per-test timeout under load, and a project that sets `test_timeout` explicitly keeps it exact (test).
+  - done: impl-2057 · 2026-11-24T13:56:18.469Z
+- [x] C2. Rendering a managed config setting (for example `config set` on a verification key) in a project that leaves `test_timeout` unset keeps it unset, or keeps default provenance, so load scaling survives (test).
+  - done: impl-2057 · 2026-11-24T13:56:22.477Z
 
 ## Comments
 
 ### coord · 2026-11-22T00:29:34.117Z
 
 Widened (2026-11-22): T-2051's verify 8fce93e4 (A-22602) showed `hub/test/verification-workers.test.ts` failing on `testTimeoutIsDefault` true before versus false after managed config rendering. So managed rendering (for example `config set` on a verification setting) also writes `test_timeout` explicitly. A project that left it unset loses default provenance, and load scaling, as soon as any managed setting is rendered. This item covers both the init template and managed rendering. Rendering should keep an unset `test_timeout` unset, or keep its default provenance.
+
+### impl-2057 · 2026-11-24T13:52:42.504Z
+
+Consumer search: searched renderConfig, test_timeout, testTimeoutIsDefault and configKeys across hub/src, all hub/test tiers (including frozen CLI fixture), nvim/test, web, docs, QA briefs and shipped skills. Production consumers: provisionConfig (init/update), config-set/configKeys, setup harness/account writers, hub/configuration, suite-limits and run-suite. Changed renderer and key vocabulary exemplar; parser/admission/wire shape unchanged. Migrated init-config and verification-workers expectations and executor-safety roundtrip. Other render callers retain explicit values through parser provenance; existing config-reload explicit transition remains valid. suite-remote-budget explicitly marks its synthetic bound exact and is unaffected. No frozen CLI usage bytes or help export changes. Updated running/test docs, hub index and implement skill. Existing until legacy-admission regression retains previous snapshot shape. T1 import-graph search selects 89 reachable files plus 2 unresolved files included conservatively; T2/T3/T4 callers left to reviewed mode-free verify selection.
+
+### rev-40 · 2026-11-24T14:04:51.453Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261124-2057-source
+commit: 7497df9969864279447afe5d79a134a2d8ca494c
+scope: full
+findings: [{"severity":"low","text":"L1: runConfig derives string argv type from rendered default template; commented test_timeout loses its exemplar, enabling TOML decoding of embedded quoted durations instead of literal-string handling. Ordinary120s/17s unaffected. Share explicit vocabulary/type exemplar and add argv coverage; nonblocking XS/Bugs follow-up T-2089 filed by Coordinator.","file":"hub/src/cli/config.ts","line":13}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Source clear at7497df996, one low L1 runConfig:13 retained/trackedT-2089; no high/medium. Renderer comments only positive default provenance, explicit/legacy-unknown assignments stay exact; provision/update/managed settings preserve absent source and unknown keys. configKeys retains writabletimeout; parser/runner/admission contracts unchanged. C1/C2 tests exercise emitted absence, factor3runner argument, explicit120/17 and managed settings roundtrip; changed worker/executor assertions/docs/skill provenance match. Authorized sharedT2088 test correction retained. A-23001 records both axes/census/local evidence limits. C1/C2 pending same-head configured named receipts, verification-workersT3 included;91selectedT1/localchecks not full or exact-head configured proof. No reviewer runs/edits.

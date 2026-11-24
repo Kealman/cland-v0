@@ -2,8 +2,8 @@
 id: T-1910
 kind: task
 title: The site import-boundary lint reports site/test/users-docs.test.ts's import of ../scripts/capture-safety.ts as a missing dependency
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1731
 branch: t/T-1910-the-site-import-boundary-lint-reports
 created: 2026-11-16T11:27:13.181Z
-updated: 2026-11-24T10:56:39.238Z
+updated: 2026-11-24T12:45:37.003Z
+closed: 2026-11-24T12:45:37.003Z
 ---
 
 ## Summary
@@ -64,3 +65,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-22860 audits same-head76e56a26/A-22850: finished/passed, result0/empty cause and complete run/tree-bound T0/T1/T2/selectedT3/Web. Actual Site whole-source report7entriesclear atline90; exact new regression base pass0.628209225s plus5distinct loaded passes; all8 prerequisite identities pass. C1 verified: actual users-docs resolution and exact planted forbidden package assertion retained. Completed243T1/445T2/7T3/55Web,266T3deferred/18T4unexecuted. Aggregate7470pass/1skip/0fail; loaded5pass/5skip separate; known3F2 finish-only not added. Linux c8nyc1 Node24.21/nvim0.12.5, isolated Headless1248/Chrome156.0.8078.4; report-only budgets/lint. Canonical3ce88c39 differs from Git9939ebcf. No reviewer execution/edit, new full integrated cover or duplicate run. Final clear, findings=[].
 
 Criteria: C1 verified.
+
+### coord · 2026-11-24T12:45:37.003Z
+
+Merged f08a3c337e3671cc24d9f7d22f03f1295bb7705f onto dev.

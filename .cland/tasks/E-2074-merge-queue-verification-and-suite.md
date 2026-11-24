@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-24T09:00:01.516Z
-updated: 2026-11-24T09:01:15.135Z
+updated: 2026-11-24T14:04:26.017Z
 ---
 
 ## Goal
@@ -38,6 +38,9 @@ stages:
       scope: none
       when: after-stage
     lanes:
+      - - T-2084
+        - T-1928
+        - T-2037
       - - T-1945
         - T-1962
       - - T-1953
@@ -45,6 +48,7 @@ stages:
       - - T-2027
       - - T-2065
       - - T-2057
+        - T-2089
   - name: stage 2
     qa:
       scope: none
@@ -62,8 +66,6 @@ stages:
       scope: none
       when: after-stage
     lanes:
-      - - T-1928
-        - T-2037
       - - T-2023
       - - T-2002
         - T-2003

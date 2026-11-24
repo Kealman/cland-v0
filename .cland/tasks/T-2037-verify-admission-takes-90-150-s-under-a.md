@@ -3,7 +3,7 @@ id: T-2037
 kind: task
 title: "Verify admission takes 90–150 s under a crew-sized load (CLI exits 75): trace the dominant cost and bring admission inside the CLI reply wait"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T17:55:35.281Z
-updated: 2026-11-24T09:00:06.291Z
+updated: 2026-11-24T12:14:37.483Z
 ---
 
 ## Summary

@@ -2,8 +2,8 @@
 id: T-1971
 kind: task
 title: Git-maintenance ownership probes time out after 200 ms under hub load and keep territory ownership for a collector that is already gone
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1727
 branch: t/T-1971-git-maintenance-ownership-probes-time
 created: 2026-11-18T12:31:16.257Z
-updated: 2026-11-24T11:10:10.629Z
+updated: 2026-11-24T12:50:49.855Z
+closed: 2026-11-24T12:50:49.855Z
 ---
 
 ## Summary
@@ -83,3 +84,7 @@ C1 verified: async `two unavailable inspections retry without signalling and rel
 T0/T1/fallback all T2/246 selected T3 importer files/Web exit 0. Remaining T3 is merge-batch scope; T4 unexecuted. Linux x64 droplet c-8 nyc1, Node v24.21.0, Neovim v0.12.5, two workers. Browser: isolated Chrome for Testing 156.0.8078.4 headless shell, Playwright 1248. Platform/binary skips remain explicit; budgets/ratchet/lint and skip-reason advisory checks report-only, no cache reuse. Details A-22873 at .cland/artifacts/A-22873-t-1971-final-evidence-review-clear-at-bea7e7296.md. Reviewer ran no tests/native/browser/provider work or source edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T12:50:49.855Z
+
+Merged 35dbe5d37f76c3475cc6334f29d45ad1889900bd onto dev.

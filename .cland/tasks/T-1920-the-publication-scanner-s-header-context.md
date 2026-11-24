@@ -2,8 +2,8 @@
 id: T-1920
 kind: task
 title: The publication scanner's header-context rule misses short Authorization values in header entry-pair lists and in object property keys
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1729
 branch: t/T-1920-the-publication-scanner-s-header-context
 created: 2026-11-16T16:36:57.494Z
-updated: 2026-11-24T10:09:49.092Z
+updated: 2026-11-24T11:54:11.027Z
+closed: 2026-11-24T11:54:11.027Z
 ---
 
 ## Summary
@@ -60,3 +61,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear. dba200bd/A-22818 exact head/canonicaltree2170d5b7 finishedpassed. C1 four parsed/serialized entry-pair/property-key identities8386/8391/8396/8401 pass +5/5each; five prose/title negatives8331-8351 and legacywire8416 pass. All22policy/2invite/21evidence-publish/24skills-QA base cases positive. SourceA-22792 and reported red-beforeA-22776 retained; no historical process reconstruction claimed. T0/T1/fallbackT2/10selectedT3files113identities/Web green; onebase/noT3reps, remainingT3batch/T4unexecuted. Noncached Linuxx64/c-8nyc1/Node24.21/Nvim0.12.5/workers2/HeadlessShell1248-CfT156;7478pass1Macskip0fail suppliedaggregate. Advisory reports/partial-formatlimits retained. No findings, no reviewer runs/edits.
 
 Criteria: C1 verified.
+
+### coord · 2026-11-24T11:54:11.027Z
+
+Merged f321357653981255265dca4379d85b16117b18e0 onto dev.
