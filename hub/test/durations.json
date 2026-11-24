@@ -10113,7 +10113,6 @@
     "hub/test/suite-selection.test.ts::unknown project package bases retain unsupported createRequire base fallback": 0.004036,
     "hub/test/suite-selection.test.ts::unsupported traversed extension cannot prove independence": 0.000501,
     "hub/test/suite-selection.test.ts::Web candidate assessment follows real web-readiness without package-base fallbacks": 0.01582,
-    "hub/test/suite-soak-component.test.ts::periodic cover ancestry requires a positive native Git descendant receipt": 0.161089,
     "hub/test/suite-soak.test.ts::periodic fresh cover eligibility: batch": 0.055323,
     "hub/test/suite-soak.test.ts::periodic fresh cover eligibility: batch-without-T3": 0.070788,
     "hub/test/suite-soak.test.ts::periodic fresh cover eligibility: boundary": 0.057373,

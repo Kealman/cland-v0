@@ -1,5 +1,18 @@
 # hub/test/suite-soak-component.test.ts
 
+T-1996 keeps the ancestry case in T2: the production `suiteCandidate.isAncestor`
+uses a scripted `execFile` custom promisifier for positive, reverse and missing
+Git receipts. No repository is initialized and no native Git runs. The shared
+`fixtureNativeGuard` positively controls every native launch boundary and remains
+installed through fixture cleanup. `suiteCase` owns the whole callback before
+guard/root acquisition and fences each ancestry step. Fenced cleanup restores
+the fake and then the guard only after successful resource/directory cleanup;
+failed cleanup retains the patches. The callback boundary still reaches that
+guard. The case previously used native Git while labelled T2; those receipts
+do not establish fake-only coverage. The old native identity's timing is removed
+from the duration manifest rather than assigned to the renamed fake case.
+No T3 migration or T3 proof reuse occurs.
+
 Coverage publication records the producer's timestamp before writing the map.
 Advance the fake clock after publication and compare the durable pointer with
 that recorded time, so asynchronous assertion scheduling cannot change it.

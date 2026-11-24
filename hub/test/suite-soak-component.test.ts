@@ -1,6 +1,10 @@
 // T2: the shared spend ledger and dispatch publication use in-process providers and FakeClock.
 import test from 'node:test';
-import { commandIn, scratchMachine } from './init-machine.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+import { scratchMachine } from './init-machine.ts';
+import cp from 'node:child_process';
+import { promisify } from 'node:util';
+import { syncBuiltinESMExports } from 'node:module';
 import { suiteCandidate } from '../src/hub/suite-candidate.ts';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -36,26 +40,40 @@ test('snapshot disk incompatibility refuses c-4 admission before T0 and names fi
   assert.equal(f.api.requests.some(r => r.method === 'POST'), false);
 });
 
-test('periodic cover ancestry requires a positive native Git descendant receipt', async t => {
-  const run = caseDeadlines(t);
-  const machine = await run.wait('setup', () => scratchMachine(run.fixtures, { identity: true }));
+test('periodic cover ancestry requires a positive Git descendant receipt', async t => {
+  const cleanup = fenceFixtureCleanup(t);
+  return suiteCase(t, async ({ setup, step }) => {
+  await step('positive native guard setup', () => fixtureNativeGuard(t, { fenced: true }));
+  const machine = await setup(fixtures => scratchMachine(fixtures, { identity: true }));
   const env = fixtureEnvironment(machine.root, machine.env, {});
   machine.env = env;
-  const git = async (...args: string[]) => {
-    const result = await run.wait('owned native Git receipt', () => commandIn(machine, machine.root, 'git', ['-c', 'gc.auto=0', ...args]));
-    assert.equal(result.code, 0, result.stderr);
-    return result.stdout.trim();
-  };
-  await git('init', '-q', '-b', 'dev');
-  await git('config', 'user.name', 'Test'); await git('config', 'user.email', 'test@example.com');
-  await git('commit', '--allow-empty', '-qm', 'old tip');
-  const old = await git('rev-parse', 'HEAD');
-  await git('commit', '--allow-empty', '-qm', 'new tip');
-  const newer = await git('rev-parse', 'HEAD');
+  const old = 'a'.repeat(40), newer = 'b'.repeat(40), missing = 'f'.repeat(40);
+  const guarded = cp.execFile;
+  const calls: string[][] = [];
+  // Only the promised Git boundary is scripted. Callback calls and every other
+  // native entry still hit the positively controlled shared guard.
+  // cland-allow-child-env: callback forwarding reaches only the installed throwing native guard; the custom promisifier below is entirely scripted
+  const fake = Object.assign((...args: Parameters<typeof cp.execFile>) => Reflect.apply(guarded, cp, args), {
+    [promisify.custom]: async (file: string, args: string[], options: { cwd: string; env: NodeJS.ProcessEnv; timeout: number }) => {
+      assert.equal(file, 'git');
+      assert.equal(options.cwd, machine.root);
+      assert.equal(options.env, env);
+      assert.equal(options.timeout, 30_000);
+      assert.deepEqual(args.slice(0, 4), ['-c', 'gc.auto=0', 'merge-base', '--is-ancestor']);
+      calls.push(args.slice(4));
+      if (args[4] === old && args[5] === newer) return { stdout: '', stderr: '' };
+      throw Object.assign(new Error('scripted Git non-success'), { code: args[5] === missing ? 128 : 1 });
+    },
+  });
+  cleanup.release(() => { cp.execFile = guarded; syncBuiltinESMExports(); });
+  cp.execFile = fake as unknown as typeof cp.execFile;
+  syncBuiltinESMExports();
   const candidate = suiteCandidate(env);
-  assert.equal(await run.wait('native positive ancestry', () => candidate.isAncestor!(machine.root, old, newer)), true);
-  assert.equal(await run.wait('native reverse ancestry', () => candidate.isAncestor!(machine.root, newer, old)), false);
-  assert.equal(await run.wait('native missing ancestry', () => candidate.isAncestor!(machine.root, old, 'f'.repeat(40))), false, 'missing Git evidence is not coverage');
+  assert.equal(await step('positive ancestry', () => candidate.isAncestor!(machine.root, old, newer)), true);
+  assert.equal(await step('reverse ancestry', () => candidate.isAncestor!(machine.root, newer, old)), false);
+  assert.equal(await step('missing ancestry', () => candidate.isAncestor!(machine.root, old, missing)), false, 'missing Git evidence is not coverage');
+  assert.deepEqual(calls, [[old, newer], [newer, old], [old, missing]]);
+  }, { native: true }); // The fenced fixtureNativeGuard above owns native denial and restoration.
 });
 
 test('occasions keep T4 load tests in the base phase without parallel repetitions', async t => {

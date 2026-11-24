@@ -70,9 +70,9 @@ stage, epic and release covers qualify. Legacy T3 batches without structured
 producer proof and T1-only batches do not. Structured batch-tree coverage and
 the daily backstop are covered separately in dev-t3-coverage-component.test.ts.
 
-The native ancestry control in `suite-soak-component.test.ts` uses scratchMachine
-and commandIn for setup Git, with sealed final environment and explicit exit
-assertions. Every production ancestry read is registered through caseDeadlines;
-its pending-work drain precedes scratch directory cleanup even if an observer
-aborts. The shared command owner's adverse cancellation/native-close control
-remains in `hub/test/init-machine-lifecycle.test.ts`.
+The T2 ancestry control in `suite-soak-component.test.ts` uses scratchMachine
+with a sealed final environment and a scripted Git custom promisifier. Positive,
+reverse and missing ancestry assertions run through the production candidate.
+The shared native launch guard stays installed through cleanup; caseDeadlines
+owns pending ancestry reads. See the
+[component guidance](hub-test-suite-soak-component.test.ts.md) for tier history.
