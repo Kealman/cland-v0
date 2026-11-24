@@ -208,8 +208,12 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
       }
       const paths = await Promise.all([
         git('diff', '--name-only', '-z', '--no-renames', `${dev}...HEAD`),
-        git('diff', '--name-only', '-z', '--no-renames', 'HEAD'),
-        git('ls-files', '--others', '--exclude-standard', '-z'),
+        // Integrated dev executes the captured commit, even when tracker edits
+        // remain in the root checkout. Only local/task selection includes them.
+        ...(branch === 'dev' ? [] : [
+          git('diff', '--name-only', '-z', '--no-renames', 'HEAD'),
+          git('ls-files', '--others', '--exclude-standard', '-z'),
+        ]),
       ]);
       files = [...new Set(paths.flatMap(output => output.split('\0').filter(Boolean)))].sort();
       if (branch === 'dev') return { mode: 'full', files, reason: 'integrated dev always runs full' };

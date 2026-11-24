@@ -1,17 +1,112 @@
 // T3: real Git subprocess contract proves fetch/ref-update completion across linked
 // worktrees. An injected Git fake cannot prove shared ref-lock behavior; no hub or provider.
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
+import { fixtureEnvironment, runnerFixtureEnvironment, scratchGitEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { selectPackageSuite } from '../src/suite-selection.ts';
+import { describeSelection, selectPackageSuite } from '../src/suite-selection.ts';
+import { occasionSelection } from '../src/verification-occasion.ts';
 import { selectionFailure } from '../src/suite-dev-fetch.ts';
+import { suiteCase } from './suite-case-fixture.ts';
+import { fixtureCommand, fixtureCommandOutput, FixtureCommandError } from './git-maintenance-fixture.ts';
+import { ownDirectory, guardDirectoryRemoval } from './process-cleanup.ts';
+import { eventually } from './harness.ts';
 
 const exec = promisify(execFile);
+
+test('dev T3 deciding files exclude dirty tracker edits while task selection retains them', t => suiteCase(t, async scope => {
+  const { dir, env, git, base, tracker } = await scope.setup(async fixtures => {
+    const dir = await mkdtemp(join(tmpdir(), 'cland-dev-selection-'));
+    ownDirectory(fixtures, dir);
+    const excludesFile = join(dir, 'empty-excludes');
+    await writeFile(excludesFile, '');
+    const env = scratchGitEnvironment(dir, fixtureEnvironment(dir, process.env), { excludesFile });
+    const git = (...args: string[]) => fixtureCommand(scope.fixtures, dir, 'git', args);
+    await git('init', '-q', '-b', 'dev');
+    await git('config', 'user.name', 'Selection fixture');
+    await git('config', 'user.email', 'selection@example.invalid');
+    await mkdir(join(dir, '.cland/tasks'), { recursive: true });
+    const tracker = '.cland/tasks/T-1-fixture.md';
+    await writeFile(join(dir, tracker), 'base');
+    await git('add', '.'); await git('commit', '-qm', 'base');
+    const base = await git('rev-parse', 'HEAD');
+    await git('init', '-q', '--bare', join(dir, 'origin.git'));
+    await git('remote', 'add', 'origin', join(dir, 'origin.git'));
+    await git('push', '-q', 'origin', 'dev');
+    await writeFile(join(dir, 'committed.md'), 'committed delta');
+    await git('add', 'committed.md'); await git('commit', '-qm', 'candidate');
+    await writeFile(join(dir, tracker), 'dirty tracker');
+    await writeFile(join(dir, 'staged.md'), 'staged'); await git('add', 'staged.md');
+    await writeFile(join(dir, 'untracked.md'), 'untracked');
+    await writeFile(join(dir, '.gitignore'), 'origin.git/\nempty-excludes\n.fixture*/\n');
+    await git('add', '.gitignore');
+    return { root: dir, dir, env, git, base, tracker };
+  });
+  await scope.step('committed dev selection and task control', async () => {
+    const integrated = await selectPackageSuite(dir, 'all', env);
+    assert.deepEqual(integrated.files, ['committed.md']);
+    assert.equal(integrated.mode, 'full');
+    assert.equal(integrated.fetchedDev, base);
+    const report = describeSelection(occasionSelection(integrated, 'dev-t3'));
+    assert.match(report, /deciding files \["committed.md"\]/);
+    assert.doesNotMatch(report, /T-1-fixture|staged.md|untracked.md/);
+    await git('checkout', '-qb', 't/T-1');
+    const task = await selectPackageSuite(dir, 'all', env);
+    assert.deepEqual(task.files, [tracker, '.gitignore', 'committed.md', 'staged.md', 'untracked.md']);
+  });
+}, { native: true }));
+
+for (const outcome of ['failure', 'cancellation'] as const) test(`selector fixture keeps native close and guarded removal receipts after ${outcome}`, t => suiteCase(t, async scope => {
+  const abort = new AbortController();
+  scope.releaseOnClose(() => abort.abort());
+  let removalAllowed = false;
+  const f = await scope.setup(async fixtures => {
+    const root = await mkdtemp(join(tmpdir(), 'cland-selector-close-'));
+    ownDirectory(fixtures, root);
+    const commandRoot = join(root, 'command');
+    await mkdir(commandRoot);
+    const remove = ownDirectory(undefined, commandRoot);
+    fixtures.after(remove);
+    guardDirectoryRemoval(commandRoot, async () => {
+      if (!removalAllowed) throw new Error('controlled removal receipt withheld');
+    });
+    await writeFile(join(commandRoot, 'writer.cjs'), outcome === 'failure'
+      ? "require('node:fs').writeFileSync('ready', 'ready'); process.exit(7);"
+      : "require('node:fs').writeFileSync('ready', 'ready'); setInterval(() => {}, 1000);");
+    return { root, commandRoot, remove };
+  });
+  await scope.step('native failure or cancellation close receipt', async () => {
+    const ready = eventually('native writer ready file', async () => readFile(join(f.commandRoot, 'ready'), 'utf8').catch(() => undefined));
+    const running = fixtureCommandOutput(scope.fixtures, f.commandRoot, process.execPath, ['writer.cjs'], undefined, { signal: abort.signal });
+    const rejected = assert.rejects(running, error => {
+      assert.ok(error instanceof FixtureCommandError);
+      assert.ok(error.writers.some(writer => writer.kind === 'close'), 'producer records native close');
+      assert.ok(error.writers.every(writer => writer.kind === 'close' || writer.kind === 'reaped'));
+      if (outcome === 'failure') assert.equal(error.code, 7);
+      else {
+        assert.equal(abort.signal.aborted, true);
+        assert.equal(error.nativeFailure, false, 'cancellation retains its producing-owner outcome');
+      }
+      return true;
+    });
+    void rejected.catch(() => {});
+    assert.equal(await ready, 'ready');
+    if (outcome === 'cancellation') abort.abort();
+    await rejected;
+  });
+  await scope.step('independent guarded removal refusal and release', async () => {
+    await assert.rejects(f.remove(), /controlled removal receipt withheld/);
+    assert.equal(await readFile(join(f.commandRoot, 'ready'), 'utf8'), 'ready');
+    removalAllowed = true;
+    await f.remove();
+    await assert.rejects(stat(f.commandRoot), { code: 'ENOENT' });
+  });
+}, { native: true }));
+
 async function fixture(t: import('node:test').TestContext) {
   const dir = await mkdtemp(join(tmpdir(), 'cland-selection-fetch-'));
   t.after(() => rm(dir, { recursive: true, force: true }));

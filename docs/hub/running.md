@@ -1761,7 +1761,10 @@ the hub retries without duplicating the result.
 
 `npm test` and `cland verify --report <topic>` default to diff selection. They fetch
 `origin/dev`, compare the branch from its merge base with fetched dev, and include
-staged, unstaged and untracked files. Renames include both old and new paths.
+staged, unstaged and untracked files on task and other non-dev branches.
+On `dev`, deciding files come only from the committed merge-base diff against
+the fetched dev commit; root working edits never enter integrated run evidence.
+When HEAD equals fetched dev, that list is empty. Renames include both old and new paths.
 The pure `chooseSuiteMode` in `src/suite-selection.ts` uses ordered package rules.
 A diff wholly under `web/` selects `web-only` (Web plus hub/Neovim smoke).
 A diff wholly under `nvim/` selects `nvim-only`; a mix of Neovim and any other

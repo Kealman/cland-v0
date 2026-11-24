@@ -217,6 +217,10 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [Pinned verifier request heads](../docs/hub/pinned-verifier-request-heads.md)
 - [Merge queue landing reports (T-1503)](../docs/hub/merge-queue-landing-reports-t-1503.md)
 
+Integrated dev deciding files use the committed merge-base diff against fetched
+dev, excluding root working edits (empty when HEAD equals fetched dev). Task
+selection includes working edits. See [test selection](../docs/hub/running.md#tests).
+
 Periodic dev T3 uses configured remote shards under the shared slot and daily
 spend limits, falling back to one machine with a warning. A deadline with no
 observed failure reports inconclusive (timeout), names unexecuted or incomplete
