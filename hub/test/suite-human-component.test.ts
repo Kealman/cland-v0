@@ -100,6 +100,9 @@ test('result retry retains coverage registration and finalized log across a hub 
 
 for (const boundary of ['constructor', 'cancelled acquisition'] as const) test(`report fixture retains roots and seams after ${boundary} and rejected native close`, t => {
   let connection: DatabaseSync | undefined, root = '', rejectClose = true, constructorFailed = false;
+  const primary = new Error('planted constructor rejection');
+  const cleanup = new Error('planted native close rejection');
+  const containsCleanup = (error: unknown): boolean => error === cleanup || error instanceof AggregateError && error.errors.some(containsCleanup);
   const originalSpawn = cp.spawn;
   let guardedSpawn: typeof cp.spawn;
   const scope = retentionCase(t, undefined, { onIncomplete: async (_error, repair) => {
@@ -121,12 +124,16 @@ for (const boundary of ['constructor', 'cancelled acquisition'] as const) test(`
       const nativeOpen = (path: string) => {
         connection = new DatabaseSync(path);
         const close = connection.close.bind(connection);
-        scope.patch(connection, 'close', () => { if (rejectClose) throw new Error('planted native close rejection'); close(); });
-        if (boundary === 'constructor') scope.patch(connection, 'exec', () => { constructorFailed = true; throw new Error('planted constructor rejection'); });
+        scope.patch(connection, 'close', () => { if (rejectClose) throw cleanup; close(); });
+        if (boundary === 'constructor') scope.patch(connection, 'exec', () => { constructorFailed = true; throw primary; });
         return connection;
       };
       if (boundary === 'constructor') {
-        assert.throws(() => receiptStore(scope, root, nativeOpen), /planted native close rejection/);
+        assert.throws(() => receiptStore(scope, root, nativeOpen), error => {
+          assert.equal(error, primary, 'initialization failure remains the selected outcome');
+          assert.ok(containsCleanup(primary.cause), 'native close rejection remains a secondary diagnostic');
+          return true;
+        });
         assert.equal(constructorFailed, true, 'constructor reached its failing native operation before cleanup also rejected');
       }
       else {

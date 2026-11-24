@@ -18,6 +18,11 @@ import { recordingHost } from './recording-host.ts';
 import { HostMemoryFloorRefusal } from '../src/host/ssh-host.ts';
 import { AccountLimited } from '../src/accounts/limits.ts';
 import { ToolForbidden } from '../src/roles/permissions.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+import { localHost } from '../src/host/local.ts';
+import { onCleanup } from './process-cleanup.ts';
+
+test.beforeEach(t => fixtureNativeGuard(t as TestContext, { fenced: true }));
 
 type Rule = { action: string; resource: string; effect: string };
 async function fixture(t: TestContext, unavailable: boolean | string = false, spawnFailure?: Error) {
@@ -26,12 +31,8 @@ async function fixture(t: TestContext, unavailable: boolean | string = false, sp
   const sessions = new Map<string, Record<string, unknown>>();
   const logs: Record<string, unknown>[] = [];
   const launches: Array<{ args: string[]; env: NodeJS.ProcessEnv }> = [];
-  const nativeSpawn = cp.spawn;
+  const children = new Map<number, () => void>();
   t.mock.method(cp, 'spawn', (bin: string, args: string[], options: cp.SpawnOptions) => {
-    // Read-only native probes use the scratch-only env; fake PID 99999999 is
-    // above both macOS and Linux PID maximums and can never name a real owner.
-    // cland-allow-child-env: read-only ps passthrough receives the fixture's scratch-only Host environment.
-    if (bin === 'ps') return nativeSpawn(bin, args, options);
     assert.equal(bin, 'fake-opencode');
     launches.push({ args, env: options.env! });
     const server = createServer(async (req, res) => {
@@ -51,17 +52,18 @@ async function fixture(t: TestContext, unavailable: boolean | string = false, sp
     });
     server.listen(Number(args[args.indexOf('--port') + 1]), '127.0.0.1');
     servers.push(server);
-    const child = Object.assign(new EventEmitter(), { pid: 99999999, exitCode: null as number | null, signalCode: null as string | null, unref() {}, kill() { end(); return true; } });
+    const child = Object.assign(new EventEmitter(), { pid: 99999999 + launches.length, exitCode: null as number | null, signalCode: null as string | null, unref() {}, kill() { end(); return true; } });
     let ended = false;
     const end = () => {
       if (ended) return;
       ended = true;
+      children.delete(child.pid);
       child.exitCode = 0;
       child.emit('exit', 0, null);
     };
+    children.set(child.pid, end);
     server.once('close', end);
     queueMicrotask(() => child.emit('spawn'));
-    t.after(end);
     // A failed HTTP launch ends this fake server, just as native stop would.
     if (unavailable) server.on('request', (req, res) => {
       if (req.method === 'POST' && req.url === '/api/session') res.once('finish', end);
@@ -70,9 +72,22 @@ async function fixture(t: TestContext, unavailable: boolean | string = false, sp
   });
   syncBuiltinESMExports();
   const failedHost={...recordingHost(root),spawn:async()=>{throw spawnFailure;}};
-  const adapter = new OpenCodeAdapter({ ...(spawnFailure?{hostForLaunch:()=>failedHost,hostForProcess:()=>failedHost}:{}), root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: '', spoke: '', log: entry => { logs.push(entry); }, signal: () => {}, recordPid: () => {}, exited: () => {} }, { bin: 'fake-opencode', env: { HOME: root }, clock: new FakeClock() });
-  t.after(async () => {
-    adapter.close();
+  const synthetic = recordingHost(root);
+  const host = spawnFailure ? failedHost : {
+    ...localHost(fixtureEnvironment(root, process.env)),
+    identity: async (pid: number) => children.has(pid) ? synthetic.identity(pid) : null,
+    alive: async (process: { pid: number | null }) => process.pid !== null && children.has(process.pid),
+    stop: async (process: { pid: number | null }) => {
+      const end = process.pid === null ? undefined : children.get(process.pid);
+      if (!end) return false;
+      end();
+      return true;
+    },
+  };
+  const adapter = new OpenCodeAdapter({ hostForLaunch:()=>host, hostForProcess:()=>host, root, discoveryFile: join(root, '.cland/hub.json'), node: process.execPath, cli: '', spoke: '', log: entry => { logs.push(entry); }, signal: () => {}, recordPid: () => {}, exited: () => {} }, { bin: 'fake-opencode', env: { HOME: root }, clock: new FakeClock() });
+  onCleanup(t, async () => {
+    for (const end of children.values()) end();
+    await adapter.close();
     await Promise.all(servers.map(server => new Promise<void>((resolve, reject) => { server.closeAllConnections(); server.close(err => err ? reject(err) : resolve()); })));
     t.mock.restoreAll(); syncBuiltinESMExports();
   });
