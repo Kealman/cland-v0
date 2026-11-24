@@ -1,10 +1,10 @@
 // T3: supervisor session detachment, native death/restart and persisted process identity require real processes.
 // Lifecycle: fake hosts only; captured supervisors, agents and harnesses drained before scratch removal.
 import { removeFixtureSockets } from '../../test-support/socket-path.ts';
-import test, { after } from 'node:test';
+import test, { after, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, writeFile, rm, access } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm, access, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fixtureEnvironment } from './fixture-environment.ts';
@@ -13,16 +13,57 @@ import { ownProcess, fixtureProcessCensus, cleanupOwnedProcesses } from './proce
 import { eventually } from './harness.ts';
 import { AgentClient } from '../src/host/agent-client.ts';
 const roots: string[] = [];
+const controls = new Set<{close: () => Promise<void>}>();
+// Enrol before acquisition. Node test cancellation does not await a test body;
+// both its hook and file/root cleanup must join the same admitted work.
+function ownControl(t: TestContext) {
+  const cancellation = new AbortController();
+  let work: Promise<void> | undefined;
+  const owner = {
+    run(body: (signal: AbortSignal) => Promise<void>) {
+      assert.equal(work, undefined);
+      work = Promise.resolve().then(() => body(cancellation.signal));
+      void work.catch(() => {});
+      return work;
+    },
+    async close() {
+      cancellation.abort();
+      try { await work; }
+      catch (error) { t.diagnostic(JSON.stringify({incomplete:'supervisor control', error:String(error)})); }
+      finally { controls.delete(owner); }
+    },
+  };
+  controls.add(owner);
+  t.signal.addEventListener('abort', () => cancellation.abort(), {once:true});
+  t.after(() => owner.close());
+  return owner;
+}
+async function joinControls() {
+  await Promise.all([...controls].map(owner => owner.close()));
+}
+async function removeRoot(root: string, afterControlJoin?: () => Promise<void>) {
+  await joinControls();
+  await afterControlJoin?.();
+  await closeSupervisors(root);
+  await removeFixtureSockets(root);
+  await rm(root, {recursive:true, force:true});
+  await assert.rejects(access(root));
+  roots.splice(roots.indexOf(root), 1);
+}
 const restartOwners = new Map<string, Array<{stop: () => Promise<void>; agents: Array<() => Promise<void>>}>>();
-async function closeSupervisors(root: string, beforeStop?: () => Promise<void>) {
+async function closeSupervisors(root: string, beforeStop?: () => Promise<void>, afterStop?: () => Promise<void>) {
   await beforeStop?.();
   const owners = restartOwners.get(root) ?? [];
+  // Retain native births while ancestry/cwd still identify the writers. Owner
+  // shutdown may reparent them or lose their cwd from the final discovery.
+  const captured = fixtureProcessCensus(root);
   // Shared roots can have several supervisors. Join every restart owner before
   // capturing the final writers, including agents born during owner shutdown.
   for (const owner of owners) await owner.stop();
+  await afterStop?.();
   const remaining = fixtureProcessCensus(root);
   for (const owner of owners) for (const cleanup of owner.agents) await cleanup();
-  await cleanupOwnedProcesses(remaining);
+  await cleanupOwnedProcesses([...captured, ...remaining]);
 }
 
 async function fixtureRoot(prefix: string) {
@@ -32,13 +73,14 @@ async function fixtureRoot(prefix: string) {
 }
 // Keep roots until the file census so cwd evidence survives teardown.
 after(async () => {
+  await joinControls();
   const survivors = roots.flatMap(root => fixtureProcessCensus(root));
   try { assert.deepEqual(survivors, [], 'post-file fixture process census: supervised writers survived teardown'); }
   finally {
     // Red-control safety net; this runs only after the assertion has observed the leak.
     for (const root of roots) await closeSupervisors(root);
     await cleanupOwnedProcesses(survivors);
-    for (const root of roots) { await removeFixtureSockets(root); await rm(root, { recursive: true, force: true }); await assert.rejects(access(root)); }
+    for (const root of [...roots]) await removeRoot(root);
   }
 });
 const script = new URL('../src/host/agent/supervisor.sh', import.meta.url).pathname;
@@ -127,7 +169,7 @@ async function startSupervisor(root: string, run: string, env: NodeJS.ProcessEnv
       const receipt=await eventually('initiating shell native close',()=>closed,3000);
       assert.equal(receipt.code,0);
     },
-    close:(beforeStop?: () => Promise<void>)=>closeSupervisors(root, beforeStop),
+    close:(beforeStop?: () => Promise<void>, afterStop?: () => Promise<void>)=>closeSupervisors(root, beforeStop, afterStop),
   };
 }
 
@@ -183,36 +225,122 @@ test('kill-agent refuses another live fake host receipt and preserves both agent
 });
 
 
-test('teardown joins a replacement started while restart-owner shutdown is held', {timeout:10000}, async () => {
+test('teardown joins a replacement started while restart-owner shutdown is held', {timeout:10000}, async t => {
+  const control = ownControl(t);
+  await control.run(signal => replacementControl(t, signal));
+});
+
+async function replacementControl(t: TestContext, signal: AbortSignal) {
+  signal.throwIfAborted();
   const root = await fixtureRoot('hs-race-');
+  const relocated = await realpath(await fixtureRoot('hs-moved-'));
+  const receipt = join(root, 'relocated.json');
+  const preload = join(root, 'relocate.mjs');
+  // A real cwd transition removes discovery evidence only after owner shutdown.
+  // Both locations remain disposable and owned until the post-file census.
+  await writeFile(preload, `import {writeFile} from 'node:fs/promises';
+process.once('SIGUSR2', () => {
+  process.chdir(${JSON.stringify(relocated)});
+  void writeFile(${JSON.stringify(receipt)}, JSON.stringify({pid:process.pid,cwd:process.cwd()}));
+});\n`);
   const host = await createFakeHost(root, 'one');
   const env = fixtureEnvironment(root, process.env, {CLAND_FAKE_HOST_ROOT:root, CLAND_FAKE_HOSTS:'one', CLAND_HOST_BOOT_ID_FILE:host.bootId, CLAND_HOST_RUN_DIR:host.run, CLAND_HOST_SECRET:'synthetic'});
-  const owner = await startSupervisor(root, host.run, env, [script, host.run, process.execPath, cli, 'host', 'serve']);
+  const owner = await startSupervisor(root, host.run, env, [script, host.run, process.execPath, '--import', preload, cli, 'host', 'serve']);
   let client: AgentClient | undefined;
   let release!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });
+  signal.addEventListener('abort', () => release(), {once:true});
+  if (signal.aborted) release();
   let entered!: () => void;
   const held = new Promise<void>(resolve => { entered = resolve; });
   let closing: Promise<void> | undefined;
+  let replacement: number | undefined;
+  let replacementBirth: string | undefined;
   try {
     await owner.release(); await owner.ready(); await owner.depart();
     client = await eventually('race initial hello', () => AgentClient.connect(join(host.run,'agent.sock'),'synthetic').catch(() => undefined), 3000);
     const first = client.hello.pid; owner.recordAgent(first);
     // Arm the hold before teardown starts. The replacement deliberately never
-    // enters recordAgent: final teardown discovery must capture and join it.
-    closing = owner.close(async () => { entered(); await gate; });
+    // enters recordAgent: teardown discovery must capture and join it.
+    closing = owner.close(async () => { entered(); await gate; }, async () => {
+      signal.throwIfAborted();
+      assert.ok(replacement);
+      assert.equal(fixtureProcessCensus(root).find(row => row.pid === replacement)?.identity, replacementBirth, 'relocation signal retains captured birth');
+      assert.ok(replacementBirth);
+      process.kill(replacement, 'SIGUSR2');
+      const moved = await eventually('replacement durable cwd relocation receipt', async () => {
+        try { return JSON.parse(await readFile(receipt, 'utf8')) as {pid:number;cwd:string}; }
+        catch { return undefined; }
+      }, 3000);
+      assert.equal(moved.pid, replacement);
+      assert.equal(moved.cwd, relocated);
+      assert.ok(fixtureProcessCensus(relocated).some(row => row.pid === replacement), 'native cwd relocation observed');
+    });
+    void closing.catch(() => {}); // The body and cleanup owner both join it below.
     await held;
+    signal.throwIfAborted();
     await hostControl('kill-agent','one',env); await client.close(); client = undefined;
     client = await eventually('replacement hello during held teardown', async () => {
       const next = await AgentClient.connect(join(host.run,'agent.sock'),'synthetic').catch(() => undefined);
       if (next?.hello.pid === first) { await next.close(); return undefined; }
       return next;
     }, 3000);
-    const replacement = client.hello.pid;
+    replacement = client.hello.pid;
     const birth = fixtureProcessCensus(root).find(row => row.pid === replacement);
     assert.ok(birth?.identity, 'replacement native birth observed before release');
+    replacementBirth = birth.identity;
+    signal.throwIfAborted();
     await client.close(); client = undefined;
     release(); await closing;
-    assert.deepEqual(fixtureProcessCensus(root), [], 'replacement started during teardown is joined');
-  } finally { release(); await client?.close(); await closing; await owner.close(); }
+    const survivors = [root, relocated].flatMap(path => fixtureProcessCensus(path));
+    t.diagnostic(JSON.stringify({boundary:'replacement teardown census', survivors}));
+    assert.deepEqual(survivors, [], 'replacement started during teardown is joined');
+  } catch (error) {
+    const native = [root, relocated].flatMap(path => fixtureProcessCensus(path)).find(row => row.pid === replacement);
+    const tail = await readFile(join(host.run,'supervisor.log'),'utf8').then(log => log.slice(-2048), () => 'unavailable');
+    t.diagnostic(JSON.stringify({incomplete:'replacement teardown control', error:String(error), native:native ?? {outcome:'unknown'}, tail}));
+    throw error;
+  } finally {
+    release(); await client?.close();
+    try { await closing; } finally {
+      await owner.close();
+      await cleanupOwnedProcesses(fixtureProcessCensus(relocated));
+    }
+  }
+}
+
+test('cancelled supervisor control retains its root until a held producer and missing receipt observer drain', {timeout:10000}, async t => {
+  const root = await fixtureRoot('hs-control-');
+  const receipt = join(root, 'producer-closed');
+  const gate = Promise.withResolvers<void>();
+  const owner = ownControl(t);
+  let entered = false;
+  let observed = false;
+  const work = owner.run(async signal => {
+    entered = true;
+    await gate.promise;
+    assert.equal(signal.aborted, true);
+    await writeFile(receipt, 'producer closed');
+    await assert.rejects(eventually('synthetic missing relocation receipt', async () => {
+      try { await access(join(root, 'missing')); return true; } catch { return undefined; }
+    }, {timeoutMs:100, behaviour:'missing-receipt fault bound'}), /synthetic missing relocation receipt/);
+    observed = true;
+  });
+  try {
+    await eventually('control acquisition entered', () => entered || undefined, 3000);
+    const draining = owner.close();
+    const removing = removeRoot(root, async () => {
+      assert.equal(observed, true, 'root removal joins the missing receipt observer');
+      assert.equal(await readFile(receipt, 'utf8'), 'producer closed');
+    });
+    void removing.catch(() => {});
+    await access(root);
+    assert.equal(observed, false);
+    gate.resolve();
+    await work;
+    await draining;
+    assert.equal(observed, true, 'observer settled before root removal');
+    await removing;
+    await assert.rejects(access(root));
+  } finally { gate.resolve(); await owner.close(); }
 });

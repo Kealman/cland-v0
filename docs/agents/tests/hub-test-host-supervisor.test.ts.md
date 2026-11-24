@@ -10,9 +10,11 @@ harness launch, HUP survival, a stale-identity refusal, SIGKILL and a replacemen
 hello within three seconds, then checks the original harness identity in the
 recovered process table. Setup has separate deadlines. Captured fixture process
 ownership captures each authenticated agent at hello (including its replacement).
-Teardown stops and joins every supervisor and starter sharing the root before
-its final writer snapshot, then joins captured agents and remaining writers. The file
-retains all three roots until its after hook asserts an empty cwd census; only
+Teardown captures native writer births before stopping every supervisor and
+starter sharing the root. It then takes a final writer snapshot and joins both
+sets, plus registered agents. The earlier births retain ownership when shutdown
+reparents a writer or its cwd moves outside the original root. The file
+retains all fixture roots until its after hook asserts an empty cwd census; only
 then does it remove roots and assert native filesystem absence. A failing census
 still joins the observed writers before removal, so the regression control
 cannot itself leak agents.
@@ -33,5 +35,24 @@ removes the alias after clients, harnesses and supervisors have drained.
 
 A held teardown control kills the original agent while restart-owner shutdown
 is gated, observes a replacement authenticated hello and native birth, then
-releases shutdown and asserts an empty root census. The replacement is not
-registered through the hello path, proving the final snapshot joins it.
+releases shutdown. After the restart owner stops, a fixture-only preload moves
+the replacement cwd to a second disposable root on SIGUSR2. A durable pid/cwd
+receipt and independent native cwd census prove the relocation before final
+discovery. The replacement is not registered through the hello path. Teardown
+must join its captured birth even though the original root can no longer find
+it; both roots must have empty censuses. A structured diagnostic retains each
+survivor's pid, parent, group and native identity. Safety cleanup drains the
+relocated root even on a red assertion, before either root is removed.
+
+The held replacement control enrols its complete body before native acquisition.
+Test cancellation releases its hold; test hooks and file/root cleanup cancel
+and join that same body before census or directory removal. Relocation receipt
+setup has a separate load-scaled three-second bound. The cancellation control
+holds an asynchronous producer while requesting real root disposal, then checks
+the producer's closed receipt and a bounded missing-receipt observer's completion
+at the guarded removal boundary. Both must drain before the root can disappear.
+
+This is a deterministic discovery-loss control, not a reproduction of the
+unverified Linux scheduling cause in T-2009's original failure. Linux evidence
+comes from the configured verification executor; local macOS evidence proves
+the forced ordering and writer join only.
