@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T03:19:07.689Z
-updated: 2026-11-19T21:03:15.407Z
+updated: 2026-11-24T07:23:53.250Z
 ---
 
 ## Summary
@@ -38,3 +38,7 @@ A second path with the same pattern, reported by T-1988's reviewer from static s
 ### coord · 2026-11-19T21:03:15.407Z
 
 Reproduction from T-2015 (impl-2015, 2026-11-19 21:03Z): a test that makes every `db.exec` throw hits the initial PRAGMA setup in `openDatabase`. The original error is replaced by the cleanup close: the literal caught error was `Error: injected close refusal` at hub/src/database.ts:10, instead of `injected constructor rejection`. T-2015 narrowed its own control to the tracker_items schema, so this item still owns the `openDatabase` fix.
+
+### coord · 2026-11-24T07:23:53.250Z
+
+Reproduced again by impl-2069 during T-2069's M1 fault control on 2026-11-24. A planted constructor rejection was expected; the actual error was "Error: planted native close rejection at database.ts:10". The close error still replaces the initialization error.
