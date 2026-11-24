@@ -3,7 +3,7 @@ id: T-1969
 kind: task
 title: Web SessionRow and SessionPage show stateReason only for live sessions, so a stopped or exited session hides its persisted state reason (such as a rename incomplete on host)
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1734
 branch: t/T-1969-web-sessionrow-and-sessionpage-show
 created: 2026-11-18T12:04:45.349Z
-updated: 2026-11-24T10:18:55.445Z
+updated: 2026-11-24T10:44:29.204Z
 ---
 
 ## Summary
@@ -27,8 +27,8 @@ Show a session's persisted `stateReason` in SessionRow and SessionPage for non-l
 
 ## Acceptance criteria
 
-- [ ] C1. A stopped and an exited session with a stateReason show it in the row and on the session page, and a session without one is unchanged (web test).
-  - failed: rev-35 [reviewer] · 2026-11-24T10:18:55.444Z · note New browser proof lacks pre-acquisition whole-case/positive-close ownership and exact non-live/status plus bounded State-value receipts.
+- [x] C1. A stopped and an exited session with a stateReason show it in the row and on the session page, and a session without one is unchanged (web test).
+  - done: impl-1969 · 2026-11-24T10:42:21.195Z
 
 ## Comments
 
@@ -50,3 +50,16 @@ finding_counts: {"high":0,"medium":2,"low":1}
 A-22826: Standards two medium (M1 new callback acquisition/cancellation/rejected-close ownership, M2 exact non-live prerequisite and bounded rendered values); Spec one low (L1 display reason also overwrites lifecycle data-state, losing failed glyph color). Lead confirms all three and corrects its earlier async-exit explanation: #exited updates the table synchronously, so no async mutation diagnosis is claimed. Render fallback logic otherwise matches intended stateReason preference. C1 failed for test proof. Local authored red/green/normal census is scoped, not incomplete-close or configured evidence. No reviewer execution/edits. Hold releases for consolidated correction, then fresh source review before verification; no dev merge/full task-head suite requested.
 
 Criteria: C1 failed (New browser proof lacks pre-acquisition whole-case/positive-close ownership and exact non-live/status plus bounded State-value receipts.).
+
+### rev-35 · 2026-11-24T10:44:29.204Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1969-source-2
+commit: 2fb44299c43a0fec076fd209f621135b561482a2
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-22841: source clear, Standards0/Spec0. M1 resolved via pre-acquisition stage/outer fences, required nested resource drainage, adopted root, separate load-scaled observations and captured-browser physical-close checks before original environment release. Shared abort/rejected-close/repair controls inspected, not claimed rerun in local browser evidence. M2 exact sessionId/status/live=false producer receipts and bounded rendered values retain final assertions. L1 lifecycle data-state/glyph failed color preserved independently of display reason. A-22839 scoped normal local Web5/5 and13/13 plus typecheck/lint0, not configured proof. C1 done/unverified pending actual same-head evidence. No reviewer execution/edit. Hold releases; seek Coordinator mode-free window at unchanged head. No full task-head suite/dev merge/duplicate run requested.

@@ -3,17 +3,17 @@ id: T-2027
 kind: task
 title: The load-gate reporter drops test:diagnostic facts, so failing repetitions lose their recorded diagnostics
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2074
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1739
+branch: t/T-2027-the-load-gate-reporter-drops-test
 created: 2026-11-20T06:18:28.067Z
-updated: 2026-11-24T09:01:16.966Z
+updated: 2026-11-24T10:55:10.764Z
 ---
 
 ## Summary

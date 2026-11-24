@@ -3,7 +3,7 @@ id: T-1961
 kind: task
 title: createHub close retried after an adapter-close error closes the already closed ProcessTable and Store again and fails with "database is not open"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-2076
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-1961-createhub-close-retried-after-an-adapter
 created: 2026-11-18T07:18:35.705Z
-updated: 2026-11-24T09:01:20.756Z
+updated: 2026-11-24T10:55:08.155Z
 ---
 
 ## Summary

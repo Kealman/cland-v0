@@ -3,8 +3,9 @@ id: T-1946
 kind: task
 title: T2 tier-mismatch tripwire records the fake-only fixture's positive launch-refusal controls as native exec/execFile use
 state: open
-status: in progress
+status: review
 size: XS
+criterion_seq: 1
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-1736
 branch: t/T-1946-t2-tier-mismatch-tripwire-records-the
 created: 2026-11-17T12:40:29.242Z
-updated: 2026-11-24T10:40:27.661Z
+updated: 2026-11-24T10:54:08.069Z
 ---
 
 ## Summary
@@ -26,4 +27,11 @@ The tripwire tells a refused launch attempt through the fake-only guard apart fr
 
 ## Acceptance criteria
 
-- [ ] C1. A positive refusal control through fakeOnlyFixture produces no tier-mismatch record, while a real unguarded exec in a T2 test still does (test).
+- [x] C1. A positive refusal control through fakeOnlyFixture produces no tier-mismatch record, while a real unguarded exec in a T2 test still does (test).
+  - done: impl-1946 · 2026-11-24T10:53:32.093Z
+
+## Comments
+
+### impl-1946 · 2026-11-24T10:41:17.658Z
+
+Consumer search: installTierTripwire is installed by tier-bootstrap.mjs; reports are read by run-suite.ts, load-gate.ts, tier-tripwire-runner.test.ts. fakeOnlyFixture consumers: executor-copy-fixture.ts, executor-contract, executor-launch-boundary, executor-lease-index, host-create-admission, recording-host, suite-t3-interactions tests. Search included docs/skills, tiers and raw tier-mismatch prefix readers. Existing mismatch wire shape stays unchanged; new refusal-control prefix is ignored by mismatch readers. Confirmed test seam via Coordinator: in-process T2, fake callback/custom boundaries and actual fixture controls; no native child.

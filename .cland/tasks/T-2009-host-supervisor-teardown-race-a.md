@@ -3,7 +3,7 @@ id: T-2009
 kind: task
 title: "host-supervisor teardown race: a replacement 'host serve' started while restart-owner shutdown is held can escape the join on Linux"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-2075
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-2009-host-supervisor-teardown-race-a
 created: 2026-11-19T14:42:13.379Z
-updated: 2026-11-24T09:01:19.645Z
+updated: 2026-11-24T10:55:03.359Z
 ---
 
 ## Summary
