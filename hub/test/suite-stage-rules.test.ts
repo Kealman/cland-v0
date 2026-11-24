@@ -431,7 +431,7 @@ test('fresh failed or unreported stage attempts supersede the older green cache'
     const next = await submit(false);
     assert.equal(next.cached, undefined, `newer ${state} evidence blocks the older green`);
     withheld = false; await running(next.id); await f.finish(next.id);
-    await f.tick(); await f.result(fresh.id);
+    await f.tick(5000); await f.result(fresh.id);
     assert.equal(f.status(next.id).outcome!.code, 0);
     assert.doesNotMatch(await f.log(next.id), /Original run/);
     assert.deepEqual(f.api.droplets, []);

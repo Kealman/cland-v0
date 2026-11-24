@@ -3242,6 +3242,16 @@ missing. Keep bounded retry pages and recovery controls in the routing fixture.
 
 ## Merge queue landing reports
 
+Finished suite results retry failed delivery with exponential backoff (five seconds
+to five minutes), retaining a run-bound immutable finalized log and coverage
+registration. Publication remains serialized for shared legacy log paths.
+The hub logs `suite-report-failed` with the run id and error for each failed attempt;
+heartbeat rows include the actual report-attempt error, with later inspection
+failures as secondary diagnostics. Generic historical errors stay unclassified.
+A required result addressed to a role held solely
+by its sender reaches that sender. Ordinary role broadcasts exclude their sender.
+The running hub needs a restart to apply this behaviour to existing pending jobs.
+
 With the merge queue enabled, read the item-topic landing report for the landed
 commit and batch. It goes to the enqueuing session and pre-closure claimant;
 the earlier green batch suite report alone is not a landing receipt. Follow-up

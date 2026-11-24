@@ -19,7 +19,7 @@ import { verificationFixture } from './verification-fixture.ts';
 import { ownedDatabases } from './owned-tracker.ts';
 import { beforeDirectories, fenceFixtureCleanup } from './process-cleanup.ts';
 
-type FixtureOptions = Pick<ProjectHubOptions, 'git' | 'readBase' | 'openDatabase'> & { tiers?: boolean; patch?: (target: object, key: PropertyKey, value: unknown) => void };
+type FixtureOptions = Pick<ProjectHubOptions, 'git' | 'readBase' | 'openDatabase'> & { tiers?: boolean; patch?: (target: object, key: PropertyKey, value: unknown) => void; onRoot?: (root: string) => void };
 export async function fixture(t: TestContext, code = 0, config = '', withDurations = false, options: FixtureOptions = {}) {
   // Register before tempProject enrolls directory removal and before any native
   // open/constructor. A rejected close retains this fence and all caller seams.
@@ -27,6 +27,7 @@ export async function fixture(t: TestContext, code = 0, config = '', withDuratio
   let closeReturnedHub: (() => Promise<void>) | undefined;
   const open = ownedDatabases({ requireClose: close => beforeDirectories(t, close) }, () => closeReturnedHub?.());
   const root = await tempProject(t, 'cland-suite-component-');
+  options.onRoot?.(root);
   await mkdir(join(root, '.cland'), { recursive: true });
   await verificationFixture(root, { typecheck: 'true', testScript: 'true' });
   await writeFile(join(root, '.cland/config.toml'), `${config}\n[verification]\ncheck="npm run typecheck"\ntest="npm test"\nbudget=1\nlock_path=${JSON.stringify(join(root, 'suite.lock'))}\n${options.tiers ? 'test_unit="fake-unit"\ntest_component="fake-component"\ntest_integration="fake-integration"\n' : ''}`);
@@ -75,6 +76,7 @@ export async function fixture(t: TestContext, code = 0, config = '', withDuratio
   mock(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => {
     executions.push(structuredClone(run));
     await writeFile(run.log, `selection ${JSON.stringify(run.selection)}\n# tests 1\n# pass ${workerCode === 0 ? 1 : 0}\n`);
+    if (run.selection?.recordCoverage) await writeFile(join(root, '.cland/run/suites', run.id, 'coverage-map.json'), JSON.stringify({ version: 1, head: run.head, tree: run.tree, created: clock.now().toISOString(), testFiles: [], files: {} }));
     receipts.set(run.id, { state: 'done', code: workerCode, finished: clock.now().toISOString(), platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'none' } });
   });
   mock(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
@@ -111,6 +113,7 @@ export async function fixture(t: TestContext, code = 0, config = '', withDuratio
     return result.value as { id: string; pid: number | null; position: number; cached?: { run: string; head: string; tree: string } };
   };
   return { root, facts, trees, candidate, clock, legacyKeys, durationContext, item, topic, spoke, executions, receipts, results, launch, settle,
+    get hub() { return hub; },
     env: sessionShell(root, { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'suite-caller', CLAND_ROLE: 'implementer' }),
     get ui() { return ui; },
     code(value: number) { workerCode = value; },

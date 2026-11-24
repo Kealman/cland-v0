@@ -14,7 +14,7 @@ import { suiteRecoveryState, isolatedUnavailableReport, isolatedSuiteProcessOwne
 import { lightBatchSelection, LIGHT_BATCH_POLICY } from '../batch-selection.ts';
 import { wholeSuiteSelection, tierTestMask } from '../suite-completeness.ts';
 import { batchInteractionSelection, batchMemberPaths } from '../suite-interactions.ts';
-import { appendSuiteProvenance } from '../suite-provenance.ts';
+import { appendSuiteProvenance, withSuiteLogPublication } from '../suite-provenance.ts';
 import { machineAccounting } from '../suite-accounting.ts';
 export { machineAccounting } from '../suite-accounting.ts';
 import { suiteAuthor } from './suite-author.ts';
@@ -108,6 +108,11 @@ export type SuiteJob = {
   head: string; branch: string; log: string; result: string; gate: string;
   pid: number | null; started: string | null; outcome: { code: number; cause: string; notRun?: 'infrastructure' | 'provider-capacity' } | null;
   reportFailedPermanently?: boolean;
+  provenanceFinalized?: boolean;
+  finalizedLog?: { run: string; head: string; tree: string | null; path: string; source: string };
+  reportFailure?: { error: string; attemptedAt: string; secondary?: string };
+  reportAttempts?: number;
+  reportRetryAt?: number;
   artifact: string | null; reported: boolean; error: string | null; cleaned?: boolean;
   accountingWaitStarted?: string; accountingPending?: boolean;
   packageClosure?: import('../executor/executor.ts').RunStatus['packageClosure'];
@@ -280,6 +285,7 @@ export class Suites {
   #nextDevT3Check = 0;
   readonly #pendingCollections = new Set<SuiteJob>();
   readonly #inspecting = new Map<string, Promise<void>>();
+  readonly #normalizedReports = new Set<string>();
   readonly #isolatedAdmissions = new Map<string, Promise<void>>();
   #landedIdentities: Promise<string[]> | undefined;
   readonly #stageReads = new Map<string, Promise<string[]>>();
@@ -1833,7 +1839,7 @@ export class Suites {
     if (admission) await admission;
     const pending = this.#inspecting.get(job.id);
     if (pending) return pending;
-    if (this.#closed || job.reported || job.reportFailedPermanently || this.#launching.has(job.id) || this.#planning.has(job.id)) return Promise.resolve();
+    if (this.#closed || job.reported || job.reportFailedPermanently || (job.reportRetryAt ?? 0) > this.#clock.now().getTime() || this.#launching.has(job.id) || this.#planning.has(job.id)) return Promise.resolve();
     if (job.executor === 'droplet' && (job.lease || job.shards)) this.#pendingCollections.add(job);
     const work = this.#inspect(job).catch(() => { /* saved errors are retried on the next tick */ }).finally(() => {
       this.#inspecting.delete(job.id);
@@ -1933,6 +1939,10 @@ export class Suites {
       job.outcome = { code: 130, cause: 'cancelled: requester died before admission' };
     }
     try {
+      if (this.#normalizedReports.has(job.id) && this.#finalizedPath(job)) {
+        await withSuiteLogPublication(job.finalizedLog!.source, () => this.#publishFinalized(job));
+        return;
+      }
       await this.#recoverMissingRemoteEvidence(job);
       const restored = await this.#restoreRemoteResult(job);
       if (restored && job.executor === 'droplet' && job.lease) {
@@ -2089,7 +2099,7 @@ export class Suites {
       // Final collection is over before appending derived lines: remote offsets
       // remain raw byte offsets until the machine has been released.
       let evidence: string | undefined;
-      const logEvidence = async () => evidence ??= await (job.cached ? this.evidence(job) : readSuiteEvidence(job.log));
+      const logEvidence = async () => evidence ??= await (job.cached ? this.evidence(job) : readSuiteEvidence(this.#finalizedPath(job) ?? job.log));
       // A native success can coexist with an incomplete scheduler collection.
       // Keep that original receipt byte-for-byte, including across report retries.
       const preserveNativeResult = remote && incompleteCollection(job);
@@ -2176,22 +2186,52 @@ export class Suites {
         }
       }
       this.#save(job);
+      this.#normalizedReports.add(job.id);
+      if (this.#finalizedPath(job)) {
+        await withSuiteLogPublication(job.finalizedLog!.source, () => this.#publishFinalized(job));
+        return;
+      }
       await appendSuiteProvenance(job.log, job, await logEvidence(), async () => {
-        evidence = undefined;
-        if (job.parentRun) { job.reported = true; job.error = null; this.#save(job); return; }
-        if (!job.cached) this.#cacheEvidence(job.id, await logEvidence());
-        await this.#report(job, id => {
-          if (job.artifact !== null && job.artifact !== id) throw new Error('suite artifact checkpoint already settled');
-          job.artifact = id; this.#save(job);
-        });
-        if(job.hostSource&&job.cwd.startsWith(hostVerifyDirectory(this.#root)+'/')) await removeHostVerifyWorktree(this.#root,job.cwd,this.#env,job.hostSnapshot);
-        job.reported = true; job.error = null; this.#save(job);
+        const path = join(this.#root, '.cland/run/suites', job.id, 'finalized.log');
+        await mkdir(dirname(path), { recursive: true });
+        await copyFile(job.log, path + '.tmp');
+        await rename(path + '.tmp', path);
+        job.finalizedLog = { run: job.id, head: job.head, tree: job.tree ?? null, path, source: job.log };
+        job.provenanceFinalized = true; this.#save(job);
+        await this.#publishFinalized(job);
       });
     } catch (error) {
       job.error = error instanceof Error ? error.message : String(error);
+      if (job.reportFailure && job.error !== job.reportFailure.error) job.reportFailure.secondary = job.error;
       if (job.cleaned && /^forbidden:/.test(job.error)) job.reportFailedPermanently = true;
       this.#save(job);
     }
+  }
+
+  async #publishFinalized(job: SuiteJob): Promise<void> {
+    if (job.parentRun) { job.reported = true; job.error = null; this.#normalizedReports.delete(job.id); this.#save(job); return; }
+    const log = this.#finalizedPath(job);
+    if (!log) throw new Error('finalized log receipt does not match run');
+    // The run-owned immutable copy, never a mutable legacy/shared pathname.
+    if (!job.cached) this.#cacheEvidence(job.id, await readSuiteEvidence(log));
+    const attemptedAt = this.#clock.now().toISOString();
+    const reporting = { ...job, log };
+    try {
+      await this.#report(reporting, id => {
+        if (job.artifact !== null && job.artifact !== id) throw new Error('suite artifact checkpoint already settled');
+        job.artifact = id; reporting.artifact = id; this.#save(job);
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      job.reportFailure = { error: message, attemptedAt };
+      job.reportAttempts = (job.reportAttempts ?? 0) + 1;
+      job.reportRetryAt = this.#clock.now().getTime() + Math.min(300_000, 5000 * 2 ** Math.min(job.reportAttempts - 1, 6));
+      this.#options.log?.({ event: 'suite-report-failed', id: job.id, error: message });
+      throw error;
+    }
+    delete job.reportFailure; this.#save(job);
+    if(job.hostSource&&job.cwd.startsWith(hostVerifyDirectory(this.#root)+'/')) await removeHostVerifyWorktree(this.#root,job.cwd,this.#env,job.hostSnapshot);
+    job.reported = true; job.error = null; this.#normalizedReports.delete(job.id); this.#save(job);
   }
   /** Reuse batch failing-file jobs through normal admission, leases and spend caps.
    * Each round is checkpointed before the next one; report retries never add rounds. */
@@ -2276,6 +2316,8 @@ export class Suites {
     for (const job of this.#jobs) {
       if (job.actor?.sessionId !== sessionId || !job.reportFailedPermanently) continue;
       delete job.reportFailedPermanently;
+      delete job.reportRetryAt;
+      delete job.reportAttempts;
       job.error = null; changed = true;
       this.#save(job);
     }
@@ -2342,8 +2384,13 @@ export class Suites {
    */
   #evidencePath(job: Readonly<SuiteJob>): string {
     const artifact = job.artifact ? this.#store.resolveArtifact(job.artifact) : null;
-    const path = artifact?.path ?? job.log;
+    const path = artifact?.path ?? this.#finalizedPath(job) ?? job.log;
     return this.#env.CLAND_TEST_ORPHAN_ROOT === this.#root ? isolatedSuiteEvidencePath(this.#root, job.id, path, this.#env) : path;
+  }
+  #finalizedPath(job: Readonly<SuiteJob>): string | undefined {
+    const receipt = job.finalizedLog;
+    return receipt?.run === job.id && receipt.head === job.head && receipt.tree === (job.tree ?? null)
+      && receipt.source === job.log && receipt.path === join(this.#root, '.cland/run/suites', job.id, 'finalized.log') ? receipt.path : undefined;
   }
   evidence(job: Readonly<SuiteJob>): Promise<string> {
     const source = job.cached ? this.#jobs.find(source => source.id === job.cached!.run) ?? job : job;

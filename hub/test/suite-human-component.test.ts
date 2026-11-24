@@ -5,7 +5,7 @@ import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { projectHub, tempProject, inProcessSpoke, eventually } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -13,6 +13,134 @@ import { LocalExecutor } from '../src/executor/local.ts';
 import type { Lease, RunRef, RunStatus } from '../src/executor/executor.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 import { onCleanup } from './process-cleanup.ts';
+import { fixture as componentFixture } from './suite-component-fixture.ts';
+import { reportCase as retentionCase } from './suite-report-case.ts';
+import { ownedDatabases } from './owned-tracker.ts';
+import { Store } from '../src/hub/store.ts';
+import { releaseT3Cover } from '../src/hub/suites.ts';
+import { HubCore } from '../src/hub/core.ts';
+import { DatabaseSync } from 'node:sqlite';
+import cp from 'node:child_process';
+import { afterCleanup } from './process-cleanup.ts';
+
+function receiptStore(scope: ReturnType<typeof retentionCase>, root: string, nativeOpen?: ConstructorParameters<typeof Store>[1]) {
+  const open = ownedDatabases({ requireClose: scope.cleanup });
+  return new Store(join(root, '.cland/hub.db'), path => open(path, nativeOpen));
+}
+
+test('release result addressed to the submitting Coordinator role posts once and supplies a cover', t => {
+ const scope = retentionCase(t);
+ return scope.run(async step => {
+  const f = await step(() => scope.wait('component setup', () => componentFixture(scope.fixtures, 0, '', false, { patch: scope.patch, onRoot: scope.adoptRoot })));
+  await step(() => scope.wait('release report behaviour', async () => {
+  f.facts.branch = 'dev';
+  f.facts.selection = { mode: 'full', files: [], reason: 'integrated full', fetchedDev: f.facts.head, soak: true, recordCoverage: { head: f.facts.head, tree: f.facts.tree, run: 'fixture' } };
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
+  const coord = await inProcessSpoke(scope.fixtures, { discover: true, cwd: f.root, name: 'coord', sessionId: 'release-coord', role: 'coordinator', clock: f.clock });
+  await coord.waitForPresence(['coord']);
+  const submitted = await f.ui.request({ type: 'suite.start', as: { name: 'coord', sessionId: 'release-coord', shell: true }, mode: 'all', occasion: 'release', integrated: true, fresh: true, cwd: f.root, report: f.topic, to: ['coordinator'] });
+  assert.equal(submitted.ok, true, submitted.error);
+  const { id } = submitted.value as { id: string };
+  await f.settle();
+  const reports = await f.results();
+  assert.equal(reports.filter(m => m.id === `suite:${id}`).length, 1);
+  const store = receiptStore(scope, f.root);
+  try { assert.deepEqual(releaseT3Cover(store, f.facts.tree), { run: id, head: f.facts.head }); }
+  finally { store.close(); }
+  await f.settle();
+  assert.equal((await f.results()).filter(m => m.id === `suite:${id}`).length, 1);
+  const ordinary = await coord.call('send', { to: ['coordinator'], topic: f.topic, text: 'ordinary role broadcast' });
+  assert.ok(JSON.stringify(ordinary).includes('empty'), JSON.stringify(ordinary));
+  }));
+ });
+});
+
+test('result retry retains coverage registration and finalized log across a hub restart', t => {
+ const scope = retentionCase(t);
+ return scope.run(async step => {
+  let refuse = true;
+  const send = HubCore.prototype.sendFromSession;
+  scope.patch(HubCore.prototype, 'sendFromSession', function (this: HubCore, ...args: Parameters<typeof send>) {
+    if (refuse && args[9]?.startsWith('suite:')) throw new Error('result recipients unavailable; delivery remains pending');
+    return send.apply(this, args);
+  });
+  const f = await step(() => scope.wait('component setup', () => componentFixture(scope.fixtures, 0, '', false, { patch: scope.patch, onRoot: scope.adoptRoot })));
+  await step(() => scope.wait('restart report behaviour', async () => {
+  f.facts.branch = 'dev';
+  f.facts.selection = { mode: 'full', files: [], reason: 'integrated full', fetchedDev: f.facts.head, soak: true, recordCoverage: { head: f.facts.head, tree: f.facts.tree, run: 'fixture' } };
+  await f.ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(scope.fixtures, { discover: true, cwd: f.root, name: 'coord', sessionId: 'release-coord', role: 'coordinator', clock: f.clock });
+  await coord.waitForPresence(['coord']);
+  const submitted = await f.ui.request({ type: 'suite.start', as: { name: 'coord', sessionId: 'release-coord', shell: true }, mode: 'all', occasion: 'release', integrated: true, fresh: true, cwd: f.root, report: f.topic, to: ['coordinator', 'reviewer'] });
+  assert.equal(submitted.ok, true, submitted.error);
+  const { id } = submitted.value as { id: string };
+  await f.settle();
+  const store = receiptStore(scope, f.root);
+  let coveragePath: string;
+  try {
+    const artifact = store.meta(`suite-coverage-registered:${id}`);
+    assert.ok(artifact, 'coverage was registered before the send failure');
+    coveragePath = store.resolveArtifact(artifact)!.path;
+    const saved = JSON.parse(store.meta(`suite-job:${id}`)!).job;
+    assert.equal(saved.error, 'result recipients unavailable; delivery remains pending');
+  } finally { store.close(); }
+  const log = join(f.root, '.cland/run/suites', id, 'suite.log');
+  const inode = (await stat(log)).ino;
+  await writeFile(coveragePath!, 'invalid JSON: a retry must use the committed registration');
+  await f.hub.verificationSettled();
+  await f.reopen();
+  refuse = false;
+  await f.ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' });
+  await f.clock.advance(5000); await f.hub.verificationSettled();
+  assert.equal((await f.results()).filter(m => m.id === `suite:${id}`).length, 1);
+  assert.equal((await stat(log)).ino, inode, 'retry did not replace suite.log');
+  }));
+ });
+});
+
+for (const boundary of ['constructor', 'cancelled acquisition'] as const) test(`report fixture retains roots and seams after ${boundary} and rejected native close`, t => {
+  let connection: DatabaseSync | undefined, root = '', rejectClose = true, constructorFailed = false;
+  const originalSpawn = cp.spawn;
+  let guardedSpawn: typeof cp.spawn;
+  const scope = retentionCase(t, undefined, { onIncomplete: async (_error, repair) => {
+    assert.ok(connection?.isOpen);
+    assert.equal(cp.spawn, guardedSpawn);
+    await assert.rejects(repair.removeOwnedRoot(root), /resource closure unconfirmed/);
+    assert.throws(repair.releaseSeams, /resource closure unconfirmed/);
+    rejectClose = false;
+    await repair.finishCleanup();
+    assert.equal(connection!.isOpen, false);
+    await assert.rejects(stat(root), { code: 'ENOENT' });
+    assert.equal(cp.spawn, guardedSpawn, 'repair continuation still owns the guard');
+  } });
+  afterCleanup(t, () => { assert.equal(cp.spawn, originalSpawn); });
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('component setup', () => componentFixture(scope.fixtures, 0, '', false, { patch: scope.patch, onRoot: scope.adoptRoot })));
+    root = f.root; guardedSpawn = cp.spawn;
+    await step(() => scope.wait('failed acquisition behaviour', async () => {
+      const nativeOpen = (path: string) => {
+        connection = new DatabaseSync(path);
+        const close = connection.close.bind(connection);
+        scope.patch(connection, 'close', () => { if (rejectClose) throw new Error('planted native close rejection'); close(); });
+        if (boundary === 'constructor') scope.patch(connection, 'exec', () => { constructorFailed = true; throw new Error('planted constructor rejection'); });
+        return connection;
+      };
+      if (boundary === 'constructor') {
+        assert.throws(() => receiptStore(scope, root, nativeOpen), /planted native close rejection/);
+        assert.equal(constructorFailed, true, 'constructor reached its failing native operation before cleanup also rejected');
+      }
+      else {
+        const cancellation = new AbortController();
+        await assert.rejects((async () => {
+          receiptStore(scope, root, nativeOpen);
+          cancellation.abort(new Error('planted acquisition cancellation'));
+          cancellation.signal.throwIfAborted();
+        })(), /planted acquisition cancellation/);
+      }
+      assert.ok(connection!.isOpen, 'unreturned or cancelled native handle remains owned');
+    }));
+  });
+});
 
 async function fixture(t: TestContext) {
   const root = await tempProject(t);

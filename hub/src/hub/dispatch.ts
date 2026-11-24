@@ -1162,7 +1162,8 @@ export class Dispatcher {
         await this.#artifact({ type: 'artifact.create', id: shard.id, kind: 'file', title, topic: job.topic, path: shard.log }, callerNow, work => work(), job);
       }
     }
-    if (job.integrated && job.selection?.recordCoverage && job.outcome?.code === 0 && !job.cached) {
+    const coverageCheckpoint = `suite-coverage-registered:${job.id}`;
+    if (job.integrated && job.selection?.recordCoverage && job.outcome?.code === 0 && !job.cached && !core.store.meta(coverageCheckpoint)) {
       const title = `Coverage map ${job.id} at ${job.head}`;
       let coverage = core.store.artifacts(job.topic).find(a => a.title === title);
       if (!coverage) {
@@ -1181,6 +1182,7 @@ export class Dispatcher {
       const operation = this.#artifactQueue.then(register);
       this.#artifactQueue = operation.catch(() => {});
       await operation;
+      core.store.setMeta(coverageCheckpoint, coverage.id);
     }
     const artifact = core.store.resolveArtifact(artifactId);
     if (!artifact || artifact.fileDeleted || artifact.status === 'archived') throw new Error('suite log artifact unavailable');

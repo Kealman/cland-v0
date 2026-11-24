@@ -1,5 +1,13 @@
 # Hub documentation
 
+Suite result delivery retries retain a run-bound immutable finalized log and
+registered coverage. Shared legacy paths remain serialized through publication.
+Report-attempt failures appear as `suite-report-failed` events and heartbeat errors;
+earlier generic inspection errors remain unclassified. Retries back
+off from five seconds to five minutes. A required suite result addressed to a role
+held solely by its sender reaches that sender; ordinary role broadcasts exclude
+their sender. Existing unreported jobs take this path after the hub restarts.
+
 Task readiness uses completed green verification at the exact tip when the running
 project config has a test or tier command, alongside current verdicts and criteria.
 No test command or an empty base diff retains verdict-only readiness; same-tree

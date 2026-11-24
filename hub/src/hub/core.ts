@@ -2992,7 +2992,7 @@ export class HubCore {
   }
 
   /** Tags → addressees. `all`, globs and roles reach the connected and the known-offline; `except` is the sender. */
-  #resolveAddressees(tags: string[], except: string, vacant: 'offline-holders' | 'placeholder', verifier?: { item: ItemSummary; role: 'reviewer' | 'qa' }) {
+  #resolveAddressees(tags: string[], except: string, vacant: 'offline-holders' | 'placeholder', verifier?: { item: ItemSummary; role: 'reviewer' | 'qa' }, requiredResult = false) {
     const connected = [...this.#live.keys()];
     const known = this.#known();
     const knownSet = new Set([...connected, ...known]);
@@ -3032,7 +3032,9 @@ export class HubCore {
             else empty.push({ tag, reason: `role "${tag}" has no free live verifier for ${verifier.item.id}` });
             break;
           }
-          const names = r.names.filter((n) => n !== except && broadcast(n));
+          // A required result addressed to the sender's sole-held role must have
+          // a recipient. Ordinary role broadcasts continue to exclude the sender.
+          const names = r.names.filter((n) => (n !== except || requiredResult && r.names.length === 1) && broadcast(n));
           if (names.length) tagOf.set(tag, names);
           else empty.push({ tag: lead ? target : tag, reason: r.names.length ? `the sender is the only session holding role "${target}"` : `role "${target}" has no holder` });
           for (const n of names) sessions.add(n);
@@ -3598,7 +3600,7 @@ export class HubCore {
     const self = this.#identity(from);
     const verifier = kind === 'request' ? undefined : this.#verifierRequest(from, sender.role, text, topic);
     if (requireAllRecipients) {
-      const intended = this.#resolveAddressees(to, from, 'offline-holders', verifier);
+      const intended = this.#resolveAddressees(to, from, 'offline-holders', verifier, requireAllRecipients);
       if (intended.unknown.length || intended.empty.length) throw new Error('result recipients unavailable; delivery remains pending');
       // A running mute is checked before consuming any outbound or pair allowance on retry.
       for (const name of intended.sessions) {
@@ -3612,7 +3614,7 @@ export class HubCore {
       this.#log({ event: 'rate-limited', session: from });
       throw new HygieneError(rate, { code: 'hygiene', rule: 'rate' });
     }
-    const { sessions, direct, unknown, empty, tagOf } = this.#resolveAddressees(to, from, 'offline-holders', verifier);
+    const { sessions, direct, unknown, empty, tagOf } = this.#resolveAddressees(to, from, 'offline-holders', verifier, requireAllRecipients);
     const outcomes: SendOutcome[] = unknown.map((tag) => ({ to: tag, outcome: 'unknown', reason: `no session named "${tag}" is connected or known, and no role has that name` }));
     const waiting = empty.filter(({ tag }) => verifier && tag === verifier.role);
     for (const { tag, reason } of empty) outcomes.push(waiting.some(w => w.tag === tag)

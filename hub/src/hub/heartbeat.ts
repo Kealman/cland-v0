@@ -54,7 +54,7 @@ export function heartbeatDigest(store: Store, items: ItemSummary[], interval: nu
     const started = Date.parse(job.started ?? job.admittedAt ?? '');
     if (!job.outcome && !job.reported && Number.isFinite(started) && now - started > runTimeoutMs) stale.push(`run ${job.id} past its timeout · age ${age(started)}`);
     const resolved = job.item && (closed.has(job.item) || job.sequence !== undefined && (posted.get(job.item) ?? -1) > job.sequence);
-    if (job.outcome && !job.reported && !resolved) stale.push(`run ${job.id} ended without a posted result · age ${age(Date.parse(job.finished ?? job.completedAt ?? job.started ?? job.queued ?? new Date(now).toISOString()))}`);
+    if (job.outcome && !job.reported && !resolved) stale.push(`run ${job.id} ${job.reportFailure ? `report failed: ${job.reportFailure.error}${job.reportFailure.secondary ? `; secondary inspection error: ${job.reportFailure.secondary}` : ''}` : 'ended without a posted result'} · age ${age(Date.parse(job.finished ?? job.completedAt ?? job.started ?? job.queued ?? new Date(now).toISOString()))}`);
     const lease = job.lease as DropletLease | undefined;
     if (lease?.kind === 'droplet') leases.set(lease.lease, lease);
   }

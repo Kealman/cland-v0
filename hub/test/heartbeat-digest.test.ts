@@ -46,6 +46,15 @@ test('ended runs leave the stale digest on item closure or a later posted result
   clock.block(2000);
   assert.equal(digest().stale, 4, 'an earlier posted result does not hide a later unreported run');
   assert.match(digest().text, /run superseded ended without a posted result · age 2s/);
+  active[0]!.error = 'recipient unavailable';
+  store.setMeta('suite-jobs', JSON.stringify(active));
+  assert.doesNotMatch(digest().text, /report failed:/, 'legacy generic errors have no report-attempt receipt');
+  active[0]!.reportFailure = { error: 'recipient unavailable', attemptedAt: clock.now().toISOString() };
+  store.setMeta('suite-jobs', JSON.stringify(active));
+  assert.match(digest().text, /run open report failed: recipient unavailable/);
+  active[0]!.error = null;
+  delete active[0]!.reportFailure;
+  store.setMeta('suite-jobs', JSON.stringify(active));
 
   items[0]!.state = 'closed';
   assert.equal(digest().stale, 3);

@@ -1621,7 +1621,8 @@ for (const log of [passLog, t0Red + passLog]) test(`recovered exit-zero batch ho
   const receipt = await f.suites.receipt(original.id);
   // Plant the retained pre-upgrade/incomplete receipt after its writer has
   // finished, before reopening the controller that must validate it.
-  await writeFile(receipt.job.log, log);
+  // Plant the immutable collected evidence now consumed by receipt readers.
+  await writeFile(f.store.resolveArtifact(receipt.job.artifact!)!.path, log);
   await state.reopen(); await state.runner.tick();
   assert.deepEqual(landed, []);
   assert.deepEqual(dropped, []);

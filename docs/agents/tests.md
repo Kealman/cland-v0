@@ -2744,6 +2744,15 @@ isolation boundary are in [suite-preflight.test.ts](tests/hub-test-suite-preflig
 
 ### Verification log provenance
 
+Result delivery retries reuse a run-bound immutable finalized log and registered
+coverage, including after hub restart. Legacy shared log paths stay serialized
+through publication; retries read their own finalized copy. Failed report attempts
+log `suite-report-failed` with run id and error; heartbeat rows show that attempt's
+`report failed: <error>`, retaining subsequent inspection errors as secondary
+diagnostics. Generic historical errors do not establish a report failure. Retries start at five seconds and
+double up to five minutes. A required result sent to the sender's sole-held role
+reaches that sender; ordinary role broadcasts still exclude their sender.
+
 Hub verification logs on local and droplet executors end with a `suite provenance`
 JSON record after collection and derived reports. Read its admitted head/tree,
 executor/platform, occasion, browser binary/version and skip reasons when citing

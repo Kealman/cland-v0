@@ -97,7 +97,7 @@ test('a recovered report retains the durable partial result after machine deleti
   assert.deepEqual(f.api.droplets, []);
   await f.reopen();
   f.beforeReport(async () => {});
-  await f.tick();
+  await f.tick(5000); // Advance the persisted report retry deadline.
   await f.machine.waits.run(f.result(job.id));
   const after = JSON.parse(await readFile(path, 'utf8'));
   assert.deepEqual(after.progress, before.progress);

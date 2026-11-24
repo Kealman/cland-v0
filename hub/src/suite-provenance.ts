@@ -34,9 +34,16 @@ export function suiteProvenance(input: Provenance, lines: Iterable<string>) {
 const finalizations = new Map<string, Promise<void>>();
 /** Hold shared legacy paths through artifact publication, not only the rename. */
 export function appendSuiteProvenance(path: string, input: Provenance, evidence: string, publish: () => Promise<void>): Promise<void> {
+  return withSuiteLogPublication(path, async () => {
+    await finalizeSuiteProvenance(path, input, evidence);
+    await publish();
+  });
+}
+
+/** Retried publication keeps the same shared-path serialization as finalization. */
+export function withSuiteLogPublication(path: string, publish: () => Promise<void>): Promise<void> {
   const previous = finalizations.get(path) ?? Promise.resolve();
   const work = previous.catch(() => {}).then(async () => {
-    await finalizeSuiteProvenance(path, input, evidence);
     await publish();
   }).finally(() => { if (finalizations.get(path) === work) finalizations.delete(path); });
   finalizations.set(path, work);

@@ -23,7 +23,8 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 import { ownedDatabases } from './owned-tracker.ts';
 
-export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions & { machineReceiptsOnly?: boolean; onRoot?: (root: string) => void; deferRootRemoval?: boolean; openDatabase?: ConstructorParameters<typeof Store>[1] } = {}, source = '', accounting = false) {
+export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions & { machineReceiptsOnly?: boolean; onRoot?: (root: string) => void; deferRootRemoval?: boolean; openDatabase?: ConstructorParameters<typeof Store>[1]; patch?: (target: object, key: PropertyKey, value: unknown) => void } = {}, source = '', accounting = false) {
+  const mock = (target: object, key: string, value: unknown) => options.patch ? options.patch(target, key, value) : t.mock.method(target, key as never, value as never);
   // Register partial acquisition cleanup before the first await; whole-case callers
   // collect this hook and join setup/body continuations before invoking it.
   const partial: Array<() => void | Promise<void>> = [];
@@ -71,28 +72,28 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   let held = false;
   let holder: Awaited<ReturnType<LocalExecutor['holder']>> = null;
   const lease = (run: RunRef, deadline: string): Lease => ({ kind: 'local', run: run.id, created: clock.now().toISOString(), deadline, resource: null });
-  t.mock.method(LocalExecutor.prototype, 'reconcile', async () => {});
-  t.mock.method(LocalExecutor.prototype, 'holder', async () => holder);
-  t.mock.method(LocalExecutor.prototype, 'occupied', async () => held);
-  t.mock.method(LocalExecutor.prototype, 'restore', (run: RunRef) => lease(run, clock.now().toISOString()));
-  t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string) => lease(run, deadline));
-  t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
-  t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { delivered.set(run.id, structuredClone(run)); publish(); });
-  t.mock.method(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
-  t.mock.method(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
-  t.mock.method(LocalExecutor.prototype, 'cancel', async () => {});
+  mock(LocalExecutor.prototype, 'reconcile', async () => {});
+  mock(LocalExecutor.prototype, 'holder', async () => holder);
+  mock(LocalExecutor.prototype, 'occupied', async () => held);
+  mock(LocalExecutor.prototype, 'restore', (run: RunRef) => lease(run, clock.now().toISOString()));
+  mock(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string) => lease(run, deadline));
+  mock(LocalExecutor.prototype, 'deliver', async () => {});
+  mock(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { delivered.set(run.id, structuredClone(run)); publish(); });
+  mock(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
+  mock(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
+  mock(LocalExecutor.prototype, 'cancel', async () => {});
   if (accounting) {
     const acquire = DropletExecutor.prototype.acquire;
-    t.mock.method(DropletExecutor.prototype, 'acquire', function (this: DropletExecutor, ...args: Parameters<typeof acquire>) {
+    mock(DropletExecutor.prototype, 'acquire', function (this: DropletExecutor, ...args: Parameters<typeof acquire>) {
       return machine.waits.track(() => acquire.apply(this, args));
     });
   }
   if (!accounting) {
     // Suites policy gets semantic executor receipts. OS lock/spend integration
     // uses the real backend only in suite-accounting.test.ts (T2).
-    t.mock.method(DropletExecutor.prototype, 'checkSpend', async () => {});
-    t.mock.method(DropletExecutor.prototype, 'checkReachability', async () => {});
-    t.mock.method(DropletExecutor.prototype, 'acquire', async (run: RunRef, deadline: string, _demo?: DropletLease['demo'], snapshot?: import('../src/init/config.ts').ProjectConfig, admitted?: (lease: DropletLease) => void): Promise<DropletLease> => {
+    mock(DropletExecutor.prototype, 'checkSpend', async () => {});
+    mock(DropletExecutor.prototype, 'checkReachability', async () => {});
+    mock(DropletExecutor.prototype, 'acquire', async (run: RunRef, deadline: string, _demo?: DropletLease['demo'], snapshot?: import('../src/init/config.ts').ProjectConfig, admitted?: (lease: DropletLease) => void): Promise<DropletLease> => {
       const created = clock.now().toISOString(), size = run.size ?? 'c-8';
       acquisitions.push(run.id);
       // Pure scheduler rules consume executor receipts without creating provider resources.
@@ -100,7 +101,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
       const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', run: run.id, lease: `${run.id}-${acquisitions.length}`, name: machine.name, tags: machine.tags, size, region: snapshot?.verification.droplet.regions[0] ?? 'lon1', priceHourly: 0.25, keyName: run.id, created, deadline: run.leaseDeadline ?? deadline, state: 'active', resource: machine.id, keyId: null };
       await writeLease(root, lease); admitted?.(lease); return lease;
     });
-    t.mock.method(DropletExecutor.prototype, 'release', async (lease: DropletLease) => {
+    mock(DropletExecutor.prototype, 'release', async (lease: DropletLease) => {
       if (!options.machineReceiptsOnly && lease.resource !== null) { await api.provider.deleteDroplet(lease.resource); await api.provider.droplet(lease.resource).catch(() => {}); }
       lease.state = 'released'; await writeLease(root, lease); return { lifetimeMs: 0, costUsd: 0 };
     });
@@ -113,7 +114,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   partial.push(() => store.close());
   const watchStore = () => {
     const save = store.setMeta.bind(store);
-    t.mock.method(store, 'setMeta', (key: string, value: string) => { save(key, value); publish(); });
+    mock(store, 'setMeta', (key: string, value: string) => { save(key, value); publish(); });
   };
   watchStore();
   let inspectBarrier = async () => {};

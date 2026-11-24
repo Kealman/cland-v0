@@ -33,7 +33,7 @@ test('terminal no-lease report retry cannot consume the only remote budget slot'
   assert.deepEqual((await f.suites.queue()).remote!.map(row => row.id), [successor.id]);
   await f.finish(successor.id);
   f.beforeReport(async () => {});
-  await f.tick(); await f.suites.settled();
+  await f.tick(5000); await f.suites.settled();
   assert.equal(f.status(ghost.id).reported, true);
 });
 
