@@ -228,7 +228,7 @@ test('acquire persists an armed lease before create, waits for a public IP, and 
     api.auth.token = 'cland-test-rotated'; process.env.DIGITALOCEAN_TOKEN = 'cland-test-rotated';
   });
   const executor = new DropletExecutor(root);
-  const lease = await executor.acquire({ id: 'run-one' }, new Date(Date.now() + 300000).toISOString());
+  const lease = await api.checked(executor.acquire({ id: 'run-one' }, new Date(Date.now() + 300000).toISOString()));
   ownProcess(t, lease.watchdog!.pid);
   assert.equal(lease.state, 'active');
   assert.equal(lease.address, '203.0.113.10');

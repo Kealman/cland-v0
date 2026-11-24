@@ -1,11 +1,195 @@
 // T2: injected provider transport and clock; fake loopback HTTP and scripted transport; no child processes.
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
+import fs from 'node:fs/promises';
+import cp from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 import assert from 'node:assert/strict';
 import { DigitalOceanApi } from '../src/executor/droplet/api.ts';
 import { FakeClock } from './fake-clock.ts';
 import * as apiTypes from '../src/executor/droplet/api.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
-import { until } from './until.ts';
+import { until, testWaitMs } from './until.ts';
+import { receiptFixtureCase, type ReceiptStep } from './receipt-fixture-case.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { beforeDirectories, guardDirectoryRemoval, ownDirectory, drainFixtureCleanup, onCleanup, fenceFixtureCleanup } from './process-cleanup.ts';
+
+type Fake = Awaited<ReturnType<typeof fakeDigitalOcean>>;
+function hookCase(t: TestContext, transport: 'scripted' | 'http', body: (f: {
+  fake: Fake; client: DigitalOceanApi; signal: AbortSignal; step: ReceiptStep;
+  release: (action: () => void) => void;
+  cleanup: () => Promise<void>;
+  expectClose: (check: (error: unknown) => boolean) => Promise<void>;
+}) => Promise<void>) {
+  return receiptFixtureCase(t, false, async (fixtures, step, adoptRoot, release) => {
+    fenceFixtureCleanup(fixtures);
+    let fake: Fake | undefined;
+    let acceptedClose: unknown;
+    const abort = new AbortController();
+    release(() => abort.abort());
+    // Installed before acquisition; the shared owner joins late setup first.
+    onCleanup(fixtures, async () => {
+      try { await fake?.close(); }
+      catch (error) { if (error !== acceptedClose) throw error; }
+    });
+    const clock = new FakeClock();
+    const token = `cland-test-hook-${transport}`;
+    const api = await step('fake provider setup', async () => {
+      fake = await fakeDigitalOcean(token, { machine: 'scripted', transport, clock, testContext: fixtures });
+      adoptRoot(fake.stateRoot);
+      return fake;
+    });
+    const client = transport === 'scripted' ? api.provider : new DigitalOceanApi({ DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: api.url }, clock);
+    await body({ fake: api, client, signal: abort.signal, step, release,
+      cleanup: () => drainFixtureCleanup(fixtures),
+      expectClose: check => step('provider closure receipt', () => assert.rejects(api.close(), error => {
+        acceptedClose = error; // The body owns this observed rejection, including a failing predicate.
+        if (!check(error)) return false;
+        return true;
+      })),
+    });
+  });
+}
+
+for (const transport of ['scripted', 'http'] as const) test(`beforeCreate retains its original assertion through drainage (${transport})`, t => hookCase(t, transport, async ({ fake, client, signal, step, expectClose }) => {
+  const original = new assert.AssertionError({ message: 'reservation must exist before create' });
+  fake.beforeCreate(async () => { throw original; });
+  await step('provider failure receipt', () => assert.rejects(client.create({ name: 'hook-control', region: 'lon1', size: 'c-8', image: 900, ssh_keys: [], tags: [] }, undefined, { signal }), { status: 500, id: 'lease-missing' }));
+  await expectClose(error => error === original);
+  assert.equal(fake.droplets.length, 0);
+}));
+
+test('hook case retains its native guard after rejected close until same-owner repair', t => {
+  const originalSpawn = cp.spawn;
+  const observer = caseDeadlines(t, { timeoutMs: testWaitMs() });
+  const context = { name: t.name, signal: t.signal, after: () => {} } as unknown as TestContext;
+  const gate = Promise.withResolvers<void>();
+  const incomplete = new Error('controlled provider drainage rejection');
+  let fake: Fake | undefined;
+  let guardedSpawn = originalSpawn;
+  let request: Promise<unknown> | undefined;
+  let cleanup: (() => Promise<void>) | undefined;
+  let restoreClose: (() => void) | undefined;
+  const dispose = async () => {
+    gate.resolve(); restoreClose?.();
+    await cleanup?.(); await request;
+    await drainFixtureCleanup(context);
+  };
+  observer.fixtures.after(dispose);
+  return (async () => {
+    await observer.wait('owned hook case setup', () => hookCase(context, 'scripted', async f => {
+      fake = f.fake; cleanup = f.cleanup; guardedSpawn = cp.spawn;
+      assert.notEqual(guardedSpawn, originalSpawn, 'positive native guard installed');
+      const entered = Promise.withResolvers<void>();
+      f.release(() => gate.resolve());
+      fake.beforeCreate(async () => { entered.resolve(); await gate.promise; });
+      request = f.client.create({ name: 'fenced-close-control', region: 'lon1', size: 'c-8', image: 900, ssh_keys: [], tags: [] }, undefined, { signal: f.signal }).catch(() => {});
+      const close = t.mock.method(fake, 'close', async () => { throw incomplete; });
+      restoreClose = () => close.mock.restore();
+      await f.step('held provider writer receipt', () => entered.promise);
+    }));
+    assert.ok(fake); assert.ok(cleanup);
+    try {
+      await observer.wait('same-owner close refusal', () => assert.rejects(cleanup!(), error => error === incomplete || error instanceof AggregateError && error.errors.includes(incomplete)));
+      assert.equal(cp.spawn, guardedSpawn, 'native guard retained after rejected close');
+      await observer.wait('retained provider root receipt', () => fs.stat(fake!.stateRoot));
+    } finally { await observer.wait('same-owner repaired cleanup receipt', dispose); }
+    await observer.wait('removed provider root receipt', () => assert.rejects(fs.stat(fake!.stateRoot), { code: 'ENOENT' }));
+    assert.equal(cp.spawn, originalSpawn, 'native seam restored only after repaired cleanup');
+  })();
+});
+
+for (const transport of ['scripted', 'http'] as const) test(`checked wait receives the hook assertion even when the caller catches the provider failure (${transport})`, t => hookCase(t, transport, async ({ fake, client, signal, step, release, expectClose }) => {
+  const original = new assert.AssertionError({ message: 'armed lease is missing' });
+  fake.beforeCreate(async () => { throw original; });
+  const waiting = Promise.withResolvers<void>();
+  release(() => waiting.resolve());
+  const observed = assert.rejects(fake.checked(waiting.promise), error => error === original);
+  const request = client.create({ name: 'checked-control', region: 'lon1', size: 'c-8', image: 900, ssh_keys: [], tags: [] }, undefined, { signal }).catch(() => {});
+  try {
+    await step('original assertion receipt', () => observed);
+    await step('caught request completion', () => request);
+    await step('retained assertion receipt', () => assert.rejects(fake.checked(Promise.resolve('later wait')), error => error === original));
+  } finally { waiting.resolve(); }
+  await expectClose(error => error === original);
+}));
+
+test('intentional create refusal does not fail checked waits or teardown', t => hookCase(t, 'scripted', async ({ fake, client, signal, step }) => {
+    fake.beforeCreate(async () => {});
+    fake.faults.create = 500;
+    await step('intentional refusal receipt', () => assert.rejects(fake.checked(client.create({ name: 'refusal-control', region: 'lon1', size: 'c-8', image: 900, ssh_keys: [], tags: [] }, undefined, { signal })), { status: 500, id: 'refused' }));
+    assert.equal(await fake.checked(Promise.resolve('healthy')), 'healthy');
+}));
+
+for (const frozen of [false, true]) test(`hook assertion stays primary when root removal rejects (frozen=${frozen})`, t => hookCase(t, 'scripted', async ({ fake, client, signal, step, expectClose }) => {
+  const original = new assert.AssertionError({ message: 'reservation assertion remains primary' });
+  if (frozen) Object.freeze(original);
+  const secondary = new Error('controlled root removal failure');
+  fake.beforeCreate(async () => { throw original; });
+  await step('hook failure receipt', () => assert.rejects(client.create({ name: 'cleanup-control', region: 'lon1', size: 'c-8', image: 900, ssh_keys: [], tags: [] }, undefined, { signal }), { status: 500 }));
+  const remove = fs.rm;
+  let removalAttempts = 0;
+  const rejectRemoval: typeof fs.rm = async (path, options) => {
+    if (path === fake.stateRoot) { removalAttempts++; throw secondary; }
+    return remove(path, options);
+  };
+  const mocked = t.mock.method(fs, 'rm', rejectRemoval);
+  syncBuiltinESMExports();
+  try {
+    await expectClose(error => {
+      assert.ok(error instanceof Error);
+      if (frozen) { assert.equal(error.cause, original); assert.equal(error.message, original.message); }
+      else assert.equal(error, original);
+      assert.deepEqual(Reflect.get(error, 'suppressed'), [secondary]);
+      return true;
+    });
+    assert.equal(removalAttempts, 1, 'production removal path reached the controlled rejection');
+    await step('retained root receipt', () => fs.stat(fake.stateRoot));
+  } finally {
+    mocked.mock.restore(); syncBuiltinESMExports();
+    await step('drained retained root disposal', () => remove(fake.stateRoot, { recursive: true, force: true }));
+  }
+}));
+
+test('late rejected provider setup keeps its root until guarded cleanup observes closure', t => receiptFixtureCase(t, false, async (fixtures, step, _adoptRoot, release) => {
+  const observationClock = new FakeClock();
+  const entered = Promise.withResolvers<void>();
+  const gate = Promise.withResolvers<void>();
+  const context = { name: 'held provider setup control', signal: t.signal, after: () => {} } as unknown as TestContext;
+  const owner = caseDeadlines(context, { clock: observationClock, timeoutMs: 10,
+    ownership: { beforeDirectories, guardDirectoryRemoval }, releaseOnClose: () => gate.resolve(),
+  });
+  release(() => gate.resolve());
+  fixtures.after(() => drainFixtureCleanup(context));
+  let fake: Fake | undefined;
+  let closed = false;
+  let remove: (() => Promise<void>) | undefined;
+  owner.fixtures.after(async () => { await fake?.close(); closed = true; });
+  const rejected = new Error('controlled late acquisition rejection');
+  const acquisition = owner.run(async admit => admit(async () => {
+    fake = await fakeDigitalOcean('cland-test-late-hook-setup', { machine: 'scripted', transport: 'http', clock: new FakeClock() });
+    owner.adoptRoot(fake.stateRoot);
+    remove = ownDirectory(context, fake.stateRoot, { beforeRemove: () => {
+      assert.equal(closed, true, 'provider closure not yet observed');
+    } });
+    entered.resolve();
+    await gate.promise;
+    throw rejected;
+  }));
+  const original = assert.rejects(acquisition, error => error === rejected);
+  const observation = assert.rejects(owner.wait('bounded setup observation', () => acquisition), /deadline exceeded/);
+  await step('held setup receipt', () => entered.promise);
+  await observationClock.advance(10);
+  await observation;
+  assert.ok(fake); assert.ok(remove);
+  // The real guarded removal joins late setup, then refuses before provider closure.
+  await step('guarded removal refusal', () => assert.rejects(remove!(), /provider closure not yet observed/));
+  await original;
+  await step('retained root receipt', () => fs.stat(fake!.stateRoot));
+  await step('owned provider closure', () => drainFixtureCleanup(context));
+  assert.equal(closed, true);
+  await step('removed root receipt', () => assert.rejects(fs.stat(fake!.stateRoot), { code: 'ENOENT' }));
+  await step('closed provider admission receipt', () => assert.rejects(fake!.provider.account(), { id: 'closed' }));
+}));
 
 test('300 queued calls share a token budget across clients in every 60 second window', async () => {
   const clock = new FakeClock(0);

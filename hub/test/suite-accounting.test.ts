@@ -462,9 +462,9 @@ test('parallel acquires each reserve shared spend; cap refusals stay local witho
     assert.equal(pending[0].reservation, 0.0625);
   });
   const jobs = await Promise.all([f.launch(), f.launch(), f.launch()]);
-  const q = await f.machine.waits.run(f.when(() => {
+  const q = await f.api.checked(f.machine.waits.run(f.when(() => {
     const q = f.suites.snapshot(); return q.remote?.length === 1 && q.remote[0]!.machine && q.waiters.length === 2 && f.notices.length === 2 ? q : undefined;
-  }));
+  })));
   const active = q.remote![0]!.id!; await running(f, active);
   assert.equal(f.api.droplets.length, 1); assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
   for (const job of jobs) if (job.id !== active) {

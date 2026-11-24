@@ -15,7 +15,35 @@ without a native process census. Machine and transport selection are independent
 omitting transport preserves HTTP for process machines and direct calls for
 scripted machines. Run `node hub/test/run-suite.ts hub hub/test/digitalocean-pacing.test.ts`
 to collect the report-only T2 resource receipt; plain `node --test` does not load
-the resource tripwire. Retain the 24-test completion and zero mismatch findings.
+the resource tripwire. Retain the complete test summary and zero mismatch findings.
+
+The beforeCreate controls throw a synthetic assertion through both transports.
+The provider still replies with the compatible `500/lease-missing` shape, while
+`fake.checked(wait)` rejects with the original error even if the executor catches
+the provider reply. The observer retains failures that preceded registration.
+`close()` attempts ordered drainage and removal before reporting the first hook
+error. Later hook and cleanup errors appear in its enumerable `suppressed` array.
+A mutable Error retains identity; a frozen or non-Error failure uses a wrapper
+with the original as `cause`. Cleanup failure retains the root whenever closure
+or removal could not complete. The removal-rejection controls prove this through
+the real close path, with separate retained-root filesystem receipts, for both
+mutable and frozen assertions.
+Callbacks containing assertions must wrap their caller's wait in `checked`.
+Callbacks used only as barriers or mutations retain teardown reporting. Use
+`faults.create` or `createRefusals` for intentional provider failures: those do
+not poison checked waits or teardown. The controls enroll receiptFixtureCase
+before acquisition, keep the positive native-launch guard through teardown,
+capture late setup before returning, and bound setup/actions separately. A
+proxy cleanup fence keeps the native guard installed when provider close or
+directory cleanup rejects after the original case joins. The same-hookCase
+control holds an admitted provider writer, rejects close, and separately proves
+guard identity and retained root. Repair retries that proxy owner, closes the
+writer, removes the root, and only then restores the native seam. It invokes no
+native launch beyond the shared guard's positively controlled setup calls. A
+held setup control uses an injected observation clock, then proves guarded
+removal refuses before provider closure, retains the root, and removes it after
+the late rejected acquisition joins and the provider closes. All other clocks
+in this control stay on their own native IO scope. No fixed sleeps are used.
 
 The 300-call case uses two clients sharing a token, observes 250 admissions,
 advances to 59,999 ms with no extra sends, then completes all 300 at 60,000 ms.

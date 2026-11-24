@@ -80,7 +80,7 @@ test('occasion refuses implementers and task heads; an integrated Coordinator cl
   const submitted = await request('--occasion', 'stage');
   assert.equal(submitted.code, 0, submitted.stderr);
   const job = JSON.parse(submitted.stdout);
-  const result = await f.result(job.id);
+  const result = await f.api.checked(f.result(job.id));
   assert.match(result.text, /exit 0/);
   assert.match(result.text, /occasion stage/);
   assert.match(result.text, /tests 2; pass 2/);

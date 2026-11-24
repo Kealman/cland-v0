@@ -108,6 +108,10 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   let beforeKeyRead: (() => Promise<void>) | undefined;
   let beforeKeyList: (() => Promise<void>) | undefined;
   let beforeCreate: (() => Promise<void>) | undefined;
+  const hookErrors: unknown[] = [];
+  const hookFailure = Promise.withResolvers<never>();
+  // Keep the receipt even when no checked wait is currently attached.
+  void hookFailure.promise.catch(() => {});
   const createRefusals: Record<string, { status: number; id: string; message: string }> = {};
   let beforeSizes: (() => Promise<void>) | undefined;
   let beforeImport: (() => Promise<void>) | undefined;
@@ -180,7 +184,11 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     if (method === 'GET' && path === '/sizes') { await beforeSizes?.(); return answer(200, { sizes }); }
     if (method === 'GET' && path === '/regions') return answer(200, { regions });
     if (method === 'POST' && path === '/droplets') {
-      try { await beforeCreate?.(); } catch { return answer(500, { id: 'lease-missing', message: 'lease not armed before create' }); }
+      try { await beforeCreate?.(); } catch (error) {
+        hookErrors.push(error);
+        hookFailure.reject(error);
+        return answer(500, { id: 'lease-missing', message: 'lease not armed before create' });
+      }
       const refusal = createRefusals[String(body?.region)];
       if (refusal) return answer(refusal.status, { id: refusal.id, message: refusal.message });
       if (faults.create) return { status: faults.create, value: { id: faults.createLimit ? 'droplet_limit' : 'refused', message: faults.echoToken ? token : 'create refused' }, ...(faults.createRetryHeaders ? { headers: { 'Retry-After': faults.retryAfter } } : {}) };
@@ -390,6 +398,8 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
 
   let closing: Promise<void> | undefined;
   return { provider, url, account, droplets, keys, volumes, sizes, regions, requests, faults, auth, images, stateRoot, machineDirs, imageDirs, machineFaults, seedSnapshot: (image: SnapshotImage, key: unknown) => admit(() => seedSnapshot(image, key)),
+    /** Race a case's wait against hook assertions caught by the executor or HTTP boundary. */
+    checked: <T>(work: Promise<T>): Promise<T> => Promise.race([hookFailure.promise, work]),
     setMachineFaults: (value: Partial<typeof machineFaults>) => admit(async () => { Object.assign(machineFaults, value); await writeFile(join(stateRoot, 'machine-faults.json'), JSON.stringify(machineFaults)); }),
     beforeDropletRead: (check: (id: number) => Promise<void>) => { beforeDropletRead = check; },
     beforeDropletList: (check: () => Promise<void>) => { beforeDropletList = check; },
@@ -405,20 +415,41 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
       if (closing) return closing;
       accepting = false;
       closing = (async () => {
-        if (server) { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); }
-        const timeoutMs = testWaitMs(30_000);
-        let timer: ReturnType<typeof setTimeout> | undefined;
+        const secondary: unknown[] = [];
         try {
-          await Promise.race([
-            (async () => { while (active.size) await Promise.allSettled([...active]); })(),
-            new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(`fake provider drainage exceeded ${timeoutMs} ms; ${active.size} operation(s) pending; root retained`)), timeoutMs); }),
-          ]);
-        } finally { clearTimeout(timer); }
-        if (!scripted) {
-          await cleanupProcesses(stateRoot, [], undefined, undefined, []);
-          assert.deepEqual(fixtureProcessCensus(stateRoot), [], 'fake provider left live machine writers');
+          if (server) { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); }
+          const timeoutMs = testWaitMs(30_000);
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          try {
+            await Promise.race([
+              (async () => { while (active.size) await Promise.allSettled([...active]); })(),
+              new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(`fake provider drainage exceeded ${timeoutMs} ms; ${active.size} operation(s) pending; root retained`)), timeoutMs); }),
+            ]);
+          } finally { clearTimeout(timer); }
+          if (!scripted) {
+            await cleanupProcesses(stateRoot, [], undefined, undefined, []);
+            assert.deepEqual(fixtureProcessCensus(stateRoot), [], 'fake provider left live machine writers');
+          }
+          if (!retainRoot) await rm(stateRoot, { recursive: true, force: true });
+        } catch (error) {
+          if (!hookErrors.length) throw error;
+          secondary.push(error);
         }
-        if (!retainRoot) await rm(stateRoot, { recursive: true, force: true });
+        if (hookErrors.length) {
+          const primary = hookErrors[0];
+          secondary.unshift(...hookErrors.slice(1));
+          if (!secondary.length) throw primary;
+          // Cleanup diagnostics cannot replace the callback's selected failure.
+          let result = primary;
+          try {
+            if (!(primary instanceof Error)) throw new Error('non-Error callback failure');
+            Object.defineProperty(primary, 'suppressed', { value: secondary, configurable: true, enumerable: true });
+          } catch {
+            result = new Error(primary instanceof Error ? primary.message : 'beforeCreate callback failed', { cause: primary });
+            Object.defineProperty(result, 'suppressed', { value: secondary, enumerable: true });
+          }
+          throw result;
+        }
       })();
       return closing;
     },

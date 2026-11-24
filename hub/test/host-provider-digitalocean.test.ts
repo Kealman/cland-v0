@@ -595,7 +595,7 @@ test('DigitalOcean watchdog deletes an admitted droplet after owner closure befo
  };
  api.beforeImport(()=>armed('key-import'));api.beforeCreate(()=>armed('droplet-post'));
  api.beforeDropletRead(async()=>{throw Error('hub lost address reply before machine checkpoint');});
- const result=await raw.acquire({...request,admission:receipt});assert.equal(result.state,'failed');assert.equal(armedObserved,true);assert.deepEqual(effectOrder,['key-import','droplet-post']);
+ const result=await api.checked(raw.acquire({...request,admission:receipt}));assert.equal(result.state,'failed');assert.equal(armedObserved,true);assert.deepEqual(effectOrder,['key-import','droplet-post']);
  assert.equal(api.droplets.length,1);assert.equal(api.keys.length,1);
  await admissions.close();
  api.beforeDropletRead(async()=>{});
