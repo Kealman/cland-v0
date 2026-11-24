@@ -34,3 +34,29 @@ resolveOnly/base fields; `suite-interactions.ts` selects task and batch importer
 in `hub/test/suite-selection.test.ts`. Searches across hub, web, nvim, shared test
 support, QA briefs and shipped skills found no additional direct consumers.
 This documentation item changes none of these contracts or persisted shapes.
+
+## Source census on 2026-11-24 (T-1953)
+
+The table above records the historical baseline. At source base `8d3968920`, the
+remote-budget helper also used a boolean parameter named `require`. T-1953
+renames that parameter and the accounting helper's parameter to `requireRemote`.
+The parser already distinguishes strings from syntax; its conservative loader
+rules remain unchanged. Both files now have complete static graphs, and the
+regression checks their actual source plus rejection of an indirect loader.
+
+The other five historical roots remain conservative fallbacks for the reasons
+in the table: dynamic URL import, evaluated VM source, evaluated worker source,
+runtime fixture-relative createRequire, and undeclared ancestor dependency yaml.
+The Neovim file parses successfully itself but fails transitive resolution of
+yaml. These are genuine unsupported loading/resolution patterns, rather than
+require-shaped fixture text.
+
+A source-only census of all 1,034 manifest entries, with the controlled changed
+path `t1953-unrelated.ts`, selected no proven importers. Replacing only the two
+parameter renames in the reader reproduced 21 unknown roots; the fixed sources
+had 19. Among 500 T2/Web candidates the conservative additions fell from 9 to 8
+(accounting removed); remote-budget is T1 and does not enter that batch phase.
+This is a static selection projection on macOS with Node 24.21.0, with no suite,
+browser or executor run. It does not substantiate the original estimate of
+roughly 470 selected files. Additional fallback roots present in the current
+manifest were retained; none of the parser's admission rules changed.

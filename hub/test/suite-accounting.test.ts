@@ -29,7 +29,7 @@ async function running(f: Fixture, id: string) {
   await f.machine.started(id);
   await f.suites.settled();
 }
-const remote = (f: Fixture, require = true) => f.launch(require ? { executor: 'droplet', fresh: true } : { fresh: true });
+const remote = (f: Fixture, requireRemote = true) => f.launch(requireRemote ? { executor: 'droplet', fresh: true } : { fresh: true });
 
 test('failed acquisition retains the admitted released lease after confirmed cleanup', async t => {
   const run = caseDeadlines(t, { timeoutMs: 5000, ownership: { beforeDirectories, guardDirectoryRemoval } });

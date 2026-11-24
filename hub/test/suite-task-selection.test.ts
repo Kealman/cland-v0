@@ -14,6 +14,16 @@ import { verificationCommands } from '../src/verification-commands.ts';
 import { taskImporterSelection } from '../src/suite-interactions.ts';
 import { stageCase } from './stage-case-fixture.ts';
 
+test('remote budget and accounting sources have complete static imports', async () => {
+  const { graphImportSpecifiers } = await import('../src/suite-import-parser.ts');
+  for (const file of ['suite-remote-budget.test.ts', 'suite-accounting.test.ts']) {
+    const source = await fs.readFile(new URL(file, import.meta.url), 'utf8');
+    const imports = await graphImportSpecifiers(source, file);
+    assert.ok(imports.includes('./suite-unit-fixture.ts'));
+  }
+  await assert.rejects(graphImportSpecifiers('const loader = require; loader(name);', 'indirect.test.ts'), /incomplete import graph: indirect require/);
+});
+
 test('task importer selection reaches the T3 execution file plan', t => {
   const scope = stageCase(t);
   return scope.wait('whole importer planner case', () => scope.run(async step => {

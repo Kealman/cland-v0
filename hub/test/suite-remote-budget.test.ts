@@ -15,7 +15,7 @@ async function running(f: Fixture, id: string) {
   await f.machine.started(id);
   await f.suites.settled();
 }
-const remote = (f: Fixture, require = true) => f.launch(require ? { executor: 'droplet', fresh: true } : { fresh: true });
+const remote = (f: Fixture, requireRemote = true) => f.launch(requireRemote ? { executor: 'droplet', fresh: true } : { fresh: true });
 // A lease persisted by preparation or an unconfirmed cleanup owns a remote slot
 // without any suite job behind it.
 const leasedOnly = (f: Fixture, lease = 'preparation-only'): DropletLease => ({ kind: 'droplet', provider: 'digitalocean', run: 'preparation', lease, name: `cland-${lease}`, tags: ['cland'], size: 'c-8', region: 'lon1', priceHourly: 0.25, keyName: lease, created: f.clock.now().toISOString(), deadline: new Date(f.clock.now().getTime() + 6600000).toISOString(), state: 'creating', resource: 777, keyId: null });
