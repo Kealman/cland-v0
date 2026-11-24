@@ -407,6 +407,51 @@ for(const boundary of ['post-move identity','lost native completion'] as const) 
   await step(()=>assert.rejects(fs.readFile(join(root,'must-not-write')),{code:'ENOENT'}));
 }));
 
+for (const kind of ['publishFile','appendFile'] as const) test(`Prepared Host ${kind} retains an unknown file commit across rejected retries and fresh owners`,t=>renameCase(t,async({step,root:acquireRoot,mocks,dispose})=>{
+  const fs=await step(()=>import('node:fs/promises'));
+  const {PreparedOperations}=await step(()=>import('../src/host/agent/prepared.ts'));
+  const {fileOperations}=await step(()=>import('../src/host/agent/files.ts'));
+  const {directoryOwners,DirectoryMoveUnknown}=await step(()=>import('../src/host/agent/directory-owner.ts'));
+  const root=await acquireRoot(),run=join(root,'run'),path=join(root,'effect'),env=fixtureEnvironment(root,process.env);
+  const processes=new Proxy({}, {get:()=>()=>{throw new Error('unexpected process boundary');}}) as import('../src/host/agent/processes.ts').AgentProcesses;
+  const owners:InstanceType<typeof PreparedOperations>[]=[];
+  dispose(async()=>{for(const owner of owners.reverse())await assert.rejects(owner.close(),/cleanup incomplete/);});
+  let entries=0,effects=0;
+  mocks.method(fileOperations,kind,async()=>{
+    entries++;
+    return directoryOwners.runFile(path,async()=>{
+      effects++;
+      await fs.writeFile(path,'once');
+      throw new DirectoryMoveUnknown('synthetic file completion unknown');
+    });
+  });
+  const prepared=new PreparedOperations(run,env,processes);owners.push(prepared);await step(()=>prepared.start());
+  const recoveryKey='synthetic-recovery',args={path,bytes:Buffer.from('once').toString('base64')};
+  const {token}=await step(()=>prepared.prepare(kind,{...args,recoveryKey}));assert.ok(token);
+  await step(()=>assert.rejects(prepared.commit(token),{code:'CLAND_DIRECTORY_MOVE_UNKNOWN'}));
+  const planPath=join(run,'prepared',token+'.json'),plan={kind,phase:'committing',args,recoveryKey};
+  const pending={state:'pending',reason:'file commit completion unknown; never replay'};
+  const retained=async(owner:InstanceType<typeof PreparedOperations>)=>{
+    assert.deepEqual(JSON.parse(await step(()=>fs.readFile(planPath,'utf8'))),plan);
+    await step(()=>assert.rejects(fs.readFile(join(run,'prepared-results',token+'.json')),{code:'ENOENT'}));
+    assert.deepEqual(await step(()=>owner.settle(token,recoveryKey)),pending);
+    await step(()=>assert.rejects(owner.settle(token,'wrong-owner'),/not owned/));
+    assert.throws(()=>owner.assertMutable(),{code:'CLAND_AGENT_ADMISSION_REFUSED'});
+    assert.equal(await step(()=>fs.readFile(path,'utf8')),'once');
+    assert.equal(entries,1,'recommit never reaches the file operation');assert.equal(effects,1);
+  };
+  await retained(prepared);
+  // Positive control: the actual directory owner rejects a second file effect.
+  await step(()=>assert.rejects(directoryOwners.runFile(path,async()=>{effects++;}),{code:'CLAND_DIRECTORY_OWNER_FENCED'}));
+  await step(()=>assert.rejects(prepared.commit(token)));
+  await retained(prepared);
+  await step(()=>assert.rejects(prepared.close(),/cleanup incomplete/));
+  const restarted=new PreparedOperations(run,env,processes);owners.push(restarted);await step(()=>restarted.start());
+  await step(()=>assert.rejects(restarted.commit(token),/commit outcome unknown/));
+  await step(()=>assert.rejects(restarted.abort(token),/commit outcome unknown/));
+  await retained(restarted);
+}));
+
 for (const available of [true,false]) test(`Host move consumes the ${available?'available':'unsupported'} no-replace receipt under its owner`, t=>renameCase(t,async({step,root:acquireRoot})=>{
   const fs=await step(()=>import('node:fs/promises'));
   const {createFileOperations}=await step(()=>import('../src/host/agent/files.ts'));

@@ -237,7 +237,10 @@ same 512 KiB cap as writeFile. SSH uses `prepare-publishFile` / `prepare-appendF
 with the existing `commit-prepared` and `settle-prepared` result protocol. Direct
 file RPCs remain available for compatibility and discovery's same-stream drain
 owner. Unknown interrupted commits retain their ownership checkpoint and refuse
-mutations instead of replaying side effects. See [SSH Host](../hub/ssh-host.md#atomic-files-and-metadata).
+mutations instead of replaying side effects. Recommitting a token already in the
+committing phase refuses before its effect and retains the original plan for
+settlement, including publish/append after a directory fence rejection or restart.
+See [SSH Host](../hub/ssh-host.md#atomic-files-and-metadata).
 
 ## Host territory worktrees
 

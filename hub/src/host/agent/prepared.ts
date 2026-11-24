@@ -173,7 +173,7 @@ export class PreparedOperations {
   }
   commit(token:string,install=true) {return this.#serial(async()=>{
     const pending=this.#pending.get(token);if(!pending)throw new Error('prepared operation expired or unavailable');
-    if(pending.plan.kind==='moveDirectory'&&pending.plan.phase==='committing')throw new Error('commit outcome unknown; reconcile before replay');
+    if(pending.plan.phase==='committing')throw new Error('commit outcome unknown; reconcile before replay');
     if(Date.now()>=pending.deadline) {await this.#abort(token);throw new Error('prepared operation expired');}
     clearTimeout(pending.timer);const {plan}=pending;if(plan.phase==='git-running')throw new Error('prepared Git writer completion unknown; cleanup incomplete');plan.phase='committing';await checkpoint(this.#path(token),plan);
     let fileCompleted = false;

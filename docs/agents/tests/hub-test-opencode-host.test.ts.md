@@ -64,6 +64,13 @@ remain. Expected incomplete close still joins original work before fixture roots
 and manual filesystem seams can be released. This is in-process recovery with
 throwing process fakes, never a native agent restart or SSH launch.
 
+Publish/append controls inject an unknown file completion through the real
+directory owner, then positively prove its fence rejects a second effect.
+Repeated commit and a fresh PreparedOperations owner preserve the exact plan,
+missing result, pending settlement, owner authorization and original bytes.
+File operation entry and effect counts remain one; the shared native launch
+guard and throwing process proxy cover every process boundary.
+
 Port retry regressions call startServer with scripted Host/client operations only.
 Repeated freePort selections exhaust SERVER_PORT_ATTEMPTS (eight), throw
 OpenCodePortRetryError with the last port, and spawn the colliding port only once.

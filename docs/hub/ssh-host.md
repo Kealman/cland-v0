@@ -106,7 +106,7 @@ A mismatch or unobservable destination produces `CLAND_DIRECTORY_MOVE_UNKNOWN`;
 the directory owner stays fenced. SSH retains the unresolved committing record
 across agent restarts without replay. The adapter migrates its watcher
 name and private-directory ownership path only after that positive receipt.
-Recommitting the same unknown move token refuses before the file operation;
+Recommitting any token already in the committing phase refuses before the effect;
 settlement keeps the original committing plan rather than manufacturing failure.
 
 The injected no-replace seam accepts `moved` or positive `unsupported` receipts;
@@ -147,7 +147,10 @@ cap. SSH publish/append use prepare/commit tokens and durable result receipts:
 a lost accepted reply reconciles the exact operation without replaying append.
 A disconnected in-flight file writer fences mutations on both Host and agent;
 settlement and shutdown join it. After an agent restart, an interrupted file
-commit with no durable result stays pending and fenced; it is never replayed. Older agents refuse unknown operations; there is no local fallback.
+commit with no durable result stays pending and fenced; it is never replayed.
+Repeated publish/append commits preserve that original plan, including when the
+directory owner is fenced, both in the current agent and after restart.
+Older agents refuse unknown operations; there is no local fallback.
 Launch rollback uses stat permissions to restore an overwritten file and size to
 truncate an appended log. Discovery replaces changed per-host credentials using
 atomic publication with mode 0600; identical bytes keep the current file.
