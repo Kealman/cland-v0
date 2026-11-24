@@ -27,6 +27,11 @@ not change the product's two-second deadline. To reproduce the old fixed-bound
 failure, hold publication of the wrapper-written pid until 10.5 seconds after
 the pid observer starts, then publish it and join the writer before teardown.
 
+The process-group absence check uses the same load-scaled setup wait. Only
+signal-zero ESRCH confirms absence; every other probe error fails immediately
+with its literal code. The pure `hub/test/qa-process-group.test.ts` regression injects
+ESRCH, EPERM and EIO without launching or signalling a native process.
+
 The five new receipt/tamper callbacks enter receiptFixtureCase before acquisition.
 Their proxy owns normal/signal teardown and guards each late root. Tamper directory,
 script and wrapper setup have named bounds. The original QA run is enrolled before

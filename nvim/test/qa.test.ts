@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { qa } from './qa-runner.ts';
+import { processGroupGone } from './process-group.ts';
 import { eventually, testWaitMs } from '../../hub/test/until.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { accountFixtureEnvironment } from '../../hub/test/account-fixture-env.ts';
@@ -71,17 +72,18 @@ async function pidWrapper(dir: string): Promise<{ wrapper: string; pid: () => Pr
   };
 }
 
-/** Whether no process is left in the process group `pgid`, within two seconds. */
+/** Wait for the native absence receipt with shared setup headroom. */
 async function groupGone(pgid: number): Promise<boolean> {
-  for (let i = 0; i < 40; i++) {
+  const receipt = await eventually(`process group ${pgid} is gone`, () => {
     try {
-      process.kill(-pgid, 0);
-      await new Promise((r) => setTimeout(r, 50));
-    } catch {
-      return true;
+      return processGroupGone(pgid, process.kill) ? { gone: true } : undefined;
+    } catch (error) {
+      // Probe failures are terminal, rather than retryable setup observations.
+      return { error };
     }
-  }
-  return false;
+  }, { timeoutMs: testWaitMs() });
+  if ('error' in receipt) throw receipt.error;
+  return true;
 }
 
 /** The child PID alone precedes handler installation; wait for the CLI's readiness receipt. */
