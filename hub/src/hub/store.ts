@@ -462,6 +462,7 @@ export function hasRoleMappedSession(path: string, sessionId: string): boolean {
 }
 
 export class Store implements HygieneMemory {
+  #closed = false;
   readonly remotes: RemoteState;
   readonly users: Users;
   readonly hosts: HostRecords;
@@ -630,8 +631,10 @@ export class Store implements HygieneMemory {
   }
 
   close(): void {
+    if (this.#closed) return;
     this.#statements.clear();
     this.#db.close();
+    this.#closed = true;
   }
 
   rememberSession(name: string, now: number): void {

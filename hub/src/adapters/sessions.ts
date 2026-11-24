@@ -3311,6 +3311,8 @@ export class Sessions {
     throw new Error(`no uncertain delivery of message "${candidate.id}" to "${name}": stage ${candidate.state}, age ${candidate.ageMs} ms; requires queued human input older than 60000 ms with an available transport, or uncertain delivery`);
   }
 
+  #closedAdapters = new Set<HarnessAdapter>();
+
   close(): void | Promise<void> {
     this.#closed = true;
     const waitingDrain = this.#waiting.close();
@@ -3343,9 +3345,11 @@ export class Sessions {
     // Preserve synchronous construction rollback when no retry owns asynchronous work.
     const adapterDrains: Promise<void>[] = [...(loginDrain ? [loginDrain] : []), ...(waitingDrain ? [waitingDrain] : []), ...(poolDrain ? [poolDrain] : [])];
     for (const adapter of this.#adapters.values()) {
+      if (this.#closedAdapters.has(adapter)) continue;
       try {
         const drain = adapter.close();
-        if (drain) adapterDrains.push(drain.catch(error => { failures.push(error); }));
+        if (drain) adapterDrains.push(drain.then(() => { this.#closedAdapters.add(adapter); }).catch(error => { failures.push(error); }));
+        else this.#closedAdapters.add(adapter);
       } catch (error) { failures.push(error); }
     }
     this.#core.onDelivered(null);

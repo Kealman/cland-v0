@@ -147,6 +147,7 @@ export const hostGenerationKey=(p:Pick<HarnessProcess,'sessionId'|'host'|'harnes
 export type RetainedHostGeneration = {generation:string;process: HarnessProcess; nativeClosure: 'confirmed' | 'unknown'; hostRebooted?: HostRebooted};
 
 export class ProcessTable {
+  #closed = false;
   readonly #clock: Clock;
   readonly #db: DatabaseSync;
   readonly #listeners = new Set<(process: HarnessProcess, archived: number) => void>();
@@ -199,7 +200,9 @@ export class ProcessTable {
   }
 
   close(): void {
+    if (this.#closed) return;
     this.#db.close();
+    this.#closed = true;
   }
 
   /** Preserve old terminal ownership before a display row can disappear or be reused. */

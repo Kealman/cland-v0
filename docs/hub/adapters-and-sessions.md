@@ -16,6 +16,12 @@ Codex's confirmed `Selected model is at capacity.` failure retries after 30, 60 
 
 ### The contract
 
+Cleanup retains successful close receipts. `createHub.close()` joins concurrent
+callers and retries failed parts; Sessions skips adapters whose close completed,
+and Store and ProcessTable skip a completed native database close. A native close
+that throws remains retryable. When several cleanup parts fail, the first error
+remains first in the aggregate and later failures remain secondary diagnostics.
+
 `src/adapters/contract.ts`. Mandatory:
 
 | Member | What it does |

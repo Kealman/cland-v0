@@ -53,9 +53,12 @@ export function projectSessions(options: { loginKeyEnvironment?: (login:string)=
     const retain = (drain: void | Promise<void>) => { if (drain) drains.push(drain.catch(error => { failures.push(error); })); };
     try { retain(sessions.close()); } catch (error) { failures.push(error); }
     for (const adapter of unregistered) {
-      try { retain(adapter.close()); } catch (error) { failures.push(error); }
+      try {
+        const drain = adapter.close();
+        if (drain) retain(drain.then(() => { unregistered.delete(adapter); }));
+        else unregistered.delete(adapter);
+      } catch (error) { failures.push(error); }
     }
-    unregistered.clear();
     const finish = () => {
       try { table.close(); } catch (error) { failures.push(error); }
       if (failures.length) throw new AggregateError(failures, 'adapter cleanup failed');

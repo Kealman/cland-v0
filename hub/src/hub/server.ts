@@ -316,16 +316,25 @@ export async function createHub(options: HubOptions): Promise<Hub> {
     finally { await base.close(); }
     throw err;
   }
+  let closing: Promise<void> | undefined;
+  const closed = new Set<string>();
+  const close = () => closing ??= (async () => {
+    const failures: unknown[] = [];
+    const attempt = async (part: string, work: () => void | Promise<void>) => {
+      if (closed.has(part)) return;
+      try { await work(); closed.add(part); }
+      catch (error) { failures.push(error); }
+    };
+    await attempt('edge', () => edge.close());
+    await attempt('sessions', () => sessions?.close());
+    await attempt('base', () => base.close());
+    if (failures.length === 1) throw failures[0];
+    if (failures.length) throw new AggregateError(failures, 'hub cleanup failed', { cause: failures[0] });
+  })().catch(error => { closing = undefined; throw error; });
   return {
     ...base,
     url: edge.url,
     port: edge.port,
-    close: async () => {
-      try { await edge.close(); }
-      finally {
-        try { await sessions?.close(); }
-        finally { await base.close(); }
-      }
-    },
+    close,
   };
 }

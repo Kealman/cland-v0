@@ -9,7 +9,10 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { realClock } from '../src/hub/clock.ts';
 import { createHub } from '../src/hub/server.ts';
 import { Store } from '../src/hub/store.ts';
-import { ownDirectory, guardDirectoryRemoval, beforeDirectories } from './process-cleanup.ts';
+import { DatabaseSync } from 'node:sqlite';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+import { ownDirectory, guardDirectoryRemoval, beforeDirectories, fenceFixtureCleanup } from './process-cleanup.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import { join } from 'node:path';
 import { setImmediate as yieldIO } from 'node:timers/promises';
@@ -250,6 +253,140 @@ test('createHub installs adapter replacements and owns their clock cleanup', asy
   await hub.close();
   closed = true;
   assert.equal(clock.pending, 0);
+});
+
+test('hub close retries only failed adapters after preserving the original failure', async t => {
+  const run = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return run.run(async step => {
+  await step(() => run.wait('native guard setup', () => fixtureNativeGuard(t, { fenced: true })));
+  let hub: Awaited<ReturnType<typeof createHub>> | undefined;
+  let resources: ReturnType<typeof hubResources> | undefined;
+  let completed = false, refuseAdapter = true;
+  const dispose = async () => {
+    if (hub && !completed) { await hub.close(); completed = true; }
+    await resources?.check();
+  };
+  run.fixtures.after(async () => { refuseAdapter = false; await dispose(); });
+  const nativeCloses = new Map<DatabaseSync, number>();
+  const nativeClose = DatabaseSync.prototype.close;
+  fenceFixtureCleanup(t).release(() => { DatabaseSync.prototype.close = nativeClose; });
+  DatabaseSync.prototype.close = function (this: DatabaseSync) {
+    nativeCloses.set(this, (nativeCloses.get(this) ?? 0) + 1);
+    return nativeClose.call(this);
+  };
+  let parent!: string;
+  const root = await step(() => run.wait('root setup', async () => {
+    const scopeRoot = await tempProject(run.fixtures, 'cland-close-scope-');
+    run.adoptRoot(scopeRoot);
+    guardDirectoryRemoval(scopeRoot, dispose);
+    parent = await tempProject(run.fixtures, 'cland-close-parent-', scopeRoot);
+    guardDirectoryRemoval(parent, dispose);
+    const root = await tempProject(run.fixtures, 'cland-close-subject-', parent);
+    guardDirectoryRemoval(root, dispose);
+    return root;
+  }));
+  const clock = new FakeClock();
+  const failure = new Error('controlled adapter disposal failure');
+  const attempts = [0, 0, 0];
+  const remove = ownDirectory(undefined, parent);
+  await step(() => run.wait('direct hub setup', async () => { resources = hubResources(); hub = await resources.run(() => createHub({ port: 0, host: '127.0.0.1', secret: 'test', root, clock,
+    env: fixtureEnvironment(root, process.env),
+    adapters: ['claude-code', 'opencode', 'codex'].map((harness, index) => (host, clock) => {
+      const fake = fakeHarness(harness as 'claude-code' | 'opencode' | 'codex', { host, clock });
+      const close = fake.close.bind(fake);
+      fake.close = () => {
+        attempts[index]!++;
+        if (index === 2 && refuseAdapter) throw failure;
+        return close();
+      };
+      return fake;
+    }),
+  })); }));
+  const original = (error: unknown): boolean => error === failure || error instanceof AggregateError && error.errors.length > 0 && error.errors.every(original);
+  await step(() => run.wait('original failed close', () => assert.rejects(hub!.close(), original)));
+  assert.deepEqual([...nativeCloses.values()], [1, 1], 'both native databases closed despite the adapter failure');
+  const closeSeam = DatabaseSync.prototype.close;
+  await step(() => run.wait('refused parent removal', () => assert.rejects(remove(), original)));
+  assert.equal(existsSync(parent), true, 'failed disposal retains the enclosing parent');
+  assert.equal(existsSync(root), true, 'failed disposal retains the guarded root');
+  assert.equal(DatabaseSync.prototype.close, closeSeam, 'failed disposal retains the native close seam');
+  assert.deepEqual(attempts, [1, 1, 2], 'guarded removal retries only the failed adapter');
+  refuseAdapter = false;
+  await step(() => run.wait('repaired parent removal', remove));
+  assert.equal(existsSync(parent), false, 'positive disposal permits enclosing parent removal');
+  assert.equal(existsSync(root), false, 'positive disposal permits guarded removal');
+  assert.deepEqual(attempts, [1, 1, 3]);
+  await step(() => run.wait('completed close no-op', () => hub!.close()));
+  assert.deepEqual(attempts, [1, 1, 3]);
+  assert.equal(clock.pending, 0);
+  assert.deepEqual([...nativeCloses.values()], [1, 1], 'retry never repeats a successful native close');
+  });
+});
+
+test('hub close preserves the adapter outcome alongside retryable native close failures', async t => {
+  const run = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return run.run(async step => {
+  await step(() => run.wait('native guard setup', () => fixtureNativeGuard(t, { fenced: true })));
+  let hub: Awaited<ReturnType<typeof createHub>> | undefined;
+  let resources: ReturnType<typeof hubResources> | undefined;
+  let completed = false;
+  const dispose = async () => {
+    if (hub && !completed) { await hub.close(); completed = true; }
+    await resources?.check();
+  };
+  run.fixtures.after(dispose);
+  const root = await step(() => run.wait('root setup', async () => {
+    const parent = await tempProject(run.fixtures, 'cland-close-parent-');
+    run.adoptRoot(parent);
+    guardDirectoryRemoval(parent, dispose);
+    const root = await tempProject(run.fixtures, 'cland-close-subject-', parent);
+    guardDirectoryRemoval(root, dispose);
+    return root;
+  }));
+  const clock = new FakeClock();
+  const adapterFailure = new Error('controlled asynchronous adapter failure');
+  const nativeFailures: Error[] = [];
+  const attempts = new Map<DatabaseSync, number>();
+  const nativeClose = DatabaseSync.prototype.close;
+  fenceFixtureCleanup(t).release(() => { DatabaseSync.prototype.close = nativeClose; });
+  DatabaseSync.prototype.close = function (this: DatabaseSync) {
+    const count = (attempts.get(this) ?? 0) + 1;
+    attempts.set(this, count);
+    if (count === 1) {
+      const error = new Error('controlled native database close failure');
+      nativeFailures.push(error);
+      throw error;
+    }
+    return nativeClose.call(this);
+  };
+  let adapterAttempts = 0;
+  await step(() => run.wait('direct hub setup', async () => { resources = hubResources(); hub = await resources.run(() => createHub({ port: 0, host: '127.0.0.1', secret: 'test', root, clock,
+    env: fixtureEnvironment(root, process.env),
+    adapters: ['claude-code', 'opencode', 'codex'].map(harness => (host, clock) => {
+      const fake = fakeHarness(harness as 'claude-code' | 'opencode' | 'codex', { host, clock });
+      if (harness === 'codex') {
+        const close = fake.close.bind(fake);
+        fake.close = async () => { if (++adapterAttempts === 1) throw adapterFailure; await close(); };
+      }
+      return fake;
+    }),
+  })); }));
+  const flatten = (error: unknown): unknown[] => error instanceof AggregateError ? error.errors.flatMap(flatten) : [error];
+  await step(() => run.wait('concurrent failed close receipts', async () => {
+  const firstClose = hub!.close();
+  assert.equal(hub!.close(), firstClose, 'concurrent callers join the owned close');
+  await assert.rejects(firstClose, error => {
+    assert.deepEqual(flatten(error), [adapterFailure, ...nativeFailures]);
+    assert.equal(nativeFailures.length, 2);
+    return true;
+  });
+  }));
+  await step(() => run.wait('repaired close receipts', dispose));
+  await step(() => run.wait('completed close no-op', () => hub!.close()));
+  assert.deepEqual([...attempts.values()], [2, 2], 'only failed native closes are retried');
+  assert.equal(adapterAttempts, 2);
+  assert.equal(clock.pending, 0);
+  });
 });
 
 test('hub close drops a pending injection retry before closing its process table', async t => {
