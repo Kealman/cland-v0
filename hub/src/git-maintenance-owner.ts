@@ -14,7 +14,15 @@ import { pidAlive } from './project.ts';
 
 export type MaintenanceOwner = { token: string; root: string; cwd: string; gitDirectory: string; host: string; pid: number; group: number; started: string };
 export type OwnerState = 'gone' | 'mismatch' | 'alive' | 'unknown';
-export type RecoveryServices = { inspect: (owner: MaintenanceOwner) => Promise<OwnerState>; kill: (owner: MaintenanceOwner) => void; wait: () => Promise<void>; now: () => number; alive?: (pid: number) => boolean; report?: (owner: MaintenanceOwner) => void };
+export type RecoveryServices = { inspect: (owner: MaintenanceOwner) => Promise<OwnerState>; kill: (owner: MaintenanceOwner) => void; wait: (ms: number) => Promise<void>; now: () => number; alive?: (pid: number) => boolean; report?: (owner: MaintenanceOwner) => void };
+export type SyncRecoveryServices = Omit<RecoveryServices, 'inspect' | 'wait'> & { inspect: (owner: MaintenanceOwner) => OwnerState; wait: (ms: number) => void };
+const INSPECTION_TIMEOUT_MS = 1000;
+/** Both territory paths retry only unknown observations; no unknown authorizes a signal. */
+function* inspectionBackoff(): Generator<number, void, OwnerState> {
+  for (const delay of [0, 50, 100]) {
+    if ((yield delay) !== 'unknown') return;
+  }
+}
 export const maintenanceOwnerPath = (root: string): string => join(root, '.cland/run/git-maintenance-owner.json');
 const reporters = new Map<string, (owner: MaintenanceOwner) => void>();
 export function maintenanceRecoveryReporter(root: string, report: (owner: MaintenanceOwner) => void): () => void {
@@ -23,7 +31,8 @@ export function maintenanceRecoveryReporter(root: string, report: (owner: Mainte
 }
 export class MaintenanceRecoveryRequired extends Error {
   readonly owner: MaintenanceOwner;
-  constructor(owner: MaintenanceOwner, nativeOutcome?: string) { super(`Git collector pid ${owner.pid} has unresolved ownership; territory mutations preserved until recovery confirms its group is gone${nativeOutcome ? `; native outcome: ${nativeOutcome}` : ''}`); this.owner = owner; }
+  readonly inspection?: { state: 'unknown'; reason: 'inspection unavailable'; attempts: number };
+  constructor(owner: MaintenanceOwner, nativeOutcome?: string, attempts?: number) { super(`Git collector pid ${owner.pid} has unresolved ownership; territory mutations preserved until recovery confirms its group is gone${nativeOutcome ? `; native outcome: ${nativeOutcome}` : ''}`); this.owner = owner; if (attempts !== undefined) this.inspection = { state: 'unknown', reason: 'inspection unavailable', attempts }; }
 }
 function decode(root: string, text: string): MaintenanceOwner {
   const owner = JSON.parse(text) as MaintenanceOwner;
@@ -56,11 +65,11 @@ function state(owner: MaintenanceOwner, started: string | null, members: string,
   return started === owner.started || !pidAlive(owner.pid) ? 'alive' : 'unknown';
 }
 async function inspect(owner: MaintenanceOwner, env: NodeJS.ProcessEnv): Promise<OwnerState> {
-  const started = await processStartedAsync(owner.pid, 200, work => work(), 'UTC', env);
-  const group = await run('pgrep', ['-g', String(owner.group)], env, 200);
+  const started = await processStartedAsync(owner.pid, INSPECTION_TIMEOUT_MS, work => work(), 'UTC', env);
+  const group = await run('pgrep', ['-g', String(owner.group)], env, INSPECTION_TIMEOUT_MS);
   try { pgrepMembers(group); } catch { return 'unknown'; }
   // Recheck after the group read: a replacement PID never authorizes a signal.
-  const current = await processStartedAsync(owner.pid, 200, work => work(), 'UTC', env);
+  const current = await processStartedAsync(owner.pid, INSPECTION_TIMEOUT_MS, work => work(), 'UTC', env);
   if (started !== null && current !== null && started !== current) return 'mismatch';
   return state(owner, current, group.stdout, !group.error && (group.code === 0 || group.code === 1));
 }
@@ -71,35 +80,54 @@ function kill(owner: MaintenanceOwner): void {
 export async function recoverMaintenanceOwner(root: string, env: NodeJS.ProcessEnv = process.env, supplied?: RecoveryServices): Promise<void> {
   const owner = await readMaintenanceOwner(root);
   if (!owner) return;
-  const io = supplied ?? { inspect: (value: MaintenanceOwner) => inspect(value, env), kill, wait: () => new Promise<void>(done => setTimeout(done, 20)), now: Date.now };
-  const deadline = io.now() + 750;
-  let observed = await io.inspect(owner);
-  if (observed === 'alive') { io.kill(owner); do { observed = await io.inspect(owner); if (observed !== 'alive') break; await io.wait(); } while (io.now() < deadline); }
+  const io = supplied ?? { inspect: (value: MaintenanceOwner) => inspect(value, env), kill, wait: (ms: number) => new Promise<void>(done => setTimeout(done, ms)), now: Date.now };
+  let attempts = 0;
+  const observe = async () => {
+    const retry = inspectionBackoff();
+    let step = retry.next(), observed: OwnerState = 'unknown';
+    while (!step.done) {
+      if (step.value) await io.wait(step.value);
+      attempts++; observed = await io.inspect(owner); step = retry.next(observed);
+    }
+    return observed;
+  };
+  let observed = await observe();
+  if (observed === 'alive') { const deadline = io.now() + 750; io.kill(owner); do { observed = await observe(); if (observed !== 'alive') break; await io.wait(20); } while (io.now() < deadline); }
   if (observed === 'gone' || observed === 'mismatch') { await clearOwner(root, owner, observed === 'gone', io.alive ?? pidAlive); return; }
   (io.report ?? reporters.get(root))?.(owner);
-  throw new MaintenanceRecoveryRequired(owner, observed === 'unknown' ? 'process inspection unavailable' : undefined);
+  throw new MaintenanceRecoveryRequired(owner, observed === 'unknown' ? 'process inspection unavailable' : undefined, observed === 'unknown' ? attempts : undefined);
 }
 /** Init's synchronous territory path has the same bounded recovery and reuse refusal. */
-export function recoverMaintenanceOwnerSync(root: string, env: NodeJS.ProcessEnv = process.env): void {
+export function recoverMaintenanceOwnerSync(root: string, env: NodeJS.ProcessEnv = process.env, supplied?: SyncRecoveryServices): void {
   let owner: MaintenanceOwner;
   try { owner = decode(root, readFileSync(maintenanceOwnerPath(root), 'utf8')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
   const inspectSync = (): OwnerState => {
-    const start = spawnSync('ps', ['-o', 'lstart=', '-p', String(owner.pid)], { env: { ...env, TZ: 'UTC', LC_ALL: 'C' }, encoding: 'utf8', timeout: 200 });
-    const group = spawnSync('pgrep', ['-g', String(owner.group)], { env, encoding: 'utf8', timeout: 200 });
-    const again = spawnSync('ps', ['-o', 'lstart=', '-p', String(owner.pid)], { env: { ...env, TZ: 'UTC', LC_ALL: 'C' }, encoding: 'utf8', timeout: 200 });
+    const start = spawnSync('ps', ['-o', 'lstart=', '-p', String(owner.pid)], { env: { ...env, TZ: 'UTC', LC_ALL: 'C' }, encoding: 'utf8', timeout: INSPECTION_TIMEOUT_MS });
+    const group = spawnSync('pgrep', ['-g', String(owner.group)], { env, encoding: 'utf8', timeout: INSPECTION_TIMEOUT_MS });
+    const again = spawnSync('ps', ['-o', 'lstart=', '-p', String(owner.pid)], { env: { ...env, TZ: 'UTC', LC_ALL: 'C' }, encoding: 'utf8', timeout: INSPECTION_TIMEOUT_MS });
     try { pgrepMembers({ code: group.status, stdout: group.stdout ?? '', stderr: group.stderr ?? '', error: group.error }); } catch { return 'unknown'; }
     const before = start.status === 0 ? parseStarted(start.stdout) : null, current = again.status === 0 ? parseStarted(again.stdout) : null;
     if (before !== null && current !== null && before !== current) return 'mismatch';
     return state(owner, current, group.stdout ?? '', !start.error && !again.error && !group.error && (group.status === 0 || group.status === 1));
   };
-  const deadline = Date.now() + 750;
-  let observed = inspectSync();
-  if (observed === 'alive') { kill(owner); do { observed = inspectSync(); if (observed !== 'alive') break; } while (Date.now() < deadline); }
-  if (observed !== 'gone' && observed !== 'mismatch') { reporters.get(root)?.(owner); throw new MaintenanceRecoveryRequired(owner, observed === 'unknown' ? 'process inspection unavailable' : undefined); }
+  const io = supplied ?? { inspect: inspectSync, kill, now: Date.now, wait: (ms: number) => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } };
+  let attempts = 0;
+  const observe = () => {
+    const retry = inspectionBackoff();
+    let step = retry.next(), observed: OwnerState = 'unknown';
+    while (!step.done) {
+      if (step.value) io.wait(step.value);
+      attempts++; observed = io.inspect(owner); step = retry.next(observed);
+    }
+    return observed;
+  };
+  let observed = observe();
+  if (observed === 'alive') { const deadline = io.now() + 750; io.kill(owner); do { observed = observe(); if (observed !== 'alive') break; io.wait(20); } while (io.now() < deadline); }
+  if (observed !== 'gone' && observed !== 'mismatch') { (io.report ?? reporters.get(root))?.(owner); throw new MaintenanceRecoveryRequired(owner, observed === 'unknown' ? 'process inspection unavailable' : undefined, observed === 'unknown' ? attempts : undefined); }
   if (decode(root, readFileSync(maintenanceOwnerPath(root), 'utf8')).token !== owner.token) throw new Error('Git collector ownership changed during recovery');
   const gc = join(owner.gitDirectory, 'gc.pid');
-  try { if (observed === 'gone' && gcOwned(readFileSync(gc, 'utf8'), owner) && !pidAlive(owner.pid)) unlinkSync(gc); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  try { if (observed === 'gone' && gcOwned(readFileSync(gc, 'utf8'), owner) && !(io.alive ?? pidAlive)(owner.pid)) unlinkSync(gc); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
   unlinkSync(maintenanceOwnerPath(root));
 }
 

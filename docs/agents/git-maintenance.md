@@ -29,6 +29,15 @@ the PID to the Coordinator; status and reads continue. Recovery removes only a
 matching dead same-host `gc.pid`; possible replacement locks and all foreign pack
 files are preserved. Native Git handles older stale locks without cland receipts.
 
+Both asynchronous recovery and the synchronous init gate allow 1 second per
+process probe and retry unknown inspections up to three times, with 50 ms and
+100 ms backoff. An unknown observation never authorizes signalling. A later
+confirmed empty group clears ownership in that same recovery call. Exhaustion
+keeps ownership and throws a structured `inspection` diagnostic with
+`state: unknown`, `reason: inspection unavailable` and the actual attempt count.
+Live-group cleanup retains its separate 750 ms observation window after the
+initial inspection; probe completion and unknown retries can extend elapsed time.
+
 After an ordinary Git failure, the Coordinator or human restarts to schedule
 another pass. Retained batch/job/lease or unreadable activity state keeps all
 unreachable objects for that pass. Task sessions keep the ordinary commit/fetch/

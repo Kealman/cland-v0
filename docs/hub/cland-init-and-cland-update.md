@@ -116,6 +116,13 @@ possible replacement locks after PID reuse. No pack file is manually removed;
 fresh interrupted and foreign temporary packs retain the grace. Older native
 stale `gc.pid` files without cland receipts still use Git's own recovery rule.
 
+Both territory recovery paths use a 1-second bound per process probe. Unknown
+inspections retry at most three times with 50/100 ms backoff; a later confirmed
+empty group releases ownership in the same call. Exhaustion preserves the receipt
+and exposes a structured unknown inspection diagnostic with its attempt count.
+See [agent recovery guidance](../agents/git-maintenance.md) for the separate
+live-group cleanup window.
+
 Foreground native GC retries despite a stale `gc.log` and clears it on success.
 `.cland/run/git-maintenance.json` records the completed attempt, expiry policy
 and repository failures. `cland doctor` reports one `git maintenance` row for

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir, hostname } from 'node:os';
 import { join } from 'node:path';
-import { MaintenanceRecoveryRequired, readMaintenanceOwner, recoverMaintenanceOwner, writeMaintenanceOwner, type MaintenanceOwner, type OwnerState, type RecoveryServices } from '../src/git-maintenance-owner.ts';
+import { MaintenanceRecoveryRequired, readMaintenanceOwner, recoverMaintenanceOwner, recoverMaintenanceOwnerSync, writeMaintenanceOwner, type MaintenanceOwner, type OwnerState, type RecoveryServices } from '../src/git-maintenance-owner.ts';
 import { gitMaintenancePath, maintainProjectGit } from '../src/git-maintenance.ts';
 
 // These policy fixtures launch no writers; every filesystem operation is awaited.
@@ -65,6 +65,59 @@ test('an unverified native identity preserves ownership without signalling it', 
   assert.deepEqual(f.killed, []);
   assert.deepEqual(f.reported, [f.owner.pid]);
   assert.deepEqual(await readMaintenanceOwner(f.root), f.owner);
+});
+
+test('two unavailable inspections retry without signalling and release a confirmed gone collector', async t => {
+  const f = await fixture(t);
+  const observations: OwnerState[] = ['unknown', 'unknown', 'gone'];
+  let attempts = 0;
+  f.io.inspect = async () => observations[attempts++]!;
+  f.io.wait = async () => {
+    assert.deepEqual(await readMaintenanceOwner(f.root), f.owner);
+    assert.deepEqual(f.killed, []);
+  };
+  await recoverMaintenanceOwner(f.root, {}, f.io);
+  assert.equal(attempts, 3);
+  assert.equal(await readMaintenanceOwner(f.root), null);
+  await assert.rejects(readFile(join(f.owner.gitDirectory, 'gc.pid')), { code: 'ENOENT' });
+  assert.deepEqual(f.killed, []);
+});
+
+for (const mode of ['async', 'sync'] as const) {
+  test(`${mode} recovery preserves unknown ownership and reports exhausted inspection attempts`, async t => {
+    const f = await fixture(t);
+    let attempts = 0, time = 0;
+    const delays: number[] = [];
+    const inspect = () => { attempts++; return 'unknown' as const; };
+    const wait = (ms: number) => { delays.push(ms); time += ms; };
+    const diagnostic = (error: unknown) => {
+      assert.ok(error instanceof MaintenanceRecoveryRequired);
+      assert.deepEqual(error.inspection, { state: 'unknown', reason: 'inspection unavailable', attempts: 3 });
+      return true;
+    };
+    const services = { ...f.io, inspect, wait, now: () => time };
+    if (mode === 'sync') assert.throws(() => recoverMaintenanceOwnerSync(f.root, {}, services), diagnostic);
+    else await assert.rejects(recoverMaintenanceOwner(f.root, {}, { ...services, inspect: async () => inspect(), wait: async ms => wait(ms) }), diagnostic);
+    assert.equal(attempts, 3);
+    assert.deepEqual(delays, [50, 100]);
+    assert.deepEqual(f.killed, []);
+    assert.deepEqual(f.reported, [f.owner.pid]);
+    assert.deepEqual(await readMaintenanceOwner(f.root), f.owner);
+  });
+}
+
+test('synchronous recovery retries two unavailable inspections before releasing a gone collector', async t => {
+  const f = await fixture(t);
+  let attempts = 0;
+  const delays: number[] = [];
+  recoverMaintenanceOwnerSync(f.root, {}, {
+    ...f.io, inspect: () => ++attempts < 3 ? 'unknown' : 'gone', wait: ms => { delays.push(ms); },
+  });
+  assert.equal(attempts, 3);
+  assert.deepEqual(delays, [50, 100]);
+  assert.equal(await readMaintenanceOwner(f.root), null);
+  await assert.rejects(readFile(join(f.owner.gitDirectory, 'gc.pid')), { code: 'ENOENT' });
+  assert.deepEqual(f.killed, []);
 });
 
 for (const sample of [

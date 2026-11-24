@@ -9,6 +9,13 @@ identities are distinct outcomes. Only the matching live identity is signalled;
 unknown or surviving owners keep their receipt and report the PID. A reused PID's
 possible replacement `gc.pid` is preserved. No process starts or real time passes.
 
+Async and sync recovery receive two unknown inspections followed by a confirmed
+gone group, and remove both the durable owner and its matching `gc.pid` in the
+same call without signalling. Exhaustion controls assert three inspections,
+fake 50/100 ms backoff, retained owner, no signals and the structured unknown
+diagnostic with the actual attempt count. These are policy receipts, not native
+OS timeout or loaded-machine timing evidence.
+
 The retention matrix reaches the public maintenance/native-command boundary
 with literal expected grace flags for idle, retained batch/jobs, malformed state,
 cached leases and incomplete/expired on-disk leases. It checks the completed
