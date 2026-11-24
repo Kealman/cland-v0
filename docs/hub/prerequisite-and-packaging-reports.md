@@ -7,6 +7,9 @@ install-shaped CLI command-module imports and transitive site test dependencies.
 The CLI copy omits test cases (retaining shipped runtime support) and rejects development-only package imports from
 production source. Site tests may read repository text and import dependency-free
 shared declarations; every transitive package import must belong to site/package.json.
+The site source collector includes `.agents/skills/qa/secret-scan-policy.ts`
+as one sanctioned shared module for capture scripts; other QA kit modules remain
+outside the collected boundary.
 These new guards report findings and do not change the check's exit status.
 
 Web-selected package runs report current `web/dist` source-stamp and resolvable

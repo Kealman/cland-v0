@@ -12,6 +12,11 @@ test('site source collection resolves users docs scripts and retains the hub pac
   const files = await siteImportSources(root);
   const entry = fileURLToPath(new URL('site/test/users-docs.test.ts', root));
   assert.deepEqual(siteImportFindings([entry], files, new Set()), []);
+  const script = fileURLToPath(new URL('site/scripts/capture-safety.ts', root));
+  files.set(script, "import '../../.agents/skills/qa/qa-demo-policy.ts'");
+  assert.deepEqual(siteImportFindings([script], files, new Set()), [
+    `${script}:1: missing dependency ../../.agents/skills/qa/qa-demo-policy.ts`,
+  ]);
   files.set(entry, "import '../../hub/src/site-boundary-control.ts'");
   files.set(fileURLToPath(new URL('hub/src/site-boundary-control.ts', root)), "import 'hub-only-control'");
   assert.deepEqual(siteImportFindings([entry], files, new Set()), [

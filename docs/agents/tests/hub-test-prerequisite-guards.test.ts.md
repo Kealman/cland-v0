@@ -3,7 +3,9 @@
 T2, no hub. Run `node --test hub/test/prerequisite-guards.test.ts` alone.
 The source-collection regression reads the candidate site's users-docs entry
 through the same collector as the lint, including `site/scripts`. It then plants
-a hub-only package edge in memory and checks its exact boundary finding.
+a script import of the adjacent, unsanctioned `qa-demo-policy.ts` and a hub-only
+package edge in memory and checks their exact boundary findings. The collector
+includes only the shared QA `secret-scan-policy.ts` module, not its directory.
 The site graph's planted transitive hub-only package and computed import must
 produce findings; builtins and site-declared packages pass. The CLI control seeds a minimal known-good source tree; the report command copies
 production source without test cases, retaining shipped runtime support into a disposable root, imports every CLI module and its literal runtime import closure (including lazy imports)
