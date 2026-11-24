@@ -2,8 +2,8 @@
 id: T-1977
 kind: task
 title: opencode-launch-policy.test.ts is a T2 file whose default-adapter fixture runs the real ps through the native boundary
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1750
 branch: t/T-1977-opencode-launch-policy-test-ts-is-a-t2
 created: 2026-11-18T12:45:47.120Z
-updated: 2026-11-24T14:20:18.877Z
+updated: 2026-11-24T15:34:53.924Z
+closed: 2026-11-24T15:34:53.924Z
 ---
 
 ## Summary
@@ -83,3 +84,7 @@ Executed hub-selected scope: T0 exit0; T1 245files exit0; selected T2 twofiles/1
 Prior A-22989 interrupted guard-red retained as incomplete, never pass/timing evidence. Detailed final receipt mapping A-23019 at .cland/artifacts/A-23019-t-1977-final-evidence-review-clear-at-d72525eb6.md. Reviewer ran no tests/native/provider/browser work or source edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T15:34:53.924Z
+
+Merged a0ea738142de654f5d7bd968f02d4ba594c1f5d5 onto dev.

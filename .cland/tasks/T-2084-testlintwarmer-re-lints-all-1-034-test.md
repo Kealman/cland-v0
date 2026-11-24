@@ -2,8 +2,8 @@
 id: T-2084
 kind: task
 title: TestLintWarmer re-lints all ~1,034 test files with the TypeScript checker on the hub's main thread at every dev-tip move, so a landing wave pins the hub CPU and grows RSS to 3 GB
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1745
 branch: t/T-2084-testlintwarmer-re-lints-all-1-034-test
 created: 2026-11-24T12:04:29.314Z
-updated: 2026-11-24T14:23:03.426Z
+updated: 2026-11-24T17:54:26.201Z
+closed: 2026-11-24T17:54:26.201Z
 ---
 
 ## Summary
@@ -40,10 +41,13 @@ Root cause found by cland-impl from a SIGUSR1 CPU profile and hub.log on 2026-11
 - [x] C1. Five dev-tip moves within the debounce interval cause one warm pass, for the last head (test with a fake clock).
   - done: impl-2084 · 2026-11-24T12:19:52.892Z
   - verified: rev-35 [reviewer] · run rev-35-2084-evidence-1 · 2026-11-24T14:00:36.746Z · commit 3eff09733e46c700c1cc51f123fb39a5c257676d
+  - verified: rev-35 [reviewer] · run rev-35-2084-evidence-2 · 2026-11-24T15:45:52.414Z · commit 8d6428c00b342fa2355ac8793acf7648e6cf608b
 - [x] C2. A warm pass runs outside the hub's main thread, and the main thread's event loop stays responsive during it, within a stated latency bound (test).
   - done: impl-2084 · 2026-11-24T14:20:54.744Z
+  - verified: rev-35 [reviewer] · run rev-35-2084-evidence-2 · 2026-11-24T15:45:52.414Z · commit 8d6428c00b342fa2355ac8793acf7648e6cf608b
 - [x] C3. Admission results are unchanged: facts from a warmed head and a cold head are identical (test).
   - done: impl-2084 · 2026-11-24T14:11:15.954Z
+  - verified: rev-35 [reviewer] · run rev-35-2084-evidence-2 · 2026-11-24T15:45:52.414Z · commit 8d6428c00b342fa2355ac8793acf7648e6cf608b
 
 ## Comments
 
@@ -125,3 +129,22 @@ findings: [{"severity":"low","text":"Follow-up fixture hygiene: the inner synthe
 finding_counts: {"high":0,"medium":0,"low":1}
 
 A-23021: full source clear against the agreed C1–C3/M1–M3 bar. Parent root setup is separately bounded; the new shutdown callback owns original work and positive close; nested native-close receipt gates parent escalation/root release, with actual guarded removal refusal and repair. Production placement/cap, debounce and admission-fact logic are unchanged; original behavior assertions retained. One low synthetic-control hygiene follow-up goes separately per Coordinator 8abd678a. No run-dependent criterion newly verified; fresh same-head configured evidence remains pending. Original A-22991 stays failed/incomplete. Hold released; obtain the Coordinator's verification window before submission.
+
+### rev-35 · 2026-11-24T15:45:52.414Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2084-evidence-2
+commit: 8d6428c00b342fa2355ac8793acf7648e6cf608b
+scope: evidence
+findings: [{"severity":"low","text":"Carried source4 follow-up: inner synthetic owner shares supervisor TestContext cancellation, allowing inner automatic cleanup to overlap the proof tail. Size S/Tech debt already routed separately under Coordinator 8abd678a; no C1–C3 blocker.","file":"hub/test/test-lint-worker.test.ts","line":41}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+A-23054: final same-head A-23052/afc5afe4 clear, code0 and complete exit0 T0/T1/T2/254selectedT3/Web. C1 three queue identities each base+5 distinct loaded passes; C2 all8 runner controls pass, including actual nested-close/removal guard, early failure, escalation, real cancellation/observer throw and terminal span; C3 real cold/warm equality passes. Producer effective child heap318767104bytes under parent8192MiB, 51ticks/inclusive gap12.827774ms<1000ms; V8 heap/sample scope retained. Shutdown callback positive-close pass. All C1/C2/C3 verified. Existing low hygiene follow-up carried per8abd678a. Remaining20T3 defer,18T4 unexecuted; advisories report-only, cache unknown, known F2 finish-only rows excluded. A-22991 remains failed/incomplete at its old head.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-24T17:54:26.201Z
+
+Merged d85fbb5cae6fdc272d64bbb4d5373673d07016a3 onto dev.

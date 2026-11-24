@@ -2,8 +2,8 @@
 id: T-2088
 kind: task
 title: "suite-human-component's \"retains roots and seams after constructor and rejected native close\" fails on dev since T-1995: it expects the masked close rejection, but openDatabase now keeps the primary constructor error"
-state: open
-status: planned
+state: closed
+status: done
 size: XS
 labels:
   - ready-for-agent
@@ -14,7 +14,8 @@ regression_of: T-1995
 topic: null
 branch: null
 created: 2026-11-24T13:49:20.383Z
-updated: 2026-11-24T13:59:43.535Z
+updated: 2026-11-24T15:36:20.401Z
+closed: 2026-11-24T15:36:20.401Z
 ---
 
 ## Summary
@@ -40,3 +41,7 @@ Canonical fix: commit d28203f1a5951f44a17e1c14cd1b3391526ed57c on T-2043's branc
 ### coord · 2026-11-24T13:59:43.535Z
 
 The hub raised a shared-defect candidate at 13:59Z. Affected runs so far: T-2043's 0246c37f (A-22981, head 40746f720) and T-2067's 5eff8e17 (A-22997, head 96ce29631), both on dev merge-base 7e117f8bb. Shared fix: cherry-pick d28203f1a (T-2043's branch). impl-2067 has been told to cherry-pick it; T-2043 already carries it at d28203f1a, in verify #3.
+
+### coord · 2026-11-24T15:36:20.401Z
+
+Fixed on dev by the canonical commit d28203f1a ("Fixes T-2088", T-2043's branch). It reached dev first through T-1918's identical cherry-pick 18065de61, which landed as a177d474d in batch ecf17fa5 (suite f54dd251 green). Coordinator check at a177d474d: the case alone passes 2/0, where it failed at 7e117f8bb and c7aa49808. T-2043, T-1917 and T-2067 carry the same one-file patch and will merge cleanly.

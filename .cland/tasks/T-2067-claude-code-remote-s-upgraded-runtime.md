@@ -2,8 +2,8 @@
 id: T-2067
 kind: task
 title: claude-code-remote's upgraded-runtime case lets a fire-and-forget `cland hook mod-turn-start` child outlive the file; the shared SSH/fake-Claude fixtures lack a close receipt separate from directory disposal
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1746
 branch: t/T-2067-claude-code-remote-s-upgraded-runtime
 created: 2026-11-24T00:46:47.955Z
-updated: 2026-11-24T14:07:35.185Z
+updated: 2026-11-24T19:02:42.165Z
+closed: 2026-11-24T19:02:42.165Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ An opt-in lifecycle adapter in the shared fixtures, with default behaviour uncha
 
 - [x] C1. The upgraded case joins its hook writers under a whole-case owner whose required-close fence covers every SSH and fake-Claude resource, and a deterministic held-hook control is red before and green after (test).
   - done: impl-2067 · 2026-11-24T13:33:41.886Z
-- [ ] C2. Every existing consumer of the shared fixtures passes unchanged (evidence).
-  - failed: rev-35 [reviewer] · 2026-11-24T14:06:30.443Z · note A-22997 exits 1 on the shared T-2088 constructor/close assertion; T3/Web consumer execution did not occur.
+  - verified: rev-35 [reviewer] · run rev-35-2067-evidence-2 · 2026-11-24T15:28:57.609Z · commit 52ddd9bf4e6a2f172ede53bae61c302429cf0f51
+- [x] C2. Every existing consumer of the shared fixtures passes unchanged (evidence).
+  - done: impl-2067 · 2026-11-24T15:26:47.565Z
+  - verified: rev-35 [reviewer] · run rev-35-2067-evidence-2 · 2026-11-24T15:28:57.609Z · commit 52ddd9bf4e6a2f172ede53bae61c302429cf0f51
 
 ## Comments
 
@@ -192,3 +195,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Canonical-only source delta clear; A-23004. Full diff exactly matches d28203f1a5951f44a17e1c14cd1b3391526ed57c and changes only the shared constructor/close control. Original primary identity and secondary cleanup proof now match pinned database/cleanup-failure behavior; root-removal refusal, repair and guard assertions remain. Coordinator 8b971c13 authorizes check reuse. No runtime criterion newly verified: C1 runtime and broad C2 remain pending. A-23003 retains the old shared T-2088 failed receipt; new-head verification must use the Coordinator's next authorized window.
+
+### rev-35 · 2026-11-24T15:28:57.609Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2067-evidence-2
+commit: 52ddd9bf4e6a2f172ede53bae61c302429cf0f51
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-23039: final same-head evidence clear. A-23037/5c25cdb3 code0, complete exit0 receipts T0/T1/T2/239 selected T3/Web. All53 remote cases pass including actual held-hook exit and eight ownership/census controls; all50 direct consumer test files pass with375 generated passes and one explicitly unexecuted optional installed-OpenCode prerequisite case. Additional stage-qa helper consumer12/12; both nvim and crew-launch/hook-bridge positive. Existing default consumer callsites unchanged. C1/C2 verified. Remaining34 T3 stay with integrated merge batch; T4 not run, budgets report-only, cache metadata unknown. Known three F2 finish-only records excluded from paired proof. Old5eff8e17/A-22997 remains red/T-2088 at96ce29631; canonical delta source clear A-23006 is preserved.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T19:02:42.165Z
+
+Merged 5bcb33850d46f33b2a1822296262b733e11aa818 onto dev.

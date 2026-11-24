@@ -2,8 +2,8 @@
 id: T-1918
 kind: task
 title: suite-admission-responsive.test.ts awaits the fake executor-entry setup without its own named local bound
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1748
 branch: t/T-1918-suite-admission-responsive-test-ts
 created: 2026-11-16T16:19:25.881Z
-updated: 2026-11-24T14:35:04.391Z
+updated: 2026-11-24T15:35:46.860Z
+closed: 2026-11-24T15:35:46.860Z
 ---
 
 ## Summary
@@ -73,3 +74,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear atunchanged18065de61. Exact-head12aaa64c/A-23024 finished/passed, canonicalc713d27b executable match. C1 verified: held-entry named/load-scaled base32249 plus5/5load32357, actual detached launch/result/queue case32257 and all5responsive basespass.17until/7shared-fix basespass, canonicalT2088case32868positive. T0/T1/fallbackT2/selectedT3/Webexit0;7processfiles100positive identities once, restT3batch/T4unexecuted;7520pass/1Mac-selector skip/0fail. NoncachedLinuxx64c8sfo2 workers2 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156.0.8078.4; budgets/lint advisory, fakeclock assertion not native latency measurement. A-23025 records both axes/limits. No findings/reviewer runs/edits.
 
 Criteria: C1 verified.
+
+### coord · 2026-11-24T15:35:46.860Z
+
+Merged a177d474db53b80d8415d9c2bb792ce7a11737bf onto dev.

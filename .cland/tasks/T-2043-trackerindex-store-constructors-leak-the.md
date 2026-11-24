@@ -2,8 +2,8 @@
 id: T-2043
 kind: task
 title: TrackerIndex/Store constructors leak the opened DatabaseSync handle when schema initialization throws
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1747
 branch: t/T-2043-trackerindex-store-constructors-leak-the
 created: 2026-11-20T22:22:25.145Z
-updated: 2026-11-24T13:56:37.723Z
+updated: 2026-11-24T18:59:01.446Z
+closed: 2026-11-24T18:59:01.446Z
 ---
 
 ## Summary
@@ -25,6 +26,7 @@ The production TrackerIndex and Store constructors can throw during schema initi
 
 - [x] C1. A schema-initialization failure inside the TrackerIndex or Store constructor closes the opened DatabaseSync handle before the error propagates, shown red first with an injected failing schema step (test).
   - done: impl-2043 · 2026-11-24T13:53:37.667Z
+  - verified: rev-40 [reviewer] · run rev-40-20261124-2043-final · 2026-11-24T15:18:00.764Z · commit d28203f1a5951f44a17e1c14cd1b3391526ed57c
 
 ## Comments
 
@@ -104,3 +106,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source3 clear atd28203f1a (canonical FixesT-2088, Coordinator8801d116 authorization). Exact primary identity plus cause containing exact injected cleanup Error now matches inherited openDatabase behavior; injection remains before Store's new catch. Root/native-boundary/refused release/repair/closure/restoration and cancelled-acquisition assertions all retained. Original constructor and prior consumer migrations unchanged/reviewed; no dev merge. A-22994 records both axes/attribution/local-evidence limits. C1 awaits new exact-head configured receipt; both earlier configured rounds retain failed outcomes, partial positives never promoted to pass. Local targeted1/1/fullT2 7/7/static0 reported, not configured proof. No findings/reviewer runs/edits.
+
+### rev-40 · 2026-11-24T15:18:00.764Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261124-2043-final
+commit: d28203f1a5951f44a17e1c14cd1b3391526ed57c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear atunchangedd28203f1a. Exact-head5d538775/A-23033 finished/passed, canonical285efd19 executable match. C1 verified: all8Store/TrackerIndex pragma/schema/close-outcome generated basepasses plus distinct5/5loads; all12database-cleanup controls pass. Corrected consumers currentpass:12merge-queue-unit including7596/7601,15reference-pins,7suite-human includingcanonicalT2088case33177. Both earlier rounds remainfailed inA22961/A22981 with original phases/durations/attribution retained; not retroactivepass. T0/T1/fallbackT2/246selectedprocessfiles1984positive identities/Webexit0 once/no repetitions;T4unexecuted/prerequisite skips retained. NoncachedLinuxx64c8sfo2 workers2 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156.0.8078.4; budgets advisory. A-23034 records both axes/receipts/limits. No findings/reviewer runs/edits.
+
+Criteria: C1 verified.
+
+### coord · 2026-11-24T18:59:01.446Z
+
+Merged 73d0427447a7810f9a6fd22748e0937146191b45 onto dev.

@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T17:55:35.281Z
-updated: 2026-11-24T12:14:37.483Z
+updated: 2026-11-24T18:03:52.897Z
 ---
 
 ## Summary
@@ -36,3 +36,9 @@ Find what dominates admission time under this load: the provider probe, the tree
 
 - [ ] C1. The dominant admission cost under a crew-sized load is named from a trace (diagnostic).
 - [ ] C2. Admission under a crew-sized load completes within the CLI reply wait in a reproducible test or measurement (test).
+
+## Comments
+
+### coord · 2026-11-24T18:03:52.897Z
+
+Scope input from T-1928 (pushed at 0a0296c81, in source review; measurements on T-1928 and in A-23075). After its caches, cold admission is about 10.5 s. The remaining main costs are the immutable and worktree tier lints at about 2 s each, cold, and tier planning at about 1.2 s, probably from repeated duration YAML parsing. These are this lane's next targets; T-2037 follows T-1928 in the same lane. Build on T-1928's source-keyed caches, not a parallel path.

@@ -3,7 +3,7 @@ id: T-2089
 kind: task
 title: cland config set infers argument types from renderConfig(defaultConfig) rather than configKeys' explicit exemplar, so a commented-out default (test_timeout after T-2057) changes how its value argv is decoded
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-2074
 blocked_by:
   - T-2057
-topic: null
-branch: null
+topic: topic-1755
+branch: t/T-2089-cland-config-set-infers-argument-types
 created: 2026-11-24T14:03:57.276Z
-updated: 2026-11-24T14:04:26.754Z
+updated: 2026-11-24T19:02:46.902Z
 ---
 
 ## Summary

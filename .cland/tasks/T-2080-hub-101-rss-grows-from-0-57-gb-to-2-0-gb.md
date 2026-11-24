@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-24T11:03:59.437Z
-updated: 2026-11-24T13:47:55.319Z
+updated: 2026-11-24T18:13:29.487Z
 ---
 
 ## Summary
@@ -51,3 +51,7 @@ Landing-wave reading on hub #102, from cland-impl. Batch 44b401d8 started landin
 | 13:46:32Z | 2.41 GB | CPU 99% |
 
 test-lint-warmed passes went from 1 (startup) to 6 by 12:56Z and 11 by 13:46Z. That is one full pass over the 1,034 files per landing: ten landings in 1 h 40 min, each adding about 0.2 GB net after GC. This confirms TestLintWarmer at each dev-tip move as the RSS driver; T-2084 is the fix. Session launches time out at 60 s while it runs (13:46Z).
+
+### coord · 2026-11-24T18:13:29.487Z
+
+Hub #103 (pid 13781) is serving at 9af601700, which includes T-2084, from 18:11:52Z after a 17 s gap; reported by cland-impl. The startup warm pass ran in the capped child: 1,042 files, 16.3 s wall, peak heap 134.8 MB against a 318.8 MB limit. Hub RSS was 0.67 GB at serving and 0.36 GB at 18:12:51Z, with CPU 17% and task view at 0.11 s. Compare #101 at +2 h, 3.08 GB, and #102 at 3.01 GB at 17:58Z. The +30 min reading is due about 18:42Z. If RSS stays flat across the next landing wave, close this item as fixed by T-2084, with that reading as evidence.

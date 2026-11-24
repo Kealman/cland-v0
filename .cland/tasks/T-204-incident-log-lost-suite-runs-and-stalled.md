@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-24T12:09:02.332Z
+updated: 2026-11-24T18:13:22.103Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -726,3 +726,7 @@ Restart #101 (2026-11-24, on coord's GO under rule 19 after T-2069 landed): hub 
 ### human · 2026-11-24T12:09:02.332Z
 
 Restart #102 (2026-11-24, on coord's GO under rule 19; hub RSS had reached 3.08 GB at 12:01:59Z with ~100% CPU, answers of 20-130 s and an 8 s CPU profile showing 56% in TestLintWarmer #drain, the in-process TypeScript test lint rerun on every dev tip move): hub r101 pid 64841 (2514c3d9a) stopped 12:04:59Z; job cland-hub-r102 pid 15174 started from the root at 65c625080 (dev = origin/dev, root clean, next batch not yet started, five droplet verifies in flight and reattached), serving 12:05:24.899Z, gap 26 s (startup journal 10.9 s). Binding listeners 7 ms, web listener 493 ms. Port 65503, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 38 ok / 0 fail after the startup drain. Coord bridge-connected 12:05:25Z. No npm install or web rebuild needed.
+
+### human · 2026-11-24T18:13:22.103Z
+
+Restart #103 (2026-11-24, on coord's GO under rule 19; #102 had touched 3.01 GB RSS at 17:58:49Z and T-2084 (TestLintWarmer moved into a capped child process) had landed as d85fbb5ca): hub r102 pid 15174 (65c625080) stopped 18:11:36Z; job cland-hub-r103 pid 13781 started from the root at 9af601700 (dev = origin/dev, root clean, web/dist rebuilt for two web/src changes, no package changes, quiet window: no preflight or admission in flight, droplet run a03eab80 reattached), serving 18:11:52.533Z, gap 17 s. Binding listeners 4 ms, web listener 317 ms. Port 53782, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 18:11:53Z, injected 18:12:08Z. First warmer pass on the new code: 1,042 files, 16.3 s wall, peak heap 135 MB under a 304 MiB cap, hub RSS 0.36 GB after it.

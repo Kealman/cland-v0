@@ -2,8 +2,8 @@
 id: T-2057
 kind: task
 title: Generated and managed configs write an explicit test_timeout (`cland init`, and any managed config rendering such as `config set`), so projects lose default provenance and T-2046's load scaling
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1751
 branch: t/T-2057-cland-init-writes-an-explicit-test
 created: 2026-11-21T23:29:11.442Z
-updated: 2026-11-24T14:04:51.453Z
+updated: 2026-11-24T19:01:12.200Z
+closed: 2026-11-24T19:01:12.200Z
 ---
 
 ## Summary
@@ -33,8 +34,10 @@ Keep an explicit user value exact. Existing projects are unchanged unless their 
 
 - [x] C1. A project created by `cland init` gets the scaled default per-test timeout under load, and a project that sets `test_timeout` explicitly keeps it exact (test).
   - done: impl-2057 · 2026-11-24T13:56:18.469Z
+  - verified: rev-40 [reviewer] · run rev-40-20261124-2057-final · 2026-11-24T15:22:12.381Z · commit 7497df9969864279447afe5d79a134a2d8ca494c
 - [x] C2. Rendering a managed config setting (for example `config set` on a verification key) in a project that leaves `test_timeout` unset keeps it unset, or keeps default provenance, so load scaling survives (test).
   - done: impl-2057 · 2026-11-24T13:56:22.477Z
+  - verified: rev-40 [reviewer] · run rev-40-20261124-2057-final · 2026-11-24T15:22:12.381Z · commit 7497df9969864279447afe5d79a134a2d8ca494c
 
 ## Comments
 
@@ -58,3 +61,22 @@ findings: [{"severity":"low","text":"L1: runConfig derives string argv type from
 finding_counts: {"high":0,"medium":0,"low":1}
 
 Source clear at7497df996, one low L1 runConfig:13 retained/trackedT-2089; no high/medium. Renderer comments only positive default provenance, explicit/legacy-unknown assignments stay exact; provision/update/managed settings preserve absent source and unknown keys. configKeys retains writabletimeout; parser/runner/admission contracts unchanged. C1/C2 tests exercise emitted absence, factor3runner argument, explicit120/17 and managed settings roundtrip; changed worker/executor assertions/docs/skill provenance match. Authorized sharedT2088 test correction retained. A-23001 records both axes/census/local evidence limits. C1/C2 pending same-head configured named receipts, verification-workersT3 included;91selectedT1/localchecks not full or exact-head configured proof. No reviewer runs/edits.
+
+### rev-40 · 2026-11-24T15:22:12.381Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261124-2057-final
+commit: 7497df9969864279447afe5d79a134a2d8ca494c
+scope: evidence
+findings: [{"severity":"low","text":"L1 retained: commented test_timeout loses runConfig's rendered-default string type exemplar, so embedded TOML-quoted duration argv is decoded rather than literal. Ordinary120s/17s unaffected; XS/Bugs T-2089 tracks shared key/type exemplar and argv regression. Passing suite does not erase this low.","file":"hub/src/cli/config.ts","line":13}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Final clear atunchanged7497df996, lowL1/T2089 retained; no high/medium. Exact-head9c687737/A-23035 finished/passed, canonicalabacee9b executable match. C1/C2 verified: exact init/default-explicit5997 and managed-absence6002 basepasses withdistinct5/5loads6239/6274;25init/24settings/17until/5verification-workers/1safety-config/7shared-fix basespass; changedT3managed worker50613positive. T0/T1/fallbackT2/253selectedprocessfiles2022positive identities/Webexit0 once/no repetitions;T4unexecuted/prerequisite skips retained. NoncachedLinuxx64c8sfo2 workers2 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156.0.8078.4, budgets advisory and factor3 controlled argv proof not machine latency. A-23036 records both axes/provenance/limits. No reviewer runs/edits.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T19:01:12.200Z
+
+Merged fb9bcf93b113dcbedb3d9e17e8a09b479de880cc onto dev.
