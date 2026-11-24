@@ -3,11 +3,13 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { setImmediate as yieldToRequests } from 'node:timers/promises';
+import { realClock, type Clock } from './hub/clock.ts';
+import { LintWarmQueue } from './test-lint-warm-queue.ts';
+import { startLintAnalysis, type LintAnalysis, type LintSource, type LintWarmReceipt } from './test-lint-worker-runner.ts';
 import { treeSources } from './git-tree-sources.ts';
 import type { LogFn } from './log.ts';
 import type { TierManifest } from './suite-shards.ts';
-import { testLintFacts, type TestLintFinding } from './test-lint.ts';
+import { cacheTestLintFacts, testLintFacts, type TestLintFinding } from './test-lint.ts';
 
 export const LINT_BASELINE = 'hub/test/lint-baseline.json';
 const TIERS = 'hub/test/tiers.json';
@@ -147,58 +149,50 @@ async function treeSnapshot(cwd: string, tree: string, env?: NodeJS.ProcessEnv):
   } };
 }
 
-/** Best-effort preparation, never an admission verdict. Coalesce dev moves and
- * yield before each file so startup and foreground requests remain responsive. */
+/** Best-effort preparation, never an admission verdict. One isolate per quiet tip. */
 export class TestLintWarmer {
-  #pending: string | null = null;
-  #warming: string | null = null;
-  #warmed: string | null = null;
-  #closed = false;
-  #work: Promise<void> | null = null;
-  readonly #cwd: string;
-  readonly #env: NodeJS.ProcessEnv;
-  readonly #log: LogFn;
-  constructor(cwd: string, env: NodeJS.ProcessEnv, log: LogFn = () => {}) {
-    this.#cwd = cwd; this.#env = env; this.#log = log;
-  }
-  request(head: string | null): void {
-    if (this.#closed || !head || head === this.#warmed) return;
-    if (head === this.#warming) { this.#pending = null; return; }
-    this.#pending = head;
-    this.#work ??= this.#drain().finally(() => {
-      this.#work = null;
-      if (this.#pending && !this.#closed) this.request(this.#pending);
-    });
-  }
-  async #drain(): Promise<void> {
-    while (!this.#closed && this.#pending) {
-      const head = this.#pending;
-      this.#pending = null;
-      this.#warming = head;
+  readonly #queue: LintWarmQueue;
+  #active: LintAnalysis | undefined;
+  #closing = false;
+  constructor(cwd: string, env: NodeJS.ProcessEnv, log: LogFn = () => {}, options: {
+    clock?: Clock; quietMs?: number;
+    analyze?: (entries: LintSource[]) => Promise<LintWarmReceipt>;
+    start?: typeof startLintAnalysis;
+  } = {}) {
+    this.#queue = new LintWarmQueue(options.clock ?? realClock, async head => {
+      const began = performance.now();
       try {
-        await yieldToRequests();
-        if (this.#closed) return;
-        const value = await treeSnapshot(this.#cwd, head, this.#env);
-        const entries = Object.entries(value.manifest?.tests ?? {});
-        let completed = true;
-        for (const [file, entry] of entries) {
-          const text = await value.source!(file);
-          await yieldToRequests();
-          if (this.#closed || this.#pending) { completed = false; break; }
-          testLintFacts(file, text, entry);
+        const value = await treeSnapshot(cwd, head, env);
+        const sources: LintSource[] = [];
+        for (const [file, entry] of Object.entries(value.manifest?.tests ?? {})) {
+          sources.push({ file, entry, text: await value.source!(file) });
         }
-        if (completed && !this.#closed) {
-          this.#warmed = head;
-          this.#log({ event: 'test-lint-warmed', head, files: entries.length });
+        if (this.#closing) return;
+        let receipt: LintWarmReceipt;
+        if (options.analyze) receipt = await options.analyze(sources);
+        else {
+          this.#active = (options.start ?? startLintAnalysis)(sources);
+          try { receipt = await this.#active.result; }
+          finally { this.#active = undefined; }
         }
-      } catch (error) { if (!this.#closed) this.#log({ event: 'test-lint-warm-failed', head, error: String(error) }); }
-      finally { this.#warming = null; }
-    }
+        cacheTestLintFacts(receipt.facts);
+        log({ event: 'test-lint-warmed', head, files: receipt.files, wallMs: performance.now() - began,
+          peakHeapBytes: receipt.peakHeapBytes, heapSizeLimitBytes: receipt.heapSizeLimitBytes,
+          memoryScope: 'analysis child heap sampled after each file', oldGenerationLimitMb: 256 });
+      } catch (error) {
+        const native = error && typeof error === 'object' ? error as { stage?: string; exit?: unknown; diagnostic?: string } : {};
+        log({ event: 'test-lint-warm-failed', head, wallMs: performance.now() - began, peakHeapBytes: null,
+          stage: native.stage ?? null, nativeExit: native.exit ?? null, diagnostic: native.diagnostic ?? null, error: String(error) });
+        throw error;
+      }
+    }, options.quietMs);
   }
+  request(head: string | null): void { this.#queue.request(head); }
   async close(): Promise<void> {
-    this.#closed = true;
-    this.#pending = null;
-    await this.#work;
+    this.#closing = true;
+    const drained = this.#queue.close();
+    await this.#active?.close();
+    await drained;
   }
 }
 /** Both gates judge the same immutable sources; dirty admission also judges disk. */

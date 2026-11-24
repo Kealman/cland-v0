@@ -979,8 +979,15 @@ with `dryRun: true, diagnostics: true`) to include it, with a separate 120-secon
 request deadline. CLI admission allows 90 seconds for local or remote discovery; the MCP verify tool retains its 15-second default. Direct
 facts are cached by path, source digest and tier entry, bounded to 1024 compact
 records without compiler ASTs. After startup and each observed dev-tip move,
-the hub warms dev's facts in the background, yielding between files; admission
-still reads current disk sources and judges each baseline independently.
+the hub waits for one second without a dev-tip request, then warms the latest
+tip in a fresh child process with explicit 256 MiB old-generation and 16 MiB
+semi-space flags. Its empty environment and explicit Node argv exclude inherited
+preloads and heap overrides. Only compact facts return after native close; each
+pass logs wall time, sampled heap and effective total heap limit, not RSS.
+Startup and completion deadlines escalate SIGTERM to SIGKILL; shutdown cancels
+and joins the active child. Admission still reads
+current disk sources and judges each baseline independently. A hub restart
+activates the child-process implementation.
 
 Neovim files that use only `nvim/test/stub-hub.ts` may use the documented
 `startClient` headless Neovim launch at T2. This exception covers that client

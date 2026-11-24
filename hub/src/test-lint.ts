@@ -492,14 +492,27 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
   return testLintFacts(file, text, entry).result;
 }
 
-type DirectFacts = Pick<ModuleAnalysis, 'result' | 'calls' | 'lifecycle'>;
+export type DirectFacts = Pick<ModuleAnalysis, 'result' | 'calls' | 'lifecycle'>;
+export type CachedTestLintFacts = { key: string; facts: DirectFacts };
 // Keep compact facts, never compiler programs/ASTs. Digests cover dirty sources
 // as well as immutable blobs; path and tier entry affect the findings too.
 const directFacts = new Map<string, DirectFacts>();
 const DIRECT_FACT_LIMIT = 1024;
+export function cacheTestLintFacts(records: CachedTestLintFacts[]): void {
+  for (const { key, facts } of records) {
+    directFacts.delete(key); directFacts.set(key, structuredClone(facts));
+    if (directFacts.size > DIRECT_FACT_LIMIT) directFacts.delete(directFacts.keys().next().value!);
+  }
+}
+export function testLintFactRecord(file: string, text: string, entry: TierEntry): CachedTestLintFacts {
+  return { key: testLintFactKey(file, text, entry), facts: testLintFacts(file, text, entry) };
+}
+function testLintFactKey(file: string, text: string, entry: TierEntry): string {
+  return JSON.stringify([file, entry, createHash('sha256').update(text).digest('hex')]);
+}
 /** Direct policy facts share the lexical binding analysis used by the report. */
 export function testLintFacts(file: string, text: string, entry: TierEntry): DirectFacts {
-  const key = JSON.stringify([file, entry, createHash('sha256').update(text).digest('hex')]);
+  const key = testLintFactKey(file, text, entry);
   const cached = directFacts.get(key);
   if (cached) {
     directFacts.delete(key); directFacts.set(key, cached);

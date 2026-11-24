@@ -13,6 +13,8 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { FakeClock } from './fake-clock.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { testSetupWaitMs } from './until.ts';
 import { serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
 import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 
@@ -112,7 +114,10 @@ async function fixture(t: TestContext, coldViolation = false) {
   await writeFile(join(root, '.cland/config.toml'), `[verification]\n${commandConfig}`);
   const { TestLintWarmer } = await import('../src/test-lint-policy.ts');
   const hub = await projectHub(t, root, {}, { clock, durationContext: null,
-    lintWarmer: new TestLintWarmer(root, {}, row => logs.push(row)),
+    lintWarmer: new TestLintWarmer(root, {}, row => logs.push(row), { clock, analyze: async entries => {
+      const { testLintFactRecord } = await import('../src/test-lint.ts');
+      return { files: entries.length, peakHeapBytes: 0, heapSizeLimitBytes: 0, facts: entries.map(e => testLintFactRecord(e.file, e.text, e.entry)) };
+    } }),
     git: async args => args[0] === 'for-each-ref' ? `${dev} refs/heads/dev` : null,
     readBase: async () => 'dev',
     scheduleTips: read => { poll = read; if (!coldViolation) void read(); return { poke() {}, stop() {} }; },
@@ -155,14 +160,51 @@ test('suite.start admission over a repository-sized manifest', async t => {
     assert.ok(elapsed < 10000, `${elapsed} ms admission leaves less than five seconds before the 15 s CLI deadline`);
   });
   await t.test('warms dev facts after startup and each observed dev move', async () => {
+    await f.clock.advance(1000);
     await f.eventually('startup dev facts warmed', () => f.logs.find(row => row.event === 'test-lint-warmed'));
     const gate = f.holdBatch();
     await f.moveDev();
+    await f.clock.advance(1000);
     await gate.entered.promise;
     try { assert.equal((await f.ui.request({ type: 'hub.status', history: true })).ok, true, 'foreground requests answer while background warming is held'); }
     finally { gate.release.resolve(); }
     await f.eventually('released Git batch completed', () => gate.completed ? true : undefined);
     await f.eventually('new dev facts warmed', () => f.logs.find(row => row.event === 'test-lint-warmed' && row.head === f.head));
+  });
+  await t.test('warmer shutdown cancels and joins its active analysis before returning', async t => {
+    const owner = stageCase(t, { native: true });
+    let warmer: import('../src/test-lint-policy.ts').TestLintWarmer | undefined;
+    const result = Promise.withResolvers<import('../src/test-lint-worker-runner.ts').LintWarmReceipt>();
+    const closed = Promise.withResolvers<import('../src/test-lint-worker-runner.ts').LintExit>();
+    void result.promise.catch(() => {});
+    let admitted = false;
+    let stopped = false, settled = false;
+    const release = () => {
+      closed.resolve({ code: null, signal: 'SIGTERM' });
+      result.reject(new Error('fixture analysis released'));
+    };
+    owner.releaseOnClose(release);
+    owner.requireClose(async () => {
+      if (warmer) await owner.wait('warmer positive close before shared root cleanup', () => warmer!.close(), testSetupWaitMs());
+    });
+    owner.adoptRoot(f.root);
+    await owner.wait('whole warmer shutdown callback', () => owner.run(async step => {
+      const { TestLintWarmer } = await step(() => owner.wait('warmer module setup', () => import('../src/test-lint-policy.ts'), testSetupWaitMs()));
+      warmer = new TestLintWarmer(f.root, {}, () => {}, { clock: f.clock, start: () => {
+        admitted = true;
+        return { ready: Promise.resolve(123), result: result.promise, closed: closed.promise, close: () => { stopped = true; return closed.promise; } };
+      } });
+      warmer.request(f.head);
+      await step(() => owner.wait('fake analysis source preparation and admission', async () => {
+        await f.clock.advance(1000);
+        await f.eventually('fake analysis admitted before shutdown', () => admitted ? true : undefined);
+      }, testSetupWaitMs()));
+      const closing = warmer.close().then(() => { settled = true; });
+      assert.equal(stopped, true); assert.equal(settled, false);
+      release();
+      await step(() => owner.wait('warmer shutdown native-owner join', () => closing, testSetupWaitMs()));
+      assert.equal(settled, true);
+    }), testSetupWaitMs() * 4);
   });
   await t.test('CLI opt-in diagnostics survive the normal deadline and retain reachability', async () => {
     const { runSuiteCommand } = await import('../src/cli/suite.ts');
