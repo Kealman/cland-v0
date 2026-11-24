@@ -1095,6 +1095,12 @@ enforce reports and throws at the call. Its receipt remains a hard run failure
 after assertion quarantine, even if the error is caught or the worker exit code
 is reset. Each load repetition checks its own receipt before excusing assertions.
 
+The fake-only fixture's synchronous positive launch controls emit
+`tier-refusal-control` receipts when the installed guard issues its own refusal.
+These are separate from mismatches in both modes. Matching error text alone
+does not qualify, and ordinary launches retain the tier policy. See the
+[component regression](tests/hub-test-tier-tripwire-component.test.ts.md).
+
 Names use Node's public [`getTestContext()`](https://nodejs.org/docs/latest-v24.x/api/test.html#gettestcontext) when available. On Node before 24.19,
 the tripwire stays active with file-only attribution and one missing-API warning
 per instrumented worker. Import-time calls and file cleanup have an explicit

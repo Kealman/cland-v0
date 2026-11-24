@@ -6,11 +6,12 @@ import { mock, type TestContext } from 'node:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
+import { launchRefusalControl, nativeLaunchRefusal } from './launch-refusal-control.ts';
 
 /** Guard native delegation, including already-promisified async launchers. */
 function launchGuard() {
   let attempts = 0;
-  const refuse = () => { attempts++; throw new Error('native launch forbidden in fake-only fixture'); };
+  const refuse = () => { attempts++; throw nativeLaunchRefusal(); };
   const originals = [cp.exec, cp.execFile];
   const restores: Array<() => void> = [];
   for (const key of ['spawn', 'spawnSync', 'exec', 'execSync', 'execFile', 'execFileSync', 'fork'] as const) {
@@ -28,8 +29,8 @@ function launchGuard() {
       // replacement callback and custom forms refuse directly.
       // cland-allow-child-env: positive launch controls call the installed refusal guard, which never creates a child or reads an environment
       for (const key of ['spawn', 'spawnSync', 'exec', 'execSync', 'execFile', 'execFileSync', 'fork'] as const) assert.throws(() => (cp[key] as Function)('fixture-control'), /native launch forbidden/);
-      for (const fn of originals) await assert.rejects(async () => promisify(fn)('fixture-control'), /native launch forbidden/);
-      for (const fn of [cp.exec, cp.execFile]) assert.throws(() => promisify(fn)('fixture-control'), /native launch forbidden/);
+      for (const fn of originals) await assert.rejects(async () => launchRefusalControl(() => promisify(fn)('fixture-control')), /native launch forbidden/);
+      for (const fn of [cp.exec, cp.execFile]) assert.throws(() => launchRefusalControl(() => promisify(fn)('fixture-control')), /native launch forbidden/);
       assert.throws(() => prototype.spawn.call(new cp.ChildProcess(), {}), /native launch forbidden/);
       assert.equal(attempts, 12);
       attempts = 0;

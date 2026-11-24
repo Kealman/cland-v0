@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { tierTestName, type TierTestContext } from './tier-context.ts';
 import { isClandCliLaunch } from './tier-cli.ts';
 import { isHeadlessNvimLaunch } from './tier-nvim.ts';
+import { isLaunchRefusalControl, isNativeLaunchRefusal } from './launch-refusal-control.ts';
 
 export type TierResourceMode = 'report-only' | 'enforce';
 export function installTierTripwire(file: string, tier: 'T1' | 'T2', mode: TierResourceMode, report: (line: string) => void): void {
@@ -21,7 +22,8 @@ export function installTierTripwire(file: string, tier: 'T1' | 'T2', mode: TierR
       if (delegating) return Reflect.apply(fn, self, args);
       const allowed = tier === 'T2' && (cli && isClandCliLaunch(args[0], args[1])
         || owner === cp && method === 'spawn' && file.startsWith('nvim/test/') && isHeadlessNvimLaunch(args[0], args[1]));
-      if (!allowed) {
+      const check = () => {
+        if (allowed) return;
         const name = testName();
         const key = JSON.stringify([name, resource]);
         if (!seen.has(key) || mode === 'enforce') {
@@ -38,7 +40,23 @@ export function installTierTripwire(file: string, tier: 'T1' | 'T2', mode: TierR
             throw error;
           }
         }
+      };
+      if (isLaunchRefusalControl()) {
+        delegating = true;
+        try { Reflect.apply(fn, self, args); }
+        catch (error) {
+          if (isNativeLaunchRefusal(error)) {
+            report(`tier-refusal-control ${JSON.stringify({ file, name: testName(), tier, resource, mode })}`);
+            throw error;
+          }
+          // An unrelated failure is not a successful refusal control.
+          check();
+          throw error;
+        } finally { delegating = false; }
+        check();
+        throw new Error('launch refusal control did not refuse');
       }
+      check();
       delegating = true;
       try { return Reflect.apply(fn, self, args); }
       finally { delegating = false; }

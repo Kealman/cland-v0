@@ -13,6 +13,11 @@ project config has a test or tier command, alongside current verdicts and criter
 No test command or an empty base diff retains verdict-only readiness; same-tree
 cache receipts qualify at their submitted tip. See [tracker readiness](../docs/agents/issue-tracker.md).
 
+Tier tripwire reports distinguish the fake-only fixture's confirmed positive
+refusal controls from resource mismatches in both report and enforce modes;
+see [test policy](../docs/agents/tests.md) and the
+[component regression](../docs/agents/tests/hub-test-tier-tripwire-component.test.ts.md).
+
 Implementation notes (read with the matching subsystem reference):
 
 - [Remote commands and credentials](../docs/hub/implementation/remote.md)
