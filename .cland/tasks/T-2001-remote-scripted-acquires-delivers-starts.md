@@ -3,17 +3,17 @@ id: T-2001
 kind: task
 title: remote-scripted 'acquires, delivers, starts, collects' intermittently times out waiting 15 s for a frame in loaded T2 batches
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-2072
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T09:55:31.440Z
-updated: 2026-11-19T09:55:31.440Z
+updated: 2026-11-24T09:01:13.120Z
 ---
 
 ## Summary

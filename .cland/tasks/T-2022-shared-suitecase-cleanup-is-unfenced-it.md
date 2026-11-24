@@ -6,14 +6,14 @@ state: open
 status: backlog
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-2072
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T00:49:28.024Z
-updated: 2026-11-20T00:49:28.024Z
+updated: 2026-11-24T08:59:49.771Z
 ---
 
 ## Summary

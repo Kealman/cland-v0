@@ -3,17 +3,17 @@ id: T-2027
 kind: task
 title: The load-gate reporter drops test:diagnostic facts, so failing repetitions lose their recorded diagnostics
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-2074
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T06:18:28.067Z
-updated: 2026-11-20T06:18:28.067Z
+updated: 2026-11-24T09:01:16.966Z
 ---
 
 ## Summary

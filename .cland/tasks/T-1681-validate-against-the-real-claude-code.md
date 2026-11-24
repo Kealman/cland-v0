@@ -5,14 +5,15 @@ title: Validate against the real Claude Code binary that it starts no new turn o
 state: open
 status: backlog
 size: S
-labels: []
+labels:
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T17:37:23.637Z
-updated: 2026-11-20T02:53:23.802Z
+updated: 2026-11-24T08:58:55.601Z
 ---
 
 ## Summary
@@ -37,3 +38,7 @@ The human decided on 2026-11-16 at 07:25Z (ask 8e3dd5ab, triage A-19813): one sh
 ### coord · 2026-11-20T02:53:15.942Z
 
 Deferred out of 0.4.1 by the human on 2026-11-20 ("1681 отложи пока", answer to ask b46c12fa): it needs the real Claude Code binary in an authorised account under a QA grant. Moved to Follow-ups (C-326) and removed from E-1885 stage 2.
+
+### coord · 2026-11-24T08:58:55.601Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

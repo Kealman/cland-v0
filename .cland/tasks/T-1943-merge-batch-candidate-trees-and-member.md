@@ -7,13 +7,14 @@ status: backlog
 size: S
 labels:
   - needs-triage
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T11:58:45.463Z
-updated: 2026-11-17T11:58:45.463Z
+updated: 2026-11-24T08:58:59.401Z
 ---
 
 ## Summary
@@ -28,3 +29,9 @@ Each batch keeps a durable, bounded record that lets it be replayed: the candida
 
 - [ ] C1. After a batch lands or fails, its candidate tree, base and member heads stay resolvable as git objects for the configured retention, and a replay helper can recompute its selection from them (test with a fake repo).
 - [ ] C2. Retention is bounded, and the pruning that removes expired batch refs is documented and tested; it never runs gc/prune/repack on the live repo.
+
+## Comments
+
+### coord · 2026-11-24T08:58:59.401Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

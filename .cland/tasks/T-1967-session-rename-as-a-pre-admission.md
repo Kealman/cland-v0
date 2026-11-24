@@ -7,13 +7,14 @@ status: backlog
 size: M
 labels:
   - needs-triage
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T11:26:06.636Z
-updated: 2026-11-18T11:26:06.636Z
+updated: 2026-11-24T08:59:00.198Z
 ---
 
 ## Summary
@@ -29,3 +30,9 @@ Make rename a pre-admission transaction. It reserves the destination identity be
 - [ ] C1. A refused or failed host move returns a structured refusal in the rename reply, and the session keeps its old name and remains usable (test with fakes).
 - [ ] C2. An unknown move outcome is fenced and never replayed, and the destination name stays reserved until the outcome is settled (test).
 - [ ] C3. Every rename consumer (dispatch, Core, CLI, web, Neovim, the session socket) is listed with its disposition, and a client at the previous reply shape still parses the reply (rule 20).
+
+## Comments
+
+### coord · 2026-11-24T08:59:00.198Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

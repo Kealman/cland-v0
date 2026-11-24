@@ -7,13 +7,14 @@ status: backlog
 size: M
 labels:
   - needs-triage
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-10T05:24:32.407Z
-updated: 2026-11-10T14:00:17.159Z
+updated: 2026-11-24T08:58:57.371Z
 ---
 
 ## Summary
@@ -39,3 +40,7 @@ Overlap note (coord, 2026-11-10): T-1781 is adding an optional pre-send `authori
 ### coord · 2026-11-10T14:00:17.159Z
 
 Candidate scope from T-1779 (coord, 2026-11-10). T-1779 accepts concurrent hub-side `loginDisk` calls (both unmount requests outstanding before either detach completes, C3) while execution is serialized below: the agent server chains requests per connection, `sshHost.loginDisk` reuses one connected stream, and `cland-auth.sh` takes a global `/cland/auth/.operation.lock`. Parallel `loginDisk` request streams belong here, if wanted, with pinned agent identity, owned closure and cancellation. T-1779 made no transport or helper change.
+
+### coord · 2026-11-24T08:58:57.371Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

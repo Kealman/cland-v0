@@ -8,13 +8,14 @@ size: M
 labels:
   - needs-triage
   - needs-decision
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T12:34:43.682Z
-updated: 2026-11-18T12:34:43.682Z
+updated: 2026-11-24T08:59:01.591Z
 ---
 
 ## Summary
@@ -29,3 +30,9 @@ Only once the human approves a runtime: a host-agent no-replace rename using ren
 
 - [ ] C1. The human's decision on the native runtime or binding and its packaging is recorded before any code (decision).
 - [ ] C2. On each supported platform, a rename onto an existing destination is refused atomically, and an unsupported filesystem falls back to the checked path, proven by an isolated platform contract test.
+
+## Comments
+
+### coord · 2026-11-24T08:59:01.591Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

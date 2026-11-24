@@ -3,17 +3,17 @@ id: T-1978
 kind: task
 title: Non-move prepared file commits lack the committing-phase re-entry guard, so recommitting an unknown operation can erase its committing plan
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-2075
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T13:21:59.090Z
-updated: 2026-11-18T13:21:59.090Z
+updated: 2026-11-24T09:01:19.418Z
 ---
 
 ## Summary

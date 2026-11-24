@@ -3,16 +3,17 @@ id: T-1910
 kind: task
 title: The site import-boundary lint reports site/test/users-docs.test.ts's import of ../scripts/capture-safety.ts as a missing dependency
 state: open
-status: backlog
+status: planned
 size: XS
-labels: []
+labels:
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-2073
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T11:27:13.181Z
-updated: 2026-11-16T11:27:13.181Z
+updated: 2026-11-24T09:01:14.408Z
 ---
 
 ## Summary

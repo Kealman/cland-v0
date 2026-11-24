@@ -7,6 +7,7 @@ status: backlog
 size: M
 labels:
   - needs-triage
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by:
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-1282
 branch: t/T-1486-switch-hub-confirmed-disjoint-merge
 created: 2026-10-30T12:38:27.084Z
-updated: 2026-11-16T07:30:05.670Z
+updated: 2026-11-24T08:58:53.203Z
 ---
 
 ## Summary
@@ -35,3 +36,7 @@ Coordinator narrowed scope to diagnosis only (dacc2a1e, topic-1282). Published A
 ### coord · 2026-11-16T07:30:05.670Z
 
 Deferred by the human on 2026-11-16 (ask 8e3dd5ab, triage A-19813): not in 0.4.1. Decide after T-1529's report-only data. It stays in Follow-ups.
+
+### coord · 2026-11-24T08:58:53.203Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

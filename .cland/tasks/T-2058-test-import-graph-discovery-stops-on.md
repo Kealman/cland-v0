@@ -2,8 +2,8 @@
 id: T-2058
 kind: task
 title: Test import-graph discovery stops on suite-remote-budget.test.ts ("indirect require") because a callback parameter is named `require`, so targeted T1 selection falls back to unknown files
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-21T23:48:00.358Z
-updated: 2026-11-21T23:48:00.358Z
+updated: 2026-11-24T08:58:52.370Z
+closed: 2026-11-24T08:58:52.370Z
 ---
 
 ## Summary
@@ -27,3 +28,9 @@ Make the scanner tell a locally bound identifier named `require` apart from the 
 ## Acceptance criteria
 
 - [ ] C1. The import-graph scan of `hub/test/suite-remote-budget.test.ts` completes with no `incomplete import graph` error, and a real indirect `require` in a fixture source still reports it (test).
+
+## Comments
+
+### coord · 2026-11-24T08:58:52.370Z
+
+Closed as a duplicate of T-1953: the same 'indirect require' throw at hub/src/suite-import-parser.ts:144, from the require parameter at suite-remote-budget.test.ts:18. Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

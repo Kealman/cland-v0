@@ -3,18 +3,18 @@ id: T-2057
 kind: task
 title: Generated and managed configs write an explicit test_timeout (`cland init`, and any managed config rendering such as `config set`), so projects lose default provenance and T-2046's load scaling
 state: open
-status: backlog
+status: planned
 size: S
 criterion_seq: 2
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-326
+parent: E-2074
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-21T23:29:11.442Z
-updated: 2026-11-22T00:29:36.885Z
+updated: 2026-11-24T09:01:17.746Z
 ---
 
 ## Summary

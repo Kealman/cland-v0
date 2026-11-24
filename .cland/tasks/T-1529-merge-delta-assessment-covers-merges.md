@@ -7,13 +7,14 @@ status: backlog
 size: M
 labels:
   - needs-triage
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-31T17:22:39.945Z
-updated: 2026-11-16T07:30:06.481Z
+updated: 2026-11-24T08:58:54.429Z
 ---
 
 ## Summary
@@ -34,3 +35,7 @@ Compare the committed merge with its conflicted auto-merge. Admit the merge as d
 ### coord · 2026-11-16T07:30:06.481Z
 
 Deferred with T-1486 by the human on 2026-11-16 (ask 8e3dd5ab, triage A-19813). It stays in Follow-ups.
+
+### coord · 2026-11-24T08:58:54.429Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

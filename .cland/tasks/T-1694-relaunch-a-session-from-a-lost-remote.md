@@ -7,13 +7,14 @@ status: backlog
 size: M
 labels:
   - needs-triage
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-05T19:03:57.790Z
-updated: 2026-11-05T19:03:57.790Z
+updated: 2026-11-24T08:58:56.233Z
 ---
 
 ## Summary
@@ -32,3 +33,9 @@ Extend the cross-host relaunch so the destination may be `local`. Steps:
 
 - [ ] C1. After `fake-host.ts gone f1`, a relaunch with `host: "local"` adds the local worktree at the territory's pushed tip, and the session runs locally (test).
 - [ ] C2. The lease moves from f1 to local under the territory lock: f1's pushes to the branch are refused, and local pushes succeed (test).
+
+## Comments
+
+### coord · 2026-11-24T08:58:56.233Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

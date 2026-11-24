@@ -3,17 +3,17 @@ id: T-1977
 kind: task
 title: opencode-launch-policy.test.ts is a T2 file whose default-adapter fixture runs the real ps through the native boundary
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-2073
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T12:45:47.120Z
-updated: 2026-11-18T12:45:47.120Z
+updated: 2026-11-24T09:01:14.850Z
 ---
 
 ## Summary

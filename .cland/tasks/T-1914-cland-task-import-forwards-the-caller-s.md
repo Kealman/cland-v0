@@ -3,16 +3,17 @@ id: T-1914
 kind: task
 title: cland task import forwards the caller's ambient CLAND_LAUNCH_TOKEN on its nested hub frame even when an explicit environment or human actor is given
 state: open
-status: backlog
+status: planned
 size: XS
-labels: []
+labels:
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-2077
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T14:56:30.107Z
-updated: 2026-11-16T14:56:30.107Z
+updated: 2026-11-24T09:01:21.618Z
 ---
 
 ## Summary

@@ -5,14 +5,15 @@ title: Verify admission does ~40 s of repeated candidate lint and planning befor
 state: open
 status: backlog
 size: S
-labels: []
+labels:
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-2074
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T23:36:00.713Z
-updated: 2026-11-16T23:36:00.713Z
+updated: 2026-11-24T09:00:07.735Z
 ---
 
 ## Summary

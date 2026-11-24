@@ -3,17 +3,17 @@ id: T-1942
 kind: task
 title: A periodic dev T3 run lists uncommitted root files as its deciding files
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-2074
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T10:51:04.585Z
-updated: 2026-11-17T13:33:44.312Z
+updated: 2026-11-24T09:01:16.297Z
 ---
 
 ## Summary

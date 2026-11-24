@@ -2,8 +2,8 @@
 id: T-2033
 kind: task
 title: suite-close-recovery 'a sharded close handles restart with one result and confirmed cleanup' waits over 30 s for the remote group start under macOS T3 load (passes 5/5 alone)
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T15:30:56.396Z
-updated: 2026-11-21T03:32:17.404Z
+updated: 2026-11-24T08:58:51.693Z
+closed: 2026-11-24T08:58:51.693Z
 ---
 
 ## Summary
@@ -34,3 +35,7 @@ Find what "remote group started" waits for in this case and why it can take over
 ### coord · 2026-11-21T03:32:17.404Z
 
 Superseded by T-2046 (all fixed waits through the shared load-scaled helper, per-wait factor; human 2026-11-21, ask cdaedf29). Close as covered when T-2046 lands.
+
+### coord · 2026-11-24T08:58:51.693Z
+
+Closed as fixed by T-2046 (b793535d7). remote-fixture remoteWaitMs uses waitTimeoutMs for each wait; T-2046 C1 names T-2033. Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

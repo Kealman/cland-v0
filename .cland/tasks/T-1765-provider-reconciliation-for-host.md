@@ -7,13 +7,14 @@ status: backlog
 size: M
 labels:
   - needs-triage
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-08T18:46:38.462Z
-updated: 2026-11-08T21:27:31.183Z
+updated: 2026-11-24T08:58:57.046Z
 ---
 
 ## Summary
@@ -35,3 +36,7 @@ E-1534 / T-1750 (2026-11-08, coord decision to impl-1750): at the 5-minute boot 
 ### coord · 2026-11-08T21:27:31.183Z
 
 Scope addition (coord, 2026-11-08, from the T-1756 review-loop bar): reconcile orphan DigitalOcean SSH keys left by key-only crash windows. These are a key imported before the droplet POST, or a lost import response that leaves only the exact keyName. They are non-billable; T-1756 retains and reports them, and its watchdog deletes them by keyId or exact keyName when it can.
+
+### coord · 2026-11-24T08:58:57.046Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

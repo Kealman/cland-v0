@@ -3,17 +3,17 @@ id: T-2043
 kind: task
 title: TrackerIndex/Store constructors leak the opened DatabaseSync handle when schema initialization throws
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-2076
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T22:22:25.145Z
-updated: 2026-11-20T22:22:25.145Z
+updated: 2026-11-24T09:01:20.371Z
 ---
 
 ## Summary

@@ -3,17 +3,17 @@ id: T-1969
 kind: task
 title: Web SessionRow and SessionPage show stateReason only for live sessions, so a stopped or exited session hides its persisted state reason (such as a rename incomplete on host)
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-326
+parent: E-2077
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T12:04:45.349Z
-updated: 2026-11-18T12:04:45.349Z
+updated: 2026-11-24T09:01:21.751Z
 ---
 
 ## Summary

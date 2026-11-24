@@ -7,13 +7,14 @@ status: backlog
 size: M
 labels:
   - needs-triage
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-04T17:55:59.351Z
-updated: 2026-11-04T17:55:59.351Z
+updated: 2026-11-24T08:58:55.919Z
 ---
 
 ## Summary
@@ -28,3 +29,9 @@ A native ownership and closure capability on Linux hosts, for example one cgroup
 
 - [ ] C1. A descendant that double-forks into a new session or process group remains attributed to its generation, and the generation's closure receipt is negative while it lives (test, Linux).
 - [ ] C2. A held unknown-authority row settles on a positive empty-generation receipt, with no signal to unowned processes (test).
+
+## Comments
+
+### coord · 2026-11-24T08:58:55.919Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

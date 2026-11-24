@@ -3,17 +3,17 @@ id: T-1945
 kind: task
 title: runWorkerWithAdmission logs "Finished" before persisting the worker receipt, so a throwing terminal log skips the durable receipt
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-2074
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T12:20:13.013Z
-updated: 2026-11-17T12:20:13.013Z
+updated: 2026-11-24T09:01:15.678Z
 ---
 
 ## Summary

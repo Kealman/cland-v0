@@ -5,14 +5,15 @@ title: A merge landing's follow-up cannot stop the item's Codex Implementer ("pr
 state: open
 status: backlog
 size: S
-labels: []
+labels:
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-2076
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T14:04:44.964Z
-updated: 2026-11-16T14:04:44.964Z
+updated: 2026-11-24T09:00:22.350Z
 ---
 
 ## Summary

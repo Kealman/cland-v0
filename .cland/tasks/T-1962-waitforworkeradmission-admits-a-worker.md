@@ -3,17 +3,17 @@ id: T-1962
 kind: task
 title: waitForWorkerAdmission admits a worker whose SIGTERM is already set when the gate is ready on the first check
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-2074
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T07:40:42.589Z
-updated: 2026-11-18T07:40:42.589Z
+updated: 2026-11-24T09:01:15.826Z
 ---
 
 ## Summary

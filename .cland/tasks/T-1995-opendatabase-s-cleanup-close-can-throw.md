@@ -3,17 +3,17 @@ id: T-1995
 kind: task
 title: openDatabase's cleanup close can throw and replace the original initialization error
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-2076
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T03:19:07.689Z
-updated: 2026-11-24T07:23:53.250Z
+updated: 2026-11-24T09:01:20.223Z
 ---
 
 ## Summary

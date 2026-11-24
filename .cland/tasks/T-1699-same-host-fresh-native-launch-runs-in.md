@@ -7,13 +7,14 @@ status: backlog
 size: S
 labels:
   - needs-triage
+  - deferred-0.4.2
 assignee: null
 parent: C-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-05T19:51:55.612Z
-updated: 2026-11-05T19:51:55.612Z
+updated: 2026-11-24T08:58:56.548Z
 ---
 
 ## Summary
@@ -28,3 +29,9 @@ Extract each adapter's post-positive-stop native-launch entry, and route a genui
 
 - [ ] C1. A same-host fresh native launch runs in its own generation scope, and the old generation's late cleanup cannot touch it (test).
 - [ ] C2. The existing adapter, resume and stop tests pass with no test edited.
+
+## Comments
+
+### coord · 2026-11-24T08:58:56.548Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

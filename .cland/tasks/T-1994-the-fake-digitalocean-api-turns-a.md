@@ -3,17 +3,17 @@ id: T-1994
 kind: task
 title: The fake DigitalOcean API turns a rejected beforeCreate assertion into a 500, so the test times out at 120 s instead of failing
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-326
+parent: E-2072
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T02:38:47.676Z
-updated: 2026-11-19T02:38:47.676Z
+updated: 2026-11-24T09:01:13.571Z
 ---
 
 ## Summary

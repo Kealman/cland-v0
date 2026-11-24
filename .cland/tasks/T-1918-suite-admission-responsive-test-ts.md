@@ -3,16 +3,17 @@ id: T-1918
 kind: task
 title: suite-admission-responsive.test.ts awaits the fake executor-entry setup without its own named local bound
 state: open
-status: backlog
+status: planned
 size: XS
-labels: []
+labels:
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-2072
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T16:19:25.881Z
-updated: 2026-11-16T16:19:25.881Z
+updated: 2026-11-24T09:01:13.261Z
 ---
 
 ## Summary

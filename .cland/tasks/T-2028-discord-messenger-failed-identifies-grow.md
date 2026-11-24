@@ -2,8 +2,8 @@
 id: T-2028
 kind: task
 title: discord-messenger 'failed Identifies grow equal-jitter waits' hits the fake Identify admission deadline under suite load
-state: open
-status: backlog
+state: closed
+status: done
 size: XS
 labels:
   - needs-triage
@@ -14,7 +14,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T08:00:14.538Z
-updated: 2026-11-21T03:32:17.041Z
+updated: 2026-11-24T08:58:51.405Z
+closed: 2026-11-24T08:58:51.405Z
 ---
 
 ## Summary
@@ -35,3 +36,7 @@ Reproduce with a held Identify admission, not load alone, and move the fake's ad
 ### coord · 2026-11-21T03:32:17.041Z
 
 Superseded by T-2046 (all fixed waits through the shared load-scaled helper, per-wait factor; human 2026-11-21, ask cdaedf29). Close as covered when T-2046 lands.
+
+### coord · 2026-11-24T08:58:51.405Z
+
+Closed as fixed by T-2046 (b793535d7). The Discord fake's admission deadline is now testDeadlineMs(2000, …), the shared load-scaled bound. Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

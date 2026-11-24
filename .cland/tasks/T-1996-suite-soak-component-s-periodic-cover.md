@@ -3,17 +3,17 @@ id: T-1996
 kind: task
 title: suite-soak-component's periodic cover ancestry case still runs native Git in T2
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-2073
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T03:24:57.656Z
-updated: 2026-11-19T03:24:57.656Z
+updated: 2026-11-24T09:01:14.989Z
 ---
 
 ## Summary

@@ -3,16 +3,17 @@ id: T-1917
 kind: task
 title: hub-lock-readers.test.ts still reports child_process tier mismatches from production lock readers (inspect, readForeignHolder, migrateOffline) after T-1640
 state: open
-status: backlog
+status: planned
 size: S
-labels: []
+labels:
+  - ready-for-agent
 assignee: null
-parent: C-326
+parent: E-2073
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T16:18:12.909Z
-updated: 2026-11-16T16:18:12.909Z
+updated: 2026-11-24T09:01:14.673Z
 ---
 
 ## Summary

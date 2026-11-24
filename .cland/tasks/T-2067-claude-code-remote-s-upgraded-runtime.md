@@ -3,17 +3,17 @@ id: T-2067
 kind: task
 title: claude-code-remote's upgraded-runtime case lets a fire-and-forget `cland hook mod-turn-start` child outlive the file; the shared SSH/fake-Claude fixtures lack a close receipt separate from directory disposal
 state: open
-status: backlog
+status: planned
 size: M
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-2072
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-24T00:46:47.955Z
-updated: 2026-11-24T00:47:18.619Z
+updated: 2026-11-24T09:01:13.832Z
 ---
 
 ## Summary

@@ -2,8 +2,8 @@
 id: T-2034
 kind: task
 title: hosts-view 'retained cards keep Inbox, Hosts sign-in and remote thread order' times out at 3 s for the Inbox card under macOS Web load (passes 5/5 alone)
-state: open
-status: backlog
+state: closed
+status: done
 size: XS
 labels:
   - needs-triage
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T16:31:40.584Z
-updated: 2026-11-21T03:32:17.861Z
+updated: 2026-11-24T08:58:52.054Z
+closed: 2026-11-24T08:58:52.054Z
 ---
 
 ## Summary
@@ -34,3 +35,7 @@ Find what the Inbox card waits on after the delta and inbox publication under su
 ### coord · 2026-11-21T03:32:17.861Z
 
 Superseded by T-2046 (all fixed waits through the shared load-scaled helper, per-wait factor; human 2026-11-21, ask cdaedf29). Close as covered when T-2046 lands.
+
+### coord · 2026-11-24T08:58:52.054Z
+
+Closed as fixed by T-2046 (b793535d7). web harness setDefaultTimeout(waitTimeoutMs(3000)) plus browserWaitDefaults; T-2046 C1 names T-2034. Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

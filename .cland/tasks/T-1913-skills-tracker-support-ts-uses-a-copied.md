@@ -5,14 +5,15 @@ title: skills-tracker-support.ts uses a copied CLAND_* filter instead of the sha
 state: open
 status: backlog
 size: S
-labels: []
+labels:
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-2073
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T14:43:54.752Z
-updated: 2026-11-16T14:43:54.752Z
+updated: 2026-11-24T08:59:55.887Z
 ---
 
 ## Summary

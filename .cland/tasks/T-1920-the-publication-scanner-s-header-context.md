@@ -3,16 +3,17 @@ id: T-1920
 kind: task
 title: The publication scanner's header-context rule misses short Authorization values in header entry-pair lists and in object property keys
 state: open
-status: backlog
+status: planned
 size: S
-labels: []
+labels:
+  - ready-for-agent
 assignee: null
-parent: C-326
+parent: E-2077
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T16:36:57.494Z
-updated: 2026-11-16T16:36:57.494Z
+updated: 2026-11-24T09:01:21.302Z
 ---
 
 ## Summary

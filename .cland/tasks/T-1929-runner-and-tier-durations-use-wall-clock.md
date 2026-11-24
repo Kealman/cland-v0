@@ -5,14 +5,15 @@ title: Runner and tier durations use wall-clock time, so a system clock correcti
 state: open
 status: backlog
 size: S
-labels: []
+labels:
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-2074
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T02:20:03.376Z
-updated: 2026-11-17T02:20:03.376Z
+updated: 2026-11-24T09:00:10.203Z
 ---
 
 ## Summary

@@ -7,13 +7,14 @@ status: backlog
 size: M
 labels:
   - needs-triage
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T00:24:04.907Z
-updated: 2026-11-20T00:24:04.907Z
+updated: 2026-11-24T08:59:00.804Z
 ---
 
 ## Summary
@@ -28,3 +29,9 @@ A fake DigitalOcean host transport that composes the fake API with the host prov
 
 - [ ] C1. A scripted `cland setup` run creates a new DigitalOcean pool against the fake API and completes the first login on it, with no real API, token or spend (test).
 - [ ] C2. HOSTS-003 runs the new-pool route and records its evidence through `qa-record.sh` (test).
+
+## Comments
+
+### coord · 2026-11-24T08:59:00.804Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

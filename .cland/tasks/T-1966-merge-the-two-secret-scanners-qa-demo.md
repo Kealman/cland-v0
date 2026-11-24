@@ -3,17 +3,17 @@ id: T-1966
 kind: task
 title: Merge the two secret scanners (qa-demo-policy assertPublishable and site capture-safety scanCapture) into one shared scanner policy
 state: open
-status: backlog
+status: planned
 size: S
 labels:
-  - needs-triage
+  - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-2077
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T11:20:29.787Z
-updated: 2026-11-18T11:20:29.787Z
+updated: 2026-11-24T09:01:21.484Z
 ---
 
 ## Summary

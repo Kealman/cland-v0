@@ -7,13 +7,14 @@ status: backlog
 size: M
 labels:
   - needs-triage
+  - deferred-0.4.2
 assignee: null
 parent: C-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T10:14:51.565Z
-updated: 2026-11-17T10:14:51.565Z
+updated: 2026-11-24T08:58:58.214Z
 ---
 
 ## Summary
@@ -29,3 +30,9 @@ One owner for a fake API's setup, writers and root: an explicit context threaded
 - [ ] C1. Every fakeDigitalOcean caller, direct and transitive, is listed with its migration, and none registers a raw close after the root's removal phase (rule 41).
 - [ ] C2. A queued-issuance-then-close regression and an executor-droplet cleanup regression each fail on the current fixture and pass after the change (tests).
 - [ ] C3. The volume, provider, contract, executor-droplet, executor-prepare and remote-fixture-lifecycle files all pass at the final head; the native ones run on the native slot.
+
+## Comments
+
+### coord · 2026-11-24T08:58:58.214Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).

@@ -7,13 +7,14 @@ status: backlog
 size: XS
 labels:
   - ready-for-agent
+  - deferred-0.4.2
 assignee: null
 parent: C-326
 blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T01:24:39.206Z
-updated: 2026-11-21T08:02:25.843Z
+updated: 2026-11-24T08:59:00.486Z
 ---
 
 ## Summary
@@ -34,3 +35,7 @@ Replay every authorized platform and occasion log since T-1649 landed through th
 ### coord · 2026-11-21T08:02:25.843Z
 
 Moved out of E-1887 and R-1880 by the human's decision (ask 517bbd3c, 2026-11-21 08:01Z): "Перенести T-1990 за 0.4.1 (в следующий выпуск); E-1887 закрывается без неё с записанной причиной". Parked in Follow-ups until the next release is planned. The clean week since 2026-11-19 ends 2026-11-26.
+
+### coord · 2026-11-24T08:59:00.486Z
+
+Deferred out of 0.4.1 to 0.4.2 or later. The reason is in the deferral table of A-22763 (section 3; T-1974 in section 4). Re-triage A-22763, approved by the human on ask 0d31338f (2026-11-24 08:58Z).
