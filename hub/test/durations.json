@@ -14334,6 +14334,13 @@
       "added": "2026-11-18",
       "expires": "2026-12-18",
       "reason": "T-1954: worst passing 19.394106719 s in A-20923, receipt 30daefc9-ee05-47f6-8d50-af9e5d1c2711:686; cap rounds 1.5x upward to milliseconds. Top-level passing test receipts, including load repetitions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier T3 budget 10 s. D72 owner E-880; report-only policy unchanged."
+    },
+    "web/test/sessions.test.ts::Sessions stopped and exited rows and pages retain state reasons": {
+      "seconds": 6.111,
+      "owner": "E-880",
+      "added": "2026-11-24",
+      "expires": "2026-12-01",
+      "reason": "Linux measured peak 4.074 s; 1.5x headroom for sessions.test.ts: Sessions stopped and exited rows and pages retain state reasons."
     }
   }
 }

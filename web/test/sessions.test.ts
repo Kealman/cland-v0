@@ -5,12 +5,102 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { HarnessProcessView } from '../../shared/wire/index.ts';
-import { connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
+import { connectUi, inProcessSpoke, tempProject } from '../../hub/test/harness.ts';
+import { stageCase } from '../../hub/test/stage-case-fixture.ts';
+import { fenceFixtureCleanup, captureProcess, cleanupOwnedProcesses } from '../../hub/test/process-cleanup.ts';
+import { until, testSetupWaitMs } from '../../hub/test/until.ts';
+import type { SessionRow } from '../../shared/wire/index.ts';
 import { FakeClock } from '../../hub/test/fake-clock.ts';
 import { resizePage, pageUntil, webFixture } from './harness.ts';
 import { sessionHostFixture } from './session-host-fixture.ts';
 import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
 import { defaultConfig, renderConfig } from '../../hub/src/init/config.ts';
+
+test('Sessions stopped and exited rows and pages retain state reasons', async t => {
+  const cleanup = fenceFixtureCleanup(t);
+  const owner = stageCase(t, { native: true }); // Only the isolated test browser is native.
+  fenceFixtureCleanup(owner.resources);
+  const previousTmp = process.env.TMPDIR;
+  const previousBrowsers = process.env.PLAYWRIGHT_BROWSERS_PATH;
+  cleanup.release(() => {
+    if (previousTmp === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = previousTmp;
+    if (previousBrowsers === undefined) delete process.env.PLAYWRIGHT_BROWSERS_PATH; else process.env.PLAYWRIGHT_BROWSERS_PATH = previousBrowsers;
+  });
+  await owner.run(async step => {
+    const root = await owner.wait('root setup', () => step(async () => {
+      const root = await tempProject(owner.fixtures);
+      owner.adoptRoot(root);
+      return root;
+    }), testSetupWaitMs());
+    // The shared fixture's early TMPDIR restoration retains this scratch value.
+    // The outer fenced cleanup releases the original environment only after close.
+    process.env.TMPDIR = root;
+    const fixture = await owner.wait('browser and hub setup', () => step(() => webFixture(owner.resources, { project: async () => ({ root }) })), testSetupWaitMs());
+    const browserIdentity = captureProcess(fixture.server.process().pid);
+    assert.ok(browserIdentity);
+    owner.requireClose(async () => {
+      await fixture.close();
+      // Independent physical-close proof also gates retries after a rejected close.
+      await cleanupOwnedProcesses([browserIdentity]);
+      assert.equal(captureProcess(browserIdentity.pid), null);
+      assert.equal(fixture.browser.isConnected(), false);
+      await fixture.hub.stopped;
+      await assert.rejects(askHubFrame(fixture.hub.discovery, { type: 'web.link' }, testSetupWaitMs(), {}));
+    });
+    const ui = await owner.wait('UI setup', () => step(() => connectUi(owner.resources, fixture.hub.discovery)), testSetupWaitMs());
+    const reason = 'rename incomplete on host: destination exists';
+    Object.assign(fixture.fakes.opencode!, {
+      stateReason: (process: HarnessProcessView) => process.name.endsWith('-reason') ? reason : null,
+    });
+    for (const status of ['stopped', 'exited'] as const) {
+      for (const suffix of ['reason', 'plain']) {
+        const name = `${status}-${suffix}`;
+        const launch = await owner.wait('session launch setup', () => step(() => ui.request({ type: 'session.launch', name, harness: 'opencode' })), testSetupWaitMs());
+        assert.equal(launch.ok, true);
+        const sessionId = (launch.value as { process: HarnessProcessView }).process.sessionId;
+        if (status === 'stopped') assert.equal((await owner.wait('session stop', () => step(() => ui.request({ type: 'session.stop', session: name })), testSetupWaitMs())).ok, true);
+        else fixture.fakes.opencode!.crash(name);
+        let receipt: SessionRow | undefined;
+        await owner.wait('non-live session receipt', () => step(() => until(async () => {
+          const listed = await ui.request({ type: 'session.list' });
+          assert.equal(listed.ok, true);
+          receipt = (listed.value as { rows: SessionRow[] }).rows.find(row => row.sessionId === sessionId);
+          return receipt?.status === status && receipt.live === false;
+        }, { what: `${name} exact session is ${status} and non-live` })), testSetupWaitMs());
+        assert.equal(receipt?.status, status);
+        assert.equal(receipt?.live, false);
+        assert.equal(receipt?.stateReason, suffix === 'reason' ? reason : undefined);
+      }
+    }
+    await owner.wait('rendered session facts', () => step(() => fixture.pageCase(owner.resources, async page => {
+      await resizePage(page, { width: 390, height: 844 });
+      await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+      for (const status of ['stopped', 'exited'] as const) {
+        for (const suffix of ['reason', 'plain']) {
+          await t.test(`${status} ${suffix}`, async () => {
+            const lifecycle = status === 'stopped' ? 'stopped' : 'died';
+            const row = page.locator(`[data-state="${lifecycle}"] > [data-object-id="${status}-${suffix}"]`);
+            await row.waitFor();
+            const expected = suffix === 'reason' ? reason : status === 'stopped' ? 'stopped' : 'died';
+            const glyph = row.getByLabel(expected, { exact: true });
+            await glyph.waitFor();
+            assert.equal(await glyph.textContent(), status === 'stopped' ? '×' : '✗');
+            assert.equal(await glyph.evaluate(node => getComputedStyle(node).color), 'rgb(255, 123, 114)', 'non-live glyph retains the failed token');
+            await row.click();
+            const detail = page.locator('[data-area-module="Sessions"][data-area-surface="page"]');
+            await detail.waitFor();
+            const state = detail.locator('dt').filter({ hasText: /^State$/ }).locator('+ dd');
+            const pageState = suffix === 'reason' ? reason : status;
+            await state.filter({ hasText: pageState }).waitFor();
+            assert.equal(await state.textContent(), pageState);
+            await page.getByRole('button', { name: 'Back to Sessions', exact: true }).click();
+            await row.waitFor();
+          });
+        }
+      }
+    })), testSetupWaitMs());
+  });
+});
 
 test('Sessions row names its launching user only in users mode', async t => {
   const fixture = await webFixture(t, { prepare: async root => {

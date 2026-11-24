@@ -19,6 +19,17 @@ ages beyond five minutes, then observes the injection receipt and rendered idle
 row. Use the isolated Headless Shell. The file's prerequisite ensures a current
 web bundle before cases run; a pre-existing `web/dist` is not required.
 
+`Sessions stopped and exited rows and pages retain state reasons` uses fake
+OpenCode reasons and checks each exact session id's non-live status through
+`session.list` before observing row labels and page State facts. Both reason
+and plain cases retain their stopped/died styling hook and failed glyph colour.
+The shared stage owner captures acquisition before it starts, bounds setup and
+render observations separately with load-scaled helpers, and guards the adopted
+root until required close receipts succeed. Fenced cleanup retains the scratch
+TMPDIR through a rejected close; the original environment is restored only
+after successful cleanup. The captured browser's guarded process cleanup, PID
+absence, disconnected browser, stopped hub and closed socket gate release.
+
 `Sessions remote host fact names its host with a tooltip on ground and selection`
 launches fake Codex sessions through `session.launch` on a registered `testHost`
 and on `local`. It reads the remote id and tooltip from the desktop row, checks

@@ -32,12 +32,13 @@ export function SessionRow({ row, selected, groupOpen, select, connection, now, 
     button.current?.focus();
     button.current?.scrollIntoView({ block: 'nearest' });
   }, [selected, groupOpen]);
-  const state = !row.live ? (row.status === 'stopped' ? 'stopped' : 'died') : row.stateReason ?? row.state;
+  const lifecycleState = row.status === 'stopped' ? 'stopped' : 'died';
+  const state = row.stateReason ?? (row.live ? row.state : lifecycleState);
   const glyph = !row.live ? (row.status === 'stopped' ? '×' : '✗') : row.state === 'busy' || row.state === 'waiting for human' ? '●'
     : row.state === 'idle' ? '○' : row.state === 'waiting for approval' ? '▲' : '?';
   const role = connection.roles?.roles.find(role => role.role === row.role)?.label ?? row.role ?? '—';
   const topics = row.state === 'waiting for human' ? connection.sessionAsks?.filter(ask => ask.from === row.name).map(ask => ask.topic) ?? [] : [];
-  return <div className={s.session} data-state={state}>
+  return <div className={s.session} data-state={row.live ? state : lifecycleState}>
     <button ref={button} className={s.row} data-object-id={row.name} aria-pressed={selected}
       onPointerDown={event => { if (isPhone()) event.preventDefault(); }}
       onFocus={() => select(row.name)} onClick={() => { select(row.name); if (isPhone()) openPage?.(row.name); }}>
