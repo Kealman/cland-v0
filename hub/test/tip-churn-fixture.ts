@@ -5,11 +5,12 @@ import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { TrackerIndex } from '../src/tracker/index-db.ts';
 import { seedTransaction } from './seed-transaction.ts';
 import { ownedDatabases } from './owned-tracker.ts';
+import { withCleanupFailure } from '../src/cleanup-failure.ts';
 import type { Git } from '../src/tracker/verdict-git.ts';
 import type { TipSchedule } from '../src/tracker/freshness.ts';
 
 /** Synthetic only: fifty epic trees, 1,600 branches, and ten moving tips. */
-export async function tipChurnFixture(root: string, owner: Parameters<typeof ownedDatabases>[0]) {
+export async function tipChurnFixture(root: string, owner: Parameters<typeof ownedDatabases>[0], open?: (path: string) => import('node:sqlite').DatabaseSync) {
   await mkdir(join(root, '.cland/tasks'), {recursive: true});
   const dev = 'a'.repeat(40);
   let generation = 1;
@@ -18,7 +19,7 @@ export async function tipChurnFixture(root: string, owner: Parameters<typeof own
   // Seed the public durable index before startup. This case measures tip refresh,
   // not 1,600 independent status migrations and cold per-item announcements.
   const db = join(root, '.cland/hub.db');
-  const connection = ownedDatabases(owner)(db);
+  const connection = ownedDatabases(owner)(db, open);
   let index: TrackerIndex | undefined;
   try {
     const writer = index = new TrackerIndex(db, ['release', 'epic', 'task', 'question', 'spec', 'map', 'category'], () => connection);
@@ -44,10 +45,13 @@ export async function tipChurnFixture(root: string, owner: Parameters<typeof own
         await Promise.allSettled(writes);
       }
     });
-  } finally {
+  } catch (error) {
     // Also close when schema construction fails before the index is returned.
-    if (index) index.close(); else connection.close();
+    try { if (index) index.close(); else connection.close(); }
+    catch (cleanup) { throw withCleanupFailure(error, cleanup); }
+    throw error;
   }
+  index.close();
   const git: Git = async args => {
     // projectHub reads configuration provenance separately from branch tips.
     // This synthetic fixture has no committed configuration; other logs still refuse.
