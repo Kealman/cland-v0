@@ -21,12 +21,17 @@ import {FakeHostProvider} from '../src/host/provider/fake.ts';
 import {hostDirectory} from '../../shared/fake-host-directory.ts';
 import {territoryGitAsync} from '../src/territory.ts';
 import type {Machine} from '../src/host/provider/provider.ts';
-export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): void }, options: {provider?:{root?:string;project?:string;region:string};afterRepositoryInit?:(root:string,signal:AbortSignal)=>Promise<void>;afterNativeJoin?:()=>Promise<void>;memoryIntervalMs?:number;beforeRun?:(signal:AbortSignal)=>Promise<void>;afterOperation?:(operation:string,connection:Socket)=>void;startTransport?: boolean; env?:NodeJS.ProcessEnv; processHooks?:import('../src/host/agent/processes.ts').ProcessHooks} = {}) {
+import { fixtureResource, type FixtureLifecycle } from './fixture-lifecycle.ts';
+export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): void }, options: {lifecycle?:FixtureLifecycle;provider?:{root?:string;project?:string;region:string};afterRepositoryInit?:(root:string,signal:AbortSignal)=>Promise<void>;afterNativeJoin?:()=>Promise<void>;memoryIntervalMs?:number;beforeRun?:(signal:AbortSignal)=>Promise<void>;afterOperation?:(operation:string,connection:Socket)=>void;startTransport?: boolean; env?:NodeJS.ProcessEnv; processHooks?:import('../src/host/agent/processes.ts').ProcessHooks} = {}) {
+  let closeResources: () => Promise<void> = async () => {};
+  const close = fixtureResource(options.lifecycle, () => closeResources());
   const root = join(realpathSync('/tmp'), 'cland-suite-' + randomUUID()); await mkdir(root,{mode:0o700});
   const previous = process.cwd(); process.chdir(root);
   const cleanup = ownDirectory(undefined,root);
+  options.lifecycle?.adoptRoot(root, cleanup);
   const work = fixtureWork();
-  const db = new DatabaseSync(':memory:');
+  let db: DatabaseSync;
+  let dbClosed = false;
   const additional: Array<()=>Promise<void>> = [];
   let runConnection:Socket|undefined,runToken='',runGate:Promise<void>|undefined,releaseRun:(()=>void)|undefined,cancelEntered=false;
   let failLogClose=false,dropCommitReply=false,dropReleaseReply=false,dropForgetReply=false,dropRunReply=false,holdSettlement=false,settlementAttempts=0;const cleanupErrors:unknown[]=[];const diagnostics: Record<string,unknown>[]=[];
@@ -36,7 +41,7 @@ export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): v
   let host: ReturnType<typeof sshHost> | undefined;
   let machine:Machine|undefined;
   let machineDirectory:string|undefined;
-  t.after(async () => {
+  closeResources = async () => {
     // Fence synchronously, then join entire admitted JS sequences. If this
     // bound misses, keep the root/DB/native ownership for later recovery.
     try { await work.close(); } catch (error) { process.chdir(previous); throw error; }
@@ -53,11 +58,13 @@ export async function sshHostFixture(t: { after(cleanup: () => Promise<void>): v
       const paths=hostPaths(root,'f1');
       await attempt(async()=>{for(const path of [paths.agentSocket,paths.gitSocket,paths.controlSocket])await unlink(path).catch(error=>{if(error.code!=='ENOENT')throw error;});});
       if(!paths.socketDirectory.startsWith(root+'/'))await attempt(()=>rmdir(paths.socketDirectory).catch(error=>{if(error.code!=='ENOENT')throw error;}));
-      await attempt(()=>db.close());
+      await attempt(()=>{if(!dbClosed){db?.close();dbClosed=true;}});
     }
-    process.chdir(previous);if(joined)await attempt(cleanup);
+    process.chdir(previous);if(joined&&!options.lifecycle)await attempt(cleanup);
     if(failures.length)throw new AggregateError(failures,'SSH fixture cleanup incomplete');
-  });
+  };
+  t.after(options.lifecycle ? cleanup : close);
+  db = new DatabaseSync(':memory:');
   // The raw root is a disposable repository before socket enrollment. Callers
   // may reinitialize or add/clone it later; local excludes survive git init and
   // prevent alias records from becoming non-private copies in those checkouts.

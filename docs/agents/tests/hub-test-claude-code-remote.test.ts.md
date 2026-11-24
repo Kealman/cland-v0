@@ -1,5 +1,32 @@
 # hub/test/claude-code-remote.test.ts
 
+The upgraded-runtime case opts into the shared fixtures' `lifecycle` adapter.
+Its native `stageCase` owns the complete callback; SSH and fake-Claude register
+retryable resource-close receipts before acquisition, and root disposal follows
+the outer required-close fence. Default callers omit this option. A preload
+holds a native `mod-turn-start` writer: the completed turn still has a live PID,
+then release and `joinInitialHookWriters` establish its positive exit receipt.
+The rejection/repair control exercises guarded cleanup, retaining both roots
+and the owner until the rejected SSH close succeeds on retry.
+Both SSH and Claude rejection controls call each fixture's original registered
+directory remover while the close receipt is missing, independently observing
+the removal refusal before checking retention. Named load-scaled setup and
+callback/proof observations retain their original producers for cleanup.
+The hub's inherited startup/stop producer is registered as an optional required
+close before startup; the helper Store uses `ownedDatabases` before construction.
+Partial hub and Store constructor controls hold the outer receipt, attempt both
+registered removers, then observe positive closure and disposal after repair.
+The already-closed Store control checks that constructor-owned database closure
+is tolerated through `isOpen`, without a second native close.
+The five close/repair controls run under an outer proof supervisor. Its original
+callback includes setup, the close-under-test proof, repair and final assertions.
+The outer owner receives test aborts and releases controlled rejection holds;
+the inner owner has a separate signal and its cleanup hooks are captured by the
+outer owner. Observation expiry retains the producer until the proof joins,
+before inner cleanup and seam restoration. Fake-clock timeout and controlled
+abort cases hold a resumed continuation and prove the inner close and restoration
+follow its positive completion receipt.
+
 The aggregate file allowance is 90 seconds, owned by C-216 from 2026-11-04
 through 2026-11-11. Coordinator decision 8f8a0401 uses Linux x64 samples
 58.659 seconds (A-16511) and 60.959 seconds (A-16517). Two case identities

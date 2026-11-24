@@ -3,9 +3,10 @@
 import test, {type TestContext} from 'node:test';
 import { assertFakeClaudeCensus } from './fake-claude-census.ts';
 import assert from 'node:assert/strict';
-import { testWaitMs } from './until.ts';
+import { testWaitMs, waitTimeoutMs } from './until.ts';
 import { readFile, symlink, readdir, stat, chmod, mkdir, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { sshHostFixture } from './ssh-host-fixture.ts';
 import { projectHub, connectUi, fakeClaude, eventually, startDaemon, killDaemon } from './harness.ts';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
@@ -17,21 +18,59 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { sshHost } from '../src/host/ssh-host.ts';
 import { AgentClient } from '../src/host/agent-client.ts';
 import { FakeClock } from './fake-clock.ts';
+import { realClock, type Clock } from '../src/hub/clock.ts';
 import { observeProcesses } from '../src/host/agent/native.ts';
 import { systemProcesses } from '../src/system-processes.ts';
 import { spawn } from 'node:child_process';
 import { ownProcess } from './process-cleanup.ts';
 import { deliverRuntime, agentVersionHandoff } from '../src/host/code-delivery.ts';
 import { recoveryScanOwner } from './recovery-scan.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { fenceFixtureCleanup } from './process-cleanup.ts';
+import type { FixtureLifecycle } from './fixture-lifecycle.ts';
+import { fixtureResource } from './fixture-lifecycle.ts';
+import { ownedDatabases } from './owned-tracker.ts';
+import { DatabaseSync } from 'node:sqlite';
+import { abortable, within } from '../src/executor/droplet/deadline.ts';
 
-async function remoteClaudeFixture(t:TestContext, options:{memoryFloor?:boolean;upgrade?:boolean;nativeRefusal?:'aborted'|'spawn-error'|'pre-wire';sentAbort?:boolean;lostNativeReply?:boolean;refuseRoot?:boolean;failPrune?:boolean;failedResult?:boolean;failedAdoption?:boolean;stopCrash?:boolean;rollback?:boolean;settings?:(settings:{hooks:{SessionEnd:unknown[]}})=>void;awaitSignals?:boolean;signals?:Array<{pid:number;identity:string}>;stopHooks?:Pick<import('../src/host/agent/processes.ts').ProcessHooks,'beforeRemainingObservation'|'beforeSignals'>;setup?:(f:Awaited<ReturnType<typeof sshHostFixture>>,fake:Awaited<ReturnType<typeof fakeClaude>>)=>Promise<void>}={}) {
+/** The inner owner is the subject of close/repair assertions. Only this outer
+ * owner receives test aborts; its original callback includes the entire proof.
+ * Inner hooks and restoration cannot run until that continuation is joined. */
+function proofOwner(t:TestContext, options:{clock?:Clock;timeoutMs?:number}={}) {
+ fenceFixtureCleanup(t);
+ const supervisor=stageCase(t,{native:true});
+ const innerSignal=new AbortController().signal;
+ const fixtures=new Proxy(supervisor.fixtures,{get(target,key){
+   return key==='signal'?innerSignal:Reflect.get(target,key,target);
+ }});
+ return {close:supervisor.close,releaseOnClose:supervisor.releaseOnClose,
+   run:(body:(inner:TestContext)=>Promise<void>)=>{
+     const producer=supervisor.run(()=>body(fixtures));
+     return within(abortable(producer,t.signal),options.timeoutMs??waitTimeoutMs(testWaitMs(120_000)),options.clock,()=>new Error('whole fixture proof observation expired')).catch(error=>{
+       // Observation ends, ownership does not. This releases holds and joins
+       // producer before the inner cleanup/restoration hooks can execute.
+       void supervisor.close().catch(()=>{});
+       throw error;
+     });
+   },
+ };
+}
+
+function remoteStore(f:Pick<Awaited<ReturnType<typeof sshHostFixture>>,'root'|'addCleanup'>, lifecycle?:FixtureLifecycle, open?: (path:string)=>DatabaseSync) {
+ let store:Store|undefined;
+ const ownedOpen=ownedDatabases({requireClose:close=>{f.addCleanup(fixtureResource(lifecycle,close));}},()=>{store?.close();return undefined;});
+ store=new Store(join(f.root,'.cland/hub.db'),path=>ownedOpen(path,open));
+ return store;
+}
+
+async function remoteClaudeFixture(t:TestContext, options:{lifecycle?:FixtureLifecycle;memoryFloor?:boolean;upgrade?:boolean;nativeRefusal?:'aborted'|'spawn-error'|'pre-wire';sentAbort?:boolean;lostNativeReply?:boolean;refuseRoot?:boolean;failPrune?:boolean;failedResult?:boolean;failedAdoption?:boolean;stopCrash?:boolean;rollback?:boolean;settings?:(settings:{hooks:{SessionEnd:unknown[]}})=>void;awaitSignals?:boolean;signals?:Array<{pid:number;identity:string}>;stopHooks?:Pick<import('../src/host/agent/processes.ts').ProcessHooks,'beforeRemainingObservation'|'beforeSignals'>;setup?:(f:Awaited<ReturnType<typeof sshHostFixture>>,fake:Awaited<ReturnType<typeof fakeClaude>>)=>Promise<void>}={}) {
  let replySocket:import('node:net').Socket|undefined,nativeAbortHeld=false;
- const f=await sshHostFixture(t,{startTransport:false,...(options.nativeRefusal==='aborted'?{beforeRun:async(signal:AbortSignal)=>{
+ const f=await sshHostFixture(t,{...(options.lifecycle?{lifecycle:options.lifecycle}:{}),startTransport:false,...(options.nativeRefusal==='aborted'?{beforeRun:async(signal:AbortSignal)=>{
    if(nativeAbortHeld)return;nativeAbortHeld=true;
    await eventually('native admission held until cancellation observed',()=>signal.aborted||undefined,testWaitMs());
    assert.equal(signal.aborted,true,'native execution is released only after positive cancellation');
  }}:{}),...(options.sentAbort?{afterOperation:(op:string,socket:import('node:net').Socket)=>{if(op==='run-host'&&!replySocket){replySocket=socket;socket.cork();}}}:{}),...(options.signals||options.stopHooks?{processHooks:{...options.stopHooks,...(options.signals?{beforeSignals:async(targets:readonly {pid:number;identity:string}[])=>{options.signals!.push(...targets);await options.stopHooks?.beforeSignals?.(targets);}}:{})}}:{})});
- const fake=await fakeClaude(t,{awaitSignals:options.awaitSignals??true,stopCrash:options.stopCrash??false});
+ const fake=await fakeClaude(t,{...(options.lifecycle?{lifecycle:options.lifecycle}:{}),awaitSignals:options.awaitSignals??true,stopCrash:options.stopCrash??false});
  await options.setup?.(f,fake);
  let code=join(f.fake.home,'code');
  if(options.upgrade){
@@ -95,11 +134,11 @@ async function remoteClaudeFixture(t:TestContext, options:{memoryFloor?:boolean;
    const forget=adapter.forget.bind(adapter);adapter.forget=id=>{if(options.failPrune&&!pruneFaultInjected){pruneFaultInjected=true;throw new Error('planted post-clear prune interruption');}forget(id);};
    const spawn=adapter.spawn.bind(adapter);adapter.spawn=request=>spawn({...request,accountEnv:env});return adapter;
  };
- const startHub=()=>projectHub(t,f.root,{}, {hosts:[machine],adapters:[factory]});
+ const startHub=()=>projectHub(t,f.root,{}, {...(options.lifecycle?{lifecycle:options.lifecycle}:{}),hosts:[machine],adapters:[factory]});
  const hub=await startHub();
  const {setRoleKey}=await import('../src/roles/editor.ts');const rolesFile=join(f.root,'.cland/roles.toml');await writeFile(rolesFile,setRoleKey(await readFile(rolesFile,'utf8'),'implementer','launch','writable_roots',['.']));
  f.addCleanup(()=>hub.stop());
- const store=new Store(join(f.root,'.cland/hub.db'));f.addCleanup(async()=>store.close());
+ const store=remoteStore(f,options.lifecycle);
  const record=f.records.get('f1')!,secret=f.secrets.readSecret('f1');store.hosts.insert({...record,clientKeyPath:'/fake',knownHosts:'fake'},secret);
  await writeFile(remote.discoveryFile,JSON.stringify({remote:true,version:'test',secret,socket:join(f.fake.run,'hub.sock'),spoke:`ws+unix:${join(f.fake.run,'spoke.sock')}:/`}),{mode:0o600});
  carrier=new SshTransport({root:f.root,record,secrets:f.secrets,hubSocket:layout(f.root).socket,spokeSocket:layout(f.root).spokeSocket,remoteRun:f.fake.run,supervisor:f.supervisor,agentCommand:['stub'],env:f.env,readinessPollMs:5,reconnectDelayMs:()=>10});
@@ -165,11 +204,140 @@ async function joinInitialHookWriters(d:Awaited<ReturnType<typeof remoteClaudeFi
 }
 
 test('T-1730 C2 upgraded runtime launches Claude with connected mod bridge',{timeout:8 * testWaitMs() + 120000},async t=>{
- const {ui,fake,row}=await remoteClaudeFixture(t,{upgrade:true});
+ fenceFixtureCleanup(t);
+ const scope=stageCase(t,{native:true});
+ await scope.wait('upgraded whole callback',()=>scope.run(async step=>{
+ let gate='',started='';
+ const d=await scope.wait('upgraded fixture setup',()=>step(()=>remoteClaudeFixture(scope.fixtures,{lifecycle:scope,upgrade:true,awaitSignals:false,setup:async(f,fake)=>{
+   gate=join(f.root,'hook-release');started=join(f.root,'hook-started');
+   const preload=join(f.root,'held-hook.mjs');
+   await writeFile(preload,`import fs from 'node:fs';
+if(process.argv.includes('mod-turn-start')&&!fs.existsSync(${JSON.stringify(gate)}))await new Promise(resolve=>{const check=()=>{if(fs.existsSync(${JSON.stringify(gate)})){watcher.close();resolve();}};const watcher=fs.watch(${JSON.stringify(f.root)},check);fs.writeFileSync(${JSON.stringify(started)},String(process.pid));check();});\n`);
+   fake.env.NODE_OPTIONS+=' --import='+preload;
+   scope.releaseOnClose(()=>{writeFileSync(gate,'release');});
+ }})),waitTimeoutMs(testWaitMs(60_000)));
+ const {ui,fake,row}=d;
  await ui.request({type:'topic.send',topic:'general',text:'@worker upgraded hello',to:['worker']});
  await eventually('upgraded Claude bridge delivers answer',()=>ui.frames.find(frame=>frame.type==='message'&&JSON.stringify(frame).includes('pong:'))||undefined,testWaitMs());
  await eventually('upgraded native turn completed',async()=>(await fake.log(row.harnessId)).includes('session.measure done')||undefined,testWaitMs());
+ const pid=await eventually('held hook native PID',async()=>Number(await readFile(started,'utf8').catch(()=>''))||undefined,testWaitMs());
+ assert.ok((await observeProcesses([pid],d.f.env)).get(pid)?.identity,'completed turn can still have a held native hook');
+ await writeFile(gate,'release');
+ await joinInitialHookWriters(d,testWaitMs());
+ assert.equal((await observeProcesses([pid],d.f.env)).get(pid)?.ended,true,'completed turn joins its fire-and-forget hook');
  assert.ok(ui.frames.some(frame=>frame.type==='message'&&JSON.stringify(frame).includes('pong:')));
+ }),waitTimeoutMs(testWaitMs(120_000)));
+});
+
+for(const boundary of ['timeout','abort'])test(`remote proof supervisor joins its ${boundary} continuation before inner cleanup`,async t=>{
+ const abort=new AbortController(),hooks:Array<()=>Promise<void>>=[];
+ const controlled={name:`controlled ${boundary} proof`,signal:abort.signal,after:(hook:()=>Promise<void>)=>hooks.push(hook)} as unknown as TestContext;
+ const clock=new FakeClock(Date.now()); // Only the observation timer uses this clock.
+ const owner=proofOwner(controlled,{clock,timeoutMs:1});
+ const setup=Promise.withResolvers<void>(),hold=Promise.withResolvers<void>(),continued=Promise.withResolvers<void>(),resume=Promise.withResolvers<void>();
+ const marker={value:'original'};
+ let released=false,proofDone=false,closed=false;
+ owner.releaseOnClose(()=>{released=true;hold.resolve();});
+ t.after(async()=>{hold.resolve();resume.resolve();await owner.close();for(const hook of hooks)await hook();});
+ const result=owner.run(async inner=>{
+   fenceFixtureCleanup(inner);
+   const scope=stageCase(inner,{native:true});
+   await scope.run(async()=>{scope.patch(marker,'value','held');scope.requireClose(async()=>{closed=true;});});
+   setup.resolve();
+   await hold.promise;
+   assert.equal(inner.signal.aborted,false,'outer cancellation retains exclusive cleanup authority');
+   continued.resolve(); // Positive receipt: the proof resumed after cancellation.
+   await resume.promise;
+   proofDone=true;
+ });
+ const rejected=assert.rejects(result,boundary==='timeout'?/whole fixture proof observation expired/:/controlled proof abort/);
+ await within(setup.promise,waitTimeoutMs(testWaitMs()),undefined,()=>new Error('proof control setup incomplete'));
+ if(boundary==='timeout')await clock.advance(1);else abort.abort(new Error('controlled proof abort'));
+ await rejected;
+ await within(continued.promise,waitTimeoutMs(testWaitMs()),undefined,()=>new Error('cancelled proof continuation missing'));
+ assert.equal(released,true);
+ assert.equal(proofDone,false);
+ assert.equal(closed,false,'inner required close waits for the retained proof continuation');
+ assert.equal(marker.value,'held','inner restoration cannot run while the proof is held');
+ const cleanup=owner.close();
+ resume.resolve();
+ await cleanup;
+ assert.equal(proofDone,true);
+ assert.equal(closed,true);
+ assert.equal(marker.value,'original','restoration follows joined proof and positive inner close');
+});
+
+for(const rejected of ['SSH','Claude'])test(`shared remote fixtures retain both roots until a rejected ${rejected} close is repaired`, {timeout:8 * testWaitMs()},async t=>{
+ const owner=proofOwner(t);
+ await owner.run(async t=>{
+ fenceFixtureCleanup(t);
+ const scope=stageCase(t,{native:true});
+ let refuse=true;
+ owner.releaseOnClose(()=>{refuse=false;});
+ let f:Awaited<ReturnType<typeof sshHostFixture>>|undefined;
+ let fake:Awaited<ReturnType<typeof fakeClaude>>|undefined;
+ const removers=new Map<string,()=>Promise<void>>();
+ const lifecycle:FixtureLifecycle={requireClose:scope.requireClose,adoptRoot:(root,remove)=>{scope.adoptRoot(root);removers.set(root,remove);}};
+ await scope.wait('repair control whole setup',()=>scope.run(async step=>{
+   f=await scope.wait('repair SSH setup',()=>step(()=>sshHostFixture(scope.fixtures,{lifecycle,startTransport:false,afterNativeJoin:async()=>{if(refuse&&rejected==='SSH')throw new Error('controlled fixture close rejected');}})),waitTimeoutMs(testWaitMs()));
+   fake=await scope.wait('repair Claude setup',()=>step(()=>fakeClaude(scope.fixtures,{lifecycle,writerClock:{...realClock,now:()=>{if(refuse&&rejected==='Claude')throw new Error('controlled Claude close rejected');return new Date();}}})),waitTimeoutMs(testWaitMs()));
+ }),waitTimeoutMs(testWaitMs(60_000)));
+ // Exercise the real required-close fence; repair after observing retention.
+ try {
+   await assert.rejects(scope.close(),rejected==='SSH'?/SSH fixture cleanup incomplete/:/controlled Claude close rejected/);
+   for(const root of [f!.root,fake!.home])await scope.wait('registered removal refuses unconfirmed close',()=>assert.rejects(removers.get(root)!(),/resource close unconfirmed/),waitTimeoutMs(testWaitMs()));
+   assert.equal((await stat(f!.root)).isDirectory(),true);
+   assert.equal((await stat(fake!.home)).isDirectory(),true);
+   await assert.rejects(scope.restore(),/resource close unconfirmed/);
+ } finally { refuse=false; }
+ await scope.close();
+ await assert.rejects(stat(f!.root),{code:'ENOENT'});
+ await assert.rejects(stat(fake!.home),{code:'ENOENT'});
+ await scope.restore();
+ });
+});
+
+for(const rejected of ['hub','Store','already-closed Store'])test(`remote fixture partial ${rejected} acquisition keeps both roots until required close`,{timeout:8 * testWaitMs()},async t=>{
+ const owner=proofOwner(t);
+ await owner.run(async t=>{
+ fenceFixtureCleanup(t);
+ const scope=stageCase(t,{native:true});
+ const removers=new Map<string,()=>Promise<void>>();
+ const lifecycle:FixtureLifecycle={requireClose:scope.requireClose,adoptRoot:(root,remove)=>{scope.adoptRoot(root);removers.set(root,remove);}};
+ let refuse=true,closed=false;
+ owner.releaseOnClose(()=>{refuse=false;});
+ const partial:FixtureLifecycle={...lifecycle,requireClose:close=>scope.requireClose(async()=>{if(refuse)throw new Error('controlled partial close rejected');await close();closed=true;})};
+ let f:Awaited<ReturnType<typeof sshHostFixture>>|undefined,fake:Awaited<ReturnType<typeof fakeClaude>>|undefined,db:DatabaseSync|undefined,closeCalls=0;
+ await scope.wait('partial acquisition whole setup',()=>scope.run(async step=>{
+   f=await scope.wait('partial SSH setup',()=>step(()=>sshHostFixture(scope.fixtures,{lifecycle,startTransport:false})),waitTimeoutMs(testWaitMs()));
+   fake=await scope.wait('partial Claude setup',()=>step(()=>fakeClaude(scope.fixtures,{lifecycle})),waitTimeoutMs(testWaitMs()));
+   if(rejected==='hub')await scope.wait('partial hub rejection',()=>assert.rejects(step(()=>projectHub(scope.fixtures,f!.root,{}, {lifecycle:partial,configureTracker:()=>{throw new Error('controlled hub constructor rejected');}})),/controlled hub constructor rejected/),waitTimeoutMs(testWaitMs()));
+   else assert.throws(()=>remoteStore(f!,partial,path=>{
+     db=new DatabaseSync(path);
+     const nativeClose=db.close.bind(db);
+     scope.patch(db,'close',()=>{closeCalls++;nativeClose();});
+     scope.patch(db,'function',()=>{throw new Error('controlled Store constructor rejected');});
+     return db;
+   }),/controlled Store constructor rejected/);
+   // Model a constructor which already closed its handle before returning
+   // the rejection. A newer Store may itself have supplied that receipt.
+   if(rejected==='already-closed Store'&&db!.isOpen)db!.close();
+ }),waitTimeoutMs(testWaitMs(60_000)));
+ try {
+   await assert.rejects(scope.close(),/controlled partial close rejected/);
+   assert.equal(closed,false,'the rejected required close has no positive receipt');
+   for(const root of [f!.root,fake!.home]){
+     await scope.wait('partial acquisition registered removal refused',()=>assert.rejects(removers.get(root)!(),/resource close unconfirmed/),waitTimeoutMs(testWaitMs()));
+     assert.equal((await stat(root)).isDirectory(),true);
+   }
+   await assert.rejects(scope.restore(),/resource close unconfirmed/);
+ } finally { refuse=false; }
+ await scope.close();
+ assert.equal(closed,true,'the registered partial owner positively returned from close');
+ if(db){assert.equal(db.isOpen,false);assert.equal(closeCalls,1,'constructor-owned closure must not be repeated');}
+ for(const root of [f!.root,fake!.home])await assert.rejects(stat(root),{code:'ENOENT'});
+ await scope.restore();
+ });
 });
 
 test('remote Claude frame launch adopts its worker and delivers through host hooks and bridge', {timeout:8 * testWaitMs() + 120000},async t=>{

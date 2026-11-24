@@ -44,6 +44,7 @@ import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import { beforeDirectories, afterCleanup, onCleanup, captureProcess, cleanupOwnedProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses, guardDirectoryRemoval, type ProcessIdentity } from './process-cleanup.ts';
+import { fixtureResource, type FixtureLifecycle } from './fixture-lifecycle.ts';
 
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
@@ -454,6 +455,8 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  /** Promote the inherited startup/stop producer to a whole-case close receipt. */
+  lifecycle?: FixtureLifecycle;
   /** Bind fixture-owned receipts at the public Tracker seam after dispatcher binding. */
   configureTracker?: (tracker: import('../src/tracker/tracker.ts').Tracker) => void;
   gitCommandRecovery?: NonNullable<NonNullable<Parameters<typeof serveProject>[1]>['gitCommandRecovery']>;
@@ -557,6 +560,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     return started ? stopping : within(stopping, options.startupCleanup?.timeoutMs ?? testWaitMs(), options.startupCleanup?.clock, () => new Error('projectHub startup join incomplete; fixture root retained'));
   };
   guardDirectoryRemoval(root, stopAfterStartup);
+  options.lifecycle?.requireClose(stopAfterStartup);
   beforeDirectories(t, stopAfterStartup);
   afterCleanup(t, async () => { await stopping; await checkResources(); });
   try {
@@ -593,7 +597,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   // callers can override individual facts without restoring the other native probes.
   const gatewayProcesses = fakePollerProcesses();
   gatewayProcesses.rows.set(process.pid, { alive: true, started: 'fixture-hub-start', identity: 'fixture-hub-birth' });
-  const { processes: requestedProcesses, startupCleanup: _startupCleanup, configureTracker: _configureTracker, ...hubOptions } = options;
+  const { processes: requestedProcesses, startupCleanup: _startupCleanup, configureTracker: _configureTracker, lifecycle: _lifecycle, ...hubOptions } = options;
   // Unknown start identity keeps a live native holder conservative too; an
   // invented stamp could make another reader mistake this fixture for PID reuse.
   const lockProcesses = requestedProcesses ?? { alive: pidAlive, started: () => null };
@@ -970,10 +974,14 @@ export type FakeClaude = {
 
 export async function fakeClaude(
   t: TestContext,
-  timings: { pollMs?: number; reexecGraceMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; awaitSignals?: boolean; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean; writerClock?: Clock } = {},
+  timings: { lifecycle?: FixtureLifecycle; pollMs?: number; reexecGraceMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; awaitSignals?: boolean; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean; writerClock?: Clock } = {},
 ): Promise<FakeClaude> {
+  let closeWriters: () => Promise<void> = async () => {};
+  const close = fixtureResource(timings.lifecycle, () => closeWriters());
   await ensureAccountFixture();
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
+  const remove = ownDirectory(t, home, { removeTimeoutMs: 1000, ...(timings.lifecycle ? {} : { beforeRemove: close }) });
+  timings.lifecycle?.adoptRoot(home, remove);
   const writers = join(home, 'writers');
   await mkdir(writers);
   rememberFakeClaudeRegistry(writers);
@@ -983,7 +991,7 @@ export async function fakeClaude(
   // fence launches, stop session groups (hooks/spokes included), and drain CLIs.
   // Even a drained writer may race the filesystem's directory enumeration on
   // teardown. Retry only ENOTEMPTY/EBUSY for 1 s, retaining paths on exhaustion.
-  ownDirectory(t, home, { removeTimeoutMs: 1000, beforeRemove: async () => {
+  closeWriters = async () => {
     await rm(join(home, 'writers-open'), { force: true });
     const identities = async () => Promise.all((await readdir(writers)).filter(file => file.endsWith('.json')).map(async file =>
       JSON.parse(await readFile(join(writers, file), 'utf8')) as ProcessIdentity & { session: boolean }));
@@ -1002,7 +1010,7 @@ export async function fakeClaude(
       }
       await new Promise<void>(resolve => writerClock.setTimeout(resolve, 25));
     }
-  } });
+  };
   const storage = join(home, '.fixture-sockets');
   mkdirSync(storage, { mode: 0o700 }); // Fresh allocated home: never reuse caller storage.
   ignoreFixtureStorage(storage);
