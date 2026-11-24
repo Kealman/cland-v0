@@ -1207,8 +1207,9 @@ sets a positive duration (`s`, `m`, `h` or `d`). A timed-out test fails by name.
 An explicit configured duration stays exact, including a value equal to the
 default. Only an absent source setting scales the default with current load at
 runner launch. Fresh hub admissions and queued config capture retain the shared
-parser's default provenance. Generated config writes an explicit `test_timeout`
-and therefore stays exact. Admitted limits and config snapshots without default
+parser's default provenance. Generated and managed configs keep an absent
+`test_timeout` unset. Existing explicit values survive updates and settings writes,
+including values equal to the default. Admitted limits and config snapshots without default
 provenance stay exact. This runtime policy takes effect
 after restarting the hub with this code.
 An explicit test-level timeout still overrides Node's default.

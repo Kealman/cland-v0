@@ -8,7 +8,6 @@ test('timeout and spend config validate and survive rendering', () => {
   for (const value of ['-1', '"5"', 'nan']) assert.throws(() => parseConfig(`[verification]\ndaily_spend_usd=${value}`, 'test'), /daily_spend_usd/);
   assert.throws(() => parseConfig('[verification]\nrun_timeout="oops"', 'test'), /run_timeout/);
   const config = parseConfig('[verification]\nlifetime="60m"\nrun_timeout="50m"\ndaily_spend_usd=3', 'test');
-  config.verification.testTimeoutIsDefault = false; // Rendering writes an explicit timeout.
   assert.deepEqual(parseConfig(renderConfig(config), 'test'), config);
 });
 

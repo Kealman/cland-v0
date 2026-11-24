@@ -22,6 +22,52 @@ import { defaultConfig, parseConfig, provisionConfig, renderConfig } from '../sr
 import { prepareAuthMode, setConfigValue } from '../src/init/config-set.ts';
 import { Report } from '../src/init/files.ts';
 import { parse, stringify } from 'smol-toml';
+import { runnerTestTimeoutArgument } from '../src/suite-wait-budget.ts';
+
+test('init keeps the load-scaled timeout default and explicit user bounds stay exact', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-timeout-config-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  const saved = process.env.CLAND_TEST_LOAD_FACTOR;
+  process.env.CLAND_TEST_LOAD_FACTOR = '3';
+  t.after(() => {
+    if (saved === undefined) delete process.env.CLAND_TEST_LOAD_FACTOR;
+    else process.env.CLAND_TEST_LOAD_FACTOR = saved;
+  });
+  provisionConfig(new Report(root), path, root);
+  const initial = readFileSync(path, 'utf8');
+  assert.equal(Object.hasOwn(parse(initial).verification as object, 'test_timeout'), false);
+  const v = parseConfig(initial, 'fixture', {}).verification;
+  assert.equal(runnerTestTimeoutArgument(v.testTimeoutMs, v.testTimeoutIsDefault === true), '--test-timeout=360000');
+  for (const seconds of [120, 17]) {
+    writeFileSync(path, initial.replace('[verification]', `[verification]\ntest_timeout="${seconds}s"`));
+    provisionConfig(new Report(root), path, root);
+    const explicit = parseConfig(readFileSync(path, 'utf8'), 'fixture', {}).verification;
+    assert.equal(explicit.testTimeoutIsDefault, false);
+    assert.equal(runnerTestTimeoutArgument(explicit.testTimeoutMs, explicit.testTimeoutIsDefault), `--test-timeout=${seconds * 1000}`);
+  }
+});
+
+test('managed config settings preserve absent timeout provenance and accept explicit bounds', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-managed-timeout-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  writeFileSync(path, '# managed by cland 0.1.0\n[verification]\nworkers=2\n[custom]\nkept=true\n');
+  setConfigValue(root, path, 'verification.workers', 3, {});
+  const source = readFileSync(path, 'utf8');
+  assert.equal(Object.hasOwn(parse(source).verification as object, 'test_timeout'), false);
+  assert.equal(parseConfig(source, 'fixture', {}).verification.testTimeoutIsDefault, true);
+  assert.equal((parse(source).custom as Record<string, unknown>).kept, true);
+  for (const value of ['120s', '17s']) {
+    assert.equal(setConfigValue(root, path, 'verification.test_timeout', value, {}), value);
+    setConfigValue(root, path, 'verification.workers', 4, {});
+    const config = parseConfig(readFileSync(path, 'utf8'), 'fixture', {});
+    assert.equal(config.verification.testTimeoutIsDefault, false);
+    assert.equal(config.verification.testTimeoutMs, value === '120s' ? 120000 : 17000);
+  }
+});
 
 test('pool config compare-and-set refuses stale prior bytes without writing', t => {
   const root = mkdtempSync(join(tmpdir(), 'pool-cas-'));
@@ -53,7 +99,6 @@ test('init renders remote and speech defaults and update adds them while preserv
   assert.deepEqual(updated.remote, expectedRemote);
   assert.deepEqual(updated.speech, expectedSpeech);
   const expected = parseConfig(older, 'scratch', {});
-  expected.verification.testTimeoutIsDefault = false; // Generated config writes an explicit bound.
   assert.deepEqual(parseConfig(readFileSync(path, 'utf8'), 'scratch', {}), expected);
   const once = readFileSync(path, 'utf8');
   provisionConfig(new Report(root), path, root);
@@ -127,7 +172,6 @@ test('verification commands retain literal shell syntax through the config templ
   const config = parseConfig(`[verification]\n${Object.entries(commands).map(([key, value]) => `${key} = ${JSON.stringify(value)}`).join('\n')}`, 'scratch');
   for (const [key, value] of Object.entries(commands)) assert.equal(Reflect.get(config.verification, key), value);
   const rendered = renderConfig(config);
-  config.verification.testTimeoutIsDefault = false; // The template materializes test_timeout.
   assert.deepEqual(parseConfig(rendered, 'scratch'), config);
   assert.match(rendered, /# cland verify runs nothing until test or a tier command is set; use cland config set verification.test '<command>'\./);
   assert.match(rendered, /# prepare installs what check and test need; runs on the droplet builder and before every droplet run, never locally\.\n# Commands run under \/bin\/sh -c; prepare must be idempotent and write only ignored files\.\nprepare =/);

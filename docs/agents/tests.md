@@ -1241,7 +1241,8 @@ that default only at launch. An explicit setting stays exact, even when equal
 to the default. An admitted limits snapshot without default provenance also
 stays exact; absence of metadata does not authorize a larger bound. Fresh hub
 admission and queued config capture carry the parser's positive provenance.
-Generated config materializes an explicit bound, which stays exact. A hub
+Generated and managed configs leave the timeout unset when it has default
+provenance; explicit existing values, including 120s, stay exact. A hub
 restart is required to apply this runtime policy.
 
 Load and Web repetition owners sample the same current-load policy when each

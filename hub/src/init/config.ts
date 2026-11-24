@@ -163,8 +163,9 @@ coverage_map_retention = ${c.verification.coverageMapRetention}
 suite_retention_min_age_days = ${c.verification.suiteRetentionMinAgeDays}
 # Bound candidates and discovered entries per pass; may be lowered live.
 suite_retention_pass_limit = ${c.verification.suiteRetentionPassLimit}
-# Named tests fail at this deadline; silent commands are stopped with their process tree.
-test_timeout = "${c.verification.testTimeoutMs / 1000}s"
+# Omit test_timeout for the load-scaled 120s default; an explicit value stays exact.
+${c.verification.testTimeoutIsDefault === true ? '# test_timeout = "120s"' : `test_timeout = "${c.verification.testTimeoutMs / 1000}s"`}
+# Silent commands are stopped with their process tree.
 stall_timeout = "${c.verification.stallTimeoutMs / 1000}s"
 lifetime = "${c.verification.lifetimeMs % MINUTE === 0 ? `${minutes(c.verification.lifetimeMs)}m` : `${c.verification.lifetimeMs / 1000}s`}"
 
