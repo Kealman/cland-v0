@@ -6,6 +6,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openDatabase } from '../src/database.ts';
+import { Store } from '../src/hub/store.ts';
+import { TrackerIndex } from '../src/tracker/index-db.ts';
 import { tipChurnFixture } from './tip-churn-fixture.ts';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
 
@@ -14,6 +16,35 @@ function primaryWithCleanup(actual: unknown, primary: Error, cleanup: Error) {
   assert.ok(primary.cause instanceof AggregateError);
   assert.deepEqual(primary.cause.errors, [cleanup]);
   return true;
+}
+
+for (const owner of ['Store', 'TrackerIndex'] as const) {
+  for (const phase of ['pragma', 'schema'] as const) {
+    for (const closeRejects of [false, true]) test(`${owner} closes after ${phase} rejection and preserves the primary error: close rejects=${closeRejects}`, async t => {
+      await fixtureNativeGuard(t);
+      const primary = new Error('injected initialization rejection');
+      const cleanup = new Error('injected close rejection');
+      let closes = 0;
+      const db = {
+        function() {},
+        exec(sql: string) {
+          if (phase === 'pragma' ? sql.includes('journal_mode') : sql.includes('create table')) throw primary;
+        },
+        close() { closes++; if (closeRejects) throw cleanup; },
+      } as unknown as DatabaseSync;
+      assert.throws(() => {
+        if (owner === 'Store') new Store('unused', () => db);
+        else new TrackerIndex('unused', undefined, () => db);
+      }, error => {
+        assert.equal(closes, 1, 'handle closed before initialization error reaches caller');
+        if (closeRejects) return primaryWithCleanup(error, primary, cleanup);
+        assert.equal(error, primary);
+        assert.equal(primary.cause, undefined);
+        return true;
+      });
+      assert.equal(closes, 1);
+    });
+  }
 }
 
 test('database pragma rejection retains the primary error when close rejects', async t => {

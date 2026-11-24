@@ -83,7 +83,7 @@ test('criterion-only historical verification protects its raw run through indexe
       scope.patch(failed,'exec',(sql:string)=>{if(sql.includes('create table tracker_criterion_runs'))throw new Error('planted migration failure');return exec(sql);});
       return failed;
     }),/planted migration failure/);
-    assert.equal(failed!.isOpen,true,'constructor failure leaves a captured native connection for the pre-enrolled owner');
+    assert.equal(failed!.isOpen,false,'constructor closes the captured connection before propagating migration failure');
     await scope.settleResources();
     assert.equal(failed!.isOpen,false,'resource close receipt precedes root/guard release');
   });

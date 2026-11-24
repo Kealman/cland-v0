@@ -8,6 +8,7 @@ import { compareRank, effectiveRank } from './rank.ts';
 import { createHash } from 'node:crypto';
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { openDatabase } from '../database.ts';
+import { withCleanupFailure } from '../cleanup-failure.ts';
 import { parseItemReference, prefixOf } from './prefixes.ts';
 import { parseFindings, countFindings } from './findings.ts';
 import { idNumber, type Comment, type Verdict, type Item, type Kind, type State, type Status, type Size, type FoundBy, type VerdictKind, type VerdictResult, type ReviewScope } from './item.ts';
@@ -191,39 +192,45 @@ export class TrackerIndex {
   constructor(path: string, kinds?: readonly string[], open = (path: string) => new DatabaseSync(path)) {
     this.#kinds = kinds;
     this.#db = openDatabase(path, open);
-    this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on;');
-    this.#db.exec(SCHEMA);
-    // Older indexes did not retain criterion run identities. Invalidate their
-    // source hashes once so the existing bootstrap walk fills protection before
-    // the serving owner can start retirement. A crash repeats unfinished rows.
-    const criterionRuns = this.#db.prepare("select 1 from sqlite_master where type = 'table' and name = 'tracker_criterion_runs'").get();
-    this.#db.exec("create index if not exists tracker_pending_criterion_migration on tracker_items(hash) where hash = ''");
-    if (!criterionRuns) this.#tx(() => this.#db.exec("create table tracker_criterion_runs (run text not null, item_id text not null references tracker_items(id) on delete cascade, primary key(run,item_id)); update tracker_items set hash = ''"));
-    this.#db.exec('create index if not exists tracker_items_number on tracker_items (n); create index if not exists tracker_items_parent on tracker_items (parent); create index if not exists tracker_items_file on tracker_items (file); create index if not exists tracker_items_branch on tracker_items (branch)');
-    // Additive columns for databases created by earlier hub versions.
-    const itemColumns = new Set((this.#db.prepare('pragma table_info(tracker_items)').all() as Row[]).map(r => r.name));
-    if (!itemColumns.has('version')) this.#db.exec('alter table tracker_items add column version text');
-    if (!itemColumns.has('rank')) this.#db.exec('alter table tracker_items add column rank integer');
-    if (!itemColumns.has('criteria_ids')) {
-      this.#db.exec("alter table tracker_items add column criteria_ids text not null default '[]'; update tracker_items set hash = ''");
-    }
-    if (!itemColumns.has('criteria_summary')) this.#db.exec("alter table tracker_items add column criteria_summary text not null default '[]'; update tracker_items set hash = ''");
-    if (!itemColumns.has('closed')) this.#db.exec("alter table tracker_items add column closed text; update tracker_items set hash = ''");
-    for (const column of ['size', 'regression_of', 'found_by']) if (!itemColumns.has(column)) this.#db.exec(`alter table tracker_items add column ${column} text; update tracker_items set hash = ''`);
-    if (!itemColumns.has('status')) this.#db.exec('alter table tracker_items add column status text');
-    const claimColumns = new Set((this.#db.prepare('pragma table_info(tracker_claims)').all() as Row[]).map((r) => r.name as string));
-    if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
-    const verdictColumns = new Set((this.#db.prepare('pragma table_info(tracker_verdicts)').all() as Row[]).map((r) => r.name));
-    for (const column of ['commit_sha', 'comment_key', 'stage', 'stage_hash', 'scope', 'findings_json']) if (!verdictColumns.has(column)) this.#db.exec(`alter table tracker_verdicts add column ${column} text`);
-    const writtenColumns = new Set((this.#db.prepare('pragma table_info(tracker_written_verdicts)').all() as Row[]).map(r => r.name));
-    if (!writtenColumns.has('scope')) this.#db.exec('alter table tracker_written_verdicts add column scope text');
-    const mergeColumns = new Set((this.#db.prepare('pragma table_info(tracker_merges)').all() as Row[]).map(r => r.name));
-    if (!mergeColumns.has('checkout_recovery')) this.#db.exec('alter table tracker_merges add column checkout_recovery text');
-    if (!mergeColumns.has('merged_at')) this.#db.exec('alter table tracker_merges add column merged_at text');
-    // Rebuild the reverse membership index once, including retained plans from older hubs.
-    this.#db.exec('delete from tracker_plan_items');
-    for (const row of this.#db.prepare('select item_id, plan_json from tracker_plans').all() as Row[]) {
-      this.#rememberPlanItems(row.item_id as string, JSON.parse(row.plan_json as string) as EpicPlan);
+    try {
+      this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on;');
+      this.#db.exec(SCHEMA);
+      // Older indexes did not retain criterion run identities. Invalidate their
+      // source hashes once so the existing bootstrap walk fills protection before
+      // the serving owner can start retirement. A crash repeats unfinished rows.
+      const criterionRuns = this.#db.prepare("select 1 from sqlite_master where type = 'table' and name = 'tracker_criterion_runs'").get();
+      this.#db.exec("create index if not exists tracker_pending_criterion_migration on tracker_items(hash) where hash = ''");
+      if (!criterionRuns) this.#tx(() => this.#db.exec("create table tracker_criterion_runs (run text not null, item_id text not null references tracker_items(id) on delete cascade, primary key(run,item_id)); update tracker_items set hash = ''"));
+      this.#db.exec('create index if not exists tracker_items_number on tracker_items (n); create index if not exists tracker_items_parent on tracker_items (parent); create index if not exists tracker_items_file on tracker_items (file); create index if not exists tracker_items_branch on tracker_items (branch)');
+      // Additive columns for databases created by earlier hub versions.
+      const itemColumns = new Set((this.#db.prepare('pragma table_info(tracker_items)').all() as Row[]).map(r => r.name));
+      if (!itemColumns.has('version')) this.#db.exec('alter table tracker_items add column version text');
+      if (!itemColumns.has('rank')) this.#db.exec('alter table tracker_items add column rank integer');
+      if (!itemColumns.has('criteria_ids')) {
+        this.#db.exec("alter table tracker_items add column criteria_ids text not null default '[]'; update tracker_items set hash = ''");
+      }
+      if (!itemColumns.has('criteria_summary')) this.#db.exec("alter table tracker_items add column criteria_summary text not null default '[]'; update tracker_items set hash = ''");
+      if (!itemColumns.has('closed')) this.#db.exec("alter table tracker_items add column closed text; update tracker_items set hash = ''");
+      for (const column of ['size', 'regression_of', 'found_by']) if (!itemColumns.has(column)) this.#db.exec(`alter table tracker_items add column ${column} text; update tracker_items set hash = ''`);
+      if (!itemColumns.has('status')) this.#db.exec('alter table tracker_items add column status text');
+      const claimColumns = new Set((this.#db.prepare('pragma table_info(tracker_claims)').all() as Row[]).map((r) => r.name as string));
+      if (!claimColumns.has('session_id')) this.#db.exec('alter table tracker_claims add column session_id text');
+      const verdictColumns = new Set((this.#db.prepare('pragma table_info(tracker_verdicts)').all() as Row[]).map((r) => r.name));
+      for (const column of ['commit_sha', 'comment_key', 'stage', 'stage_hash', 'scope', 'findings_json']) if (!verdictColumns.has(column)) this.#db.exec(`alter table tracker_verdicts add column ${column} text`);
+      const writtenColumns = new Set((this.#db.prepare('pragma table_info(tracker_written_verdicts)').all() as Row[]).map(r => r.name));
+      if (!writtenColumns.has('scope')) this.#db.exec('alter table tracker_written_verdicts add column scope text');
+      const mergeColumns = new Set((this.#db.prepare('pragma table_info(tracker_merges)').all() as Row[]).map(r => r.name));
+      if (!mergeColumns.has('checkout_recovery')) this.#db.exec('alter table tracker_merges add column checkout_recovery text');
+      if (!mergeColumns.has('merged_at')) this.#db.exec('alter table tracker_merges add column merged_at text');
+      // Rebuild the reverse membership index once, including retained plans from older hubs.
+      this.#db.exec('delete from tracker_plan_items');
+      for (const row of this.#db.prepare('select item_id, plan_json from tracker_plans').all() as Row[]) {
+        this.#rememberPlanItems(row.item_id as string, JSON.parse(row.plan_json as string) as EpicPlan);
+      }
+    } catch (error) {
+      try { this.#db.close(); }
+      catch (cleanup) { throw withCleanupFailure(error, cleanup); }
+      throw error;
     }
   }
 

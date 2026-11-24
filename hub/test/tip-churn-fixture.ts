@@ -46,8 +46,8 @@ export async function tipChurnFixture(root: string, owner: Parameters<typeof own
       }
     });
   } catch (error) {
-    // Also close when schema construction fails before the index is returned.
-    try { if (index) index.close(); else connection.close(); }
+    // The constructor owns failure cleanup before an index is returned.
+    try { index?.close(); }
     catch (cleanup) { throw withCleanupFailure(error, cleanup); }
     throw error;
   }

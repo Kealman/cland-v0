@@ -15,6 +15,7 @@ const itemKey = (id: string): string => Number.isSafeInteger(idNumber(id)) ? `T-
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { openDatabase } from '../database.ts';
+import { withCleanupFailure } from '../cleanup-failure.ts';
 import { RemoteState } from '../remote/state.ts';
 import { existsSync } from 'node:fs';
 import { isHeldDelivery } from '../protocol.ts';
@@ -486,58 +487,64 @@ export class Store implements HygieneMemory {
   deleteHostWorktree(item:string):void { this.#db.prepare('delete from host_worktrees where item=?').run(item); }
   constructor(path: string = ':memory:', open = (path: string) => new DatabaseSync(path)) {
     this.#db = openDatabase(path, open);
-    this.#db.function('item_number', { deterministic: true }, raw => {
-      if (typeof raw !== 'string') return null;
-      const parsed = parseItemReference(raw);
-      return parsed?.n ?? (this.#itemResolver(raw) ? idNumber(raw) : null);
-    });
-    this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on;');
-    this.#db.exec(SCHEMA);
-    this.cardSignIns=new LoginCardIntents(this.#db);
-    // Refresh only this derived projection. Older hubs keep compatible meta rows.
-    // Persisted triggers also maintain the index when an older hub writes meta.
-    this.#db.exec(`begin immediate;
-    drop trigger if exists suite_summary_insert;
-    drop trigger if exists suite_summary_update;
-    create trigger if not exists suite_summary_insert after insert on meta when new.key glob 'suite-job:*' begin
-      insert into suite_job_summaries select key, ${suiteHistoryProjection} from meta where key = new.key on conflict(key) do update set value = excluded.value;
-    end;
-    create trigger if not exists suite_summary_update after update of value on meta when new.key glob 'suite-job:*' begin
-      insert into suite_job_summaries select key, ${suiteHistoryProjection} from meta where key = new.key on conflict(key) do update set value = excluded.value;
-    end;
-    create trigger if not exists suite_summary_delete after delete on meta when old.key glob 'suite-job:*' begin
-      delete from suite_job_summaries where key = old.key;
-    end;
-    commit;`);
-    this.users = new Users(this.#db);
-    this.hosts = new HostRecords(this.#db);
-    this.remotes = new RemoteState(this.#db, this.users);
-    this.#migrate();
-    this.#db.exec(LATE_INDEXES);
-    this.#db.exec(SEQ_SETUP);
-    // Persist only unsettled request identities. Triggers cover older writers too.
-    this.#db.exec(`create table if not exists inbox_request_candidates (id text primary key references messages(id) on delete cascade);
-      create trigger if not exists inbox_request_insert after insert on messages when new.notice = 'request' begin
-        insert or ignore into inbox_request_candidates select new.id where not exists
-          (select 1 from inbox_departures where kind = 'request' and id = new.id);
+    try {
+      this.#db.function('item_number', { deterministic: true }, raw => {
+        if (typeof raw !== 'string') return null;
+        const parsed = parseItemReference(raw);
+        return parsed?.n ?? (this.#itemResolver(raw) ? idNumber(raw) : null);
+      });
+      this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on;');
+      this.#db.exec(SCHEMA);
+      this.cardSignIns=new LoginCardIntents(this.#db);
+      // Refresh only this derived projection. Older hubs keep compatible meta rows.
+      // Persisted triggers also maintain the index when an older hub writes meta.
+      this.#db.exec(`begin immediate;
+      drop trigger if exists suite_summary_insert;
+      drop trigger if exists suite_summary_update;
+      create trigger if not exists suite_summary_insert after insert on meta when new.key glob 'suite-job:*' begin
+        insert into suite_job_summaries select key, ${suiteHistoryProjection} from meta where key = new.key on conflict(key) do update set value = excluded.value;
       end;
-      create trigger if not exists inbox_request_depart after insert on inbox_departures when new.kind = 'request' begin
-        delete from inbox_request_candidates where id = new.id;
-      end;`);
-    if (!this.meta('inbox-request-candidates')) this.#transaction(() => {
-      this.#db.exec(`insert or ignore into inbox_request_candidates select id from messages m where notice = 'request'
-        and not exists (select 1 from inbox_departures d where d.kind = 'request' and d.id = m.id)`);
-      this.setMeta('inbox-request-candidates', '1');
-    });
+      create trigger if not exists suite_summary_update after update of value on meta when new.key glob 'suite-job:*' begin
+        insert into suite_job_summaries select key, ${suiteHistoryProjection} from meta where key = new.key on conflict(key) do update set value = excluded.value;
+      end;
+      create trigger if not exists suite_summary_delete after delete on meta when old.key glob 'suite-job:*' begin
+        delete from suite_job_summaries where key = old.key;
+      end;
+      commit;`);
+      this.users = new Users(this.#db);
+      this.hosts = new HostRecords(this.#db);
+      this.remotes = new RemoteState(this.#db, this.users);
+      this.#migrate();
+      this.#db.exec(LATE_INDEXES);
+      this.#db.exec(SEQ_SETUP);
+      // Persist only unsettled request identities. Triggers cover older writers too.
+      this.#db.exec(`create table if not exists inbox_request_candidates (id text primary key references messages(id) on delete cascade);
+        create trigger if not exists inbox_request_insert after insert on messages when new.notice = 'request' begin
+          insert or ignore into inbox_request_candidates select new.id where not exists
+            (select 1 from inbox_departures where kind = 'request' and id = new.id);
+        end;
+        create trigger if not exists inbox_request_depart after insert on inbox_departures when new.kind = 'request' begin
+          delete from inbox_request_candidates where id = new.id;
+        end;`);
+      if (!this.meta('inbox-request-candidates')) this.#transaction(() => {
+        this.#db.exec(`insert or ignore into inbox_request_candidates select id from messages m where notice = 'request'
+          and not exists (select 1 from inbox_departures d where d.kind = 'request' and d.id = m.id)`);
+        this.setMeta('inbox-request-candidates', '1');
+      });
 
-    // Backfill once for stores created before indexed placement re-projection.
-    if (!this.meta('visibility-artifact-refs')) this.#transaction(() => {
-      this.#db.exec(`insert or ignore into message_artifact_refs
-        select json_extract(artifact, '$.id'), seq, id from messages where artifact is not null;
-        insert or ignore into message_artifact_refs
-        select json_extract(a.value, '$.id'), m.seq, m.id from messages m, json_each(m.artifacts) a;`);
-      this.setMeta('visibility-artifact-refs', '1');
-    });
+      // Backfill once for stores created before indexed placement re-projection.
+      if (!this.meta('visibility-artifact-refs')) this.#transaction(() => {
+        this.#db.exec(`insert or ignore into message_artifact_refs
+          select json_extract(artifact, '$.id'), seq, id from messages where artifact is not null;
+          insert or ignore into message_artifact_refs
+          select json_extract(a.value, '$.id'), m.seq, m.id from messages m, json_each(m.artifacts) a;`);
+        this.setMeta('visibility-artifact-refs', '1');
+      });
+    } catch (error) {
+      try { this.#db.close(); }
+      catch (cleanup) { throw withCleanupFailure(error, cleanup); }
+      throw error;
+    }
   }
 
   #migrate(): void {

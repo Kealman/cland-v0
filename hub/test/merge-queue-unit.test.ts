@@ -93,7 +93,7 @@ for (const rejectedClose of [false, true]) test(`Store constructor failure prese
   supervisor.releaseOnClose(() => { refuse = false; });
   supervisor.requireClose(async () => {
     refuse = false;
-    // Emergency drainage still permits the deliberately red fallback control.
+    // Emergency drainage retains the captured handle when close is rejected.
     if (connection?.isOpen) DatabaseSync.prototype.close.call(connection);
     await nested?.close(); await nested?.restore();
   });
@@ -125,17 +125,19 @@ for (const rejectedClose of [false, true]) test(`Store constructor failure prese
     });
     await observe('original Store constructor failure', () => assert.rejects(starting, error => { selected = error; return error === primary; }));
     assert.ok(connection, 'captured native open before Store assignment');
-    assert.equal(connection.isOpen, true);
+    assert.equal(closeCalls, 1, 'constructor attempts native close before propagating its error');
+    assert.equal(connection.isOpen, rejectedClose, 'only a rejected constructor close retains the handle');
     assert.equal(rootCleanupRegistrations, 1, 'capture the actual root cleanup registration before native acquisition');
     assert.ok(rootCleanup);
     if (rejectedClose) {
+      assert.ok(containsCloseFailure(primary.cause), 'constructor close failure remains secondary to primary');
       await observe('rejected native close receipt', () => assert.rejects(dispose(), containsCloseFailure));
-      assert.equal(closeCalls, 1, 'fallback attempted the captured native closer');
+      assert.equal(closeCalls, 2, 'fallback retries the still-open handle after rejected constructor close');
       assert.equal(connection.isOpen, true, 'rejected close retains the exact handle');
       const heldBoundary = nested!.nativeBoundary();
       await observe('independent registered directory removal attempt', () => assert.rejects(rootCleanup!(), /stage resource close unconfirmed; root retained/));
       assert.equal(removalAttempts, 1, 'the independent registered cleanup attempt completed with guard refusal');
-      assert.equal(closeCalls, 1, 'directory guard refuses without retrying the rejected native close');
+      assert.equal(closeCalls, 2, 'directory guard refuses without retrying the rejected native close');
       assert.equal(connection.isOpen, true, 'independent removal attempt retains the captured handle');
       assert.equal((await observe('guarded root retention', () => stat(root))).isDirectory(), true);
       assert.equal(nested!.nativeBoundary(), heldBoundary, 'independent removal refusal preserves the installed boundary');
@@ -144,9 +146,12 @@ for (const rejectedClose of [false, true]) test(`Store constructor failure prese
       refuse = false;
       await observe('positive repaired close', () => nested!.close());
       await observe('positive repaired restoration', () => nested!.restore());
-    } else await observe('captured connection fallback closure', dispose);
+    } else {
+      await observe('cleanup observes constructor-confirmed closure', dispose);
+      assert.equal(closeCalls, 1, 'fallback skips the handle already closed by the constructor');
+    }
     assert.equal(selected, primary, 'cleanup never replaces the original selected failure');
-    assert.equal(closeCalls, rejectedClose ? 2 : 1);
+    assert.equal(closeCalls, rejectedClose ? 3 : 1);
     assert.equal(connection.isOpen, false, 'positive native connection close receipt');
     await observe('guarded root removal', () => assert.rejects(stat(root), { code: 'ENOENT' }));
     assert.equal(nested!.nativeBoundary(), outerBoundary, 'guard restored only after positive closure');
