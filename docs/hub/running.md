@@ -3365,6 +3365,11 @@ exit and infrastructure classification. Failures before outcome selection still
 produce their own failure. The uploaded status reader comes from the hosting
 hub source and takes effect after restart, like the outer runner script.
 
+Without a done marker, the uploaded process-group probe reports disappearance
+only on ESRCH. EPERM and other probe errors report unknown without a terminal
+outcome; observation continues within the existing run and machine deadlines.
+This reader change requires restarting the hosting hub on the updated source.
+
 Inspection summary and callback publication are independent ancillary effects:
 both are attempted and the callback is joined. Publication failure retains the
 selected command exit/cause and adds a secondary error-class diagnostic. A

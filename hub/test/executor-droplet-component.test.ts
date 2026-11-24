@@ -384,6 +384,40 @@ test('uploaded status carries only exact owner deadline markers and retains old 
   }
 }));
 
+test('uploaded status requires ESRCH before declaring a runner disappeared', async t => {
+  let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
+  let restoreGuard: (() => void) | undefined;
+  t.after(() => { try { guard?.verify(); } finally { restoreGuard?.(); } });
+  guard = await fakeNativeGuard(restore => { restoreGuard = restore; });
+  const { runStatusProgram } = await import('../src/executor/droplet/run.ts');
+  for (const error of [Object.assign(new Error('absent'), { code: 'ESRCH' }), Object.assign(new Error('denied'), { code: 'EPERM' }), new Error('unknown'), null]) {
+    const rows: Array<{ state: string; code?: number; cause?: string; finished?: string }> = [];
+    let probes = 0;
+    const fs = {
+      existsSync: (path: string) => path === '/receipt/pgid',
+      readFileSync: (path: string) => { assert.equal(path, '/receipt/pgid'); return '30001'; },
+    };
+    runInNewContext(runStatusProgram(), {
+      Buffer, require: (name: string) => { assert.equal(name, 'fs'); return fs; },
+      process: { argv: ['node', '/receipt'], kill: (pid: number, signal: number) => {
+        assert.equal(pid, -30001); assert.equal(signal, 0); probes++;
+        if (error) throw error;
+      } },
+      console: { log: (text: string) => rows.push(JSON.parse(text)) },
+    });
+    assert.equal(probes, 1);
+    assert.equal(rows.length, 1);
+    const status = rows[0]!;
+    if (error && 'code' in error && error.code === 'ESRCH') {
+      assert.equal(status.state, 'done'); assert.equal(status.code, 1);
+      assert.equal(status.cause, 'remote runner disappeared without a done marker');
+      assert.ok(status.finished);
+    } else {
+      assert.deepEqual(status, { state: error ? 'unknown' : 'running' });
+    }
+  }
+});
+
 test('uploaded status bounds cause ingestion and keeps the recorded exit through receipt failures', async t => {
   let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
   let restoreGuard: (() => void) | undefined;
