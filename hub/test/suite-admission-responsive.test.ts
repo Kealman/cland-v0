@@ -10,6 +10,27 @@ import { onCleanup } from './process-cleanup.ts';
 import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
 import { fixture as componentFixture } from './suite-component-fixture.ts';
+import { until, type WaitOptions } from './until.ts';
+
+async function executorEntry(receipt: Promise<void>, options: WaitOptions = {}): Promise<void> {
+  await until(async () => { await receipt; return true; }, { ...options, what: 'fake executor-entry setup' });
+}
+
+test('held fake executor entry fails at its named load-scaled setup bound', async () => {
+  const clock = new FakeClock();
+  const entered = Promise.withResolvers<void>();
+  const observed = executorEntry(entered.promise, { clock, timeoutMs: 100, loadFactor: 2 })
+    .then(() => 'entered', error => String(error));
+  try {
+    await clock.advance(100);
+    assert.equal(await Promise.race([observed, Promise.resolve('pending')]), 'pending', 'setup headroom scales with load');
+    await clock.advance(100);
+    assert.match(await Promise.race([observed, Promise.resolve('pending')]), /fake executor-entry setup: not within 200 ms/);
+  } finally {
+    entered.resolve();
+    await observed;
+  }
+});
 
 test('detached launch failure is recorded and posted before the next queued run completes', async t => {
   const f = await componentFixture(t);
@@ -27,7 +48,7 @@ test('detached launch failure is recorded and posted before the next queued run 
     return start.apply(this, args);
   });
   const first = await f.launch();
-  await entered.promise;
+  await executorEntry(entered.promise);
   const reply = await f.ui.request({ type: 'suite.start', mode: 'auto', fresh: true, cwd: f.root, report: f.topic });
   assert.equal(reply.ok, true, reply.error);
   const second = (reply.value as { id: string }).id;

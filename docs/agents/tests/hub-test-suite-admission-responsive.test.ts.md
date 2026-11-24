@@ -15,3 +15,9 @@ The detached-launch regression holds the first fake local start after admission,
 admits a second requester, then throws from the first start. Require its persisted
 failure cause and posted suite result, and the two starts in queue order. An
 unhandled rejection fails the test runner.
+
+The fake executor-entry receipt has a separate `fake executor-entry setup`
+deadline through the shared load-scaled `until` helper. Its held-receipt
+regression uses an injected clock and load factor: it remains pending at the
+unscaled bound and fails with the stage name at the scaled bound. Admission,
+output setup and the existing final result assertions retain their own waits.
