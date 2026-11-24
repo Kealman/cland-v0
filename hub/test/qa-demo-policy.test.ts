@@ -71,6 +71,25 @@ for (const serialized of [false, true]) {
   });
 }
 
+for (const representation of ['entry pair', 'property key']) {
+  for (const serialized of [false, true]) {
+    test(`demo publication refuses short ${serialized ? 'serialized' : 'parsed'} ${representation} header credentials`, () => {
+      for (const whitespace of [' ', '\t', '\n']) {
+        const credential = `${['Bear', 'er'].join('')}${whitespace}x`;
+        const metadata = representation === 'entry pair'
+          ? { headers: [['X-Note', 'harmless'], ['aUtHoRiZaTiOn', credential]] }
+          : { headers: { aUtHoRiZaTiOn: { [credential]: 'harmless' } } };
+        const value = serialized ? JSON.stringify(metadata) : metadata;
+        assert.throws(() => assertPublishable(value), { message: 'secret scan refused publication' });
+        if (serialized) {
+          assert.throws(() => assertPublishable(encodeURIComponent(value as string)), /secret scan refused publication/);
+          assert.throws(() => assertPublishable(JSON.stringify({ message: value })), /secret scan refused publication/);
+        }
+      }
+    });
+  }
+}
+
 test('demo PASS requires every independently expected fact key, including false and zero facts', () => {
   const result = { result: 'PASS', evidence: [], facts: { connected: true, count: 0, replayed: false } };
   assert.doesNotThrow(() => validateDemoResult(result, 0, ['connected', 'count', 'replayed']));

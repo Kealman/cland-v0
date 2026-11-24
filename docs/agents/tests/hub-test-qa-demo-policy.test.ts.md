@@ -11,3 +11,5 @@ The follow-up array controls were red against the scalar repair. Parsed and comp
 A partial non-scalar header fragment with a token-shaped Bearer value must still be refused by the context-free rule; only short-value header context falls outside the partial-JSON traversal guarantee.
 
 Run it as one targeted file. `hub/test/skills-qa.test.ts` owns the T2 persisted-recorder boundary; unchanged `hub/test/demo.test.ts` owns real remote execution, accounting and recovery at T3.
+
+Four entry-pair and property-key controls were red before the contextual traversal repair. They reject short synthetic values in parsed and complete serialized metadata, including mixed-case header names and space/tab/newline separators. Serialized controls also cover URL encoding and JSON embedded in another message. The existing five prose/title controls remain accepted.

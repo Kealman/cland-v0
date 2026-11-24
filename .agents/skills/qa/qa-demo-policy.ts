@@ -29,10 +29,14 @@ export function assertPublishable(value: unknown): void {
 function scanPublication(value: unknown, authorization: boolean): void {
   // Walk parsed metadata rather than re-serializing strings and hiding whitespace.
   if (value && typeof value === 'object') {
+    // Header entry pairs carry the same context as named object properties.
+    const entryAuthorization = Array.isArray(value) && value.length === 2
+      && typeof value[0] === 'string' && /^Authorization$/i.test(value[0]);
     for (const [key, detail] of Object.entries(value)) {
-      scanPublication(key, false);
+      scanPublication(key, authorization);
       // Keep header context through arrays and nested metadata, not only scalars.
-      scanPublication(detail, authorization || /^Authorization$/i.test(key));
+      scanPublication(detail, authorization || /^Authorization$/i.test(key)
+        || (entryAuthorization && key === '1'));
     }
     return;
   }
