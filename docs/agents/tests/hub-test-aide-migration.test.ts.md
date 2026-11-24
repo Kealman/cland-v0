@@ -11,12 +11,29 @@ startup control keeps the existing client, hub, directory cleanup order. The
 shared fixture registers cleanup before its first asynchronous acquisition so
 a caller timeout cannot leave a late hub outside teardown ownership.
 
-The three cleanup controls enroll `caseDeadlines` with the shared normal/signal
+The cleanup controls enroll `caseDeadlines` with the shared normal/signal
 owner before acquisition. Roots are adopted before subsequent fenced steps;
 setup receipts have names and their own `testWaitMs(5000)` observation bound.
 The shared `fakeNativeGuard` positively denies callback and custom-promisify
 launch routes. Its verification and filesystem-patch restoration follow the
 whole-case join and captured cleanup, including directory removal.
+
+The card-registration and readiness rejection controls run the acquired embedded
+hub with fake harnesses. They retain the original thrown error, observe completed
+process-log closure before rejection, then drain the fixture hooks and their
+resource check before asserting discovery/socket removal and cleared scheduling. The
+readiness fault uses the real assertion with a false input at its named boundary.
+These controls enroll the synthetic context's exact drainage before acquisition.
+`guardedLeaseCase` retains patches and the positive native guard until that
+drainage succeeds; a settled startup promise alone never enables restoration.
+The rejected-close control requires the exact original error and the secondary
+receipt from `projectHubStartupCleanupFailures(context)`. It exercises actual
+guarded root removal and seam release while the log close rejects, then repairs
+the close and confirms drainage. The caller-cleanup control requests teardown
+while startup is held at log close, expires only its fake-clock observation,
+observes the retained root and refused seam release, then releases the producer
+and confirms cleanup and actual root removal. No global mock is restored in a
+finally on these paths.
 
 The expiry control advances the hub's injected clock across a 1 ms cleanup
 observation bound, exercises the real directory-removal guard, observes the

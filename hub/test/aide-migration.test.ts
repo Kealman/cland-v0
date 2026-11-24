@@ -2,6 +2,7 @@
 import { sessionUi as connectUi } from './session-credential-fixture.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
@@ -9,11 +10,15 @@ import test, { mock, type TestContext } from 'node:test';
 import { parseRoles } from '../src/roles/config.ts';
 import { testWaitMs } from './until.ts';
 import { FakeClock } from './fake-clock.ts';
-import { inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { inProcessSpoke, projectHub, projectHubStartupCleanupFailures, tempProject } from './harness.ts';
 import { onCleanup, beforeDirectories, afterCleanup, ownDirectory, guardDirectoryRemoval } from './process-cleanup.ts';
 import { caseDeadlines, drainFixtureWork } from './case-deadlines.ts';
 import { fakeNativeGuard } from './fake-native-guard.ts';
 import { setImmediate as yieldIO } from 'node:timers/promises';
+import { Journal } from '../src/hub/journal.ts';
+import { type Discovery } from './harness.ts';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
+import { drainFixtureCleanup, fenceFixtureCleanup } from './process-cleanup.ts';
 
 type ControlStep = <T>(name: string, run: () => Promise<T>) => Promise<T>;
 
@@ -51,6 +56,143 @@ function migrationControl(t: TestContext, body: (root: string, fixtures: TestCon
     await body(root, owner.fixtures, step, next => { release = next; });
   });
 }
+
+/** Synthetic context drainage is required before roots or global seams can be released. */
+function startupControl(t: TestContext, body: (control: {
+  root: string; context: TestContext; step: ControlStep;
+  patch: ReturnType<typeof guardedLeaseCase>['patch'];
+  start: (options: Parameters<typeof projectHub>[3]) => ReturnType<typeof projectHub>;
+  close: () => Promise<void>; releaseSeams: () => void; remove: () => Promise<void>;
+  cancel: () => Promise<void>; cancelled: Promise<void>; wait: ControlStep;
+}) => Promise<void>) {
+  let closed = false;
+  let starting: ReturnType<typeof projectHub> | undefined;
+  const cancelled = Promise.withResolvers<void>();
+  const scope = guardedLeaseCase(t, () => cancelled.resolve(), { timeoutMs: testWaitMs(5000), canRestore: () => closed });
+  const context = { after: () => {} } as unknown as TestContext;
+  fenceFixtureCleanup(context);
+  const close = async () => {
+    await starting?.catch(() => {});
+    await drainFixtureCleanup(context);
+    closed = true;
+  };
+  // This hook owns the exact context before its first startup can begin.
+  scope.fixtures.after(close);
+  return scope.run(async admit => {
+    const step: ControlStep = (name, run) => scope.wait(name, () => admit(run));
+    const root = await step('startup control root', () => tempProject(scope.fixtures));
+    guardDirectoryRemoval(root, () => { if (!closed) throw new Error('startup control closure unconfirmed; root retained'); });
+    await body({ root, context, step, patch: scope.patch, close, releaseSeams: scope.releaseSeams,
+      cancel: () => drainFixtureCleanup(t), cancelled: cancelled.promise, wait: scope.wait,
+      remove: ownDirectory(undefined, root),
+      start: options => starting = projectHub(context, root, {}, options),
+    });
+  });
+}
+
+for (const failure of ['cards', 'readiness', 'rejected close'] as const) test(`fixture cleanup owns the acquired hub after ${failure} rejection`, t => startupControl(t, async ({ root, context, step, patch, start, close: closeSubject, releaseSeams, remove }) => {
+  const clock = new FakeClock();
+  const original = new Error('planted card registration failure');
+  const cleanupError = new Error('planted process log close failure');
+  let rejectClose = failure === 'rejected close';
+  const ok: typeof assert.ok = assert.ok;
+  const write = Journal.prototype.write;
+  const close = Journal.prototype.close;
+  let processLog: Journal | undefined;
+  let logClosed = false;
+  patch(Journal.prototype, 'write', function(this: Journal, ...args: Parameters<typeof write>) {
+    if (args[0].event === 'hub-startup-step') processLog = this;
+    return write.apply(this, args);
+  });
+  patch(Journal.prototype, 'close', async function(this: Journal) {
+    if (this === processLog && rejectClose) throw cleanupError;
+    await close.call(this);
+    if (this === processLog) logClosed = true;
+  });
+  let readinessError: unknown;
+  if (failure === 'readiness') patch(assert, 'ok', (value: unknown, message?: string | Error) => {
+    if (message === 'projectHub must bind both real edges') {
+      try { ok(false, message); } catch (error) { readinessError = error; throw error; }
+    }
+    ok(value, message);
+  });
+  let discovery: Discovery | undefined;
+  try {
+    await step('original startup rejection', () => assert.rejects(start({
+      clock,
+      registerHubCards: () => {
+        discovery = JSON.parse(readFileSync(join(root, '.cland/hub.json'), 'utf8')) as Discovery;
+        if (failure !== 'readiness') throw original;
+      },
+    }), error => error === (failure === 'readiness' ? readinessError : original)));
+    if (failure === 'rejected close') {
+      assert.deepEqual(projectHubStartupCleanupFailures(context), [{ primary: original, cleanup: cleanupError }]);
+      await step('rejected context close', () => assert.rejects(closeSubject(), error => error === cleanupError));
+      await step('guarded removal retains open log', () => assert.rejects(remove(), error => error instanceof AggregateError && error.errors.includes(cleanupError)));
+      assert.equal((await stat(root)).isDirectory(), true);
+      assert.throws(releaseSeams, /closure unconfirmed/);
+      assert.equal(logClosed, false);
+      rejectClose = false;
+      await step('repaired context close', closeSubject);
+    }
+    if (failure !== 'rejected close') assert.equal(logClosed, true, 'the process log closes before startup rejection propagates');
+    await step('startup cleanup hooks', closeSubject);
+    assert.equal(logClosed, true, 'the process log close completed');
+    await step('discovery removal receipt', () => assert.rejects(stat(join(root, '.cland/hub.json')), { code: 'ENOENT' }));
+    assert.ok(discovery, 'the acquired socket identity was captured before rejection');
+    await step('socket removal receipt', () => assert.rejects(stat(discovery!.socket), { code: 'ENOENT' }));
+    assert.equal(clock.pending, 0);
+  } finally {
+    rejectClose = false;
+    await closeSubject();
+  }
+}));
+
+test('caller cancellation retains seams and root while rejected startup is still closing', async t => {
+  let cancellation: Promise<void> | undefined;
+  await assert.rejects(startupControl(t, async ({ root, step, patch, start, close, releaseSeams, remove, cancel, cancelled, wait }) => {
+  const clock = new FakeClock();
+  const entered = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const original = new Error('planted startup failure during caller cleanup');
+  const write = Journal.prototype.write;
+  const nativeClose = Journal.prototype.close;
+  let processLog: Journal | undefined;
+  let logClosed = false;
+  patch(Journal.prototype, 'write', function(this: Journal, ...args: Parameters<typeof write>) {
+    if (args[0].event === 'hub-startup-step') processLog = this;
+    return write.apply(this, args);
+  });
+  patch(Journal.prototype, 'close', async function(this: Journal) {
+    if (this === processLog) { entered.resolve(); await release.promise; }
+    await nativeClose.call(this);
+    if (this === processLog) logClosed = true;
+  });
+  const starting = assert.rejects(start({ clock, startupCleanup: { clock, timeoutMs: 1 }, registerHubCards: () => { throw original; } }), error => error === original);
+  void starting.catch(() => {});
+  try {
+    await step('startup log close entry', () => entered.promise);
+    cancellation = cancel();
+    void cancellation.catch(() => {});
+    await wait('whole-case admission closed receipt', () => cancelled);
+    const removal = assert.rejects(remove(), error => error instanceof AggregateError);
+    void removal.catch(() => {});
+    await wait('armed removal observation', () => yieldIO());
+    await wait('cleanup observation expiry', () => clock.advance(1));
+    await wait('guarded removal refusal during cancellation', () => removal);
+    assert.equal((await stat(root)).isDirectory(), true);
+    assert.equal(logClosed, false);
+    assert.throws(releaseSeams, /closure unconfirmed/);
+    release.resolve();
+    await wait('original rejected startup joined', () => starting);
+    await wait('caller cleanup completion', close);
+    assert.equal(logClosed, true);
+    await wait('root removal after confirmed closure', remove);
+    await wait('removed root receipt', () => assert.rejects(stat(root), { code: 'ENOENT' }));
+  } finally { release.resolve(); await starting; await close(); }
+  }), /fixture work admission closed/);
+  await cancellation;
+});
 
 for (const expired of [false, true]) test(expired
   ? 'fixture root stays retained when startup cleanup observation expires'

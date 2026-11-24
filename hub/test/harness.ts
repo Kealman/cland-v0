@@ -525,6 +525,11 @@ export const fixtureLockIdentity = (env: NodeJS.ProcessEnv, native = false): Ret
 
 /** Default project fixture: fake harnesses and probes, with production discovery and socket edges.
  * Explicit adapters and facts take precedence. Hub process lifecycle assertions use startDaemon. */
+const startupCleanupFailures = new WeakMap<TestContext, Array<{ primary: unknown; cleanup: unknown }>>();
+/** Secondary cleanup receipts never replace the rejected startup value, even if it is frozen or primitive. */
+export const projectHubStartupCleanupFailures = (t: TestContext): ReadonlyArray<{ primary: unknown; cleanup: unknown }> =>
+  startupCleanupFailures.get(t)?.slice() ?? [];
+
 export const fakeEnqueuePreflight: NonNullable<ProjectHubOptions['enqueuePreflight']> = (root, entry) => ({
   identity: async head => head,
   prepare: async () => {
@@ -627,10 +632,10 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     }
     throw error;
   }
+  stopFixtureHub = async () => { await settleRetainedMergeStop(() => daemon.stop()); await processLog.close(); };
   options.registerHubCards?.(daemon.hub.core.cards);
   assert.ok(daemon.discovery, 'projectHub must bind both real edges');
   assert.ok(runtimeEnvironment, 'projectHub must capture the host owner runtime environment');
-  stopFixtureHub = async () => { await settleRetainedMergeStop(() => daemon.stop()); await processLog.close(); };
   options.configureTracker?.(daemon.tracker);
   const dispatcher: Pick<Dispatcher, 'open'> = {
     open: (peer, transport) => resources.run(() => {
@@ -643,6 +648,14 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
     }),
   };
   return { fakes, hostEnvironment: runtimeEnvironment, discovery: daemon.discovery, dispatcher, hostOwner: daemon.hub.dispatcher.hostOwner, stopped: daemon.stopped, stop: () => daemon.stop(), dispose: stopFixtureHub, verificationSettled: () => resources.run(() => daemon.hub.dispatcher.verificationSettled()) };
+  } catch (error) {
+    try { await stopFixtureHub(); }
+    catch (cleanup) {
+      const failures = startupCleanupFailures.get(t) ?? [];
+      failures.push({ primary: error, cleanup });
+      startupCleanupFailures.set(t, failures);
+    }
+    throw error;
   } finally { started = true; startup.resolve(); }
 }
 
