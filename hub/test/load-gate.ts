@@ -6,7 +6,7 @@ import { appendFile, open, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { StringDecoder } from 'node:string_decoder';
-import { redactLoadDiagnostic } from '../src/suite-load-diagnostics.ts';
+import { serializeLoadGateFailure } from '../src/suite-load-diagnostics.ts';
 import { timingKey, type DurationManifest } from '../src/suite-durations.ts';
 import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import type { LoadGateEvent } from './load-gate-reporter.ts';
@@ -158,7 +158,7 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         if (rerun) process.stdout.write(`load-gate rerun native receipt ${serializeLoadRerunReceipt({ identity: key,
           head: options.selection?.loadGateRerun?.head ?? null, platform: process.platform, repetition: 1,
           code, signal: child.signalCode, timedOut, incomplete: Boolean(admission) || timedOut || results.length !== 1,
-        }, { results, diagnostics }, options.env)}\n`);
+        }, { results, diagnostics, diagnosticLines: records.filter(record => record.diagnosticLine !== undefined) }, options.env)}\n`);
         if (admission) {
           admissions++;
           process.stdout.write(`suite admission timeouts ${JSON.stringify([{ file: event.file, message: admission }])}\n`);
@@ -186,16 +186,16 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         const success = !admission && !tierFailed && !timedOut && code === 0 && results.length === 1 && (results[0]!.passed || results[0]!.skipReason);
         if (!success) {
           ordinaryFailure ||= !quarantined;
-          const failure = redactLoadDiagnostic({ file: event.file, name: event.name, repetition: repetition + 1,
+          const failure = serializeLoadGateFailure({ file: event.file, name: event.name, repetition: repetition + 1,
             status: timedOut ? 'timed out (outer deadline)' : 'failed',
             ...(timedOut ? { timeoutMs: options.timeoutMs, graceMs: 250 } : {}),
             diagnostics: diagnostics.length ? diagnostics : [{ name: event.name, error: { message: tierFailed ? 'enforced resource tier violation' : `runner exit ${code}; expected one passing receipt, received ${results.length}` } }],
-          }, options.env);
+          }, records, options.env);
           if (!rerun) {
             failures.push({ identity: key, repetition: repetition + 1, timeout: timedOut || tierFailed || results.length !== 1 || diagnostics.some(record => /testTimeoutFailure|cancelledByParent|test did not finish|timed out/i.test(JSON.stringify(record.error))) });
             originals.set(key, { kind: 'original', identity: key, head: options.selection?.loadGateRerun?.head ?? null,
-              platform: process.platform, repetition: repetition + 1, passed: false, code, signal: child.signalCode, failure });
-            process.stderr.write(`load gate failure ${JSON.stringify(failure)}\n`);
+              platform: process.platform, repetition: repetition + 1, passed: false, code, signal: child.signalCode, failure: JSON.parse(failure) });
+            process.stderr.write(`load gate failure ${failure}\n`);
           }
         }
       } finally {
@@ -228,7 +228,7 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
       const events = await discover();
       for (const event of events) {
         // Only enqueue records discover identities; nested failures are diagnostics.
-        if (event.passed !== undefined || event.diagnostic) continue;
+        if (event.passed !== undefined || event.diagnostic || event.diagnosticLine !== undefined) continue;
         const key = timingKey({ ...event, seconds: 0 });
         if (seen.has(key) || !loadGateRepetitions(key, options.selection, options.manifest.tests)) continue;
         seen.add(key);

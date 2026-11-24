@@ -5,6 +5,50 @@ import { loadDiagnostic, redactLoadDiagnostic } from '../src/suite-load-diagnost
 import LoadGateReporter from './load-gate-reporter.ts';
 import cleanupReporter from './hub-cleanup-reporter.ts';
 
+test('diagnostic receipts mask unknown credential contexts before truncating retained bytes', async () => {
+  const reporter = new LoadGateReporter({ PRIVATE: 'fixture-env-value' });
+  const location = { file: import.meta.filename, line: 7, column: 1, nesting: 0 };
+  const credentials = 'Bearer fixture-bearer-value\nAuthorization: Basic fixture-header-value\ntoken=fixture-token-value\napi_key="fixture-key-value"';
+  assert.match(credentials, /fixture-bearer-value.*\nAuthorization: Basic fixture-header-value/);
+  reporter.write({ type: 'test:fail', data: { ...location, name: 'credential facts', details: { error: new Error('assertion') } } });
+  reporter.end({ type: 'test:diagnostic', data: { ...location, message: credentials + '\nfixture-env-value\nowner count 2\n' + '界'.repeat(30_000) + '\nargv: fixture-invocation' } });
+  let output = '';
+  for await (const chunk of reporter) output += String(chunk);
+  assert.doesNotMatch(output, /fixture-(?:bearer|header|token|key|env)-value|fixture-invocation/);
+  const line = output.trim().split('\n')[1]!;
+  assert.match(line, /owner count 2/);
+  assert.match(line, /\[redacted\]/);
+  assert.match(line, /\[truncated\]/);
+  assert.ok(Buffer.byteLength(line + '\n') <= 65536);
+});
+
+test('failure formatting masks unknown credential contexts from diagnostic lines independently', async () => {
+  const { serializeLoadGateFailure } = await import('../src/suite-load-diagnostics.ts');
+  const record = { file: 'hub/test/fixture.test.ts', name: 'credential facts', diagnosticLine: 'Bearer fixture-bearer-value\nAuthorization: Basic fixture-header-value\ntoken=fixture-token-value\napi_key="fixture-key-value"\nfixture-env-value\nowner count 2\nargv: fixture-invocation' };
+  const output = serializeLoadGateFailure({ repetition: 2 }, [record], { PRIVATE: 'fixture-env-value' });
+  assert.doesNotMatch(output, /fixture-(?:bearer|header|token|key|env)-value|fixture-invocation/);
+  assert.equal(JSON.parse(output).repetition, 2);
+  assert.match(JSON.parse(output).diagnosticLines[0].diagnosticLine, /owner count 2/);
+});
+
+test('load diagnostic lines retain their producer identity in repetition receipts and failure logs', async () => {
+  const reporter = new LoadGateReporter({});
+  const location = { file: import.meta.filename, line: 12, column: 3, nesting: 0 };
+  reporter.write({ type: 'test:fail', data: { ...location, name: 'owner stopped', details: { error: new Error('assertion') } } });
+  // Node drains diagnostics after the result, even when diagnostic() preceded failure.
+  reporter.end({ type: 'test:diagnostic', data: { ...location, message: 'remaining owners: 2', level: 'info' } });
+  let output = '';
+  for await (const chunk of reporter) output += String(chunk);
+  const records = output.trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(records.length, 2);
+  assert.deepEqual(records[1], { file: 'hub/test/suite-load-diagnostics.test.ts', name: 'owner stopped', diagnosticLine: 'remaining owners: 2' });
+  const { serializeLoadGateFailure } = await import('../src/suite-load-diagnostics.ts');
+  const failure = JSON.parse(serializeLoadGateFailure({ file: records[0].file, name: 'owner stopped', repetition: 3, diagnostics: [{ error: records[0].diagnostic }] }, records, {}));
+  assert.equal(failure.repetition, 3);
+  assert.equal(failure.diagnostics[0].error.message, 'assertion');
+  assert.deepEqual(failure.diagnosticLines, [records[1]]);
+});
+
 test('load receipts attribute shared cases to their runner entry and retain older event locations', async () => {
   const reporter = new LoadGateReporter({});
   for (const entryFile of [import.meta.filename, undefined]) reporter.write({ type: 'test:pass', data: {
@@ -17,6 +61,43 @@ test('load receipts attribute shared cases to their runner entry and retain olde
   assert.deepEqual(output.trim().split('\n').map(row => JSON.parse(row).file), [
     'hub/test/suite-load-diagnostics.test.ts', 'hub/test/contract.ts',
   ]);
+});
+
+test('diagnostic retention redacts before its byte bound and drains excess lines', async () => {
+  const reporter = new LoadGateReporter({ PRIVATE: 'private-first\nprivate-second' });
+  const location = { file: import.meta.filename, line: 8, column: 2, nesting: 0 };
+  reporter.write({ type: 'test:pass', data: { ...location, name: 'bounded facts', details: {} } });
+  reporter.write({ type: 'test:diagnostic', data: { ...location, message: 'private-first\\nprivate-second\nargv: pretend invocation\nprivate continuation' } });
+  for (let index = 0; index < 30; index++) reporter.write({ type: 'test:diagnostic', data: { ...location, message: '界"\\'.repeat(4096) } });
+  reporter.end({ type: 'test:fail', data: { ...location, name: 'final assertion', details: { error: new Error('still observed') } } });
+  let output = '';
+  for await (const chunk of reporter) output += String(chunk);
+  const lines = output.trim().split('\n');
+  const records = lines.map(line => JSON.parse(line));
+  const kept = lines.filter(line => JSON.parse(line).diagnosticLine !== undefined);
+  assert.ok(kept.length > 1, 'positive retention before excess');
+  assert.ok(kept.length < 31, 'excess is discarded');
+  assert.ok(Buffer.byteLength(kept.join('\n') + '\n') <= 65536);
+  assert.equal(records[1].diagnosticLine, '[redacted]\nargv: [redacted]');
+  assert.match(kept.at(-1)!, /\[truncated\]/);
+  assert.doesNotMatch(output, /private-first|private-second|pretend invocation|private continuation/);
+  assert.equal(records.at(-1).diagnostic.message, 'still observed');
+});
+
+test('diagnostics distinguish nested producers and wrapper entries without claiming unowned summaries', async () => {
+  const reporter = new LoadGateReporter({});
+  const location = { file: import.meta.filename, line: 4, column: 1 };
+  for (const [entryFile, nesting, name] of [[import.meta.filename, 0, 'outer'], [import.meta.filename, 1, 'nested'], [import.meta.filename.replace('.test.ts', '-wrapper.test.ts'), 0, 'wrapper']] as const) {
+    const data = { ...location, entryFile, nesting };
+    reporter.write({ type: 'test:pass', data: { ...data, name, details: {} } });
+    reporter.write({ type: 'test:diagnostic', data: { ...data, message: `${name} facts` } });
+  }
+  reporter.end({ type: 'test:diagnostic', data: { file: import.meta.filename, nesting: 0, message: 'tests 3' } });
+  let output = '';
+  for await (const chunk of reporter) output += String(chunk);
+  const records = output.trim().split('\n').map(line => JSON.parse(line)).filter(row => row.diagnosticLine !== undefined);
+  assert.deepEqual(records.map(row => [row.name, row.diagnosticLine]), [['outer', 'outer facts'], ['nested', 'nested facts'], ['wrapper', 'wrapper facts']]);
+  assert.equal(records[2].file, 'hub/test/suite-load-diagnostics-wrapper.test.ts');
 });
 
 test('concurrent wrappers sharing a source keep distinct timing, progress and failure identities', async () => {

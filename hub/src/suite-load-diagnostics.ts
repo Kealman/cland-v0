@@ -1,6 +1,22 @@
+import { remoteRedactor } from './host/agent/redact.ts';
+
 /** Only assertion/error fields cross the runner boundary; never inspect arbitrary
  * error properties (which can contain environments and child command lines). */
 export type LoadDiagnostic = { name?: string; message: string; stack?: string; code?: string; failureType?: string; cause?: LoadDiagnostic };
+
+/** Additive text facts never participate in assertion/admission classification.
+ * Older reporter receipts simply have no diagnosticLine field. */
+export function serializeLoadGateFailure(facts: Record<string, unknown>, records: { file: string; name: string; diagnosticLine?: string }[], env: NodeJS.ProcessEnv): string {
+  const diagnosticLines = redactLoadDiagnosticLines(records.filter(record => record.diagnosticLine !== undefined)
+    .map(({ file, name, diagnosticLine }) => ({ file, name, diagnosticLine })), env);
+  return JSON.stringify(redactLoadDiagnostic({ ...facts, ...(diagnosticLines.length ? { diagnosticLines } : {}) }, env));
+}
+
+/** Free-text test facts use the shared credential grammar before retention.
+ * Keep the older assertion sanitizer's contract unchanged for other callers. */
+export function redactLoadDiagnosticLines<T>(value: T, env: NodeJS.ProcessEnv): T {
+  return redactLoadDiagnostic(remoteRedactor().value(value), env);
+}
 export function loadDiagnostic(error: unknown): LoadDiagnostic {
   return serialize(error, new Set());
 }

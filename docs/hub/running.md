@@ -140,6 +140,15 @@ report-only; helper-returned skips are not resolved. Give platform conditions a
 nonblank reason on the skipping branch and `false` on the running branch.
 The load gate accepts five reasoned skips as `5/5 skipped`, without passing load
 proof; a reasonless skip fails. See [verification guidance](../agents/tests.md).
+Load-gate reporter receipts also retain test diagnostic lines, associated with
+the result's producer location and nesting, separately from assertion errors.
+Each reporter retains at most 65,536 UTF-8 JSONL bytes of diagnostic records,
+including identity and escaping, redacted before truncation. Diagnostic-line
+records use the shared credential redactor as well as environment-value and
+invocation-tail masking. Excess lines are
+drained without retention. Failed repetition output and its suite log include
+these facts under `diagnosticLines`; older receipts without that field remain
+readable. Diagnostic text does not determine admission or failure outcomes.
 The pure fixture builder lives in `test-support/fixture-environment.ts`, with a
 compatibility export in `hub/test/fixture-environment.ts`. Native account fixtures
 keep their account builder at attach/replacement launches; prepare fixtures place
