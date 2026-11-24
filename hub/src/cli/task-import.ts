@@ -183,7 +183,7 @@ export async function runImportGithub(args: string[], cwd: string, io: Io, env: 
 
   const outcomes = new Map<number, ImportOutcome>();
   const send = async (issues: ImportedIssue[]): Promise<ImportOutcome[]> => {
-    const value = (await askHubFrame(d, { type: 'task.import', repo, issues, ...(as ? { as } : {}) }, 60_000)) as { results: ImportOutcome[] };
+    const value = (await askHubFrame(d, { type: 'task.import', repo, issues, ...(as ? { as } : {}) }, 60_000, env)) as { results: ImportOutcome[] };
     return value.results;
   };
   const rank = { unchanged: 0, updated: 1, created: 2 } as const;

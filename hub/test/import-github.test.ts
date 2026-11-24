@@ -4,7 +4,10 @@
 // closed issue, comments, a pull request to skip, a closed issue and a map).
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFile, copyFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, copyFile, mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import cp from 'node:child_process';
+import { statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer, type Socket } from 'node:net';
@@ -14,11 +17,14 @@ import { runImportGithub, type GhRunner } from '../src/cli/task-import.ts';
 import { FakeClock } from './fake-clock.ts';
 import { clandWithEnv, connectUi, projectHub, tempProject, type CliResult, type Discovery } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
-import { pathFixture } from './executable-path-fixture.ts';
+import { beforeDirectories, guardDirectoryRemoval, ownDirectory, fenceFixtureCleanup, drainFixtureCleanup } from './process-cleanup.ts';
+import { caseDeadlines } from './case-deadlines.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
-import { until } from './until.ts';
+import { until, testSetupWaitMs } from './until.ts';
 import { access } from 'node:fs/promises';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+import { runTask } from '../src/cli/task.ts';
+import { runCrew } from '../src/cli/crew.ts';
 
 const FAKE_GH_DIR = fileURLToPath(new URL('./fixtures/fake-gh', import.meta.url));
 const FIXTURE = fileURLToPath(new URL('./fixtures/github-acme-widgets.json', import.meta.url));
@@ -28,17 +34,48 @@ type Env = { fixture: string; log: string };
 
 const outerImport = { CLAND_SESSION_NAME: 'outer-import-fixture', CLAND_SESSION_ID: 'outer-import-id', CLAND_LAUNCH_TOKEN: 'synthetic-invalid-credential' };
 
-function importPeerFixture(t: TestContext) {
-  // Registers the work join/removal guard before acquiring even the root.
-  const owned = pathFixture(t, 'cland-import-peer-');
-  return { close: owned.close, run: (check: (f: { root: string; env: Env; frames: Array<Record<string, unknown>>; step: FixtureStep }) => Promise<void>) => owned.run(async (root, step) => {
-    const previous = process.env;
-    let peer: ReturnType<typeof createServer> | undefined;
-    let listening: Promise<void> | undefined;
-    let cleanupError: unknown;
-    guardDirectoryRemoval(root, () => { if (cleanupError) throw cleanupError; });
-    const connections = new Set<Socket>();
-    try {
+function importPeerFixture(t: TestContext, controls: { releaseOnClose?: () => void; beforeClose?: () => Promise<void> } = {}) {
+  const cleanup = fenceFixtureCleanup(t);
+  const scope = caseDeadlines(t, {
+    timeoutMs: testSetupWaitMs(), ownership: { beforeDirectories, guardDirectoryRemoval },
+    ...(controls.releaseOnClose ? { releaseOnClose: controls.releaseOnClose } : {}),
+  });
+  const previous = process.env;
+  let root = '', remove: (() => Promise<void>) | undefined, closed = false;
+  let peer: ReturnType<typeof createServer> | undefined;
+  let listening: Promise<void> | undefined;
+  const connections = new Set<Socket>();
+  const socketCloses = new Set<Promise<void>>();
+  let closing: Promise<void> | undefined;
+  const closePeer = (): Promise<void> => {
+    if (closed) return Promise.resolve();
+    if (closing) return closing;
+    closing = (async () => {
+      await listening?.catch(() => {});
+      await controls.beforeClose?.();
+      for (const connection of connections) connection.destroy();
+      if (peer?.listening) await new Promise<void>((resolve, reject) => peer!.close(error => error ? reject(error) : resolve()));
+      await Promise.all(socketCloses);
+      assert.equal(connections.size, 0, 'all peer sockets have closed');
+      closed = true;
+    })();
+    void closing.catch(() => { closing = undefined; }); // A failed close is repairable, never a close receipt.
+    return closing;
+  };
+  beforeDirectories(t, () => scope.wait('peer close receipt', closePeer));
+  cleanup.release(() => {
+    assert.equal(closed, true, 'restore environment only after positive peer closure');
+    process.env = previous;
+  });
+  return { close: () => drainFixtureCleanup(t), remove: () => { assert.ok(remove); return remove(); }, closed: () => closed,
+    run: (check: (f: { root: string; env: Env; frames: Array<Record<string, unknown>>; step: FixtureStep }) => Promise<void>) => scope.run(async admit => {
+    const step: FixtureStep = operation => scope.wait('peer step', () => admit(operation));
+      await scope.wait('peer setup', () => admit(async () => {
+      await fixtureNativeGuard(t, { fenced: true });
+      root = await mkdtemp(join(tmpdir(), 'cland-import-peer-'));
+      remove = ownDirectory(t, root);
+      scope.adoptRoot(root);
+      guardDirectoryRemoval(root, () => { if (!closed) throw new Error('peer closure unconfirmed; root retained'); });
       await step(() => mkdir(join(root, '.cland')));
       const env = { fixture: join(root, 'gh-fixture.json'), log: join(root, 'gh-calls.log') };
       await step(() => copyFile(FIXTURE, env.fixture));
@@ -47,7 +84,8 @@ function importPeerFixture(t: TestContext) {
       const frames: Array<Record<string, unknown>> = [];
       peer = createServer(connection => {
         connections.add(connection);
-        connection.on('close', () => connections.delete(connection));
+        const receipt = new Promise<void>(resolve => connection.once('close', () => { connections.delete(connection); resolve(); }));
+        socketCloses.add(receipt);
         let pending = '';
         connection.on('data', chunk => {
           pending += String(chunk);
@@ -66,15 +104,10 @@ function importPeerFixture(t: TestContext) {
       listening = step(() => new Promise<void>((resolve, reject) => { peer!.once('error', reject); peer!.listen(socket, resolve); }));
       await listening; // Captured before awaiting: finally also adopts a late listen.
       await step(() => writeFile(join(root, '.cland/hub.json'), JSON.stringify({ root, socket, port: 0, secret: 'test', pid: process.pid, version: 'test' })));
-      await step(() => check({ root, env, frames, step }));
-    } finally {
-      try {
-        await listening?.catch(() => {});
-        for (const connection of connections) connection.destroy();
-        if (peer?.listening) await new Promise<void>((resolve, reject) => peer!.close(error => error ? reject(error) : resolve()));
-      } catch (error) { cleanupError = error; throw error; }
-      finally { process.env = previous; }
-    }
+      return { env, frames };
+      })).then(async ({ env, frames }) => {
+        await scope.wait('peer action', () => admit(() => check({ root, env, frames, step })));
+      });
   }) };
 }
 
@@ -90,21 +123,61 @@ test('in-process GitHub import excludes the outer credential at the socket peer'
   });
 });
 
+for (const identity of ['human', 'session'] as const) test(`GitHub import uses the explicit ${identity} environment despite an ambient session credential`, async t => {
+  const fixture = importPeerFixture(t);
+  await fixture.run(async ({ root, env, frames, step }) => {
+    const data = JSON.parse(await step(() => readFile(env.fixture, 'utf8'))) as Record<string, unknown>;
+    const gh: GhRunner = async args => JSON.stringify([data[args.at(-1)!]]);
+    let stderr = '';
+    const explicit = fixtureEnvironment(root, {}, identity === 'human' ? {} : {
+      CLAND_SESSION_NAME: 'inner-import', CLAND_SESSION_ID: 'inner-id', CLAND_LAUNCH_TOKEN: 'synthetic-inner-credential',
+    });
+    const code = await step(() => runImportGithub(['--as', 'human', '--repo', REPO, '--json'], root, {
+      out: () => {}, err: text => { stderr += text; },
+    }, explicit, gh));
+    assert.equal(code, 0, stderr);
+    assert.deepEqual(frames.map(frame => frame.type), ['hello', 'task.import']);
+    assert.deepEqual(frames[1]!.as, identity === 'human' ? { name: 'human' } : {
+      name: 'inner-import', sessionId: 'inner-id', shell: true, credential: 'synthetic-inner-credential',
+    });
+  });
+});
+
+for (const command of ['task', 'crew'] as const) test(`${command} CLI keeps its explicit environment at the nested frame`, async t => {
+  const fixture = importPeerFixture(t);
+  await fixture.run(async ({ root, frames, step }) => {
+    const env = fixtureEnvironment(root, {});
+    const io = { out: () => {}, err: () => {} };
+    const code = await step(() => command === 'task'
+      ? runTask(['list', '--json'], root, io, env)
+      : runCrew(['show', '--json'], root, io, env));
+    assert.equal(code, 0);
+    assert.deepEqual(frames.map(frame => frame.type), ['hello', `${command}.${command === 'task' ? 'list' : 'show'}`]);
+    assert.equal((frames[1]!.as as Record<string, unknown> | undefined)?.credential, undefined);
+    for (const value of Object.values(outerImport)) assert.equal(JSON.stringify(frames).includes(value), false);
+  });
+});
+
 for (const fail of [false, true]) test(`import peer joins held work before disposal${fail ? ' after setup failure' : ''}`, async t => {
   const release = Promise.withResolvers<void>();
-  let fixture: ReturnType<typeof importPeerFixture> | undefined, sequence: Promise<void> | undefined;
-  beforeDirectories(t, async () => {
-    const closing = fixture?.close();
-    release.resolve();
-    await sequence?.catch(() => {});
-    await closing;
-  }); // Release/join is owned before admission, including an interrupted test.
-  fixture = importPeerFixture(t);
-  const previous = process.env;
+  const previous = process.env, nativeSpawn = cp.spawn;
   let entered = false, directory = '', later = false, completed = false;
-  sequence = fixture.run(async ({ root, step }) => {
+  let scoped: NodeJS.ProcessEnv | undefined, guardedSpawn: typeof cp.spawn | undefined, releaseObserved = false;
+  const fixture = importPeerFixture(t, { releaseOnClose: () => {
+    try {
+      if (entered && !completed) {
+        assert.equal(statSync(directory).isDirectory(), true);
+        assert.equal(process.env, scoped, 'environment retained while writer is held');
+        assert.equal(cp.spawn, guardedSpawn, 'native guard retained while writer is held');
+        releaseObserved = true;
+      }
+    } finally { release.resolve(); }
+  } });
+  const sequence = fixture.run(async ({ root, step }) => {
     directory = root;
     await step(async () => {
+      scoped = process.env;
+      guardedSpawn = cp.spawn;
       entered = true;
       await release.promise;
       await writeFile(join(root, 'held-write'), 'complete');
@@ -117,24 +190,53 @@ for (const fail of [false, true]) test(`import peer joins held work before dispo
   const rejected = assert.rejects(sequence, fail ? /synthetic setup failure/ : /fixture work admission closed/);
   void rejected.catch(() => {});
   try {
-    await until(() => entered, { what: 'import peer admitted held file work', timeoutMs: 1000 });
-    const scoped = process.env;
-    const closing = fixture.close();
-    assert.equal(completed, false);
+    await until(() => entered, { what: 'import peer admitted held file work' });
     await access(directory);
-    assert.equal(process.env, scoped, 'environment remains owned until work joins');
-    release.resolve();
+    const closing = fixture.remove(); // Real guarded removal joins work and peer closure.
     await rejected;
     await closing;
+    assert.equal(fixture.closed(), true);
+    await fixture.close();
     assert.equal(completed, true);
+    assert.equal(releaseObserved, true, 'removal released the held writer before closing its peer');
     assert.equal(later, false, 'closing fences the next file operation');
     assert.equal(process.env, previous);
+    assert.equal(cp.spawn, nativeSpawn);
     await assert.rejects(access(directory), { code: 'ENOENT' });
   } finally {
     const closing = fixture.close();
     release.resolve();
     await sequence.catch(() => {});
     await closing;
+  }
+});
+
+test('import peer retains its root and seams after rejected close until repaired', async t => {
+  const previous = process.env, nativeSpawn = cp.spawn;
+  let rejectClose = true, directory = '';
+  const fixture = importPeerFixture(t, { beforeClose: async () => { if (rejectClose) throw new Error('synthetic peer close failure'); } });
+  try {
+    await fixture.run(async ({ root, step }) => {
+      directory = root;
+      await step(() => writeFile(join(root, 'owned-write'), 'complete'));
+    });
+    const scoped = process.env, guardedSpawn = cp.spawn;
+    assert.notEqual(guardedSpawn, nativeSpawn);
+    await assert.rejects(fixture.remove(), /synthetic peer close failure/);
+    await assert.rejects(fixture.close(), /synthetic peer close failure/);
+    assert.equal(fixture.closed(), false);
+    await access(directory); // Removal really reached the guarded path and was refused.
+    assert.equal(process.env, scoped);
+    assert.equal(cp.spawn, guardedSpawn);
+    rejectClose = false;
+    await fixture.close();
+    assert.equal(fixture.closed(), true);
+    await assert.rejects(access(directory), { code: 'ENOENT' });
+    assert.equal(process.env, previous);
+    assert.equal(cp.spawn, nativeSpawn);
+  } finally {
+    rejectClose = false;
+    await fixture.close();
   }
 });
 
