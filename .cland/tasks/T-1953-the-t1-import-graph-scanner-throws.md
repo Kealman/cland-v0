@@ -3,7 +3,7 @@ id: T-1953
 kind: task
 title: "The T1 import-graph scanner throws \"incomplete import graph: indirect require\" on suite-remote-budget.test.ts's require-shaped fixture text, forcing conservative fallback"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1724
 branch: t/T-1953-the-t1-import-graph-scanner-throws
 created: 2026-11-17T21:19:05.454Z
-updated: 2026-11-24T09:32:48.808Z
+updated: 2026-11-24T10:09:02.319Z
 ---
 
 ## Summary
@@ -29,9 +29,11 @@ The scanner tells module-loading syntax apart from string and template content, 
 
 - [x] C1. suite-remote-budget.test.ts scans as complete, while a real indirect require in a fixture test file still reports "incomplete import graph" (test).
   - done: impl-1953 · 2026-11-24T09:07:11.254Z
+  - verified: rev-40 [reviewer] · run rev-40-20261124-1953-final · 2026-11-24T10:09:00.613Z · commit a27abab82494ca5bb0822ab47cc233ebadf1ec5f
 - [x] C2. The six other fallback files are each classified as either a real indirect loader that stays a fallback or a false positive that is fixed, and the change in batch selection count is reported (test or artifact).
   - done: impl-1953 · 2026-11-24T09:07:32.627Z
   - verified: rev-40 [reviewer] · run rev-40-20261124-1953-source · 2026-11-24T09:32:48.808Z · commit a27abab82494ca5bb0822ab47cc233ebadf1ec5f
+  - verified: rev-40 [reviewer] · run rev-40-20261124-1953-final · 2026-11-24T10:09:00.613Z · commit a27abab82494ca5bb0822ab47cc233ebadf1ec5f
 
 ## Comments
 
@@ -53,3 +55,18 @@ finding_counts: {"high":0,"medium":0,"low":1}
 Source clear; one low evidence-replay finding atA-22775/census.ts:2 (relative ../hub import needs checkout placement; README26 names absent script). No high/medium. Two positional boolean renames preserve fixture behavior; parser/policy unchanged, actual-source regression checks known import and genuine indirect-require rejection. C2 classifications verified against six sources and external-resolution rule; yaml belongs tohub, not Neovim ancestors. Current manifest1034/500T2-Web denominator matches; reported static unknown21→19/additions9→8 is not a suite count/speedup or confirmation of original470estimate. Source base correction8d3968920 retained. C1 remains run-dependent/unverified pending exact-head configured receipt; reported local12/19/26checks/static exits do not substitute. No reviewer runs/edits.
 
 Criteria: C2 verified.
+
+### rev-40 · 2026-11-24T10:09:00.613Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261124-1953-final
+commit: a27abab82494ca5bb0822ab47cc233ebadf1ec5f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear. Exact-head e8294b83/A-22817/canonicaltree250972ec finishedpassed. C1 named real-source/indirect-require regression11913pass +5/5gate12253; all12task-selection/19remote-budget/26accounting bases pass. C2 source classifications/static9→8projection retained with source-base correction; not actual batch/suite speedup. A-22791 resolves historicalL1 replay placement without head change. T0/T1/fallbackT2/selectedT3/Web exit0;7selectedT3/T4files100identities once/no repetitions, restT3batch/T4unexecuted. Noncached Linuxx64/c-8nyc1/Node24.21/Nvim0.12.5/workers2/HeadlessShell1248-CfT156. Supplied7462pass1Macskip0fail; advisory budgets retained. No current findings, no reviewer runs/edits.
+
+Criteria: C1 verified, C2 verified.

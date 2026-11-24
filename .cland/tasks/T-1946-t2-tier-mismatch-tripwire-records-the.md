@@ -3,17 +3,17 @@ id: T-1946
 kind: task
 title: T2 tier-mismatch tripwire records the fake-only fixture's positive launch-refusal controls as native exec/execFile use
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2073
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1736
+branch: t/T-1946-t2-tier-mismatch-tripwire-records-the
 created: 2026-11-17T12:40:29.242Z
-updated: 2026-11-24T09:01:14.543Z
+updated: 2026-11-24T10:40:27.661Z
 ---
 
 ## Summary

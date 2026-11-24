@@ -3,7 +3,7 @@ id: T-2014
 kind: task
 title: projectGitDirectory reads .git/commondir with an unbounded readFile; enforce the metadata byte bound while reading
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-2076
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-2014-projectgitdirectory-reads-git-commondir
 created: 2026-11-19T20:18:03.512Z
-updated: 2026-11-24T09:01:20.513Z
+updated: 2026-11-24T10:40:24.958Z
 ---
 
 ## Summary

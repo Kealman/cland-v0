@@ -3,7 +3,7 @@ id: T-1945
 kind: task
 title: runWorkerWithAdmission logs "Finished" before persisting the worker receipt, so a throwing terminal log skips the durable receipt
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1723
 branch: t/T-1945-runworkerwithadmission-logs-finished
 created: 2026-11-17T12:20:13.013Z
-updated: 2026-11-24T09:49:54.183Z
+updated: 2026-11-24T10:28:21.793Z
 ---
 
 ## Summary
@@ -29,9 +29,11 @@ Persist the receipt first, or isolate the log so that its failure adds a seconda
 
 - [x] C1. With a log callback that throws, the worker's receipt is still persisted with its original outcome, and the log failure is reported as a secondary diagnostic (test, fakes only).
   - done: impl-1945 · 2026-11-24T09:48:23.745Z
+  - verified: rev-35 [reviewer] · run rev-35-1945-evidence-1 · 2026-11-24T10:28:21.614Z · commit 2e7ffc150e7072373228f4d49ef361a6741404a5
 - [x] C2. The readers of the worker receipt are listed with their dispositions (rule 41).
   - done: impl-1945 · 2026-11-24T09:48:25.011Z
   - verified: rev-35 [reviewer] · run rev-35-1945-source-2 · 2026-11-24T09:49:54.183Z · commit 2e7ffc150e7072373228f4d49ef361a6741404a5
+  - verified: rev-35 [reviewer] · run rev-35-1945-evidence-1 · 2026-11-24T10:28:21.614Z · commit 2e7ffc150e7072373228f4d49ef361a6741404a5
 
 ## Comments
 
@@ -72,3 +74,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-22799: source clear, Standards 0/Spec 0 findings. Source1 M1 is resolved through the task's isolated-log alternative: guarded terminal and secondary diagnostic callbacks precede final persistence, restoring the existing local-reader ordering. Corrected fake controls retain exact original outcomes/metadata, final-callback order and persistence exception identity. C2 reader dispositions checked/verified; no native fd-flush/close claim. C1 remains done/unverified pending actual same-head configured evidence. A-22784's local red/green is authored evidence with explicit fake-boundary limits; request reports final-head lint/typecheck0. No reviewer execution or edits. Hold releases; seek Coordinator window for mode-free verification at unchanged head. No full task-head suite or dev merge requested.
 
 Criteria: C2 verified.
+
+### impl-1945 · 2026-11-24T10:26:52.009Z
+
+Same-head configured evidence: run e15c843e-9459-4d19-a06c-5d7b8f32f31a / A-22827 at 2e7ffc150e7072373228f4d49ef361a6741404a5, exit 0. Log independently contains finish/timing outcome pass for C1 cases: terminal logging failure preserves the persisted worker outcome and reports a secondary diagnostic; a failed diagnostic sink cannot replace the durable worker outcome; receipt publication preserves its exact error after both diagnostic sinks fail. T0, all T1, fallback all T2, seven selected T3 importer files and Web exited 0; remaining T3 deferred to merge batch, no T4 claimed. Summary: 7464 pass, zero fail, one macOS prerequisite skip. Executor droplet c-8 nyc1, Linux x64 6.8.0-149-generic, Node 24.21.0, Neovim 0.12.5; Web Chrome Headless Shell chromium_headless_shell-1248 / Google Chrome for Testing 156.0.8078.4. Duration/lint budget findings are report-only. Droplet lifetime 1859 s, cost $0.1291. Awaiting reviewer same-head settlement; no changes or resubmissions.
+
+### rev-35 · 2026-11-24T10:28:21.614Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1945-evidence-1
+commit: 2e7ffc150e7072373228f4d49ef361a6741404a5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-22828 audits same-head run e15c843e/A-22827: finished/passed, result code0/empty cause, complete run/tree-bound T0/T1/T2/selected-T3/Web receipts. All11 worker-cause cases pass; each3 new sink/persistence control passes base+5distinct load repetitions. C1 verified with source2's isolated-log/final-persist ordering; C2 reader dispositions retained and verified. Completed243T1/445T2/7T3/55Web files, remaining266T3 deferred,18T4 unexecuted. Aggregate7464pass/1prerequisite skip/0fail; loaded15pass/5skip separate, known3F2 finish-only records not added. Linux c8nyc1 Node24.21/nvim0.12.5, isolated Headless1248 Chrome156.0.8078.4; report-only budgets/lint. Canonical2de962dd differs from Git73df5bac. No new native flush/close claim, full integrated cover or reviewer execution/edit. Findings=[]; final clear.
+
+Criteria: C1 verified, C2 verified.

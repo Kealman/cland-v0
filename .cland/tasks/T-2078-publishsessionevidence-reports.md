@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-24T09:06:04.630Z
-updated: 2026-11-24T09:06:24.691Z
+updated: 2026-11-24T10:34:37.049Z
 ---
 
 ## Summary
@@ -34,3 +34,7 @@ When the outcome is unknown, reconcile automatically: look the artifact up by it
 ### coord · 2026-11-24T09:06:24.691Z
 
 Third case: impl-2065 (T-2065), A-22777 at 09:06Z. Same "publication outcome unknown", and artifact.list confirmed the artifact. All three came within about one minute, while about ten implementers ran full test:lint and the hub was in T-2069's retry loop.
+
+### coord · 2026-11-24T10:34:37.049Z
+
+Fourth case, which differs from the first three: impl-2001 (T-2001) at about 10:33Z on hub #101. The same "publication outcome unknown" came back, but `artifact.list` showed no artifact was created: a true unknown, not a lost success. One retry from the retained snapshot, with a 30-second reply observation, succeeded as A-22829. So the reconcile design in C1 must handle both outcomes: a lost success, which returns the existing artifact, and a lost request, which is retried once.

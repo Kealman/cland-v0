@@ -3,7 +3,7 @@ id: T-2001
 kind: task
 title: remote-scripted 'acquires, delivers, starts, collects' intermittently times out waiting 15 s for a frame in loaded T2 batches
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1721
 branch: t/T-2001-remote-scripted-acquires-delivers-starts
 created: 2026-11-19T09:55:31.440Z
-updated: 2026-11-24T09:51:46.016Z
+updated: 2026-11-24T10:35:37.598Z
 ---
 
 ## Summary
@@ -27,7 +27,9 @@ Find the event the case waits for and replace the 15 s frame poll with a wait on
 
 ## Acceptance criteria
 
-- [ ] C1. The case waits on a positive receipt for the frame it needs instead of a time-bound poll, and passes 20/20 in a loaded multi-file T2 batch (test, evidence).
+- [x] C1. The case waits on a positive receipt for the frame it needs instead of a time-bound poll, and passes 20/20 in a loaded multi-file T2 batch (test, evidence).
+  - done: impl-2001 · 2026-11-24T10:34:28.865Z
+  - verified: rev-40 [reviewer] · run rev-40-20261124-2001-final · 2026-11-24T10:35:37.198Z · commit 5899d2acb0a8d722b10b380a944ff0e4f59c2d2d
 - [x] C2. The literal failure above is reproduced or explained with evidence before the change (evidence).
   - done: impl-2001 · 2026-11-24T09:17:09.539Z
   - verified: rev-40 [reviewer] · run rev-40-20261124-2001-source · 2026-11-24T09:18:43.467Z · commit 5899d2acb0a8d722b10b380a944ff0e4f59c2d2d
@@ -69,3 +71,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Configured receipt step clear, not finalC1. Run5415fe04/A-22801 exact reviewed head/canonicaltreececf10f1 finished/passed. All10remote-scripted base identities pass; exact orchestration29249 outcome pass0.310435826s. T0/T1/fallbackT2/selectedT3/Web exit0;7selectedT3/T4files100passing identities once/no repetitions, restT3batch/T4unexecuted. Noncached Linuxx64/c-8nyc1/Node24.21.0/Nvim0.12.5/workers2, HeadlessShell1248/CfT156.0.8078.4; advisory reports and Mac-only skip retained. C1 still unchecked/unverified: requires separate authorized20/20loadedmulti-fileT2 campaign. C2 source verification retained; Coordinator-stopped8rounds excluded. No final readiness claim and no new reviewer run/edit.
+
+### impl-2001 · 2026-11-24T10:34:38.737Z
+
+C1 evidence A-22829: post-restart #101 onto T-2069, authorized loaded multi-file T2 campaign completed 20/20 rounds at unchanged 5899d2acb0a8d722b10b380a944ff0e4f59c2d2d. Each round has native exit0/no signal, exact target positive pass and full 14/14 census (280 cases), loads 8.0493–11.2148. macOS local Node24.21.0; no browser. Eight CPU workers joined, test children closed, scratch root removed; native slot released. Stopped earlier eight rounds remain excluded. Artifact scan/publication succeeded after reconciled same-snapshot retry; staged copies removed. Final evidence review requested from reviewer; configured exact-head verify 5415fe04/A-22801 remains green with T4 unexecuted and budgets report-only. No source changes or verify rerun.
+
+### rev-40 · 2026-11-24T10:35:37.198Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261124-2001-final
+commit: 5899d2acb0a8d722b10b380a944ff0e4f59c2d2d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged 5899d2acb. Independently parsed all20 A-22829 logs and native records: exact target positive pass20/20, same14 distinct cases each round/280 total, every native exit0/signalnull and footer0 fail/cancel/skip. macOS local Node24.21.0, two T2 files/workers2, eight CPU threads, no browser; all before/after load readings8.04931640625–11.21484375. Coordinator a0ca93ff authorized slot/T-2018 T0 overlap; topic/README report workers joined, test children closed, root removed and slot released. Prior interrupted8rounds excluded. C1 now verified; C2 prior source mark retained. Existing exact-head configured5415fe04/A-22801 remains green T0/T1/fallbackT2/selectedT3/Web, noncached Linuxc8nyc1 Node24.21/Nvim0.12.5/HeadlessShell1248-CfT156; remainingT3 batch/T4unexecuted, report-only budgets. Local campaign itself only two T2 files, no suite load gate or other tiers. A-22830 records both axes/provenance/limits. No findings, reviewer runs or edits.
+
+Criteria: C1 verified.
