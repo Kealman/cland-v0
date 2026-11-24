@@ -263,6 +263,7 @@
     "hub/test/gateway.test.ts": "T2",
     "hub/test/git-command-policy.test.ts": "T1",
     "hub/test/git-daemon-stop.test.ts": "T1",
+    "hub/test/git-directory.test.ts": "T2",
     "hub/test/git-maintenance-cli.test.ts": "T3",
     "hub/test/git-maintenance-recovery.test.ts": "T1",
     "hub/test/git-maintenance-startup.test.ts": "T2",

@@ -4,6 +4,13 @@ The hub schedules one background pass 30 seconds after serving. See
 [the policy](../hub/cland-init-and-cland-update.md#git-object-maintenance) for grace and ownership.
 Requests stay available; startup never waits for collection.
 
+The shared repository-directory parser reads each `.git` pointer file and
+`commondir` through a 64 KiB byte limit. Oversized metadata refuses with
+`CLAND_GIT_METADATA_TOO_LARGE`, its path and byte limit; the opened handle closes
+before the refusal propagates. Doctor reports inspection failure and lock
+diagnostics mark the scan incomplete. Configuration, collection and Git writer
+ownership refuse before starting Git against an unresolved repository.
+
 `cland doctor` has one read-only `git maintenance` row for the current collector
 owner, repository-local `gc.auto` and `maintenance.auto` values for the common
 project repository and existing territory, `.cland/run/git-maintenance.json`

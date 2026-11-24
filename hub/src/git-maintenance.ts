@@ -1,6 +1,6 @@
 // Owned background Git maintenance; retained work and the age grace protect objects.
 import { territoryPath, withTerritoryLockAsync } from './territory.ts';
-import { lstat, mkdir, readdir, readFile } from 'node:fs/promises';
+import { lstat, mkdir, readdir, open } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { durableJson, readLeases } from './executor/droplet/lease.ts';
 import { run } from './doctor/report.ts';
@@ -12,6 +12,42 @@ export type MaintenanceServices = { signal?: AbortSignal; run?: typeof run; lock
 export type GitMaintenance = { at: string; expire: '2.weeks.ago' | 'never'; repositories: Array<{ directory: string; recoveredGcLog: boolean; error?: string }> };
 export const gitMaintenancePath = (root: string): string => join(root, '.cland/run/git-maintenance.json');
 
+export const GIT_METADATA_BYTES = 65_536;
+export class GitMetadataTooLarge extends Error {
+  readonly code = 'CLAND_GIT_METADATA_TOO_LARGE';
+  readonly limit = GIT_METADATA_BYTES;
+  readonly path: string;
+  constructor(path: string) {
+    super(`Git metadata exceeds ${GIT_METADATA_BYTES} bytes: ${path}`);
+    this.path = path;
+  }
+}
+
+/** Keep only the allowed prefix and one overflow byte, even if the file grows.
+ * Closing the handle is the explicit incomplete-read boundary on refusal. */
+async function readGitMetadata(path: string): Promise<string> {
+  const file = await open(path, 'r');
+  let failure: unknown;
+  try {
+    const bytes = Buffer.alloc(GIT_METADATA_BYTES + 1);
+    let kept = 0;
+    while (kept < bytes.length) {
+      const { bytesRead } = await file.read(bytes, kept, bytes.length - kept, kept);
+      if (bytesRead === 0) return bytes.subarray(0, kept).toString('utf8');
+      kept += bytesRead;
+      if (kept > GIT_METADATA_BYTES) throw new GitMetadataTooLarge(path);
+    }
+    throw new GitMetadataTooLarge(path);
+  } catch (error) { failure = error; throw error; }
+  finally {
+    try { await file.close(); }
+    catch (error) {
+      if (failure instanceof Error) Object.assign(failure, { closeError: error });
+      else throw error;
+    }
+  }
+}
+
 /** Resolve the common object store without starting Git in doctor's read path. */
 export async function projectGitDirectory(root: string): Promise<string | null> {
   const dotGit = join(root, '.git');
@@ -20,11 +56,11 @@ export async function projectGitDirectory(root: string): Promise<string | null> 
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
   let directory = dotGit;
   if (!info.isDirectory()) {
-    const match = /^gitdir: (.+)\s*$/.exec(await readFile(dotGit, 'utf8'));
+    const match = /^gitdir: (.+)\s*$/.exec(await readGitMetadata(dotGit));
     if (!match) throw new Error('invalid .git file');
     directory = resolve(root, match[1]!);
   }
-  try { return resolve(directory, (await readFile(join(directory, 'commondir'), 'utf8')).trim()); }
+  try { return resolve(directory, (await readGitMetadata(join(directory, 'commondir'))).trim()); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return directory; throw error; }
 }
 

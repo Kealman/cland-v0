@@ -96,6 +96,13 @@ for the entire pass (`--prune=never`). Expired leases stay protected until relea
 is confirmed. Reflogs and worktree metadata are preserved. An idle pass after a
 later restart permits expiry again; landings do not start another pass.
 
+Common-directory resolution bounds both `.git` pointer files and `commondir`
+to 64 KiB while reading, allowing one overflow byte to detect excess. It joins
+short reads and closes the opened handle before returning or refusing. Oversized
+input throws `CLAND_GIT_METADATA_TOO_LARGE` with `path` and `limit`; configuration,
+collection and Git writer ownership propagate it before native Git acquisition.
+Doctor renders an inspection warning and lock diagnostics mark the scan incomplete.
+
 Each native command has a 30-second deadline. A private POSIX Node `execve`
 gate records its PID, native UTC start identity and detached process group in
 `.cland/run/git-maintenance-owner.json` before Git starts, preserving that
