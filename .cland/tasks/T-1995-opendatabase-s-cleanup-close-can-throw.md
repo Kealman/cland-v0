@@ -3,7 +3,7 @@ id: T-1995
 kind: task
 title: openDatabase's cleanup close can throw and replace the original initialization error
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1726
 branch: t/T-1995-opendatabase-s-cleanup-close-can-throw
 created: 2026-11-19T03:19:07.689Z
-updated: 2026-11-24T09:50:19.564Z
+updated: 2026-11-24T11:11:39.158Z
 ---
 
 ## Summary
@@ -29,6 +29,7 @@ Keep the initialization error as the outcome. A failing `close()` in that cleanu
 
 - [x] C1. When the busy_timeout pragma throws and `close()` also throws, `openDatabase` rejects with the pragma error, with the close error recorded as secondary (test with an injected `open`, red on the current code).
   - done: impl-1995 · 2026-11-24T09:48:27.920Z
+  - verified: rev-40 [reviewer] · run rev-40-20261124-1995-final · 2026-11-24T11:11:38.374Z · commit 00c594e496ceac7ab263aef0b2464385a09432a9
 - [x] C2. Every caller of `openDatabase` is listed with its disposition (rule 41).
   - done: impl-1995 · 2026-11-24T09:48:29.724Z
   - verified: rev-40 [reviewer] · run rev-40-20261124-1995-source · 2026-11-24T09:50:19.564Z · commit 00c594e496ceac7ab263aef0b2464385a09432a9
@@ -73,3 +74,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear, no findings. Shared helper preserves mutable primary Error identity/prior cause with secondary close diagnostic; immutable/non-Error fallback keeps primary cause/first entry. openDatabase pragma and tipChurnFixture constructor/seed catch paths preserve selected errors, close once and retain prior database owner; normal success unchanged. New injected-handle T2 guard and pureT1 controls inspected. C2 direct/indirect caller census verified including newdatabase-cleanup regression; additive open seam and existing return contracts compatible. A-22796 independently has82unique exit0/signalnull records but no per-case/head attestations; local red/green case counts/static results are reported working-tree evidence, not configured proof. C1 stays unverified pending exact-head configured receipt. Existing seedTransaction rollback masking separately reportedXS/Bugs, outside scope. No reviewer runs/edits.
 
 Criteria: C2 verified.
+
+### rev-40 · 2026-11-24T11:11:38.374Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261124-1995-final
+commit: 00c594e496ceac7ab263aef0b2464385a09432a9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged00c594e49. Exact-head2d9986ea/A-22869 finished/passed; canonical44ba26b4 executable match. Independently checked four database-cleanup generated passes (pragma double-failure, init/successful cleanup, schema double-failure, seed-body double-failure) and four cleanup-failure generated passes (identity/existing cause, frozen/nonError variants), each with separate5/5 load-gate receipt. C1 verified; C2 source census mark retained. T0/T1/fallbackT2/selectedT3-importer command/Web exit0;252processfiles2021positive passing identities once/no repetitions, prerequisite skips retained; noT4 receipt. Noncached Linuxx64c8nyc1 workers2 Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156.0.8078.4. Budget/lint reports advisory, no performance/full-crossplatform claim. A-22876 contains both axes/provenance/receipts; inherited rollback aside remains separate. No findings/reviewer runs/edits.
+
+Criteria: C1 verified.

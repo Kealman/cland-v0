@@ -3,7 +3,7 @@ id: T-1955
 kind: task
 title: projectHub leaves an acquired hub daemon and log without teardown when registerHubCards or the readiness assertion rejects
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1722
 branch: t/T-1955-projecthub-leaves-an-acquired-hub-daemon
 created: 2026-11-18T02:12:33.701Z
-updated: 2026-11-24T09:52:33.955Z
+updated: 2026-11-24T11:11:28.443Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ Teardown ownership is installed as soon as the daemon and log are acquired, so a
 
 - [x] C1. A fake registerHubCards rejection and a failing readiness assertion each leave no live hub process, socket or open log after the test, and both reject with their original error (test).
   - done: impl-1955 · 2026-11-24T09:51:39.310Z
+  - verified: rev-41 [reviewer] · run rev-41-20261124-1955-final · 2026-11-24T11:11:27.683Z · commit 6301b9f289c65b142c6d5884111797f975063739
 - [x] C2. projectHub's callers are unaffected: the T-1947 census list (A-21000) is checked against the change (rule 41).
   - done: impl-1955 · 2026-11-24T09:51:39.761Z
+  - verified: rev-41 [reviewer] · run rev-41-20261124-1955-final · 2026-11-24T11:11:27.683Z · commit 6301b9f289c65b142c6d5884111797f975063739
 
 ## Comments
 
@@ -75,3 +77,24 @@ M1 resolved: acquired hub teardown installed before card registration/readiness.
 M2 resolved for new controls: startupControl enrolls its exact fenced synthetic context close before acquisition, through guardedLeaseCase/caseDeadlines. close awaits admitted startup then full context drainage; canRestore remains false until successful close. Roots have guarded removal and seams/native guard release refuse unconfirmed closure. Rejected-close control checks original primary+secondary receipt, actual guarded removal refusal and open log/root, repairs then observes log/socket/discovery closure. Cancellation control invokes actual whole-case cleanup while log close held, observes admission closure, attempts guarded removal/release before fake-clock expiry, then releases producer,joins exact original rejection/drainage and checks actual root ENOENT. Existing controls and assertions retained.
 
 A-22802 records deliberate old-await negative control red: planted process-log-close error replaces expected startup primary. Corrected selected T2 file14/14,25T1census files290/290,full typecheck/lint exit0 reported on macOSarm64 Node24.21; zero lint refusals/advisories report-only. Early control-only failures and source1 evidence retained without counting as new-tree pass. No configured/native-child/browser/stress/T3/T4 proof claimed. Earlier A-21000 census source1 independently checked1098paths; fresh item notes/additive accessor census and unchanged caller interfaces read. C1/C2 final execution/caller verification awaits exact-head configured receipt; no criterion mark added in this source pass.
+
+### rev-41 · 2026-11-24T11:11:27.683Z
+
+verdict: review
+result: clear
+by: rev-41 [reviewer]
+run: rev-41-20261124-1955-final
+commit: 6301b9f289c65b142c6d5884111797f975063739
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review clear; no findings. Exact head 6301b9f289c65b142c6d5884111797f975063739 remains unchanged from source2 rev-41-20261124-1955-source2 / A-22804, which resolved both earlier medium findings. Run 77a6cd14-81e0-48ee-8a04-e436f70fc454 is finished/passed. A-22872 records exit 0; bound verification tree c2d269f8fe0eb062ca9be4f70a557756959a2654 matches the reviewed commit outside documented tracker/rulebook exclusions.
+
+C1 verified: `fixture cleanup owns the acquired hub after cards rejection`, `...readiness rejection`, `...rejected close rejection`, and `caller cancellation retains seams and root while rejected startup is still closing` each have one base pass plus five separate load-gate pass receipts. Their 5/5 summaries are A-22872:14406,14419,14794,14822, with positive file finishes. Source2 established exact original error preservation, secondary cleanup receipt ownership, confirmed daemon/log/socket cleanup, guarded root/seam refusal before repair, and cancellation joining before restoration. Embedded/fake-boundary controls are not claimed as native child launch coverage.
+
+C2 verified: A-21000 census/source2 compatibility analysis and additive accessor consumer inventory remain valid at unchanged head. Configured file receipts for aide-migration, project-hub-lifecycle and orphan/socket/worker fixture lifecycle regressions pass. This is not a claim all 1,098 census paths executed.
+
+T0/T1/fallback all T2/239 selected T3 importer files/Web exit 0; remaining T3 deferred to merge batch, T4 unexecuted. Linux x64 droplet c-8 nyc1, Node v24.21.0, Neovim v0.12.5, two workers, isolated Chrome for Testing 156.0.8078.4 headless shell/Playwright 1248. Platform/binary prerequisite skips retained; budgets/ratchet/lint advisory checks report-only, not enforced timing passes; no cache reuse. Detailed receipt/criteria map A-22875 at .cland/artifacts/A-22875-t-1955-final-evidence-review-clear-at-6301b9f28.md. No Reviewer tests/native/browser/provider work or source edits.
+
+Criteria: C1 verified, C2 verified.

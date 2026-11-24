@@ -3,7 +3,7 @@ id: T-1971
 kind: task
 title: Git-maintenance ownership probes time out after 200 ms under hub load and keep territory ownership for a collector that is already gone
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1727
 branch: t/T-1971-git-maintenance-ownership-probes-time
 created: 2026-11-18T12:31:16.257Z
-updated: 2026-11-24T09:49:37.419Z
+updated: 2026-11-24T11:10:10.629Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ Ownership inspection gets a load-tolerant bound and retries with backoff before 
 
 - [x] C1. With a fake probe that times out twice and then reports no group, recovery releases territory ownership on the retry without a restart, and the intermediate state reads as unknown, never as alive (test).
   - done: impl-1971 · 2026-11-24T09:44:35.453Z
+  - verified: rev-41 [reviewer] · run rev-41-20261124-1971-final · 2026-11-24T11:10:09.847Z · commit bea7e7296fb8f29f3868992660209e9dc68ba9c7
 - [x] C2. A probe that keeps timing out reports a structured "inspection unavailable" diagnostic with its attempt count, and every caller of the ownership probes is listed (rule 41) (test).
   - done: impl-1971 · 2026-11-24T09:44:36.142Z
+  - verified: rev-41 [reviewer] · run rev-41-20261124-1971-final · 2026-11-24T11:10:09.848Z · commit bea7e7296fb8f29f3868992660209e9dc68ba9c7
 
 ## Comments
 
@@ -58,3 +60,26 @@ Full source review clear atbea7e7296fb8f29f3868992660209e9dc68ba9c7 against its 
 Async/sync recovery share inspectionBackoff: initial inspection,50ms/100ms delayed retries only on unknown, stop on gone/mismatch/alive. Probe bounds increase200ms→1000ms; neither unknown nor exhaustion authorizes kill or owner removal. Later confirmed gone clears durable owner and only matching dead same-host gc.pid. Confirmed alive keeps existing independently observed signal policy, with separate750ms post-initial observation window; its retries/probe completion may extend elapsed time and docs state this. Exhaustion adds structured inspection{state:unknown,reason:inspection unavailable,attempts} to MaintenanceRecoveryRequired while keeping owner/report/message behavior. Existing owner tokens/birth/group validation retained. Sync seam is additive; wait(ms) call sites and listed consumers checked. No wire/config/help/role permission change.
 
 Four new fake policy cases cover unknown/unknown/gone async+sync, retained intermediate owner/no signals, final matching file removal, and permanent-unknown exhaustion3rounds/50+100ms fake backoff/PID reporting/structured error/preserved owner. No native probe/collector launch or wall-clock timer proof claimed; every fixture filesystem operation awaited. Existing recovery safety regressions retained. A-22780/A-22797 report actual prior red unresolved ownership/process inspection unavailable, corrected initial red head8d3968920; final root typecheck/full lint exit0 and65reachableT1files/893pass,0fail/skip/cancel on localmacOS Node24.21. These are selected/static receipts, not configured/native-under-load proof. Consumer inventory includes territory async/sync gates, owned runner finish/terminate, daemon/doctor/readers and all-tier tests. C1/C2 execution verification remains pending exact-head configured receipt; no partial source marks added.
+
+### impl-1971 · 2026-11-24T11:08:57.074Z
+
+Configured receipt a1592474-8959-424a-90e9-790a9a37eec5 passed at exact reviewed head bea7e7296fb8f29f3868992660209e9dc68ba9c7, artifact A-22868. Verified log has T0/T1/T2/selected T3/Web exit 0 and all four new recovery case names passed. Executor droplet c-8 nyc1, Linux x64 6.8.0-149-generic, Node 24.21.0, Neovim 0.12.5, Chrome for Testing headless shell 156.0.8078.4 (chromium_headless_shell-1248). Lifetime 4331 s, cost USD 0.3008, workers 2. Duration budget findings are report-only; platform/prerequisite skips remain recorded in provenance. Selected T3 execution is duration-check coverage; remaining T3 belongs to merge batch, not a whole-T3/T4 pass. Reviewer is settling final C1/C2 verdict; no source changes or resubmission.
+
+### rev-41 · 2026-11-24T11:10:09.848Z
+
+verdict: review
+result: clear
+by: rev-41 [reviewer]
+run: rev-41-20261124-1971-final
+commit: bea7e7296fb8f29f3868992660209e9dc68ba9c7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review clear; no findings. Head bea7e7296fb8f29f3868992660209e9dc68ba9c7 is unchanged from source review rev-41-20261124-1971-source1 / A-22798. Configured run a1592474-8959-424a-90e9-790a9a37eec5 finished/passed; A-22868 records exit 0. Bound verification tree 0ac154c313a8b14510395e8f9ea1c2ebb581d47d matches the commit outside documented tracker/rulebook exclusions.
+
+C1 verified: async `two unavailable inspections retry without signalling and release a confirmed gone collector` and sync `synchronous recovery retries two unavailable inspections before releasing a gone collector` each have one base pass and five passing load-gate finishes. C2 verified: async/sync `recovery preserves unknown ownership and reports exhausted inspection attempts` each likewise pass base plus 5/5 load. Positive file completion receipts accompany each. Source review established unknown stays unsignalled and retained, later confirmed gone releases in the same call, exhausted unknown reports structured reason/three attempts, and the caller inventory/guides are complete. These are fake-policy regressions, not real ps timeout wall-time measurements. Existing native consumer files git-maintenance-cli, git-maintenance, system-processes, executable-path, and T2 startup file finish pass.
+
+T0/T1/fallback all T2/246 selected T3 importer files/Web exit 0. Remaining T3 is merge-batch scope; T4 unexecuted. Linux x64 droplet c-8 nyc1, Node v24.21.0, Neovim v0.12.5, two workers. Browser: isolated Chrome for Testing 156.0.8078.4 headless shell, Playwright 1248. Platform/binary skips remain explicit; budgets/ratchet/lint and skip-reason advisory checks report-only, no cache reuse. Details A-22873 at .cland/artifacts/A-22873-t-1971-final-evidence-review-clear-at-bea7e7296.md. Reviewer ran no tests/native/browser/provider work or source edits.
+
+Criteria: C1 verified, C2 verified.

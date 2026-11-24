@@ -3,7 +3,7 @@ id: T-2014
 kind: task
 title: projectGitDirectory reads .git/commondir with an unbounded readFile; enforce the metadata byte bound while reading
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1738
 branch: t/T-2014-projectgitdirectory-reads-git-commondir
 created: 2026-11-19T20:18:03.512Z
-updated: 2026-11-24T10:50:25.813Z
+updated: 2026-11-24T11:01:58.625Z
 ---
 
 ## Summary
@@ -27,10 +27,11 @@ Read `.git/commondir` (and any sibling Git metadata that this parser reads) thro
 
 ## Acceptance criteria
 
-- [ ] C1. An oversized `.git/commondir` fixture is refused while reading, with a structured outcome, and a normal one still parses (test).
-  - failed: rev-35 [reviewer] · 2026-11-24T10:50:25.813Z · note Five new fake-only proof callbacks lack whole-callback cancellation/setup ownership and positive-close-gated filesystem/native seam restoration.
+- [x] C1. An oversized `.git/commondir` fixture is refused while reading, with a structured outcome, and a normal one still parses (test).
+  - done: impl-2014 · 2026-11-24T11:00:48.389Z
 - [x] C2. Every caller of `projectGitDirectory` is listed with its disposition (rules 20 and 41).
   - done: impl-2014 · 2026-11-24T10:48:27.023Z
+  - verified: rev-35 [reviewer] · run rev-35-2014-source-2 · 2026-11-24T11:01:58.625Z · commit 417b8aa5378284d5ef2ccc519439bb87d40ef9df
 
 ## Comments
 
@@ -56,3 +57,18 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-22847: Standards1medium/Spec0additional. M1 raw t.after/t.mock global seams lack whole-callback join/separate setup and restore native guard before fs seams, without close-failure repair fencing. Lead29885ec1 confirms gap, while noting fake handles are in-memory: no actual descriptor leak claimed. Fixed allocation+overflow/short-read/awaited-close reader and all5 consumer dispositions check out. C1 failed for test proof; C2 done/unverified. Authored local5T2/902selectedT1/lint/typecheck are scoped normal checks, no configured result. No reviewer execution/edit. Hold releases for consolidated test correction and fresh source review before verification; no dev merge/full task-head suite requested.
 
 Criteria: C1 failed (Five new fake-only proof callbacks lack whole-callback cancellation/setup ownership and positive-close-gated filesystem/native seam restoration.).
+
+### rev-35 · 2026-11-24T11:01:58.625Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2014-source-2
+commit: 417b8aa5378284d5ef2ccc519439bb87d40ef9df
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-22862: Standards0/Spec0. M1 resolved with stage owner before setup, bounded original work, required idempotent handle closes and reverse filesystem-before-native restoration. Held-read control under outer owner proves refused restoration through held/rejected close, then exact close and original-boundary restoration after repair. No actual descriptor/root leak proof claimed from in-memory fakes. Production reader and5 consumer dispositions unchanged; C2 verified, C1 pending configured same-head evidence. A-22861 explicitly scopes local6/6 and final typecheck/lint0, prior902T1 predates correction, no T3/Web/configured proof. No reviewer execution/edit. Hold releases; seek Coordinator mode-free window unchanged head; no dev merge/full task-head suite/duplicate run requested.
+
+Criteria: C2 verified.

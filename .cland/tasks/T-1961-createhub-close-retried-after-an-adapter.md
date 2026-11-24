@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-2076
 blocked_by: []
-topic: null
+topic: topic-1742
 branch: t/T-1961-createhub-close-retried-after-an-adapter
 created: 2026-11-18T07:18:35.705Z
-updated: 2026-11-24T10:55:08.155Z
+updated: 2026-11-24T10:58:42.588Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Each close owner records its own successful native close and makes a retried clo
 
 - [ ] C1. After a controlled adapter-close failure, a retried createHub close finishes the remaining parts without closing the ProcessTable or Store twice, and reports the original failure (test).
 - [ ] C2. Every caller that retries hub close (harness startHub, daemon stop, CLI hub stop) is listed with its disposition (rule 20 and rule 41).
+
+## Comments
+
+### impl-1961 · 2026-11-24T10:58:42.588Z
+
+C2 consumer inventory: docs/evidence/T-1961-consumers.md lists startHub (retry owner), daemon stop (base/sessions independently retried), CLI hub stop/serve (routes to daemon), createHub, projectSessions rollback, Sessions, Store/ProcessTable readers, tests in all tiers and shipped docs/skills/QA/client dispositions. Signatures and stored/wire bytes unchanged. Red: second close raised Error: database is not open at Store.close; focused fake-harness T2 file then passed 12/12 locally on darwin arm64, Node 24.21.0.

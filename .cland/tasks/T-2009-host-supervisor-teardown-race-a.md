@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-2075
 blocked_by: []
-topic: null
+topic: topic-1740
 branch: t/T-2009-host-supervisor-teardown-race-a
 created: 2026-11-19T14:42:13.379Z
-updated: 2026-11-24T10:55:03.359Z
+updated: 2026-11-24T11:06:40.587Z
 ---
 
 ## Summary
@@ -28,3 +28,13 @@ Find why a replacement started during held restart-owner shutdown can escape the
 
 - [ ] C1. A deterministic regression forces the replacement to start at the hold point, fails on the current code, and passes after the fix (test).
 - [ ] C2. No `host serve` process outlives the file in a post-run census on Linux (test).
+
+## Comments
+
+### impl-2009 · 2026-11-24T10:57:14.327Z
+
+Initial audit: specified hold regression is still present, including native birth check before release and empty post-file cwd census. closeSupervisors/restartOwners are file-local; production supervisor.sh is unchanged since triage. No source edits yet; native red/green admission queued by Coordinator. Local macOS forced ordering evidence will be distinguished from original Linux timing.
+
+### impl-2009 · 2026-11-24T11:06:40.587Z
+
+A-22865 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-22865-t-2009-deterministic-discovery-loss-red-and-green.md) records local macOS arm64 Node24.21.0 red/green. Discovery-loss control: replacement relocates cwd after owner stop, with durable pid/cwd receipt and independent native census. Current teardown failed literal 'replacement started during teardown is joined' (parent1); capturing births before owner stop plus final discovery passed 4/4 and empty post-file census. This control does not establish original Linux timing cause. Linux C2 pending reviewed-head mode-free verification. Audit: closeSupervisors/restartOwners are file-local; only per-file test guidance references flow; shared cleanup and production supervisor unchanged; no reachable T1 test from test-only diff.

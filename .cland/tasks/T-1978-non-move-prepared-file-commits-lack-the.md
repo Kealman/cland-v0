@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1737
 branch: t/T-1978-non-move-prepared-file-commits-lack-the
 created: 2026-11-18T13:21:59.090Z
-updated: 2026-11-24T10:54:49.195Z
+updated: 2026-11-24T10:55:26.500Z
 ---
 
 ## Summary
@@ -31,6 +31,7 @@ Apply the same-token committing-phase guard to every prepared file commit, so an
   - done: impl-1978 · 2026-11-24T10:45:54.888Z
 - [x] C2. Every PreparedOperations commit kind and its callers are listed with their disposition (rule 41).
   - done: impl-1978 · 2026-11-24T10:54:32.223Z
+  - verified: rev-35 [reviewer] · run rev-35-1978-source-2 · 2026-11-24T10:55:26.500Z · commit e632ccde9d3803662a30e79fa0af814b27442c48
 
 ## Comments
 
@@ -52,3 +53,18 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-22845: Standards1medium/Spec0additional. M1 frozen closure manifest SHA256 mismatches reviewed prepared.ts; package hash validation and host-agent-closure T1 consume those exact bytes. Supported generator and docs require regeneration; lead4f2c95b6 confirms omission. Guard placement, publish/append real directory-fence/retained-plan/fresh-owner controls and existing move coverage otherwise check out by source. C2 failed; C1 remains done/unverified. Reported local42T2/39conservativeT1/lint/typecheck cannot cover omitted frozen-manifest control. No reviewer execution/edit. Hold releases for manifest/census correction and fresh source review before verification; no dev merge/full task-head suite requested.
 
 Criteria: C2 failed (Frozen closure.json still pins old prepared.ts bytes; packaging validation and T1 regeneration consumer were not migrated.).
+
+### rev-35 · 2026-11-24T10:55:26.500Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1978-source-2
+commit: e632ccde9d3803662a30e79fa0af814b27442c48
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-22859: Standards0/Spec0; M1 resolved. Manifest changes exactly prepared.ts hash; independent SHA256 checks match all50 listed pinned files. Census now names package hash validator/bundle delivery and frozen graph/T3 consumers. Guard/tests byte-identical to source1; kind/caller dispositions verified as C2. C1 pending actual same-head configured fake-control receipts. Request reports T1 closure5/5 and full typecheck/lint0; T3 delivery unexecuted locally, no configured result yet. No reviewer execution/generator/edit. Hold releases; seek Coordinator mode-free window unchanged head; no dev merge/full task-head suite/duplicate run requested.
+
+Criteria: C2 verified.

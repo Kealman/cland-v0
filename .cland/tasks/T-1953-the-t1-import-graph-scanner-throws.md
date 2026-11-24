@@ -2,8 +2,8 @@
 id: T-1953
 kind: task
 title: "The T1 import-graph scanner throws \"incomplete import graph: indirect require\" on suite-remote-budget.test.ts's require-shaped fixture text, forcing conservative fallback"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1724
 branch: t/T-1953-the-t1-import-graph-scanner-throws
 created: 2026-11-17T21:19:05.454Z
-updated: 2026-11-24T10:09:02.319Z
+updated: 2026-11-24T11:10:26.215Z
+closed: 2026-11-24T11:10:26.215Z
 ---
 
 ## Summary
@@ -70,3 +71,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear. Exact-head e8294b83/A-22817/canonicaltree250972ec finishedpassed. C1 named real-source/indirect-require regression11913pass +5/5gate12253; all12task-selection/19remote-budget/26accounting bases pass. C2 source classifications/static9→8projection retained with source-base correction; not actual batch/suite speedup. A-22791 resolves historicalL1 replay placement without head change. T0/T1/fallbackT2/selectedT3/Web exit0;7selectedT3/T4files100identities once/no repetitions, restT3batch/T4unexecuted. Noncached Linuxx64/c-8nyc1/Node24.21/Nvim0.12.5/workers2/HeadlessShell1248-CfT156. Supplied7462pass1Macskip0fail; advisory budgets retained. No current findings, no reviewer runs/edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-24T11:10:26.215Z
+
+Merged 5013bf03f3ae35c0cc55f7a9f5f6cc5de72d1a52 onto dev.

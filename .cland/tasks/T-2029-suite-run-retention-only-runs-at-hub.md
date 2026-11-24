@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T08:02:00.111Z
-updated: 2026-11-24T09:00:14.152Z
+updated: 2026-11-24T11:03:59.196Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Give retention its own bounded schedule, for example a pass every few minutes wh
 
 - [ ] C1. With no suite launches, retention still completes passes on its own schedule until the backlog is swept (test with a fake clock).
 - [ ] C2. Passes never overlap, and the per-pass bounds are unchanged (test).
+
+## Comments
+
+### coord · 2026-11-24T11:03:59.196Z
+
+Live observation on hub #101 (2514c3d9a), from cland-impl, 2026-11-24 10:04 to 11:02Z. Contrary to this item's premise, retention now runs a full live pass over all ~5,560 known runs on every landing or finished run. There were eight passes, at 10:04, 10:05, 10:07, 10:16, 10:26, 10:36, 10:52 and 10:57; each removed 0, kept all, and wrote about 1,000 lines. That's 7,979 suite-retention lines in an hour, and the 10:57 pass took 8,017 ms. It coincided with 5 s tracker stalls. The fix should also bound the pass: incremental work rather than a full sweep per event, and one summary line rather than a line per run. Recheck the "only at start and launch" claim at the current dev before implementing.
