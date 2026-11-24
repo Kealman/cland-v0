@@ -28,6 +28,7 @@ export async function runWorkerWithAdmission(options: {
   clock: Clock;
   run: () => Promise<WorkerOutcome>;
   log: (line: string) => void;
+  diagnostic?: (line: string) => void;
   persist: (receipt: WorkerCompletion) => Promise<void>;
 }): Promise<void> {
   const admission = await waitForWorkerAdmission(options);
@@ -38,7 +39,12 @@ export async function runWorkerWithAdmission(options: {
   }
   const signal = options.signal();
   if (signal) outcome = { ...outcome, code: signal === 'SIGINT' ? 130 : 143, cause: `worker interrupted by ${signal}` };
-  options.log(`\nFinished: exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n`);
+  try { options.log(`\nFinished: exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n`); }
+  catch (error) {
+    try { options.diagnostic?.(`secondary diagnostic: worker terminal logging failed: ${String(error)}`); }
+    catch { /* Diagnostic sinks cannot replace the worker outcome or skip persistence. */ }
+  }
+  // Local readers treat publication as done; keep it after all diagnostic callbacks.
   await options.persist({ ...outcome, ...suiteCommandOutcome(outcome.code, outcome.cause), finished: options.clock.now().toISOString() });
 }
 

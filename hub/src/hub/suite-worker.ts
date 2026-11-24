@@ -42,6 +42,7 @@ export async function suiteWorker(input: string, native = workerNative): Promise
     signal: () => signal, clock: realClock,
     run: () => runAdmittedWorker(job, () => signal, native),
     log: line => { process.stdout.write(line); },
+    diagnostic: line => { process.stderr.write(`${line}\n`); },
     persist: async receipt => {
       await writeFile(`${job.result}.tmp`, JSON.stringify(receipt), { mode: 0o600 });
       await rename(`${job.result}.tmp`, job.result);
