@@ -12,13 +12,15 @@ and lapsed guarded takeover (a config parser failure after acquisition is the
 receipt, with final released-lock assertion). The lapsed start case proves launch
 admission only; lock identity tests prove guarded replacement.
 
-This file reads native identity directly; its existing T2 classification is a
-native-reader follow-up, separate from the embedded fixture default. Run this
-file alone with `node --test hub/test/hub-lock-readers.test.ts` after
-cover-quiet releases and disk/load checks. Preserve `edges.test.ts`,
-`orphan-servers.test.ts`, `doctor.test.ts`, `doctor-cli.test.ts`, `daemon.test.ts`
-and `telegram-polling-restart.test.ts` unedited and run them as targeted files;
-the native T3 lifecycle cases are outside ordinary mode-free item verification.
+This T2 file passes fixture identity through CLI start/status/stop and doctor's
+`lockOptions`. Offline migration takes `hostIdentity` and a `LockProcessTable`
+through its optional options argument, including acquisition and release. Omitted
+options retain native production readers. The shared `fixtureNativeGuard` guards
+all child-process entry points, custom promisifiers and cleanup, with positive
+controls. The lapsed-start test replaces only its expected launch with a fake.
+Run this file alone with `node --test hub/test/hub-lock-readers.test.ts` after
+cover-quiet releases and disk/load checks. Native lifecycle evidence remains in
+the separately selected T3 files.
 Every native-to-embedded restart carries captured native `lockIdentity` rather
 than the synthetic fixture identity. Doctor's matrix fixture supplies the same
 fixture identity as its embedded hub through `ProjectReaders.lockOptions`.

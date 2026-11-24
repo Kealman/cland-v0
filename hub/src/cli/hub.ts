@@ -75,7 +75,7 @@ export async function describe(s: HubStatus): Promise<string> {
 }
 
 /** Whether `pid` is the project's hub: the process holding `.cland/hub.lock`, started when the lock says. */
-const ownsProject = (lockFile: string, pid: number, readers: typeof import('../hub/lock.ts')): boolean => readers.localLiveHolder(lockFile)?.pid === pid;
+const ownsProject = (lockFile: string, pid: number, readers: typeof import('../hub/lock.ts'), lockOptions?: HubLockOptions): boolean => readers.localLiveHolder(lockFile, lockOptions)?.pid === pid;
 
 /**
  * What `hub.json` says and whether it is true: a live hub, a stale file (its pid is gone, or is a live
@@ -233,7 +233,7 @@ async function status(l: Layout, json: boolean, io: Io, history = false, lockOpt
   }
 }
 
-async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
+async function stop(l: Layout, rootKnown: boolean, io: Io, lockOptions?: HubLockOptions): Promise<number> {
   const root = l.root;
   if (!existsSync(l.lock) && !readDiscovery(l.discovery)) {
     io.out(`no hub running for ${root}\n`);
@@ -241,7 +241,7 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
   }
   const readers = await import('../hub/lock.ts');
   const { readForeignHolder, describeForeignHolder, liveHolder } = readers;
-  const foreign = readForeignHolder(l.lock);
+  const foreign = readForeignHolder(l.lock, lockOptions);
   if (foreign) {
     io.err(`cland: ${describeForeignHolder(foreign)}; stop it on that host; no local process signalled\n`);
     return 1;
@@ -256,7 +256,7 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
     return 1;
   }
   if (pidAlive(d.pid)) {
-    const ownedBeforeStop = ownsProject(l.lock, d.pid, readers);
+    const ownedBeforeStop = ownsProject(l.lock, d.pid, readers, lockOptions);
     let asked = true;
     try {
       await askHub(d, 'hub.stop');
@@ -275,7 +275,7 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
       }
       asked = false;
     }
-    const successor = readForeignHolder(l.lock);
+    const successor = readForeignHolder(l.lock, lockOptions);
     if (successor) {
       io.err(`cland: ${describeForeignHolder(successor)}; no local process signalled\n`);
       return 1;
@@ -287,8 +287,8 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
       }
       // The socket did not take the request, or the hub did not leave in time: the signal's turn — but only
       // for the process that holds the project's lock. Any other is a stranger behind a reused pid.
-      if (readForeignHolder(l.lock)) return 1;
-      if (!ownsProject(l.lock, d.pid, readers)) {
+      if (readForeignHolder(l.lock, lockOptions)) return 1;
+      if (!ownsProject(l.lock, d.pid, readers, lockOptions)) {
         if (asked && ownedBeforeStop) {
           io.err(`cland: hub stopped, lock released, process still alive (pid ${d.pid}); left it running\n`);
           return 1;
@@ -311,14 +311,14 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
   // A hub that stopped cleanly removed its own files. One that died without cleaning up leaves hub.json
   // naming it, and its socket: those go, unless another hub holds the project's lock by now (its socket
   // may already stand at that path). A newer hub's hub.json is never touched.
-  if (readForeignHolder(l.lock)) return 0;
+  if (readForeignHolder(l.lock, lockOptions)) return 0;
   if (readDiscovery(l.discovery)?.pid === d.pid) {
     removeDiscovery(l.discovery, d.pid);
     // A copied discovery may still name the old hub after the canonical file names a replacement.
     const canonical = layout(root).discovery;
     const current = rootKnown ? readDiscovery(canonical) : null;
     const ownsSocket = l.discovery === canonical || current?.pid === d.pid;
-    if (rootKnown && ownsSocket && liveHolder(l.lock) === null) rmSync(d.socket, { force: true });
+    if (rootKnown && ownsSocket && liveHolder(l.lock, lockOptions) === null) rmSync(d.socket, { force: true });
   }
   return 0;
 }
@@ -523,7 +523,7 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
     case 'status':
       return status(l, rest.includes('--json'), io, rest.includes('--history'), lockOptions);
     case 'stop':
-      return stop(l, target !== null, io);
+      return stop(l, target !== null, io, lockOptions);
     case 'audit':
       return audit(root, rest, io);
     case 'unmute':

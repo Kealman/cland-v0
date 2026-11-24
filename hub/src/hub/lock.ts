@@ -162,9 +162,9 @@ export function describeForeignHolder(info: NonNullable<ReturnType<typeof foreig
 }
 
 /** Local PID ownership only, for callers that may signal or remove local discovery. */
-export function localLiveHolder(path: string): LockHolder | null {
+export function localLiveHolder(path: string, options?: HubLockOptions): LockHolder | null {
   const holder = readLock(path);
-  if (!holder || holder.hostIdentity && foreignLockHolder(holder, lockHostIdentity())) return null;
+  if (!holder || holder.hostIdentity && foreignLockHolder(holder, options?.hostIdentity ?? lockHostIdentity())) return null;
   return holderAlive(holder) ? holder : null;
 }
 

@@ -13,6 +13,7 @@ import cp from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 import { fixtureLockIdentity, tempProject } from './harness.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
 import { layout } from '../src/project.ts';
 import { readForeignHolder, liveHolder, liveHolderAsync, readLock, acquireLock, HubLocked } from '../src/hub/lock.ts';
 import { runHub, startProjectHub } from '../src/cli/hub.ts';
@@ -21,6 +22,7 @@ import { migrateOffline } from '../src/tracker/offline-migrate.ts';
 import { localHubInRows } from '../src/orphans.ts';
 
 async function fixture(t: test.TestContext, age = 5000) {
+  await fixtureNativeGuard(t);
   const root = await tempProject(t), l = layout(root);
   mkdirSync(l.tasks, { recursive: true });
   const local = fixtureLockIdentity(fixtureEnvironment(root, process.env));
@@ -35,7 +37,9 @@ async function fixture(t: test.TestContext, age = 5000) {
   const env = fixtureEnvironment(root, process.env, { CLAND_HUB_FILE: l.discovery });
   process.env = env;
   t.after(() => { process.env = previousEnv; });
-  return { root, l, holder, local, io, output: () => out + err, env };
+  const lockOptions = { hostIdentity: local };
+  const migrationOptions = { hostIdentity: local, processes: { alive: () => assert.fail('no local migration liveness probe'), started: (pid: number) => { assert.equal(pid, process.pid); return 'fixture-start'; } } };
+  return { root, l, holder, local, io, output: () => out + err, env, lockOptions, migrationOptions };
 }
 
 test('start refuses fresh foreign holder before spawning; stop retains both files without local signals', async t => {
@@ -45,8 +49,8 @@ test('start refuses fresh foreign holder before spawning; stop retains both file
   syncBuiltinESMExports();
   t.after(() => { spawn.mock.restore(); syncBuiltinESMExports(); });
   const kill = t.mock.method(process, 'kill', () => { assert.fail('foreign PID must not be probed or signalled'); });
-  assert.equal(await startProjectHub(f.root, f.io, { client: 'cli', parentPid: process.pid, cwd: f.root }, false, f.env), 1);
-  assert.equal(await runHub(['stop'], f.root, f.io), 1);
+  assert.equal(await startProjectHub(f.root, f.io, { client: 'cli', parentPid: process.pid, cwd: f.root }, false, f.env, f.lockOptions), 1);
+  assert.equal(await runHub(['stop'], f.root, f.io, f.lockOptions), 1);
   assert.match(f.output(), /other-host/);
   assert.match(f.output(), new RegExp(`pid ${process.pid}`));
   assert.match(f.output(), /heartbeat age \d+s/);
@@ -59,12 +63,12 @@ test('start refuses fresh foreign holder before spawning; stop retains both file
 for (const age of [5000, 65000]) test(`status and doctor describe foreign age ${age} without local probes`, async t => {
   const f = await fixture(t, age);
   const kill = t.mock.method(process, 'kill', () => { assert.fail('foreign PID must not reach local probes'); });
-  assert.equal(await runHub(['status', '--json'], f.root, f.io), age < 60000 ? 0 : 1);
+  assert.equal(await runHub(['status', '--json'], f.root, f.io, f.lockOptions), age < 60000 ? 0 : 1);
   const status = JSON.parse(f.output());
   assert.equal(status.hostname, 'other-host');
   assert.equal(status.startable, age > 60000);
   assert.ok(status.heartbeatAgeMs >= age);
-  const checks = await checkProject(f.root, { started: async () => assert.fail('foreign PID must not reach ps'), territoryProblems: () => null }, f.env);
+  const checks = await checkProject(f.root, { lockOptions: f.lockOptions, started: async () => assert.fail('foreign PID must not reach ps'), territoryProblems: () => null }, f.env);
   const hub = checks.find(c => c.name === 'hub')!;
   assert.match(hub.detail, /other-host.*heartbeat age/);
   if (age > 60000) assert.match(hub.detail, /lapsed, startable/);
@@ -100,11 +104,11 @@ for (const age of [5000, 65000]) test(`offline migration handles foreign age ${a
   // A malformed config supplies a positive receipt of admission after stale-lock reclamation.
   writeFileSync(f.l.config, 'not valid toml [');
   if (age < 60000) {
-    await assert.rejects(migrateOffline(f.root, true), /other-host.*heartbeat age/);
+    await assert.rejects(migrateOffline(f.root, true, undefined, undefined, f.migrationOptions), /other-host.*heartbeat age/);
     assert.equal(readFileSync(f.l.lock, 'utf8'), JSON.stringify(f.holder));
     assert.equal(kill.mock.callCount(), 0);
   } else {
-    await assert.rejects(migrateOffline(f.root, true), /TOML|parse|Unexpected|Invalid/i);
+    await assert.rejects(migrateOffline(f.root, true, undefined, undefined, f.migrationOptions), /TOML|parse|Unexpected|Invalid/i);
     assert.equal(existsSync(f.l.lock), false, 'migration acquired and released its replacement lock');
   }
 });
@@ -115,7 +119,7 @@ test('start treats a lapsed foreign holder as eligible for the existing launch p
   syncBuiltinESMExports();
   t.after(() => { spawn.mock.restore(); syncBuiltinESMExports(); });
   const kill = t.mock.method(process, 'kill', () => assert.fail('no foreign PID probe'));
-  await assert.rejects(startProjectHub(f.root, f.io, { client: 'cli', parentPid: process.pid, cwd: f.root }, false, f.env), /launch-admitted/);
+  await assert.rejects(startProjectHub(f.root, f.io, { client: 'cli', parentPid: process.pid, cwd: f.root }, false, f.env, f.lockOptions), /launch-admitted/);
   assert.equal(spawn.mock.callCount(), 1);
   assert.equal(kill.mock.callCount(), 0);
 });
@@ -125,7 +129,7 @@ for (const age of [65000, null]) test(`stop preserves foreign holder with ${age 
   if (age === null) writeFileSync(f.l.lock, JSON.stringify({ ...f.holder, heartbeat: 'unknown' }));
   const lock = readFileSync(f.l.lock, 'utf8'), discovery = readFileSync(f.l.discovery, 'utf8');
   const kill = t.mock.method(process, 'kill', () => assert.fail('no foreign local probe or signal'));
-  assert.equal(await runHub(['stop'], f.root, f.io), 1);
+  assert.equal(await runHub(['stop'], f.root, f.io, f.lockOptions), 1);
   assert.match(f.output(), /other-host/);
   assert.equal(kill.mock.callCount(), 0);
   assert.equal(readFileSync(f.l.lock, 'utf8'), lock);
@@ -152,7 +156,7 @@ test('a failed held stop preserves a foreign successor with the same numeric PID
   writeFileSync(f.l.discovery, JSON.stringify({ ...JSON.parse(readFileSync(f.l.discovery, 'utf8')), socket: socketPath }));
   writeFileSync(f.l.lock, JSON.stringify({ pid: process.pid, started: null }));
   const kill = t.mock.method(process, 'kill', (_pid: number, signal?: NodeJS.Signals | number) => { assert.equal(signal, 0, 'only initial local liveness is allowed'); return true; });
-  const stopping = runHub(['stop'], f.root, f.io);
+  const stopping = runHub(['stop'], f.root, f.io, f.lockOptions);
   try {
     await until(() => entered, { what: 'stop request reached held socket', timeoutMs: 3000 });
     writeFileSync(f.l.lock, JSON.stringify(f.holder));
@@ -175,7 +179,7 @@ for (const replace of [false, true]) test(`held offline migration ${replace ? 'f
   let entered = false;
   const config = '[tracker]\nlevels = [["release", "category"], "epic"]\n';
   writeFileSync(f.l.config, config);
-  const running = migrateOffline(f.root, true, undefined, undefined, { clock, readText: async path => {
+  const running = migrateOffline(f.root, true, undefined, undefined, { ...f.migrationOptions, clock, readText: async path => {
     if (path === f.l.config) { entered = true; await release.promise; }
     return readFileSync(path, 'utf8');
   } });

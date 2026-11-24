@@ -10,7 +10,7 @@ import { readdir, readFile, realpath } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { layout, projectRoot, readDiscovery } from '../project.ts';
-import { acquireLock, HUB_LOCK_HEARTBEAT_MS, HubLocked, readForeignHolder, describeForeignHolder } from '../hub/lock.ts';
+import { acquireLock, HUB_LOCK_HEARTBEAT_MS, HubLocked, readForeignHolder, describeForeignHolder, type LockHostIdentity, type LockProcessTable } from '../hub/lock.ts';
 import { Journal, journalPath, readJournal } from '../hub/journal.ts';
 import { jsonLinesLog } from '../log.ts';
 import { defaultConfig, parseConfig } from '../init/config.ts';
@@ -23,14 +23,14 @@ import { Ladder, kindsFor } from './kinds.ts';
 import { planMigration, type MigrationPlan, type ClosingTime, parseSizeAssignments } from './migrate.ts';
 import { Tracker, type Actor } from './tracker.ts';
 
-export async function migrateOffline(cwd: string, dryRun: boolean, caller?: FrameActor, sizesFile?: string, options: { clock?: Clock; readText?: (path: string) => Promise<string> } = {}): Promise<MigrationPlan> {
+export async function migrateOffline(cwd: string, dryRun: boolean, caller?: FrameActor, sizesFile?: string, options: { clock?: Clock; readText?: (path: string) => Promise<string>; hostIdentity?: LockHostIdentity; processes?: LockProcessTable } = {}): Promise<MigrationPlan> {
   const root = projectRoot(cwd);
   if (await realpath(cwd) !== await realpath(root)) throw new Error('task migrate must run from the project root shell, not a linked worktree or subdirectory');
   const l = layout(root);
   if (!existsSync(l.tasks)) throw new Error('task migrate requires an existing tracker; run cland init before migrating');
   const clock = options.clock ?? realClock;
   const readText = options.readText ?? (path => readFile(path, 'utf8'));
-  const lockOptions = { hostIdentity: lockHostIdentity(), now: () => clock.now() };
+  const lockOptions = { hostIdentity: options.hostIdentity ?? lockHostIdentity(), now: () => clock.now() };
   const foreign = readForeignHolder(l.lock, lockOptions);
   if (foreign?.active) throw new Error(describeForeignHolder(foreign));
   const discovery = foreign ? null : readDiscovery(l.discovery);
@@ -39,7 +39,7 @@ export async function migrateOffline(cwd: string, dryRun: boolean, caller?: Fram
     if (answering) throw new Error('the hub is running; stop the hub before task migrate');
   }
   let lock;
-  try { lock = acquireLock(l.lock, undefined, lockOptions); }
+  try { lock = acquireLock(l.lock, options.processes, lockOptions); }
   catch (err) {
     if (err instanceof HubLocked) {
       const holder = readForeignHolder(l.lock, lockOptions);
