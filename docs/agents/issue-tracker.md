@@ -1,5 +1,9 @@
 # Issue tracker: cland
 
+If merge reports `review-pending` or `qa-pending` after a clear verdict, wait for
+the item to become `ready`. Inspect its status with `cland task view T-n` before
+merging. Stale verdicts still require fresh evidence.
+
 Automatic `ready` requires both the current verdict/criteria gate and a finished,
 passed verification receipt at the exact branch tip, with a completion timestamp,
 when the running project config sets `verification.test` or any tier command.

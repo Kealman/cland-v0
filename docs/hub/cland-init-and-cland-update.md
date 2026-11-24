@@ -160,6 +160,11 @@ A missing root install is reported for Node projects. Preparation never installs
 
 ### The merge gate
 
+An immediate merge after a clear verdict can refuse with `review-pending` or
+`qa-pending` while freshness settles. Wait for the item to become `ready` before
+merging; inspect its status with `cland task view T-n`. A genuinely stale verdict
+still refuses with `review-stale` or `qa-stale`.
+
 A changed `package-lock.json`, or a `package.json` change to `dependencies`,
 `devDependencies`, `optionalDependencies`, `peerDependencies`, `overrides` or
 `workspaces` (including workspace manifests), produces a required root

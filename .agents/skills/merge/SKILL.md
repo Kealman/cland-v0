@@ -99,7 +99,8 @@ On refusal:
 
 - Missing, invalid, not-clear or stale verdict: send the refusal to `lead T-<n>` with kind `report`; the lead requests the new verdict from the role named by the refusal. For an unclaimed item, request it yourself.
 - `verdict-missing`: preserve the durable record and restore its missing or altered comment; an older clear cannot replace it.
-- Freshness pending: let the async cache settle, then retry once; if still pending, report the refusal.
+<!-- cland-workflow-change: T-2065 wait for observable ready status after pending freshness -->
+- Freshness pending (`review-pending` or `qa-pending`): wait for the item to become `ready` before merging; inspect its status with `cland task view T-<n>`. If it settles with stale evidence, report the refusal to `lead T-<n>` for fresh review or QA.
 - `merge-bisected`: the sole member of a red batch, or the unique member whose removal made the failing files green, was rejected. Send the failed identities and retained receipts to `lead T-<n>` for diagnosis and a fix. The Implementer obtains fresh source review and task verification; the supervising Lead or Coordinator enqueues the repaired head.
 - `merge-bisect-unresolved`: every member was rejected because no unique removal was green and the original failing files did not supply complete green proof on repeat. The Coordinator diagnoses from the original and file-job receipts and decides which items need fixes or may re-enqueue. Item leads preserve their heads while awaiting that decision.
 - `merge-conflict`: send the named conflict or branch to the item's Implementer to integrate dev in its worktree. A changed head needs source review and task verification before the supervising Lead or Coordinator enqueues it again.

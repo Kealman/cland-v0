@@ -258,6 +258,7 @@
     "hub/test/follows-native.test.ts": "T3",
     "hub/test/follows.test.ts": "T2",
     "hub/test/freshness.test.ts": "T3",
+    "hub/test/gate-verdicts.test.ts": "T1",
     "hub/test/gateway-secrets.test.ts": "T2",
     "hub/test/gateway-state.test.ts": "T2",
     "hub/test/gateway.test.ts": "T2",

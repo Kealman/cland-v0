@@ -15,7 +15,7 @@ function verdict(view: ItemView, kind: 'review' | 'qa'): IndexedVerdict {
   if (v.result !== 'clear') throw new MergeError(`${kind}-not-clear`, `${view.id}: ${kind} is not clear`);
   // mergeViewAsync annotates the latest hub verdict even when a later file-only header exists.
   const current = v.current;
-  if (current !== true) throw new MergeError(current === undefined ? `${kind}-pending` : `${kind}-stale`, `${view.id}: ${kind} is ${current === undefined ? 'still checking freshness; try again' : 'stale'}`);
+  if (current !== true) throw new MergeError(current === undefined ? `${kind}-pending` : `${kind}-stale`, `${view.id}: ${kind} is ${current === undefined ? `still checking freshness; wait for the item to become ready before merging. Check its status with cland task view ${view.id}` : 'stale'}`);
   return v;
 }
 

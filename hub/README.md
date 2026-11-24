@@ -1,5 +1,8 @@
 # Hub documentation
 
+Pending merge freshness refusals name the `ready` state and the item inspection
+command; see [the merge gate](../docs/hub/cland-init-and-cland-update.md#the-merge-gate).
+
 Suite result delivery retries retain a run-bound immutable finalized log and
 registered coverage. Shared legacy paths remain serialized through publication.
 Report-attempt failures appear as `suite-report-failed` events and heartbeat errors;
