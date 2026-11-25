@@ -272,10 +272,13 @@ test('publication landings survive tracker reopen and require covers containing 
   await tracker.setPlan(actor, epic.id, JSON.stringify({ stages: [
     { name: 'marketing', qa: { scope: 'none', when: 'after-stage' }, lanes: [[child.id]] },
   ] }));
-  tracker.recordPublication(child.id, { branch: 'marketing', tip: 'e'.repeat(40), commit: landing, base: 'dev' });
+  tracker.recordPublication(child.id, { branch: 'marketing', tip: 'e'.repeat(40), commit: landing, base: 'main' });
   assert.equal((await tracker.viewAsync(child.id)).merged, false, 'publication leaves the item open');
   assert.equal(tracker.mergeReceipt(child.id), null, 'publication does not create merge recovery');
   await tracker.close(actor, child.id);
+  assert.equal((await tracker.viewAsync(epic.id)).stages![0]!.merged, 0, 'a non-dev publication cannot complete the stage');
+  tracker.recordPublication(child.id, { branch: 'marketing', tip: 'e'.repeat(40), commit: landing, base: 'dev' });
+  assert.equal((await tracker.viewAsync(epic.id)).stages![0]!.merged, 1, 'a new publication receipt invalidates the cached stage evidence');
   await tracker.stop();
   tracker = new Tracker(options); tracker.start();
   await tracker.refreshFreshness();

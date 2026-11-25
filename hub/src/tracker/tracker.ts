@@ -155,6 +155,8 @@ export type ItemView = IndexedItem & {
 
 /** A row of `task.list`: the indexed fields, the live claim, and the verdicts in file order (the latest last). */
 export type StageSummary = { name: string; state: 'open' | 'closed'; qa: QaPolicy; merged: number; total: number; statuses: Record<string,number> };
+type StageSnapshot = { hash: string; merged: boolean; mergedCount: number; statuses: Record<string,number>; items: string[]; qa: QaPolicy };
+type CachedStageSnapshot = { value: StageSnapshot; members: Set<number>; historyMember?: string; historyHead?: string | null };
 export type CardFields = {
   stages?: StageSummary[];
   agents_text?: { sections: string[]; words: number };
@@ -399,6 +401,11 @@ export class Tracker {
   }
   #stageCoverKey = '[]';
   readonly #stageCoverDependents = new Set<string>();
+  readonly #stageSnapshots = new Map<string, Map<string, CachedStageSnapshot>>();
+  // Keep only the current snapshot of each stage. Immutable landing/build facts
+  // survive dev tip movement; a changed landing replaces only its stage's work.
+  readonly #stageContainment = new Map<string, { hash: string; heads: Map<string, { running: boolean; result?: boolean; remaining?: string[]; known: Map<string, boolean> }> }>();
+  #containmentEpoch = 0;
   readonly #stageTrees = new Map<string, string | null>();
   readonly #stageTreePending = new Set<string>();
   readonly #stageTreeWaiters = new Map<string, Set<string>>();
@@ -485,6 +492,7 @@ export class Tracker {
         }
       },
       settled: async (ids) => {
+        this.#containmentEpoch++;
         if (this.#stageAncestryChanged) ids = [...new Set([...ids, ...this.#stageCoverDependents])];
         this.#stageAncestryChanged = false;
         this.#log({ event: 'task-freshness-settled', items: ids.length, stageDependents: ids.filter(id => this.#stageCoverDependents.has(id)).length });
@@ -1167,6 +1175,7 @@ export class Tracker {
     const id = item.fm.id;
     // the id moved out of this file (someone rewrote it by hand): the old row goes
     if (knownId && idNumber(knownId) !== idNumber(id)) {
+      this.#invalidateStageSnapshots(knownId, true);
       this.#index.remove(knownId);
       this.#planSources.delete(knownId); this.#summaries.delete(knownId); this.#cards.delete(knownId); this.#reasons.delete(knownId);
       this.#planCandidates.delete(knownId);
@@ -1296,6 +1305,7 @@ export class Tracker {
     if (!id) return;
     const affected = new Set(this.#index.plansContaining(id));
     for (const child of this.#index.list({ under: id })) for (const epic of this.#index.plansContaining(child.id)) affected.add(epic);
+    this.#invalidateStageSnapshots(id, true);
     this.#index.remove(id);
     this.#planSources.delete(id); this.#summaries.delete(id); this.#cards.delete(id); this.#reasons.delete(id);
     this.#stageCoverDependents.delete(id);
@@ -1396,6 +1406,7 @@ export class Tracker {
       return state;
     }
     if (changed) {
+      this.#stageSnapshots.delete(id);
       this.#index.rememberPlan(id, state.plan);
       this.#stageCoverDependents.delete(id);
       this.#schedulePlanned(id);
@@ -1598,6 +1609,7 @@ export class Tracker {
       authorize();
       const present = new Set(entries.map(entry => this.#fileNumber(entry.file)!));
       for (const id of this.#index.ids()) if (!present.has(idNumber(id))) {
+        this.#invalidateStageSnapshots(id, true);
         this.#index.remove(id); this.#planSources.delete(id); this.#summaries.delete(id); this.#cards.delete(id); this.#reasons.delete(id); this.#changed(id);
       }
       for (const category of plan.categories) if (category.action === 'create') {
@@ -1995,7 +2007,10 @@ export class Tracker {
           const ref = parseItemReference(line.trim(), this.kinds);
           return ref ? [ref.n] : [];
         }));
-        for (const waiting of history.waiters) { this.#announce(waiting, true); this.#schedulePlannedFor(waiting); }
+        for (const waiting of history.waiters) {
+          for (const [name, cached] of this.#stageSnapshots.get(waiting) ?? []) if (cached.historyMember) this.#stageSnapshots.get(waiting)!.delete(name);
+          this.#announce(waiting, true); this.#schedulePlannedFor(waiting);
+        }
         history.waiters.clear();
       });
     }
@@ -2003,19 +2018,29 @@ export class Tracker {
   }
 
   /** A stage stays closed across later dev builds, but its own plan and landing evidence must stay unchanged. */
-  #stageSnapshot(id: string, name: string): { hash: string; merged: boolean; mergedCount: number; statuses: Record<string,number>; items: string[]; qa: QaPolicy } | null {
+  #stageSnapshot(id: string, name: string): StageSnapshot | null {
+    const cached = this.#stageSnapshots.get(id)?.get(name);
+    if (cached) {
+      // Evidence-only membership follows dev history, including failed-read
+      // retries. Landed stages depend only on their indexed member facts.
+      if (cached.historyMember) this.#stageUnlanded(id, cached.historyMember);
+      if (cached.historyHead === undefined || cached.historyHead === this.#fresh.tip('dev')) return cached.value;
+    }
     const plan = this.#index.plan(id), stage = plan?.stages.find(s => s.name === name);
     if (!stage) return null;
     const items = stage.lanes.flat();
     // Read each member once for both closure evidence and card counts. Status
     // stays outside the closure hash: an open member's status is not a landing.
     const statuses: Record<string,number> = {};
+    let historyMember: string | undefined;
     const facts = items.map(childId => {
+      this.#log({event: 'stage-snapshot-member-visit', item: id, stage: name, member: childId});
       const child = this.#index.get(childId), receipt = this.#index.landingReceipt(childId);
       const status = child?.state === 'closed' ? 'done' : child?.status ?? 'backlog';
       statuses[status] = (statuses[status] ?? 0)+1;
-      const evidenceOnly = child?.kind === 'task' && child.state === 'closed' && child.status === 'done'
-        && child.branch === null && !receipt && this.#stageUnlanded(id, childId);
+      const needsHistory = child?.kind === 'task' && child.state === 'closed' && child.status === 'done' && child.branch === null && !receipt;
+      if (needsHistory) historyMember ??= childId;
+      const evidenceOnly = needsHistory && this.#stageUnlanded(id, childId);
       return { id: childId, state: child?.state, parent: child?.parent ? `T-${idNumber(child.parent)}` : child?.parent, kind: child?.kind, commit: receipt?.commit ?? null, base: receipt?.base ?? null,
         // Preserve hashes for landed tasks and old stage QA receipts.
         ...(evidenceOnly ? { evidenceOnly: true } : {}),
@@ -2026,10 +2051,27 @@ export class Tracker {
     const policies = [stage.qa, ...items.flatMap(childId => planOverride(plan!, childId)?.qa ? [planOverride(plan!, childId)!.qa!] : [])]
       .filter(qa => qa.when === 'after-stage' && qa.scope !== 'none');
     const qa: QaPolicy = policies.length ? { scope: policies.some(qa => qa.scope === 'full') ? 'full' : 'affected', when: 'after-stage' } : stage.qa;
-    return { hash: createHash('sha256').update(JSON.stringify([stage, overrides, facts])).digest('hex'),
+    const value: StageSnapshot = { hash: createHash('sha256').update(JSON.stringify([stage, overrides, facts])).digest('hex'),
       merged: facts.every(f => f.belongs && f.state === 'closed' && (f.kind !== 'task' || f.evidenceOnly || !!f.commit && f.base === 'dev')),
       mergedCount: facts.filter(f => f.belongs && f.state === 'closed' && (f.kind !== 'task' || f.evidenceOnly || !!f.commit && f.base === 'dev')).length,
       statuses, items, qa };
+    const stages = this.#stageSnapshots.get(id) ?? new Map<string, CachedStageSnapshot>();
+    stages.set(name, {value, members: new Set(items.map(idNumber)), ...(historyMember ? {historyMember, historyHead: this.#fresh.tip('dev')} : {})});
+    this.#stageSnapshots.set(id, stages);
+    return value;
+  }
+
+  /** Reverse indexed membership plus cached sets avoids walking unrelated lanes. */
+  #invalidateStageSnapshots(id: string, descendants = false): void {
+    this.#stageSnapshots.delete(id);
+    const invalidateMember = (member: string) => {
+      for (const container of this.#index.plansContaining(member)) {
+        const stages = this.#stageSnapshots.get(container);
+        for (const [name, cached] of stages ?? []) if (cached.members.has(idNumber(member))) stages!.delete(name);
+      }
+    };
+    invalidateMember(id);
+    if (descendants) for (const child of this.#index.list({under: id})) invalidateMember(child.id);
   }
 
   #stageCurrent(id: string, v: IndexedVerdict): boolean | undefined {
@@ -2084,7 +2126,6 @@ export class Tracker {
     }
     const covers = this.#indexedCovers();
     const expected = this.#stageTree(id, build ?? this.#fresh.tip('dev'));
-    const landings = snapshot.items.flatMap(child => this.#index.landingReceipt(child)?.commit ?? []);
     // Search Linux covers newest first, settling unresolved candidates before
     // considering older history. Any targeted Mac receipt must match its tree.
     const candidates: Array<{ cover: StageCover; current: boolean | undefined }> = [];
@@ -2099,11 +2140,7 @@ export class Tracker {
         if (ancestor === false) for (const rejected of covers.byHead.get(cover.head) ?? []) this.#stageCandidateState(rejected, false);
       }
       if (ancestor !== true) return ancestor;
-      const facts = landings.map(landing => {
-        this.#log({ event: 'stage-containment-visit', head: cover.head, landing });
-        return this.#fresh.contains(id, landing, cover.head);
-      });
-      return facts.includes(false) ? false : facts.includes(undefined) ? undefined : true;
+      return this.#containedStage(id, name, snapshot, cover.head);
     };
     let pair: StageCover | undefined;
     let waitingPair = false;
@@ -2129,6 +2166,53 @@ export class Tracker {
     }
     if (paths && !mac) (tree === null ? pending : missing).push('macOS');
     return { tree, missing, ...(pending.length ? { pending } : {}), ...(linux ? { linux: linux.id } : {}), ...(mac ? { macos: mac.id } : {}) };
+  }
+
+  #containedStage(id: string, name: string, snapshot: {hash: string; items: string[]}, head: string): boolean | undefined {
+    const key = JSON.stringify([id, name]);
+    let stage = this.#stageContainment.get(key);
+    if (stage?.hash !== snapshot.hash) {
+      stage = {hash: snapshot.hash, heads: new Map()};
+      this.#stageContainment.set(key, stage);
+    }
+    let state = stage.heads.get(head);
+    if (!state) { state = {running: false, known: new Map()}; stage.heads.set(head, state); }
+    if (state.result !== undefined || state.running || this.#stopping) return state.result;
+    state.running = true;
+    const current = stage, work = state, epoch = this.#containmentEpoch;
+    this.#runBackground(async () => {
+      try {
+        let unknown = false, result = true;
+        const members = work.remaining ?? snapshot.items, remaining: string[] = [];
+        // Never enter the retained member loop from a synchronous projection.
+        for (let offset = 0; offset < members.length; offset += 32) {
+          await new Promise<void>(resolve => setImmediate(resolve));
+          if (this.#stopping || this.#stageContainment.get(key) !== current) return;
+          for (const child of members.slice(offset, offset + 32)) {
+            const landing = this.#index.landingReceipt(child)?.commit;
+            this.#log({event: 'stage-containment-visit', head, landing: landing ?? null});
+            if (!landing) continue;
+            let fact = work.known.get(landing);
+            if (fact === undefined) {
+              fact = this.#fresh.contains(id, landing, head);
+              if (fact !== undefined) work.known.set(landing, fact);
+            }
+            if (fact === false) { result = false; break; }
+            if (fact === undefined) { unknown = true; remaining.push(child); }
+          }
+          if (!result) break;
+        }
+        work.remaining = remaining;
+        if (!result || !unknown) work.result = result;
+      } finally { work.running = false; }
+      // Unknown facts resume on Freshness's positive settlement receipt. If it
+      // arrived during this scan, publish once now so that answer is not lost.
+      if (work.result !== undefined || epoch !== this.#containmentEpoch) {
+        await this.#announceBatch([id], this.#watchResumed);
+        if (!this.#stopping) this.#schedulePlannedFor(id);
+      }
+    });
+    return undefined;
   }
 
   #stagesOf(item: Item): NonNullable<ItemView['stages']> {
@@ -2258,13 +2342,18 @@ export class Tracker {
     });
   }
 
-  recordMerge(rawId: string, receipt: MergeReceipt): void { this.#index.recordMerge(this.#require(rawId).id, receipt); }
+  recordMerge(rawId: string, receipt: MergeReceipt): void {
+    const id = this.#require(rawId).id;
+    this.#index.recordMerge(id, receipt);
+    this.#invalidateStageSnapshots(id);
+  }
   mergeReceipt(rawId: string): MergeReceipt | null { return this.#index.mergeReceipt(this.#referenceId(rawId) ?? rawId); }
   landingReceipt(rawId: string): MergeReceipt | null { return this.#index.landingReceipt(this.#referenceId(rawId) ?? rawId); }
 
   recordPublication(rawId: string, receipt: MergeReceipt): void {
     const id = this.#require(rawId).id;
     this.#index.recordPublication(id, receipt);
+    this.#invalidateStageSnapshots(id);
     this.#changed(id);
   }
 
@@ -2309,6 +2398,8 @@ export class Tracker {
   }
 
   #rememberSource(item: Item): void {
+    const previous = this.#announced.get(`T-${idNumber(item.fm.id)}`);
+    this.#invalidateStageSnapshots(item.fm.id, item.fm.kind !== 'task' && previous?.parent !== item.fm.parent);
     this.#demoMembership.clear();
     if (this.isPlanContainer(item.fm.kind)) this.#planSources.set(item.fm.id, item);
     else this.#planSources.delete(item.fm.id);

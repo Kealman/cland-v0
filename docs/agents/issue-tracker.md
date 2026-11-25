@@ -148,6 +148,15 @@ Before requesting review, the Implementer fetches and merges `origin/dev`, commi
 
 A plan stage also counts evidence-only tasks toward completion: closed `done`, no branch, no landing receipt and no `Item:` trailer on dev. A branch-backed task still needs a dev landing receipt, even with an empty branch. Required stage QA and platform covers remain in force; `task.view.merged` continues to mean an actual dev landing. See [stage QA](../review-and-qa.md#stage-qa-verdicts).
 
+Stage containment runs in background chunks of at most 32 members. Reads report
+pending Linux cover evidence until those checks settle. Results are shared for
+the current stage snapshot and tested head across reads and dev tip movement;
+a changed landing invalidates its affected stage's snapshot. Snapshot facts and
+counts are reused across reads. Source, plan, parenting and removal changes
+invalidate the affected member stages; publication receipts and evidence-only
+history settlement also invalidate their derived snapshots. Tracker shutdown
+joins the background work before closing storage.
+
 ## Acceptance criteria
 
 Criteria live under `## Acceptance criteria` in a task or configured container body. Containers also recognize checkboxes under `## Definition of done`; both sections share stable ids. `task view --json` returns `item.criteria` with each criterion's stable id, text, checkbox and marks. Old checkboxes have no ids until the first criterion operation assigns them in list order. `criterion_seq` in frontmatter retains the highest allocated number, including removed criteria; keep it when editing by hand. Ids are never reused. `cland task criterion T-n normalize` assigns ids to every id-less criterion in list order above `criterion_seq`, changes no text or mark, and writes nothing on an item whose criteria all have ids.

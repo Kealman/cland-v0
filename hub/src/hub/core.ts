@@ -1667,9 +1667,10 @@ export class HubCore {
     this.#afterCommit(() => this.#publishArtifact(artifact));
   }
 
-  #publishArtifact(artifact: Artifact): void {
+  #publishArtifact(artifact: Artifact, announce = true): void {
     const previous = this.#artifactStates.get(artifact.id);
     this.#artifactStates.set(artifact.id, artifact.status);
+    if (!announce) { this.#emit({ type: 'artifact', artifact }); return; }
     const context = { artifact: artifact.id, ...(artifact.creatorUserId ? { userId: artifact.creatorUserId } : {}), topic: artifact.topic, session: artifact.creator, item: this.#store.topic(artifact.topic)?.item ?? null, role: this.#store.roleOf(artifact.creator) };
     const subjects: SubscriptionSubject[] = [{ topic: artifact.topic }, { session: artifact.creator }];
     // One logical occurrence per recipient even when topic and creator subscriptions overlap.
@@ -3238,7 +3239,8 @@ export class HubCore {
     // Open asks keep their topic waiting for the current party; only answering, resolve or close ends that.
     if (next !== 'closed') next = this.asks.waitingIn(topic.id) ?? next;
     if (next !== topic.status) {
-      for (const a of this.#store.setTopicStatus(topic.id, next, this.#now().toISOString())) this.artifactChanged(a);
+      // Retention moves update chips, but are not a new sharing occurrence.
+      for (const a of this.#store.setTopicStatus(topic.id, next, this.#now().toISOString())) this.#afterCommit(() => this.#publishArtifact(a, false));
       this.#log({ event: 'topic-status', topic: topic.id, from: topic.status, to: next, why });
     }
     return next;

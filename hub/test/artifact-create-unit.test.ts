@@ -5,6 +5,43 @@ import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { createArtifact } from '../src/hub/artifacts.ts';
 import { Store } from '../src/hub/store.ts';
+import { HubCore } from '../src/hub/core.ts';
+import { FakeClock } from './fake-clock.ts';
+
+test('reopening a topic preserves a hundred shared artifacts without announcing them again', async t => {
+  const store = new Store(':memory:');
+  const clock = new FakeClock();
+  const events: Record<string, unknown>[] = [];
+  let itemReads = 0;
+  const check = () => { itemReads++; return {id: 'T-1', topic: 'topic-history', state: 'closed'}; };
+  store.createTopic('topic-history', 'Retained history', 'T-1', clock.now().toISOString());
+  const core = new HubCore({ store, clock, log: event => events.push(event), items: {
+    lead: () => ({state: 'closed', claim: null}), provisionalSession: () => false,
+    check, checkAsync: async () => check(), bind: async () => assert.fail('no new binding'),
+  } });
+  t.after(() => { core.close(); store.close(); });
+  const topic = core.topics().find(row => row.id === 'topic-history')!;
+  for (let n = 0; n < 120; n++) store.registerArtifact(id => ({
+    id, kind: 'note', title: `History ${n}`, topic: topic.id, creator: 'implementer',
+    time: clock.now().toISOString(), path: `/fixture/${n}.md`, status: 'shared',
+  }), artifact => core.artifactChanged(artifact));
+  const original = core.sendFromHuman(topic.id, 'Original artifact history', [], undefined, undefined, store.artifact('A-1')!).message;
+  const artifacts = store.artifacts(topic.id);
+  core.closeTopic(topic.id);
+  events.length = 0;
+  let subscriptionScans = 0;
+  const allSubscriptions = store.allSubscriptions.bind(store);
+  t.mock.method(store, 'allSubscriptions', () => { subscriptionScans++; return allSubscriptions(); });
+  core.sendFromHuman(topic.id, 'Continue with the retained history');
+  assert.equal(core.topics().find(row => row.id === topic.id)?.status, 'open');
+  assert.equal(store.artifacts(topic.id).length, 120);
+  assert.ok(store.artifacts(topic.id).every(artifact => artifact.status === 'shared'));
+  assert.deepEqual(store.artifacts(topic.id), artifacts);
+  assert.ok(core.topicHistory(topic.id).messages.some(message => message.id === original.id && message.artifact?.id === 'A-1'));
+  assert.equal(events.filter(event => event.event === 'event-announced').length, 0);
+  assert.equal(itemReads, 0, 'reopening a closed item topic performs no tracker stage reads');
+  assert.ok(subscriptionScans <= 3, `chip-only retention does not scan subscriptions per artifact: ${subscriptionScans}`);
+});
 
 function fixture(t: TestContext) {
   const store = new Store(':memory:');

@@ -319,6 +319,8 @@ test('artifact subscriptions publish only after the existing artifact/post trans
 
 test('event publication faults preserve reopened artifact bytes and the whole turn/now fan-out', async t => {
   const f = await fixture(t, fs, 30);
+  assert.ok(f.records.some(r => r.event === 'event-announced' && r.artifact === f.a.id && r.topic === f.topic && r.text === 'A-1 shared · Design'),
+    'the retained artifact was already announced as shared in this same topic');
   await f.ui.request({ type: 'topic.close', topic: f.topic });
   const table = new ProcessTable();
   const sessions = new Sessions({ core: f.hub.core, table, root: f.root });
@@ -340,10 +342,11 @@ test('event publication faults preserve reopened artifact bytes and the whole tu
   const history = await f.ui.request({ type: 'topic.history', topic: 'agents' });
   const events = (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event');
   for (const name of ['held', 'steered']) assert.deepEqual(events.filter(m => m.to.includes(name)).map(m => m.text), [
-    'event · artifact · A-1 shared · Design',
     'event · artifact · A-2 created · Retained commit',
     'event · artifact · A-2 shared · Retained commit',
   ]);
+  assert.equal((await f.entries()).find(a => a.id === f.a.id)?.status, 'shared', 'reopen restores the old chip without another sharing occurrence');
+  assert.equal(await fs.readFile(f.a.path, 'utf8'), 'original bytes');
   assert.ok(f.records.some(r => r.event === 'publication-failed'));
 });
 
