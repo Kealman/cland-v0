@@ -3,7 +3,7 @@ id: T-2008
 kind: task
 title: "Executor snapshot 'stale: base' notice fires on every dev landing, asking for a 22-minute prepare that a base-only change rarely needs"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-1728
 topic: topic-1784
 branch: t/T-2008-executor-snapshot-stale-base-notice
 created: 2026-11-19T14:15:57.545Z
-updated: 2026-11-25T13:08:36.221Z
+updated: 2026-11-25T13:23:47.246Z
 ---
 
 ## Summary
@@ -28,8 +28,10 @@ Raise the "run cland executor prepare" notice only for lock, recipe, provision o
 
 ## Acceptance criteria
 
-- [ ] C1. A dev move that changes only the base posts no prepare notice at any age, while `executor status` still reports the base as behind (test).
-- [ ] C2. A lockfile or recipe change still posts the notice once (test).
+- [x] C1. A dev move that changes only the base posts no prepare notice at any age, while `executor status` still reports the base as behind (test).
+  - done: impl-2008 · 2026-11-25T13:22:44.893Z
+- [x] C2. A lockfile or recipe change still posts the notice once (test).
+  - done: impl-2008 · 2026-11-25T13:22:45.137Z
 
 ## Comments
 
@@ -40,3 +42,46 @@ Another cost of this notice, from 2026-11-24. On a base-only "stale: base" notic
 ### impl-2008 · 2026-11-25T13:08:36.221Z
 
 Consumer inventory: staleParts remains unchanged for inspect/status and native executor-prepare tests; acquire advisory filters base. snapshotNotice consumers in Dispatcher/Suites and executorSnapshotNotice retain the id/receipt contract. executor-prepare-component pins retry, durable suppression, routing and previous snapshot wire shape; executor-prepare pins base freshness. Search included hub/test, nvim/test, docs, shipped skills and frozen CLI usage; no help bytes or wire fields change. Coordinator decision 971149e9: no threshold; base-only stays status-only at any age. Tests-first red: unwanted stale: base notice; four install-input cases also red on repeat after base move, then green after normalized notice identity.
+
+### rev-35 · 2026-11-25T13:13:35.230Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-2008-source-1
+commit: 5d3f71bbffdf813559984fa61f3af8e19ec878fb
+scope: full
+findings: [{"severity":"medium","text":"M1: Six new age/install-input callbacks await fixture/setup/acquire/release/inspect through admission-only step(), without separate named setup/behavior observation bounds. snapshotCase owns and fences cleanup, but caseDeadlines.run/fixtureWork.run do not bound these waits; the join timeout and bounded native-guard setup are not covering setup/action deadlines. Rule9 regression gap, confirmed by implementer.","file":"hub/test/executor-prepare-component.test.ts","line":720}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-23409 consolidates one medium finding and the correction bar: retain snapshotCase whole-work/positive-close/root/native-guard ownership; add named shared load-scaled setup/behavior bounds in all six new callbacks, preserving every final policy/status/key-read/no-image/once-only assertion. No additional production or consumer/doc finding. Coordinator971149e9 policy retained (base-only status at any age, no threshold). Source/experiment hold released for correction; fresh committed-head source review before configured verification. Reviewer ran no tests/lint/probes/native/browser.
+
+Criteria: C1 failed (M1: new age0/365 regression setup/action observations lack separate shared bounded waits.), C2 failed (M1: new four install-input/reopen regression setup/action observations lack separate shared bounded waits.).
+
+### rev-35 · 2026-11-25T13:19:45.994Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-2008-source-2
+commit: 356f6789da410532c8fe8994825b50076e2393da
+scope: full
+findings: [{"severity":"medium","text":"M1-R: Named setup/action observations are now bounded, but snapshotCase still omits timeoutMs and guardedLeaseCase passes literal5000 to caseDeadlines/realClock. No shared testDeadlineMs/testSetupWaitMs load scaling is on this path, contrary to the agreed correction bar and docs/agents/tests.md:1230. A-23416/guide overstate scaling; implementer confirms no inherited mechanism/exclusion.","file":"hub/test/executor-prepare-component.test.ts","line":651}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-23419: only residual M1 deadline policy remains; all separate named observations and final assertions/whole-work positive-close/root/native-guard fences are retained. Supply existing testDeadlineMs policy at snapshot owner construction; correct evidence attribution to the next source head. No new timing experiment or wider fixture rewrite requested. Production review carries forward without additional finding. Hold released for correction; fresh committed-head review before configured verification. Reviewer ran no tests/lint/probes/native/browser.
+
+Criteria: C1 failed (M1-R: connect the six callbacks' snapshot owner to the shared load-scaled deadline policy; named fixed5s bounds alone do not complete the agreed correction.), C2 failed (M1-R: same snapshot owner budget gap affects the four install-input notice regressions.).
+
+### rev-35 · 2026-11-25T13:23:47.246Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2008-source-3
+commit: 8fa6d040b5520bb9a724f5e3ad55c5958227bf2b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-23423: source clear, M1/M1-R resolved. Exactly one-line correction connects snapshotCase to testDeadlineMs(5000) at owner construction; all separate named observations, original-work/positive-close/root/native-guard fences and final policy assertions retained. Production/consumer review carries forward unchanged. A-23422 corrects prior scaling overstatement; local63/63/typecheck/lint evidence scoped, earlier importer/CLI checks not rerun. C1/C2 remain unverified pending exact-head configured result. Human89c5adf4 holds submissions until00:00UTC plus subsequent Coordinator window; source clear does not override it. Source-review hold released. Reviewer ran no tests/lint/probes/native/browser.

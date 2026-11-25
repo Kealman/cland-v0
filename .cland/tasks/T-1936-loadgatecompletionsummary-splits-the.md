@@ -3,18 +3,19 @@ id: T-1936
 kind: task
 title: loadGateCompletionSummary splits the whole retained semantic log into an array (unbounded allocation, rule 23)
 state: open
-status: planned
+status: review
 size: XS
+criterion_seq: 1
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2074
 blocked_by: []
 regression_of: T-1582
-topic: null
-branch: null
+topic: topic-1786
+branch: t/T-1936-loadgatecompletionsummary-splits-the
 created: 2026-11-17T07:21:10.812Z
-updated: 2026-11-25T13:02:26.922Z
+updated: 2026-11-25T13:16:27.698Z
 ---
 
 ## Summary
@@ -27,4 +28,24 @@ Scan the log incrementally (an index-based line walk or a shared pure line itera
 
 ## Acceptance criteria
 
-- [ ] C1. loadGateCompletionSummary returns identical counts for the existing fixtures, plus a large planted log, without creating a whole-log array (test that bounds the work, as T-1931's bounded-scan control does).
+- [x] C1. loadGateCompletionSummary returns identical counts for the existing fixtures, plus a large planted log, without creating a whole-log array (test that bounds the work, as T-1931's bounded-scan control does).
+  - done: impl-1936 · 2026-11-25T13:14:34.043Z
+
+## Comments
+
+### impl-1936 · 2026-11-25T13:12:54.758Z
+
+Confirmed consumer census: loadGateCompletionSummary is called by hub/src/hub/merge-batches.ts and its pure tests; same-module exports are imported by hub/suites.ts, suite-log.ts, test/load-gate.ts, suite-soak-component, suite-stage-rules, suite-summary, suite-tiers, web-phase and suite-landed-load tests. No signature, text grammar, returned count or wire change. Existing parser fixtures retained; large planted log checks bounded allocation and forward scan.
+
+### rev-40 · 2026-11-25T13:16:27.698Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261125-1936-source1
+commit: 41be87e257f354ed2044d9b074a68e918be33901
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-23414,noinscopefindings. Forward indexOf/currentline scan removeswholelogarray, retainsallregex/emptytrailing/unterminatedcounts; finalidentitycleanup iteratessetswithoutcombinedarray. New suiteCaseownedpurecontrol positively guards split and requires20006searches/exactlinearinputwork/fixture<=200charslice and2complete2unknown; existingsemanticfixturesretained. Publicsignature/shape/productionmerge-batchconsumerunchanged; guideaccuratesets/maxlinestoragecondition. C1done,finalmarkpendingconfiguredexact-headreceipt. LocalMacNode24.21 sixfiles85cases/static0 remain authorpartialproof;720+17unknownreachabilitynotcoverage. AsideS TechdebtadjacentpreexistingloadProofIdentitieswholelogsplitreportedleadseparately,notblocker. No Reviewer execution/edits.

@@ -3,17 +3,18 @@ id: T-1997
 kind: task
 title: A failing assertion in a file-level after hook may not fail the test run
 state: open
-status: planned
+status: in progress
 size: M
+criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2072
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1790
+branch: t/T-1997-a-failing-assertion-in-a-file-level
 created: 2026-11-19T03:30:57.433Z
-updated: 2026-11-25T13:02:47.211Z
+updated: 2026-11-25T13:34:52.643Z
 ---
 
 ## Summary
@@ -27,7 +28,7 @@ First, reproduce minimally: a file whose `after` hook throws or fails an asserti
 ## Acceptance criteria
 
 - [ ] C1. A minimal reproduction records exactly what each runner path does with a failing file-level `after` hook (exit status, suite result, failure list), with literal output (evidence).
-- [ ] C2. A failing file-level `after` hook fails its file with a named failure in every runner path, or file-level `after` assertions are refused by a lint with every existing one migrated (test).
+- [ ] C2. A failing file-level `after` hook fails its file with a named failure in every supported runner path (`node --test`, runSuite direct and parallel); a child test run started from a test does not inherit NODE_TEST_CONTEXT, so it cannot skip a file silently; and a report-only lint names file-level `after` assertions (enforcement in a follow-up item, rule 27) (test).
 - [ ] C3. Every existing file-level `after` hook that asserts is listed with its disposition (rule 41).
 
 ## Comments
