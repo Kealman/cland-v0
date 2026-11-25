@@ -9,6 +9,7 @@ export function suiteCase(t: TestContext, body: (scope: {
   fixtures: TestContext;
   step: Step;
   setup: <T extends { root: string }>(work: (fixtures: TestContext) => Promise<T>) => Promise<T>;
+  guardControl: () => void;
   releaseOnClose: (release: () => void) => void;
 }) => Promise<void>, options: { native?: boolean } = {}) {
   const releases: Array<() => void> = [];
@@ -33,7 +34,10 @@ export function suiteCase(t: TestContext, body: (scope: {
     if (!options.native) await step('positive native launch guard setup', async () => {
       guard = await fakeNativeGuard(value => { restore = value; });
     });
-    await body({ fixtures: owner.fixtures, step,
+    await body({ fixtures: owner.fixtures, step, guardControl: () => {
+      if (!guard) throw new Error('native guard control unavailable');
+      guard.control();
+    },
       setup: work => step('fixture setup', async () => {
         const fixture = await work(owner.fixtures);
         // Capture late acquisition before the post-await cancellation fence.

@@ -70,7 +70,16 @@ export async function fakeNativeGuard(registerRestore: (restore: () => void) => 
     await assert.rejects(promisify(cp.exec)('guard-control'), /native launch forbidden: exec.custom/);
     // cland-allow-child-env: positive custom-promisify control invokes only the installed throwing guard, never a native command
     await assert.rejects(promisify(cp.execFile)('guard-control'), /native launch forbidden: execFile.custom/);
-    const controls = denied.length;
-    return { verify: () => assert.equal(denied.length, controls, 'unexpected native launch, including custom promisifiers and cleanup'), restore };
+    let controls = denied.length;
+    const guardedSpawn = cp.spawn;
+    const verify = () => assert.equal(denied.length, controls, 'unexpected native launch, including custom promisifiers and cleanup');
+    return { verify, restore, control: () => {
+      verify();
+      // Never call a restored native function, even when testing early release.
+      assert.equal(cp.spawn, guardedSpawn, 'native launch guard must remain installed through cleanup');
+      // cland-allow-child-env: invokes only the identity-checked throwing guard; no native launch
+      assert.throws(() => cp.spawn('guard-cleanup-control', []), /native launch forbidden: spawn/);
+      controls = denied.length;
+    } };
   } catch (error) { restore(); throw error; }
 }

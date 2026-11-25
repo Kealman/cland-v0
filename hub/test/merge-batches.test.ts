@@ -38,6 +38,10 @@ import { fullBatchReason } from '../src/batch-selection.ts';
 import { checkedEnqueue, EnqueueBaseMoved, validateEnqueueCandidate, EnqueueCancellations, EnqueueNativeIncomplete } from '../src/hub/enqueue-preflight.ts';
 import { SuiteCommandFailure, type SuiteCommandClosed } from '../src/suite-command.ts';
 import { enqueuePreflight } from '../src/hub/enqueue-preflight-native.ts';
+import { CodexAdapter } from '../src/adapters/codex.ts';
+import type { HarnessProcess } from '../src/adapters/contract.ts';
+import { recordingHost } from './recording-host.ts';
+import { ToolForbidden } from '../src/roles/permissions.ts';
 
 function fakeEnqueueCheckout(candidate: BatchCandidate): void {
   candidate.owner = { id: 'fixture-owner', root: '/owned', cwd: candidate.cwd, gitdir: '/owned/.git/worktrees/check', rootBirth: 'root', birth: 'checkout', gitBirth: 'metadata', head: candidate.head, tree: candidate.tree };
@@ -2149,8 +2153,9 @@ for (const referenced of ['T-1', 'T-2']) test(`batch projected closure ${referen
   assert.match(blobs['.cland/tasks/member.md']!, /state: open/);
 }));
 
-async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none' | 'dev' | 'task' | 'dirty' | 'follow-up' | 'manual-follow-up') {
-  const { f, runner, landed, reports, boundary, entries, dropped } = await fixture(t);
+async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none' | 'dev' | 'task' | 'dirty' | 'follow-up' | 'manual-follow-up' | 'transient-identity' | 'changed-identity' | 'unavailable-identity' | 'forbidden-identity', outer?: TestContext, guardControl?: () => void) {
+  const identityCase = movement.endsWith('-identity');
+  const { f, runner, landed, reports, boundary, entries, dropped } = await fixture(t, {}, outer);
   let moved = false;
   let followUpPending = true;
   if (movement === 'manual-follow-up') entries.splice(1);
@@ -2182,9 +2187,23 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
   const queue = new MergeQueue(f.store, tracker, f.clock, () => true, git, undefined, (entry, reason) => headDrops.push(`${entry.item}: ${reason}`));
   t.after(() => queue.stop());
   for (const entry of entries) f.store.enqueueMerge(entry);
-  const worktrees = { serial: async <T>(work: () => Promise<T>) => work(), prune: async () => ({ removed: [], failed: [] }), pruneMerged: async () => ({ removed: [], failed: [] }) };
+  const pruned: string[] = [];
+  let stopAttempts = 0, signals = 0;
+  const row: HarnessProcess = { name: 'implementer', harness: 'codex', role: 'implementer', model: null, cwd: f.root, pid: 987654, pidStarted: 'start', pidIdentity: 'original-birth', harnessId: null, harnessSessionId: null, sessionId: 'implementer', startedAt: f.clock.now().toISOString(), status: 'running' };
+  const host = recordingHost(f.root, { overrides: { stop: async process => {
+    stopAttempts++;
+    if (movement === 'forbidden-identity') throw new ToolForbidden('coordinator', 'session.stop', 'fixture refusal');
+    // The first observation is unstable; a replacement birth never matches.
+    const observedBirth = movement === 'changed-identity' ? 'replacement-birth' : movement === 'unavailable-identity' || stopAttempts === 1 ? null : 'original-birth';
+    if (process.pidIdentity !== observedBirth) return false;
+    signals++; return true;
+  } } });
+  const adapter = new CodexAdapter({ root: f.root, discoveryFile: join(f.root, '.cland/hub.json'), node: process.execPath, cli: '', spoke: '', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {}, hostForProcess: () => host }, { env: f.env, clock: f.clock });
+  t.after(async () => { await adapter.close(); guardControl?.(); });
+  const worktrees = { serial: async <T>(work: () => Promise<T>) => work(), prune: async () => ({ removed: [], failed: [] }), pruneMerged: async (item: string) => { pruned.push(item); return { removed: [{ item, path: f.root, branch: null }], failed: [] }; } };
   const mergeLogs: Record<string, unknown>[] = [];
   const merges = new TaskMerges(tracker, worktrees, log => { mergeLogs.push(log); }, async item => {
+    if (item === 'T-1' && identityCase) await adapter.stop(row);
     if ((movement === 'follow-up' || movement === 'manual-follow-up') && followUpPending && item === 'T-1') throw new Error('cannot inspect the OS process table: ps failed or timed out');
   }, f.env, async (_root, operation) => operation(), queue,
     async (_root, branch, message, _resumed, prepared) => {
@@ -2254,6 +2273,17 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
   }
   if (movement === 'dirty') await writeFile(join(f.root, 'root-note.txt'), 'dirty');
   await runner.tick();
+  if (identityCase) {
+    assert.equal(stopAttempts, movement === 'forbidden-identity' ? 1 : 2, 'retry is bounded and permission refusals are final');
+    assert.equal(mergeLogs.filter(log => log.event === 'merge-stop-sessions-retry').length, movement === 'forbidden-identity' ? 0 : 1);
+    assert.equal(signals, movement === 'transient-identity' ? 1 : 0);
+    assert.equal(pruned.includes('T-1'), movement === 'transient-identity', 'worktree removal requires a successful stop receipt');
+    assert.deepEqual(landed, ['T-1', 'T-2', 'T-3'], 'stop recovery never repeats the landing or blocks subsequent heads');
+    assert.equal(mergeLogs.some(log => log.event === 'merge-follow-up-failed' && log.step === 'stop sessions'), movement !== 'transient-identity');
+    if (movement === 'changed-identity' || movement === 'unavailable-identity') assert.match(reports.join('\n'), /process identity cannot be verified; it is still watched/);
+    if (movement === 'forbidden-identity') assert.match(reports.join('\n'), /forbidden: session.stop/);
+    return;
+  }
   if (movement === 'dirty') {
     assert.deepEqual(landed, []);
     assert.match(runner.snapshot()?.failed ?? '', /merge-dirty: uncommitted changes in root-note.txt/);
@@ -2289,6 +2319,18 @@ async function queuedLanding(t: Parameters<typeof suiteUnit>[0], movement: 'none
 }
 
 test('manual merge finishes a failed landed follow-up and the retained batch admits the next heads', t => queuedLanding(t, 'manual-follow-up'));
+
+test('native guard cleanup control detects early restoration without launching a process', async t => {
+  const guard = await fakeNativeGuard(restore => t.after(restore));
+  guard.control();
+  guard.restore();
+  assert.throws(() => guard.control(), /native launch guard must remain installed through cleanup/);
+});
+
+test('landing retries a transient Codex identity failure and removes the worktree', t => suiteCase(t, scope => scope.step('landing and stop receipts', () => queuedLanding(scope.fixtures, 'transient-identity', t, scope.guardControl))));
+test('landing refuses a changed Codex identity and retains the worktree', t => suiteCase(t, scope => scope.step('landing and stop receipts', () => queuedLanding(scope.fixtures, 'changed-identity', t, scope.guardControl))));
+test('landing reports a second unavailable Codex identity and retains the worktree', t => suiteCase(t, scope => scope.step('landing and stop receipts', () => queuedLanding(scope.fixtures, 'unavailable-identity', t, scope.guardControl))));
+test('landing never retries a Codex stop permission refusal', t => suiteCase(t, scope => scope.step('landing and stop receipts', () => queuedLanding(scope.fixtures, 'forbidden-identity', t, scope.guardControl))));
 
 test('a ps-timeout follow-up is recorded and reported while the remaining heads land', t => queuedLanding(t, 'follow-up'));
 

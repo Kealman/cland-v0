@@ -391,7 +391,16 @@ export class TaskMerges {
     }).then(async result => {
       if ('queued' in result || result.followUp) return result;
       try {
-        await resumed(() => this.afterMerge(id, resumed));
+        try {
+          await resumed(() => this.afterMerge(id, resumed));
+        } catch (err) {
+          // A failed OS identity observation retains the session owner. Retry
+          // once through that same owner, including all its authorization and
+          // native-birth checks; never relax identity or repeat a refusal.
+          if (err instanceof ToolForbidden || this.#stopped) throw err;
+          resumed(() => this.log({ event: 'merge-stop-sessions-retry', id, error: err instanceof Error ? err.message : String(err) }));
+          await resumed(() => this.afterMerge(id, resumed));
+        }
       } catch (err) { return this.#incomplete(result, 'stop sessions', err instanceof Error ? err.message : String(err), resumed); }
       try {
         const cleanup = await resumed(() => this.#cleanup(id, resumed));

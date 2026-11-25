@@ -1,5 +1,19 @@
 # hub/test/merge-batches.test.ts
 
+Landing identity controls use the real Codex adapter with a recording Host and
+a positive native-launch guard through cleanup. A transient missing birth
+observation must recover on one retry and reach the worktree removal receipt.
+A replacement birth or second missing observation must send no signal, retain
+the worktree and report the stop failure. A typed permission refusal gets one
+attempt only. The transient control was red before the fix (`1 !== 2` attempts).
+These are fake process and worktree-edge receipts, not OS lifecycle evidence.
+The four controls use the joined suite-case owner with roots deferred through
+ownedSuiteUnit: captured resource hooks finish before directory removal, guard
+verification and patch restoration. The actual adapter-close hook invokes the
+guard's positive spawn control. It verifies function identity before invoking
+the throwing boundary, so even early restoration cannot reach a native spawn.
+A paired control restores early and asserts that this cleanup probe detects it.
+
 Rejection ownership controls keep the exact private primary and secondary
 objects without mutating their messages, while public projections redact both.
 Checkpoint rejection beside a native check failure must preserve the native

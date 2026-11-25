@@ -100,6 +100,9 @@ After terminal batch receipts, candidate cleanup failures retain a separate
 guarded obligation, visible with its path, last error and retry time in merge
 queue and hub status. Automatic retries back off from 1 s to at most 60 s;
 they never change landed outcomes or prevent preparation of the next batch.
+Item follow-up stops retry once through the retained session owner, with fresh
+identity and authorization checks; permission refusals are final. A second
+failure retains the session and worktree and reports the failed follow-up.
 Item follow-up repairs still use `cland merge T-n`.
 Historical probe upgrades preserve unmarked legacy roots with durable secondary
 diagnostics and continue through separate clones or already-collected receipts;
