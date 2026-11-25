@@ -14101,34 +14101,6 @@
       "expires": "2026-12-09",
       "reason": "T-2060: passing Linux x64 droplet sample 16.267463161 s in run cd82bab4-2a5f-42c8-a616-8fdd34e5d8a0, A-23244, head c7de2ee934c9321fce523317c9d1b5ef5184ea92. Cap 24.402 s provides approximately 1.5x measured headroom for real hub startup, forced assertion diagnostics and native cleanup. Original hang unreproduced; no assertion or wait bound changed."
     },
-    "hub/test/startup-listener-scale.test.ts::1500 startup freshness answers keep summary hydration and dependent work linear": {
-      "seconds": 23.902,
-      "owner": "C-216",
-      "added": "2026-11-23",
-      "expires": "2026-11-30",
-      "reason": "T-2052: worst completed passing Linux x64 Node24.21.0 droplet sample 15.934576423 s in ae9e60c1 (A-22630), head 022d75601. Scanned d6245a18 (A-22629), fe8db4e4 (A-22625/A-22628; one run), 6a4791fb (A-22606), 8ae71246 (A-22556) and ae9e60c1; see the seven-identity evidence in T-2052. Cap rounds 1.5x worst upward to milliseconds; setup/assertions/owned cleanup included, worker startup excluded. All 1500 answers and census assertions retained. Seven-day C-216 renewal; report policy, timing baselines and 2000 ms request bound unchanged."
-    },
-    "hub/test/host-allow-list.test.ts::immediate merge revokes every host lease before landing the task": {
-      "seconds": 9.566,
-      "owner": "C-216",
-      "added": "2026-11-23",
-      "expires": "2026-11-30",
-      "reason": "T-2052/T-2059: worst completed passing Linux x64 Node24.21.0 droplet sample 6.376878765 s in ae9e60c1 (A-22630), head 022d75601. Scanned d6245a18, fe8db4e4, 6a4791fb, 8ae71246 and ae9e60c1; absent identities count as unexecuted. Cap rounds 1.5x worst upward to milliseconds; setup/assertions/cleanup included, worker startup excluded. Retained for report-mode 5 s fallback headroom. Seven-day C-216 renewal; historical baselines, assertions and shared report policy unchanged."
-    },
-    "hub/test/prune-process-lifecycle.test.ts::hub crash after durable writer release is reconciled by restart before territory admission": {
-      "seconds": 8.367,
-      "owner": "C-216",
-      "added": "2026-11-23",
-      "expires": "2026-11-30",
-      "reason": "T-2052/T-2059: worst completed passing Linux x64 Node24.21.0 droplet sample 5.577654668 s in ae9e60c1 (A-22630), head 022d75601. Scanned d6245a18, fe8db4e4, 6a4791fb, 8ae71246 and ae9e60c1; absent identities count as unexecuted. Cap rounds 1.5x worst upward to milliseconds; setup/assertions/cleanup included, worker startup excluded. No test baseline exists: removing this fallback allowance makes passing samples above 5 s fail report-mode admission. Seven-day C-216 renewal; baselines, assertions and shared report policy unchanged."
-    },
-    "hub/test/fake-claude-cleanup.test.ts::orphan sweep joins a fake Claude session after its fixture worker is killed": {
-      "seconds": 7.381,
-      "owner": "C-216",
-      "added": "2026-11-23",
-      "expires": "2026-11-30",
-      "reason": "T-2052/T-2059: worst completed passing Linux x64 Node24.21.0 droplet sample 4.920187203 s in ae9e60c1 (A-22630), head 022d75601. Scanned d6245a18, fe8db4e4, 6a4791fb, 8ae71246 and ae9e60c1; absent identities count as unexecuted. Cap rounds 1.5x worst upward to milliseconds; setup/assertions/cleanup included, worker startup excluded. Retained for report-mode 5 s fallback headroom with no test baseline. Seven-day C-216 renewal; baselines, assertions and shared report policy unchanged."
-    },
     "hub/test/suite-retention-scale.test.ts": {
       "file": true,
       "seconds": 144.752,
@@ -14150,13 +14122,6 @@
       "added": "2026-11-20",
       "expires": "2026-12-21",
       "reason": "T-2021: macOS arm64 Node24.21.0 at c352aade ordinary passing 29.604892584 s; Linux A-21877/A-21949 passing samples 18.893605113/23.224555804 s. No recorded test baseline exists, so report mode needs this allowance as its fallback baseline despite T4 having no tier duration budget. Cap is 1.5x worst passing sample rounded upward to milliseconds; setup/assertions/cleanup included. D72 31-day span; report policy unchanged. Evidence in T-2021 topic."
-    },
-    "hub/test/startup-listener-scale.test.ts::listener binds report each await while retained verdict freshness drains": {
-      "seconds": 33.185,
-      "owner": "C-216",
-      "added": "2026-11-23",
-      "expires": "2026-11-30",
-      "reason": "T-2052: worst completed passing Linux x64 Node24.21.0 droplet sample 22.123179524 s in ae9e60c1 (A-22630), head 022d75601. Scanned d6245a18 (A-22629), fe8db4e4 (A-22625/A-22628; one run), 6a4791fb (A-22606), 8ae71246 (A-22556) and ae9e60c1. Cap rounds 1.5x worst upward to milliseconds; setup/assertions/owned cleanup included, worker startup excluded. Seven-day C-216 renewal; 1500-answer census, listener default synchronization, 2000 ms request bound, historical baselines and report policy unchanged."
     },
     "hub/test/item-summary-scale.test.ts::a planned-stage status and verdict comment permits a task view within two seconds at 1650 items": {
       "seconds": 49.161,
@@ -14994,13 +14959,6 @@
       "expires": "2026-12-17",
       "reason": "T-1879: slowest passing linux sample 67.011936269 s in A-19799-suite-d5150de3-66a9-478a-9cf3-63e9aeca55c6-all-at-92dd61b.log, head 92dd61bcf8b0d8679de8c5d21846c33d96ef8804, receipt 6418eae8-371e-41d8-9ff9-ed764d08221d:1678. Top-level passing test receipt including load-gate repetitions; failed/skipped samples excluded. Cap rounds 1.5x upward to milliseconds. Tier T3 default 10 s from production readTierAssignments. Includes reporter setup/assertions/cleanup; no assertion or wait bound changed. Duration budgets remain report-only."
     },
-    "hub/test/suite-stage-cover.test.ts::after-stage gates close on sharded Linux, retain history and advance without a Mac full cover": {
-      "seconds": 46.784,
-      "owner": "C-216",
-      "added": "2026-11-23",
-      "expires": "2026-11-30",
-      "reason": "T-2052/T-2059: worst completed passing Linux x64 Node24.21.0 droplet sample 31.189065355 s in ae9e60c1 (A-22630), head 022d75601. Scanned d6245a18, fe8db4e4, 6a4791fb, 8ae71246 and ae9e60c1; absent identities count as unexecuted. Cap rounds 1.5x worst upward to milliseconds; setup/assertions/cleanup included, worker startup excluded. Seven-day C-216 renewal; historical baselines, stage-cover assertions and shared report policy unchanged."
-    },
     "hub/test/suite-timeouts.test.ts::verify kills a silent test tree and spoke, names the last started test and frees admission": {
       "seconds": 21.522,
       "owner": "E-880",
@@ -15330,13 +15288,6 @@
       "added": "2026-11-18",
       "expires": "2026-12-18",
       "reason": "T-1954: worst passing 75.213911184 s in A-20961, receipt a07bfbbb-c259-4992-a036-47ac3beae522:76; cap rounds 1.5x upward to milliseconds. Sum of top-level passing test time in completed ordinary file executions across A-20923 (Linux stage), A-20929 (macOS one-worker stage), A-20961 (Linux dev). Tier Web budget 40 s. D72 owner E-880; report-only policy unchanged."
-    },
-    "hub/test/fake-claude-cleanup.test.ts::fake Claude final census detects dropped cleanup": {
-      "seconds": 6.939,
-      "owner": "C-216",
-      "added": "2026-11-23",
-      "expires": "2026-11-30",
-      "reason": "T-2052/T-2059: worst completed passing Linux x64 Node24.21.0 droplet sample 4.625876421 s in ae9e60c1 (A-22630), head 022d75601. Scanned d6245a18, fe8db4e4, 6a4791fb, 8ae71246 and ae9e60c1; absent identities count as unexecuted. Cap rounds 1.5x worst upward to milliseconds; setup/assertions/cleanup included, worker startup excluded. Retained for report-mode 5 s fallback headroom with no test baseline. Seven-day C-216 renewal; historical baselines, assertions and shared report policy unchanged."
     },
     "hub/test/scenarios/integrated-v04.test.ts::v0.4 integrated: remote login, live renewal, two users, busy restart and host sub-cap": {
       "seconds": 29.092,
