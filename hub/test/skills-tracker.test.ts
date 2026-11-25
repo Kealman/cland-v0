@@ -2,12 +2,43 @@
 // The real stdin task CLI and jq executable contracts live in skills-tracker-jq.test.ts (T3).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { glob, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tempProject } from './harness.ts';
-import { cland, create, itemFile, list, ok, project, view, type View } from './skills-tracker-support.ts';
+import { cland, create, itemFile, list, ok, project, view, skillsTrackerEnvironment, type View } from './skills-tracker-support.ts';
 const TEMPLATE = fileURLToPath(new URL('../../skills/templates/docs/agents/issue-tracker.md', import.meta.url));
+
+test('tracker fixture seals synthetic caller accounts, Git configuration and provider credentials', () => {
+  const parent = { HOME: '/caller/home', GIT_DIR: '/caller/repo', GIT_CONFIG_GLOBAL: '/caller/gitconfig',
+    DIGITALOCEAN_TOKEN: 'synthetic-poison', OPENAI_API_KEY: 'synthetic-poison', CLAND_SESSION_NAME: 'caller', PATH: '/fixture/bin' };
+  const env = skillsTrackerEnvironment('/scratch/tracker', parent);
+  assert.equal(env.HOME, '/scratch/tracker/home');
+  assert.equal(env.GIT_CONFIG_GLOBAL, '/scratch/tracker/home/.gitconfig');
+  for (const key of ['GIT_DIR', 'DIGITALOCEAN_TOKEN', 'OPENAI_API_KEY', 'CLAND_SESSION_NAME']) assert.equal(env[key], undefined, key);
+  assert.equal(env.PATH, '/fixture/bin');
+  assert.equal(parent.HOME, '/caller/home');
+});
+
+test('fixture helpers share isolation policy while explicit identity observations stay named', async () => {
+  const root = fileURLToPath(new URL('../../', import.meta.url));
+  const unaffected = new Map([
+    ['hub/test/account-fixture-env.ts', 'updates the worker from the shared builder while retaining runner admission controls'],
+    ['hub/test/account-poller.test.ts', 'asserts the product poll environment, does not construct a launch environment'],
+    ['hub/test/fakes/claude-code/fake-claude.ts', 'models native background identity loss while preserving sealed synthetic account paths'],
+    ['hub/test/spawn-census.test.ts', 'positive control for recorder propagation after deliberate discovery-variable stripping'],
+  ]);
+  const seen = new Set<string>();
+  const copied = /!\w+\.startsWith\(['"]CLAND_['"]\)/;
+  assert.ok(copied.test("!key.startsWith('CLAND_')"), 'positive control detects the former copied filter');
+  for await (const file of glob('{hub,nvim}/test/**/*.ts', { cwd: root })) {
+    if (file === 'hub/test/skills-tracker.test.ts') continue; // Contains the positive-control source above.
+    if (!copied.test(await readFile(join(root, file), 'utf8'))) continue;
+    assert.ok(unaffected.has(file), `${file}: use the shared fixture builder`);
+    seen.add(file);
+  }
+  assert.deepEqual([...seen].sort(), [...unaffected.keys()].sort());
+});
 
 test('tracker and vendored skills defer category filing to the Categories contract', async () => {
   for (const file of [TEMPLATE, new URL('../../docs/agents/issue-tracker.md', import.meta.url)]) {

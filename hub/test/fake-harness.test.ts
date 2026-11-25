@@ -524,9 +524,7 @@ test('serveProject releases its listeners and lock after adapter startup or clea
     const failure = new Error(`${mode} fixture failure`);
     const containsFailure = (error: unknown): boolean => error === failure || (error instanceof AggregateError && error.errors.some(containsFailure)) || (error instanceof Error && containsFailure(error.cause));
     // Match projectHub's isolation even though this failure test serves the project directly.
-    const env: NodeJS.ProcessEnv = {};
-    for (const [key, value] of Object.entries(process.env)) if (!key.startsWith('CLAND_')) env[key] = value;
-    Object.assign(env, { DIGITALOCEAN_TOKEN: '', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1' });
+    const env = fixtureEnvironment(root, process.env, { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1' });
     const options = {
       clock, log: () => {}, env,
       git: async () => null,

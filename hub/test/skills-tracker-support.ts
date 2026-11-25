@@ -7,6 +7,12 @@ import { parse as parseYaml } from 'yaml';
 import { projectHub, tempProject, type CliResult } from './harness.ts';
 import { runTask } from '../src/cli/task.ts';
 import { FakeClock } from './fake-clock.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+
+/** Environment boundary for the in-process tracker fixture. */
+export function skillsTrackerEnvironment(root: string, base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return fixtureEnvironment(root, base);
+}
 
 /** `cland <args>` in `cwd` with `input` on stdin (for `--body-file -`), with no `CLAND_*` variable from the test's environment. */
 export async function cland(cwd: string, input: string, ...args: string[]): Promise<CliResult> {
@@ -14,7 +20,7 @@ export async function cland(cwd: string, input: string, ...args: string[]): Prom
   args = args.map((arg, i) => args[i - 1] === '--body-file' && arg !== '-' ? resolve(cwd, arg) : arg);
   let stdout = '';
   let stderr = '';
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_')));
+  const env = skillsTrackerEnvironment(cwd, process.env);
   const code = await runTask(args, cwd, { out: text => { stdout += text; }, err: text => { stderr += text; }, stdin: () => input }, env);
   return { code, stdout, stderr };
 }

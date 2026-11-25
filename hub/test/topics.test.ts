@@ -2,7 +2,7 @@
 // Topics and the UI's frames (spec 4.2, 4.5): a real daemon in a temporary project, a scripted UI client
 // on its Unix socket or on a child hub's stdio, and spokes — raw frames on the socket where the frame
 // itself is asserted, the real spoke over MCP where the session's view is.
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
+import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -22,8 +22,7 @@ async function topics(ui: FrameClient): Promise<Topic[]> {
 test('the same frames over stdio: a UI spawning `cland hub serve --stdio` as its child', async (t) => {
   const root = await tempProject(t);
   await isolateVerification(root);
-  const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
+  const env = fixtureEnvironment(root, process.env);
   const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve', '--stdio'], { cwd: root, env: runnerFixtureEnvironment(root, env), stdio: ['pipe', 'pipe', 'pipe'] });
   let stderr = '';
   child.stderr.setEncoding('utf8');

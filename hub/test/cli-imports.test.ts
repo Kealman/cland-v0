@@ -1,7 +1,7 @@
 // T3: native isolated CLI processes prove lazy imports and dispatch failures; no hub starts.
 // Observe the real command's import graph, including dynamic imports and erased TypeScript types.
 // This guard does not depend on whether the running Node version warns about node:sqlite.
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
+import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -28,7 +28,9 @@ test('database-free CLI commands never resolve node:sqlite in their import graph
     } });
   `)}`;
   // Neither hub discovery nor warning settings from the caller may affect these child processes.
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_') && key !== 'NODE_OPTIONS' && key !== 'NODE_NO_WARNINGS'));
+  const env = fixtureEnvironment(root, process.env);
+  delete env.NODE_OPTIONS;
+  delete env.NODE_NO_WARNINGS;
   const run = (args: string[]) => {
     writeFileSync(imports, '');
     const result = spawnSync(process.execPath, ['--import', preload, ...args], { cwd: root, env: runnerFixtureEnvironment(root, env), encoding: 'utf8', timeout: 10_000 });
@@ -87,7 +89,8 @@ const COUNTER = fileURLToPath(new URL('./fixtures/cli-imports/counter.ts', impor
 // Run the actual CLI, with caller discovery and Node preloads excluded.
 function countedCommand(root: string, args: string[], failure?: string) {
   const counts = join(root, 'imports.json');
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_') && key !== 'NODE_OPTIONS'));
+  const env = fixtureEnvironment(root, process.env);
+  delete env.NODE_OPTIONS;
   const result = spawnSync(process.execPath, ['--import', COUNTER, CLI, ...args], {
     cwd: root,
     env: runnerFixtureEnvironment(root, { ...env, CLAND_TEST_IMPORT_COUNTS: counts, ...(failure ? { CLAND_TEST_IMPORT_FAILURE: failure } : {}) }),

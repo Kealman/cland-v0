@@ -16,6 +16,7 @@ test('SIGTERM of a fixture worker reaps its detached hub before removing the tem
     import { spawn } from 'node:child_process';
     import { readFile } from 'node:fs/promises';
     import { join } from 'node:path';
+    import { fixtureEnvironment } from ${JSON.stringify(new URL('./fixture-environment.ts', import.meta.url).href)};
     import { tempProject, CLI_ENTRY, isolateVerification, eventually } from ${JSON.stringify(new URL('./harness.ts', import.meta.url).href)};
     test('holds a fixture hub until interrupted', async t => {
       const root = await tempProject(t, 'cland-proj-', ${JSON.stringify(container)});
@@ -24,11 +25,10 @@ test('SIGTERM of a fixture worker reaps its detached hub before removing the tem
       // can be interrupted before a CLI result or readDiscovery records the PID.
       spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve'], {
         cwd: root, detached: true, stdio: 'ignore',
-        env: {
-          ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_'))),
-          DIGITALOCEAN_TOKEN: '', CLAND_TEST_SKIP_ORPHAN_SWEEP: '1',
+        env: fixtureEnvironment(root, process.env, {
+          CLAND_TEST_SKIP_ORPHAN_SWEEP: '1',
           CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'),
-        },
+        }),
       }).unref();
       let discovery;
       await eventually('fixture hub published discovery', async () => {

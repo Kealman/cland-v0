@@ -168,8 +168,7 @@ const injected = (ui: FrameClient, id: string, timeoutMs = 15_000) => ui.waitFor
  * resolves once the process is running (its start time, the signal's time, is behind it), whatever the machine's load.
  */
 function hook(t: TestContext, root: string, event: string, o: { session: string; launch?: string; payload?: Record<string, unknown>; held?: boolean }): { started: Promise<void>; done: Promise<void>; release: () => void; pid: number } {
-  const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
+  const env = fixtureEnvironment(root, process.env);
   const MARK = 'cland-test-hook-started';
   env.NODE_OPTIONS = `--import=data:text/javascript,${encodeURIComponent(`process.stderr.write(${JSON.stringify(`${MARK}\n`)}); ${o.held ? "const { createReadStream } = await import('node:fs'); await new Promise(resolve => createReadStream(null, { fd: 3 }).once('data', resolve));" : ''}`)}`;
   const args = [CLI_ENTRY, 'hook', event, '--session', o.session, ...(o.launch ? ['--launch', o.launch] : []), '--hub-file', join(root, '.cland', 'hub.json')];

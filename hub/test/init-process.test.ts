@@ -190,7 +190,8 @@ test('init writer ownership joins a held worker before fixture removal on cancel
       await new Promise(() => {});
     });
   `);
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_') && key !== 'NODE_TEST_CONTEXT'));
+  const env = fixtureEnvironment(root, process.env);
+  delete env.NODE_TEST_CONTEXT;
   const child = spawn(process.execPath, ['--test', '--test-reporter=tap', fixture], { cwd: root, env: runnerFixtureEnvironment(root, env), timeout: 10_000, signal: t.signal, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   child.stdout.on('data', chunk => { output += String(chunk); });

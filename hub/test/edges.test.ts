@@ -23,8 +23,7 @@ type StdioHub = { ui: FrameClient; pid: number; stderr: () => string; exited: Pr
 /** `cland hub serve --stdio …` as a UI's child, optionally under a command prefix (a sandbox). */
 async function spawnStdioHub(t: TestContext, root: string, args: string[], prefix: string[] = []): Promise<StdioHub> {
   await isolateVerification(root);
-  const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
+  const env = fixtureEnvironment(root, process.env);
   const argv = [...prefix, process.execPath, CLI_ENTRY, 'hub', 'serve', '--stdio', ...args];
   const child = spawn(argv[0] as string, argv.slice(1), { cwd: root, env: runnerFixtureEnvironment(root, env), stdio: ['pipe', 'pipe', 'pipe'] });
   let stderr = '';

@@ -1,4 +1,4 @@
-import { runnerFixtureEnvironment } from '../fixture-environment.ts';
+import { fixtureEnvironment, runnerFixtureEnvironment } from '../fixture-environment.ts';
 // T3 scenario: CLI detached startup serves status and tracker then stops.
 // Rule coverage (T1/T2): hub/test/init-config.test.ts, hub/test/project-probes.test.ts.
 // Hub process starts: 1 observed detached hub. Only one hub is live at a time.
@@ -32,7 +32,7 @@ test(smokeName, async t => {
       syncBuiltinESMExports();
     }
   `);
-  const env: NodeJS.ProcessEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_')));
+  const env = fixtureEnvironment(root, process.env);
   Object.assign(env, { DIGITALOCEAN_TOKEN: '', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1',
     NODE_OPTIONS: `--import=${pathToFileURL(observer).href} ${process.env.NODE_OPTIONS ?? ''}` });
   let daemonPid: number | undefined;

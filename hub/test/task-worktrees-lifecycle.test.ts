@@ -159,8 +159,7 @@ test("cland worktree prune shows a closed item's unmerged commits and removes it
 
   // the human answers y for T-1 and n for T-2; T-3 is open and never offered
   const pruned = await new Promise<CliResult>((resolve, reject) => {
-    const env: Record<string, string> = {};
-    for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
+    const env = fixtureEnvironment(root, process.env);
     const p = spawn(process.execPath, [CLI_ENTRY, 'worktree', 'prune'], { cwd: root, env: runnerFixtureEnvironment(root, env) });
     let stdout = '';
     let stderr = '';

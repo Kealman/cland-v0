@@ -106,7 +106,7 @@ test('wayfinder: a map item, child tickets wired in a second pass, claim by assi
 test('task CLI reads --body-file - from real stdin without changing its UTF-8 body', async t => {
   const root = await project(t);
   const input = '## Summary\n\nπ, quotes "here", and literal $HOME.\nA second line.';
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_')));
+  const env = fixtureEnvironment(root, process.env);
   const child = spawn(process.execPath, [fileURLToPath(new URL('../bin/cland.ts', import.meta.url)), 'task', 'create', 'Stdin spec', '--kind', 'spec', '--body-file', '-', '--json'], { cwd: root, env: runnerFixtureEnvironment(root, env), timeout: 10_000, signal: t.signal, stdio: ['pipe', 'pipe', 'pipe'] });
   let stdout = '';
   let stderr = '';
