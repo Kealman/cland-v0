@@ -1,3 +1,4 @@
+import { setupFrames } from './setup-frames.ts';
 import assert from 'node:assert/strict';
 import type { TestContext } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -19,6 +20,7 @@ type Ui = Awaited<ReturnType<typeof connectUi>>;
 /** Own startup before invoking the hub, including a frozen/held getMe or lost readiness receipt. */
 export async function telegramLivenessFixture(t: TestContext, options: {
   setupClock?: Clock; setupTimeoutMs?: number; signal?: AbortSignal; publishReady?: boolean;
+  connect?: typeof connectUi;
 } = {}) {
   const clock = new FakeClock();
   const setupAbort = new AbortController();
@@ -30,6 +32,7 @@ export async function telegramLivenessFixture(t: TestContext, options: {
   let starting: Promise<Hub> | undefined;
   let observing: Promise<Hub> | undefined;
   let connecting: Promise<Ui> | undefined;
+  let continuation: Promise<unknown> | undefined;
   let stopped = false, joined = false;
   let disposing: Promise<void> | undefined;
   const dispose = () => disposing ??= (async () => {
@@ -39,9 +42,10 @@ export async function telegramLivenessFixture(t: TestContext, options: {
     await native?.close();
     const hub = await starting?.catch(() => undefined);
     if (hub) { await hub.stop(); stopped = true; }
-    joined = !!starting;
     await observing?.catch(() => {});
     await connecting?.then(ui => ui.close(), () => {});
+    await continuation?.catch(() => {});
+    joined = !!starting;
   })();
   onCleanup(t, dispose);
   const root = await tempProject(t);
@@ -54,7 +58,7 @@ export async function telegramLivenessFixture(t: TestContext, options: {
   await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   setSecret(root, 'telegram.token', TELEGRAM_TEST_TOKEN);
   const logs: Record<string, unknown>[] = [];
-  const start = async () => {
+  const acquire = async () => {
     assert.equal(starting, undefined, 'fixture startup has one owner');
     const signal = AbortSignal.any([t.signal, setupAbort.signal, ...(options.signal ? [options.signal] : [])]);
     // Arm the independent readiness bound before triggering any hub startup.
@@ -66,12 +70,11 @@ export async function telegramLivenessFixture(t: TestContext, options: {
     void starting.then(hub => { actual.resolve(hub); if (options.publishReady !== false) ready.resolve(hub); }, error => {
       actual.reject(error); ready.reject(error);
     });
-    try {
       const hub = await observing;
       signal.throwIfAborted();
-      const ui = await (connecting = connectUi(t, hub.discovery, 'nvim'));
+      const ui = await (connecting = (options.connect ?? connectUi)(t, hub.discovery, 'nvim'));
       signal.throwIfAborted();
-      assert.equal((await ui.request({ type: 'subscribe' }, 1_000)).ok, true);
+      assert.equal((await setupFrames(t, ui, 'subscribe reply', signal).request({ type: 'subscribe' })).ok, true);
       const status = async () => {
         const result = await ui.request({ type: 'remote.status' });
         assert.equal(result.ok, true, result.error);
@@ -83,7 +86,11 @@ export async function telegramLivenessFixture(t: TestContext, options: {
         return JSON.stringify(result.value);
       };
       return { hub, ui, status, history };
-    } catch (error) { await dispose(); throw error; }
+  };
+  const start = () => {
+    const work = acquire();
+    continuation = work;
+    return work.catch(async error => { await dispose(); throw error; });
   };
   const retries = () => logs.filter(entry => entry.event === 'telegram-poll-retry').length;
   const waitRetry = (count: number) => until(() => retries() === count, { what: `Telegram retry ${count}`, timeoutMs: 1_000 });

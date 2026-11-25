@@ -1,4 +1,5 @@
 // T2: production Telegram pairing through sealed CLI/frames and the loopback fake Bot API.
+import { setupFrames } from './setup-frames.ts';
 import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -197,7 +198,7 @@ for (const source of ['membership', '403'] as const) test(`Telegram stops and re
   poll = await within(foreignConfirmed, 1_000);
   assert.equal(poll.params.offset, foreign.update_id + 1);
   const fixedLine = 'Telegram remote: bot blocked (403); unblock the bot in Telegram, then run cland hub reload';
-  const notice = ui.waitFor(frame => frame.type === 'message' && (frame.message as { text: string }).text === fixedLine, 1_000);
+  const notice = setupFrames(t, ui, 'telegram-pairing event').waitFor(frame => frame.type === 'message' && (frame.message as { text: string }).text === fixedLine);
   void notice.catch(() => {});
   const closed = fake.waitForPollClose(poll.id);
   if (source === 'membership') await control(fake.url, 'membership', { status: 'kicked' });

@@ -1,4 +1,5 @@
 // T2: real frames and native Telegram HTTP, with only platform and harness faked.
+import { setupFrames } from './setup-frames.ts';
 import { testWaitMs, testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
@@ -72,7 +73,7 @@ async function fixture(t: TestContext, scripted?: 'codex' | 'opencode', drop?: (
     const launched = await ui.request({ type: 'session.launch', name, harness, role: 'implementer' });
     assert.equal(launched.ok, true, launched.error);
     if (script) await until(script.ready, { timeoutMs: testWaitMs(), what: 'native subscription ready before raising approval' });
-    const delta = ui.waitFor(f => f.type === 'approval' && (f.approval as InboxApproval).session === name && (f.approval as InboxApproval).answerIn === 'hub', 1000);
+    const delta = setupFrames(t, ui, 'telegram-approvals event').waitFor(f => f.type === 'approval' && (f.approval as InboxApproval).session === name && (f.approval as InboxApproval).answerIn === 'hub');
     if (script) script.raise(command);
     else hub.fakes[harness]!.raiseApproval(name, { id: 'remote', kind: 'command', subject: { command }, choices: ['once', 'always', 'deny'] });
     const record = (await delta).approval as InboxApproval;
@@ -209,8 +210,8 @@ for (const choice of ['deny', 'once'] as const) for (const first of ['delivered'
   assert.equal((await f.ui.request({ type: 'approval.answer', approval: record.id, choice })).ok, true);
   const blocked = held ? await driveTelegram(f.clock, f.state, within(held, 1000)) : undefined;
   if (sent) await driveTelegram(f.clock, f.state, sent);
-  const corrected = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as InboxApproval).id === record.id
-    && (frame.approval as InboxApproval).outcome?.via === 'harness', 1000);
+  const corrected = setupFrames(t, f.ui, 'telegram-approvals event').waitFor(frame => frame.type === 'approval' && (frame.approval as InboxApproval).id === record.id
+    && (frame.approval as InboxApproval).outcome?.via === 'harness');
   f.script!.codex.notify('serverRequest/resolved', { requestId: 'approval' });
   f.script!.codex.notify('item/completed', { turnId: 'turn-command', item: { id: 'command', type: 'commandExecution', status: choice === 'deny' ? 'completed' : 'declined', exitCode: choice === 'deny' ? 0 : null } });
   await corrected;
@@ -252,7 +253,7 @@ test('Telegram Deny stops the scripted OpenCode command and a web answer edits i
   assert.equal(f.store.inboxOutcome('approval', record.id)!.via, 'telegram');
   assert.deepEqual((await f.messages()).find(message => message.message_id === card.message_id)!.reply_markup, { inline_keyboard: [] });
   // Another native request from this session, answered by the authenticated web edge.
-  const pending = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as InboxApproval).id.endsWith(':web'), 1000);
+  const pending = setupFrames(t, f.ui, 'telegram-approvals event').waitFor(frame => frame.type === 'approval' && (frame.approval as InboxApproval).id.endsWith(':web'));
   f.script!.opencode.ask('web', 'shell');
   const webRecord = (await pending).approval as InboxApproval;
   const mapped = until(async () => (await f.messages()).some(message => f.state.message('101', String(message.message_id))?.approval === webRecord.id),
@@ -277,7 +278,7 @@ test('Telegram drops a closed approval queued behind a flood hold before its car
   await control(f.fake.url, 'fault', { method: 'sendMessage', code: 429, retry_after: 60 });
   const launched = await f.ui.request({ type: 'session.launch', name: 'queued', harness: 'codex', role: 'implementer' });
   assert.equal(launched.ok, true, launched.error);
-  const pending = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as InboxApproval).session === 'queued', 1000);
+  const pending = setupFrames(t, f.ui, 'telegram-approvals event').waitFor(frame => frame.type === 'approval' && (frame.approval as InboxApproval).session === 'queued');
   f.hub.fakes.codex!.raiseApproval('queued', { id: 'closed', kind: 'command', subject: { command: 'never sent' }, choices: ['once', 'deny'] });
   const record = (await pending).approval as InboxApproval;
   await until(() => f.state.outbox().some(job => job.source === record.id && f.state.attempts(job.id).some(attempt => attempt.outcome === 'never-left')),

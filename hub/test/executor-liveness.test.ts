@@ -1,4 +1,5 @@
 // T2: real status RPC and embedded hub shutdown on isolated state; provider never answers.
+import { setupFrames } from './setup-frames.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
@@ -63,7 +64,7 @@ test('status bypasses the ledger lock held during deferred reconcile', async t =
   const hub = await projectHub(t, root, { CLAND_EXECUTOR_STATE: state }, { clock, syntheticProvider: { token: 'cland-test-liveness', api }, droplet: { api, processes: waiting } });
   await attempted.promise;
   const ui = await connectUi(t, hub.discovery, 'cli');
-  const response = await ui.request({ type: 'executor.status' }, 1000);
+  const response = await setupFrames(t, ui, 'executor.status reply').request({ type: 'executor.status' });
   assert.equal(response.ok, true, response.error);
   assert.equal((response.value as { reconciliation: string }).reconciliation, 'reconciling');
   const stop = hub.stop();

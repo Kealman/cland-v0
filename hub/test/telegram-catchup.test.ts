@@ -1,4 +1,5 @@
 // T2: production Telegram factory, sealed frames and loopback Bot API; fake time owns outages.
+import { setupFrames } from './setup-frames.ts';
 import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -26,20 +27,20 @@ test('Telegram four-minute outage reports offline only after three minutes and r
   await f.clock.advance(179_999);
   assert.equal((await history()).includes('Telegram remote offline since'), false);
   assert.equal((await status()).connection, 'disconnected');
-  const offline = ui.waitFor(frame => frame.type === 'message'
-    && (frame.message as TopicMessage).text.startsWith(`Telegram remote offline since ${since}:`), 1_000);
+  const offline = setupFrames(t, ui, 'telegram-catchup event').waitFor(frame => frame.type === 'message'
+    && (frame.message as TopicMessage).text.startsWith(`Telegram remote offline since ${since}:`));
   await f.clock.advance(1);
-  const line = (await within(offline, 1_000)).message as TopicMessage;
+  const line = (await offline).message as TopicMessage;
   assert.equal(line.topic, 'general');
   assert.ok(line.text.startsWith(`Telegram remote offline since ${since}: `));
   await f.clock.advance(59_999);
   assert.equal((await history()).split('Telegram remote offline since').length - 1, 1);
   assert.equal((await history()).includes('Telegram remote recovered'), false);
-  const recovered = ui.waitFor(frame => frame.type === 'message'
-    && (frame.message as TopicMessage).text === `Telegram remote recovered; offline since ${since}`, 1_000);
+  const recovered = setupFrames(t, ui, 'telegram-catchup event').waitFor(frame => frame.type === 'message'
+    && (frame.message as TopicMessage).text === `Telegram remote recovered; offline since ${since}`);
   const resumed = f.fake.waitForPoll();
   await f.clock.advance(1);
-  assert.equal(((await within(recovered, 1_000)).message as TopicMessage).topic, 'general');
+  assert.equal(((await recovered).message as TopicMessage).topic, 'general');
   const active = await within(resumed, 1_000);
   assert.equal(active.params.timeout, 40);
   assert.equal((await status()).connection, 'connected');
@@ -83,13 +84,13 @@ test('Telegram ten-second outage marks retained input then sends one gap for thr
   const written = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(f.clock.now());
   await control(f.fake.url, 'update', { message: { message_id: 99, date: Math.floor(f.clock.now().getTime() / 1_000),
     chat: { id: 101, type: 'private' }, from: { id: 101, is_bot: false, first_name: 'Fixture human' }, text: 'Retained phone input' } });
-  const inbound = ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).via === 'telegram', 1_000);
+  const inbound = setupFrames(t, ui, 'telegram-catchup event').waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).via === 'telegram');
   const gap = f.fake.waitForRequest('sendMessage', row => String(row.params.text).startsWith('3 General messages missed since '));
   void gap.catch(() => {});
   const resumed = f.fake.waitForPoll();
   await f.clock.advance(8_000);
   const recovery = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(f.clock.now());
-  const saved = (await within(inbound, 1_000)).message as TopicMessage;
+  const saved = (await inbound).message as TopicMessage;
   assert.equal(saved.text, `Retained phone input\n\n(written on Telegram at ${written}; the hub was down until ${recovery})`);
   await until(() => reactionSent(f.root), { what: 'durable stored reaction before the paced gap', timeoutMs: 1_000 });
   await f.clock.advance(1_000);
@@ -248,9 +249,9 @@ for (const code of [401, 403]) {
     assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'Missed before fatal gap' })).ok, true);
     await control(f.fake.url, 'fault', { method: 'sendMessage', code, echoToken: true });
     const cause = code === 401 ? 'wrong or revoked token (401)' : 'bot blocked (403)';
-    const terminal = ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).text.includes(cause), 1_000);
+    const terminal = setupFrames(t, ui, 'telegram-catchup event').waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).text.includes(cause));
     await f.clock.advance(10_000);
-    await within(terminal, 1_000);
+    await terminal;
     await until(async () => (await status()).connection === 'disabled', { what: 'fatal gap disables only Telegram', timeoutMs: 1_000 });
     assert.equal(facts(f.root).jobs.find(job => job.kind === 'general')!.state, 'missed');
     assert.ok(facts(f.root).gap);

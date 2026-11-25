@@ -699,7 +699,7 @@ export type SocketClient = {
   send: (frame: Record<string, unknown>) => void;
   /** Write bytes as they are: several lines at once, or part of one. */
   write: (raw: string) => void;
-  next: (timeoutMs?: number) => Promise<Record<string, unknown>>;
+  next: (timeoutMs?: number, signal?: AbortSignal) => Promise<Record<string, unknown>>;
   /** Resolves when the hub closed the connection. */
   closed: Promise<void>;
   close: () => void;
@@ -746,15 +746,28 @@ export async function connectSocket(path: string): Promise<SocketClient> {
   return {
     send: (frame) => socket.write(`${JSON.stringify(frame)}\n`),
     write: (raw) => socket.write(raw),
-    next: (timeoutMs = waitTimeoutMs(testWaitMs(5000))) => {
+    next: (timeoutMs = waitTimeoutMs(testWaitMs(5000)), signal) => {
+      if (signal?.aborted) return Promise.reject(signal.reason);
       const f = frames.shift();
       if (f) return Promise.resolve(f);
       return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(`no frame on the socket within ${timeoutMs}ms`)), timeoutMs);
-        waiters.push((frame) => {
+        const cleanup = () => {
           clearTimeout(timer);
+          signal?.removeEventListener('abort', cancel);
+          const index = waiters.indexOf(receive);
+          if (index >= 0) waiters.splice(index, 1);
+        };
+        const cancel = () => { cleanup(); reject(signal!.reason); };
+        const receive = (frame: Record<string, unknown>) => {
+          cleanup();
           resolve(frame);
-        });
+        };
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error(`no frame on the socket within ${timeoutMs}ms`));
+        }, timeoutMs);
+        waiters.push(receive);
+        signal?.addEventListener('abort', cancel, { once: true });
       });
     },
     closed,

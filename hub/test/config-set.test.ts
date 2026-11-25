@@ -1,4 +1,5 @@
 // T2: config CLI argument handling requires the CLI against an in-process project hub.
+import { setupFrames } from './setup-frames.ts';
 import { sessionUi as connectUi, sessionClandWithEnv as clandWithEnv } from './session-credential-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -95,7 +96,7 @@ async function heldConfiguration(t: Parameters<typeof tempProject>[0], receipt =
   } }) });
   const ui = await connectUi(t, hub.discovery);
   return { hold, root, config, path, rolePath, remote, hub, ui,
-    reload: () => hold.own(ui.request({ type: 'hub.reload' }, 1000)),
+    reload: () => hold.own(setupFrames(t, ui, 'hub.reload reply').request({ type: 'hub.reload' })),
     stop: () => within(hold.own(hub!.stop()), 1000),
   };
 }

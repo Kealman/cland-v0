@@ -1,5 +1,6 @@
 // T2: production OpenCode HTTP/SSE handling on a scripted native transport, fake lifecycle,
 // in-process spokes and FakeClock. Native completion, lookup and journal receipts bound negatives.
+import { setupFrames } from './setup-frames.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { HttpError } from '../src/adapters/opencode/client.ts';
@@ -174,7 +175,7 @@ test('reconnect keeps the same pending permission id and closes an off-stream an
   await f.reconnect();
   const inbox = (await f.ui.request({ type: 'inbox.list' })).value as { approvals: ApprovalRecord[] };
   assert.deepEqual(inbox.approvals.map(a => a.id), [id]);
-  const closed = f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === id && (e.approval as ApprovalRecord).state === 'closed', 1000);
+  const closed = setupFrames(t, f.ui, 'opencode-native event').waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === id && (e.approval as ApprovalRecord).state === 'closed');
   f.native.permissions = [];
   await f.reconnect();
   const record = (await closed).approval as ApprovalRecord;
@@ -273,7 +274,7 @@ test('a native reply during command lookup retains the request and its exact clo
   f.native.holdMessages = true;
   f.native.ask('fast-reply');
   await eventually('command lookup is held', () => f.native.lookups.length === 1 || undefined, 500);
-  const closed = f.ui.waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === `${f.process.sessionId}:fast-reply` && (e.approval as ApprovalRecord).state === 'closed', 1000);
+  const closed = setupFrames(t, f.ui, 'opencode-native event').waitFor(e => e.type === 'approval' && (e.approval as ApprovalRecord).id === `${f.process.sessionId}:fast-reply` && (e.approval as ApprovalRecord).state === 'closed');
   f.native.approve('fast-reply', 'reject');
   await f.native.releaseMessages();
   const record = (await closed).approval as ApprovalRecord;

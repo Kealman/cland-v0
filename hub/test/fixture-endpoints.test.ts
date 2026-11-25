@@ -1,4 +1,5 @@
 // T2: sealed factory construction, loopback port-zero speech and production hub frames.
+import { setupFrames } from './setup-frames.ts';
 import './cover-quiet.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -90,7 +91,7 @@ for (const messenger of ['discord', 'telegram'] as const) {
       f.owner.close(() => ui.close());
       return ui;
     }), 1_000);
-    const status = await within(f.owner.observe(() => ui.request({ type: 'remote.status' }, 1_000)), 1_000);
+    const status = await f.owner.observe(() => setupFrames(t, ui, 'remote.status reply').request({ type: 'remote.status' }));
     assert.equal(status.ok, true, status.error);
     const row = (status.value as { remotes: RemoteStatusRow[] }).remotes.find(row => row.messenger === messenger)!;
     assert.equal(row.connection, 'disabled');

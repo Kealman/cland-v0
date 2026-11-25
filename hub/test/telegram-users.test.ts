@@ -1,4 +1,5 @@
 // T2: users-mode Telegram fan-out and native answers against the sealed Bot API.
+import { setupFrames } from './setup-frames.ts';
 import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
@@ -152,7 +153,7 @@ for (const unpairFirst of [false, true]) test(`Telegram users fold approval copi
   assert.equal(launched.ok, true, launched.error);
   let id = '';
   const mapped = f.wait(async () => !!id && f.state.messagesForApproval(id).length === (unpairFirst ? 1 : 2), 'remaining owner approval mapping');
-  const delta = f.ui.waitFor(frame => frame.type === 'approval' && (frame.approval as { session: string }).session === 'approval-worker', 1000);
+  const delta = setupFrames(t, f.ui, 'telegram-users event').waitFor(frame => frame.type === 'approval' && (frame.approval as { session: string }).session === 'approval-worker');
   f.hub.fakes.codex!.raiseApproval('approval-worker', { id: 'remote', kind: 'command', subject: { command: 'echo users' }, choices: ['once', 'deny'] });
   id = ((await delta).approval as { id: string }).id;
   await f.clock.advance(250); await mapped;
@@ -216,7 +217,7 @@ for (const recovery of ['gap', 'long outage']) test(`Telegram blocked chat durin
   const general = f.wait(async () => (await f.messages()).some(m => String(m.chat.id) === healthy.chatId && m.text?.includes('Healthy recovery line')), 'healthy native General after blocked recovery');
   assert.equal((await f.coord.call<{ ok: boolean }>('send', { topic: 'general', text: 'Healthy recovery line' })).ok, true);
   await general;
-  const stored = f.ui.waitFor(frame => frame.type === 'message' && (frame.message as { text: string }).text === 'Healthy native input', 1000);
+  const stored = setupFrames(t, f.ui, 'telegram-users event').waitFor(frame => frame.type === 'message' && (frame.message as { text: string }).text === 'Healthy native input');
   await control(f.fake.url, 'update', { message: { message_id: 88, date: Math.floor(f.clock.now().getTime() / 1000), chat: { id: Number(healthy.chatId), type: 'private' }, from: { id: Number(healthy.userId), is_bot: false, first_name: 'Healthy' }, text: 'Healthy native input' } });
   const native = await stored;
   assert.equal((native.message as { userId: string }).userId, healthy.clandUserId);
@@ -255,7 +256,7 @@ for (const effect of ['General', 'gap']) test(`Telegram held ${effect} in one ch
   const job = f.state.outbox().find(j => j.state === 'sending' && String((j.payload as { params: { chat_id: string } }).params.chat_id) === heldOwner.chatId)!;
   assert.ok(job);
   try {
-    const committed = f.ui.waitFor(frame => frame.type === 'message' && (frame.message as { text: string }).text === 'Healthy before release', 1000);
+    const committed = setupFrames(t, f.ui, 'telegram-users event').waitFor(frame => frame.type === 'message' && (frame.message as { text: string }).text === 'Healthy before release');
     void committed.catch(() => {});
     // Complete the current empty poll before queueing the next input; the held
     // drain must not become a barrier between that completion and getUpdates.

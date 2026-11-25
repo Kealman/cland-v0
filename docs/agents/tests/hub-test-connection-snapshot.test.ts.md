@@ -1,5 +1,19 @@
 # hub/test/connection-snapshot.test.ts
 
+Setup-receipt controls enter `receiptFixtureCase` before acquisition, with named
+setup observations and a positively controlled native-launch guard. Socket
+acquisition retains its promise and closes a late result before joining native
+close. Synthetic timer restoration follows receipt-owner close in `finally`.
+The explicit-dispose control holds the original observation's cancellation
+continuation and proves disposal remains pending until that continuation joins;
+it releases the held continuation through the encompassing owner's release path.
+Each new callback explicitly fences the proxy cleanup owner. A nested
+`receiptFixtureCase` control rejects an actual resource close, checks the exact
+rejection plus retained root and installed native guard, repairs through the
+same `drainFixtureCleanup` owner, and then observes root removal and restoration
+to the enclosing guard. The repair runs in `finally` so a failed assertion does
+not strand the nested guard.
+
 Archived merged session reads use the public `session.list`/snapshot seam in
 `connection-snapshot.test.ts` at T2. A sealed project with a fake clock compares
 merged rows against the snapshot, archives a stopped process, and checks the

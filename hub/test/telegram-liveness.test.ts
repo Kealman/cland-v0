@@ -1,4 +1,5 @@
 // T2: production Telegram factory, sealed project frames and loopback fake; fake time owns behavior.
+import { setupFrames } from './setup-frames.ts';
 import { testSetupWaitMs } from './until.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -17,9 +18,33 @@ import { Store } from '../src/hub/store.ts';
 import { once } from 'node:events';
 import { WebSocket } from 'ws';
 import { frameClient } from './harness.ts';
-import { onCleanup } from './process-cleanup.ts';
+import { onCleanup, fenceFixtureCleanup } from './process-cleanup.ts';
 import { doctor, toolchain } from './doctor-fixture.ts';
 import type { Check } from '../src/doctor/report.ts';
+import { receiptFixtureCase } from './receipt-fixture-case.ts';
+
+test('explicit Telegram fixture disposal cancels a held subscription and joins startup before closing its root', t => receiptFixtureCase(t, false, async (t, step, adoptRoot, release) => {
+  fenceFixtureCleanup(t);
+  let f: Awaited<ReturnType<typeof fixture>> | undefined;
+  const abort = new AbortController();
+  release(() => abort.abort(new Error('held subscribe control released')));
+  const entered = Promise.withResolvers<void>();
+  let clientClosed = false;
+  const client = frameClient(line => {
+    assert.equal(JSON.parse(line).type, 'subscribe');
+    entered.resolve();
+  }, () => {}, () => { clientClosed = true; });
+  f = await step('held subscribe fixture setup', () => fixture(t, { signal: abort.signal, connect: async () => client }));
+  adoptRoot(f.root);
+  const starting = f.start();
+  const rejected = assert.rejects(starting, error => error instanceof Error && error.cause instanceof Error && error.cause.message === 'Telegram liveness setup cancelled');
+  void rejected.catch(() => {});
+  await step('subscribe request admission receipt', () => entered.promise);
+  await step('explicit fixture disposal receipt', () => f!.dispose());
+  await rejected;
+  assert.equal(clientClosed, true);
+  assert.deepEqual(f.receipts(), { joined: true, stopped: true, listening: true, closed: true, connections: 0, handlers: 0, nativeError: null });
+}));
 
 async function doctorStop(t: import('node:test').TestContext, root: string) {
   const tools = await toolchain(t);
@@ -106,11 +131,11 @@ test('Telegram rides out 409 for 60 seconds then reports another consumer withou
   }
   assert.notEqual((await status()).connection, 'disabled', 'startup conflicts get the whole 60-second grace');
   assert.equal((await history()).includes('another consumer of the token'), false);
-  const terminal = ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).topic === 'general'
-    && (frame.message as TopicMessage).text.includes('another consumer of the token'), 1_000);
+  const terminal = setupFrames(t, ui, 'telegram-liveness event').waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).topic === 'general'
+    && (frame.message as TopicMessage).text.includes('another consumer of the token'));
   const closed = f.fake.waitForConnectionClose('getUpdates');
   await f.clock.advance(1_000);
-  await within(terminal, 1_000);
+  await terminal;
   await within(closed, 1_000);
   const row = await status();
   assert.equal(row.connection, 'disabled');
@@ -161,11 +186,11 @@ for (const code of [401, 403]) {
     const poll = await within(polled, testSetupWaitMs());
     await control(f.fake.url, 'fault', { method: 'getUpdates', code, echoToken: true, description: 'Long provider detail. '.repeat(40) });
     const text = code === 401 ? 'wrong or revoked token (401)' : 'bot blocked (403)';
-    const notice = ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).topic === 'general'
-      && (frame.message as TopicMessage).text.includes(text), 1_000);
+    const notice = setupFrames(t, ui, 'telegram-liveness event').waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).topic === 'general'
+      && (frame.message as TopicMessage).text.includes(text));
     const closed = f.fake.waitForPollClose(poll.id);
     await control(f.fake.url, 'release-polls', {});
-    await within(notice, 1_000);
+    await notice;
     assert.equal(await within(closed, 1_000), poll.id);
     await until(async () => (await status()).connection === 'disabled', { what: 'disabled Telegram status', timeoutMs: 1_000 });
     const row = await status();
@@ -206,7 +231,7 @@ for (const code of [401, 403]) {
     const opened = once(ws, 'open');
     const web = frameClient(line => ws.send(line.trim()), fn => ws.on('message', data => fn(`${data.toString()}\n`)), () => ws.terminate());
     await within(opened, 1_000);
-    const welcome = web.waitFor(frame => frame.type === 'welcome', 1_000);
+    const welcome = setupFrames(t, web, 'telegram-liveness event').waitFor(frame => frame.type === 'welcome');
     web.send({ type: 'hello', protocol: 2, client: 'human' });
     assert.equal((await welcome).name, 'human');
     const webStatus = await web.request({ type: 'hub.status' });
@@ -235,10 +260,10 @@ for (const code of [401, 403]) {
     const poll = await within(polled, testSetupWaitMs());
     await control(f.fake.url, 'fault', { method: 'sendRichMessage', code, echoToken: true });
     const cause = code === 401 ? 'wrong or revoked token (401)' : 'bot blocked (403)';
-    const notice = ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).text.includes(cause), 1_000);
+    const notice = setupFrames(t, ui, 'telegram-liveness event').waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).text.includes(cause));
     const closed = f.fake.waitForPollClose(poll.id);
     assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'rich fatal refusal control' })).ok, true);
-    await within(notice, 1_000);
+    await notice;
     assert.equal(await within(closed, 1_000), poll.id);
     await until(async () => (await status()).connection === 'disabled', { what: 'rich refusal disables Telegram', timeoutMs: 1_000 });
     assert.ok((await status()).reason?.startsWith(cause));
@@ -260,10 +285,10 @@ test('Telegram unblocked after 403 resumes on unchanged reload while configurati
   const { hub, ui, status } = await f.start();
   const poll = await within(polled, testSetupWaitMs());
   await control(f.fake.url, 'fault', { method: 'getUpdates', code: 403 });
-  const notice = ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).text.includes('bot blocked (403)'), 1_000);
+  const notice = setupFrames(t, ui, 'telegram-liveness event').waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).text.includes('bot blocked (403)'));
   const closed = f.fake.waitForPollClose(poll.id);
   await control(f.fake.url, 'release-polls', {});
-  await within(notice, 1_000);
+  await notice;
   await within(closed, 1_000);
   await until(async () => (await status()).connection === 'disabled', { what: 'blocked remote stopped', timeoutMs: 1_000 });
   // The queued fake 403 is consumed; the bot is now unblocked, without any config or secret change.
@@ -296,10 +321,10 @@ test('Telegram membership unblock and queued paired start survive unchanged relo
   const { hub, ui, status, history } = await f.start();
   const poll = await within(initial, testSetupWaitMs());
   const blockedLine = 'Telegram remote: bot blocked (403); unblock the bot in Telegram, then run cland hub reload';
-  const blocked = ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).text === blockedLine, 1_000);
+  const blocked = setupFrames(t, ui, 'telegram-liveness event').waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).text === blockedLine);
   const closed = f.fake.waitForPollClose(poll.id);
   await control(f.fake.url, 'membership', { status: 'kicked' });
-  await within(blocked, 1_000);
+  await blocked;
   assert.equal(await within(closed, 1_000), poll.id);
   await until(async () => (await status()).connection === 'disabled', { what: 'membership kick disables Telegram', timeoutMs: 1_000 });
   await control(f.fake.url, 'membership', { status: 'member' });

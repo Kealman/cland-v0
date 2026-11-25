@@ -1,4 +1,5 @@
 // T2: explorer facts through snapshots and task deltas of an embedded project hub.
+import { setupFrames } from './setup-frames.ts';
 import test, {type TestContext} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile,readFile,rm} from 'node:fs/promises';
@@ -287,7 +288,7 @@ test('stage-cover settlement pushes a changed current stage without another item
   const baseline=await ui.request({type:'task.list',projection:'summary'});
   assert.deepEqual((baseline.value as {items:ItemSummary[]}).items.find(i=>i.id===epic)!.rollup?.stage,{number:1,total:1,name:'only'});
   const mark=ui.frames.length;
-  const settled=ui.waitFor(f=>ui.frames.indexOf(f)>=mark&&f.type==='task'&&f.id===epic&&(f.item as ItemSummary).rollup?.stage===null,1000);
+  const settled=setupFrames(t, ui, 'item-summary event').waitFor(f=>ui.frames.indexOf(f)>=mark&&f.type==='task'&&f.id===epic&&(f.item as ItemSummary).rollup?.stage===null);
   covers=[{id:'linux',head,tree,platform:'Linux droplet'}];
   tracker.useVerify(()=>null,()=>covers);
   const delta=await settled;

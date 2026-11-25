@@ -13,6 +13,18 @@ a signal retain their existing request/result and buffered-frame contract. Closi
 the transport alone does not cancel waits; fixture teardown must abort its owner.
 The authenticated session-client wrapper forwards the signal.
 
+`SocketClient.next(timeoutMs?, signal?)` also accepts a fixture-owned signal.
+Cancellation and timeout remove its queued receiver, so the next caller still
+receives the next ordered frame. The default and one-argument forms stay valid.
+Use `setupFrames(t, client, reason)` or `setupSocket(t, client, reason)` from
+`hub/test/setup-frames.ts` for receipt headroom: each operation samples
+`testSetupWaitMs`, and the owner aborts and joins outstanding observations before
+directory removal. Keep direct, explicit client deadlines for measured product
+latency. Closing a socket alone does not cancel its pending observations.
+Pass the enclosing fixture's signal as the fourth argument when that fixture
+has explicit disposal: its earlier close must abort the receipt before joining
+the original continuation, rather than waiting for a later cleanup hook.
+
 Cancellation tests use fake timers, assert the settled rejection receipts and
 verify that advancing past the former deadline fires no callbacks. They also
 exercise already-aborted owners, completed receipts, and expired waiter removal.

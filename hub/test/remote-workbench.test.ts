@@ -1,4 +1,5 @@
 // T2: safe workbench frames over the production Telegram/fake Bot API boundary.
+import { setupFrames, setupSocket } from './setup-frames.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Inbox, RemoteStateRow, RemoteStatusResult } from '../src/protocol.ts';
@@ -12,7 +13,7 @@ import { telegramLivenessFixture as fixture } from './telegram-liveness-fixture.
 test('workbenches receive an allowlisted remote state on a previous-shape hello', async t => {
   const f = await fixture(t);
   const { ui, hub } = await f.start();
-  const frame = await ui.waitFor(frame => frame.type === 'remote.state', 1_000);
+  const frame = await setupFrames(t, ui, 'remote-workbench event').waitFor(frame => frame.type === 'remote.state');
   assert.deepEqual(frame.remotes, [
     { messenger: 'telegram', enabled: true, connection: 'connected', offlineSince: null,
       pairedName: null, mute: false, outboxDepth: 0, lastError: null },
@@ -29,7 +30,7 @@ test('workbenches receive an allowlisted remote state on a previous-shape hello'
     features: ['snapshot', 'numbered-deltas', 'slim-frames'] });
   let remotes: unknown;
   for (;;) {
-    const next = await featured.next(1_000);
+    const next = await setupSocket(t, featured, 'ordered handshake receipt').next();
     assert.notEqual(next.type, 'snapshot.refused');
     if (next.type === 'snapshot' && next.domain === 'sessions') remotes = (next.value as { remotes: unknown }).remotes;
     if (next.type === 'snapshot.end') break;
@@ -43,8 +44,8 @@ test('failed Telegram exchange pushes offline immediately and a successful poll 
   const polled = f.fake.waitForPoll();
   const { ui, history } = await f.start();
   const poll = await within(polled, 1_000);
-  const offline = ui.waitFor(frame => frame.type === 'remote.state'
-    && (frame.remotes as RemoteStateRow[])[0]?.connection === 'offline', 1_000);
+  const offline = setupFrames(t, ui, 'remote-workbench event').waitFor(frame => frame.type === 'remote.state'
+    && (frame.remotes as RemoteStateRow[])[0]?.connection === 'offline');
   void offline.catch(() => {});
   await control(f.fake.url, 'fault', { method: 'getUpdates', code: 500, description: 'fake outage', echoToken: true });
   const closed = f.fake.waitForPollClose(poll.id);
@@ -57,8 +58,8 @@ test('failed Telegram exchange pushes offline immediately and a successful poll 
   assert.equal((await history()).includes('remote offline since'), false, 'the frame precedes the three-minute General notice');
   assert.equal(JSON.stringify(failed).includes(TELEGRAM_TEST_TOKEN), false);
   const boundary = ui.frames.length;
-  const recovered = ui.waitFor(frame => ui.frames.indexOf(frame) >= boundary && frame.type === 'remote.state'
-    && (frame.remotes as RemoteStateRow[])[0]?.connection === 'connected', 1_000);
+  const recovered = setupFrames(t, ui, 'remote-workbench event').waitFor(frame => ui.frames.indexOf(frame) >= boundary && frame.type === 'remote.state'
+    && (frame.remotes as RemoteStateRow[])[0]?.connection === 'connected');
   void recovered.catch(() => {});
   await control(f.fake.url, 'stall', { enabled: false });
   await f.clock.advance(1_000);
@@ -73,8 +74,8 @@ test('pairing, mute, outbox depth, unpair and configuration disable push safe re
   const { ui } = await f.start();
   const observe = (predicate: (row: RemoteStateRow) => boolean) => {
     const boundary = ui.frames.length;
-    const result = ui.waitFor(frame => ui.frames.indexOf(frame) >= boundary && frame.type === 'remote.state'
-      && predicate((frame.remotes as RemoteStateRow[])[0]!), 1_000);
+    const result = setupFrames(t, ui, 'remote-workbench event').waitFor(frame => ui.frames.indexOf(frame) >= boundary && frame.type === 'remote.state'
+      && predicate((frame.remotes as RemoteStateRow[])[0]!));
     void result.catch(() => {});
     return result;
   };
@@ -143,7 +144,7 @@ for (const [code, stopCause, cause] of [[401, 'token', 'wrong or revoked token (
     const polled = f.fake.waitForPoll();
     const { ui } = await f.start();
     const poll = await within(polled, 1_000);
-    const stopped = ui.waitFor(frame => frame.type === 'remote.state' && (frame.remotes as RemoteStateRow[])[0]?.connection === 'stopped', 1_000);
+    const stopped = setupFrames(t, ui, 'remote-workbench event').waitFor(frame => frame.type === 'remote.state' && (frame.remotes as RemoteStateRow[])[0]?.connection === 'stopped');
     void stopped.catch(() => {});
     await control(f.fake.url, 'fault', { method: 'getUpdates', code, echoToken: true });
     const closed = f.fake.waitForPollClose(poll.id);

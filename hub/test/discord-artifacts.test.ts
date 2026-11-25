@@ -1,4 +1,5 @@
 // T2: production General frames and loopback Discord native receipts.
+import { setupFrames } from './setup-frames.ts';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { mkdir, writeFile, truncate } from 'node:fs/promises';
@@ -138,7 +139,7 @@ test('Discord mirrors an actual Telegram gateway photo upload once with its orig
   f.stop(()=>owner.dispose());
   const hub = await owner.start(f.root,{},realClock,{hubOptions:{gatewayRemotes:[telegram]}});
   const received = owner.observe(async signal => {
-    const raw = telegram.client.waitFor(frame=>frame.type==='result' && frame.id==='photo', 1000);
+    const raw = setupFrames(t, telegram.client, 'discord-artifacts event', signal).waitFor(frame=>frame.type==='result' && frame.id==='photo');
     try { return await abortable(raw,signal); }
     finally { await Promise.allSettled([raw]); }
   });

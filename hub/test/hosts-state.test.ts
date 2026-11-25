@@ -1,4 +1,5 @@
 // T2: host state on the real socket edge with an in-process hub and fake clock.
+import { setupFrames, setupSocket } from './setup-frames.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { projectHub, tempProject, connectSocket } from './harness.ts';
@@ -83,16 +84,16 @@ test('hosts state connects with empty pools on previous and featured wire shapes
   legacy.send({ type: 'hello', protocol: 2, client: 'ui', secret: discovery.secret });
   assert.equal((await legacy.next()).type, 'welcome');
   assert.equal((await legacy.next()).type, 'remote.state');
-  assert.deepEqual(await legacy.next(1000), { type: 'hosts.state', pools: [] });
+  assert.deepEqual(await setupSocket(t, legacy, 'ordered handshake receipt').next(), { type: 'hosts.state', pools: [] });
   legacy.send({type:'topic.list',id:'old-request'});
-  const reply=await legacy.next(1000);
+  const reply=await setupSocket(t, legacy, 'ordered handshake receipt').next();
   assert.equal(reply.type,'result');assert.equal(reply.id,'old-request');assert.equal(reply.ok,true);
   const featured = await connectSocket(discovery.socket);
   t.after(() => featured.close());
   featured.send({ type: 'hello', protocol: 2, client: 'ui', secret: discovery.secret, features: ['snapshot'] });
   let pools: unknown;
   for (;;) {
-    const frame = await featured.next(1000);
+    const frame = await setupSocket(t, featured, 'ordered handshake receipt').next();
     if (frame.type === 'snapshot' && frame.domain === 'sessions') pools = (frame.value as { hosts?: unknown }).hosts;
     if (frame.type === 'snapshot.end') break;
   }
@@ -214,7 +215,7 @@ test('placement, exit, login state and hot pool settings push socket replacement
   records.provisions.ready({id:host.name,pool:'agents',provider:'fake',size:'s-4vcpu-8gb',region:'fake-1',created:clock.now().toISOString(),state:'ready',machine:{id:host.name,address:host.name,architecture:'arm64',created:clock.now().toISOString()}});
   const observe=async(action:()=>Promise<unknown>,predicate:(pool:import('../src/protocol.ts').HostsStatePool)=>boolean)=>{
     const boundary=ui.frames.length;
-    const receipt=ui.waitFor(frame=>ui.frames.indexOf(frame)>=boundary&&frame.type==='hosts.state'&&predicate((frame.pools as import('../src/protocol.ts').HostsStatePool[])[0]!),1000);
+    const receipt=setupFrames(t, ui, 'hosts-state event').waitFor(frame=>ui.frames.indexOf(frame)>=boundary&&frame.type==='hosts.state'&&predicate((frame.pools as import('../src/protocol.ts').HostsStatePool[])[0]!));
     void receipt.catch(()=>{});
     await action();await clock.advance(1000);return receipt;
   };
@@ -234,7 +235,7 @@ test('placement, exit, login state and hot pool settings push socket replacement
   t.after(()=>featured.close());
   featured.send({type:'hello',protocol:2,client:'ui',secret:hub.discovery.secret,features:['snapshot']});
   let snapshot:unknown;
-  for(;;){const frame=await featured.next(1000);if(frame.type==='snapshot'&&frame.domain==='sessions')snapshot=(frame.value as {hosts:unknown}).hosts;if(frame.type==='snapshot.end')break;}
+  for(;;){const frame=await setupSocket(t, featured, 'ordered handshake receipt').next();if(frame.type==='snapshot'&&frame.domain==='sessions')snapshot=(frame.value as {hosts:unknown}).hosts;if(frame.type==='snapshot.end')break;}
   assert.deepEqual(snapshot,configured.pools);
   assert.equal((configured.pools as import('../src/protocol.ts').HostsStatePool[])[0]!.logins.codex!.usable,0);
 });
@@ -261,7 +262,7 @@ test('manual create refusal alerts and unrelated outage recovery cannot settle i
   }});
   const ui=await connectUi(t,hub.discovery,'cli');
   await ui.request({type:'subscribe'});
-  const observe=(predicate:(pool:import('../src/protocol.ts').HostsStatePool)=>boolean)=>{const boundary=ui.frames.length;const pending=ui.waitFor(f=>ui.frames.indexOf(f)>=boundary&&f.type==='hosts.state'&&predicate((f.pools as import('../src/protocol.ts').HostsStatePool[])[0]!),1000);void pending.catch(()=>{});return pending;};
+  const observe=(predicate:(pool:import('../src/protocol.ts').HostsStatePool)=>boolean)=>{const boundary=ui.frames.length;const pending=setupFrames(t, ui, 'hosts-state event').waitFor(f=>ui.frames.indexOf(f)>=boundary&&f.type==='hosts.state'&&predicate((f.pools as import('../src/protocol.ts').HostsStatePool[])[0]!));void pending.catch(()=>{});return pending;};
   const alerted=observe(pool=>pool.alert?.kind==='provider');
   await ui.request({type:'host.create',pool:'agents'});await clock.advance(1000);
   assert.deepEqual(((await alerted).pools as import('../src/protocol.ts').HostsStatePool[])[0]!.alert,{kind:'provider',reason:'manual provider refusal'});
@@ -299,7 +300,7 @@ test('workbench prices come from the admitted DigitalOcean declaration checkpoin
     o.records.provisions.save(row);return row;
   }});
   const ui=await connectUi(t,hub.discovery,'cli');await ui.request({type:'subscribe'});
-  const receipt=ui.waitFor(f=>f.type==='hosts.state'&&(f.pools as import('../src/protocol.ts').HostsStatePool[])[0]?.hosts[0]?.priceHourly===0.25,1000);void receipt.catch(()=>{});
+  const receipt=setupFrames(t, ui, 'hosts-state event').waitFor(f=>f.type==='hosts.state'&&(f.pools as import('../src/protocol.ts').HostsStatePool[])[0]?.hosts[0]?.priceHourly===0.25);void receipt.catch(()=>{});
   assert.equal((await ui.request({type:'host.create',pool:'agents'})).ok,true);
   await clock.advance(1000);
   const host=((await receipt).pools as import('../src/protocol.ts').HostsStatePool[])[0]!.hosts[0]!;

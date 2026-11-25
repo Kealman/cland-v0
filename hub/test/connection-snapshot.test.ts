@@ -13,7 +13,144 @@ import { FakeClock } from './fake-clock.ts';
 import { SNAPSHOT_LIMITS } from '../src/protocol.ts';
 import type { HubFrame } from '../src/protocol.ts';
 import { connectSocket, frameClient, inProcessSpoke, projectHub, tempProject, type FrameClient } from './harness.ts';
-import { onCleanup } from './process-cleanup.ts';
+import { onCleanup, fenceFixtureCleanup, drainFixtureCleanup } from './process-cleanup.ts';
+import cp from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { setupFrames, setupSocket } from './setup-frames.ts';
+import { receiptFixtureCase } from './receipt-fixture-case.ts';
+import { pacingOwner } from './telegram-pacing-fixture.ts';
+
+test('setup callback rejected close retains its root and native guard until same-owner repair', t => receiptFixtureCase(t, false, async (t, step, _adoptRoot, release) => {
+  fenceFixtureCleanup(t);
+  const originalSpawn = cp.spawn;
+  const hooks: Array<() => unknown> = [];
+  const nested = new Proxy(t, {
+    get(target, key) {
+      if (key === 'after') return (fn: () => unknown) => { hooks.push(fn); };
+      const value = Reflect.get(target, key, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+  let repair = false;
+  release(() => { repair = true; });
+  let fixtures!: TestContext;
+  let root = '', joined = false, closeCount = 0;
+  const refusal = new Error('controlled setup close rejected');
+  await step('nested receipt callback setup', () => receiptFixtureCase(nested, false, async (owned, setup, adoptRoot) => {
+    fenceFixtureCleanup(owned);
+    fixtures = owned;
+    onCleanup(owned, async () => { closeCount++; if (!repair) throw refusal; joined = true; });
+    root = await setup('nested retained root setup', () => tempProject(owned));
+    adoptRoot(root);
+  }));
+  const guardedSpawn = cp.spawn;
+  try {
+    await step('rejected close receipt', () => assert.rejects(drainFixtureCleanup(fixtures), error => error === refusal));
+    assert.equal(joined, false);
+    assert.equal(existsSync(root), true, 'rejected close retains the actual fixture root');
+    assert.equal(cp.spawn, guardedSpawn, 'rejected close retains the installed native guard');
+  } finally {
+    repair = true;
+    await step('same-owner close repair receipt', () => drainFixtureCleanup(fixtures));
+    for (const hook of hooks) await hook();
+  }
+  assert.equal(joined, true);
+  assert.equal(closeCount, 2);
+  assert.equal(existsSync(root), false, 'successful repair removes the root');
+  assert.equal(cp.spawn, originalSpawn, 'successful repair restores the enclosing native guard');
+}));
+
+test('socket setup cancellation leaves the next ordered receipt available', t => receiptFixtureCase(t, false, async (t, step, adoptRoot, release) => {
+  fenceFixtureCleanup(t);
+  let closing = false;
+  let acquiring: ReturnType<typeof connectSocket> | undefined;
+  let socket: Awaited<ReturnType<typeof connectSocket>> | undefined;
+  let closeSetup = async () => {};
+  release(() => { closing = true; void closeSetup(); socket?.close(); });
+  onCleanup(t, async () => {
+    await closeSetup();
+    socket = await acquiring?.catch(() => undefined);
+    socket?.close();
+    await socket?.closed;
+  });
+  const root = await step('socket control project setup', () => tempProject(t));
+  adoptRoot(root);
+  const hub = await step('socket control serving hub setup', () => projectHub(t, root));
+  socket = await step('socket control connection setup', () => acquiring = connectSocket(hub.discovery.socket).then(client => {
+    socket = client;
+    if (closing) client.close();
+    return client;
+  }));
+  const setup = setupSocket(t, socket, 'socket handshake');
+  closeSetup = setup.close;
+  const cancelled = setup.next();
+  const rejected = assert.rejects(cancelled, /socket handshake: receipt failed/);
+  await setup.close();
+  await rejected;
+  socket.send({ type: 'hello', protocol: 2, client: 'ui', secret: hub.discovery.secret });
+  assert.equal((await socket.next()).type, 'welcome');
+}));
+
+test('setup frame receipts tolerate delayed I/O and teardown cancels undelivered work', t => receiptFixtureCase(t, false, async (t, step, _adoptRoot, release) => {
+  fenceFixtureCleanup(t);
+  let closeSetup = async () => {};
+  release(() => { void closeSetup(); });
+  let receive!: (chunk: string) => void;
+  let requestId: unknown;
+  let setup: ReturnType<typeof setupFrames> | undefined;
+  try {
+  const owned = await step('synthetic frame setup', async () => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const ui = frameClient(line => { requestId = JSON.parse(line).id; }, fn => { receive = fn; }, () => {});
+    setup = setupFrames(t, ui, 'delayed synthetic subscription');
+    closeSetup = setup.close;
+    return setup;
+  });
+  const frame = owned.waitFor(f => f.type === 'ready');
+  const request = owned.request({ type: 'subscribe' });
+  t.mock.timers.tick(1001);
+  receive(`${JSON.stringify({ type: 'ready' })}\n${JSON.stringify({ type: 'result', id: requestId, ok: true })}\n`);
+  assert.equal((await frame).type, 'ready');
+  assert.equal((await request).ok, true);
+  const missingFrame = owned.waitFor(f => f.type === 'missing');
+  const missingRequest = owned.request({ type: 'missing' });
+  const rejected = Promise.all([
+    assert.rejects(missingFrame, error => error instanceof Error && error.cause instanceof Error && error.cause.message === 'delayed synthetic subscription: fixture teardown'),
+    assert.rejects(missingRequest, error => error instanceof Error && error.cause instanceof Error && error.cause.message === 'delayed synthetic subscription: fixture teardown'),
+  ]);
+  await owned.close();
+  await rejected;
+  } finally {
+    await setup?.close();
+    t.mock.timers.reset();
+  }
+}));
+
+test('explicit enclosing disposal cancels and joins setup receipts before later cleanup hooks', t => receiptFixtureCase(t, false, async (t, step, _adoptRoot, release) => {
+  fenceFixtureCleanup(t);
+  const abort = new AbortController();
+  release(() => abort.abort(new Error('control released')));
+  const owner = await step('explicit disposal owner setup', async () => pacingOwner(t));
+  const client = frameClient(() => {}, () => {}, () => {});
+  const cancelled = Promise.withResolvers<void>();
+  const finish = Promise.withResolvers<void>();
+  release(() => finish.resolve());
+  let originalJoined = false, disposed = false;
+  const work = owner.observe(async signal => {
+    try { return await setupFrames(t, client, 'held enclosing receipt', AbortSignal.any([signal, abort.signal])).request({ type: 'held' }); }
+    finally { cancelled.resolve(); await finish.promise; originalJoined = true; }
+  });
+  const rejected = assert.rejects(work, error => error instanceof Error && error.cause instanceof Error && error.cause.message === 'Telegram pacing fixture setup cancelled');
+  void rejected.catch(() => {});
+  const disposing = owner.dispose().then(() => { disposed = true; });
+  await step('cancelled receipt reached original continuation', () => cancelled.promise);
+  assert.equal(disposed, false, 'disposal retains ownership while the original continuation is held');
+  finish.resolve();
+  await step('explicit disposal completion receipt', () => disposing);
+  await rejected;
+  assert.equal(originalJoined, true);
+  assert.equal(owner.observations(), 0);
+}));
 
 async function client(t: TestContext, discovery: { socket: string; secret: string }, features?: string[]): Promise<FrameClient> {
   const socket = createConnection(discovery.socket);
