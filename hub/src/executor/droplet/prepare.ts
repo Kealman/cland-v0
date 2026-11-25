@@ -5,13 +5,13 @@ import type { DropletDependencies, Provider } from './dependencies.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Store } from '../../hub/store.ts';
 import type { LogFn } from '../../log.ts';
 import { DigitalOceanApi, DigitalOceanError, type Action, type SnapshotImage } from './api.ts';
-import { durableJson, leaseDir, type DropletLease } from './lease.ts';
+import { durableJson, runDirectory, leaseDir, type DropletLease } from './lease.ts';
 import { Machine, machineEnv, shellQuote } from './machine.ts';
 import { pause, testTiming } from './watchdog.ts';
 import { ReadinessDeadlineError, withDropletCleanupFailure } from './readiness-deadline.ts';
@@ -211,7 +211,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     // A prepared image remains usable while the durable releasing lease is
     // retried by the hub and watchdog. Its lifetime and cost stay unconfirmed.
     const snapshot: Snapshot = { image: image.id, name: image.name, key, keyHash: keyHash(key), regions: image.regions, sizeGb: image.size_gigabytes, minDiskSize: image.min_disk_size, created: image.created_at };
-    await mkdir(dirname(options.storage?.recordPath ?? snapshotPath(root)), { recursive: true, mode: 0o700 });
+    await runDirectory(root, dirname(options.storage?.recordPath ?? snapshotPath(root)));
     recovery.candidate = snapshot; recovery.phase = 'retire'; recovery.retirement = 'unstarted'; await saveRecovery(root, recovery, options.storage);
     await durableJson(options.storage?.recordPath ?? snapshotPath(root), snapshot);
     options.store?.setMeta('executor-snapshot', JSON.stringify(snapshot));

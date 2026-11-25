@@ -15,11 +15,11 @@ import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
 import { FakeClock } from './fake-clock.ts';
 import { drive } from './remote-clock.ts';
-import { onCleanup, beforeDirectories, guardDirectoryRemoval, ownDirectory } from './process-cleanup.ts';
+import { onCleanup, beforeDirectories, guardDirectoryRemoval, ownDirectory, fenceFixtureCleanup, drainFixtureCleanup } from './process-cleanup.ts';
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
 import { executorSnapshotNotice, Dispatcher } from '../src/hub/dispatch.ts';
 import { DropletExecutor, projectName } from '../src/executor/droplet/droplet.ts';
-import { keyHash, readSnapshot, snapshotPath, type Snapshot } from '../src/executor/droplet/prepare.ts';
+import { keyHash, readSnapshot, snapshotPath, prepareSnapshot, type Snapshot } from '../src/executor/droplet/prepare.ts';
 import { readLeases, readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { Machine } from '../src/executor/droplet/machine.ts';
 import { diagnosticResult } from '../src/hub/merge-batches.ts';
@@ -36,6 +36,129 @@ import { readRecoveries } from '../src/executor/droplet/snapshot-recovery.ts';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
 import { DigitalOceanError } from '../src/executor/droplet/api.ts';
 import { testDeadlineMs } from './until.ts';
+import { fixtureWork } from '../../test-support/fixture-work.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
+
+/** Keep resource hooks outside caseDeadlines' settled ancillary-hook promise. */
+function heldWriterCase(t: TestContext, release?: () => void) {
+  const cleanup = fenceFixtureCleanup(t);
+  const scope = guardedLeaseCase(t, release, { timeoutMs: testDeadlineMs(5000), deferRestore: true });
+  const closers: Array<{ run: () => Promise<void>; closed: boolean }> = [];
+  // Registered after the original-work join and before any nested acquisition.
+  beforeDirectories(t, async () => {
+    for (const close of closers.toReversed()) if (!close.closed) { await close.run(); close.closed = true; }
+  });
+  const fixtures = new Proxy(t, { get(target, key) {
+    if (key === 'after') return (fn: Parameters<TestContext['after']>[0]) => beforeDirectories(t, () => new Promise<void>((resolve, reject) => {
+      const result = fn?.(target, error => error ? reject(error) : resolve());
+      if (!fn || fn.length < 2) void Promise.resolve(result).then(() => resolve(), reject);
+    }));
+    const value = Reflect.get(target, key, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  } });
+  // Nested fixture helpers also retry failed resource steps before their roots.
+  fenceFixtureCleanup(fixtures);
+  beforeDirectories(fixtures, () => {
+    if (closers.some(close => !close.closed)) throw new Error('executor closure unconfirmed; fixture roots retained');
+  });
+  cleanup.release(scope.releaseSeams);
+  return { ...scope, fixtures, requireClose(run: () => Promise<void>) { closers.push({ run, closed: false }); } };
+}
+
+for (const layer of ['executor', 'fixture'] as const) for (const partial of [false, true]) test(`held writer cleanup retains roots and guards through rejected ${layer} close (partial setup: ${partial})`, async t => {
+  fenceFixtureCleanup(t);
+  const proof = fixtureWork(testDeadlineMs(5000));
+  beforeDirectories(t, () => proof.close());
+  const original = proof.run(async step => {
+  const context = { name: t.name, after: () => {} } as unknown as TestContext;
+  const scope = heldWriterCase(context);
+  let root = '', repaired = false, closed = false;
+  const originalMkdir = files.mkdir, originalSpawn = cp.spawn;
+  const replacement = new Proxy(originalMkdir, { apply: (target, receiver, args) => Reflect.apply(target, receiver, args) });
+  // Real test fallback uses the same retryable cleanup owner after a failed assertion.
+  beforeDirectories(t, async () => { repaired = true; await drainFixtureCleanup(context); });
+  const running = scope.run(async step => {
+    const close = async () => { if (!repaired) throw new Error('controlled close rejection'); closed = true; };
+    if (layer === 'executor') scope.requireClose(close);
+    else beforeDirectories(scope.fixtures, close);
+    root = await step(() => scope.wait('cleanup control root', async () => {
+      const root = await files.mkdtemp(join((await import('node:os')).tmpdir(), 'cland-held-close-'));
+      scope.adoptRoot(root);
+      ownDirectory(scope.fixtures, root);
+      return root;
+    }));
+    scope.patch(files, 'mkdir', replacement);
+    if (partial) throw new Error('controlled partial setup');
+  });
+  await step(() => within((async () => {
+    if (partial) await assert.rejects(running, /controlled partial setup/); else await running;
+  })(), testDeadlineMs(5000), undefined, () => new Error('inner cleanup control setup incomplete')));
+  const verification = step(() => proof.run(async () => {
+  await assert.rejects(drainFixtureCleanup(context), /controlled close rejection/);
+  assert.equal(closed, false);
+  assert.equal((await stat(root)).isDirectory(), true);
+  assert.equal(files.mkdir, replacement);
+  assert.notEqual(cp.spawn, originalSpawn, 'native guard remains installed');
+  repaired = true;
+  await drainFixtureCleanup(context);
+  assert.equal(closed, true);
+  await assert.rejects(stat(root), { code: 'ENOENT' });
+  assert.equal(files.mkdir, originalMkdir);
+  assert.equal(cp.spawn, originalSpawn);
+  }));
+  await within(verification, testDeadlineMs(5000), undefined, () => new Error('complete cleanup rejection and repair proof incomplete'));
+  });
+  return original;
+});
+
+for (const writer of ['acquisition', 'reap', 'shard release', 'snapshot publication'] as const) test(`held ${writer} refuses a deleted project without recreating it`, async t => {
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const scope = heldWriterCase(t, () => release.resolve());
+  return scope.run(async step => {
+    let setupComplete = false;
+    scope.requireClose(async () => {
+      if (!setupComplete) throw new Error('writer fixture setup incomplete; resources and guards retained');
+    });
+    const f = await step(() => scope.wait('writer setup', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    setupComplete = true;
+    await step(() => scope.wait('fixture stop', () => f.stop()));
+    const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, f.dependencies);
+    scope.requireClose(() => executor.close());
+    await step(() => scope.wait('prepared input', async () => {
+      await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+      await writeFile(snapshotPath(f.root), JSON.stringify({ image: 900, name: 'ready', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'], sizeGb: 1, minDiskSize: 10, created: f.clock.now().toISOString() }));
+    }));
+    let armed = writer !== 'snapshot publication';
+    const nativeMkdir = files.mkdir;
+    scope.patch(files, 'mkdir', async (...args: Parameters<typeof files.mkdir>) => {
+      const path = String(args[0]);
+      const target = writer === 'acquisition' ? path.startsWith(join(f.root, '.cland/run/executor/leases') + '/')
+        : path === join(f.root, '.cland/run/executor', writer === 'shard release' ? 'shard-releases' : '');
+      if (armed && target) { entered.resolve(); await release.promise; }
+      return nativeMkdir(...args);
+    });
+    let work: Promise<unknown> | undefined;
+    try {
+      await step(() => scope.wait('held writer completion', async () => {
+        const deadline = new Date(f.clock.now().getTime() + 60000).toISOString();
+        work = drive<unknown>(f, writer === 'acquisition' ? executor.acquire({ id: 'held' }, deadline)
+          : writer === 'reap' ? executor.reap()
+          : writer === 'shard release' ? executor.releaseShardReservations(['held'])
+          : prepareSnapshot({ root: f.root, key: { ...f.key, recipe: 'replacement' }, project: 'fixture', regions: ['lon1'], tags: [], env: f.env, dependencies: f.dependencies,
+            log: () => {}, step: () => {}, builder: () => executor.acquire({ id: 'builder' }, deadline),
+            release: async lease => { const result = await executor.release(lease); armed = true; return result; } }));
+        const outcome = work.then(() => undefined, error => error);
+        await Promise.race([entered.promise, work.then(() => { throw new Error('writer missed fence'); })]);
+        // Deliberate deletion beneath the held writer is the assertion; bounded retries cover native removal contention.
+        await files.rm(f.root, { recursive: true, force: true, maxRetries: 3, retryDelay: 1 });
+        release.resolve();
+        const error = await outcome;
+        await assert.rejects(() => stat(f.root), { code: 'ENOENT' });
+        assert.equal(writer === 'snapshot publication' ? error?.cause?.code : error?.code, 'ENOENT');
+      }));
+    } finally { release.resolve(); await work?.catch(() => {}); }
+  });
+});
 
 for (const boundary of ['reservation', 'regional refusal'] as const) test(`acquisition preserves primary failure at ${boundary} cleanup boundary`, async t => {
   const scope = guardedLeaseCase(t, undefined, { timeoutMs: testDeadlineMs(5000) });

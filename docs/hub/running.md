@@ -273,6 +273,13 @@ are documented in [agent test guidance](../agents/tests.md#this-repositorys-veri
 
 ### Remote executors: droplets
 
+Executor acquisition, reap, snapshot publication and shard-release receipts
+create only child directories beneath the existing `.cland/run` anchor.
+If the project is removed during a write, they reject with the filesystem's
+structured `ENOENT` error (snapshot preparation retains it as its error cause)
+without recreating the project or run anchor. Output paths and record formats
+are unchanged.
+
 Droplet and SSH key deletion succeeds only after a GET by id answers 404,
 including when DELETE itself answers 404. Release and the detached watchdog
 retain ownership and the spend reservation while reads still show a resource;

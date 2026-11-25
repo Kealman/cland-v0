@@ -1,5 +1,24 @@
 # hub/test/executor-prepare-component.test.ts
 
+Held acquisition, reap, shard release and snapshot publication cases fence the
+directory write inside `guardedLeaseCase`. Each deliberately removes its root
+while the writer is held, resumes and joins the original work, then asserts root
+absence and the `ENOENT` code (snapshot publication uses the wrapper cause).
+Removal allows three retries with a 1 ms retry delay for native filesystem
+contention. Cleanup resumes and joins the writer before restoring the seam;
+all provider, machine, key and watchdog calls use guarded fakes.
+The scoped `heldWriterCase` composition fences both the real cleanup owner and
+its nested fixture context. Required executor closers run after the original
+callback joins and before nested hub/API cleanup; failed steps are retried, and
+restoration is a final successful-cleanup release. Shared normal and partial
+setup controls reject a required close through `drainFixtureCleanup`, observe
+the retained root, mkdir seam and native guard, then repair and observe closure,
+root removal and restoration through that same registered owner.
+Each real control callback is enclosed by `fixtureWork` before inner setup.
+Named setup and complete rejection/repair proof observations retain the original
+continuation after an observer timeout; normal/signal cleanup joins it before
+the real fallback can repair or drain the synthetic owner.
+
 Non-readiness preparation cases inject install failure and subsequent release,
 recovery checkpoint or recovery rejection. Assert the install outcome remains
 the wrapper cause and cleanup appears in its aggregate cause. Provider create

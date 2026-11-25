@@ -5,13 +5,13 @@ import { acquireLockWithRetry } from '../../hub/lock.ts';
 import type { Store } from '../../hub/store.ts';
 import type { LogFn } from '../../log.ts';
 import { createHash, randomUUID } from 'node:crypto';
-import { appendFile, mkdir, readdir, readFile, rm } from 'node:fs/promises';
+import { appendFile, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { basename } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { defaultConfig, parseConfig, type ProjectConfig } from '../../init/config.ts';
 import { DigitalOceanApi, DigitalOceanError, DeletionUnconfirmed, apiTimeoutMs, type Droplet, type Key, type Size } from './api.ts';
-import { restoreWatchdogDeletions, accountRelease, durableJson, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, upgradeWatchdog, type DropletLease, type WatchdogReceipt } from './lease.ts';
+import { restoreWatchdogDeletions, accountRelease, durableJson, runDirectory, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, upgradeWatchdog, type DropletLease, type WatchdogReceipt } from './lease.ts';
 import { testTiming, type WatchdogOptions } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots, claimSnapshotStorage, recoverPoolSnapshots } from './snapshot-recovery.ts';
@@ -198,7 +198,7 @@ export class DropletExecutor implements Executor {
     // Synthetic reservations have no lease for settleSpend to recover. Persist
     // their release intent before the parent is allowed to finish reporting.
     const directory = join(this.root, '.cland/run/executor/shard-releases');
-    await mkdir(directory, { recursive: true, mode: 0o700 });
+    await runDirectory(this.root, directory);
     runs = [...new Set(runs)].sort();
     const path = join(directory, `${createHash('sha256').update(JSON.stringify(runs)).digest('hex')}.json`);
     await durableJson(path, runs);
@@ -326,7 +326,7 @@ export class DropletExecutor implements Executor {
     const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: id, run: run.id, name, tags: ['cland', projectTag(this.root, config.name)], size, region, priceHourly: selected.price_hourly, keyName: `${projectTag(this.root, config.name)}-${id.replace(/-/g, '').slice(0, 8)}`, created,
       ...(input.demo ? { demo: input.demo } : {}), deadline: new Date(Math.min(lifetimeCap, input.demo ? runDeadline : Infinity, Date.parse(created) + testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env))).toISOString(), state: 'creating', resource: null, keyId: null };
     const dir = leaseDir(this.root, lease);
-    await mkdir(dir, { recursive: true, mode: 0o700 });
+    await runDirectory(this.root, dir);
     try {
       await (this.dependencies.host ?? processHost).createKey(dir, name, this.#env);
       await this.#reserve(lease, config.verification.remoteBudget, runDeadline);
@@ -776,7 +776,7 @@ export class DropletExecutor implements Executor {
 
   async #lockedReap(authorize: () => void): Promise<Reaped> {
     const path = join(this.root, '.cland/run/executor/reap.lock');
-    await mkdir(join(this.root, '.cland/run/executor'), { recursive: true });
+    await runDirectory(this.root, join(this.root, '.cland/run/executor'));
     const lock = await acquireLockWithRetry(path, this.clock.now().getTime() + 15000, { signal: this.#abort.signal, clock: this.clock, wait: this.dependencies.wait, ...(this.dependencies.processes ? { processes: this.dependencies.processes } : {}) });
     try { return await this.#reap(authorize); }
     finally { await lock.release(); }
