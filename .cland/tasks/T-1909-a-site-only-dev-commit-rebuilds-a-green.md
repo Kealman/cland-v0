@@ -3,7 +3,7 @@ id: T-1909
 kind: task
 title: A site-only dev commit rebuilds a green merge batch whose tiers never run the site tests
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-16T10:35:08.568Z
-updated: 2026-11-24T09:00:09.751Z
+updated: 2026-11-25T13:02:27.161Z
 ---
 
 ## Summary

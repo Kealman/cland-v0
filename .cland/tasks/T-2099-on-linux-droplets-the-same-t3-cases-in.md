@@ -3,7 +3,7 @@ id: T-2099
 kind: task
 title: On Linux droplets the same T3 cases in executor-safety, stage-qa and merge-policy run 2–4x their per-case baselines (integrated two-worker runs)
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-25T03:41:35.690Z
-updated: 2026-11-25T03:41:35.690Z
+updated: 2026-11-25T13:02:47.493Z
 ---
 
 ## Summary

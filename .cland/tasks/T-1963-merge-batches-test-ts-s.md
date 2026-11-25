@@ -3,7 +3,7 @@ id: T-1963
 kind: task
 title: merge-batches.test.ts's boundedJoinedCase + joinedCase helpers fence fixture work only after caseDeadlines' pending-work join
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T08:00:17.305Z
-updated: 2026-11-24T08:59:50.613Z
+updated: 2026-11-25T13:02:47.090Z
 ---
 
 ## Summary

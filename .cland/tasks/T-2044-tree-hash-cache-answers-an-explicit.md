@@ -3,7 +3,7 @@ id: T-2044
 kind: task
 title: Tree-hash cache answers an explicit --executor local epic cover with a cached Linux droplet result (no macOS run)
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-21T03:00:38.190Z
-updated: 2026-11-24T09:00:08.971Z
+updated: 2026-11-25T13:02:26.637Z
 ---
 
 ## Summary

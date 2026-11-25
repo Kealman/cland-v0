@@ -3,7 +3,7 @@ id: T-2045
 kind: task
 title: Suite summary pass count (9,397) disagrees with raw base pass finishes (9,400); 18 output-control passes have no retained start (A-22307)
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-21T03:04:36.183Z
-updated: 2026-11-24T09:00:09.407Z
+updated: 2026-11-25T13:02:27.326Z
 ---
 
 ## Summary

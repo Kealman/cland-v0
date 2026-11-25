@@ -3,7 +3,7 @@ id: T-1972
 kind: task
 title: A tracker storage stall on a read-only planned check still exits the hub with running suites (repeat class after T-253/T-483)
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-18T12:31:23.399Z
-updated: 2026-11-24T09:00:25.498Z
+updated: 2026-11-25T13:02:27.979Z
 ---
 
 ## Summary

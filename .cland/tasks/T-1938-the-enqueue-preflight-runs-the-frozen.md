@@ -3,7 +3,7 @@ id: T-1938
 kind: task
 title: The enqueue preflight runs the frozen CLI usage compatibility test on the head merged with dev
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T08:28:33.210Z
-updated: 2026-11-24T09:00:11.146Z
+updated: 2026-11-25T13:02:27.044Z
 ---
 
 ## Summary

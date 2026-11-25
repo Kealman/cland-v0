@@ -3,7 +3,7 @@ id: T-1936
 kind: task
 title: loadGateCompletionSummary splits the whole retained semantic log into an array (unbounded allocation, rule 23)
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ regression_of: T-1582
 topic: null
 branch: null
 created: 2026-11-17T07:21:10.812Z
-updated: 2026-11-24T09:00:10.688Z
+updated: 2026-11-25T13:02:26.922Z
 ---
 
 ## Summary

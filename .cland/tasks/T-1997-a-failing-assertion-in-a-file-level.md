@@ -3,7 +3,7 @@ id: T-1997
 kind: task
 title: A failing assertion in a file-level after hook may not fail the test run
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T03:30:57.433Z
-updated: 2026-11-24T08:59:51.349Z
+updated: 2026-11-25T13:02:47.211Z
 ---
 
 ## Summary

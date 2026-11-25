@@ -3,7 +3,7 @@ id: T-2031
 kind: task
 title: Owned-process stop scans the whole process table four times per stop and overruns its 1 s budget under Linux load; inspect only captured PIDs
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T09:57:59.356Z
-updated: 2026-11-24T08:59:46.970Z
+updated: 2026-11-25T13:02:46.954Z
 ---
 
 ## Summary

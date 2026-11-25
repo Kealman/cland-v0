@@ -3,7 +3,7 @@ id: T-2008
 kind: task
 title: "Executor snapshot 'stale: base' notice fires on every dev landing, asking for a 22-minute prepare that a base-only change rarely needs"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ regression_of: T-1728
 topic: null
 branch: null
 created: 2026-11-19T14:15:57.545Z
-updated: 2026-11-24T09:00:18.244Z
+updated: 2026-11-25T13:02:27.733Z
 ---
 
 ## Summary

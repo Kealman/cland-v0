@@ -3,7 +3,7 @@ id: T-2022
 kind: task
 title: "Shared suiteCase cleanup is unfenced: it removes roots and restores the native guard after a resource close rejects"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T00:49:28.024Z
-updated: 2026-11-24T08:59:49.771Z
+updated: 2026-11-25T13:02:47.372Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-2005
 kind: task
 title: Task publication frames carry the full 1,650-item layer map each, so a status-changing comment still costs about 7 s of CPU after T-2004
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T11:19:25.604Z
-updated: 2026-11-24T09:00:27.649Z
+updated: 2026-11-25T13:02:28.148Z
 ---
 
 ## Summary

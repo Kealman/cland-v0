@@ -3,7 +3,7 @@ id: T-2100
 kind: task
 title: "A full integrated run that can't shard (fewer than 2 remote slots free) no longer fits the 75-minute run timeout: T2 18 min + T3 51 min leaves Web unfinished"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-25T03:50:04.390Z
-updated: 2026-11-25T07:41:50.364Z
+updated: 2026-11-25T13:02:27.567Z
 ---
 
 ## Summary

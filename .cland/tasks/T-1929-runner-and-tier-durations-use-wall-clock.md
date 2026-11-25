@@ -3,7 +3,7 @@ id: T-1929
 kind: task
 title: Runner and tier durations use wall-clock time, so a system clock correction mid-run distorts recorded durations
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T02:20:03.376Z
-updated: 2026-11-24T09:00:10.203Z
+updated: 2026-11-25T13:02:27.448Z
 ---
 
 ## Summary

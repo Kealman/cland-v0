@@ -3,7 +3,7 @@ id: T-1944
 kind: task
 title: Two back-to-back Neovim fixture refreshes still differ in incidental task.view captures (T-654 benchmark row, R-1), so a refresh leaves a versioned diff
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-17T12:09:38.187Z
-updated: 2026-11-24T08:59:54.319Z
+updated: 2026-11-25T13:02:26.231Z
 ---
 
 ## Summary

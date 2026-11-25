@@ -3,7 +3,7 @@ id: T-2071
 kind: task
 title: A snapshot prepare's five-region image transfer hits DigitalOcean's request deadline, and a failed prepare may leave its image and builder behind
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-24T08:59:26.627Z
-updated: 2026-11-24T09:00:18.660Z
+updated: 2026-11-25T13:02:27.854Z
 ---
 
 ## Summary

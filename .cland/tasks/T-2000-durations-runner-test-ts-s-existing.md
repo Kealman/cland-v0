@@ -3,7 +3,7 @@ id: T-2000
 kind: task
 title: durations-runner.test.ts's existing cases still use the legacy fixture path without a pre-acquisition owner
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T06:48:58.122Z
-updated: 2026-11-24T08:59:59.585Z
+updated: 2026-11-25T13:02:26.351Z
 ---
 
 ## Summary

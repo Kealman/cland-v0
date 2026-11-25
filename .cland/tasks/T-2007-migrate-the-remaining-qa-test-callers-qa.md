@@ -3,7 +3,7 @@ id: T-2007
 kind: task
 title: Migrate the remaining QA test callers (qa.test, qa-shipped via qa-runner) to whole-caller fixture ownership
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T14:04:47.226Z
-updated: 2026-11-24T09:00:00.018Z
+updated: 2026-11-25T13:02:26.514Z
 ---
 
 ## Summary

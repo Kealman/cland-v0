@@ -3,7 +3,7 @@ id: T-2029
 kind: task
 title: Suite-run retention only runs at hub start and on suite launch, so an idle hub never sweeps its backlog
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-20T08:02:00.111Z
-updated: 2026-11-24T11:03:59.196Z
+updated: 2026-11-25T13:02:26.755Z
 ---
 
 ## Summary
