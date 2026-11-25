@@ -61,7 +61,8 @@ export interface SuiteCandidate {
   }>;
 }
 
-export function suiteCandidate(env: NodeJS.ProcessEnv): SuiteCandidate {
+export function suiteCandidate(env: NodeJS.ProcessEnv, profile: (step: string, ms: number) => void = () => {}): SuiteCandidate {
+  const timed = async <T>(step: string, run: () => Promise<T>): Promise<T> => { const start = performance.now(); try { return await run(); } finally { profile(step, performance.now() - start); } };
   const git = (cwd: string, args: string[]) => promisify(execFile)('git', args, { cwd, env }).then(r => r.stdout.trim(), () => 'unknown');
   const head = (cwd: string) => git(cwd, ['rev-parse', 'HEAD']);
   const tree = (cwd: string, at?: string) => candidateTree(cwd, at, env);
@@ -77,12 +78,12 @@ export function suiteCandidate(env: NodeJS.ProcessEnv): SuiteCandidate {
         if (fetchDev) selection.fetchedDev = await fetchSuiteDev(cwd, (...args) => promisify(execFile)('git', args, { cwd, env, timeout: 30000 }).then(result => result.stdout.trim()));
         return { head: at, branch, tree: await tree(cwd, at), selection, tierPlan: [], budgetBase: undefined };
       }
-      const [at, branch, selection] = await Promise.all([head(cwd), git(cwd, ['branch', '--show-current']), selectPackageSuite(cwd, mode, env)]);
-      const candidate = await tree(cwd, at);
+      const [at, branch, selection] = await timed('selection', () => Promise.all([head(cwd), git(cwd, ['branch', '--show-current']), selectPackageSuite(cwd, mode, env)]));
+      const candidate = await timed('tree', () => tree(cwd, at));
       // Bind admission lint to both the captured commit and executing worktree.
-      await lintSuiteCandidate(cwd, at, env);
+      await lintSuiteCandidate(cwd, at, env, profile);
       return { head: at, branch, selection, tree: candidate,
-        tierPlan: await planTierReport(cwd, selection, workers), budgetBase: await durationBase(cwd, at, env) };
+        tierPlan: await timed('tier-plan', () => planTierReport(cwd, selection, workers)), budgetBase: await timed('duration-base', () => durationBase(cwd, at, env)) };
     },
   };
 }

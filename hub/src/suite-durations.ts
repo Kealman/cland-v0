@@ -2,12 +2,13 @@ import { glob, readFile } from 'node:fs/promises';
 import { measuredDurationAllowance } from './duration-allowance.ts';
 import { join } from 'node:path';
 import { isMap, isScalar, parseDocument } from 'yaml';
+import { createDurationManifestParser, DURATION_MANIFEST } from './duration-manifest-parser.ts';
 import { projectRoot } from './project.ts';
 import { DEFAULT_LEVELS, isPlanningContainer } from './tracker/kinds.ts';
 import { parseItem } from './tracker/item.ts';
 import type { Tier } from './suite-shards.ts';
 
-export const DURATION_MANIFEST = 'hub/test/durations.json';
+export { DURATION_MANIFEST };
 export type TierBudget = { testSeconds: number; fileSeconds: number; wallSeconds: number };
 export type TestTiming = { file: string; name: string; seconds: number; outcome?: 'pass' | 'fail' | 'skip' | 'todo' };
 export const TIER_BUDGETS = {
@@ -151,25 +152,8 @@ export function durationRegressions(regressions: DurationRegression[]): string[]
     .map(r => `duration regression ${r.key} ${seconds(r.before)} s → ${seconds(r.now)} s${r.budget === undefined ? '' : ` (over budget: ${seconds(r.budget)} s)`}`);
 }
 
-/** Preserve JSON's effective values while reporting entries that JSON.parse discards. */
-export function parseDurationManifest(source: string): DurationManifest {
-  const manifest = JSON.parse(source) as DurationManifest;
-  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) throw new Error(`invalid duration manifest: ${DURATION_MANIFEST}`);
-  // The existing YAML token parser retains every pair, including escaped JSON keys.
-  const document = parseDocument(source, { uniqueKeys: false });
-  if (isMap(document.contents)) for (const section of document.contents.items) {
-    if (!isScalar(section.key) || !['files', 'tests', 'allow'].includes(String(section.key.value)) || !isMap(section.value)) continue;
-    const seen = new Map<string, string>();
-    for (const pair of section.value.items) {
-      if (!isScalar(pair.key) || !pair.value?.range) continue;
-      const key = String(pair.key.value);
-      const value = JSON.stringify(JSON.parse(source.slice(pair.value.range[0], pair.value.range[1])));
-      if (seen.has(key)) console.warn(`duration duplicate (report only): ${section.key.value}[${JSON.stringify(key)}] first=${seen.get(key)} duplicate=${value}`);
-      else seen.set(key, value);
-    }
-  }
-  return manifest;
-}
+// Fixed production limits; configurable construction stays at the internal test seam.
+export const parseDurationManifest = createDurationManifestParser().parse;
 
 export async function readDurationManifest(cwd: string): Promise<DurationManifest | null> {
   try {

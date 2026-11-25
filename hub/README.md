@@ -265,6 +265,12 @@ The shared duration manifest reader, including `npm run check` lint and immutabl
 candidate lint, reports duplicate `files`, `tests` and `allow` keys with both
 values. Duplicate notices remain report-only regardless of budget mode, leave
 exit status and refusal counts unchanged, and retain JSON's last value.
+Duplicate syntax facts are cached by exact manifest contents, bounded to 32
+entries, 4 Mi retained UTF-16 source characters and 65,536 numeric source-range
+facts. Rendered warnings are never cached; over-budget inputs emit every notice
+without entering the cache. Each read still returns
+fresh JSON values and emits the same notices; changed bytes reparse. Ownership,
+expiry and source identity checks run independently of that syntax cache.
 
 Test case identities use Node's launched entry file for load repetitions,
 duration budgets, tier accounting and quarantine, including cases registered by

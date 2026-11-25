@@ -15,23 +15,53 @@ import { join } from 'node:path';
 import { FakeClock } from './fake-clock.ts';
 import { stageCase } from './stage-case-fixture.ts';
 import { testSetupWaitMs } from './until.ts';
-import { serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
+import type { TierManifest } from '../src/suite-shards.ts';
 import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
+import YAML from 'yaml';
 
-async function fixture(t: TestContext, coldViolation = false) {
+async function fixture(t: TestContext, coldViolation = false, durations = false, owner?: ReturnType<typeof stageCase>) {
+  // The owned crew uses stageCase's full native guard, including its positive controls.
+  if (!owner) {
+    const forbiddenLaunch = () => { throw new Error('native launch forbidden in admission fixture'); };
+    const launchGuards = ['exec', 'execSync', 'execFileSync', 'spawn', 'spawnSync', 'fork'] as const;
+    const originals = launchGuards.map(key => childProcess[key]);
+    for (const key of launchGuards) Object.assign(childProcess, { [key]: forbiddenLaunch });
+    Object.defineProperty(forbiddenLaunch, promisify.custom, { value: forbiddenLaunch, configurable: true });
+    syncBuiltinESMExports();
+    assert.throws(() => childProcess.spawn('positive-control'), /native launch forbidden/); // cland-allow-child-env: positive control calls the installed throwing fake, never a process
+    assert.throws(() => promisify(childProcess.exec)('positive-control'), /native launch forbidden/); // cland-allow-child-env: positive control calls the installed throwing custom promisifier, never a process
+    t.after(() => { for (const [n, key] of launchGuards.entries()) Object.assign(childProcess, { [key]: originals[n] }); syncBuiltinESMExports(); });
+  }
   const clock = new FakeClock();
   const head = 'a'.repeat(40), base = 'b'.repeat(40);
   const repository: TierManifest = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
-  const paths = Object.keys(repository.tests).map((path, n) => `${path.startsWith('web/') ? 'web' : 'hub'}/test/case-${String(n).padStart(4, '0')}.test.ts`);
+  const paths = durations ? ['hub/test/case-0000.test.ts', 'hub/test/case-0001.test.ts', 'hub/test/case-0002.test.ts']
+    : Object.keys(repository.tests).map((path, n) => `${path.startsWith('web/') ? 'web' : 'hub'}/test/case-${String(n).padStart(4, '0')}.test.ts`);
   const files = new Map(paths.map(path => [path, '// component fixture\n']));
+  if (durations) {
+    const baseline = JSON.parse(await readFile(new URL('./durations.json', import.meta.url), 'utf8'));
+    const names = Object.keys(baseline.tests) as string[];
+    const tests: Record<string, number> = {};
+    const titles = new Map(paths.map(path => [path, [] as string[]]));
+    for (const [n, name] of names.entries()) {
+      const path = paths[n % paths.length]!;
+      const title = name.slice(name.indexOf('::') + 2);
+      titles.get(path)!.push(title);
+      tests[`${path}::${title}`] = 0.001;
+    }
+    // Register the same titles through a dynamic loop: identity lint still
+    // visits each source, without a quadratic literal-pattern search per key.
+    for (const [path, names] of titles) files.set(path, `for (const title of ${JSON.stringify(names)}) test(title, () => {});\n`);
+    files.set('hub/test/durations.json', JSON.stringify({ version: 1, source: { artifacts: [], commit: 'fixture' }, budget: baseline.budget, files: Object.fromEntries(paths.map(path => [path, { seconds: 0.01, tests: titles.get(path)!.length }])), tests, allow: {} }));
+  }
   const tiers = Object.values(repository.tests).map(entry => typeof entry === 'string' ? entry : entry.tier);
-  files.set('hub/test/tiers.json', serializeTierManifest({ version: 1, tests: Object.fromEntries(paths.map((path, n) => [path, tiers[n]!])) }));
+  files.set('hub/test/tiers.json', JSON.stringify({ version: 1, tests: Object.fromEntries(paths.map((path, n) => [path, durations ? 'T2' : tiers[n]!])) }));
   files.set('hub/test/lint-baseline.json', JSON.stringify({ version: 1, files: Object.fromEntries(paths.map(path => [path, {}])) }));
   const previous = new Map(files);
   const planted = 'hub/test/new-violation.test.ts';
   if (coldViolation) {
     files.set(planted, 'sleep(10);\n');
-    files.set('hub/test/tiers.json', serializeTierManifest({ version: 1, tests: { ...JSON.parse(files.get('hub/test/tiers.json')!).tests, [planted]: 'T2' } }));
+    files.set('hub/test/tiers.json', JSON.stringify({ version: 1, tests: Object.fromEntries(Object.entries({ ...JSON.parse(files.get('hub/test/tiers.json')!).tests, [planted]: 'T2' }).sort(([a], [b]) => a.localeCompare(b))) }));
   }
   const snapshots = new Map([[head, files], [base, previous]]);
   let dev = base;
@@ -50,7 +80,7 @@ async function fixture(t: TestContext, coldViolation = false) {
   const missing = () => Object.assign(new Error('missing Git object'), { code: 128 });
   function execute(args: string[]): string {
     if (args[0] === 'config') throw missing();
-    if (args[0] === 'rev-parse') return args[1] === '--show-prefix' ? '' : head;
+    if (args[0] === 'rev-parse') return args[1] === '--show-prefix' ? '' : args[1] === '--show-toplevel' ? root : head;
     if (args[0] === 'branch') return 'dev';
     if (args[0] === 'merge-base') return base;
     if (['fetch', 'diff', 'diff-tree', 'status', 'ls-files', 'read-tree', 'rm'].includes(args[0]!)) return '';
@@ -97,13 +127,17 @@ async function fixture(t: TestContext, coldViolation = false) {
     fakeExec(file, args, options, (error, stdout, stderr) => error ? reject(error) : resolve({ stdout, stderr }));
   }) });
   const nativeExec = childProcess.execFile;
-  childProcess.execFile = fakeExec as typeof childProcess.execFile;
-  syncBuiltinESMExports();
-  t.after(() => { childProcess.execFile = nativeExec; syncBuiltinESMExports(); });
+  if (owner) owner.patch(childProcess, 'execFile', fakeExec);
+  else {
+    childProcess.execFile = fakeExec as typeof childProcess.execFile;
+    syncBuiltinESMExports();
+    t.after(() => { childProcess.execFile = nativeExec; syncBuiltinESMExports(); });
+  }
   // Load modules after installing Git I/O: selectPackageSuite captures its
   // promisified execFile at module initialization.
   const { tempProject, projectHub, connectUi, eventually } = await import('./harness.ts');
-  const root = await tempProject(t);
+  const root = await tempProject(owner?.fixtures ?? t);
+  owner?.adoptRoot(root); // Capture even a late acquisition before any next step.
   // Bounded fixture writes avoid flooding the native I/O pool with one worker
   // per manifest path before the admission request under test.
   mkdirSync(join(root, 'hub/test'), { recursive: true });
@@ -113,7 +147,24 @@ async function fixture(t: TestContext, coldViolation = false) {
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), `[verification]\n${commandConfig}`);
   const { TestLintWarmer } = await import('../src/test-lint-policy.ts');
-  const hub = await projectHub(t, root, {}, { clock, durationContext: null,
+  const { suiteCandidate } = await import('../src/hub/suite-candidate.ts');
+  const { fixtureEnvironment } = await import('./fixture-environment.ts');
+  const trace: Record<string, number[]> = {};
+  const candidate = suiteCandidate(fixtureEnvironment(root, process.env), (step, ms) => { (trace[step] ??= []).push(ms); });
+  const inspections = new Set<Promise<unknown>>();
+  owner?.requireClose(async () => {
+    while (inspections.size) await Promise.allSettled([...inspections]);
+    assert.equal(inspections.size, 0, 'all candidate computations positively settled before hub close');
+  });
+  const inspect = candidate.inspect;
+  candidate.inspect = (...args) => {
+    const work = inspect(...args);
+    inspections.add(work);
+    void work.then(() => inspections.delete(work), () => inspections.delete(work));
+    return work;
+  };
+  const hub = await projectHub(owner?.fixtures ?? t, root, {}, { clock, durationContext: null, ...(owner ? { lifecycle: owner } : {}),
+    candidate,
     lintWarmer: new TestLintWarmer(root, {}, row => logs.push(row), { clock, analyze: async entries => {
       const { testLintFactRecord } = await import('../src/test-lint.ts');
       return { files: entries.length, peakHeapBytes: 0, heapSizeLimitBytes: 0, facts: entries.map(e => testLintFactRecord(e.file, e.text, e.entry)) };
@@ -123,18 +174,39 @@ async function fixture(t: TestContext, coldViolation = false) {
     scheduleTips: read => { poll = read; if (!coldViolation) void read(); return { poke() {}, stop() {} }; },
     log: row => logs.push(row),
     compatibility: { holder: async () => null, occupied: async () => true } });
-  const ui = await connectUi(t, hub.discovery);
-  return { root, clock, ui, files, paths, head, logs, eventually, commands, planted,
+  const ui = await connectUi(owner?.fixtures ?? t, hub.discovery);
+  owner?.requireClose(async () => { await hub.verificationSettled(); await hub.stopped; });
+  return { root, clock, ui, files, paths, head, logs, eventually, commands, planted, trace,
     holdBatch: () => heldBatch = { completed: false, entered: Promise.withResolvers<void>(), release: Promise.withResolvers<void>() },
     moveDev: async () => { dev = head; await poll(); } };
 }
+
+test('three concurrent admissions share repository-sized duration tokenization', async t => {
+  const owner = stageCase(t);
+  await owner.wait('complete crew callback', () => owner.run(async step => {
+    const f = await step(() => owner.wait('crew fixture acquisition', () => fixture(t, false, true, owner), testSetupWaitMs()));
+    const parses = new Map<string, number>();
+    const parse = YAML.parseDocument;
+    owner.patch(YAML, 'parseDocument', (source: string, ...options: unknown[]) => {
+      if (source === f.files.get('hub/test/durations.json')) parses.set(source, (parses.get(source) ?? 0) + 1);
+      return Reflect.apply(parse, YAML, [source, ...options]);
+    });
+    const start = performance.now();
+    const replies = await step(() => Promise.all(Array.from({ length: 3 }, (_, n) => owner.wait(`crew request ${n + 1} completed`, () => f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, dryRun: true }, 90000), 90000))));
+    const elapsed = performance.now() - start;
+    for (const reply of replies) assert.equal(reply.ok, true, reply.error);
+    t.diagnostic(`three fake-only admissions, repository-sized duration identities: ${elapsed.toFixed(1)} ms wall; provider and tree bundle excluded`);
+    t.diagnostic(`overlapping concurrent phase wall ms: ${JSON.stringify(f.trace)}`);
+    assert.deepEqual([...parses.values()], [1], 'the exact duration manifest is tokenized once across all three admissions');
+  }), testSetupWaitMs() + 90000);
+});
 
 test('cold suite.start refuses a new violating file inside the three-second admission budget', async t => {
   const f = await fixture(t, true);
   const started = f.clock.now().getTime();
   const reply = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, dryRun: true });
   assert.equal(reply.ok, false);
-  assert.equal((reply as { code?: string }).code, 'verify-test-lint');
+  assert.equal((reply as { code?: string }).code, 'verify-test-lint', reply.error);
   assert.deepEqual((reply as { files?: string[] }).files, [f.planted]);
   assert.equal(reply.error, `verify-test-lint: ${f.planted}:1 [wall-clock-wait] wall-clock-wait count 1 exceeds frozen allowance 0\nsource: HEAD ${f.head}`);
   const elapsed = f.clock.now().getTime() - started;

@@ -5,6 +5,53 @@ import { durationBudgetReport, taskDurationReport, type DurationBudgetContext } 
 import { durationAllowanceOwner, durationAllowanceStanzas, lintDurationManifest, type DurationManifest, type DurationOwner } from '../src/suite-durations.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { parseDurationManifest } from '../src/suite-durations.ts';
+import { createDurationManifestParser } from '../src/duration-manifest-parser.ts';
+import YAML from 'yaml';
+
+test('duplicate amplification retains only bounded source references and replays every notice', t => {
+  const warnings: string[] = [];
+  t.mock.method(console, 'warn', (line: string) => warnings.push(line));
+  const source = `{"allow":{"a":{"reason":"${'x'.repeat(1024)}"},${Array.from({ length: 20 }, () => '"a":{"seconds":1}').join(',')}}}`;
+  const reader = createDurationManifestParser({ entries: 2, characters: 4096, facts: 32 });
+  reader.parse(source);
+  assert.equal(warnings.length, 20);
+  assert.ok(warnings.reduce((n, line) => n + line.length, 0) > 20000, 'positive amplification control');
+  const first = [...warnings]; warnings.length = 0;
+  reader.parse(source);
+  assert.deepEqual(warnings, first);
+  assert.deepEqual(reader.retained(), { entries: 1, characters: source.length, facts: 20, payloadCharacters: 0 });
+});
+
+test('duration syntax cache evicts entries and characters and declines excess facts without losing notices', t => {
+  const warnings: string[] = [];
+  t.mock.method(console, 'warn', (line: string) => warnings.push(line));
+  let parses = 0;
+  const original = YAML.parseDocument;
+  t.mock.method(YAML, 'parseDocument', (...args: unknown[]) => { parses++; return Reflect.apply(original, YAML, args); });
+  const a = '{"tests":{"a":1}}', b = '{"tests":{"b":1}}', c = '{"tests":{"c":1}}';
+  const entries = createDurationManifestParser({ entries: 2, characters: 4096, facts: 32 });
+  for (const source of [a, b, a, c, b]) entries.parse(source);
+  assert.equal(parses, 4, 'least recently used entry was evicted');
+  assert.equal(entries.retained().entries, 2);
+  parses = 0;
+  const characters = createDurationManifestParser({ entries: 32, characters: a.length, facts: 32 });
+  for (const source of [a, b, a]) characters.parse(source);
+  assert.equal(parses, 3, 'source-character budget evicts even below entry limit');
+  assert.equal(characters.retained().characters, a.length);
+  parses = 0;
+  const facts = createDurationManifestParser({ entries: 32, characters: 4096, facts: 1 });
+  const source = '{"tests":{"a":1,"a":2,"a":3}}';
+  facts.parse(source); facts.parse(source);
+  assert.equal(parses, 2, 'over-budget facts are not cached');
+  assert.equal(facts.retained().entries, 0);
+  assert.equal(warnings.length, 4, 'uncached duplicates still emit on every read');
+  parses = 0;
+  const aggregate = createDurationManifestParser({ entries: 32, characters: 4096, facts: 1 });
+  const one = '{"tests":{"a":1,"a":2}}', two = '{"tests":{"b":1,"b":2}}';
+  for (const source of [one, two, one]) aggregate.parse(source);
+  assert.equal(parses, 3, 'aggregate fact budget evicts an otherwise cacheable entry');
+  assert.equal(aggregate.retained().facts, 1);
+});
 
 test('duration manifest reports both allowance values without changing the effective value', t => {
   const warnings: string[] = [];
@@ -13,6 +60,13 @@ test('duration manifest reports both allowance values without changing the effec
   const parsed = parseDurationManifest(source);
   assert.deepEqual(parsed.allow.slow, { seconds: 24 });
   assert.deepEqual(warnings, ['duration duplicate (report only): allow["slow"] first={"seconds":48} duplicate={"seconds":24}']);
+  parsed.allow.slow!.seconds = 999;
+  warnings.length = 0;
+  assert.deepEqual(parseDurationManifest(source).allow.slow, { seconds: 24 }, 'cached syntax facts never share mutable manifest values');
+  assert.deepEqual(warnings, ['duration duplicate (report only): allow["slow"] first={"seconds":48} duplicate={"seconds":24}']);
+  warnings.length = 0;
+  assert.deepEqual(parseDurationManifest(source.replace('24', '12')).allow.slow, { seconds: 12 });
+  assert.deepEqual(warnings, ['duration duplicate (report only): allow["slow"] first={"seconds":48} duplicate={"seconds":12}']);
 });
 
 test('duration duplicates include escaped baseline keys and repeated equal values in each map', t => {
