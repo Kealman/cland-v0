@@ -18,15 +18,22 @@ import {ExplorerFieldsIndex} from '../src/tracker/explorer-fields.ts';
 import {within} from '../src/executor/droplet/deadline.ts';
 import {seedPlanStageCover} from './plan-stage-fixture.ts';
 
-// A single consumer gets a fresh file-owned hub; no other case mutates its tips.
-const churnFixture = await trackerFileCase(async ({owner, root, step}) => {
-  const fixture = await step(() => tipChurnFixture(root, owner));
-  const hub = await step(() => projectHub(owner.resources, root, {}, {clock: new FakeClock(Date.now()), ...fixture}));
-  await step(() => fixture.refresh());
-  return {fixture, hub};
+let churnAcquisitions = 0;
+test('loading scale cases does not acquire the churn fixture', () => {
+  assert.equal(churnAcquisitions, 0, 'unselected churn fixture acquisitions');
 });
 
-test('task.view and verify queue replies have p95 below one second during ten-branch churn in a 1650-item tracker', t => churnFixture.run(t, async t => {
+test('task.view and verify queue replies have p95 below one second during ten-branch churn in a 1650-item tracker', async t => {
+  // Selection precedes acquisition; the case owns setup, callback and teardown.
+  churnAcquisitions++;
+  const churnFixture = await trackerFileCase(async ({owner, root, step}) => {
+    const fixture = await step(() => tipChurnFixture(root, owner));
+    const hub = await step(() => projectHub(owner.resources, root, {}, {clock: new FakeClock(Date.now()), ...fixture}));
+    await step(() => fixture.refresh());
+    return {fixture, hub};
+  }, t);
+  await churnFixture.run(t, async t => {
+  assert.equal(churnAcquisitions, 1, 'selected churn consumer acquisition control');
   await fixtureNativeGuard(t);
   const {fixture, hub} = churnFixture.value;
   try {
@@ -56,7 +63,8 @@ test('task.view and verify queue replies have p95 below one second during ten-br
       assert.ok(p95 < 1000, `${name} p95 ${p95.toFixed(3)} ms exceeds behaviour bound 1000 ms`);
     }
   } finally { await hub.dispose(); }
-}));
+  });
+});
 
 async function plannedStartup(t:test.TestContext, backlog=false, suppliedRoot?:string, count=1000, history=false) {
   const root=suppliedRoot??await tempProject(t);

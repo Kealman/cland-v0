@@ -14,15 +14,18 @@ For T-1646, criterion proof comes from reviewed-head droplet receipts.
 Coordinator-authorized local troubleshooting is report-only and requires the
 quiet-over notice.
 
-The churn root, seed, hub acquisition and initial warm refresh are file-level
-setup (T-1988). This case alone consumes that mutable fixture; the other startup
-cases have separate roots. The forty observed refresh/reply rounds, exact item
-identities and one-second p95 assertions remain inside the case unchanged.
-File totals include setup and teardown; case timings exclude setup. The
-19-second setup allowance is removed. Fake Git accepts the exact configuration
+The churn root, seed, hub acquisition and initial warm refresh start inside the
+selected churn case, with its TestContext owning the whole caller. Name-filtered
+runs of other cases never acquire that fixture. The loading regression asserts
+zero acquisitions; the churn consumer supplies the positive one-acquisition
+control. Run the loading case alone with `--test-name-pattern='loading scale cases'`
+to exercise selection. The other startup cases have separate
+roots. The forty observed refresh/reply rounds, exact item identities and
+one-second p95 assertions exclude setup; case timings include setup.
+Fake Git accepts the exact configuration
 provenance lookup and returns unknown provenance, with other logs refused.
 
-The same pre-acquisition file owner spans seed, projectHub startup, initial
+The same pre-acquisition case owner spans seed, projectHub startup, initial
 refresh and the original churn callback. projectHub registers partial-startup
 closure through the owner's resource context. Callback socket/trace hooks stay
 with that owner through cancellation; teardown joins original work, requires
