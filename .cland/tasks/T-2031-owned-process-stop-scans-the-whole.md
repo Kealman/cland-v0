@@ -3,7 +3,7 @@ id: T-2031
 kind: task
 title: Owned-process stop scans the whole process table four times per stop and overruns its 1 s budget under Linux load; inspect only captured PIDs
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1782
 branch: t/T-2031-owned-process-stop-scans-the-whole
 created: 2026-11-20T09:57:59.356Z
-updated: 2026-11-25T13:13:53.138Z
+updated: 2026-11-25T14:25:02.955Z
 ---
 
 ## Summary
@@ -30,6 +30,7 @@ Inspect only the captured native PIDs and their recorded descendants during stop
 - [x] C1. Stop inspection reads only the captured PIDs and descendants, with birth-identity checks unchanged, shown by a test that counts scanned rows (test).
   - done: impl-2031 · 2026-11-25T13:09:25.125Z
 - [ ] C2. The item's Linux droplet verify passes every prune-process-lifecycle load-gate identity 5/5, with no "process inspection deadline reached" (test).
+  - failed: rev-40 [reviewer] · 2026-11-25T14:25:02.955Z · note Configured648eea69 failed T3 and contains only seven prune base passes, no required5/5 load-gate receipts; absence of deadline text is not load coverage.
 
 ## Comments
 
@@ -53,3 +54,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; A-23410, no findings. Linux discovery recursively reads only selected parents'taskchildren, including nonleaderthreads; zero-pgrep/workcount/parentselector controls preserve10000unrelatedbranches. Childselectors grant no authority: selectedps/birthbracketing, exactcapturedidentity, callerancestry, forkfreeze and persignal fences unchanged. MissingprocfsrequiresindependentESRCH; unreadable/liveENOENT/malformed branchesrefuse. Newprobecontexts own acquisition/nativeclose/rootcleanup; rawfakeinterfaces/productionconsumerAPIs unchanged. Docs retainLinux/Darwin/defaultconditions. C1done/sourceconsistent, finalmarks pendingconfigurednamedproof. C2explicitlypendingexact-headLinuxpruneloadgateidentities5/5/noinspectiondeadline; localMac7/7notloadorLinuxproof. Otherlocal63/69/19+1skip/22/58/static0and757+18unknownreachability remain scoped author evidence. No Reviewer execution/edits.
+
+### rev-40 · 2026-11-25T14:25:02.955Z
+
+verdict: review
+result: not clear
+by: rev-40 [reviewer]
+run: rev-40-20261125-2031-evidence1
+commit: d183187120556f8de7c06bbe7e793ceb885b2e5f
+scope: evidence
+findings: [{"severity":"medium","text":"E1: exact-head configured run completes T3 exit1 with26 failures, Web unexecuted; seven prune base passes supply none of C2's required5/5 load-gate receipts.","file":".cland/artifacts/A-23474-suite-648eea69-6a28-4de9-94bb-84e7646dce1c-auto-at-d183187.log","line":52618}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; A-23476 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23476-t-2031-configured-evidence-not-clear-at-d18318712.md). Producer code1/cause empty unknown, progress.unfinished[]; T0/T1/T2 complete0, T3 complete1 at canonical0b9678005 (executable match), Web/T4 unexecuted. Literal accounts:304 ENOENT /proc/44384/task/44386/children and other new-selector path diagnostics require lead/Coordinator source attribution, no unrelated-flake or timeout claim. Linux c8nyc1 workers2 Node24.21/Nvim0.12.5, no browser, noncache,9 prerequisite skips, budgets report-only. Seven prune structured base passes and two new C1 Linux controls pass are retained as positive selected evidence, not final green; no C1 final verification mark claimed. Prior source A-23410 retained. Hold released; no retry/source edits by Reviewer, pin head pending authorized disposition and fresh source review for any change.
+
+Criteria: C2 failed (Configured648eea69 failed T3 and contains only seven prune base passes, no required5/5 load-gate receipts; absence of deadline text is not load coverage.).

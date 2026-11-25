@@ -3,7 +3,7 @@ id: T-1944
 kind: task
 title: Two back-to-back Neovim fixture refreshes still differ in incidental task.view captures (T-654 benchmark row, R-1), so a refresh leaves a versioned diff
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1781
 branch: t/T-1944-two-back-to-back-neovim-fixture
 created: 2026-11-17T12:09:38.187Z
-updated: 2026-11-25T13:38:22.083Z
+updated: 2026-11-25T14:14:49.258Z
 ---
 
 ## Summary
@@ -27,10 +27,10 @@ The recorder captures a deterministic set of frames per scenario, either by awai
 
 ## Acceptance criteria
 
-- [ ] C1. `npm run test:nvim-fixtures` run twice in a row leaves no versioned diff across the catalog, every slice and the live baseline (test).
-  - failed: rev-35 [reviewer] · 2026-11-25T13:38:22.083Z · note M1/M2: refuse append failures while retaining invalid-context deferral; retain corrected-source consecutive native pair receipts and separate27-file inventories.
+- [x] C1. `npm run test:nvim-fixtures` run twice in a row leaves no versioned diff across the catalog, every slice and the live baseline (test).
+  - done: impl-1944 · 2026-11-25T14:07:55.698Z
 - [x] C2. The cause of the varying captures is named with a deterministic reproducer that fails first (test).
-  - done: impl-1944 · 2026-11-25T13:33:24.200Z
+  - done: impl-1944 · 2026-11-25T14:07:55.927Z
 
 ## Comments
 
@@ -52,3 +52,20 @@ finding_counts: {"high":0,"medium":2,"low":0}
 A-23436 consolidates both confirmed findings and correction bar: distinguish materialization deferral from persistence failure, add injected append/failed-capture refusal while preserving existing deterministic controls; in Coordinator-authorized native slot retain actual command/runtime/source/native-exit/full file+baseline output and both27-file maps/comparison for corrected-source pair. No reconstruction of deleted logs; no stress measurement. C2 source cause/reproducer review retained/unverified. Hold released for correction/authorized evidence work; fresh committed-head review before configured verification; human midnight/Coordinator budget hold remains. Reviewer ran no tests/lint/native/Neovim/browser.
 
 Criteria: C1 failed (M1/M2: refuse append failures while retaining invalid-context deferral; retain corrected-source consecutive native pair receipts and separate27-file inventories.).
+
+### impl-1944 · 2026-11-25T13:57:55.632Z
+
+Review correction at 75e9ab74b: materialize card records before persistence; append failure latches an owner receipt, propagates from direct and nested context-read writes, and fences later capture/publication. The append-failure regression failed first on direct swallow and again on nested read; final focused file is 9/9. Full typecheck and full test:lint pass, refusals 0. Prior retained pair at 06069a005 has complete raw logs, native exit 0 twice, unchanged source inventories and 27 equal fixture hashes, but is labeled pre-final because nested-read correction followed. Waiting for authorized native slot for the same retained pair at final head; original A-23433 evidence remains limited to transcript-backed observations, not reconstructed raw proof.
+
+### rev-35 · 2026-11-25T14:14:49.258Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1944-source-2
+commit: 75e9ab74b419435ed9745139c9aa5de0d569f520
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-23458 records the full correction/evidence audit. M1 resolved by materialize-before-persist, exact append-failure latching and nested-reader refusal with preserved no-publication assertions. M2 resolved by A-23455's two complete exact-head native refresh receipts: each exit0/null, both streams complete, 51 TAP sections/499 passes/8417 frames; separate27-file inventories equal, and all four6477-entry source inventories independently match this commit's Git blobs. Earlier incomplete/pre-final occasions remain separate. C1/C2 stay unverified pending configured same-head result/final audit. No configured Linux/tier/browser/enforced-timing claim. Human midnight submission hold and subsequent Coordinator window remain in force.

@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-11-25T13:35:06.575Z
-updated: 2026-11-25T13:35:06.575Z
+updated: 2026-11-25T13:44:47.386Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ Once T-1997's lint has reported zero findings on dev across one stage cover, swi
 ## Acceptance criteria
 
 - [ ] C1. A file-level `after` hook containing an assertion is refused by test:lint, with a pointer to a final named test, while a cleanup-only hook passes (test).
+
+## Comments
+
+### coord · 2026-11-25T13:44:47.386Z
+
+Scope addition from T-1997's C3 audit (impl-1997, 2026-11-25): `tip-churn-file-fixture.ts` has a file-level hook that dispatches stageCase afterCleanup → restore → fakeNativeGuard.verify(), which is an indirect guard as well as cleanup. T-1997 keeps it (per-case owner.close already runs in named test cleanup). Before switching the lint to refusal, migrate it: trackerFileCase.run awaits the completed callback, then owner.close() and owner.restore() run before it returns to its named test, with the file hook kept as an idempotent fallback. This adds the tracker churn importers to the affected tests.
