@@ -3,18 +3,19 @@ id: T-2008
 kind: task
 title: "Executor snapshot 'stale: base' notice fires on every dev landing, asking for a 22-minute prepare that a base-only change rarely needs"
 state: open
-status: planned
+status: in progress
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2075
 blocked_by: []
 regression_of: T-1728
-topic: null
-branch: null
+topic: topic-1784
+branch: t/T-2008-executor-snapshot-stale-base-notice
 created: 2026-11-19T14:15:57.545Z
-updated: 2026-11-25T13:02:27.733Z
+updated: 2026-11-25T13:04:49.149Z
 ---
 
 ## Summary
@@ -27,7 +28,7 @@ Raise the "run cland executor prepare" notice only for lock, recipe, provision o
 
 ## Acceptance criteria
 
-- [ ] C1. A dev move that changes only the base, below the threshold, posts no prepare notice, while `executor status` still reports the base as behind (test).
+- [ ] C1. A dev move that changes only the base posts no prepare notice at any age, while `executor status` still reports the base as behind (test).
 - [ ] C2. A lockfile or recipe change still posts the notice once (test).
 
 ## Comments

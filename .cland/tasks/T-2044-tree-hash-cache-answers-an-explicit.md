@@ -3,17 +3,17 @@ id: T-2044
 kind: task
 title: Tree-hash cache answers an explicit --executor local epic cover with a cached Linux droplet result (no macOS run)
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2074
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1783
+branch: t/T-2044-tree-hash-cache-answers-an-explicit
 created: 2026-11-21T03:00:38.190Z
-updated: 2026-11-25T13:02:26.637Z
+updated: 2026-11-25T13:05:31.226Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ When a submission names an executor or platform, or its occasion requires one (t
 
 - [ ] C1. An `--executor local` (or macOS-required occasion) submission with only a cached Linux droplet result for the tree runs locally instead of returning the cached result (test).
 - [ ] C2. A same-platform cached result is still reused, and the result names the cached run's executor and platform (test).
+
+## Comments
+
+### impl-2044 · 2026-11-25T13:05:31.226Z
+
+Consumer inventory before cache admission policy change: receiptExecutionMatches is called only by Suites.#cacheReceiptAvailable; #cached/#cacheInputsMatch serve admission and explicit-droplet bypass diagnostics. Cache fields are read by dispatch reports, CLI verify output, web verification model, shared wire conformance, batch-member-verification, stage/epic cover derivation and persisted suite restoration. Searched function names and cached/cacheBypass/original occasion/executor/platform across hub/src, hub/test, nvim/test, web, docs, qa and shipped skills; wire shape remains unchanged. Existing suite-cache, suite-release-cache, suite-queue, suite-cover and suite-persistence tests pin provenance. Red reproduction: both new whole-case tests returned cached.executor='droplet' for explicit local and default-local epic requests (expected cached undefined).
