@@ -1,12 +1,13 @@
 import type { TestContext } from 'node:test';
 import { syncBuiltinESMExports } from 'node:module';
 import { caseDeadlines, drainFixtureWork } from './case-deadlines.ts';
-import { afterCleanup, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { afterCleanup, beforeDirectories, guardDirectoryRemoval, fenceFixtureCleanup } from './process-cleanup.ts';
 import { fakeNativeGuard } from './fake-native-guard.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
 
 /** Enroll the whole callback before acquisition; restore seams only after its join. */
 export function guardedLeaseCase(t: TestContext, releaseOnClose?: () => void, options: {timeoutMs?: number; canRestore?: () => boolean; deferRestore?: boolean; allowCli?: boolean} = {}) {
+  const cleanup = fenceFixtureCleanup(t);
   const scope = caseDeadlines(t, { timeoutMs: options.timeoutMs ?? 5000, ownership: { beforeDirectories, guardDirectoryRemoval }, ...(releaseOnClose ? { releaseOnClose } : {}) });
   const restorations: Array<() => void> = [];
   let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
@@ -14,14 +15,14 @@ export function guardedLeaseCase(t: TestContext, releaseOnClose?: () => void, op
   let restored = false;
   const releaseSeams = () => {
     if (restored) return;
-    if (options.canRestore && !options.canRestore()) throw new Error('resource closure unconfirmed; fixture seams and native guard retained');
+    if (!cleanup.canRelease() || options.canRestore && !options.canRestore()) throw new Error('resource closure unconfirmed; fixture seams and native guard retained');
     for (const restore of restorations.reverse()) restore();
     try { guard?.verify(); } finally { restoreGuard?.(); restored = true; }
   };
   afterCleanup(t, async () => {
     await drainFixtureWork();
-    if (!options.deferRestore) releaseSeams();
   });
+  if (!options.deferRestore) cleanup.release(releaseSeams);
   return { ...scope, releaseSeams, own: scope.run,
     patch(target: object, key: PropertyKey, replacement: unknown) {
       const original = Reflect.get(target, key);

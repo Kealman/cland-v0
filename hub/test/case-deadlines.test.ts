@@ -12,6 +12,37 @@ import { within } from '../src/executor/droplet/deadline.ts';
 import { realClock } from '../src/hub/clock.ts';
 import { stageCase } from './stage-case-fixture.ts';
 import { fenceFixtureCleanup } from './process-cleanup.ts';
+import { drainFixtureCleanup, onCleanup } from './process-cleanup.ts';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
+import cp from 'node:child_process';
+
+test('lease fixture retains seams and native guard after rejected resource close until positive repair', async t => {
+  const context = { name: t.name, signal: t.signal, after: () => {} } as unknown as TestContext;
+  const scope = guardedLeaseCase(context);
+  const originalSpawn = cp.spawn;
+  const seam = { open: false };
+  const rejection = new Error('controlled lease resource cleanup rejection');
+  let refuse = true, closed = false;
+  onCleanup(context, async () => {
+    if (refuse) throw rejection;
+    closed = true;
+  });
+  t.after(async () => { refuse = false; await drainFixtureCleanup(context); });
+  await scope.run(async () => { scope.patch(seam, 'open', true); });
+  const guardedSpawn = cp.spawn;
+  assert.notEqual(guardedSpawn, originalSpawn, 'positive native launch guard installed');
+  await assert.rejects(drainFixtureCleanup(context), error => error === rejection);
+  await drainFixtureWork();
+  assert.equal(cp.spawn, guardedSpawn, 'rejection must retain the native guard');
+  assert.equal(seam.open, true, 'rejection must retain the resource seam');
+  assert.equal(closed, false);
+  assert.throws(scope.releaseSeams, /resource closure unconfirmed/);
+  refuse = false;
+  await drainFixtureCleanup(context);
+  assert.equal(closed, true, 'positive close receipt precedes restoration');
+  assert.equal(seam.open, false);
+  assert.equal(cp.spawn, originalSpawn);
+});
 
 for (const rejectedClose of [false, true]) test(`stage case TestContext abort fences held writer with ${rejectedClose ? 'rejected then confirmed' : 'confirmed'} resource close`, async t => {
   const supervisor = stageCase(t);

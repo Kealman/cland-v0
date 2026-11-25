@@ -131,7 +131,10 @@ function cleanupSteps(t: TestContext) {
 export function fenceFixtureCleanup(t: TestContext) {
   const owned = cleanupSteps(t);
   owned.fenced = true;
-  return { release: (step: CleanupStep) => { owned.releases.push(step); } };
+  return {
+    canRelease: () => [...owned.resources, ...owned.hubs, ...owned.directories].every(step => owned.completed.has(step)),
+    release: (step: CleanupStep) => { owned.releases.push(step); },
+  };
 }
 async function completedStep(owned: CleanupOwner, step: CleanupStep): Promise<void> {
   if (owned.completed.has(step)) return;

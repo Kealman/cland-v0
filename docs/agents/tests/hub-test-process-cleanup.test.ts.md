@@ -9,6 +9,13 @@ reverse registration order only after resources, hubs, directories and checks
 succeed. The fake-only held/rejected-close and repair proof lives in T2
 `claude-code-schedule.test.ts`; this T3 file retains the native cleanup contracts.
 
+`guardedLeaseCase` always enrolls this fence before acquisition. Its manual
+`releaseSeams` also checks fulfilled resource, hub and directory receipts;
+`canRestore` adds caller-specific conditions and `deferRestore` retains caller
+control of timing. An empty pending-work set does not grant restoration.
+The rejected-close and positive-repair regression is in
+`case-deadlines.test.ts`, with the original rejection retained as its outcome.
+
 `hub/test/process-cleanup.test.ts` is T3. Its synthetic native boundary retains
 equal lstart timestamps while changing birth microseconds, preserves the reused
 PID, and positively signals a separate original identity. With a live writer and
