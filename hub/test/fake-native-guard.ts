@@ -6,9 +6,11 @@ import type { TestContext } from 'node:test';
 import { afterCleanup, fenceFixtureCleanup } from './process-cleanup.ts';
 import { isClandCliLaunch } from './tier-cli.ts';
 
-/** Keep the positive guard through shared resources, hubs and directory cleanup. */
+/** Fence restoration on positive resource, hub and directory cleanup receipts.
+ * An unfenced opt-out requires a documented caller-specific ownership reason.
+ */
 export async function fixtureNativeGuard(t: TestContext, options: { fenced?: boolean } = {}): Promise<void> {
-  return fixtureGuard(t, false, options.fenced ?? false);
+  return fixtureGuard(t, false, options.fenced ?? true);
 }
 
 /** CLI subjects retain only the same synchronous exception as the T2 tripwire. */

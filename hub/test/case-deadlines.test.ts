@@ -15,6 +15,53 @@ import { fenceFixtureCleanup } from './process-cleanup.ts';
 import { drainFixtureCleanup, onCleanup } from './process-cleanup.ts';
 import { guardedLeaseCase } from './executor-lease-fixture.ts';
 import cp from 'node:child_process';
+import { fixtureNativeGuard } from './fake-native-guard.ts';
+import { receiptFixtureCase } from './receipt-fixture-case.ts';
+import { testWaitMs } from './until.ts';
+
+for (const owner of ['fixtureNativeGuard', 'receiptFixtureCase'] as const) test(`${owner} defaults retain the native guard until rejected resource closure is repaired`, async t => {
+  const supervisor = stageCase(t);
+  await supervisor.run(async step => {
+    const hooks: Array<() => unknown> = [];
+    const context = { name: t.name, signal: t.signal, after: (hook: () => unknown) => { hooks.push(hook); } } as unknown as TestContext;
+    let refuse = true, closed = false, attempts = 0, completedHookCalls = 0;
+    const originalSpawn = cp.spawn;
+    const rejection = new Error('controlled resource close rejection');
+    const dispose = async () => { for (const hook of hooks) await hook(); };
+    const acquire = async (owned: TestContext) => {
+      if (owner === 'receiptFixtureCase') owned.after(() => { completedHookCalls++; });
+      onCleanup(owned, async () => {
+        attempts++;
+        if (refuse) throw rejection;
+        closed = true;
+      });
+    };
+    supervisor.requireClose(async () => { refuse = false; await dispose(); });
+    await step(() => supervisor.wait('default fixture setup', async () => {
+      if (owner === 'fixtureNativeGuard') {
+        await fixtureNativeGuard(context);
+        await acquire(context);
+      } else await receiptFixtureCase(context, false, acquire);
+    }, testWaitMs(5000)));
+    await step(() => supervisor.wait('outer cleanup rejection and repaired closure proof', async () => {
+      const guardedSpawn = cp.spawn;
+      assert.notEqual(guardedSpawn, originalSpawn, 'positively controlled guard installed');
+      await assert.rejects(dispose(), error => owner === 'fixtureNativeGuard' ? error === rejection : error instanceof Error && error.cause instanceof AggregateError && error.cause.errors.includes(rejection));
+      assert.equal(closed, false);
+      assert.equal(cp.spawn, guardedSpawn, 'failed close retains native denial');
+      refuse = false;
+      await dispose();
+      assert.equal(closed, true, 'resource positively closed before restoration');
+      assert.equal(attempts, 2, 'failed close retried');
+      assert.equal(cp.spawn, originalSpawn);
+      if (owner === 'receiptFixtureCase') {
+        await dispose();
+        assert.equal(completedHookCalls, 1, 'successful outer hooks are not replayed on repair');
+        assert.equal(attempts, 2, 'successful resource close is not replayed');
+      }
+    }, testWaitMs(5000)));
+  });
+});
 
 test('lease fixture retains seams and native guard after rejected resource close until positive repair', async t => {
   const context = { name: t.name, signal: t.signal, after: () => {} } as unknown as TestContext;

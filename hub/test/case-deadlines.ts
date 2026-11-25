@@ -44,6 +44,7 @@ export function caseDeadlines(t: TestContext, options: { clock?: Clock; timeoutM
   const pending = new Set<Promise<unknown>>();
   const sequence = admittedFixtureWork();
   const hooks: Array<() => Promise<void>> = [];
+  const completedHooks = new Set<() => Promise<void>>();
   const wait = <T>(operation: string, run: () => Promise<T>): Promise<T> => {
     const work = own(Promise.resolve().then(run));
     pending.add(work);
@@ -65,14 +66,21 @@ export function caseDeadlines(t: TestContext, options: { clock?: Clock; timeoutM
     return joined;
   };
   const close = () => {
-    cleanup ??= own((async () => {
-      await join();
-      const failures: unknown[] = [];
-      for (const hook of hooks) {
-        try { await hook(); } catch (error) { failures.push(error); }
-      }
-      if (failures.length) throw new AggregateError(failures, `${t.name}: fixture cleanup failed`);
-    })());
+    if (!cleanup) {
+      const work = own((async () => {
+        await join();
+        const failures: unknown[] = [];
+        for (const hook of hooks) {
+          if (completedHooks.has(hook)) continue;
+          try { await hook(); completedHooks.add(hook); } catch (error) { failures.push(error); }
+        }
+        if (failures.length) throw new AggregateError(failures, `${t.name}: fixture cleanup failed`);
+      })());
+      cleanup = work;
+      // A failed observation retains in-flight cleanup. Only a settled rejection
+      // permits retry, preserving completed hooks and the joined admission fence.
+      void work.catch(() => { if (cleanup === work) cleanup = undefined; });
+    }
     // If this deadline fails, cleanup remains owned and continues in order;
     // worker directory removal is gated by drainFixtureWork, not this race.
     return bounded(`${t.name}: fixture teardown`, cleanup, clock, timeoutMs);

@@ -33,3 +33,29 @@ the final assertions that the admitted write completed, later admission was
 fenced, late roots were adopted and root removal followed the join. Fake-clock
 startup/teardown deadline controls retain their previous assertions. No cloud,
 browser or worker process is required; projectHub writers stay in-process.
+
+The default `fixtureNativeGuard` and fake `receiptFixtureCase` regressions use
+an injected resource whose close rejects with an exact error identity. Both
+assert the positively controlled native launch guard remains installed after
+rejection, then repair the close and observe successful closure before native
+restoration. They use no subprocess, network, clock delay or live database.
+The complete callbacks run under stageCase before guard acquisition, with named
+load-scaled setup and proof observations. The supervisor joins the original
+continuation before fallback repairs/drains. Both controls invoke the registered
+outer cleanup hooks for rejection and repair; the receipt case never bypasses
+the outer owner to drain nested fixtures. It also checks successful hooks and
+resource closure are not replayed. Existing lease/deadline tests remain intact.
+
+`caseDeadlines.close` retains its in-flight cleanup across observation expiry.
+A settled rejection clears the attempt cache for retry, keeping original work
+joined and admission fenced. Successful hook receipts survive the retry, while
+failed hooks run again. Previously the rejected promise was cached permanently.
+Fake receipt cases fence their outer process-cleanup owner as well as their
+nested guard owner, so the normal outer hook can reach the repaired closer.
+
+`fixtureNativeGuard` defaults to fenced resource, hub and directory cleanup.
+Failed steps retry; completed steps do not rerun. Explicit `fenced: false`
+retains the legacy catch-and-continue path and requires a caller-specific
+ownership justification. There are no such callers in the audited tree.
+`receiptFixtureCase(..., true, ...)` remains a native fixture choice and does
+not install this fake guard.

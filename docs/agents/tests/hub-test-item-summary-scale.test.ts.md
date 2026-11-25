@@ -6,8 +6,9 @@ the ten-branch refresh. Each command has its own p95 behaviour bound of 1,000 ms
 samples include refresh queueing, socket transport and view I/O, excluding setup.
 The hub uses in-process fake infrastructure and fake Git under a positively
 controlled native-launch guard; it starts no harness, droplet or browser.
-The shared `fixtureNativeGuard` verifies and restores in `afterCleanup`, keeping
-the guard installed through hub disposal and fixture directory cleanup.
+The shared `fixtureNativeGuard` defaults to fenced cleanup, verifying and
+restoring only after positive resource, hub and directory cleanup receipts.
+Rejected closure retains the guard until a repaired cleanup succeeds.
 Shared churn setup seeds only its scratch index through the public index writer,
 with the seeding transaction checkpointed and closed before projectHub opens it.
 For T-1646, criterion proof comes from reviewed-head droplet receipts.
