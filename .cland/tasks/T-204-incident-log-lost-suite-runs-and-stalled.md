@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-24T18:13:22.103Z
+updated: 2026-11-25T09:29:05.649Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -730,3 +730,7 @@ Restart #102 (2026-11-24, on coord's GO under rule 19; hub RSS had reached 3.08 
 ### human · 2026-11-24T18:13:22.103Z
 
 Restart #103 (2026-11-24, on coord's GO under rule 19; #102 had touched 3.01 GB RSS at 17:58:49Z and T-2084 (TestLintWarmer moved into a capped child process) had landed as d85fbb5ca): hub r102 pid 15174 (65c625080) stopped 18:11:36Z; job cland-hub-r103 pid 13781 started from the root at 9af601700 (dev = origin/dev, root clean, web/dist rebuilt for two web/src changes, no package changes, quiet window: no preflight or admission in flight, droplet run a03eab80 reattached), serving 18:11:52.533Z, gap 17 s. Binding listeners 4 ms, web listener 317 ms. Port 53782, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job, doctor 0 fail. Coord bridge-connected 18:11:53Z, injected 18:12:08Z. First warmer pass on the new code: 1,042 files, 16.3 s wall, peak heap 135 MB under a 304 MiB cap, hub RSS 0.36 GB after it.
+
+### human · 2026-11-25T09:29:05.649Z
+
+Restart #104 (2026-11-25, on coord's request under rule 19: T-2062 bounded stage containment, T-2020, T-2013): hub r103 pid 13781 (9af601700, 14 h 16 m up, RSS 1.9 GB, 2 stalls in total, 20 landings) stopped 09:27:59Z; job cland-hub-r104 pid 29725 started from the root at a6ff2853b (dev = origin/dev, root clean, web/dist rebuilt for one web/src change, no package changes, merge queue empty, no droplet verify running), serving 09:28:12.582Z, gap 14 s. Binding listeners 4 ms, web listener 283 ms. Port 49982, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job.

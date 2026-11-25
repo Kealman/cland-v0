@@ -2,8 +2,8 @@
 id: T-1928
 kind: task
 title: Verify admission does ~40 s of repeated candidate lint and planning before acknowledging a submission
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1754
 branch: t/T-1928-verify-admission-does-40-s-of-repeated
 created: 2026-11-16T23:36:00.713Z
-updated: 2026-11-24T19:46:32.943Z
+updated: 2026-11-25T08:19:38.296Z
+closed: 2026-11-25T08:19:38.296Z
 ---
 
 ## Summary
@@ -26,8 +27,9 @@ Before a `cland verify` submission is durably admitted and acknowledged, the hub
 - [x] C1. A profile of one local submission names the time of each substep before durable admission, from a scratch project under representative load.
   - done: impl-1928 · 2026-11-24T18:03:25.035Z
   - verified: rev-35 [reviewer] · run rev-35-1928-evidence-1 · 2026-11-24T18:16:59.397Z · commit 0a0296c816c18d24dc1578e512e1ef76436f0ae6
-- [ ] C2. Repeated candidate lint and planning work is cached or moved after the acknowledgement, while every candidate and authority check still gates admission. The time to acknowledge drops measurably against C1's baseline, and the item states the before and after figures (test plus measurement).
-  - failed: rev-35 [reviewer] · 2026-11-24T19:46:32.943Z · note Configured ae587f23/A-23086 exits1: T3 duration refusal6.483s>5s, despite passing body; Web unexecuted. Targeted confirmations cannot replace configured green.
+- [x] C2. Repeated candidate lint and planning work is cached or moved after the acknowledgement, while every candidate and authority check still gates admission. The time to acknowledge drops measurably against C1's baseline, and the item states the before and after figures (test plus measurement).
+  - verified: rev-35 [reviewer] · run rev-35-1928-evidence-4 · 2026-11-25T07:44:09.263Z · commit 0a0296c816c18d24dc1578e512e1ef76436f0ae6
+  - done: impl-1928 · 2026-11-25T07:44:18.746Z
 
 ## Comments
 
@@ -129,3 +131,37 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-23088: failed same-head receipt retained. T0/T1/T2 exit0; T3 complete exit1; printed duration refusal at51617, passing case finish43033. Structured cause empty/unknown. All5 new controls base+5 distinct loaded pass, retained as partial proof; no test-body fail record. C1 profile verification A-23078 remains current. Actual positive files249T1/448T2/229T3; inventory254T3 is not229 observed receipts; Web/T4 unexecuted. Coordinator698e8d23 likely-environment attribution remains hypothesis; authorized isolated A-23087 observations do not supersede the red. Hold released; await actual Coordinator resubmission authorization, no new reviewer run/probe/source change.
 
 Criteria: C2 failed (Configured ae587f23/A-23086 exits1: T3 duration refusal6.483s>5s, despite passing body; Web unexecuted. Targeted confirmations cannot replace configured green.).
+
+### rev-35 · 2026-11-25T02:07:42.835Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1928-evidence-3
+commit: 0a0296c816c18d24dc1578e512e1ef76436f0ae6
+scope: evidence
+findings: [{"severity":"medium","text":"Configured run 030d6d25/A-23139 ended code143 with deadlineExpired=true and owner cause run timeout75m; T0–T3 completed exit0, but Web and package closure remain incomplete. No new source defect is inferred."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Retained evidence audited in A-23146. Five new controls each base+5/5 loaded pass; prior T-2093 identity passes1.796181083s here. These are partial proof, not overall green. C1 remains verified under accepted harness-local scope. Earlier ae587f23/A-23086 and targeted A-23087 retained separately. Review hold released; no additional submission authorized; await Coordinator's pending human decision.
+
+Criteria: C2 failed (030d6d25/A-23139 is incomplete at the explicit75m owner deadline (code143); T0–T3 pass but Web has no complete receipt. C1/A-23078 stays verified.).
+
+### rev-35 · 2026-11-25T07:44:09.263Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1928-evidence-4
+commit: 0a0296c816c18d24dc1578e512e1ef76436f0ae6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; C2 verified, C1 remains current under A-23078/Coordinator269ddb84 exclusions. A-23322 audits A-23316/run41546aee: durable code0/cause empty, complete T0(two)/T1/T2/T3/Web, no unfinished, c16/4 explicitworkers. All5 cache/parser controls base+5/5 loaded; admission/candidate/native refusal consumerfiles positive. Old T2093fixture case now1.598683043s pass; old failed/incomplete receipts remain history. Paired9625 basepass/12skip+25loadedpass, known3F2 excluded; T1 249/T2 448/T3 254/Web55 positivefiles,20T3 deferred/18T4 unexecuted. Cacheunknown. Harness comparison remains one paired volatileStore/no-opauth/sequential/noCLI/socket profile: cold15.308→10.746s, repeated14.155→5.301s, not endtoend/diskdurable latency or statistical bound. No c16/c8 speedup comparison, new profilepair or source finding. Audit hold released; claimant restores C2done if reset, then normalready/merge gate.
+
+Criteria: C2 verified.
+
+### coord · 2026-11-25T08:19:38.296Z
+
+Merged cacd3e2af8fd4a7228611e49c1091f3b49d2f08f onto dev.

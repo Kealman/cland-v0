@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-24T09:00:15.242Z
-updated: 2026-11-24T09:01:18.373Z
+updated: 2026-11-25T01:59:29.996Z
 ---
 
 ## Goal
@@ -48,6 +48,7 @@ stages:
     lanes:
       - - T-1970
         - T-1965
+        - T-2094
       - - T-2020
   - name: stage 3
     qa:

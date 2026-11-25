@@ -2,8 +2,8 @@
 id: T-2089
 kind: task
 title: cland config set infers argument types from renderConfig(defaultConfig) rather than configKeys' explicit exemplar, so a commented-out default (test_timeout after T-2057) changes how its value argv is decoded
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1755
 branch: t/T-2089-cland-config-set-infers-argument-types
 created: 2026-11-24T14:03:57.276Z
-updated: 2026-11-25T00:07:17.622Z
+updated: 2026-11-25T01:58:14.469Z
+closed: 2026-11-25T01:58:14.469Z
 ---
 
 ## Summary
@@ -31,6 +32,7 @@ Make config set take every key's type from one shared vocabulary (configKeys' ex
 - [x] C1. Setting test_timeout with a literal duration argv that contains embedded quotes decodes the same way as before T-2057, and the key's type comes from the shared exemplar (test, red before).
   - done: impl-2089 · 2026-11-24T19:50:55.154Z
   - verified: rev-40 [reviewer] · run rev-40-20261124-2089-final · 2026-11-24T21:06:30.798Z · commit e694062948184ecc8fee5a3a27f3bc03456fc5b5
+  - verified: rev-40 [reviewer] · run rev-40-20261125-2089-linux-final · 2026-11-25T01:24:24.348Z · commit e694062948184ecc8fee5a3a27f3bc03456fc5b5
 
 ## Comments
 
@@ -201,3 +203,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; C1 verified. Same-head configured run f3409dcd-b5f0-49a4-9aea-bcdd0bd924dc / A-23091 finished passed. Independently checked all 25 config-set base structured outcomes, exact quoted-duration case pass at line17000 and five distinct load finishes plus 5/5 receipt17049. Source-clear A-23090 establishes the shared exemplar and corrected complete setup ownership; all literal/refusal/unchanged-byte/accepted17s/parsed17000ms assertions retained. T0/T1/fallback all T2/selected241 T3 files/Web exit0 on noncached local Darwin arm64 Node24.21/Nvim0.12.5; Web Headless Shell1248 / Chrome for Testing156.0.8078.4. T4 unexecuted; one Linux-only prerequisite explicitly skipped, remaining process scope subject to merge-batch policy. Advisory budgets/lint remain report-only; no Linux or performance clearance claimed. No findings or Reviewer runs. Evidence: A-23092, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23092-t-2089-final-clear-at-e69406294.md.
 
 Criteria: C1 verified.
+
+### rev-40 · 2026-11-25T01:24:24.348Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261125-2089-linux-final
+commit: e694062948184ecc8fee5a3a27f3bc03456fc5b5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final Linux evidence clear; C1 verified. Same-head run0f63e530-b5e1-4881-8a9b-fce5e62af6a9/A-23093 finished passed; exact canonical tree matches. All25 config-set bases pass; exact quoted-duration case structured pass17067 at0.844497692s, five distinct load pass finishes and5/5 receipt17164 (peak1.040344177s). T0/T1/fallback allT2/selected241T3 files1936passing identities/Web exit0; T4 unexecuted, remaining process scope merge-batch policy, explicit platform/binary prerequisites skipped. Noncached Linuxx64 droplet c8sfo2 workers2 Node24.21/Nvim0.12.5; isolated HeadlessShell1248/CfT156.0.8078.4. Advisory budgets remain report-only; no performance clearance. Earlier macOS A-23092 retained with its platform limits, initial not-clear source round retained historically. No findings or Reviewer runs. Audit A-23094: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23094-t-2089-linux-evidence-clear-at-e69406294.md.
+
+Criteria: C1 verified.
+
+### coord · 2026-11-25T01:58:14.469Z
+
+Merged 073a7a2f4ef3a038f3c23087c13da746467b6483 onto dev.

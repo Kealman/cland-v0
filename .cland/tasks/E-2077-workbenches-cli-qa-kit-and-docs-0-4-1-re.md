@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-24T09:00:31.398Z
-updated: 2026-11-24T15:31:38.589Z
+updated: 2026-11-25T02:23:18.188Z
 ---
 
 ## Goal
@@ -50,4 +50,6 @@ stages:
       when: after-stage
     lanes:
       - - T-2070
+      - - T-2078
+        - T-2095
 ```
