@@ -15,6 +15,7 @@ import { durableJson, runDirectory, leaseDir, type DropletLease } from './lease.
 import { Machine, machineEnv, shellQuote } from './machine.ts';
 import { pause, testTiming } from './watchdog.ts';
 import { ReadinessDeadlineError, withDropletCleanupFailure } from './readiness-deadline.ts';
+import { withCleanupFailure } from '../../cleanup-failure.ts';
 import { saveRecovery, recoverSnapshot, snapshotFromBuilder, type SnapshotRecovery } from './snapshot-recovery.ts';
 import type { Released } from '../executor.ts';
 
@@ -266,7 +267,8 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
       }
     }
     const cause = `${stage}: ${error instanceof Error ? error.message : 'snapshot preparation failed'}`;
-    log({ event: 'executor-prepare-failed', key, image: image?.id ?? null, regions: options.regions, durationMs: clock.now().getTime() - started, ...released, cause });
+    try { log({ event: 'executor-prepare-failed', key, image: image?.id ?? null, regions: options.regions, durationMs: clock.now().getTime() - started, ...released, cause }); }
+    catch (sinkError) { error = withCleanupFailure(error, sinkError); }
     throw new Error(`${cause}; image ${image?.id ?? 'none'}; regions ${options.regions.join(', ')}; duration ${clock.now().getTime() - started}ms; builder lifetime ${released.lifetimeMs ?? 'unconfirmed'}ms, cost $${released.costUsd ?? 'unconfirmed'}`, { cause: error });
   }
 }

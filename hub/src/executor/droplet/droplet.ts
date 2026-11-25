@@ -19,6 +19,7 @@ import { prepareBase, prepareKey, prepareSnapshot, readSnapshot, staleParts, sam
 import { compactLeaseHistory, hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend, sweepProjects } from './spend.ts';
 import { DropletRun } from './run.ts';
 import { withDropletCleanupFailure } from './readiness-deadline.ts';
+import { withCleanupFailure } from '../../cleanup-failure.ts';
 import type { Executor, PrepareOptions, ReapOptions, Released, RunRef } from '../executor.ts';
 import { remoteRedactor } from '../../host/agent/redact.ts';
 import { EXECUTOR_CREDENTIALS } from '../../../../shared/executor-credentials.ts';
@@ -363,7 +364,10 @@ export class DropletExecutor implements Executor {
           catch (cleanupError) { throw withDropletCleanupFailure(error, 'lease-checkpoint', cleanupError); }
           const reason = `${candidate}: ${error.message}`;
           refusals.push(reason);
-          if (run.log) await appendFile(run.log, `Droplet region refused: ${reason}\n`);
+          if (run.log) {
+            try { await appendFile(run.log, `Droplet region refused: ${reason}\n`); }
+            catch (sinkError) { throw withCleanupFailure(error, sinkError); }
+          }
         }
       }
       if (refusals.length === candidates.length) throw new ProviderCapacityUnavailable(`droplet size ${size} unavailable: ${refusals.join('; ')}`);

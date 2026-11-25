@@ -33,6 +33,13 @@ case observes the retained budget lock, then reconciliation retries its captured
 owner and observes ENOENT. Operation waits use named load-scaled scope bounds;
 the guarded whole-case owner joins work before restoring fakes or removing roots.
 
+Diagnostic-sink cases reject the regional-refusal run.log append and the final
+preparation failure log callback. Acquisition retains the exact provider error;
+preparation retains the install error as its wrapper cause. Each primary's
+aggregate cause contains the sink rejection, and the fake provider has no
+remaining droplets or keys. Both callbacks use `guardedLeaseCase` from setup
+through cleanup, including its positively controlled native launch guard.
+
 The exhausted bundle-copy case retains its two timed native-transport receipts
 and asserts `DeliveryTransportError.attempts` plus the original cause identity.
 Scheduler replacement limits live in executor-run-rules: one replacement in a

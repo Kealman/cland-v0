@@ -160,6 +160,39 @@ for (const writer of ['acquisition', 'reap', 'shard release', 'snapshot publicat
   });
 });
 
+test('regional acquisition preserves provider failure when the run log sink rejects', async t => {
+  const scope = guardedLeaseCase(t, undefined, { timeoutMs: testDeadlineMs(5000) });
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('diagnostic fixture setup', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    await step(() => scope.wait('fixture hub stop', () => f.stop()));
+    const snapshot: Snapshot = { image: 900, name: 'ready', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'], sizeGb: 1, minDiskSize: 10, created: f.clock.now().toISOString() };
+    await step(() => scope.wait('snapshot setup', async () => {
+      await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+      await writeFile(snapshotPath(f.root), JSON.stringify(snapshot));
+    }));
+    const primary = new DigitalOceanError(422, 'unprocessable_entity', 'Size is not available in this region');
+    const sink = new Error('run log sink rejected');
+    const log = join(f.root, 'run.log');
+    const append = files.appendFile;
+    let writes = 0;
+    scope.patch(f.dependencies.api, 'create', async () => { throw primary; });
+    scope.patch(files, 'appendFile', async (...args: Parameters<typeof append>) => {
+      if (args[0] === log) { writes++; throw sink; }
+      return append(...args);
+    });
+    const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, f.dependencies);
+    await step(() => scope.wait('acquisition failure receipt', () => assert.rejects(drive(f, executor.acquire({ id: 'diagnostic-failure', log }, new Date(f.clock.now().getTime() + 60000).toISOString())), error => {
+      assert.equal(error, primary);
+      assert.ok(primary.cause instanceof AggregateError);
+      assert.deepEqual(primary.cause.errors, [sink]);
+      return true;
+    })));
+    assert.equal(writes, 1);
+    assert.deepEqual(f.api.droplets, []);
+    assert.deepEqual(f.api.keys, []);
+  });
+});
+
 for (const boundary of ['reservation', 'regional refusal'] as const) test(`acquisition preserves primary failure at ${boundary} cleanup boundary`, async t => {
   const scope = guardedLeaseCase(t, undefined, { timeoutMs: testDeadlineMs(5000) });
   return scope.run(async step => {
@@ -398,6 +431,33 @@ for (const cleanupFailure of ['none', 'release', 'recovery-checkpoint', 'recover
     }
     assert.deepEqual(f.api.droplets, []);
     assert.deepEqual(f.api.keys, []);
+  });
+});
+
+test('snapshot preparation preserves install failure when the final diagnostic sink rejects', async t => {
+  const scope = guardedLeaseCase(t, undefined, { timeoutMs: testDeadlineMs(5000) });
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('diagnostic fixture setup', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    await step(() => scope.wait('fixture hub stop', () => f.stop()));
+    f.setFailure('install');
+    const sink = new Error('prepare diagnostic sink rejected');
+    let writes = 0;
+    const executor = new DropletExecutor(f.root, undefined, entry => {
+      if (entry.event === 'executor-prepare-failed') { writes++; throw sink; }
+    }, f.env, undefined, f.dependencies);
+    await step(() => scope.wait('preparation failure receipt', () => assert.rejects(drive(f, executor.prepare()), error => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /install: prepare failed \(exit 8\)/);
+      assert.ok(error.cause instanceof Error);
+      assert.match(error.cause.message, /prepare failed \(exit 8\)/);
+      assert.ok(error.cause.cause instanceof AggregateError);
+      assert.deepEqual(error.cause.cause.errors, [sink]);
+      return true;
+    })));
+    assert.equal(writes, 1);
+    assert.deepEqual(f.api.droplets, []);
+    assert.deepEqual(f.api.keys, []);
+    assert.deepEqual(await step(() => readRecoveries(f.root)), []);
   });
 });
 
