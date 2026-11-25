@@ -19,6 +19,7 @@ import { spendPath } from '../src/executor/droplet/spend.ts';
 import { completeJournalLines } from './journal-lines.ts';
 import { guardedLeaseCase } from './executor-lease-fixture.ts';
 import { stageCase } from './stage-case-fixture.ts';
+import { contendedLaunch, receipt as executorReceipt, lifecycleCase, lifecycleStep, adoptLifecycle } from './executor-safety-case.ts';
 
 test('local stage selectors pin several epics through MCP', { skip: process.platform !== 'darwin' ? 'local macOS stage selector requires a macOS host' : false }, async t => {
   const owner = stageCase(t);
@@ -170,58 +171,70 @@ test('two-shard close reports despite a corrupt spend ledger and the executor sw
 });
 
 test('pre-lease shard failures retain reservation release through executor restart', async t => {
-  const setup = caseDeadlines(t);
-  const f = await setup.wait('isolated close fixture', () => integrated(setup.fixtures, '', 2, undefined, { machine: 'scripted' }));
-  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  const path = join(f.root, '.cland/executor-state/spend.json');
   const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
-  onCleanup(setup.fixtures, () => release.resolve());
-  let acquiring = 0;
-  f.api.beforeSizes(async () => {
-    const ledger = JSON.parse(await readFile(path, 'utf8').catch(() => '{"entries":[]}')) as { entries: { lease: string }[] };
-    if (ledger.entries.filter(entry => entry.lease.startsWith('reserved:')).length !== 2) return;
-    if (++acquiring === 2) entered.resolve();
-    await release.promise;
+  const owner = lifecycleCase(t, () => release.resolve());
+  return owner.run(async admit => {
+    const step = lifecycleStep(owner, admit);
+    const f = await step(async () => {
+      const f = await integrated(owner.fixtures, '', 2, undefined, { machine: 'scripted' });
+      adoptLifecycle(owner, f); return f;
+    });
+    assert.equal((await step(() => f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' }))).ok, true);
+    const path = join(f.root, '.cland/executor-state/spend.json');
+    let acquiring = 0;
+    f.api.beforeSizes(async () => {
+      const ledger = JSON.parse(await readFile(path, 'utf8').catch(() => '{"entries":[]}')) as { entries: { lease: string }[] };
+      if (ledger.entries.filter(entry => entry.lease.startsWith('reserved:')).length !== 2) return;
+      if (++acquiring === 2) entered.resolve();
+      await release.promise;
+    });
+    const job = await step(() => contendedLaunch(owner, f, 'all', '--fresh', '--occasion', 'stage'));
+    await step(() => executorReceipt('both shards reach pre-lease provider lookup', drive(f, entered.promise)));
+    const saved = await step(() => readFile(path, 'utf8'));
+    assert.deepEqual(await step(() => readLeaseHistory(f.root)), []);
+    const result = owner.own(() => eventually('failed parent receipt with broken ledger', async () => {
+      await f.clock.advance(1000);
+      await f.verificationSettled();
+      return (await f.messages(job.id))[0];
+    }, 5000));
+    void result.catch(() => {});
+    await step(() => writeFile(path, '{"version":0,"entries":[]}'));
+    f.api.sizes[0]!.available = false;
+    release.resolve();
+    const message = await step(() => result);
+    assert.match(message.text, /all unavailable: provider capacity/);
+    assert.match(message.text, /No tests executed\./);
+    assert.match(message.text, /shard-1: droplet size c-8 is unavailable/);
+    assert.match(message.text, /shard-2: droplet size c-8 is unavailable/);
+    assert.doesNotMatch(message.text, /exit 1|\bred\b|Failures:|shard failure/);
+    assert.deepEqual(await step(() => readLeaseHistory(f.root)), [], 'no real lease can own these synthetic reservations');
+    assert.equal((await step(() => f.messages(job.id))).length, 1);
+    assert.deepEqual(((await step(() => f.ui.request({ type: 'suite.queue' }))).value as VerificationQueue).remote, []);
+    const receiptPath = join(f.root, '.cland/run/suites', job.id, 'result.json');
+    const receipt = await step(() => readFile(receiptPath, 'utf8'));
+    await step(async () => { await f.stop(); });
+    await step(() => writeFile(path, saved));
+    f.api.sizes[0]!.available = true;
+    const logs: Record<string, unknown>[] = [];
+    await step(async () => {
+      const executor = new DropletExecutor(f.root, undefined, entry => logs.push(entry), f.env, undefined, f.dependencies);
+      try {
+        await drive(f, executor.sweep(true));
+        const ledger = JSON.parse(await readFile(path, 'utf8')) as { entries: { lease: string; cost: number | null }[] };
+        assert.equal(ledger.entries.length, 2);
+        assert.ok(ledger.entries.every(entry => entry.lease.startsWith('reserved:') && entry.cost === 0), 'the restarted sweep clears every unacquired reservation');
+        assert.ok(logs.some(entry => entry.event === 'executor-shard-reservations-released'));
+        assert.ok(logs.some(entry => entry.event === 'executor-sweep' && entry.failures === 0));
+        await drive(f, executor.sweep());
+      } finally { await executor.close(); }
+    });
+    assert.equal(await step(() => readFile(receiptPath, 'utf8')), receipt);
+    await step(async () => {
+      const store = new Store(join(f.root, '.cland/hub.db'));
+      try { assert.equal(store.topicMessages(f.topic, 50).filter(message => message.id === `suite:${job.id}`).length, 1); }
+      finally { store.close(); }
+    });
   });
-  const job = await drive(f, f.launch('all', '--fresh', '--occasion', 'stage'));
-  await setup.wait('both shards reach pre-lease provider lookup', () => entered.promise);
-  const saved = await readFile(path, 'utf8');
-  assert.deepEqual(await readLeaseHistory(f.root), []);
-  const result = eventually('failed parent receipt with broken ledger', async () => {
-    await f.clock.advance(1000);
-    await f.verificationSettled();
-    return (await f.messages(job.id))[0];
-  }, 5000);
-  await writeFile(path, '{"version":0,"entries":[]}');
-  f.api.sizes[0]!.available = false;
-  release.resolve();
-  const message = await result;
-  assert.match(message.text, /all unavailable: provider capacity/);
-  assert.match(message.text, /No tests executed\./);
-  assert.match(message.text, /shard-1: droplet size c-8 is unavailable/);
-  assert.match(message.text, /shard-2: droplet size c-8 is unavailable/);
-  assert.doesNotMatch(message.text, /exit 1|\bred\b|Failures:|shard failure/);
-  assert.deepEqual(await readLeaseHistory(f.root), [], 'no real lease can own these synthetic reservations');
-  assert.equal((await f.messages(job.id)).length, 1);
-  assert.deepEqual(((await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue).remote, []);
-  const receiptPath = join(f.root, '.cland/run/suites', job.id, 'result.json');
-  const receipt = await readFile(receiptPath, 'utf8');
-  await f.stop();
-  await writeFile(path, saved);
-  f.api.sizes[0]!.available = true;
-  const logs: Record<string, unknown>[] = [];
-  const executor = new DropletExecutor(f.root, undefined, entry => logs.push(entry), f.env, undefined, f.dependencies);
-  await drive(f, executor.sweep(true));
-  const ledger = JSON.parse(await readFile(path, 'utf8')) as { entries: { lease: string; cost: number | null }[] };
-  assert.equal(ledger.entries.length, 2);
-  assert.ok(ledger.entries.every(entry => entry.lease.startsWith('reserved:') && entry.cost === 0), 'the restarted sweep clears every unacquired reservation');
-  assert.ok(logs.some(entry => entry.event === 'executor-shard-reservations-released'));
-  assert.ok(logs.some(entry => entry.event === 'executor-sweep' && entry.failures === 0));
-  await drive(f, executor.sweep());
-  assert.equal(await readFile(receiptPath, 'utf8'), receipt);
-  const store = new Store(join(f.root, '.cland/hub.db'));
-  try { assert.equal(store.topicMessages(f.topic, 50).filter(message => message.id === `suite:${job.id}`).length, 1); }
-  finally { store.close(); }
 });
 
 for (const mixed of [false, true]) test(`generic pre-execution shard acquisition publishes unavailable infrastructure (mixed capacity: ${mixed})`, async t => {

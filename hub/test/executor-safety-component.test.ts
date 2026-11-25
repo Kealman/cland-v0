@@ -7,7 +7,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import fs from 'node:fs/promises';
 import { join } from 'node:path';
 import { fixture } from './remote-fixture.ts';
-import { lease, receipt, finish, scriptedResult, foreignLeaseCase } from './executor-safety-case.ts';
+import { lease, receipt, finish, scriptedResult, foreignLeaseCase, contendedLaunch, lifecycleCase, lifecycleStep, adoptLifecycle } from './executor-safety-case.ts';
 import { projectHub, tempProject, eventually, flushProjectLogs } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { cancelAndDrain, type OwnedRemoteRun } from './remote-cleanup.ts';
@@ -25,58 +25,74 @@ import { spendPath } from '../src/executor/droplet/spend.ts';
 import { fixtureWork } from '../../test-support/fixture-work.ts';
 
 test('stopping during create detaches the provider reply and retains the tagged lease for restart', async t => {
-  const f = await fixture(t, { machine: 'scripted' });
   const entered = Promise.withResolvers<void>();
   const gate = Promise.withResolvers<void>();
-  f.api.beforeCreate(async () => { entered.resolve(); await gate.promise; });
-  onCleanup(t, () => gate.resolve());
-  const job = await f.launch();
-  await receipt('provider entered create', entered.promise);
-  await receipt('hub stopped without provider reply', f.stop().then(() => {}));
-  const [retained] = await readLeaseHistory(f.root);
-  assert.equal(retained?.run, job.id);
-  assert.equal(retained.state, 'releasing');
-  assert.equal(retained.resource, null);
-  assert.ok(retained.createStarted);
-  assert.equal(retained.createFinished, undefined);
-  gate.resolve();
-  await eventually('late provider resource exists', () => f.api.droplets.length ? true : undefined);
-  assert.deepEqual(await readLeaseHistory(f.root), [retained], 'the detached reply cannot publish an active lease after store closure');
-  assert.equal(f.machine.calls.filter(call => call.step === 'start').length, 0);
-  const recovery = new DropletExecutor(f.root, undefined, () => {}, f.env, undefined, f.dependencies);
-  try { await receipt('restart release confirmed', recovery.reconcile(true)); }
-  finally { await recovery.close(); }
-  assert.equal((await readLeaseHistory(f.root))[0]?.state, 'released');
-  assert.deepEqual(f.api.droplets, []);
-  assert.deepEqual(f.api.keys, []);
+  const owner = lifecycleCase(t, () => gate.resolve());
+  return owner.run(async admit => {
+    const step = lifecycleStep(owner, admit);
+    const f = await step(async () => {
+      const f = await fixture(owner.fixtures, { machine: 'scripted' });
+      adoptLifecycle(owner, f); return f;
+    });
+    f.api.beforeCreate(async () => { entered.resolve(); await gate.promise; });
+    const job = await step(() => contendedLaunch(owner, f));
+    await step(() => receipt('provider entered create', drive(f, entered.promise)));
+    await step(() => receipt('hub stopped without provider reply', f.stop().then(() => {})));
+    const [retained] = await step(() => readLeaseHistory(f.root));
+    assert.equal(retained?.run, job.id);
+    assert.equal(retained.state, 'releasing');
+    assert.equal(retained.resource, null);
+    assert.ok(retained.createStarted);
+    assert.equal(retained.createFinished, undefined);
+    gate.resolve();
+    await step(() => eventually('late provider resource exists', () => f.api.droplets.length ? true : undefined));
+    assert.deepEqual(await step(() => readLeaseHistory(f.root)), [retained], 'the detached reply cannot publish an active lease after store closure');
+    assert.equal(f.machine.calls.filter(call => call.step === 'start').length, 0);
+    await step(async () => {
+      const recovery = new DropletExecutor(f.root, undefined, () => {}, f.env, undefined, f.dependencies);
+      try { await recovery.reconcile(true); }
+      finally { await recovery.close(); }
+    });
+    assert.equal((await step(() => readLeaseHistory(f.root)))[0]?.state, 'released');
+    assert.deepEqual(f.api.droplets, []);
+    assert.deepEqual(f.api.keys, []);
+  });
 });
 
 test('stopping during provider cleanup keeps release unconfirmed until restart observes deletion', async t => {
-  const f = await fixture(t, { machine: 'scripted' });
-  const job = await f.launch();
-  await receipt('remote start persisted', f.machine.started(job.id));
-  await receipt('remote admission settled', f.verificationSettled());
   const entered = Promise.withResolvers<void>();
   const gate = Promise.withResolvers<void>();
-  f.api.beforeDropletList(async () => { entered.resolve(); await gate.promise; });
-  onCleanup(t, () => gate.resolve());
-  f.machine.finish(job.id);
-  await f.clock.advance(1000);
-  await receipt('provider cleanup entered', entered.promise);
-  await receipt('hub stopped during provider cleanup', f.stop().then(() => {}));
-  const [retained] = await readLeaseHistory(f.root);
-  assert.equal(retained?.run, job.id);
-  assert.equal(retained.state, 'releasing');
-  assert.equal(retained.released, undefined);
-  assert.equal(retained.costUsd, undefined);
-  assert.equal(f.api.droplets.length, 1);
-  gate.resolve();
-  const recovery = new DropletExecutor(f.root, undefined, () => {}, f.env, undefined, f.dependencies);
-  try { await receipt('restart provider deletion confirmed', recovery.reconcile(true)); }
-  finally { await recovery.close(); }
-  assert.equal((await readLeaseHistory(f.root))[0]?.state, 'released');
-  assert.deepEqual(f.api.droplets, []);
-  assert.deepEqual(f.api.keys, []);
+  const owner = lifecycleCase(t, () => gate.resolve());
+  return owner.run(async admit => {
+    const step = lifecycleStep(owner, admit);
+    const f = await step(async () => {
+      const f = await fixture(owner.fixtures, { machine: 'scripted' });
+      adoptLifecycle(owner, f); return f;
+    });
+    const job = await step(() => contendedLaunch(owner, f));
+    await step(() => receipt('remote start persisted', drive(f, f.machine.started(job.id))));
+    await step(() => receipt('remote admission settled', drive(f, f.verificationSettled())));
+    f.api.beforeDropletList(async () => { entered.resolve(); await gate.promise; });
+    f.machine.finish(job.id);
+    await step(() => f.clock.advance(1000));
+    await step(() => receipt('provider cleanup entered', entered.promise));
+    await step(() => receipt('hub stopped during provider cleanup', f.stop().then(() => {})));
+    const [retained] = await step(() => readLeaseHistory(f.root));
+    assert.equal(retained?.run, job.id);
+    assert.equal(retained.state, 'releasing');
+    assert.equal(retained.released, undefined);
+    assert.equal(retained.costUsd, undefined);
+    assert.equal(f.api.droplets.length, 1);
+    gate.resolve();
+    await step(async () => {
+      const recovery = new DropletExecutor(f.root, undefined, () => {}, f.env, undefined, f.dependencies);
+      try { await recovery.reconcile(true); }
+      finally { await recovery.close(); }
+    });
+    assert.equal((await step(() => readLeaseHistory(f.root)))[0]?.state, 'released');
+    assert.deepEqual(f.api.droplets, []);
+    assert.deepEqual(f.api.keys, []);
+  });
 });
 
 async function sameNameCase(t: TestContext, failBeforeRelease = false) {

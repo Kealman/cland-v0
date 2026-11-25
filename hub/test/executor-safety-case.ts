@@ -7,6 +7,50 @@ import { fixture } from './remote-fixture.ts';
 import { eventually, tempProject } from './harness.ts';
 import { drive } from './remote-clock.ts';
 import { readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { acquireLockAsync } from '../src/hub/lock.ts';
+import { spendPath } from '../src/executor/droplet/spend.ts';
+import fs from 'node:fs/promises';
+import { guardedLeaseCase } from './executor-lease-fixture.ts';
+import { testDeadlineMs } from './until.ts';
+import type { FixtureStep } from '../../test-support/fixture-work.ts';
+
+export function lifecycleCase(t: TestContext, release: () => void) {
+  return guardedLeaseCase(t, release, { timeoutMs: testDeadlineMs(5000) });
+}
+type LifecycleCase = ReturnType<typeof lifecycleCase>;
+/** Keep the original action owned after its bounded observer has failed. */
+export function lifecycleStep(owner: LifecycleCase, admit: FixtureStep): FixtureStep {
+  return operation => admit(() => owner.wait('lifecycle action', () => owner.own(operation)));
+}
+
+export function adoptLifecycle(owner: LifecycleCase, f: Awaited<ReturnType<typeof fixture>>) {
+  owner.adoptRoot(f.root); owner.adoptRoot(f.territory); owner.adoptRoot(f.api.stateRoot);
+}
+
+/** Force the acquisition to request a ledger retry before releasing its holder.
+ * The caller must drive that requested delay through its actual target receipt. */
+export async function contendedLaunch(owner: LifecycleCase, f: Awaited<ReturnType<typeof fixture>>, ...args: string[]) {
+  return owner.wait('contended launch', () => owner.own(async step => {
+    await step(() => drive(f, f.verificationSettled()));
+    const path = `${spendPath(f.env)}.lock`;
+    const lock = await step(() => acquireLockAsync(path, undefined, undefined, 'UTC', f.dependencies.processes));
+    try {
+      const contended = Promise.withResolvers<void>(), link = fs.link;
+      owner.patch(fs, 'link', async (...args: Parameters<typeof link>) => {
+        try { return await link(...args); }
+        catch (error) {
+          if (args[1] === path && (error as NodeJS.ErrnoException).code === 'EEXIST') contended.resolve();
+          throw error;
+        }
+      });
+      const retry = f.waits.waiting();
+      const job = await step(() => f.launch(...args));
+      await step(() => contended.promise);
+      await step(() => retry);
+      return job;
+    } finally { await lock.release(); }
+  }));
+}
 
 export async function lease(root: string): Promise<{ value: DropletLease; path: string }> {
   const dir = join(root, '.cland/run/executor/leases');
