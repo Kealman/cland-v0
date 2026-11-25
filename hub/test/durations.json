@@ -13090,6 +13090,13 @@
     "hub/test/verification-tier-receipts.test.ts::uploaded writer atomically publishes ordered native exits": 0.002693
   },
   "allow": {
+    "hub/test/lead-handover-failure.test.ts::forced handover assertion reports and closes": {
+      "seconds": 24.402,
+      "owner": "E-880",
+      "added": "2026-11-25",
+      "expires": "2026-12-09",
+      "reason": "T-2060: passing Linux x64 droplet sample 16.267463161 s in run cd82bab4-2a5f-42c8-a616-8fdd34e5d8a0, A-23244, head c7de2ee934c9321fce523317c9d1b5ef5184ea92. Cap 24.402 s provides approximately 1.5x measured headroom for real hub startup, forced assertion diagnostics and native cleanup. Original hang unreproduced; no assertion or wait bound changed."
+    },
     "hub/test/startup-listener-scale.test.ts::1500 startup freshness answers keep summary hydration and dependent work linear": {
       "seconds": 23.902,
       "owner": "C-216",
