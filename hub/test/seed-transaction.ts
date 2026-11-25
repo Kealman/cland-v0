@@ -1,4 +1,5 @@
-import { type DatabaseSync, type StatementSync } from 'node:sqlite';
+import type { DatabaseSync, StatementSync } from 'node:sqlite';
+import { withCleanupFailure } from '../src/cleanup-failure.ts';
 
 /** Join public index writers to one fixture-owned transaction. Restore before observation. */
 export async function seedTransaction<T>(connection: DatabaseSync, seed: () => Promise<T>): Promise<T> {
@@ -16,7 +17,8 @@ export async function seedTransaction<T>(connection: DatabaseSync, seed: () => P
     exec.call(connection, 'commit');
     return value;
   } catch (error) {
-    if (connection.isTransaction) exec.call(connection, 'rollback');
+    try { if (connection.isTransaction) exec.call(connection, 'rollback'); }
+    catch (cleanup) { throw withCleanupFailure(error, cleanup); }
     throw error;
   } finally { connection.exec = exec; connection.prepare = prepare; }
 }

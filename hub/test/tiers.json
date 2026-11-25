@@ -694,6 +694,7 @@
     "hub/test/secrets-resolution.test.ts": "T1",
     "hub/test/secrets-validation.test.ts": "T1",
     "hub/test/secrets.test.ts": "T2",
+    "hub/test/seed-transaction.test.ts": "T1",
     "hub/test/selection-replay-package.test.ts": "T1",
     "hub/test/send-input.test.ts": "T1",
     "hub/test/session-archive-merge.test.ts": "T3",
