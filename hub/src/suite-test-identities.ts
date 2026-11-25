@@ -1,9 +1,14 @@
 import { requireTypeScript } from './typescript-capability.ts';
+import { SourceAnalysisCache } from './source-analysis-cache.ts';
 import type { SourceTestIdentity } from './suite-duration-budget.ts';
 import type { DurationManifest } from './suite-durations.ts';
 
 /** Literal/template titles are provable; computed titles remain uncertain. */
+const identityCache = new SourceAnalysisCache<SourceTestIdentity>();
 export async function sourceTestIdentities(file: string, text: string, topLevel = false): Promise<SourceTestIdentity> {
+  return identityCache.read(JSON.stringify([file, text, topLevel]), () => analyzeSourceTestIdentities(file, text, topLevel));
+}
+async function analyzeSourceTestIdentities(file: string, text: string, topLevel: boolean): Promise<SourceTestIdentity> {
   const ts = requireTypeScript('duration source identities');
   const ast = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const patterns: string[] = [];

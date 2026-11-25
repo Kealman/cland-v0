@@ -23,19 +23,20 @@ export class SuiteAdmissionError extends Error {
 }
 
 /** Shared CLI preflight and hub admission; report-only diagnostics are excluded. */
-export async function lintSuiteCandidate(cwd: string, at: string, env: NodeJS.ProcessEnv): Promise<void> {
+export async function lintSuiteCandidate(cwd: string, at: string, env: NodeJS.ProcessEnv, profile: (step: string, ms: number) => void = () => {}): Promise<void> {
+  const timed = async <T>(step: string, run: () => Promise<T>): Promise<T> => { const start = performance.now(); try { return await run(); } finally { profile(step, performance.now() - start); } };
   let immutable = at !== 'unknown';
   try {
-    if (immutable) await lintHubShardTree(cwd, at, env);
+    if (immutable) await timed('immutable-tier-lint', () => lintHubShardTree(cwd, at, env));
     immutable = false;
-    await lintHubShards(cwd);
+    await timed('worktree-tier-lint', () => lintHubShards(cwd));
     if (at !== 'unknown') {
       immutable = true;
-      const findings = await testLintPolicy(cwd, { tree: at, head: at, env });
+      const findings = await timed('immutable-test-lint', () => testLintPolicy(cwd, { tree: at, head: at, env }));
       if (findings.length) throw new TestLintError(findings);
     }
     immutable = false;
-    const findings = await testLintPolicy(cwd, { head: at, env });
+    const findings = await timed('worktree-test-lint', () => testLintPolicy(cwd, { head: at, env }));
     if (findings.length) throw new TestLintError(findings);
   } catch (error) {
     if (error instanceof TypeScriptUnavailableError) throw new SuiteAdmissionError(error);

@@ -1,7 +1,15 @@
 import { ImportGraphError } from './suite-import-errors.ts';
+import { SourceAnalysisCache } from './source-analysis-cache.ts';
 export type GraphImport = { specifier: string; base?: string; resolveOnly?: boolean };
+const defaultLoad = () => import('typescript');
+const caches = new WeakMap<typeof defaultLoad, SourceAnalysisCache<GraphImport[]>>();
 /** Kept lazy: installed CLI trees may not include the development compiler. */
-export async function graphImports(source: string, file = 'module.ts', load = () => import('typescript')): Promise<GraphImport[]> {
+export async function graphImports(source: string, file = 'module.ts', load = defaultLoad): Promise<GraphImport[]> {
+  let cache = caches.get(load);
+  if (!cache) { cache = new SourceAnalysisCache(); caches.set(load, cache); }
+  return cache.read(JSON.stringify([file, source]), () => analyzeGraphImports(source, file, load));
+}
+async function analyzeGraphImports(source: string, file: string, load: typeof defaultLoad): Promise<GraphImport[]> {
   const unknown = (reason: string): never => { throw new Error(`incomplete import graph: ${reason} [${file}]`); };
   const ts = await load().catch(() => { throw new ImportGraphError('TypeScript parser unavailable', 'scan'); });
   const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
@@ -154,6 +162,6 @@ export async function graphImports(source: string, file = 'module.ts', load = ()
 }
 
 /** Compatibility projection for callers that only inspect specifier text. */
-export async function graphImportSpecifiers(source: string, file = 'module.ts', load = () => import('typescript')): Promise<string[]> {
+export async function graphImportSpecifiers(source: string, file = 'module.ts', load = defaultLoad): Promise<string[]> {
   return [...new Set((await graphImports(source, file, load)).map(edge => edge.specifier))];
 }

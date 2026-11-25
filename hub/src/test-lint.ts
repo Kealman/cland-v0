@@ -497,7 +497,9 @@ export type CachedTestLintFacts = { key: string; facts: DirectFacts };
 // Keep compact facts, never compiler programs/ASTs. Digests cover dirty sources
 // as well as immutable blobs; path and tier entry affect the findings too.
 const directFacts = new Map<string, DirectFacts>();
-const DIRECT_FACT_LIMIT = 1024;
+// Hold both candidate and base facts for repository-sized sequential passes.
+// At 1024 entries a 1068-file manifest evicted every fact before its next use.
+const DIRECT_FACT_LIMIT = 4096;
 export function cacheTestLintFacts(records: CachedTestLintFacts[]): void {
   for (const { key, facts } of records) {
     directFacts.delete(key); directFacts.set(key, structuredClone(facts));
