@@ -9,11 +9,11 @@ Measured elapsed aliases and immediately invoked arrow, function and async
 function results still refuse, as do named producer calls, producer/result
 aliases and measured arguments. Returned-value traversal ignores incidental
 setup measurements and nested uncalled functions, and bounds recursive calls
-without executing them. A second regression strips exactly four setup-deadline
-exemptions from host-survival-native in memory and requires a clean lint result
-without executing the native fixture. The disk source retains those exemptions
-for admission by a hub still running the older analysis; physical removal follows
-the hub restart that activates the corrected analysis.
+without executing them. A second regression requires zero obsolete setup-deadline
+exemptions in host-survival-native and a clean lint result on its disk source,
+without executing the native fixture. The separate exemption for the required
+twenty-second stopped-hub interval remains. Admission requires a hosting hub
+running the corrected elapsed-taint analysis.
 
 Condition-wait positive controls plant numeric timeout and fixed load-factor
 options in all three wait helpers, with comments and source strings as negative

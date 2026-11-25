@@ -562,9 +562,8 @@ test('setup wrapper deadlines do not taint acquired result fields', () => {
 test('host survival setup assertions lint clean without their four exemptions', async () => {
   const source = await readFile(new URL('./host-survival-native.test.ts', import.meta.url), 'utf8');
   const exemptions = / \/\/ lint-allow-wall-clock: (?:launch success is asserted|send success is asserted|compares native job identities|asserts persisted process statuses)[^\n]*/g;
-  assert.equal([...source.matchAll(exemptions)].length, 4);
-  const stripped = source.replace(exemptions, '');
-  assert.deepEqual(lintTestSource('hub/test/host-survival-native.test.ts', stripped, 'T3').findings, []);
+  assert.equal([...source.matchAll(exemptions)].length, 0);
+  assert.deepEqual(lintTestSource('hub/test/host-survival-native.test.ts', source, 'T3').findings, []);
 });
 
 test('wall-clock waits and elapsed assertions require a reason on their line', () => {

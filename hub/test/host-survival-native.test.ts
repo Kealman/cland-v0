@@ -131,7 +131,7 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
   const expected = new Map<string,string>();
   for (const spec of specs) {
     const launch = await op(async()=>ui.request({type:'session.launch',role:'implementer',...spec},20000));
-    assert.equal(launch.ok,true,launch.error); // lint-allow-wall-clock: launch success is asserted; op's setup deadline does not enter the returned result.
+    assert.equal(launch.ok,true,launch.error);
     expected.set(spec.name,(launch.value as {process:{sessionId:string}}).process.sessionId);
   }
   const rows = async () => ((await op(async()=>ui.request({type:'session.list'}))).value as {processes:HarnessProcessView[]}).processes;
@@ -157,7 +157,7 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
       void receipt.catch(()=>{});
       try {
       const sent = await op(async()=>ui.request({type:'topic.send',topic:'general',to:[spec.name],text:tag+'-'+spec.name}));
-      assert.equal(sent.ok,true,sent.error); // lint-allow-wall-clock: send success is asserted; op's setup deadline is not message data.
+      assert.equal(sent.ok,true,sent.error);
       sentIds.set(tag+'-'+spec.name,(sent.value as {message:{id:string}}).message.id);
       try { await receipt; } catch(error) {
         try {
@@ -191,7 +191,7 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
   await op(async()=>deliver('restart'));
   const held = JSON.parse(await op(async()=>readFile(hookHold+'.started','utf8'))) as {promptId:string;job:string};
   const cc = before.find(row=>row.name==='cc')!;
-  assert.equal(held.job,cc.harnessId,'hold belongs to the captured native job'); // lint-allow-wall-clock: compares native job identities, not op's setup deadline.
+  assert.equal(held.job,cc.harnessId,'hold belongs to the captured native job');
   const requireHook = async(event:string, signalEvent:string) => {
     const closed=await op(()=>eventually('native close for '+event+' '+held.promptId,async()=>{
       try { return JSON.parse(await op(()=>readFile(claudeHookReceiptPath(hookHold,event,held.promptId),'utf8'))) as ClaudeHookClose; }
@@ -249,7 +249,7 @@ test('three remote harnesses retain births, forwards and welcomed spokes across 
   void replacement.catch(()=>{});
   try {
   await op(async()=>hostControl('kill-master','f2',env));
-  assert.ok((await op(async()=>rows())).every(p=>p.status==='running')); // lint-allow-wall-clock: asserts persisted process statuses, not op's setup deadline.
+  assert.ok((await op(async()=>rows())).every(p=>p.status==='running'));
   await op(async()=>replacement);
   } finally { cancelReplacement=true;await replacement.catch(()=>{}); }
   await op(async()=>welcome(/* behaviour: post-restart welcome deadline */ 15000)); await op(async()=>deliver('tunnel'));
