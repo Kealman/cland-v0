@@ -1,12 +1,12 @@
 // T2: owned disposable filesystem evidence and a positively controlled native guard.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, access, copyFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, access, copyFile, open } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { publishEvidence, publishEvidenceTransport, publishSessionEvidence, scanEvidence, type EvidenceArgs, type SnapshotLifecycle } from '../src/evidence-publish.ts';
-import { guardedLeaseCase } from './executor-lease-fixture.ts';
+import { stageCase } from './stage-case-fixture.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
 import { Report } from '../src/init/files.ts';
 import { provisionSkills } from '../src/init/skills.ts';
@@ -14,10 +14,14 @@ import { HubRefusal } from '../../shared/socket-client.ts';
 import { projectHub, inProcessSpoke } from './harness.ts';
 import { sessionShell } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
-import { drainFixtureCleanup } from './process-cleanup.ts';
+import { drainFixtureCleanup, guardDirectoryRemoval, fenceFixtureCleanup } from './process-cleanup.ts';
+import { caseDeadlines, drainFixtureWork } from './case-deadlines.ts';
+import { testDeadlineMs } from './until.ts';
 
-test('an implementer publishes a scanned Markdown dot-file from its worktree', t => evidenceCase(t, async ({root, step}) => {
-  const hub = await step(() => projectHub(t, root));
+test('an implementer publishes a scanned Markdown dot-file from its worktree', t => dotFileCase(t));
+
+function dotFileCase(t: TestContext, control: EvidenceControl = {}) { return evidenceCase(t, async ({root, step, hub}) => {
+  assert.ok(hub);
   try {
     const coord = await step(() => inProcessSpoke(t, {discover: true, cwd: root, name: 'coord', role: 'coordinator'}));
     const worktree = join(root, 'worktree');
@@ -39,7 +43,59 @@ test('an implementer publishes a scanned Markdown dot-file from its worktree', t
       }));
     } finally { await step(() => impl.close()); await step(() => coord.close()); }
   } finally { await step(() => hub.stop()); }
-}));
+}, {...control, startHub: control.startHub ?? projectHub}); }
+
+for (const rejectClose of [false, true]) test(`held evidence hub startup is named and joined with ${rejectClose ? 'rejected then repaired' : 'successful'} close`, t => {
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const supervisor = stageCase(t);
+  supervisor.releaseOnClose(() => release.resolve());
+  const context = supervisor.fixtures;
+  let root = '', stopped = false, refuse = rejectClose;
+  const refusal = new Error('controlled hub disposal refusal');
+  let running: Promise<void> | undefined;
+  supervisor.requireClose(async () => {
+    refuse = false; release.resolve(); await running?.catch(() => {});
+    await drainFixtureCleanup(context);
+  });
+  return supervisor.run(async step => {
+  running = dotFileCase(context, {timeoutMs: 1000, releaseOnClose: () => release.resolve(), startHub: async (context, path) => {
+    root = path;
+    const hub = await projectHub(context, path, {}, {journalOpen: async journalPath => {
+      entered.resolve(); await release.promise; return open(journalPath, 'a+');
+    }});
+    void hub.stopped.then(() => { stopped = true; });
+    return {...hub, dispose: async () => {
+      if (refuse) throw refusal;
+      await hub.dispose();
+    }};
+  }});
+  const rejected = assert.rejects(running, /evidence hub startup: deadline exceeded/);
+  void rejected.catch(() => {});
+  try {
+    await supervisor.wait('held journal setup receipt', () => step(() => entered.promise), testDeadlineMs(5000));
+    await supervisor.wait('held startup diagnostic and retained root proof', async () => {
+      await step(() => rejected);
+      await step(() => access(root));
+    }, testDeadlineMs(5000));
+  } finally {
+    release.resolve();
+    await supervisor.wait('held startup drainage', async () => {
+      await running!.catch(() => {});
+      await drainFixtureWork();
+      if (rejectClose) {
+        const guard = supervisor.nativeBoundary();
+        await assert.rejects(drainFixtureCleanup(context), error => error === refusal);
+        await access(root);
+        assert.equal(supervisor.nativeBoundary(), guard, 'failed close retains native seams');
+        refuse = false;
+      }
+      await drainFixtureCleanup(context);
+    }, testDeadlineMs(5000));
+  }
+  assert.equal(stopped, true);
+  await supervisor.wait('stopped hub root absence proof', () => assert.rejects(access(root), {code: 'ENOENT'}), testDeadlineMs(5000));
+  });
+});
 
 test('evidence publication reports a definitive hub refusal and removes its snapshot', t => evidenceCase(t, async ({root, step, publish}) => {
   const path = join(root, 'report.md');
@@ -71,20 +127,31 @@ test('evidence publication preserves a legacy hub refusal through cleanup failur
   assert.equal(await step(() => readFile(snapshot, 'utf8')), 'clean');
 }));
 
+type EvidenceControl = {releaseOnClose?: () => void; onOwner?: (scope: ReturnType<typeof caseDeadlines>) => void; startHub?: typeof projectHub; timeoutMs?: number};
 function evidenceCase(t: TestContext, body: (fixture: {
-  root: string; step: FixtureStep;
+  root: string; step: FixtureStep; hub: Awaited<ReturnType<typeof projectHub>> | undefined;
   publish: (args: EvidenceArgs, create: (args: EvidenceArgs) => Promise<unknown>, scan?: typeof scanEvidence, options?: Partial<SnapshotLifecycle>, replayUnknown?: boolean) => Promise<unknown>;
-}) => Promise<void>, control: {releaseOnClose?: () => void; onOwner?: (scope: ReturnType<typeof guardedLeaseCase>) => void} = {}) {
-  const scope = guardedLeaseCase(t, control.releaseOnClose); // Release is enrolled before admission and acquisition.
+}) => Promise<void>, control: EvidenceControl = {}) {
+  fenceFixtureCleanup(t);
+  const owner = stageCase(t);
+  if (control.releaseOnClose) owner.releaseOnClose(control.releaseOnClose);
+  const scope = caseDeadlines(t, {timeoutMs: testDeadlineMs(5000, undefined, control.timeoutMs), ownership: {
+    beforeDirectories: (_context, close) => owner.requireClose(async () => { await close(); }), guardDirectoryRemoval,
+  }});
   control.onOwner?.(scope);
-  return scope.run(async step => {
+  return owner.run(() => scope.run(async step => {
+    let hub: Awaited<ReturnType<typeof projectHub>> | undefined;
+    // A timed-out startup still assigns its late owner before the scope joins.
+    owner.requireClose(async () => { await hub?.dispose(); });
     const root = await step(() => scope.wait('evidence fixture setup', async () => {
       const acquired = await mkdtemp(join(tmpdir(), 'evidence-case-'));
       scope.adoptRoot(acquired);
-      scope.fixtures.after(() => rm(acquired, { recursive: true, force: true }));
+      owner.adoptRoot(acquired);
+      owner.fixtures.after(() => rm(acquired, { recursive: true, force: true }));
       return acquired;
     }));
-    await step(() => scope.wait('evidence case body', () => body({ root, step,
+    if (control.startHub) await step(() => scope.wait('evidence hub startup', async () => { hub = await control.startHub!(owner.resources, root); }));
+    await step(() => scope.wait('evidence case body', () => body({ root, step, hub,
       publish: (args, create, scan = scanEvidence, options = {}, replayUnknown) => publishEvidence(args, create, scan, {
         createRoot: () => mkdtemp(join(root, 'snapshot-')),
         removeRoot: path => rm(path, { recursive: true, force: true }),
@@ -92,7 +159,7 @@ function evidenceCase(t: TestContext, body: (fixture: {
         ...options,
       }, replayUnknown),
     })));
-  });
+  }));
 }
 
 test('an older identical artifact cannot release a pending publication snapshot', t => {
@@ -134,7 +201,7 @@ test('an older identical artifact cannot release a pending publication snapshot'
 test('cancelling evidence proof releases its held replay before joining and root removal', async t => {
   const receipt = Promise.withResolvers<unknown>(), entered = Promise.withResolvers<void>(), ownerReleased = Promise.withResolvers<void>();
   const current = {artifact: {id: 'A-current'}};
-  let scope!: ReturnType<typeof guardedLeaseCase>;
+  let scope!: ReturnType<typeof caseDeadlines>;
   let rootPath = '', snapshot = '', released = false, proofComplete = false;
   const order: string[] = [];
   const running = evidenceCase(t, async ({root, step}) => {

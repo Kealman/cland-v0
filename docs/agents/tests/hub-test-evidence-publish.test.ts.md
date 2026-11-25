@@ -25,7 +25,7 @@ without timers or external transport. The existing artifacts.test.ts case
 “inline limit completes and lost-reply retries survive hub restart without
 duplicate chips” separately proves durable same-key receipts after a disposable
 in-process hub stop/reopen, including exactly one artifact chip.
-The held receipt is enrolled in guardedLeaseCase's releaseOnClose before
+The held receipt is enrolled in the stage owner's releaseOnClose before
 admission. A cancellation control invokes drainFixtureCleanup (the actual hook
 owner), observes the release callback, joins the original result/cleanup proof,
 then positively observes root removal. Its fallback releases both the replay and
@@ -35,9 +35,25 @@ checks the committed artifact's bytes and role, then exercises a title refusal
 through the actual authenticated session transport. Its explicit environment and
 cwd keep the test out of the running project's discovery and credentials.
 
-Each caller uses guardedLeaseCase before acquisition, adopts its root in the
-named setup producer, fences steps and joins the body before root removal. Its
-shared positive native guard covers callback/custom/sync/lower-spawn routes
+Each caller composes stageCase and caseDeadlines before acquisition, adopts its
+root in the named setup producer, fences steps and joins the body before root removal. Its
+scope uses the shared load-scaled five-second budget (the held-startup fault
+control supplies an exact one-second bound). The dot-file component acquires
+its hub in a separate `evidence hub startup` wait before starting the case-body
+deadline. The startup producer captures even a late hub; the scope disposes it
+after joining startup and before removing the root. Partial startup cleanup is
+registered through the stage owner's resources context. Required close receipts
+gate the directory hooks; rejected closure retains the root and seams until repair.
+Held journal-open regressions assert the startup diagnostic, observe the retained
+root, release the hold, drain the actual cleanup owner and observe hub stop and
+root absence. Their entire outer continuations are admitted to a supervising
+stage owner with separate named setup, proof and drainage bounds and an
+independent release on close. The rejected-dispose control exercises the actual
+registered cleanup, checks root/seam retention, repairs disposal and retries the
+same cleanup owner before the final root-absence assertion.
+Natural multi-second delays were localized only to projectHub startup as a
+whole; the journal-open hold is a deterministic fault seam, not an attribution
+of those natural delays. Its shared positive native guard covers callback/custom/sync/lower-spawn routes
 through final cleanup. Setup/removal fault controls preserve selected results,
 safe refusals and positive retained-root receipts. The provisioned-project case
 copies actual skills, resolves each copied guide link and imports the helper
