@@ -334,6 +334,7 @@ export class InboxBoard {
 
   list(archive = false): Inbox {
     const p = this.#port;
+    const departedBefore = this.#departures.length;
     const open = p.store.openAsks().filter(a => a.to === undefined);
     const topics = p.topics();
     const byId = new Map(topics.map((t) => [t.id, t]));
@@ -361,7 +362,11 @@ export class InboxBoard {
       .map(t => p.visibility.place('inbox', t, 'waiting'));
     this.#syncApprovals();
     const placedApprovals = [...this.#approvals.values()].map(a => p.visibility.place('inbox', a, 'approval'));
-    const candidates = p.store.inboxMessages(p.visibility.inboxWindow());
+    const changePage = p.store.inboxWaitChangePage();
+    const candidates = p.store.inboxMessages(p.visibility.inboxWindow(), changePage);
+    // Capture the same change page before request departures remove its keys.
+    const candidateById = new Map(candidates.map(c => [c.message.id, c]));
+    const waits = p.store.inboxWaits([...candidateById.keys()], changePage);
     const requests: InboxRequest[] = [];
     const messages: InboxMessage[] = [];
     for (const candidate of candidates) {
@@ -402,7 +407,7 @@ export class InboxBoard {
       ...messages.map(a => ({ kind: 'message' as const, id: a.id, subject: a.subject, since: a.since, text: a.text })),
     ];
     // Capture the start of every wait before coalescing publication, and settle only a documented leave rule.
-    for (const row of p.store.inboxWaits()) {
+    for (const row of waits) {
       let reason: InboxDeparture['reason'] | undefined;
       if (row.kind === 'ask') {
         const ask = p.store.ask(row.id);
@@ -417,12 +422,16 @@ export class InboxBoard {
       } else if (p.store.message(row.id)?.kind === 'deaf') {
         if (this.#processes && !messages.some(message => message.id === row.id)) reason = 'replied';
       } else {
-        const candidate = candidates.find(c => c.message.id === row.id);
+        const candidate = candidateById.get(row.id);
         if (candidate?.replied) reason = row.kind === 'request' ? 'replied' : 'answered';
         else if (row.kind === 'message' && candidate?.read) reason = 'read';
       }
       if (reason) this.#depart(row, reason);
     }
+    // Advance even when a page contains only pending process notices. A sentinel
+    // schedules the next unseen page; a full unchanged cycle then goes quiet.
+    p.store.finishInboxWaitChangePage(changePage);
+    if (changePage.more || this.#departures.length > departedBefore && p.store.hasInboxWaitChanges()) this.#changed();
     for (const row of rows) {
       const since = p.store.waitInInbox(row);
       const section = row.kind === 'plan' ? plans : row.kind === 'request' ? requests : row.kind === 'message' ? messages : row.kind === 'approval' ? placedApprovals : null;

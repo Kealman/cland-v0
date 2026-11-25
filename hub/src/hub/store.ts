@@ -24,8 +24,16 @@ import type { MergeQueueEntry } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import type { InboxApproval, InboxDeparture, InboxRowKind } from '../protocol.ts';
 export type InboxWait = { kind: InboxRowKind; id: string; subject: string; since: string; text?: string };
+export type InboxWaitChangePage = {
+  keys: Array<{ kind: InboxRowKind; id: string }>;
+  cursor?: { priority: number; order: number };
+  more: boolean;
+};
 import { vacancyWarning } from './topics.ts';
 import { verifierRequest, VERIFICATION_PAGE_SIZE } from './verifier-request.ts';
+
+// Both projections consume one captured page, even if settlement removes keys.
+const INBOX_WAIT_CHANGE_PAGE = "select json_extract(value,'$.kind') as kind,json_extract(value,'$.id') as id from json_each(?)";
 
 /** A delivery to one addressee: queued until its spoke acks it (delivered), injected once its adapter confirmed
  *  the turn, or dropped past the TTL. */
@@ -215,6 +223,8 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
   { table: 'messages', column: 'user_id', type: 'text' },
   { table: 'inbox_waits', column: 'text', type: "text not null default ''" },
   { table: 'inbox_waits', column: 'approval_json', type: 'text' },
+  { table: 'inbox_waits', column: 'message_topic', type: 'text' },
+  { table: 'inbox_waits', column: 'message_seq', type: 'integer' },
   { table: 'inbox_departures', column: 'text', type: "text not null default ''" },
   { table: 'inbox_departures', column: 'outcome_json', type: 'text' },
   { table: 'messages', column: 'request_kind', type: 'text' },
@@ -530,6 +540,48 @@ export class Store implements HygieneMemory {
         this.#db.exec(`insert or ignore into inbox_request_candidates select id from messages m where notice = 'request'
           and not exists (select 1 from inbox_departures d where d.kind = 'request' and d.id = m.id)`);
         this.setMeta('inbox-request-candidates', '1');
+      });
+
+      // Reconciliation is driven by durable read/reply changes, not retained waits.
+      // Triggers also cover writes from older connections to this database.
+      const settledWaits = `select w.kind, w.id, case when w.kind = 'request' then -m.seq else w.rowid end from inbox_waits w join messages m on m.id = w.id
+        join topics t on t.id = m.topic where w.kind in ('message', 'request') and (
+          m.notice = 'deaf'
+          or exists (select 1 from messages h where h.topic = m.topic and h.from_kind = 'human' and h.seq > m.seq)
+          or (w.kind = 'request' and exists (select 1 from messages h where h.reply_to = m.id and h.from_kind = 'human' and h.seq > m.seq))
+          or (w.kind = 'message' and (m.seq <= t.read_seq or exists (select 1 from message_reads r where r.id = m.id))))`;
+      this.#db.exec(`create table if not exists inbox_wait_changes (kind text not null, id text not null, wait_order integer not null, primary key(kind,id));
+        create index if not exists inbox_wait_change_order on inbox_wait_changes((kind != 'request'),wait_order);
+        create index if not exists inbox_wait_topic_seq on inbox_waits(message_topic,message_seq);
+        create trigger if not exists inbox_wait_changed_insert after insert on inbox_waits begin
+          update inbox_waits set message_topic = (select topic from messages where id = new.id),
+            message_seq = (select seq from messages where id = new.id)
+            where kind = new.kind and id = new.id and kind in ('message','request');
+          insert or ignore into inbox_wait_changes ${settledWaits} and w.kind = new.kind and w.id = new.id;
+        end;
+        create trigger if not exists inbox_wait_changed_delete after delete on inbox_waits begin
+          delete from inbox_wait_changes where kind = old.kind and id = old.id;
+          delete from meta where key = 'inbox-wait-cursor' and not exists (select 1 from inbox_wait_changes limit 1);
+        end;
+        create trigger if not exists inbox_wait_read after insert on message_reads begin
+          insert or ignore into inbox_wait_changes select kind,id,rowid from inbox_waits where kind = 'message' and id = new.id;
+        end;
+        create trigger if not exists inbox_wait_topic_read after update of read_seq on topics when new.read_seq > old.read_seq begin
+          insert or ignore into inbox_wait_changes select kind,id,rowid from inbox_waits
+            where kind = 'message' and message_topic = new.id and message_seq > old.read_seq and message_seq <= new.read_seq;
+        end;
+        create trigger if not exists inbox_wait_reply after insert on messages when new.from_kind = 'human' begin
+          insert or ignore into inbox_wait_changes select kind,id,case when kind = 'request' then -message_seq else rowid end from inbox_waits
+            where message_topic = new.topic and message_seq < new.seq and kind in ('message','request');
+          insert or ignore into inbox_wait_changes select kind,id,-message_seq from inbox_waits
+            where kind = 'request' and id = new.reply_to
+              and exists (select 1 from messages m where m.id = new.reply_to and m.seq < new.seq);
+        end;`);
+      if (!this.meta('inbox-wait-changes')) this.#transaction(() => {
+        this.#db.exec(`update inbox_waits set message_topic = (select topic from messages where id = inbox_waits.id),
+          message_seq = (select seq from messages where id = inbox_waits.id) where kind in ('message','request')`);
+        this.#db.exec(`insert or ignore into inbox_wait_changes ${settledWaits}`);
+        this.setMeta('inbox-wait-changes', '1');
       });
 
       // Backfill once for stores created before indexed placement re-projection.
@@ -2015,14 +2067,16 @@ export class Store implements HygieneMemory {
   // ---------------------------------------------------------------- asks (#33)
 
   /** Candidate messages and their durable read/reply facts. Sequence order handles equal timestamps. */
-  inboxMessages(window?: { since: string; topics: string[]; sessions: string[] }): Array<{ message: TopicMessage; read: boolean; replied: boolean; toHuman: boolean; latest: boolean }> {
+  inboxMessages(window?: { since: string; topics: string[]; sessions: string[] }, page?: InboxWaitChangePage): Array<{ message: TopicMessage; read: boolean; replied: boolean; toHuman: boolean; latest: boolean }> {
+    const changeKeys = JSON.stringify((page ?? (window ? this.inboxWaitChangePage() : undefined))?.keys ?? []);
     const hubCandidate = `(m.from_kind = 'hub' and (json_extract(m.notice_detail, '$.event') = 'verification-cleanup-incomplete' or m.notice = '${COORDINATOR_RETIRED}'))`;
     // An addressed report becomes a human inbox candidate only on a waiting
     // topic. Unread direct messages and unsettled requests have separate paths.
     const unread = (index: string, condition = '') => `select m.rowid as row_id from topic_facts t cross join messages m indexed by ${index} on m.topic = t.id
         and m.seq > max(t.read_seq, t.human_seq)
       where (m.from_kind = 'agent' or ${hubCandidate})
-        and coalesce(m.notice, '') not in ('progress', 'event', 'request') and json_array_length(m.to_json) = 0 ${condition}`;
+        and coalesce(m.notice, '') not in ('progress', 'event', 'request') and json_array_length(m.to_json) = 0 ${condition}
+        ${window ? "and not exists (select 1 from inbox_wait_changes w where w.kind = 'message' and w.id = m.id)" : ''}`;
     const unreadQuery = window ? [
       unread('messages_inbox_recent', `and ${CANONICAL_MESSAGE_TIME} = 1 and m.ts >= ?`),
       unread('messages_inbox_other_time', `and ${CANONICAL_MESSAGE_TIME} is not 1`),
@@ -2039,6 +2093,8 @@ export class Store implements HygieneMemory {
         order by m.seq desc limit 1) as seq from topics t where t.status = 'waiting for human'
     ), topic_facts as materialized (
       select t.*, coalesce((select h.seq from messages h where h.topic = t.id and h.from_kind = 'human' order by h.seq desc limit 1), 0) as human_seq from topics t
+    ), changed_waits as materialized (
+      ${INBOX_WAIT_CHANGE_PAGE}
     ), candidates as materialized (
       -- Only unread human-addressed rows after the last same-topic human reply can become messages.
       ${unreadQuery}
@@ -2047,9 +2103,10 @@ export class Store implements HygieneMemory {
       union
       -- Requests ignore read watermarks. Even a request replied to before publication must depart once.
       select m.rowid from inbox_request_candidates r cross join messages m on m.id = r.id
+      ${window ? "where not exists (select 1 from inbox_wait_changes w where w.kind = 'request' and w.id = r.id)" : ''}
       union
       -- Keep settled waits until list() has recorded their durable departure.
-      select m.rowid from inbox_waits w join messages m on m.id = w.id where w.kind in ('message', 'request')
+      select m.rowid from ${window ? 'changed_waits' : 'inbox_waits'} w join messages m on m.id = w.id where w.kind in ('message', 'request')
     ) select m.id, m.from_name, m.from_kind, m.from_role, m.via, m.to_json, m.text, m.reply_to, m.ts, m.topic, m.notice, m.notice_detail, m.answer_to, m.seq, m.request_kind, m.request_subject, m.artifact, m.artifacts, m.criteria, m.answer_attribution, (m.seq <= t.read_seq or exists (select 1 from message_reads r where r.id = m.id)) as was_read,
       json_array_length(m.to_json) = 0 as to_human,
       m.seq = latest.seq as latest,
@@ -2058,13 +2115,15 @@ export class Store implements HygieneMemory {
       from candidates c cross join messages m on m.rowid = c.row_id join topic_facts t on t.id = m.topic
       left join latest_messages latest on latest.topic = m.topic
       where (m.from_kind = 'agent' or ${hubCandidate}) and coalesce(m.notice, '') not in ('progress', 'event')
+        ${window ? `and (not exists (select 1 from inbox_wait_changes w where w.id = m.id and w.kind in ('message','request'))
+          or exists (select 1 from changed_waits w where w.id = m.id))` : ''}
         and not exists (select 1 from asks a where a.id = m.id)
         and (json_array_length(m.to_json) = 0 or m.seq = latest.seq
           or exists (select 1 from inbox_waits w where w.id = m.id and w.kind in ('message', 'request')))
       order by m.seq desc`);
     // Array rows avoid native property-name allocation for every retained candidate.
     query.setReturnArrays(true);
-    const rows = (window ? query.all(window.since, JSON.stringify(window.topics), JSON.stringify(window.sessions)) : query.all()) as unknown as Array<Array<Row[string]>>;
+    const rows = (window ? query.all(changeKeys, window.since, JSON.stringify(window.topics), JSON.stringify(window.sessions)) : query.all(changeKeys)) as unknown as Array<Array<Row[string]>>;
     return rows.map(values => {
       const [id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, topic, notice, notice_detail, answer_to, seq, request_kind, request_subject, artifact, artifacts, criteria, answer_attribution, was_read, to_human, latest, replied] = values;
       const r = { id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, topic, notice, notice_detail, answer_to, seq, request_kind, request_subject, artifact, artifacts, criteria, answer_attribution, was_read, to_human, latest, replied } as Row;
@@ -2072,8 +2131,41 @@ export class Store implements HygieneMemory {
     });
   }
 
-  inboxWaits(): InboxWait[] {
+  inboxWaits(messageIds?: string[], page?: InboxWaitChangePage): InboxWait[] {
+    if (messageIds) return this.#prepare(`with keys(kind,id) as (
+      select kind,id from inbox_waits where kind in ('ask','approval','plan')
+      union select kind,id from (${INBOX_WAIT_CHANGE_PAGE})
+      union select w.kind,w.id from json_each(?) ids cross join inbox_waits w on w.id = ids.value and w.kind in ('message','request')
+    ) select w.kind,w.id,w.subject,w.since,w.text from keys k cross join inbox_waits w on w.kind = k.kind and w.id = k.id order by w.rowid`)
+      .all(JSON.stringify((page ?? this.inboxWaitChangePage()).keys), JSON.stringify(messageIds)) as InboxWait[];
     return this.#prepare('select kind, id, subject, since, text from inbox_waits').all() as InboxWait[];
+  }
+
+  hasInboxWaitChanges(): boolean {
+    return !!this.#prepare('select 1 from inbox_wait_changes limit 1').get();
+  }
+
+  /** Indexed seek resumes after the last examined key, including pending keys.
+   * Exhaustion wraps once; one sentinel key bounds continuation without counting
+   * or decoding the retained queue. Pending rows never lose their identities.
+   */
+  inboxWaitChangePage(): InboxWaitChangePage {
+    const saved = this.meta('inbox-wait-cursor');
+    const cursor = saved ? JSON.parse(saved) as { priority: number; order: number } : undefined;
+    const select = "select kind,id,(kind != 'request') as priority,wait_order from inbox_wait_changes";
+    const order = " order by (kind != 'request'),wait_order limit 129";
+    let rows = cursor ? this.#prepare(select + " where (kind != 'request') = ? and wait_order > ? union all "
+      + select + " where (kind != 'request') > ? order by priority,wait_order limit 129")
+      .all(cursor.priority, cursor.order, cursor.priority) : [];
+    if (!rows.length) rows = this.#prepare(select + order).all();
+    const selected = rows.slice(0, 128), last = selected.at(-1);
+    return { keys: selected.map(r => ({ kind: r.kind as InboxRowKind, id: r.id as string })),
+      ...(last ? { cursor: { priority: Number(last.priority), order: Number(last.wait_order) } } : {}), more: rows.length > 128 };
+  }
+
+  finishInboxWaitChangePage(page: InboxWaitChangePage): void {
+    if (!this.hasInboxWaitChanges()) this.#prepare("delete from meta where key = 'inbox-wait-cursor'").run();
+    else if (page.cursor) this.setMeta('inbox-wait-cursor', JSON.stringify(page.cursor));
   }
 
   /** Only allowlisted public records are retained; native private payloads never enter this journal. */

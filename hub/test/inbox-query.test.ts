@@ -11,7 +11,292 @@ import { Visibility } from '../src/hub/visibility.ts';
 import { VisibilityPreferenceFile } from '../src/hub/visibility-preferences.ts';
 import { Store } from '../src/hub/store.ts';
 import { oldInboxQuery, oldInboxMessages } from './inbox-query-oracle.ts';
+import { receiptFixtureCase } from './receipt-fixture-case.ts';
 import { tempProject, projectHub, connectUi, inProcessSpoke, eventually } from './harness.ts';
+
+function hiddenWaitFixture(fixtures: test.TestContext, count: number, legacy = false) {
+  const clock = new FakeClock(Date.parse('2026-11-19T00:00:00.000Z')), now = () => clock.now();
+  const probe = sqliteProbe();
+  const cursorPlans: string[][] = [];
+  let db!: DatabaseSync, decoded = 0, reconciled = 0;
+  const store = new Store(':memory:', path => { db = probe.open(path); return db; });
+  fixtures.after(() => store.close());
+  probe.trace(fixtures, (sql, method, _bindings, result) => {
+    if (method === 'all' && sql.startsWith('with latest_messages')) decoded += (result as unknown[]).length;
+    if (method === 'all' && sql.startsWith('with keys(kind,id)')) reconciled += (result as unknown[]).length;
+    if (method === 'all' && sql.startsWith('select kind,id,(kind') && sql.includes(' where ')) {
+      cursorPlans.push(db.prepare('explain query plan ' + sql).all(..._bindings as string[]).map(r => String(r.detail)));
+    }
+  });
+  store.createTopic('retained', 'Retained', null, now().toISOString());
+  db.exec(`with recursive n(x) as (select 1 union all select x+1 from n where x<${count})
+    insert into messages(id,from_name,from_kind,via,to_json,text,ts,created_at,topic,seq)
+    select 'hidden-'||x,'worker','agent','session','[]','Recorded hidden wait','2026-10-01T00:00:00.000Z',0,'retained',x from n;
+    insert into inbox_waits(kind,id,subject,since,text) select 'message',id,'retained',ts,text from messages order by seq desc;
+    update counters set value=${count} where name='message_seq';`);
+  if (legacy) {
+    store.inboxMessages = () => oldInboxMessages(db);
+    const all = store.inboxWaits.bind(store);
+    store.inboxWaits = () => all();
+  }
+  const board = new InboxBoard({ store, clock, now, visibility: new Visibility({ now }), log: () => {}, emit: () => {},
+    topics: () => store.topics(), items: () => [], presence: () => [], stateOf: () => 'idle', idleNotifyMs: 0,
+    idle: () => {}, approvalNote: () => {}, sizeRefusal: () => null });
+  fixtures.after(() => board.close());
+  return { store, board, db, now, clock, cursorPlans, work: () => ({ decoded, reconciled }) };
+}
+
+for (const transition of ['topic read', 'human reply'] as const) {
+  test(`a bulk ${transition} drains 1,000 hidden waits in bounded pages`, t => receiptFixtureCase(t, false, async fixtures => {
+    const f = hiddenWaitFixture(fixtures, 1000);
+    assert.equal(f.store.inboxWaits().length, 1000);
+    assert.equal(f.board.list().needsYou, 0);
+    if (transition === 'topic read') f.store.markTopicRead('retained');
+    else f.store.record({ id: 'human', from: 'human', fromKind: 'human', via: 'session', to: [], text: 'Reply', ts: f.now().toISOString(), topic: 'retained' }, [], 0);
+    let remaining = 1000;
+    for (let page = 0; page < 8 && remaining; page++) {
+      const before = f.work(), reply = f.board.list(), after = f.work();
+      assert.equal(reply.needsYou, 0);
+      assert.ok(after.decoded - before.decoded <= 128, `page ${page}: ${after.decoded - before.decoded} candidates decoded`);
+      assert.ok(after.reconciled - before.reconciled <= 128, `page ${page}: ${after.reconciled - before.reconciled} waits reconciled`);
+      remaining -= Math.min(128, remaining);
+      assert.equal(reply.archiveToday, 1000 - remaining);
+    }
+    assert.equal(remaining, 0);
+    assert.equal(f.store.inboxWaits().length, 0);
+    assert.equal(f.store.topics()[0]!.unread, transition === 'topic read' ? 0 : 1000);
+    assert.equal(f.store.inboxDepartures(f.now().toISOString()).length, 1000);
+    const old = hiddenWaitFixture(fixtures, 1000, true);
+    if (transition === 'topic read') old.store.markTopicRead('retained');
+    else old.store.record({ id: 'human', from: 'human', fromKind: 'human', via: 'session', to: [], text: 'Reply', ts: old.now().toISOString(), topic: 'retained' }, [], 0);
+    const oldBefore = old.work(), oldReply = old.board.list(true);
+    assert.equal(old.work().decoded - oldBefore.decoded, 1000, 'the reduced fixture still exceeds the page bound on the old path');
+    assert.deepEqual(f.board.list(true), oldReply, 'complete drained projection and ordered archive match the old query');
+  }));
+}
+
+test('equal-timestamp hidden departures preserve old insertion order instead of key order', t => receiptFixtureCase(t, false, async fixtures => {
+  const current = hiddenWaitFixture(fixtures, 3), previous = hiddenWaitFixture(fixtures, 3, true);
+  for (const f of [current, previous]) f.store.markTopicRead('retained');
+  const actual = current.board.list(true), expected = previous.board.list(true);
+  assert.deepEqual(expected.archive?.map(d => d.id), ['hidden-1', 'hidden-2', 'hidden-3']);
+  assert.deepEqual(actual, expected);
+}));
+
+test('scheduled inbox publications continue a partially drained durable change queue', t => receiptFixtureCase(t, false, async fixtures => {
+  const f = hiddenWaitFixture(fixtures, 257);
+  f.store.markTopicRead('retained');
+  assert.equal(f.board.list().archiveToday, 128);
+  assert.equal(f.store.inboxWaits().length, 129);
+  await f.clock.advance(250);
+  assert.equal(f.store.inboxWaits().length, 1);
+  await f.clock.advance(250);
+  assert.equal(f.store.inboxWaits().length, 0);
+  assert.equal(f.board.list().archiveToday, 257);
+}));
+
+test('paged request departures keep the previous descending candidate order', t => receiptFixtureCase(t, false, async fixtures => {
+  const current = hiddenWaitFixture(fixtures, 257), previous = hiddenWaitFixture(fixtures, 257, true);
+  for (const f of [current, previous]) {
+    f.db.exec(`update messages set notice='request',request_kind='review',request_subject='worker';
+      delete from inbox_waits;
+      insert into inbox_waits(kind,id,subject,since,text) select 'request',id,'worker',ts,text from messages order by seq;
+      insert or ignore into inbox_request_candidates select id from messages;`);
+    f.store.record({ id: 'human', from: 'human', fromKind: 'human', via: 'session', to: [], text: 'Reply', ts: f.now().toISOString(), topic: 'retained' }, [], 0);
+  }
+  for (let page = 0; page < 3; page++) {
+    const before = current.work();
+    current.board.list();
+    const after = current.work();
+    assert.ok(after.decoded - before.decoded <= 128);
+    assert.ok(after.reconciled - before.reconciled <= 128);
+  }
+  assert.deepEqual(current.board.list(true), previous.board.list(true));
+}));
+
+test('a durable cursor reaches a hidden read past 128 pending deaf waits within two pages', t => receiptFixtureCase(t, false, async fixtures => {
+  const f = hiddenWaitFixture(fixtures, 1);
+  f.db.exec(`delete from inbox_waits;
+    with recursive n(x) as (select 1 union all select x+1 from n where x<128)
+    insert into messages(id,from_name,from_kind,via,to_json,text,ts,created_at,topic,seq,notice)
+      select 'deaf-'||x,'hub','hub','hub','[]','Pending deaf notice','2026-10-01T00:00:00.000Z',0,'retained',x+1,'deaf' from n;
+    insert into inbox_waits(kind,id,subject,since,text) select 'message',id,'retained',ts,text from messages where notice='deaf' order by seq;
+    insert into inbox_waits(kind,id,subject,since,text) select 'message',id,'retained',ts,text from messages where id='hidden-1';`);
+  f.store.markMessageRead('hidden-1');
+  const initial = f.work();
+  assert.equal(f.board.list().archiveToday, 0, 'the first page contains only pending notices');
+  const first = f.work();
+  assert.ok(first.decoded - initial.decoded <= 128);
+  assert.ok(first.reconciled - initial.reconciled <= 128);
+  assert.equal(f.store.inboxWaits().length, 129);
+  const reopened = new Store(':memory:', () => f.db);
+  assert.deepEqual(reopened.inboxWaitChangePage().keys.map(k => k.id), ['hidden-1'], 'a new Store resumes the durable examined-key cursor');
+  await f.clock.advance(250);
+  const second = f.work();
+  assert.ok(second.decoded - first.decoded <= 128);
+  assert.ok(second.reconciled - first.reconciled <= 128);
+  assert.deepEqual(f.store.inboxDepartures('2026-11-19T00:00:00.000Z').map(d => [d.id, d.reason]), [['hidden-1', 'read']],
+    'the exact hidden read departs by the second page, without dropping pending notices');
+  assert.equal(f.store.inboxWaits().length, 128);
+  assert.ok(f.cursorPlans.some(plan => plan.some(row => row.includes('SEARCH inbox_wait_changes USING INDEX inbox_wait_change_order'))),
+    JSON.stringify(f.cursorPlans));
+  await f.clock.advance(250);
+  const cycleEnd = f.work();
+  await f.clock.advance(250);
+  assert.deepEqual(f.work(), cycleEnd, 'an unchanged full cycle goes quiet without dropping pending keys');
+  f.board.useProcesses(() => []);
+  assert.equal(f.board.list().archiveToday, 129);
+  assert.equal(f.store.inboxWaits().length, 0, 'pending notices retain later process-driven settlement');
+}));
+
+test('an empty drain resets ordering before a new bulk invalidation after a middle read', t => receiptFixtureCase(t, false, async fixtures => {
+  const current = hiddenWaitFixture(fixtures, 300), previous = hiddenWaitFixture(fixtures, 300, true);
+  for (const f of [current, previous]) f.store.markMessageRead('hidden-150');
+  assert.deepEqual(current.board.list(true), previous.board.list(true));
+  assert.equal(current.db.prepare('select count(*) as n from inbox_wait_changes').get()!.n, 0, 'middle-read change queue is durably empty');
+  assert.equal(current.store.meta('inbox-wait-cursor'), null, 'an empty queue retains no cursor for a later invalidation');
+  assert.equal(current.store.inboxWaits().length, 299);
+  for (const f of [current, previous]) f.store.markTopicRead('retained');
+  for (let page = 0; page < 4; page++) {
+    const before = current.work();
+    current.board.list();
+    const after = current.work();
+    assert.ok(after.decoded - before.decoded <= 128);
+    assert.ok(after.reconciled - before.reconciled <= 128);
+  }
+  assert.equal(current.store.inboxWaits().length, 0);
+  const actual = current.board.list(true), expected = previous.board.list(true);
+  assert.equal(actual.archiveToday, 300);
+  assert.deepEqual(actual, expected, 'fresh invalidation preserves old insertion order at equal timestamps');
+}));
+
+test('an inbox page reconciles only its selected waits with 50,000 hidden durable waits', t => receiptFixtureCase(t, false, async fixtures => {
+  const clock = new FakeClock(Date.parse('2026-11-19T00:00:00.000Z')), now = () => clock.now();
+  const waits = new Map(Array.from({ length: 50000 }, (_, i) => [`hidden-${i}`, { kind: 'message' as const, id: `hidden-${i}`, subject: 'general', since: '2026-10-01T00:00:00.000Z' }]));
+  let reconciled = 0;
+  const store = {
+    remotes: { forMessenger: () => ({ requests: () => [] }) }, pendingApprovals: () => [], openAsks: () => [],
+    inboxWaitChangePage: () => ({ keys: [], more: false }), finishInboxWaitChangePage: () => {},
+    inboxMessages: () => [],
+    inboxWaits: (ids?: string[]) => {
+      const selected = ids ? ids.flatMap(id => waits.has(id) ? [waits.get(id)!] : []) : [...waits.values()];
+      reconciled += selected.length;
+      return selected;
+    },
+    inboxDeparturesToday: () => 0,
+    message: () => undefined,
+  } as unknown as Store;
+  const board = new InboxBoard({ store, clock, now, visibility: new Visibility({ now }), log: () => {}, emit: () => {},
+    topics: () => [], items: () => [], presence: () => [], stateOf: () => 'idle', idleNotifyMs: 0,
+    idle: () => {}, approvalNote: () => {}, sizeRefusal: () => null });
+  fixtures.after(() => board.close());
+  const page = board.list();
+  assert.equal(waits.size, 50000);
+  assert.equal(page.needsYou, 0);
+  assert.ok(reconciled <= page.messages.length + 1, `${reconciled} waits reconciled`);
+}));
+
+test('hidden waits remain durable while indexed pages preserve read and reply departures', t => receiptFixtureCase(t, false, async fixtures => {
+  const clock = new FakeClock(Date.parse('2026-11-19T00:00:00.000Z')), now = () => clock.now();
+  const make = (legacy: boolean) => {
+    const probe = sqliteProbe();
+    let db!: DatabaseSync, decoded = 0, reconciled = 0;
+    const store = new Store(':memory:', path => { db = probe.open(path); return db; });
+    fixtures.after(() => store.close());
+    probe.trace(fixtures, (sql, method, _bindings, result) => {
+      if (method === 'all' && sql.startsWith('with latest_messages')) decoded += (result as unknown[]).length;
+      if (method === 'all' && sql.startsWith('with keys(kind,id)')) reconciled += (result as unknown[]).length;
+    });
+    store.createTopic('retained', 'Retained', null, now().toISOString());
+    db.exec(`with recursive n(x) as (select 1 union all select x+1 from n where x<1000)
+      insert into messages(id,from_name,from_kind,via,to_json,text,ts,created_at,topic,seq)
+      select 'wait-'||x,'worker','agent','session','[]','Recorded wait',
+        case when x>997 then '2026-11-19T00:00:00.000Z' else '2026-10-01T00:00:00.000Z' end,0,'retained',x from n;
+      insert into inbox_waits(kind,id,subject,since,text)
+        select 'message',id,'retained',ts,text from messages;
+      update counters set value=1000 where name='message_seq';`);
+    if (legacy) {
+      store.inboxMessages = () => oldInboxMessages(db);
+      const all = store.inboxWaits.bind(store);
+      store.inboxWaits = () => all();
+    }
+    const board = new InboxBoard({ store, clock, now, visibility: new Visibility({ now }), log: () => {}, emit: () => {},
+      topics: () => store.topics(), items: () => [], presence: () => [], stateOf: () => 'idle', idleNotifyMs: 0,
+      idle: () => {}, approvalNote: () => {}, sizeRefusal: () => null });
+    fixtures.after(() => board.close());
+    return { store, board, work: () => ({ decoded, reconciled }), db };
+  };
+  const current = make(false);
+  const page = current.board.list(true);
+  assert.deepEqual(page.messages.map(m => m.id), ['wait-1000', 'wait-999', 'wait-998']);
+  assert.deepEqual(current.work(), { decoded: 3, reconciled: 3 });
+  assert.equal(current.store.inboxWaits().length, 1000);
+  assert.equal(current.store.topics()[0]!.unread, 1000);
+  // The recorded old fixture remains the independent departure oracle.
+  const previous = make(true);
+  assert.deepEqual(page, previous.board.list(true));
+  assert.equal(previous.work().decoded, 1000, 'the old path still fails the clean-window decode bound');
+  for (const f of [current, previous]) f.store.markMessageRead('wait-1');
+  const read = current.board.list(true);
+  assert.deepEqual(read, previous.board.list(true));
+  assert.deepEqual(read.archive?.map(r => [r.id, r.reason]), [['wait-1', 'read']]);
+  // A topic watermark settles a second hidden wait without exposing it first.
+  for (const f of [current, previous]) f.store.markTopicRead('retained', 'wait-2');
+  assert.deepEqual(current.board.list(true), previous.board.list(true));
+  // Keep the reply fixture small: only two old durable waits remain in this topic.
+  for (const f of [current, previous]) {
+    f.db.exec("delete from inbox_waits where id not in ('wait-3','wait-4')");
+    f.store.record({ id: 'human', from: 'human', fromKind: 'human', via: 'session', to: [], text: 'Reply',
+      ts: now().toISOString(), topic: 'retained' }, [], 0);
+  }
+  const replied = current.board.list(true);
+  assert.deepEqual(replied, previous.board.list(true));
+  assert.deepEqual(replied.archive?.filter(r => r.reason === 'answered').map(r => r.id).sort(), ['wait-3', 'wait-4']);
+  assert.equal(current.store.inboxWaits().length, 0);
+}));
+
+test('existing 1,000 wait stores backfill once and remain compatible with older writers', t => receiptFixtureCase(t, false, async fixtures => {
+  const db = new DatabaseSync(':memory:');
+  fixtures.after(() => db.close());
+  const store = new Store(':memory:', () => db);
+  store.createTopic('retained', 'Retained', null, '2026-11-19T00:00:00.000Z');
+  // Reconstruct the previous schema additions on this synthetic connection.
+  db.exec(`drop trigger inbox_wait_changed_insert; drop trigger inbox_wait_changed_delete;
+    drop trigger inbox_wait_read; drop trigger inbox_wait_topic_read; drop trigger inbox_wait_reply;
+    drop table inbox_wait_changes; drop index inbox_wait_topic_seq;
+    alter table inbox_waits drop column message_topic;
+    alter table inbox_waits drop column message_seq;
+    delete from meta where key = 'inbox-wait-changes';
+    with recursive n(x) as (select 1 union all select x+1 from n where x<1000)
+    insert into messages(id,from_name,from_kind,via,to_json,text,ts,created_at,topic,seq)
+      select 'old-'||x,'worker','agent','session','[]','Old wait','2026-10-01T00:00:00.000Z',0,'retained',x from n;
+    insert into inbox_waits(kind,id,subject,since,text) select 'message',id,'retained',ts,text from messages;
+    insert into message_reads values ('old-1');
+    update counters set value=1000 where name='message_seq';`);
+  let backfills = 0;
+  const exec = db.exec.bind(db);
+  db.exec = sql => { if (sql.startsWith('update inbox_waits set message_topic')) backfills++; return exec(sql); };
+  const start = performance.now();
+  const upgraded = new Store(':memory:', () => db);
+  const migrationMs = performance.now() - start;
+  assert.equal(backfills, 1);
+  assert.equal(db.prepare('select count(*) as n from inbox_waits where message_topic = ? and message_seq is not null').get('retained')!.n, 1000);
+  assert.deepEqual(upgraded.inboxWaits([]).map(w => w.id), ['old-1']);
+  const reopenStart = performance.now();
+  const reopened = new Store(':memory:', () => db);
+  const reopenMs = performance.now() - reopenStart;
+  assert.equal(backfills, 1, 'reopen never repeats the backfill');
+  assert.equal(reopened.inboxWaits().length, 1000);
+  // Old SQL writers omit the additive columns; triggers still maintain them.
+  exec(`insert into inbox_waits(kind,id,subject,since,text) values ('request','old-2','T-1','2026-10-01','Request');
+    insert into messages(id,from_name,from_kind,via,to_json,text,ts,created_at,topic,seq,reply_to)
+      values ('reply','human','human','session','[]','Cross-topic reply','2026-11-19',0,'general',1001,'old-2');`);
+  assert.deepEqual(reopened.inboxWaits([]).map(w => [w.kind,w.id]), [['message','old-1'],['request','old-2']]);
+  exec("delete from inbox_waits where kind = 'request' and id = 'old-2'");
+  assert.deepEqual(reopened.inboxWaits([]).map(w => w.id), ['old-1']);
+  t.diagnostic(JSON.stringify({ migrationMs, reopenMs, backfills, waits: 1000, platform: process.platform,
+    executor: 'local', storage: 'synthetic in-memory SQLite; excludes hub startup and disk IO' }));
+}));
 
 test('inbox decodes only its recent window with 100,000 retained unread messages', t => {
   const probe = sqliteProbe();
