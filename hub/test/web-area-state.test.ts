@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AskCards } from '../../web/src/ask-cards.ts';
 import { signInCardId } from '../../web/src/signin-index.ts';
-import type { AskCard } from '../../shared/wire/index.ts';
+import type { AskCard, EventRow, EventsPage } from '../../shared/wire/index.ts';
 import { connectHub, type ConnectionState } from '../../web/src/connection.ts';
 import type { AccountView, Artifact, Capabilities, HubFrame, RemoteStateRow, SessionRow, SnapshotValues, Topic, VerificationQueue, WorkbenchRequest } from '../../shared/wire/index.ts';
 
@@ -31,14 +31,149 @@ function scripted(t: import('node:test').TestContext) {
     receive(frame: HubFrame) { this.onmessage?.({ data: JSON.stringify(frame) }); }
   }
   t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: new Date('2026-10-22T11:00:00Z') });
-  for (const [key, value] of Object.entries({ WebSocket: ScriptedSocket, location: { href: 'http://fixture/', protocol: 'http:' }, document: { querySelector: () => null } })) {
+  for (const [key, value] of Object.entries({ WebSocket: ScriptedSocket, fetch: async () => ({ ok: false }), location: { href: 'http://fixture/', protocol: 'http:' }, document: { querySelector: () => null } })) {
     const old = Object.getOwnPropertyDescriptor(globalThis, key);
     Object.defineProperty(globalThis, key, { configurable: true, value });
     t.after(() => { if (old) Object.defineProperty(globalThis, key, old); else Reflect.deleteProperty(globalThis, key); });
   }
   const stop = connectHub(value => { state = value; });
   t.after(stop);
-  return { get state() { return state; }, get socket() { return sockets.at(-1)!; }, sockets };
+  return { get state() { return state; }, get socket() { return sockets.at(-1)!; }, sockets, stop };
+}
+
+async function settleSummary() {
+  // Bounded microtask drain for the command receipt and refresh finalizer; no real clock.
+  for (let step = 0; step < 10; step++) await Promise.resolve();
+}
+
+test('event bursts coalesce summary reads and retain the complete refetched page', async t => {
+  const client = scripted(t);
+  client.socket.receive({ type: 'result', id: 'connection-status', ok: true, value: { root: '/scratch' } });
+  const rows: EventRow[] = Array.from({ length: 100 }, (_, i) => ({ id: `e-${i}`, ts: new Date(Date.now() + i).toISOString(), kind: 'task', subject: { kind: 'item', id: 'T-1' }, text: `Event ${i}`, glyph: '+' }));
+  for (const row of rows) client.socket.receive({ type: 'event', row });
+  const reads = () => client.socket.sent.filter(frame => frame.type === 'events.list');
+  assert.equal(reads().length, 0, 'events wait for the one-second coalescing window');
+  t.mock.timers.tick(1000);
+  assert.equal(reads().length, 1);
+  const page: EventsPage = { rows: rows.toReversed(), before: null, more: false };
+  client.socket.receive({ type: 'result', id: reads()[0]!.id, ok: true, value: page });
+  await settleSummary();
+  assert.deepEqual(client.state.events, page);
+  assert.deepEqual(client.state.rows?.Events, page.rows.map(row => ({ id: row.id, title: row.text })));
+  t.mock.timers.tick(60_000);
+  assert.equal(reads().length, 1, 'idle has no periodic summary reads');
+});
+
+test('events arriving during a slow summary read cause one later read without losing the tail', async t => {
+  const client = scripted(t);
+  client.socket.receive({ type: 'result', id: 'connection-status', ok: true, value: { root: '/scratch' } });
+  const first: EventRow = { id: 'first', ts: new Date().toISOString(), kind: 'task', subject: { kind: 'item', id: 'T-1' }, text: 'First', glyph: '+' };
+  const tail = { ...first, id: 'tail', text: 'Tail' };
+  const reads = () => client.socket.sent.filter(frame => frame.type === 'events.list');
+  client.socket.receive({ type: 'event', row: first });
+  t.mock.timers.tick(1000);
+  for (let i = 0; i < 100; i++) client.socket.receive({ type: 'event', row: tail });
+  t.mock.timers.tick(2000);
+  assert.equal(reads().length, 1, 'only one read may be in flight');
+  client.socket.receive({ type: 'result', id: reads()[0]!.id, ok: true, value: { rows: [first], before: null, more: false } });
+  await settleSummary();
+  t.mock.timers.tick(999);
+  assert.equal(reads().length, 1);
+  t.mock.timers.tick(1);
+  assert.equal(reads().length, 2);
+  const final = { rows: [tail, first], before: null, more: false };
+  client.socket.receive({ type: 'result', id: reads()[1]!.id, ok: true, value: final });
+  await settleSummary();
+  assert.deepEqual(client.state.events, final);
+  assert.deepEqual(client.state.rows?.Events, [{ id: 'tail', title: 'Tail' }, { id: 'first', title: 'First' }]);
+  t.mock.timers.tick(60_000);
+  assert.equal(reads().length, 2);
+});
+
+test('stopping the connection discards a pending summary refresh', t => {
+  const client = scripted(t);
+  client.socket.receive({ type: 'result', id: 'connection-status', ok: true, value: { root: '/scratch' } });
+  client.socket.receive({ type: 'event', row: { id: 'one', ts: new Date().toISOString(), kind: 'task', subject: { kind: 'item', id: 'T-1' }, text: 'One', glyph: '+' } });
+  client.stop();
+  t.mock.timers.tick(60_000);
+  assert.equal(client.socket.sent.filter(frame => frame.type === 'events.list').length, 0);
+});
+
+test('continuous event traffic starts at most sixty summary reads per minute', async t => {
+  const client = scripted(t);
+  client.socket.receive({ type: 'result', id: 'connection-status', ok: true, value: { root: '/scratch' } });
+  const reads = () => client.socket.sent.filter(frame => frame.type === 'events.list');
+  for (let second = 0; second < 60; second++) {
+    const row: EventRow = { id: `event-${second}`, ts: new Date().toISOString(), kind: 'task', subject: { kind: 'item', id: 'T-1' }, text: `Event ${second}`, glyph: '+' };
+    for (let frame = 0; frame < 20; frame++) client.socket.receive({ type: 'event', row });
+    t.mock.timers.tick(1000);
+    assert.equal(reads().length, second + 1);
+    client.socket.receive({ type: 'result', id: reads().at(-1)!.id, ok: true, value: { rows: [row], before: null, more: false } });
+    await settleSummary();
+    assert.equal(client.state.events?.rows[0]?.id, row.id);
+  }
+  assert.equal(reads().length, 60);
+});
+
+for (const failure of ['rejection', 'timeout'] as const) {
+  test(`the final event burst survives a summary ${failure} without another event`, async t => {
+    const client = scripted(t);
+    client.socket.receive({ type: 'result', id: 'connection-status', ok: true, value: { root: '/scratch' } });
+    const row: EventRow = { id: 'last', ts: new Date().toISOString(), kind: 'task', subject: { kind: 'item', id: 'T-1' }, text: 'Last event', glyph: '+' };
+    const reads = () => client.socket.sent.filter(frame => frame.type === 'events.list');
+    client.socket.receive({ type: 'event', row });
+    t.mock.timers.tick(1000);
+    assert.equal(reads().length, 1);
+    if (failure === 'rejection') client.socket.receive({ type: 'result', id: reads()[0]!.id, ok: false, error: 'Read unavailable' });
+    else t.mock.timers.tick(10_000);
+    await settleSummary();
+    t.mock.timers.tick(999);
+    assert.equal(reads().length, 1, 'failed reads keep the one-second retry window');
+    t.mock.timers.tick(1);
+    assert.equal(reads().length, 2, 'the final burst still needs a successful receipt');
+    const page = { rows: [row], before: null, more: false };
+    client.socket.receive({ type: 'result', id: reads()[1]!.id, ok: true, value: page });
+    await settleSummary();
+    assert.deepEqual(client.state.events, page);
+    assert.deepEqual(client.state.rows?.Events, [{ id: 'last', title: 'Last event' }]);
+    t.mock.timers.tick(60_000);
+    assert.equal(reads().length, 2, 'successful receipt settles pending retry work');
+  });
+}
+
+for (const disposal of ['stop', 'close', 'replacement'] as const) {
+  test(`a resolved summary cannot publish after connection ${disposal}`, async t => {
+    const client = scripted(t);
+    client.socket.receive({ type: 'result', id: 'connection-status', ok: true, value: { root: '/scratch' } });
+    const row: EventRow = { id: 'old', ts: new Date().toISOString(), kind: 'task', subject: { kind: 'item', id: 'T-1' }, text: 'Old event', glyph: '+' };
+    const before = { rows: [], before: null, more: false };
+    client.socket.receive({ type: 'result', id: 'shell-events', ok: true, value: before });
+    client.socket.receive({ type: 'event', row });
+    t.mock.timers.tick(1000);
+    const read = client.socket.sent.find(frame => frame.type === 'events.list')!;
+    client.socket.receive({ type: 'result', id: read.id, ok: true, value: { ...before, rows: [row] } });
+    // Dispose synchronously after receipt, before command continuation publishes it.
+    if (disposal === 'stop') client.stop();
+    else client.socket.close();
+    if (disposal === 'replacement') {
+      t.mock.timers.tick(250);
+      client.socket.receive({ type: 'result', id: 'connection-status', ok: true, value: { root: '/scratch' } });
+      client.socket.receive({ type: 'result', id: 'shell-events', ok: true, value: before });
+    }
+    await settleSummary();
+    assert.deepEqual(client.state.events, before);
+    assert.deepEqual(client.state.rows?.Events, []);
+    if (disposal === 'replacement') {
+      client.socket.receive({ type: 'event', row: { ...row, id: 'fresh' } });
+      t.mock.timers.tick(1000);
+      const freshRead = client.socket.sent.find(frame => frame.type === 'events.list');
+      assert.ok(freshRead, 'new socket admits its own read after old finalization');
+      const fresh = { ...before, rows: [{ ...row, id: 'fresh' }] };
+      client.socket.receive({ type: 'result', id: freshRead.id, ok: true, value: fresh });
+      await settleSummary();
+      assert.deepEqual(client.state.events, fresh);
+    }
+  });
 }
 
 test('area snapshots retain merged sessions, launch defaults, queue arrival and ordered account views', t => {

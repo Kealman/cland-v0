@@ -19,6 +19,13 @@ dispatches document Enter at focused Cancel, retains the unprevented receipt,
 then observes native cancellation and a public session list with zero launches. Batch independent
 serial setup before considering the dated E-417 Web-duration allowance policy.
 
+The split Inbox control pauses the browser clock. Advance it alongside the hub
+clock, including the minute before the task change. Arm the rendered-count wait
+before changing the task and drive both clocks in 250 ms steps through the
+one-second summary window. Keep the original wait bound, exact Inbox count and
+filtered bookkeeping-row assertions; a paused timer alone cannot refresh the
+unfiltered summary.
+
 The phone tap-filter case uses the fixture's 390×844 touch context and native
 `tap()`: compare rendered identities with public `events.list` results for task,
 warnings, clear and subject filters, then retain task identity and pressed state

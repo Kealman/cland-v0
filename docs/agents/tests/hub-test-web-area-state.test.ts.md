@@ -4,6 +4,21 @@ T1: connectHub's public callback over a scripted browser socket and mocked clock
 no real browser, network, hub or process. Area replacement and live-delta controls
 retain session/account/artifact state and fence stale replies.
 
+The event summary cases drive `connectHub` through fake socket frames and virtual
+time. A 100-event burst produces one read after one second and the emitted
+summary equals the complete returned page. Events received during a slow read
+produce one follow-up window; the final page includes the tail. Sustained
+traffic (1,200 frames over 60 virtual seconds) starts 60 reads, and advancing an
+idle clock starts none. Stopping the connection cancels a pending window.
+These are request-count and state receipts, not browser rendering or real-time
+latency measurements.
+The rejection and timeout cases send no further event after the failed read;
+each retains one pending retry window and verifies the final successful page
+and projected row, followed by zero further idle requests.
+Result-then-stop/close/replacement controls dispose the connection before promise
+continuations run and check the exact retained page. The replacement control
+also verifies a new socket can complete its own summary read.
+
 `active sign-in identities update incrementally across live inbox message and
 terminal cards` covers live ask, message and flattened inbox ingestion,
 same-login replacement, an older terminal receipt retaining the newer active id,

@@ -691,6 +691,18 @@ The subscription reconnects and re-reads after its acknowledgement; old-filter
 replies and replaced identities cannot overwrite newer rows. Inbox summary reads
 always specify the empty filter, including their older pages.
 
+The unfiltered Inbox summary coalesces main-socket event notifications into a
+one-second window before reading the newest 200 rows. Only one such read can be
+in flight; events received during it schedule one further window after its
+receipt. A rejected or timed-out read retains pending work and retries after
+the same one-second window, until a successful receipt or disconnect/stop.
+Continuous activity therefore starts at most 60 event-triggered
+`events.list` reads per minute. Once pending work settles, an idle connection
+starts zero periodic reads. Connection snapshots, visibility refreshes, leaving
+Events, filtered subscription acknowledgements and explicit paging are separate
+reads; these limits describe event-triggered summary refreshes. The Events view
+continues to receive its filtered pushed rows immediately.
+
 Opening Events sends `marks.set` once per visit. The previous shared last look
 stays as a rule for that visit, with newer rows marked in the watch colour; all
 clients receive the new mark, and Inbox counts from it. Reconnecting a mounted

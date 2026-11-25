@@ -378,8 +378,16 @@ test('an Inbox alongside filtered Events still counts new events outside that fi
     await page.getByRole('button', { name: 'Inbox', exact: true }).click();
     await secondary.locator('[data-inbox-events]').waitFor();
     await fixture.clock.advance(60_000);
+    await page.clock.runFor(60_000);
+    // The summary coalesces for one second: drive both clocks while observing
+    // the actual rendered receipt, including events delivered after task.edit.
+    const updated = until(async () => {
+      await fixture.clock.advance(250);
+      await page.clock.runFor(250);
+      return page.evaluate(() => document.querySelector('[data-pane="secondary"] [data-inbox-events]')?.textContent === '△ 1 new events · ⚠ 0');
+    }, { what: 'unfiltered Inbox updates beside filtered Events', timeoutMs: 3000 });
     assert.equal((await fixture.ui.request({ type: 'task.edit', item: 'T-1', status: 'planned' })).ok, true);
-    await pageUntil(page, () => document.querySelector('[data-pane="secondary"] [data-inbox-events]')?.textContent === '△ 1 new events · ⚠ 0', 'unfiltered Inbox updates beside filtered Events');
+    await updated;
     assert.equal(await secondary.locator('[data-inbox-events]').innerText(), '△ 1 new events · ⚠ 0');
     const events = page.locator('[data-pane="primary"]');
     assert.equal(await events.locator('[data-event-id][data-bookkeeping="true"]').count(), 0);

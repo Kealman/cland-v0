@@ -342,6 +342,33 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
   let eventsOverflow: EventRow[] = [];
   let eventsOlderLoaded = false;
   let eventsRead: Map<string, EventRow> | undefined;
+  let summaryTimer: ReturnType<typeof setTimeout> | undefined;
+  let summaryDirty = false;
+  let summaryReading = false;
+  function scheduleEventsSummary() {
+    if (!state.live || stopped) return;
+    summaryDirty = true;
+    if (summaryTimer !== undefined || summaryReading) return;
+    summaryTimer = setTimeout(() => {
+      summaryTimer = undefined;
+      summaryDirty = false;
+      summaryReading = true;
+      const owner = socket;
+      const current = () => !stopped && state.live && socket === owner && owner.readyState === WebSocket.OPEN;
+      void command<EventsPage>({ type: 'events.list', limit: 200, filter: {} }).then(page => {
+        if (!current()) return;
+        state = { ...state, events: page };
+        rows('Events', page.rows.map(row => ({ id: row.id, title: row.text })));
+      }).catch(() => {
+        // A failed read cannot settle the burst, even when no later event arrives.
+        if (current()) summaryDirty = true;
+      }).finally(() => {
+        if (!current()) return;
+        summaryReading = false;
+        if (summaryDirty) scheduleEventsSummary();
+      });
+    }, 1000);
+  }
   function combineEvents(rows: EventRow[], incoming: EventRow[]) {
     const replaced = new Set(incoming.flatMap(row => [row.id, ...(row.replaces ? [row.replaces] : [])]));
     const superseded = new Set(incoming.flatMap(row => row.replaces ? [row.replaces] : []));
@@ -651,7 +678,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
       } else if (frame.type === 'delivery' || frame.type === 'ask') {
         state = { ...state }; changed(state);
       } else if (frame.type === 'event') {
-        request({ type: 'events.list', id: 'shell-events', limit: 200, filter: {} });
+        scheduleEventsSummary();
       } else if (frame.type === 'artifact') {
         artifactRead?.deltas.set(frame.artifact.id, frame.artifact);
         state = { ...state, artifacts: replaceArtifact(state.artifacts, frame.artifact) };
@@ -700,6 +727,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
         if (response.ok && (await response.json()).required === true && !stopped) location.replace('/signin');
       }).catch(() => {});
       clearTimeout(deadline);
+      clearTimeout(summaryTimer); summaryTimer = undefined; summaryDirty = false; summaryReading = false;
       eventsFeed?.stop(); eventsFeed = undefined;
       rejectCommands();
       state = { ...state, live: false, disconnectedAt: state.disconnectedAt ?? Date.now(), nextAttemptAt: stopped ? undefined : Date.now() + backoff };
@@ -715,6 +743,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
     // A manual attempt replaces the timer and any unfinished handshake.
     clearTimeout(retry);
     clearTimeout(deadline);
+    clearTimeout(summaryTimer); summaryTimer = undefined; summaryDirty = false; summaryReading = false;
     socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
     socket.close();
     backoff = 250;
@@ -726,6 +755,7 @@ export function connectHub(changed: (state: ConnectionState) => void, received?:
     eventsFeed?.stop();
     clearTimeout(retry);
     clearTimeout(deadline);
+    clearTimeout(summaryTimer); summaryTimer = undefined; summaryDirty = false; summaryReading = false;
     rejectCommands();
     socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
     socket.close();
