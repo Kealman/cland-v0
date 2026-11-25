@@ -4634,7 +4634,6 @@
     "hub/test/codex-adapter.test.ts::a Codex app-server that dies: the state turns unknown and the hub logs it once": 1.97916,
     "hub/test/codex-adapter.test.ts::a failed Codex turn is recorded in Agents and the events view and reported to the sender": 1.659782,
     "hub/test/codex-adapter.test.ts::a launched Codex session: the app-server runs with the spoke, a UI message goes queued → delivered → injected, the reply comes back, and the state follows thread/status/changed": 2.509806,
-    "hub/test/codex-adapter.test.ts::a missing native turn-start result becomes uncertain after its accepted turn replies": 2.756535,
     "hub/test/codex-adapter.test.ts::a second spoke of a live Codex session (another thread on its app-server) leaves the session its tools: the hub answers both, and says so once": 1.562796,
     "hub/test/codex-adapter.test.ts::after a hub restart, resume re-finds the app-server and its thread through the process table; state and inject continue": 3.846344,
     "hub/test/codex-adapter.test.ts::an Implementer begins on its launch brief after the clause in the first Codex turn": 1.918423,

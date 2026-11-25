@@ -8,9 +8,100 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Store } from './store.ts';
 import { HubCore } from './core.ts';
+import { TrackerIndex } from '../tracker/index-db.ts';
 import { isClientRequest, type AskOutcome, type Message, type TopicHistoryFilter, type TopicMessage } from '../protocol.ts';
 
 const message = (id: string, from: string, to: string[], text: string, ts = '2026-10-08T12:00:00.000Z'): Message => ({ id, from, fromKind: 'agent', via: 'session', to, text, ts });
+
+test('historical answer reconciliation requires captured recipient, accepted kind and a positive covered head', () => {
+  const clock = new FakeClock(), store = new Store(), db = new DatabaseSync(':memory:');
+  const index = new TrackerIndex(':memory:', undefined, () => db);
+  let ancestry: boolean | undefined;
+  const core = new HubCore({ store, clock, items: {
+    lead: () => null, provisionalSession: () => false,
+    check: () => { throw new Error('no item binding'); }, checkAsync: async () => { throw new Error('no item binding'); }, bind: async () => {},
+    hasVerificationReceipt: (...args) => index.hasVerificationReceipt(...args),
+    verificationReceipts: (...args) => index.verificationReceipts(...args), verificationContains: () => ancestry,
+  } });
+  try {
+    for (const name of ['rev', 'other']) assert.ok(core.hello({ type: 'hello', protocol: 2, name, role: 'reviewer', sessionId: `${name}-id`, cwd: '/fixture' }, () => true).ok);
+    const at = clock.now().toISOString(), later = new Date(clock.now().getTime() + 1).toISOString(), head = 'a'.repeat(40);
+    const root = message('old-root', 'sender', ['rev'], 'review request T-1', at);
+    store.record(root, [{ session: 'rev', state: 'delivered' }], clock.now().getTime());
+    store.startInjection(root.id, 'rev'); store.recordVerificationAcceptance(root, 'T-1', 'review', head);
+    const reply = { ...message('wrong-reply', 'other', [], 'answer', later), replyTo: root.id };
+    store.record(reply, [], clock.now().getTime() + 1);
+    assert.equal(store.deliveryAnswerReceipt(root.id, 'rev', 'rev-id')?.replied, false);
+    assert.equal(store.deliveryAnswerReceipt(root.id, 'rev', 'other-id'), null);
+    const put = (key: string, identity: string, kind: string, commit: string, time = later) => db.prepare(`insert into tracker_written_verdicts
+      (item_id,comment_key,verdict,result,run,commit_sha,session_id,role,at) values ('T-1',?,?,'clear',?,?,?, ?,?)`)
+      .run(key, kind, key, commit, identity, kind === 'review' ? 'reviewer' : 'qa', time);
+    put('wrong-author', 'other-id', 'review', head);
+    put('wrong-kind', 'rev-id', 'qa', head);
+    put('old-verdict', 'rev-id', 'review', head, at);
+    put('wrong-head', 'rev-id', 'review', 'b'.repeat(40)); ancestry = false;
+    assert.equal(core.reconcileAnsweredDelivery(root.id, 'rev', 'rev-id', () => {}), false);
+    assert.equal(store.deliveriesOf(root.id)[0]?.state, 'delivered');
+    ancestry = undefined;
+    const descendant = { ...root, id: 'descendant-root' };
+    store.record(descendant, [{ session: 'rev', state: 'delivered' }], clock.now().getTime());
+    store.startInjection(descendant.id, 'rev'); store.recordVerificationAcceptance(descendant, 'T-1', 'review', 'c'.repeat(40));
+    assert.equal(core.reconcileAnsweredDelivery(descendant.id, 'rev', 'rev-id', () => {}), true, 'unknown ancestry fences replay');
+    assert.equal(store.deliveriesOf(descendant.id)[0]?.state, 'delivered');
+    ancestry = true;
+    assert.equal(core.reconcileAnsweredDelivery(descendant.id, 'rev', 'rev-id', () => {}), true);
+    assert.equal(store.deliveriesOf(descendant.id)[0]?.state, 'injected');
+    put('exact-proof', 'rev-id', 'review', head);
+    assert.equal(core.reconcileAnsweredDelivery(root.id, 'rev', 'rev-id', () => {}), true);
+    assert.equal(store.deliveriesOf(root.id)[0]?.state, 'injected');
+    const queued = { ...root, id: 'queued-root' };
+    store.record(queued, [{ session: 'rev', state: 'queued' }], clock.now().getTime());
+    store.recordVerificationAcceptance(queued, 'T-1', 'review', head);
+    assert.equal(core.reconcileAnsweredDelivery(queued.id, 'rev', 'rev-id', () => {}), false);
+    assert.equal(store.deliveriesOf(queued.id)[0]?.state, 'queued');
+    for (let i = 0; i < 35; i++) put(`retained-${i}`, 'rev-id', 'review', head, at);
+    const page = index.verificationReceipts('T-1', 'review', 'rev-id', 0);
+    assert.equal(page.length, 32);
+    const tail = index.verificationReceipts('T-1', 'review', 'rev-id', page.at(-1)!.order);
+    assert.equal(tail.length, 6);
+    assert.equal(new Set([...page, ...tail].map(row => row.order)).size, 38);
+  } finally { core.close(); store.close(); index.close(); }
+});
+
+test('verdict settlement pages exact attempted recipient requests and fences other kinds and heads', () => {
+  const clock = new FakeClock(), store = new Store();
+  const core = new HubCore({ store, clock });
+  try {
+    assert.ok(core.hello({ type: 'hello', protocol: 2, name: 'rev', role: 'reviewer', sessionId: 'rev-id', cwd: '/fixture' }, () => true).ok);
+    const head = 'a'.repeat(40), other = 'b'.repeat(40), ids: string[] = [];
+    for (let i = 0; i < 35; i++) {
+      const m = message(`accepted-${i}`, 'sender', ['rev'], 'review request T-1', clock.now().toISOString());
+      store.record(m, [{ session: 'rev', state: i % 2 ? 'uncertain' : 'delivered' }], clock.now().getTime());
+      store.startInjection(m.id, 'rev'); store.recordVerificationAcceptance(m, 'T-1', 'review', head); ids.push(m.id);
+    }
+    for (const [id, kind, admittedHead, state, attempted] of [
+      ['other-head', 'review', other, 'delivered', true],
+      ['other-kind', 'qa', head, 'delivered', true],
+      ['not-attempted', 'review', head, 'delivered', false],
+      ['queued', 'review', head, 'queued', false],
+    ] as const) {
+      const m = message(id, 'sender', ['rev'], `${kind} request T-1`, clock.now().toISOString());
+      store.record(m, [{ session: 'rev', state }], clock.now().getTime());
+      if (attempted) store.startInjection(id, 'rev');
+      store.recordVerificationAcceptance(m, 'T-1', kind, admittedHead);
+    }
+    const page = store.unconfirmedVerificationRequests('T-1', 'review', 'rev', 'rev-id', 0);
+    assert.equal(page.length, 32);
+    assert.deepEqual(page.map(row => row.messageId), ids.slice(0, 32));
+    assert.deepEqual(store.unconfirmedVerificationRequests('T-1', 'review', 'rev', 'another-identity', 0), []);
+    core.clearPendingVerification('rev', 'T-1', { verdict: 'review', commit: 'c'.repeat(40) });
+    for (const id of ids) assert.notEqual(store.deliveriesOf(id)[0]?.state, 'injected');
+    core.clearPendingVerification('rev', 'T-1', { verdict: 'review', commit: head });
+    for (const id of ids) assert.equal(store.deliveriesOf(id)[0]?.state, 'injected', 'every page retains its exact positive head receipt');
+    for (const id of ['other-head', 'other-kind', 'not-attempted']) assert.equal(store.deliveriesOf(id)[0]?.state, 'delivered');
+    assert.equal(store.deliveriesOf('queued')[0]?.state, 'queued');
+  } finally { core.close(); store.close(); }
+});
 
 test('pending delivery reconstruction uses indexed bounds with a large retained history', t => {
   const queries = new Set<string>();

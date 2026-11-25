@@ -1358,6 +1358,30 @@ export class Store implements HygieneMemory {
       .map(row => ({ order: row.id as number, head: row.head as string | null, at: row.at as string, requestSeq: row.request_seq as number }));
   }
 
+  /** Pending attempted roots only: retained acceptance history never becomes a verdict scan. */
+  unconfirmedVerificationRequests(item: string, kind: 'review' | 'qa', session: string, identity: string, after: number): Array<{ messageId: string; head: string | null; seq: number }> {
+    return (this.#prepare(`select d.message_id, a.head, m.seq from deliveries d indexed by deliveries_session
+      join verification_acceptances a on a.message_id = d.message_id join messages m on m.id = d.message_id
+      where d.session = ? and d.session_id = ? and d.state in ('delivered', 'uncertain')
+      and d.injection_started = 1 and d.digest_id is null and a.item = ? and a.kind = ? and m.seq > ?
+      order by m.seq limit ?`).all(session, identity, itemKey(item), kind, after, VERIFICATION_PAGE_SIZE) as Row[])
+      .map(row => ({ messageId: row.message_id as string, head: row.head as string | null, seq: row.seq as number }));
+  }
+
+  /** Indexed positive reply/acceptance facts for one attempted root, never name-only history. */
+  deliveryAnswerReceipt(messageId: string, session: string, identity: string): { replied: boolean; verification?: { item: string; kind: 'review' | 'qa'; head?: string; at: string } } | null {
+    const row = this.#prepare(`select a.item, a.kind, a.head, a.at,
+      exists(select 1 from messages r indexed by messages_reply_to where r.reply_to = m.id
+        and r.from_session_id = d.session_id and r.seq > m.seq) as replied
+      from deliveries d join messages m on m.id = d.message_id
+      left join verification_acceptances a on a.message_id = d.message_id
+      where d.message_id = ? and d.session = ? and d.session_id = ? and d.injection_started = 1
+      and d.digest_id is null and d.state in ('delivered', 'uncertain')`).get(messageId, session, identity) as Row | undefined;
+    if (!row) return null;
+    return { replied: Boolean(row.replied), ...(row.item && (row.kind === 'review' || row.kind === 'qa')
+      ? { verification: { item: row.item as string, kind: row.kind, ...(row.head ? { head: row.head as string } : {}), at: row.at as string } } : {}) };
+  }
+
   rememberUnresolvedVerification(messageId: string, head: string, at: string, source: 'verdict' | 'request'): void {
     this.#prepare('insert or ignore into verification_unresolved(message_id,head,at,source) values (?,?,?,?)').run(messageId, head, at, source);
   }

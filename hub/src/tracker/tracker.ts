@@ -2723,6 +2723,14 @@ export class Tracker {
     return this.#index.verificationFacts(id, kind, after);
   }
 
+  hasVerificationReceipt(id: string, kind: 'review' | 'qa', identity: string, after: string, head?: string): boolean {
+    return this.#index.hasVerificationReceipt(id, kind, identity, after, head);
+  }
+
+  verificationReceipts(id: string, kind: 'review' | 'qa', identity: string, after: number): import('../hub/verifier-request.ts').VerificationFact[] {
+    return this.#index.verificationReceipts(id, kind, identity, after);
+  }
+
   verificationContains(id: string, head: string, commit: string): boolean | undefined {
     return this.#fresh.contains(id, head, commit, true);
   }

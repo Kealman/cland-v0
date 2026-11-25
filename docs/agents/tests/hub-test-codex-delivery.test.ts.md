@@ -1,5 +1,30 @@
 # hub/test/codex-delivery.test.ts
 
+Restore controls persist a real recipient reply or authenticated review verdict,
+close all original writers, then plant only the attempted root/digest delivery
+state back to delivered in the disposable database. Reopen the fake Codex
+session, trigger a busy-to-idle retry, require zero old native attempts and the
+root's injected receipt without a new answer. Fresh input must inject without
+the old progress. Database access never targets the live project.
+
+The accepted-review regression uses the whole-case `deliveryCase`/`stageCase` owner,
+`projectHub`, a fake Codex harness and fake clock. Observe the exact failed
+injection, take the item's review hold, then persist its verdict. Assert the
+request's injected history stage and one native attempt after the retry deadline
+and another idle transition. This proves the accepted request receipt survives
+the hold clearing the pending reservation. A second case accepts another request
+at another recipient before the first verdict; the first root and its progress
+must settle while the later recipient's delivery remains pending. Each role
+clause's injected receipt precedes scripting the next fake outcome.
+Full setup and body have separate load-scaled bounds. Helpers receive the
+required-resource context before acquisition; positive close gates root removal
+and native guard restoration. `case-deadlines.test.ts` retains shared
+abort/rejected-close controls; `inject-stalled.test.ts` exercises this delivery
+owner with actual partial construction, cancellation and close rejection/repair.
+Uncertain-input retry cases leave
+the input unanswered until after explicit retry: a recipient reply is itself
+a positive receipt and ends uncertainty.
+
 Use `scriptedCodex` for the T2 production Codex adapter, `projectHub`, fake clock
 and in-process app-server connection. Refuse connections and observe the flushed
 `harness-reconnect-failed` and exact-message `inject-unconfirmed` log receipts

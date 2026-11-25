@@ -710,8 +710,8 @@ test('session resume --relaunch on a live session that renames itself while it i
   assert.equal(present.role, 'coordinator');
 });
 
-// Native timeout classification stays real; repeated-idle/retry policy is T2.
-test('a missing native turn-start result becomes uncertain after its accepted turn replies', async t => {
+// T-692's native timeout proof stays real; T-1926 adds the exact positive-reply branch.
+test('a missing native turn-start result stays uncertain unless its exact recipient replies', async t => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t, { injectTimeoutMs: 1500 });
   const { discovery } = await projectHub(t, root, fake.env);
@@ -721,15 +721,26 @@ test('a missing native turn-start result becomes uncertain after its accepted tu
   await presentAs(ui, 'coord', 'idle');
   const text = 'please lose the answer';
   const id = await sendGeneral(ui, text);
-  await ui.waitFor(f => f.type === 'message' && (f.message as { text: string }).text === `pong: ${text}`);
-  await eventually('native timeout recorded as uncertain', async () => (await hubLog(root, ui)).includes(`"event":"inject-uncertain","id":"${id}"`) || undefined);
-  assert.ok(!ui.frames.some(f => f.type === 'delivery' && f.message === id && f.stage === 'injected'));
+  const reply = await ui.waitFor(f => f.type === 'message' && (f.message as { text: string }).text === `pong: ${text}`);
+  assert.equal((reply.message as { replyTo?: string }).replyTo, id, 'the positive reply names this exact input');
+  assert.equal((reply.message as { from: string }).from, 'coord');
+  await ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+  const unansweredText = 'please lose the answer without replying';
+  const unanswered = await sendGeneral(ui, unansweredText);
+  await eventually('unanswered native timeout recorded as uncertain', async () => (await hubLog(root, ui)).includes(`"event":"inject-uncertain","id":"${unanswered}"`) || undefined);
+  assert.ok(!ui.frames.some(f => f.type === 'delivery' && f.message === unanswered && f.stage === 'injected'));
   // A subsequent accepted native turn is the completion barrier for the no-replay assertion.
   const later = await sendGeneral(ui, 'later input');
   await ui.waitFor(f => f.type === 'delivery' && f.message === later && f.stage === 'injected');
   await ui.waitFor(f => f.type === 'message' && (f.message as { text: string }).text === 'pong: later input');
+  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ id: string; stage?: string }> };
+  assert.equal(history.messages.find(m => m.id === id)?.stage, 'injected', 'late native uncertainty cannot demote the exact positive reply');
+  assert.equal(history.messages.find(m => m.id === unanswered)?.stage, 'delivered');
   assert.equal(ui.frames.filter(f => f.type === 'message' && (f.message as { text: string }).text === `pong: ${text}`).length, 1);
-  assert.equal(((await fake.log(launched.pid!)).match(/item: <channel [^\n]*>\nplease lose the answer/g) ?? []).length, 1);
+  assert.equal(ui.frames.filter(f => f.type === 'message' && (f.message as { text: string }).text === `pong: ${unansweredText}`).length, 0);
+  const log = await fake.log(launched.pid!);
+  assert.equal((log.match(/item: <channel [^\n]*>\nplease lose the answer\n/g) ?? []).length, 1);
+  assert.equal((log.match(/item: <channel [^\n]*>\nplease lose the answer without replying\n/g) ?? []).length, 1);
 });
 
 test('fixture file outputs are removed', fixtureResidueCensus());

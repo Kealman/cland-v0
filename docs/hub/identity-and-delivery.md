@@ -26,7 +26,27 @@ A delivery row is `queued` until the spoke accepts it, then `delivered`, then `i
 - A delivery whose inject reached the harness and got no answer (Codex: a `turn/start` or `turn/steer` sent, its result lost or late) is `uncertain`: the turn may or may not have started. It shows as `delivered`, is logged (`inject-uncertain`) and noted in the inbox (`delivery-uncertain`), and is never sent again on its own (no idle, no reconnect replays it); the human sends it again with `session.retry` or `cland session retry <name> <message id>`.
 - Uncertain operational traffic does not reserve an idle session against new work. A received review or QA request for an open item keeps its pending verification reservation until a hold or verdict replaces it, or the item closes, lands or is removed; both role routing and pool reuse respect that reservation, including across restart. Clearing it retries queued role requests immediately. An operational injection becoming uncertain also retries the queue, even if the session was already idle.
 - Each delivery keeps the session id its addressee had when it was recorded (or when a role's queue was claimed), and an agent's message the session id it was sent from: a grant tied to a delivery (the mention rule) and a reply to a message follow the session, never a name another session may take later.
-- A session no adapter launched (a spoke started by hand) has nobody to confirm a turn: its messages stay `delivered`.
+- A session no adapter launched (a spoke started by hand) has no native turn confirmation: its messages stay `delivered` unless it supplies an answer receipt below.
+
+A persisted `reply_to` from the admitted recipient also confirms that exact
+delivery and its held progress digest once injection has started. A recorded
+review or QA verdict confirms its accepted request when recipient identity,
+item, kind and admitted head match (or the verdict covers that head). Taking a
+verifier hold does not discard this receipt. Other recipients and other queued
+requests cannot replace it: verdict settlement selects each attempted pending
+root through its persisted acceptance and admitted delivery identity in bounded
+pages, independently of the latest item-level routing receipt. Other
+notes remain pending; an answer never confirms a sequence range. Confirmed
+requests and their progress notes leave automatic idle retry together.
+
+Before retrying an already-attempted pending root, the hub also reconciles
+persisted replies and authenticated verdicts, so an answered row restored from
+an older hub needs no new answer. Reply lookup uses its indexed exact reference
+and captured sender identity. Verdict lookup uses its accepted item/kind/head
+and admitted recipient, with a later authenticated receipt. Ancestry candidates
+are checkpointed in pages of 32 outside liveness replies; unknown ancestry holds
+replay until the tracker settles it. Queued/unattempted input and missing
+historical authority gain no confirmation from names or prose.
 
 Claude mod submissions whose envelope-bearing turn receipt times out become
 `uncertain` too. Submission acceptance alone cannot prove that the model received

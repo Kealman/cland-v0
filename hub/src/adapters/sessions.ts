@@ -3151,8 +3151,10 @@ export class Sessions {
     if (!reconnected && pending && this.#core.clock.now().getTime() < pending.retryAt) return;
     const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
     const message = this.#core.store.deliveryMessage(messageId, name);
-    if (!message || this.#core.store.deliveriesOf(messageId).find(d => d.session === name)?.state !== 'delivered') return;
+    const delivery = this.#core.store.deliveriesOf(messageId).find(d => d.session === name);
+    if (!message || delivery?.state !== 'delivered') return;
     this.#holdRecheck(sessionId, messageId);
+    if (delivery.injectionStarted && this.#core.reconcileAnsweredDelivery(messageId, name, sessionId, () => this.#inject(sessionId, messageId, undefined, reconnected))) return;
     if (message.fromKind === 'human' && this.#core.humanDeliveryBlocked(sessionId, messageId)) return;
     if ((message.detail?.event === 'heartbeat' || message.digest?.some(note => note.detail?.event === 'heartbeat')) && this.#core.sessionState(sessionId) !== 'idle') return;
     const adapter = this.#adapters.get(p.harness);

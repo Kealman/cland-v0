@@ -1,13 +1,15 @@
 // T2: failed-inject notice policy through real hub frames, fake harnesses and fake time.
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
-import { afterCleanup, onCleanup, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { afterCleanup, onCleanup, beforeDirectories, guardDirectoryRemoval, fenceFixtureCleanup, ownDirectory } from './process-cleanup.ts';
 import { caseDeadlines } from './case-deadlines.ts';
+import { deliveryCase } from './delivery-case.ts';
+import { stageCase } from './stage-case-fixture.ts';
 import { replayAgentsRecord } from '../src/hub/agents-topic.ts';
 import type { HarnessProcessView, Message } from '../src/protocol.ts';
 import { sessionLine } from '../src/cli/session.ts';
 import { existsSync } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { stat, mkdir, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { sqliteProbe } from './sqlite-probe.ts';
@@ -549,26 +551,143 @@ test('held human input becomes deaf after five minutes and next injection clears
   assert.equal(core.inbox.list().messages.filter(m => m.text.includes('is deaf:')).length, 0);
 });
 
-function retainedDeliveryFixture(t: TestContext, root: string, clock: FakeClock, logs: Array<Record<string, unknown>>) {
+function retainedDeliveryFixture(t: TestContext, root: string, clock: FakeClock, logs: Array<Record<string, unknown>>, flavour: 'claude-code' | 'codex' = 'claude-code') {
   let store: Store | undefined;
   let table: ProcessTable | undefined;
   let core: HubCore | undefined;
   let sessions: Sessions | undefined;
   let closing: Promise<void> | undefined;
-  const close = () => closing ??= (async () => {
-    await sessions?.close(); table?.close(); core?.close(); store?.close();
-  })();
+  const close = () => {
+    if (!closing) {
+      const work = (async () => { await sessions?.close(); table?.close(); core?.close(); store?.close(); })();
+      closing = work;
+      void work.catch(() => { if (closing === work) closing = undefined; });
+    }
+    return closing;
+  };
   onCleanup(t, close); // Own every partially acquired generation before opening storage.
   store = new Store(join(root, 'delivery.db'));
   core = new HubCore({ clock, store, log: entry => logs.push(entry) });
   core.inbox.list(); // Startup may project the inbox before adapter configuration.
   table = new ProcessTable(join(root, 'process.db'), clock);
   sessions = new Sessions({ core, table, root, log: entry => logs.push(entry) });
-  const fake = fakeHarness('claude-code', { clock, host: sessions.host({ discoveryFile: '', node: '', cli: '', spoke: '' }) });
+  const fake = fakeHarness(flavour, { clock, host: sessions.host({ discoveryFile: '', node: '', cli: '', spoke: '' }) });
   sessions.register(fake);
   core.inbox.useProcesses(() => sessions!.list());
   return { core, table, sessions, fake, close };
 }
+
+for (const outcome of ['reject', 'uncertain', 'hold'] as const) test(`a Codex recipient reply settles its exact delivery and held progress before idle retry (${outcome})`, async t => {
+  const scope = deliveryCase(t);
+  await scope.run(async step => {
+    const root = await step(async () => {
+      const root = await tempProject(scope.fixtures); scope.adoptRoot(root); return root;
+    });
+    const clock = new FakeClock();
+    const logs: Array<Record<string, unknown>> = [];
+    const f = retainedDeliveryFixture(scope.resources, root, clock, logs, 'codex');
+    const process = await step(() => f.fake.spawn({ name: 'impl', role: 'implementer', model: null, cwd: root }));
+    f.table.put(process);
+    const joined = f.core.hello({ type: 'hello', protocol: 2, name: 'impl', role: 'implementer', sessionId: process.sessionId, cwd: root }, () => true);
+    assert.ok(joined.ok);
+    f.core.hello({ type: 'hello', protocol: 2, name: 'sender', role: 'coordinator', sessionId: 'sender-id', cwd: root }, () => true);
+    f.fake.idle('impl');
+    return { f, clock, logs, joined };
+  }, async ({ f, clock, logs, joined }, step) => {
+    const note = f.core.sendFromSession('sender', ['impl'], 'old progress', undefined, 'general', undefined, undefined, undefined, 'progress').message;
+    f.fake.scriptInject('impl', outcome);
+    const request = f.core.sendFromHuman('general', 'please inspect this change', ['impl']).message;
+    f.core.ack(joined.connection, request.id);
+    await step(() => clock.advance(0));
+    if (outcome !== 'hold') assert.ok(logs.some(row => row.event === (outcome === 'reject' ? 'inject-unconfirmed' : 'inject-uncertain') && row.id === request.id));
+    assert.ok(f.fake.injections.find(i => i.message.id === request.id)?.message.digest?.some(n => n.id === note.id));
+    f.core.sendFromSession('sender', [], 'someone else replied', request.id, 'general');
+    assert.equal(f.core.store.deliveriesOf(request.id)[0]?.state, outcome === 'uncertain' ? 'uncertain' : 'delivered', 'only the admitted recipient can confirm');
+    f.core.sendFromSession('impl', [], 'inspection complete', request.id, 'general');
+    if (outcome === 'hold') f.fake.settle('impl', request.id, 'reject');
+    await step(() => clock.advance(60_000));
+    f.fake.busy('impl'); f.fake.idle('impl');
+    await step(() => clock.advance(0));
+    assert.equal(f.fake.injections.filter(i => i.message.id === request.id).length, 1);
+    assert.equal(f.core.store.deliveriesOf(request.id)[0]?.state, 'injected');
+    assert.equal(f.core.store.deliveriesOf(note.id)[0]?.state, 'injected');
+    const fresh = f.core.sendFromHuman('general', 'next inspection', ['impl']).message;
+    f.core.ack(joined.connection, fresh.id);
+    await step(() => clock.advance(0));
+    assert.equal(f.core.store.deliveriesOf(fresh.id)[0]?.state, 'injected');
+    assert.ok(!f.fake.injections.find(i => i.message.id === fresh.id)?.message.digest?.some(n => n.id === note.id));
+  });
+});
+
+for (const fault of ['partial constructor', 'cancel', 'rejected close'] as const) test(`Codex delivery owner retains resources through ${fault} and confirms repair before restoration`, async t => {
+  const supervisor = stageCase(t);
+  await supervisor.run(async () => {
+    const hooks: Array<() => unknown> = [], abort = new AbortController();
+    const context = { name: `controlled delivery ${fault}`, signal: abort.signal,
+      after: (hook: () => unknown) => { hooks.push(hook); } } as unknown as TestContext;
+    fenceFixtureCleanup(context);
+    const scope = deliveryCase(context);
+    const dispose = async () => { for (const hook of hooks) await hook(); };
+    const entered = Promise.withResolvers<string>(), release = Promise.withResolvers<void>();
+    let refuse = fault === 'rejected close', closed = false, wrote = false, next = false;
+    let running: Promise<void> | undefined;
+    let f: ReturnType<typeof retainedDeliveryFixture> | undefined;
+    let heldId: string | undefined;
+    let remove!: () => Promise<void>;
+    const outerBoundary = supervisor.nativeBoundary();
+    supervisor.releaseOnClose(() => { refuse = false; release.resolve(); });
+    supervisor.requireClose(async () => { refuse = false; release.resolve(); await running?.catch(() => {}); await scope.close(); await dispose(); });
+    scope.releaseOnClose(() => release.resolve());
+    running = scope.run(async step => {
+      const root = await step(async () => {
+        const root = await tempProject(scope.fixtures); scope.adoptRoot(root);
+        remove = ownDirectory(scope.fixtures, root); return root;
+      });
+      const closeStore = Store.prototype.close, closeSessions = Sessions.prototype.close;
+      scope.patch(Store.prototype, 'close', function (this: Store) { closeStore.call(this); closed = true; });
+      scope.patch(Sessions.prototype, 'close', async function (this: Sessions) {
+        if (refuse) throw new Error('controlled delivery close rejected');
+        await closeSessions.call(this);
+      });
+      if (fault === 'partial constructor') await step(() => mkdir(join(root, 'process.db')));
+      try { f = retainedDeliveryFixture(scope.resources, root, new FakeClock(), [], 'codex'); }
+      catch (error) { entered.resolve(root); throw error; }
+      const process = await step(() => f!.fake.spawn({ name: 'impl', role: 'implementer', model: null, cwd: root }));
+      f.table.put(process);
+      const joined = f.core.hello({ type: 'hello', protocol: 2, name: 'impl', role: 'implementer', sessionId: process.sessionId, cwd: root }, () => true);
+      assert.ok(joined.ok);
+      f.fake.scriptInject('impl', 'hold');
+      heldId = f.core.sendFromHuman('general', 'held input at cancellation', ['impl']).message.id;
+      f.core.ack(joined.connection, heldId);
+      assert.ok(f.fake.injections.some(i => i.message.id === heldId && i.outcome === 'hold'));
+      return root;
+    }, async (root, step) => {
+      await step(async () => { entered.resolve(root); await release.promise; await writeFile(join(root, 'writer'), 'drained'); wrote = true; });
+      await step(async () => { next = true; });
+    });
+    const rejected = assert.rejects(running, fault === 'partial constructor' ? /unable to open database|disk I\/O|SQLITE/i : /fixture work admission closed/);
+    void rejected.catch(() => {});
+    const root = await supervisor.wait('controlled delivery entered', () => entered.promise);
+    const heldBoundary = scope.nativeBoundary();
+    if (fault !== 'partial constructor') abort.abort();
+    const disposing = dispose(); void disposing.catch(() => {});
+    await rejected;
+    if (fault === 'rejected close') {
+      await assert.rejects(disposing, /controlled delivery close rejected/);
+      await assert.rejects(remove(), /resource close unconfirmed/);
+      await assert.rejects(scope.restore(), /resource close unconfirmed/);
+      assert.equal((await stat(root)).isDirectory(), true);
+      assert.equal(scope.nativeBoundary(), heldBoundary); assert.equal(closed, false);
+      refuse = false; await scope.close(); await dispose();
+    } else await disposing;
+    assert.equal(closed, true, 'actual Store close returned after all writers stopped');
+    assert.equal(next, false);
+    assert.equal(wrote, fault !== 'partial constructor');
+    if (heldId) assert.throws(() => f!.fake.settle('impl', heldId!), /no held inject/, 'normal close drained the held fake injection');
+    await assert.rejects(stat(root), { code: 'ENOENT' });
+    assert.equal(scope.nativeBoundary(), outerBoundary);
+  });
+});
 
 for (const legacy of [false, true]) test(`restart replay of superseded and confirmed ids stays quiet while fresh input injects (${legacy ? 'legacy equal-time receipts' : 'current watermark'})`, async t => {
   const scope = caseDeadlines(t);

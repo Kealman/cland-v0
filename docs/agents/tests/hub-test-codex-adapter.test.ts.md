@@ -1,5 +1,19 @@
 # hub/test/codex-adapter.test.ts
 
+T-692 (dee14dc583) retained a real-binary missing-result classification proof;
+its C5 required no behavior claim dropped during tier migration. The old title
+was `a missing native turn-start result becomes uncertain after its accepted turn replies`.
+T-1926 changes that contract to
+`a missing native turn-start result stays uncertain unless its exact recipient replies`.
+One native fixture covers both branches: the authenticated reply must name the
+exact input and keeps that root injected; a second missing-result input using
+`lose the answer without replying` receives no pong and must become uncertain.
+Its durable uncertainty receipt and a later accepted native input barrier the
+final no-replay assertions. The earlier exact reply must still be injected;
+the unanswered root stays delivered, and each native input occurs once.
+The obsolete duration-manifest key is removed; Git and prior suite receipts keep
+its historical timing. No old timing is assigned to the renamed case.
+
 T3 is the native Codex adapter contract against a sealed fake executable.
 T-1222's initial Implementer launch expects the custom workspace profile with
 the eight narrow Git/territory/artifact roots and full network. Keep Reviewer

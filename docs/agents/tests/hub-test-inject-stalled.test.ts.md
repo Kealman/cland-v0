@@ -1,5 +1,22 @@
 # hub/test/inject-stalled.test.ts
 
+Codex reply regressions use the retained delivery fixture with a fake Codex
+harness and `deliveryCase`/`stageCase` whole-case owner. Separate load-scaled
+setup/body bounds join original continuations; required close receipts gate
+root removal and native guard restoration. Cover rejected, uncertain and still-in-flight
+attempts. A different sender's reply leaves the delivery pending; the admitted
+recipient's persisted reply settles that exact root and its held progress note.
+After fake retry time and idle, keep the one-attempt assertion; fresh input must
+inject without the old progress note. No sequence watermark or native harness
+is used.
+
+Ownership controls fail the actual ProcessTable constructor after Store/Core
+acquisition, abort a held writer with a pending fake injection, and reject
+Sessions.close. Exercise real guarded removal and restoration while close is
+rejected, then repair through the same retryable owner. Assert the Store close
+returned, held injection was drained by normal close, root removal and guard
+restoration, and that no continuation was admitted after cancellation.
+
 The 200-input Claude regression composes the production adapter bridge and
 deadline with the retained Store/Sessions fixture and FakeClock. It asserts
 200 durable uncertain outcomes, one aggregated notification naming the oldest

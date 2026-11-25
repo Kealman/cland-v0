@@ -72,6 +72,9 @@ create table if not exists tracker_written_verdicts (
   primary key (item_id, comment_key)
 );
 create index if not exists tracker_verification_coverage on tracker_written_verdicts(item_id, role, verdict);
+create index if not exists tracker_verification_recipient on tracker_written_verdicts(item_id, session_id, role, verdict);
+create index if not exists tracker_verification_recipient_time on tracker_written_verdicts(item_id, session_id, role, verdict, at, commit_sha);
+create index if not exists tracker_verification_recipient_head on tracker_written_verdicts(item_id, session_id, role, verdict, commit_sha, at);
 create index if not exists tracker_verdict_run on tracker_verdicts(run);
 create index if not exists tracker_written_verdict_run on tracker_written_verdicts(run);
 -- Last accepted plans survive an invalid hand save and a hub restart. Valid files replace them.
@@ -591,6 +594,24 @@ export class TrackerIndex {
     return (this.#db.prepare(`select rowid as cursor, commit_sha, at from tracker_written_verdicts
       where item_id = ? and role = ? and verdict = ? and rowid > ? order by rowid limit ?`)
       .all(this.#key(item), kind === 'review' ? 'reviewer' : 'qa', kind, after, VERIFICATION_PAGE_SIZE) as Row[])
+      .map(row => ({ order: row.cursor as number, head: row.commit_sha as string | null, at: row.at as string }));
+  }
+
+  hasVerificationReceipt(item: string, kind: 'review' | 'qa', identity: string, after: string, head?: string): boolean {
+    const recipient = [this.#key(item), identity, kind === 'review' ? 'reviewer' : 'qa', kind];
+    return head
+      ? this.#db.prepare(`select 1 from tracker_written_verdicts indexed by tracker_verification_recipient_head
+        where item_id = ? and session_id = ? and role = ? and verdict = ? and commit_sha = ? and at > ? limit 1`)
+        .get(...recipient, head, after) !== undefined
+      : this.#db.prepare(`select 1 from tracker_written_verdicts indexed by tracker_verification_recipient_time
+        where item_id = ? and session_id = ? and role = ? and verdict = ? and at > ? limit 1`)
+        .get(...recipient, after) !== undefined;
+  }
+
+  verificationReceipts(item: string, kind: 'review' | 'qa', identity: string, after: number): import('../hub/verifier-request.ts').VerificationFact[] {
+    return (this.#db.prepare(`select rowid as cursor, commit_sha, at from tracker_written_verdicts indexed by tracker_verification_recipient
+      where item_id = ? and session_id = ? and role = ? and verdict = ? and rowid > ? order by rowid limit ?`)
+      .all(this.#key(item), identity, kind === 'review' ? 'reviewer' : 'qa', kind, after, VERIFICATION_PAGE_SIZE) as Row[])
       .map(row => ({ order: row.cursor as number, head: row.commit_sha as string | null, at: row.at as string }));
   }
 

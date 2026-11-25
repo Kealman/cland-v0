@@ -83,6 +83,8 @@ export type TopicItems = {
   /** Durable verifier identity/order, never inferred from file-only verdict headers. */
   lastVerifier?: (item: string, role: 'reviewer' | 'qa') => { sessionId: string; at: string; commit?: string } | null;
   verificationFacts?: (item: string, kind: 'review' | 'qa', after: number) => import('./verifier-request.ts').VerificationFact[];
+  hasVerificationReceipt?: (item: string, kind: 'review' | 'qa', identity: string, after: string, head?: string) => boolean;
+  verificationReceipts?: (item: string, kind: 'review' | 'qa', identity: string, after: number) => import('./verifier-request.ts').VerificationFact[];
   verificationContains?: (item: string, head: string, commit: string) => boolean | undefined;
   provisionalSession: (name: string) => boolean;
   /** The item's normalized id (`T-12`), with the topic its file names (or null); throws why it cannot be bound. */
@@ -105,6 +107,8 @@ export function trackerItems(tracker: Tracker): TopicItems {
     lead: item => tracker.itemLead(item),
     lastVerifier: (item, role) => tracker.lastVerifier(item, role),
     verificationFacts: (item, kind, after) => tracker.verificationFacts(item, kind, after),
+    hasVerificationReceipt: (item, kind, identity, after, head) => tracker.hasVerificationReceipt(item, kind, identity, after, head),
+    verificationReceipts: (item, kind, identity, after) => tracker.verificationReceipts(item, kind, identity, after),
     verificationContains: (item, head, commit) => tracker.verificationContains(item, head, commit),
     provisionalSession: name => tracker.hasProvisionalSession(name),
     check: (item) => {

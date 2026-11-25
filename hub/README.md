@@ -139,7 +139,7 @@ captured requester identities until a positive durable publication receipt.
 - [Connection events filter](../docs/hub/connection-events-filter.md)
 - [Negotiated connection snapshot](../docs/hub/negotiated-connection-snapshot.md)
 - [Human last looks and read marks](../docs/hub/human-last-looks-and-read-marks.md)
-- [Identity and delivery](../docs/hub/identity-and-delivery.md)
+- [Identity and delivery](../docs/hub/identity-and-delivery.md): exact recipient replies and matching accepted verdicts settle attempted deliveries and their held progress digests.
 - Claude mod turn-receipt timeouts retain `uncertain` deliveries for explicit retry, with batched session notifications; restart never automatically replays these unknown submissions.
 - [Droplet delivery](../docs/hub/running.md): size-scaled, bounded upload retries, per-attempt run-log receipts, terminal no-lease recovery and lost-machine collection-log reconstruction under the local run's droplet lifetime; incomplete package closure keeps final reporting fenced until confirmed machine deletion.
 - [Regional capacity](../docs/hub/running.md#controls-and-the-prepared-snapshot): the exact create-time size-unavailable 422 tries the next eligible configured region, recording refusals in the run log; other create errors retain their handling.

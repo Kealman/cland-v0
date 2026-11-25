@@ -440,6 +440,7 @@ export class HubCore {
 
   /** Told when a session's spoke accepted a message: the adapters inject it into the harness. */
   #onInjected: ((sessionId: string) => void) | null = null;
+  readonly #answerRetries = new Map<string, { item: string; retry: () => void }>();
   #onDelivered: ((messageId: string, session: string, sessionId: string) => void) | null = null;
   readonly #roles: RolesSource | null;
   /** Ordered admissions for every named role, including roles whose fresh definition may become exclusive. */
@@ -613,6 +614,7 @@ export class HubCore {
     this.#closed = true;
     for (const immediate of this.#verificationChecks.values()) clearImmediate(immediate);
     this.#verificationChecks.clear();
+    this.#answerRetries.clear();
     this.#clients.clear();
     this.#modelRing.close();
     this.#rulebookUiUnsubscribe?.();
@@ -1015,6 +1017,12 @@ export class HubCore {
   }
 
   publishTask(change: ItemChange): void {
+    // Ancestry settlement is a tracker change: resume held checks outside this publication.
+    for (const [key, pending] of this.#answerRetries) if (this.#sameItem(pending.item, change.id) && !this.#verificationChecks.has(key)) {
+      this.#answerRetries.delete(key);
+      const immediate = setImmediate(() => { this.#verificationChecks.delete(key); if (!this.#closed) pending.retry(); });
+      immediate.unref(); this.#verificationChecks.set(key, immediate);
+    }
     const done = this.#items?.doneItemCount?.();
     const inventory = done === undefined ? {} : {done_items:done};
     if (change.item) this.#store.heartbeatItemSince(change.item.id, change.item.status ?? change.item.state, Date.parse(change.item.updated), this.#now().getTime());
@@ -2063,6 +2071,18 @@ export class HubCore {
   }
 
   clearPendingVerification(name: string, item: string, verdict?: { verdict: string; commit?: string }): void {
+    if (verdict && (verdict.verdict === 'review' || verdict.verdict === 'qa')) {
+      const identity = this.#store.sessionIdOf(name);
+      let after = 0;
+      while (identity) {
+        const receipts = this.#store.unconfirmedVerificationRequests(item, verdict.verdict, name, identity, after);
+        if (!receipts.length) break;
+        for (const receipt of receipts) {
+          after = receipt.seq;
+          if (this.#verificationCovers(item, receipt.head ?? undefined, verdict.commit)) this.#confirmAnsweredDelivery(receipt.messageId, name);
+        }
+      }
+    }
     const id = this.sessionIdentity(`name:${name}`), key = `pending-verification:${id}`;
     const stored = this.#store.meta(key);
     if (!stored || !this.#sameItem((JSON.parse(stored) as PendingVerification).item, item)) return;
@@ -2072,6 +2092,51 @@ export class HubCore {
     this.#store.clearMeta(`verification-receipt:${id}`);
     this.#schedulePresence();
     this.#drainVerifierRequests();
+  }
+
+  /** A persisted answer is a positive receipt for this recipient, including its held digest. */
+  #confirmAnsweredDelivery(messageId: string, name: string): void {
+    const identity = this.#store.sessionIdOf(name);
+    if (!identity || this.#store.deliverySessionId(messageId, name) !== identity) return;
+    const delivery = this.#store.deliveriesOf(messageId).find(row => row.session === name);
+    if (!delivery?.injectionStarted) return;
+    this.markInjected(messageId, name, identity);
+  }
+
+  /** True means settled or held for a bounded receipt page/unknown ancestry, never safe to replay yet. */
+  reconcileAnsweredDelivery(messageId: string, name: string, identity: string, retry: () => void): boolean {
+    if (this.#closed || this.#store.sessionIdOf(name) !== identity) return false;
+    const receipt = this.#store.deliveryAnswerReceipt(messageId, name, identity);
+    if (!receipt) return false;
+    const key = `delivery-answer:${identity}:${messageId}`;
+    const confirm = () => { this.#answerRetries.delete(key); this.#confirmAnsweredDelivery(messageId, name); return true; };
+    if (receipt.replied) return confirm();
+    const accepted = receipt.verification;
+    if (!accepted) return false;
+    if (this.#items?.hasVerificationReceipt?.(accepted.item, accepted.kind, identity, accepted.at, accepted.head)) return confirm();
+    const after = Number(this.#store.meta(key) ?? 0);
+    const facts = this.#items?.verificationReceipts?.(accepted.item, accepted.kind, identity, after) ?? [];
+    let cursor = after, unknown = false;
+    for (const fact of facts) {
+      const covers = fact.at <= accepted.at ? false : !accepted.head ? true : !fact.head ? false
+        : fact.head === accepted.head ? true : this.#items?.verificationContains?.(accepted.item, accepted.head, fact.head);
+      if (covers === true) return confirm();
+      unknown ||= covers === undefined;
+      // Retain the first unknown candidate until the ancestry owner supplies its fact.
+      if (!unknown) cursor = fact.order;
+    }
+    this.#store.setMeta(key, String(cursor));
+    if (unknown) { this.#answerRetries.set(key, { item: accepted.item, retry }); return true; }
+    this.#answerRetries.delete(key);
+    if (facts.length < VERIFICATION_PAGE_SIZE) return false;
+    if (!this.#verificationChecks.has(key)) {
+      const immediate = setImmediate(() => {
+        this.#verificationChecks.delete(key);
+        if (!this.#closed) retry();
+      });
+      immediate.unref(); this.#verificationChecks.set(key, immediate);
+    }
+    return true;
   }
 
   /** Delivery acceptance captures only the delivered first line, never the message history. */
@@ -3688,6 +3753,7 @@ export class HubCore {
         this.asks.recordQuestion(message);
         this.asks.recordAnswer(message);
       });
+      if (replyTo) this.#confirmAnsweredDelivery(replyTo, from);
       this.#store.touchTopic(topic.id, message.ts);
       for (const a of message.artifacts ?? []) this.artifactChanged(this.#store.artifact(a.id)!);
     this.#emitMessage(message);

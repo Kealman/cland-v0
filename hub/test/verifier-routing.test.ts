@@ -383,7 +383,7 @@ for (const verification of [false, true]) {
     }
     assert.deepEqual((await history()).find(m => m.text === text)?.to, ['rev-d'], 'the eligibility change drains without another idle signal');
     await eventually('next review injected', async () => (await history()).find(m => m.text === text)?.stage === 'injected' || undefined);
-    assert.equal((await history()).find(m => m.id === inputId)?.stage, 'delivered');
+    assert.equal((await history()).find(m => m.id === inputId)?.stage, verification ? 'injected' : 'delivered');
     assert.equal(fake.injections.filter(i => i.message.id === inputId).length, 1, 'uncertain input is never replayed automatically');
   });
 }

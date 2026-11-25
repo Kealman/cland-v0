@@ -35,6 +35,7 @@
 //   Failure modes for the hub's robustness tests: FAKE_CODEX_FAIL_FIRST_TURN=1 refuses a thread's first turn once the
 //   spoke is in the hub (its `who` answers: a launch that fails after the session said hello); a message whose text contains "lose the answer" runs as a turn but its
 //   `turn/start` (or `turn/steer`) result is never sent, the first time only (an ambiguous inject); one containing
+//   "lose the answer without replying" also omits the recipient pong, retaining native uncertainty without a positive reply;
 //   "garble the answer" starts its turn and answers with a frame that is not JSON, and one containing "drop the
 //   connection" starts its turn and drops the client's connection instead of answering (the first time only); SIGUSR2 drops every
 //   client connection and refuses new ones for FAKE_CODEX_REFUSE_MS (default 1500; a lost connection while the
@@ -427,7 +428,7 @@ async function appServer(args: string[]): Promise<number> {
       }
       const rename = /^rename to ([a-z0-9-]+)$/.exec(body);
       if (rename) await callTool('rename', { name: rename[1] });
-      await callTool('send', { text: `pong: ${body}`, ...where });
+      if (!body.includes('lose the answer without replying')) await callTool('send', { text: `pong: ${body}`, ...where });
     }
     if (!repeatUsage && !limitsOnly) t.tokens += 12;
     const usage = { totalTokens: 12, inputTokens: 10, cachedInputTokens: 6, outputTokens: 2, reasoningOutputTokens: 1 };

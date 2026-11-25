@@ -12,8 +12,139 @@ import { scriptedCodex } from './fakes/scripted-codex.ts';
 import type { HarnessProcessView, Message } from '../src/protocol.ts';
 import { deferred } from './fakes/scripted-codex.ts';
 import { RpcNoAnswer } from '../src/adapters/codex/app-server.ts';
+import { deliveryCase } from './delivery-case.ts';
+import { fakeHarness, type FakeHarness } from './fakes/harness.ts';
+import { DatabaseSync } from 'node:sqlite';
 
 const capacityError = 'Selected model is at capacity. Please try a different model.';
+
+for (const receipt of ['reply', 'verdict'] as const) test(`restored Codex delivery uses persisted ${receipt} without another answer or old progress replay`, async t => {
+  const scope = deliveryCase(t);
+  await scope.run(async step => {
+    const root = await step(async () => { const root = await tempProject(scope.fixtures); scope.adoptRoot(root); return root; });
+    const clock = new FakeClock(), logs: Array<Record<string, unknown>> = [];
+    const first = await step(() => projectHub(scope.resources, root, {}, { clock, log: e => logs.push(e) }));
+    const ui = await step(() => connectUi(scope.resources, first.discovery));
+    await step(() => ui.request({ type: 'subscribe' }));
+    const coord = await step(() => inProcessSpoke(scope.resources, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' }));
+    const launch = await step(() => ui.request({ type: 'session.launch', harness: 'codex', name: 'rev', role: 'reviewer' }));
+    assert.equal(launch.ok, true, launch.error);
+    const process = (launch.value as { process: HarnessProcessView }).process;
+    const peer = await step(() => inProcessSpoke(scope.resources, { discover: true, cwd: root, name: 'rev', assignRole: false, sessionId: process.sessionId }));
+    const clause = await step(() => peer.waitForEvent(e => e.params.meta?.kind === 'role'));
+    await step(() => eventually('role receipt', () => logs.some(e => e.event === 'injected' && e.id === clause.params.meta?.msg_id) || undefined));
+    const { item } = await step(() => coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Restore answered input' }));
+    return { root, clock, first, ui, coord, peer, process, item, logs };
+  }, async ({ root, clock, first, ui, coord, peer, process, item, logs }, step) => {
+    assert.equal((await step(() => coord.call<{ ok: boolean }>('send', { to: ['rev'], text: 'old restored progress', kind: 'progress' }))).ok, true);
+    first.fakes.codex!.idle('rev'); first.fakes.codex!.scriptInject('rev', 'reject');
+    const sent = await step(() => ui.request({ type: 'topic.send', topic: 'general', to: ['rev'], text: `review request ${item.id}` }));
+    assert.equal(sent.ok, true, sent.error);
+    const id = (sent.value as { message: Message }).message.id;
+    await step(() => eventually('original attempted root', () => logs.some(e => e.event === 'inject-unconfirmed' && e.id === id) || undefined));
+    assert.ok(first.fakes.codex!.injections.find(i => i.message.id === id)?.message.digest?.some(n => n.text === 'old restored progress'));
+    await step(() => clock.advance(1));
+    const answered = receipt === 'reply'
+      ? await step(() => peer.call<{ ok: boolean }>('send', { topic: 'general', text: 'persisted answer', reply_to: id }))
+      : await step(() => peer.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'persisted-source' }));
+    assert.equal(answered.ok, true);
+    await step(() => ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'injected'));
+    await step(() => peer.close()); await step(() => coord.close()); await step(async () => { ui.close(); }); await step(() => first.dispose());
+    // Plant old-hub delivery state only after the original writers have closed.
+    let db: DatabaseSync | undefined;
+    scope.requireClose(async () => { if (db?.isOpen) db.close(); });
+    db = new DatabaseSync(join(root, '.cland/hub.db'));
+    try { db.prepare("update deliveries set state = 'delivered' where message_id = ? or digest_id = ?").run(id, id); }
+    finally { db.close(); }
+    let recovered!: FakeHarness;
+    const second = await step(() => projectHub(scope.resources, root, {}, { clock, adapters: [(host, clock) => {
+      recovered = fakeHarness('codex', { host, clock }); recovered.scriptResume('rev', 'found'); return recovered;
+    }] }));
+    const current = await step(() => connectUi(scope.resources, second.discovery));
+    await step(() => current.request({ type: 'subscribe' }));
+    await step(() => inProcessSpoke(scope.resources, { discover: true, cwd: root, name: 'rev', assignRole: false, sessionId: process.sessionId }));
+    assert.equal(recovered.resumes.length, 1, JSON.stringify((await step(() => current.request({ type: 'session.list' }))).value));
+    recovered.busy('rev'); recovered.idle('rev');
+    await step(() => current.request({ type: 'session.list' }));
+    assert.equal(recovered.injections.filter(i => i.message.id === id).length, 0, 'persisted answer prevents the first recovery attempt');
+    const history = async () => (await current.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<Message & { stage: string }> };
+    await step(() => eventually('restored root settled', async () => (await history()).messages.find(m => m.id === id)?.stage === 'injected' || undefined));
+    assert.equal(recovered.injections.filter(i => i.message.id === id).length, 0, 'persisted answer prevents the first recovery attempt');
+    const notes = await step(() => current.request({ type: 'topic.history', topic: 'agents' }));
+    assert.equal((notes.value as { messages: Array<Message & { stage: string }> }).messages.find(m => m.text === 'old restored progress')?.stage, 'injected');
+    const fresh = await step(() => current.request({ type: 'topic.send', topic: 'general', to: ['rev'], text: 'fresh after restore' }));
+    assert.equal(fresh.ok, true, fresh.error);
+    const freshId = (fresh.value as { message: Message }).message.id;
+    await step(() => current.waitFor(f => f.type === 'delivery' && f.message === freshId && f.stage === 'injected'));
+    assert.ok(!recovered.injections.find(i => i.message.id === freshId)?.message.digest?.some(n => n.text === 'old restored progress'));
+  });
+});
+
+for (const superseded of [false, true]) test(`a Codex review verdict settles its accepted request after hold${superseded ? ' and another recipient acceptance' : ''}`, async t => {
+  const scope = deliveryCase(t);
+  await scope.run(async step => {
+    const root = await step(async () => {
+      const root = await tempProject(scope.fixtures); scope.adoptRoot(root); return root;
+    });
+    const clock = new FakeClock();
+    const logs: Array<Record<string, unknown>> = [];
+    const { discovery, fakes } = await step(() => projectHub(scope.resources, root, {}, { clock, log: e => logs.push(e) }));
+    const fake = fakes.codex!;
+    const ui = await step(() => connectUi(scope.resources, discovery));
+    await step(() => ui.request({ type: 'subscribe' }));
+    if (superseded) assert.equal((await step(() => ui.request({ type: 'crew.set', key: 'reviewer.size', value: 2 }))).ok, true);
+    const coord = await step(() => inProcessSpoke(scope.resources, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' }));
+    const launched = await step(() => ui.request({ type: 'session.launch', harness: 'codex', name: 'rev', role: 'reviewer' }));
+    assert.equal(launched.ok, true, launched.error);
+    const process = (launched.value as { process: HarnessProcessView }).process;
+    const peer = await step(() => inProcessSpoke(scope.resources, { discover: true, cwd: root, name: 'rev', assignRole: false, sessionId: process.sessionId }));
+    await step(() => peer.waitForEvent(e => e.params.meta?.kind === 'role'));
+    const { item } = await step(() => coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Inspect a change' }));
+    fake.idle('rev');
+    return { root, clock, logs, fake, ui, coord, peer, item };
+  }, async ({ root, clock, logs, fake, ui, coord, peer, item }, step) => {
+    const note = await step(() => coord.call<{ ok: boolean }>('send', { to: ['rev'], text: 'old review progress', kind: 'progress' }));
+    assert.equal(note.ok, true);
+    fake.scriptInject('rev', 'reject');
+    const sent = await step(() => coord.call<{ ok: boolean }>('send', { to: ['reviewer'], text: `review request ${item.id}` }));
+    assert.equal(sent.ok, true);
+    const requestFrame = await step(() => ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `review request ${item.id}`));
+    const id = (requestFrame.message as Message).id;
+    await step(() => eventually('failed native receipt', () => logs.some(e => e.event === 'inject-unconfirmed' && e.id === id) || undefined));
+    assert.equal((await step(() => peer.call<{ ok: boolean }>('task.hold', { id: item.id }))).ok, true);
+    let laterId: string | undefined;
+    if (superseded) {
+      const launched = await step(() => ui.request({ type: 'session.launch', harness: 'codex', name: 'rev-next', role: 'reviewer' }));
+      assert.equal(launched.ok, true, launched.error);
+      const process = (launched.value as { process: HarnessProcessView }).process;
+      assert.equal(process.name, 'rev-next');
+      const next = await step(() => inProcessSpoke(scope.resources, { discover: true, cwd: root, name: 'rev-next', assignRole: false, sessionId: process.sessionId }));
+      const clause = await step(() => next.waitForEvent(e => e.params.meta?.kind === 'role'));
+      await step(() => eventually('later role receipt', () => logs.some(e => e.event === 'injected' && e.id === clause.params.meta?.msg_id) || undefined));
+      fake.idle('rev-next'); fake.scriptInject('rev-next', 'reject');
+      const text = `review request ${item.id}\nNew acceptance`;
+      const later = await step(() => ui.request({ type: 'topic.send', topic: 'general', to: ['rev-next'], text }));
+      assert.equal(later.ok, true, later.error);
+      const frame = await step(() => ui.waitFor(f => f.type === 'message' && (f.message as Message).text === text));
+      laterId = (frame.message as Message).id;
+      await step(() => eventually('later attempt observed', () => fake.injections.find(i => i.message.id === laterId)));
+      assert.equal(fake.injections.find(i => i.message.id === laterId)?.outcome, 'reject');
+      await step(() => eventually('later attempt failed', () => logs.some(e => e.event === 'inject-unconfirmed' && e.id === laterId) || undefined));
+    }
+    assert.equal((await step(() => peer.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'source-review' }))).ok, true);
+    const history = await step(() => ui.request({ type: 'topic.history', topic: 'agents' }));
+    assert.equal((history.value as { messages: Array<Message & { stage: string }> }).messages.find(m => m.id === id)?.stage, 'injected');
+    assert.equal((history.value as { messages: Array<Message & { stage: string }> }).messages.find(m => m.text === 'old review progress')?.stage, 'injected');
+    if (laterId) {
+      const laterHistory = await step(() => ui.request({ type: 'topic.history', topic: 'general' }));
+      assert.equal((laterHistory.value as { messages: Array<Message & { stage: string }> }).messages.find(m => m.id === laterId)?.stage, 'delivered', 'earlier recipient verdict cannot settle another recipient');
+    }
+    await step(() => clock.advance(60_000));
+    fake.busy('rev'); fake.idle('rev');
+    await step(() => ui.request({ type: 'session.list' }));
+    assert.equal(fake.injections.filter(i => i.message.id === id).length, 1);
+  });
+});
 
 test('exhausted capacity retries notify the Coordinator exactly once, including completion before replay admission', async t => {
   const f = await scriptedCodex(t);
@@ -265,13 +396,10 @@ test('uncertain inputs survive idle observations and replay only through explici
     assert.equal(sent.ok, true, sent.error);
     const id = (sent.value as { message: Message }).message.id;
     await eventually('uncertain native attempt completed', async () => (await log()).includes(`"event":"inject-uncertain","id":"${id}"`) || undefined);
-    assert.equal((await peer.call<{ ok: boolean }>('send', { topic: 'general', text: `pong: ${text}`, reply_to: id })).ok, true);
-    await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `pong: ${text}`);
     for (let i = 0; i < 8; i++) fake.idle('coord');
     await clock.advance(800); // Once, after the uncertain receipt: no clock pumping for I/O.
     await ui.request({ type: 'session.list' });
     assert.equal(fake.injections.filter(input => input.message.id === id).length, 1, 'accepted input is not replayed by idle observations');
-    assert.equal(ui.frames.filter(f => f.type === 'message' && (f.message as Message).text === `pong: ${text}`).length, 1);
     assert.ok(!ui.frames.some(f => f.type === 'delivery' && f.message === id && f.stage === 'injected'));
     const events = (await ui.request({ type: 'events.list' })).value as { rows: Array<{ text: string; session?: string }> };
     const note = events.rows.find(row => row.text.includes(id) && row.text.includes('may or may not have reached'));
@@ -286,7 +414,7 @@ test('uncertain inputs survive idle observations and replay only through explici
     await ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'injected');
     assert.equal(fake.injections.filter(input => input.message.id === id).length, 2);
     assert.equal((await peer.call<{ ok: boolean }>('send', { topic: 'general', text: `pong: ${text}`, reply_to: id })).ok, true);
-    await eventually('second answer', () => ui.frames.filter(f => f.type === 'message' && (f.message as Message).text === `pong: ${text}`).length === 2 || undefined);
+    await eventually('answer after explicit retry', () => ui.frames.some(f => f.type === 'message' && (f.message as Message).text === `pong: ${text}`) || undefined);
     const again = await ui.request({ type: 'session.retry', session: 'coord', message: id });
     assert.equal(again.ok, false);
     assert.match(again.error ?? '', /no uncertain delivery/);
