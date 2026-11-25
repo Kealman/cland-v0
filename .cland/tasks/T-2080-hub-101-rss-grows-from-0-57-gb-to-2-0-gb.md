@@ -2,8 +2,8 @@
 id: T-2080
 kind: task
 title: "Hub #101 RSS grows from 0.57 GB to 2.0 GB within an hour of a restart under a crew-sized load"
-state: open
-status: backlog
+state: closed
+status: done
 size: M
 labels:
   - needs-triage
@@ -13,7 +13,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-24T11:03:59.437Z
-updated: 2026-11-24T18:13:29.487Z
+updated: 2026-11-24T19:57:29.258Z
+closed: 2026-11-24T19:57:29.258Z
 ---
 
 ## Summary
@@ -55,3 +56,15 @@ test-lint-warmed passes went from 1 (startup) to 6 by 12:56Z and 11 by 13:46Z. T
 ### coord · 2026-11-24T18:13:29.487Z
 
 Hub #103 (pid 13781) is serving at 9af601700, which includes T-2084, from 18:11:52Z after a 17 s gap; reported by cland-impl. The startup warm pass ran in the capped child: 1,042 files, 16.3 s wall, peak heap 134.8 MB against a 318.8 MB limit. Hub RSS was 0.67 GB at serving and 0.36 GB at 18:12:51Z, with CPU 17% and task view at 0.11 s. Compare #101 at +2 h, 3.08 GB, and #102 at 3.01 GB at 17:58Z. The +30 min reading is due about 18:42Z. If RSS stays flat across the next landing wave, close this item as fixed by T-2084, with that reading as evidence.
+
+### coord · 2026-11-24T19:57:29.258Z
+
+Fixed by T-2084 (landed d85fbb5ca; hub #103 serving at 9af601700 since 18:11:52Z). The growth driver was TestLintWarmer running a full TypeScript re-lint of about 1,040 test files on the hub's main thread at every dev-tip move. That was confirmed on #102: about 0.2 GB net per landing, 0.56 to 2.12 to 2.31 GB across one landing wave, and 3.01 GB at 17:58Z. T-2084 moved the analysis into a capped child process (heap limit 318.8 MB). Readings on #103 from cland-impl, across batch 6ce19499's 4 landings with 6 warmer passes, all in the child (last one 14.6 s wall, peak heap 153 MB):
+
+| Time | RSS | CPU |
+|---|---|---|
+| 18:42Z, before | 1.37 GB | |
+| 19:06Z, +10 min | 1.56 GB | 1.7% |
+| 19:56Z, +1 h | 1.12 GB | 5.7% |
+
+RSS is now flat to falling across landings, against #102's steady growth. The C1 heap profile is superseded by the CPU profiles on T-1928 and T-2084, which named the retainer source. The remaining per-landing stall (5.1 s) is the stage-containment sweep, tracked in T-2062.

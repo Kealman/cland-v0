@@ -3,7 +3,7 @@ id: T-1928
 kind: task
 title: Verify admission does ~40 s of repeated candidate lint and planning before acknowledging a submission
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1754
 branch: t/T-1928-verify-admission-does-40-s-of-repeated
 created: 2026-11-16T23:36:00.713Z
-updated: 2026-11-24T18:16:59.397Z
+updated: 2026-11-24T19:46:32.943Z
 ---
 
 ## Summary
@@ -26,8 +26,8 @@ Before a `cland verify` submission is durably admitted and acknowledged, the hub
 - [x] C1. A profile of one local submission names the time of each substep before durable admission, from a scratch project under representative load.
   - done: impl-1928 · 2026-11-24T18:03:25.035Z
   - verified: rev-35 [reviewer] · run rev-35-1928-evidence-1 · 2026-11-24T18:16:59.397Z · commit 0a0296c816c18d24dc1578e512e1ef76436f0ae6
-- [x] C2. Repeated candidate lint and planning work is cached or moved after the acknowledgement, while every candidate and authority check still gates admission. The time to acknowledge drops measurably against C1's baseline, and the item states the before and after figures (test plus measurement).
-  - done: impl-1928 · 2026-11-24T18:03:25.248Z
+- [ ] C2. Repeated candidate lint and planning work is cached or moved after the acknowledgement, while every candidate and authority check still gates admission. The time to acknowledge drops measurably against C1's baseline, and the item states the before and after figures (test plus measurement).
+  - failed: rev-35 [reviewer] · 2026-11-24T19:46:32.943Z · note Configured ae587f23/A-23086 exits1: T3 duration refusal6.483s>5s, despite passing body; Web unexecuted. Targeted confirmations cannot replace configured green.
 
 ## Comments
 
@@ -114,3 +114,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-23078: partial evidence settlement, C1 only. A-23077 executing-tree recipes/instrumentation/worker/log hashes and native0/null closes independently validate; identical candidate HEAD/tree/manifest hashes. Ten substeps recorded per admission. Harness-local callback cold15308.16→10746.40ms and repeated14154.51→5300.78ms; scoped observations only. Coordinator269ddb84 accepts sequential setup, counted no-op auth, Store(':memory:') excluding disk persistence/fsync, no CLI/socket/real permission classification. Addendum resolves prior low overclaim; old A-23075 epochs remain unknown. C2 configured evidence unexecuted: hub refused daily$14cap (14b6777d), no admitted run. Await human cap decision/authorized change; no retry/fallback. Source unchanged, hold released; task not finally ready.
 
 Criteria: C1 verified.
+
+### rev-35 · 2026-11-24T19:46:32.943Z
+
+verdict: review
+result: not clear
+by: rev-35 [reviewer]
+run: rev-35-1928-evidence-2
+commit: 0a0296c816c18d24dc1578e512e1ef76436f0ae6
+scope: evidence
+findings: [{"severity":"medium","text":"Body passes at6.48262875s, but producing duration checker refuses5s bound and T3 exits1; configured result cannot be clear. File unchanged; no new cache defect or proven environment cause asserted.","file":"hub/test/fixture-socket-lifecycle.test.ts","line":24}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-23088: failed same-head receipt retained. T0/T1/T2 exit0; T3 complete exit1; printed duration refusal at51617, passing case finish43033. Structured cause empty/unknown. All5 new controls base+5 distinct loaded pass, retained as partial proof; no test-body fail record. C1 profile verification A-23078 remains current. Actual positive files249T1/448T2/229T3; inventory254T3 is not229 observed receipts; Web/T4 unexecuted. Coordinator698e8d23 likely-environment attribution remains hypothesis; authorized isolated A-23087 observations do not supersede the red. Hold released; await actual Coordinator resubmission authorization, no new reviewer run/probe/source change.
+
+Criteria: C2 failed (Configured ae587f23/A-23086 exits1: T3 duration refusal6.483s>5s, despite passing body; Web unexecuted. Targeted confirmations cannot replace configured green.).
