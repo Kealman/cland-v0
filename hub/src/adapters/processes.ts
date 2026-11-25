@@ -424,11 +424,11 @@ export class ProcessTable {
 
   /** Startup reconciliation reads only current rows, never decoded retained history. */
   *runningRows(): Generator<HarnessProcess> {
-    for (const row of this.#db.prepare("select * from harness_processes where status = 'running' and archived_at is null").iterate()) yield toProcess(row as Row);
+    for (const row of this.#db.prepare("select * from harness_processes where status = 'running' and archived_at is null order by started_at, name").iterate()) yield toProcess(row as Row);
   }
 
   running(): HarnessProcess[] {
-    return this.all().filter((p) => p.status === 'running');
+    return [...this.runningRows()];
   }
 
   /** One transaction for the whole sweep; observers see only its final row views. */

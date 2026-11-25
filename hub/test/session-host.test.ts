@@ -8,6 +8,89 @@ import { recordingHost } from './recording-host.ts';
 import { fakeHarness } from './fakes/harness.ts';
 import { fixtureWork } from './fixture-work.ts';
 import { tempProject } from './harness.ts';
+import { FakeClock } from './fake-clock.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { fakeNativeGuard } from './fake-native-guard.ts';
+import { caseDeadlines, drainFixtureWork } from './case-deadlines.ts';
+import { afterCleanup, beforeDirectories, fenceFixtureCleanup, guardDirectoryRemoval } from './process-cleanup.ts';
+import { testSetupWaitMs } from './until.ts';
+
+for (const operation of ['running', 'recovery'] as const) test(`${operation} decodes only current running processes with 10000 retained rows`, async t => {
+  fenceFixtureCleanup(t);
+  const scope = caseDeadlines(t, { timeoutMs: testSetupWaitMs(), ownership: { beforeDirectories, guardDirectoryRemoval } });
+  let core: HubCore | undefined;
+  let table: ProcessTable | undefined;
+  let fake: ReturnType<typeof fakeHarness> | undefined;
+  let sessions: Sessions | undefined;
+  fenceFixtureCleanup(scope.fixtures);
+  beforeDirectories(scope.fixtures, async () => { await sessions?.close(); fake?.close(); table?.close(); core?.close(); core?.store.close(); });
+  const parse = JSON.parse;
+  let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
+  let restoreNative: (() => void) | undefined;
+  afterCleanup(t, async () => {
+    await drainFixtureWork();
+    try { guard?.verify(); }
+    finally { JSON.parse = parse; restoreNative?.(); }
+  });
+  return scope.run(async (admit, signal) => {
+    const step = <T>(name: string, run: () => Promise<T>) => scope.wait(name, () => admit(async () => {
+      signal.throwIfAborted();
+      const value = await run();
+      signal.throwIfAborted();
+      return value;
+    }));
+    await step('native guard setup', async () => { guard = await fakeNativeGuard(restore => { restoreNative = restore; }); });
+    const root = await scope.wait('process history root setup', () => admit(async () => {
+      const root = await tempProject(scope.fixtures);
+      scope.adoptRoot(root);
+      return root;
+    }));
+    signal.throwIfAborted();
+    const clock = new FakeClock();
+    const fixture = await step('process history setup', async () => {
+      core = new HubCore({ clock });
+      table = new ProcessTable(':memory:', clock);
+      fake = fakeHarness('codex', { clock });
+      return { core, table, fake };
+    });
+    const { core: hub, table: processes, fake: adapter } = fixture;
+    const marker = { retainedWorkCount: 'T-1959' };
+    const historicalMarker = { retainedWorkCount: 'history' };
+    const rows = [];
+    for (const [name, startedAt] of [['z', '2026-01-02'], ['b', '2026-01-01'], ['a', '2026-01-01']]) {
+      const row = { ...await step('fake process setup', () => adapter.spawn({ name: name!, cwd: root, role: null, model: null })), startedAt: startedAt!, accountEnv: marker };
+      processes.put(row); rows.push(row);
+    }
+    for (let i = 0; i < 10000; i++) processes.put({ ...rows[0]!, name: `retained-${i}`, sessionId: `retained-${i}`, harnessSessionId: `conversation-${i}`, accountEnv: historicalMarker, status: 'exited', stoppedAt: clock.now().toISOString(), archivedAt: i % 2 ? clock.now().toISOString() : null });
+    const expected = ['a', 'b', 'z'].map(name => processes.get(name)!);
+    let decoded = 0;
+    let historicalDecoded = 0;
+    JSON.parse = (text: string, ...args: []) => {
+      if (text === JSON.stringify(marker)) decoded++;
+      if (text === JSON.stringify(historicalMarker)) historicalDecoded++;
+      return parse(text, ...args);
+    };
+    assert.deepEqual(processes.all().filter(row => row.status === 'running'), expected);
+    assert.equal(decoded, 3);
+    assert.equal(historicalDecoded, 10000, 'positive control observes every retained row decode');
+    decoded = 0;
+    historicalDecoded = 0;
+    if (operation === 'running') {
+      assert.deepEqual(processes.running(), expected);
+      assert.equal(decoded, 3);
+    } else {
+      await step('session recovery setup', async () => {
+        sessions = new Sessions({ root, core: hub, table: processes, env: fixtureEnvironment(root, process.env), hosts: [recordingHost(root)], recoveryClock: clock });
+        sessions.register(adapter);
+      });
+      await step('session recovery completion', () => sessions!.resumeAll());
+      assert.deepEqual(adapter.resumes.map(call => call.process.name), ['a', 'b', 'z']);
+      assert.ok(decoded >= 3 && decoded < 100, `only running rows decoded during startup and recovery: ${decoded}`);
+      assert.deepEqual(processes.running(), expected);
+    }
+    assert.equal(historicalDecoded, 0, 'no retained or archived process was decoded');
+  });
+});
 
 test('AdapterHost resolves rows and launches to local and launch/relaunch use its directory refusals', async t => {
   const root = await tempProject(t);
