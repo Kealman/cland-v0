@@ -771,7 +771,7 @@ export type RefusalCode = 'version' | 'unauthorized' | 'name-in-use' | 'bad-name
 
 // hub/src/protocol.ts
 export type HubFrame =
-  | { type: 'welcome'; name: string; presence: Presence[]; role?: string; features?: ClientFeature[]; buildStamp?: string | null }
+  | { type: 'welcome'; name: string; presence: Presence[]; role?: string; features?: ClientFeature[]; enforcedFeatures?: HubFeature[]; buildStamp?: string | null }
   | SnapshotFrame
   | SnapshotEnd
   | SnapshotRefused
@@ -818,6 +818,7 @@ export type SendOutcome = { to: string; outcome: Outcome; reason?: string; refus
 // hub/src/protocol.ts
 /** Negotiated independently; unknown features are ignored. */
 export type ClientFeature = 'snapshot' | 'numbered-deltas' | 'slim-frames';
+export type HubFeature = 'paidTermsAdmission';
 
 /** Null removes the layer of a deleted item. Other entries replace just that layer. */
 export type SlimTaskFrame = Omit<Extract<HubEvent, { type: 'task' }>, 'layers'> & { layers: Record<string, Layer | null> };

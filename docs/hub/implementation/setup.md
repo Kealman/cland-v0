@@ -22,8 +22,18 @@ Configured readiness also requires the shared doctor image-key receipt. Setup
 uses the terminal owner's hub-assigned name and named login.list readback;
 before admission retain add guidance. Older unfiltered replies stay compatible.
 Named metadata omits binding inventory; absence is unknown, not an empty list.
-After paid yes, re-read displayed terms and leave changes open. T-1858 tracks
-shared admission pinning beyond the one-human interactive setup trust model.
+Before paid image or login offers, require `paidTermsAdmission` in the running
+hub's `welcome.enforcedFeatures`. Missing advertisement (including older hubs),
+an empty list or an unreadable welcome leaves setup open with hub restart guidance.
+Fresh-pool confirmation and configuration also require the advertisement before
+activating the default always-on pool. Every host configuration, pool placement,
+paid reload, image preparation and paid terminal login checks the effect's own
+authenticated welcome before sending its request, so a restart after consent
+cannot substitute an older hub. `SetupHub.reload(true)` selects paid admission;
+ordinary remote reloads retain their existing compatibility.
+After paid yes, re-read displayed terms and leave changes open; the hub validates
+the expected terms again at admission. The shared `hub-features` module owns the
+feature list, advertisement parser and refusal class for both socket transports.
 
 Setup's sign-in step runs between hub and remotes. Its offer and switch
 confirmation default No; `--yes` skips single mode, nonterminal without it skips

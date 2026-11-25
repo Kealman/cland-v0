@@ -56,3 +56,17 @@ Run this file alone under the assigned preservation slot. Capture sorted-name
 inventories of /private/tmp hc-*, ct-* and cland-h-* before and after; hashes and
 counts must match. tempProject registers fixture cleanup immediately, projectHub
 joins writers before root removal. No duration allowance is needed at T2's 2 s.
+
+The legacy-welcome regression uses a disposable socket stub with the previous
+welcome shape and fake paid effects. It proves both offers remain unavailable,
+names paid-terms admission and restart guidance, and records zero effects and
+zero consent prompts. Supported-hub cases retain accepted image and login coverage.
+
+Fresh-pool refusal covers zero configuration, placement and reload mutations
+before paid confirmation. Connection controls cover preparePool, configure,
+placeRole, paid reload and terminalLogin against supported and previous welcomes:
+supported reaches the stub's explicit request refusal; unsupported sends no request.
+Restart controls change the welcome after pool/image/login consent and preserve
+zero effect requests. Each added socket case enters residueControl before root
+acquisition, bounds setup separately, owns disposal before listen and observes
+closed sockets, zero peers and zero writers before root removal and guard restoration.

@@ -8,7 +8,7 @@ import { abortable, within } from '../../src/executor/droplet/deadline.ts';
 import { realClock, type Clock } from '../../src/hub/clock.ts';
 import { testSetupWaitMs } from '../until.ts';
 
-type Options = { clock?: Clock; setupTimeoutMs?: number; signal?: AbortSignal; publishListening?: boolean; legacyStatus?: boolean; approveError?: string; hubStatus?: () => unknown; remoteStatus?: () => unknown; hostStatus?: () => unknown; logins?: () => unknown; users?: () => unknown; holdUsers?: () => void };
+type Options = { enforcedFeatures?: () => string[]; clock?: Clock; setupTimeoutMs?: number; signal?: AbortSignal; publishListening?: boolean; legacyStatus?: boolean; approveError?: string; hubStatus?: () => unknown; remoteStatus?: () => unknown; hostStatus?: () => unknown; logins?: () => unknown; users?: () => unknown; holdUsers?: () => void };
 
 // Literal previous wire shape: no stopCause field, including for a stopped remote.
 const LEGACY_STATUS = { remotes: [{
@@ -52,7 +52,7 @@ export function legacyRemoteHubFixture(t: TestContext, root: string, options: Op
         pending = pending.slice(end + 1);
         if (frame.type === 'hello') peer.write(JSON.stringify(options.helloRefusal && options.refusal
           ? { type: 'error', code: options.refusal.code, message: options.refusal.error }
-          : { type: 'welcome', name: 'cli', presence: [] }) + '\n');
+          : { type: 'welcome', name: 'cli', presence: [], ...(options.enforcedFeatures ? { enforcedFeatures: options.enforcedFeatures() } : {}) }) + '\n');
         else {
           requests.push(frame.type);
           if (options.refusal) {

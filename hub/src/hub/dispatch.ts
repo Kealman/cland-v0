@@ -46,7 +46,7 @@ import { reportDevT3Search } from './dev-t3-report.ts';
 import { devT3Result } from './dev-t3-result.ts';
 import { readDurationAllowanceWarnings } from '../suite-durations.ts';
 import { reportSoakQuarantine } from './soak-quarantine.ts';
-import { suiteStartIssues } from '../protocol.ts';
+import { suiteStartIssues, HUB_ENFORCED_FEATURES } from '../protocol.ts';
 import { taskWorktreePath } from '../territory.ts';
 import { gitIn } from '../tracker/verdict-git.ts';
 import { interruptionLines } from '../suite-progress.ts';
@@ -1849,7 +1849,7 @@ export class Dispatcher {
           credentialPending = false;
           clearTimeout(helloTimer);
           name = result.connection.name;
-          peer.send({ type: 'welcome', name, presence: core.presence(), ...(result.connection.role !== null ? { role: result.connection.role } : {}) });
+          peer.send({ type: 'welcome', name, presence: core.presence(), enforcedFeatures: HUB_ENFORCED_FEATURES, ...(result.connection.role !== null ? { role: result.connection.role } : {}) });
           core.flushQueued(name);
         };
         const resumed = this.#guard.resumer('hello', result.name);
@@ -1881,7 +1881,7 @@ export class Dispatcher {
         log({ event: 'client', edge: transport.edge, client: frame.client });
         features = (['snapshot', 'numbered-deltas', 'slim-frames'] as const).filter(feature => frame.features?.includes(feature));
         if (frame.resume && !features.includes('numbered-deltas')) return refuse('bad-hello', 'resume requires numbered-deltas');
-        peer.send({ type: 'welcome', name: humanUser(frame)?.name ?? client, presence: core.presence(), ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
+        peer.send({ type: 'welcome', name: humanUser(frame)?.name ?? client, presence: core.presence(), enforcedFeatures: HUB_ENFORCED_FEATURES, ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
         if (!hostId && !features.includes('snapshot') && !frame.resume) peer.send({ type: 'remote.state', remotes: core.remoteState() });
         if (!hostId && !features.includes('snapshot') && !frame.resume) peer.send({ type: 'hosts.state', pools: core.hostsState() });
         if (frame.resume) resumeModel(frame.resume);

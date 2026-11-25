@@ -6,6 +6,7 @@ import { PROTOCOL_VERSION, parseFrame } from './protocol-frame.ts';
 import type { Discovery } from './project-discovery.ts';
 import { sessionOf } from './frame-actor.ts';
 import { realClock, type Clock } from './clock.ts';
+import { enforcedFeatures, requireHubFeatures } from './hub-features.ts';
 
 export class HubTimeout extends Error {
   readonly timeoutMs: number;
@@ -30,8 +31,8 @@ const PLUMBING: ReadonlySet<string> = new Set(['session.signal', 'session.bridge
  * One request frame of any type (its `id` is added here) over the socket. In a launched session's shell the frame
  * says whose it is (`as`, from `sessionOf`), unless the caller already named an actor.
  */
-export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret' | 'root'>, frame: { type: string } & Record<string, unknown>, timeoutMs = 3000, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock): Promise<unknown> {
-  return exchange(d, frame, timeoutMs, env, clock);
+export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret' | 'root'>, frame: { type: string } & Record<string, unknown>, timeoutMs = 3000, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, requiredFeatures: readonly string[] = []): Promise<unknown> {
+  return exchange(d, frame, timeoutMs, env, clock, requiredFeatures);
 }
 
 /** An authenticated welcome proves liveness without collecting a full status.
@@ -40,7 +41,13 @@ export async function probeHub(d: Pick<Discovery, 'socket' | 'secret' | 'root'>,
   await exchange(d, null, timeoutMs, {}, realClock);
 }
 
-function exchange(d: Pick<Discovery, 'socket' | 'secret' | 'root'>, frame: ({ type: string } & Record<string, unknown>) | null, timeoutMs: number, env: NodeJS.ProcessEnv, clock: Clock): Promise<unknown> {
+/** Read the hub's enforcement advertisement; old welcomes have no features. */
+export async function hubEnforcedFeatures(d: Pick<Discovery, 'socket' | 'secret' | 'root'>, timeoutMs = 3000): Promise<string[]> {
+  const welcome = await exchange(d, null, timeoutMs, {}, realClock) as Record<string, unknown>;
+  return enforcedFeatures(welcome);
+}
+
+function exchange(d: Pick<Discovery, 'socket' | 'secret' | 'root'>, frame: ({ type: string } & Record<string, unknown>) | null, timeoutMs: number, env: NodeJS.ProcessEnv, clock: Clock, requiredFeatures: readonly string[] = []): Promise<unknown> {
   const session = frame && frame.as === undefined ? (PLUMBING.has(frame.type) ? credentialActor(d, env) : sessionOf(env)) : undefined;
   let request: ({ type: string } & Record<string, unknown>) | null = session && frame ? { ...frame, as: session } : frame;
   const actor = request?.as;
@@ -80,7 +87,9 @@ function exchange(d: Pick<Discovery, 'socket' | 'secret' | 'root'>, frame: ({ ty
         start = nl + 1;
         if (!frame) continue;
         if (frame.type === 'welcome') {
-          if (request === null) { done(null); continue; }
+          try { requireHubFeatures(frame, requiredFeatures); }
+          catch (error) { done(error as Error); continue; }
+          if (request === null) { done(null, frame); continue; }
           socket.write(`${JSON.stringify({ ...request, id })}\n`, error => { if (!error) requestSent = true; });
         }
         else if (frame.type === 'error') done(new HubRefusal(`the hub refused: ${String(frame.message)}`, typeof frame.code === 'string' ? frame.code : undefined));

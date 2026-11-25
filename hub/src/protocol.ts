@@ -1,4 +1,5 @@
 import { parsePoolName } from './host/pool-name.ts';
+import { PAID_TERMS_FEATURES } from '../../shared/hub-features.ts';
 import { isExpectedPaidTerms } from './host/paid-terms-input.ts';
 import { isPairingCode, PAIRING_CODE_FORMAT } from './remote/pairing-code.ts';
 // The hub ↔ spoke protocol. One integer version, bumped on any incompatible change.
@@ -425,7 +426,7 @@ export type SpokeFrame = Hello | SpokeRequest | Ack;
 export type RefusalCode = 'version' | 'unauthorized' | 'name-in-use' | 'bad-name' | 'bad-hello' | 'no-role';
 
 export type HubFrame =
-  | { type: 'welcome'; name: string; presence: Presence[]; role?: string; features?: ClientFeature[]; buildStamp?: string | null }
+  | { type: 'welcome'; name: string; presence: Presence[]; role?: string; features?: ClientFeature[]; enforcedFeatures?: HubFeature[]; buildStamp?: string | null }
   | SnapshotFrame
   | SnapshotEnd
   | SnapshotRefused
@@ -640,6 +641,9 @@ export function isHubFrame(f: Record<string, unknown>): f is HubFrame {
 
 /** Negotiated independently; unknown features are ignored. */
 export type ClientFeature = 'snapshot' | 'numbered-deltas' | 'slim-frames';
+/** Enforcement capabilities, independent of negotiated client framing. */
+export type HubFeature = 'paidTermsAdmission';
+export const HUB_ENFORCED_FEATURES: HubFeature[] = [...PAID_TERMS_FEATURES];
 export const SNAPSHOT_LIMITS = {
   tracker: 64 * 1024, items: MAX_FRAME_BYTES, sessions: MAX_FRAME_BYTES,
   topics: MAX_FRAME_BYTES, inbox: MAX_FRAME_BYTES, events: MAX_FRAME_BYTES,

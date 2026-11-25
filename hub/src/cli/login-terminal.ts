@@ -5,6 +5,7 @@ import type { Discovery } from '../project.ts';
 import type { LoginAddInput } from '../host/login-signin.ts';
 import { terminalEnvironment } from '../host/attach.ts';
 import { sessionOf } from '../../../shared/frame-actor.ts';
+import { paidTermsFeatures, requireHubFeatures } from '../../../shared/hub-features.ts';
 
 /** Keep one authenticated connection through native close and final disk receipt. */
 export async function terminalLogin(d: Discovery, input: LoginAddInput | {name:string;signin:true}, env: NodeJS.ProcessEnv, output: { onAdmitted?: (name: string) => void; stdout?: 'inherit' | 'stderr' } = {}): Promise<number> {
@@ -29,7 +30,10 @@ export async function terminalLogin(d: Discovery, input: LoginAddInput | {name:s
   while((nl=buffer.indexOf('\n'))>=0) {
    const line=buffer.slice(0,nl);buffer=buffer.slice(nl+1);
    let frame;try{frame=JSON.parse(line);}catch{fail(Error('invalid hub login reply'));socket.destroy();return;}
-   if(frame.type==='welcome')welcomeResolve();
+   if(frame.type==='welcome') {
+    try { requireHubFeatures(frame, 'signin' in input ? [] : paidTermsFeatures(input.expectedTerms)); welcomeResolve(); }
+    catch(error) { fail(error as Error); }
+   }
    if(frame.type==='error')fail(Error(String(frame.message)));
    if(frame.type==='result') {const waiter=pending.get(frame.id);if(waiter){pending.delete(frame.id);if(frame.ok)waiter.resolve(frame.value);else waiter.reject(Error(frame.error));}}
   }

@@ -205,10 +205,11 @@ test('hello negotiates model features and legacy clients keep their existing wel
   const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const legacy = await client(t, discovery);
   await legacy.waitFor(frame => frame.type === 'hosts.state');
-  assert.deepEqual(legacy.frames[0], { type: 'welcome', name: 'ui', presence: [] });
+  assert.deepEqual(legacy.frames[0], { type: 'welcome', name: 'ui', presence: [], enforcedFeatures: ['paidTermsAdmission'] });
   assert.deepEqual(legacy.frames.map(frame => frame.type), ['welcome', 'remote.state', 'hosts.state']);
   const ui = await client(t, discovery, ['snapshot', 'numbered-deltas', 'slim-frames', 'unknown', 'snapshot']);
   assert.deepEqual(ui.frames[0]!.features, ['snapshot', 'numbered-deltas', 'slim-frames']);
+  assert.deepEqual(ui.frames[0]!.enforcedFeatures, ['paidTermsAdmission']);
   const end = await ui.waitFor(f => f.type === 'snapshot.end');
   const snapshots = ui.frames.slice(1, -1);
   assert.deepEqual(snapshots.map(f => f.domain), ['tracker', 'items', 'sessions', 'topics', 'inbox', 'events', 'accounts']);

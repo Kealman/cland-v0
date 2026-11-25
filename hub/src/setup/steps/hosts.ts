@@ -8,6 +8,8 @@ import { HARNESS_ORDER } from './harnesses.ts';
 import { Cancelled } from '../prompter.ts';
 import { shellQuote } from '../../accounts/registry.ts';
 import { missingRolePools } from '../../host/missing-pools.ts';
+import { HubFeatureUnavailable, PAID_TERMS_FEATURES } from '../../../../shared/hub-features.ts';
+import type { SetupHub } from '../hub.ts';
 
 // docs/spec/v0.4.md, Prices: recorded 2026-10-31, USD without VAT.
 const DECLARED_DEFAULT = { size: 's-4vcpu-8gb', hourly: '0.0714', date: '2026-10-31' };
@@ -18,6 +20,8 @@ const commands = (pool: Record<string, unknown>, roles: string[]) => [
   ...roles.map(role => `cland role launch ${role} --pool agents`), 'cland hub reload',
 ].join('; ');
 const missingToken = () => [{ name: 'agent hosts', verdict: 'open' as const, detail: 'Store the provider token with cland secret set digitalocean.token and restart the hub', fix: 'cland hub stop; cland hub start' }];
+const missingAdmission = (): SetupLine => ({ name: 'agent hosts', verdict: 'open', detail: 'The hub does not advertise paid-terms admission; paid host and login offers are unavailable', fix: 'Restart the hub: cland hub stop; cland hub start; cland setup' });
+const supportsPaidTerms = async (client: SetupHub) => (await client.enforcedFeatures?.().catch(() => []) ?? []).includes(PAID_TERMS_FEATURES[0]);
 
 // Each paid operation has its own consent, independent of pool configuration.
 async function finishPool(o: SetupOptions, chosen: { role: string; launch: { harness: string; account: string | null } }[], document: Record<string, unknown>): Promise<SetupLine[]> {
@@ -25,6 +29,9 @@ async function finishPool(o: SetupOptions, chosen: { role: string; launch: { har
   let status = await client.hostStatus?.().catch(() => undefined);
   const image = 'cland host prepare agents';
   const paid = document.provider === 'digitalocean';
+  if (paid && !await supportsPaidTerms(client)) {
+    return [missingAdmission()];
+  }
   const machine = `${document.provider} ${document.size} in ${document.region}`;
   const price = paid && document.size === DECLARED_DEFAULT.size ? `; declared $${DECLARED_DEFAULT.hourly}/h (spec ${DECLARED_DEFAULT.date})` : '';
   const config = parseConfig(await o.machine.read('config.toml') ?? '', basename(o.root), o.env);
@@ -60,7 +67,7 @@ async function finishPool(o: SetupOptions, chosen: { role: string; launch: { har
       if (!result || !['prepared', 'current'].includes(result.state)) throw Error('no image receipt');
       lines.push({ name: 'agent hosts image', verdict: 'done', detail: `agents: ${result.state}` });
       }
-    } catch { lines.push({ name: 'agent hosts image', verdict: 'open', detail: 'image preparation incomplete', fix: image }); }
+    } catch (error) { lines.push(error instanceof HubFeatureUnavailable ? missingAdmission() : { name: 'agent hosts image', verdict: 'open', detail: 'image preparation incomplete', fix: image }); }
   }
   const seen = new Set<string>();
   for (const role of chosen) {
@@ -82,7 +89,8 @@ async function finishPool(o: SetupOptions, chosen: { role: string; launch: { har
       if (code !== 0 || row?.state !== 'ready' || row.harness !== harness || row.kind !== 'disk' || row.provider !== document.provider || row.region !== document.region || account && row.account !== account) throw Error('sign-in incomplete');
       lines.push({ name: `agent hosts ${harness} login`, verdict: 'done', detail: `${name}: ready` });
       status = await client.hostStatus?.().catch(() => undefined);
-    } catch {
+    } catch (error) {
+      if (error instanceof HubFeatureUnavailable) { lines.push(missingAdmission()); continue; }
       // Only the terminal's validated add reply establishes a recovery identity.
       lines.push({ name: `agent hosts ${harness} login`, verdict: 'open', detail: `${name ?? harness}: sign-in incomplete`, fix: name ? `cland login signin ${name}` : command });
     }
@@ -128,13 +136,15 @@ export const hosts: SetupStep = async options => {
     const unplaced = chosen.filter(role => roles.get(role)?.launch.pool !== 'agents');
     fix = pool && !unplaced.length ? 'cland setup in a terminal' : commands(pool ? {} : document, unplaced);
     if (document.size !== DECLARED_DEFAULT.size || document.provider !== 'digitalocean') return [{ name, verdict: 'open', detail: 'no recorded price for this pool; configure manually', fix }];
+    if (!await supportsPaidTerms(client)) return [missingAdmission()];
     if (!pool && !await prompter.confirm(`Create agents: ${document.size}, min_hosts = ${document.min_hosts}, declared $${DECLARED_DEFAULT.hourly}/h (spec, ${DECLARED_DEFAULT.date}); always-on host?`, false)) return [{ name, verdict: 'open', detail: 'pool confirmation declined', fix }];
     if (!client.configure || !client.placeRole || !client.reload) return [{ name, verdict: 'open', detail: 'hub configuration unavailable', fix }];
     if (!pool) for (const [key, value] of Object.entries(document)) await client.configure(`hosts.agents.${key}`, value, { value: key === 'provider' ? null : defaultPool[key] });
     for (const role of chosen) if (roles.get(role)?.launch.pool !== 'agents') await client.placeRole(role, 'agents');
-    await client.reload();
+    await client.reload(true);
     return [{ name, verdict: 'done', detail: `agents configured; roles ${chosen.join(', ')}; token fingerprint ${provider.fingerprint}` }, ...await finishPool(options, chosen.map(role => roles.get(role)!), document)];
   } catch (error) {
+    if (error instanceof HubFeatureUnavailable) return [missingAdmission()];
     if (error instanceof Cancelled) throw error;
     return [{ name, verdict: 'open', detail: 'agent hosts could not be configured; check hub and configuration', fix }];
   }

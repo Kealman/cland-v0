@@ -26,6 +26,10 @@ import { setup } from '../src/setup/runner.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { LoginRecords } from '../src/host/logins.ts';
 import { legacyRemoteHubFixture } from './fakes/legacy-remote-hub.ts';
+import { residueControl } from './fixture-residue-control.ts';
+import { terminalLogin } from '../src/cli/login-terminal.ts';
+import { readDiscovery } from '../src/project.ts';
+import { HubFeatureUnavailable } from '../../shared/hub-features.ts';
 
 function options(): SetupOptions {
   return {
@@ -38,11 +42,106 @@ function options(): SetupOptions {
       harness: async id => ({ id, bin: null, version: null, checks: [] }),
     },
     hub: {
+      enforcedFeatures: async () => ['paidTermsAdmission'],
       running: async () => null, start: async () => { throw Error('unexpected start'); },
       session: async () => null, launch: async () => {}, resume: async () => {}, attach: async () => '',
     },
   };
 }
+
+test('legacy welcome refuses paid image and login offers without effects', t => residueControl(t).run(async c => {
+  const root = await c.root();
+  const owner = c.own(legacyRemoteHubFixture(t, root, { signal: c.signal, hostStatus: () => ({ pools: [], roleLogins: { implementer: false } }) }), value => value.dispose());
+  const legacy = await c.step('legacy hub setup', () => owner.value.start());
+  const o = options();
+  o.root = root; o.hub = setupHub(root, {});
+  o.hub.providers = async () => ({ providers: [{ provider: 'digitalocean', present: true, fingerprint: 'fake' }] });
+  o.machine.read = async path => path === 'config.toml' ? '[hosts.agents]\nprovider="digitalocean"\nmin_hosts=0\n' : '[implementer.launch]\nharness="codex"\npool="agents"\n';
+  let effects = 0, offers = 0;
+  o.hub.preparePool = async () => { effects++; return []; };
+  o.machine.addLogin = async () => { effects++; return 0; };
+  o.prompter.confirm = async () => { offers++; return true; };
+  const lines = await c.step('legacy paid offers', () => hosts(o));
+  assert.equal(effects, 0);
+  assert.equal(offers, 0);
+  assert.ok(lines.some(line => line.verdict === 'open' && /paid.terms admission/i.test(line.detail) && /restart/i.test(line.fix ?? '')));
+  assert.ok(!legacy.requests.includes('host.prepare') && !legacy.requests.includes('login.add'));
+  await c.step('positive legacy socket closure', owner.close);
+  assert.deepEqual(owner.value.receipts(), { listening: true, closed: true, peers: 0, writers: 0 });
+}));
+
+test('unsupported hub refuses fresh paid pool before confirmation or activation', async () => {
+  const o = options();
+  o.machine.read = async path => path === 'config.toml' ? '' : '[implementer.launch]\nharness="codex"\n';
+  o.hub!.enforcedFeatures = async () => [];
+  o.hub!.providers = async () => ({ providers: [{ provider: 'digitalocean', present: true, fingerprint: 'fake' }] });
+  let effects = 0, paidOffers = 0;
+  o.hub!.configure = async () => { effects++; };
+  o.hub!.placeRole = async () => { effects++; };
+  o.hub!.reload = async () => { effects++; };
+  o.prompter.confirm = async question => { if (question.startsWith('Create agents:')) paidOffers++; return true; };
+  const lines = await hosts(o);
+  assert.equal(effects, 0);
+  assert.equal(paidOffers, 0);
+  assert.ok(lines.some(line => line.verdict === 'open' && /paid.terms admission/i.test(line.detail)));
+});
+
+for (const supported of [false, true]) for (const effect of ['preparePool', 'configure', 'placeRole', 'reload', 'terminalLogin'] as const) test(`${effect} checks enforcement on its own connection with support ${supported}`, t => residueControl(t).run(async c => {
+  const root = await c.root();
+  const owner = c.own(legacyRemoteHubFixture(t, root, { signal: c.signal, ...(supported ? { enforcedFeatures: () => ['paidTermsAdmission'] } : {}) }), value => value.dispose());
+  const legacy = await c.step('effect hub setup', () => owner.value.start());
+  const client = setupHub(root, {}), terms = { pool: { provider: 'digitalocean' } };
+  await c.step('connection-bound effect refusal', async () => {
+    const work = effect === 'preparePool' ? client.preparePool!('agents', terms)
+      : effect === 'configure' ? client.configure!('hosts.agents.min_hosts', 1)
+      : effect === 'placeRole' ? client.placeRole!('implementer', 'agents')
+      : effect === 'reload' ? client.reload!(true)
+      : terminalLogin(readDiscovery(layout(root).discovery)!, { harness: 'codex', pool: 'agents', expectedTerms: terms }, fixtureEnvironment(root, process.env));
+    await assert.rejects(work, supported ? /invalid request/ : HubFeatureUnavailable);
+  });
+  assert.deepEqual(legacy.requests, supported ? [{ preparePool: 'host.prepare', configure: 'config.set', placeRole: 'role.launch', reload: 'hub.reload', terminalLogin: 'login.add' }[effect]] : []);
+  await c.step('effect socket close receipt', owner.close);
+  assert.deepEqual(owner.value.receipts(), { listening: true, closed: true, peers: 0, writers: 0 });
+}));
+
+for (const effect of ['pool', 'image', 'login'] as const) test(`hub restart after ${effect} consent refuses the actual paid effect`, t => residueControl(t).run(async c => {
+  const root = await c.root(); let supported = true;
+  const owner = c.own(legacyRemoteHubFixture(t, root, { signal: c.signal, enforcedFeatures: () => supported ? ['paidTermsAdmission'] : [], hostStatus: () => ({ pools: [], roleLogins: { implementer: false } }) }), value => value.dispose());
+  const legacy = await c.step('restart hub setup', () => owner.value.start());
+  const o = options(); o.root = root; o.hub = setupHub(root, {});
+  o.hub.providers = async () => ({ providers: [{ provider: 'digitalocean', present: true, fingerprint: 'fake' }] });
+  o.machine.read = async path => path === 'config.toml' ? effect === 'pool' ? '' : '[hosts.agents]\nprovider="digitalocean"\nmin_hosts=0\n' : `[implementer.launch]\nharness="codex"\n${effect === 'pool' ? '' : 'pool="agents"\n'}`;
+  o.machine.addLogin = (input, admitted, output) => terminalLogin(readDiscovery(layout(root).discovery)!, input, fixtureEnvironment(root, process.env), { onAdmitted: admitted, ...output });
+  let consent = false;
+  o.prompter.confirm = async question => {
+    if (question === 'Set up agent hosts?' || question.startsWith('Place ')) return true;
+    if (effect === 'pool' && question.startsWith('Create agents:') || effect === 'image' && question.startsWith('cland host prepare') || effect === 'login' && question.startsWith('cland login add')) { consent = true; supported = false; return true; }
+    return false;
+  };
+  const lines = await c.step('restart during consent', () => hosts(o));
+  assert.equal(consent, true);
+  assert.ok(lines.some(line => line.verdict === 'open' && /paid.terms admission/i.test(line.detail)));
+  assert.ok(!legacy.requests.some(type => ['host.prepare', 'login.add', 'config.set', 'role.launch', 'hub.reload'].includes(type)));
+  await c.step('restart socket close receipt', owner.close);
+  assert.deepEqual(owner.value.receipts(), { listening: true, closed: true, peers: 0, writers: 0 });
+}));
+
+for (const advertisement of ['empty', 'unrelated', 'unavailable'] as const) test(`paid offers remain open when hub enforcement advertisement is ${advertisement}`, async () => {
+  const o = options();
+  o.machine.read = async path => path === 'config.toml' ? '[hosts.agents]\nprovider="digitalocean"\nmin_hosts=0\n' : '[implementer.launch]\nharness="codex"\npool="agents"\n';
+  o.hub!.providers = async () => ({ providers: [{ provider: 'digitalocean', present: true, fingerprint: 'fake' }] });
+  o.hub!.enforcedFeatures = async () => {
+    if (advertisement === 'unavailable') throw Error('welcome unavailable');
+    return advertisement === 'empty' ? [] : ['snapshot'];
+  };
+  let effects = 0;
+  o.hub!.preparePool = async () => { effects++; return []; };
+  o.machine.addLogin = async () => { effects++; return 0; };
+  o.prompter.confirm = async () => { effects++; return true; };
+  const lines = await hosts(o);
+  assert.equal(effects, 0);
+  assert.ok(lines.some(line => line.verdict === 'open' && /paid.terms admission/i.test(line.detail)));
+});
 
 test('missing pool placements remain open without effects even with yes', async () => {
   for (const yes of [false, true]) {

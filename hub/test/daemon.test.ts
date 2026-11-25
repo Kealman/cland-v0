@@ -342,7 +342,7 @@ test('a wrong secret is refused on the WebSocket and on the Unix socket; the rig
   const right = await connectSocket(discovery.socket);
   t.after(() => right.close());
   right.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'test' });
-  assert.deepEqual(await right.next(), { type: 'welcome', name: 'test', presence: [] });
+  assert.deepEqual(await right.next(), { type: 'welcome', name: 'test', presence: [], enforcedFeatures: ['paidTermsAdmission'] });
   assert.equal((await right.next()).type, 'remote.state');
   assert.deepEqual(await right.next(), { type: 'hosts.state', pools: [] });
   right.send({ type: 'hub.status', id: 'q1' });

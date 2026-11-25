@@ -1,5 +1,12 @@
 ## cland setup
 
+Paid host image and login offers require the running hub to advertise
+`paidTermsAdmission` in `welcome.enforcedFeatures`. A missing advertisement,
+including an older hub, leaves setup open with hub restart guidance and starts
+no paid operation. Client-negotiated framing features do not establish this support.
+The check precedes fresh-pool activation and repeats on each effect connection,
+including terminal login, so a hub restart after consent still refuses an older hub.
+
 A role placed on an unconfigured pool makes agent hosts `open`, even with `--yes`
 or without a terminal, and setup exits 1. Each row names its role and missing pool,
 with commands to configure that pool or place the role on `local`, then reload.

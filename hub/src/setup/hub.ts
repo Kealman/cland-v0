@@ -1,5 +1,7 @@
 import { layout, readDiscovery } from '../project.ts';
 import { askHubFrame } from '../cli/socket-client.ts';
+import { hubEnforcedFeatures } from '../../../shared/socket-client.ts';
+import { PAID_TERMS_FEATURES, paidTermsFeatures } from '../../../shared/hub-features.ts';
 import { startProjectHub } from '../cli/hub.ts';
 import type { HarnessProcessView, HubStatus, Inbox, InboxPairing, RemoteStatusResult, RemoteVia } from '../protocol.ts';
 import type { Pairing } from '../remote/state.ts';
@@ -8,6 +10,7 @@ import type { ListedLogin } from '../cli/login.ts';
 import type { LoginMetadataRow } from '../protocol.ts';
 
 export type SetupHub = {
+  enforcedFeatures?(): Promise<string[]>;
   signinStatus?(): Promise<{ mode?: 'single' | 'users'; users: Array<{ id: string; name: string; state: string; passkeyRegistered?: boolean }> }>;
   signinUsers?(): Promise<{ user: { id: string; name: string }; url?: string }>;
   preparePool?(pool: string, expectedTerms?: import('../host/paid-terms.ts').ExpectedPaidTerms): Promise<{ pool: string; state: string }[]>;
@@ -20,7 +23,7 @@ export type SetupHub = {
   pairings?(): Promise<InboxPairing[]>;
   approve?(messenger: RemoteVia, code: string): Promise<Pairing>;
   configure?(key: string, value: unknown, expected?: { value: unknown }): Promise<void>;
-  reload?(): Promise<void>;
+  reload?(paidTerms?: boolean): Promise<void>;
   running(): Promise<{ pid: number } | null>;
   start(): Promise<{ pid: number }>;
   session(name: string): Promise<Pick<HarnessProcessView, 'status'> | null>;
@@ -36,30 +39,31 @@ export function setupHub(root: string, env: NodeJS.ProcessEnv): SetupHub {
     if (!found) throw new Error('no hub running; run cland hub start');
     return found;
   };
-  const request = (frame: { type: string } & Record<string, unknown>, timeout = 3000) => askHubFrame(discovery(), frame, timeout, env);
+  const request = (frame: { type: string } & Record<string, unknown>, timeout = 3000, requiredFeatures: readonly string[] = []) => askHubFrame(discovery(), frame, timeout, env, undefined, requiredFeatures);
   const running = async () => {
     if (!readDiscovery(layout(root).discovery)) return null;
     try { return await request({ type: 'hub.status' }) as HubStatus; }
     catch { return null; }
   };
   return {
+    enforcedFeatures: () => hubEnforcedFeatures(discovery()),
     signinStatus: async () => await request({ type: 'user.list', setup: true }) as Awaited<ReturnType<NonNullable<SetupHub['signinStatus']>>>,
     signinUsers: async () => await request({ type: 'auth.mode', mode: 'users' }, 60_000) as Awaited<ReturnType<NonNullable<SetupHub['signinUsers']>>>,
     running,
-    preparePool: async (pool, expectedTerms) => await request({ type: 'host.prepare', pool, ...(expectedTerms ? { expectedTerms } : {}) }, 1_200_000) as { pool: string; state: string }[],
+    preparePool: async (pool, expectedTerms) => await request({ type: 'host.prepare', pool, ...(expectedTerms ? { expectedTerms } : {}) }, 1_200_000, paidTermsFeatures(expectedTerms)) as { pool: string; state: string }[],
     // Older hubs ignore the additive filter and return the previous full array.
     login: async name => (await request({ type: 'login.list', name }) as (LoginMetadataRow | ListedLogin)[]).find(row => row.name === name),
     providers: async provider => await request({ type: 'host.providers', provider }) as { providers: { provider: string; present: boolean; fingerprint: string | null }[] },
     hostStatus: async () => await request({ type: 'host.status', roleLogins: true }) as { pools: { name: string; capacity: Record<string, number> }[]; roleLogins?: Record<string, boolean> },
-    async placeRole(role, pool) { await request({ type: 'role.launch', role, fields: { pool } }, 10_000); },
+    async placeRole(role, pool) { await request({ type: 'role.launch', role, fields: { pool } }, 10_000, pool === 'local' ? [] : PAID_TERMS_FEATURES); },
     remotes: async timeoutMs => await request({ type: 'remote.status' }, timeoutMs ?? 3000) as RemoteStatusResult,
     pairings: async () => (await request({ type: 'inbox.list' }) as Inbox).pairings ?? [],
     approve: async (messenger, code) => (await request({ type: 'pairing.approve', messenger, code }) as { pairing: Pairing }).pairing,
     async configure(key, value, expected) {
-      const result = await request({ type: 'config.set', key, value, ...(expected ? { expected } : {}) }, 60_000) as { applies: string };
+      const result = await request({ type: 'config.set', key, value, ...(expected ? { expected } : {}) }, 60_000, key.startsWith('hosts.') ? PAID_TERMS_FEATURES : []) as { applies: string };
       if (result.applies !== 'now') throw new Error('configuration saved but not applied; run cland hub reload');
     },
-    async reload() { await request({ type: 'hub.reload' }, 60_000); },
+    async reload(paidTerms = false) { await request({ type: 'hub.reload' }, 60_000, paidTerms ? PAID_TERMS_FEATURES : []); },
     async start() {
       let said = '';
       const write = (text: string) => { said += text; };

@@ -27,11 +27,17 @@ Implementation notes (read with the matching subsystem reference):
 - [Artifacts](../docs/hub/implementation/artifacts.md)
 - [Doctor](../docs/hub/implementation/doctor.md)
 - [Setup](../docs/hub/implementation/setup.md)
+
 - [Verification and merge accounting](../docs/hub/implementation/running.md)
 - [Adapters and native launch](../docs/hub/implementation/adapters.md)
 - [Hosts, worktrees and placement](../docs/hub/implementation/hosts.md)
 - [Logins](../docs/hub/implementation/logins.md)
 - [Voice echo](../docs/hub/implementation/voice.md)
+
+Setup requires the running hub's `welcome.enforcedFeatures` to include
+`paidTermsAdmission` before paid host or login offers. Older hubs without that
+advertisement leave these offers open with restart guidance; negotiated client
+framing features remain separate.
 
 Subsystem reference and implementation guidance live in `docs/hub/`.
 Live executor switching and bounded remote reachability are described in
