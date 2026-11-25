@@ -1,5 +1,19 @@
 # hub/test/executor-prepare-component.test.ts
 
+Non-readiness preparation cases inject install failure and subsequent release,
+recovery checkpoint or recovery rejection. Assert the install outcome remains
+the wrapper cause and cleanup appears in its aggregate cause. Provider create
+cases assert exact primary identity and preservation of its existing cause
+after lease checkpoint or release rejection. Retained recovery and lease
+records identify the builder/key; a fresh executor's restart reconciliation
+removes the failed-release builder, key and snapshot recovery record. All use
+the guarded fake provider, machine, host and clock, with no native launch.
+Reservation-checkpoint plus unlock rejection and regional-422 plus checkpoint
+rejection assert exact primary identity and secondary cause. The reservation
+case observes the retained budget lock, then reconciliation retries its captured
+owner and observes ENOENT. Operation waits use named load-scaled scope bounds;
+the guarded whole-case owner joins work before restoring fakes or removing roots.
+
 The exhausted bundle-copy case retains its two timed native-transport receipts
 and asserts `DeliveryTransportError.attempts` plus the original cause identity.
 Scheduler replacement limits live in executor-run-rules: one replacement in a

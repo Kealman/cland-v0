@@ -18,7 +18,7 @@ import { readRecoveries, recoverSnapshots, claimSnapshotStorage, recoverPoolSnap
 import { prepareBase, prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, snapshotFitsDisk, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
 import { compactLeaseHistory, hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend, sweepProjects } from './spend.ts';
 import { DropletRun } from './run.ts';
-import { recordReadinessCleanupFailure } from './readiness-deadline.ts';
+import { withDropletCleanupFailure } from './readiness-deadline.ts';
 import type { Executor, PrepareOptions, ReapOptions, Released, RunRef } from '../executor.ts';
 import { remoteRedactor } from '../../host/agent/redact.ts';
 import { EXECUTOR_CREDENTIALS } from '../../../../shared/executor-credentials.ts';
@@ -60,6 +60,7 @@ export class DropletExecutor implements Executor {
   readonly #sweeps = new Set<Promise<void>>();
   readonly #reconciles = new Set<Promise<void>>();
   readonly #releases = new Map<string, Promise<Released>>();
+  readonly #reservationUnlocks = new Set<() => Promise<void>>();
   readonly #leaseChanges = new Map<string, Promise<unknown>>();
   readonly #env: NodeJS.ProcessEnv;
   readonly clock: Clock;
@@ -82,13 +83,29 @@ export class DropletExecutor implements Executor {
   // The scheduler reserves launching jobs; the provider boundary also counts
   // durable leases left by preparation, restarts or unconfirmed acquire cleanup.
   async #reserve(lease: DropletLease, budget: number, deadline: number): Promise<void> {
+    await this.#retryReservationUnlocks();
     const path = join(this.root, '.cland/run/executor/budget.lock');
     const lock = await acquireLockWithRetry(path, deadline, { signal: this.#abort.signal, clock: this.clock, wait: this.dependencies.wait, ...(this.dependencies.processes ? { processes: this.dependencies.processes } : {}) });
+    let failed = false, primary: unknown;
     try {
       this.#abort.signal.throwIfAborted();
       if ((await readLeases(this.root)).filter(l => l.state !== 'released').length >= budget) throw new RemoteBudgetFull();
       await this.#save(lease);
-    } finally { await lock.release(); }
+    } catch (error) { failed = true; primary = error; throw error; }
+    finally {
+      try { await lock.release(); }
+      catch (cleanupError) {
+        this.#reservationUnlocks.add(lock.release);
+        throw failed ? withDropletCleanupFailure(primary, 'reservation-unlock', cleanupError) : cleanupError;
+      }
+    }
+  }
+
+  async #retryReservationUnlocks(): Promise<void> {
+    for (const release of this.#reservationUnlocks) {
+      await release();
+      this.#reservationUnlocks.delete(release);
+    }
   }
 
   async #save(lease: DropletLease): Promise<void> {
@@ -283,7 +300,7 @@ export class DropletExecutor implements Executor {
     }
     catch (error) {
       try { await this.release(lease); }
-      catch (cleanupError) { if (!recordReadinessCleanupFailure(error, 'release', cleanupError)) throw cleanupError; }
+      catch (cleanupError) { error = withDropletCleanupFailure(error, 'release', cleanupError); }
       throw error;
     }
   }
@@ -342,7 +359,8 @@ export class DropletExecutor implements Executor {
         } catch (error) {
           if (!(error instanceof DigitalOceanError) || error.status !== 422 || error.id !== 'unprocessable_entity' || error.message !== 'DigitalOcean 422 unprocessable_entity: Size is not available in this region') throw error;
           lease.createFinished = this.clock.now().toISOString();
-          await this.#save(lease);
+          try { await this.#save(lease); }
+          catch (cleanupError) { throw withDropletCleanupFailure(error, 'lease-checkpoint', cleanupError); }
           const reason = `${candidate}: ${error.message}`;
           refusals.push(reason);
           if (run.log) await appendFile(run.log, `Droplet region refused: ${reason}\n`);
@@ -370,8 +388,10 @@ export class DropletExecutor implements Executor {
         else if (lease.keyImportStarted) lease.keyImportFinished ??= this.clock.now().toISOString();
       }
       // Once persisted, even an ambiguous create is cleaned up by name and tags.
-      await this.#save(lease);
-      await this.release(lease);
+      try { await this.#save(lease); }
+      catch (cleanupError) { throw withDropletCleanupFailure(error, 'lease-checkpoint', cleanupError); }
+      try { await this.release(lease); }
+      catch (cleanupError) { error = withDropletCleanupFailure(error, 'release', cleanupError); }
       throw error;
     }
   }
@@ -552,6 +572,7 @@ export class DropletExecutor implements Executor {
     await Promise.allSettled(this.#sweeps);
     await Promise.allSettled(this.#reconciles);
     await Promise.allSettled(this.#releases.values());
+    await this.#retryReservationUnlocks();
   }
 
   async release(lease: DropletLease, deadline?: number): Promise<Released> {
@@ -658,6 +679,7 @@ export class DropletExecutor implements Executor {
   }
 
   async #reconcile(restart: boolean): Promise<void> {
+    await this.#retryReservationUnlocks();
     if (restart) this.#indexRepairNeeded = true;
     if (!await this.#compact(this.#indexRepairNeeded)) return;
     if (this.#closing) return;

@@ -14,7 +14,7 @@ import { DigitalOceanApi, DigitalOceanError, type Action, type SnapshotImage } f
 import { durableJson, leaseDir, type DropletLease } from './lease.ts';
 import { Machine, machineEnv, shellQuote } from './machine.ts';
 import { pause, testTiming } from './watchdog.ts';
-import { ReadinessDeadlineError, recordReadinessCleanupFailure } from './readiness-deadline.ts';
+import { ReadinessDeadlineError, withDropletCleanupFailure } from './readiness-deadline.ts';
 import { saveRecovery, recoverSnapshot, snapshotFromBuilder, type SnapshotRecovery } from './snapshot-recovery.ts';
 import type { Released } from '../executor.ts';
 
@@ -190,7 +190,11 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     let action: Action;
     try { action = await api.dropletAction(builder.resource!, 'snapshot', name, limit); }
     catch (error) {
-      if (error instanceof DigitalOceanError && error.status >= 400 && error.status < 500) { recovery.requested = false; await saveRecovery(root, recovery, options.storage); }
+      if (error instanceof DigitalOceanError && error.status >= 400 && error.status < 500) {
+        recovery.requested = false;
+        try { await saveRecovery(root, recovery, options.storage); }
+        catch (cleanupError) { throw withDropletCleanupFailure(error, 'recovery-checkpoint', cleanupError); }
+      }
       throw error;
     }
     recovery.action = action.id; await saveRecovery(root, recovery, options.storage);
@@ -219,7 +223,9 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
         // Only a definite rejection permits rollback. A timeout plus old presence
         // does not establish the fate of an accepted, still-running DELETE.
         if (error instanceof DigitalOceanError && [400, 401, 403, 422, 429].includes(error.status)) {
-          recovery.retirement = 'rejected'; await saveRecovery(root, recovery, options.storage);
+          recovery.retirement = 'rejected';
+          try { await saveRecovery(root, recovery, options.storage); }
+          catch (cleanupError) { throw withDropletCleanupFailure(error, 'recovery-checkpoint', cleanupError); }
         }
         throw error;
       }
@@ -237,7 +243,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     if (builder) {
       try { released = await options.release(builder); }
       catch (cleanupError) {
-        if (!recordReadinessCleanupFailure(error, 'release', cleanupError)) throw cleanupError;
+        error = withDropletCleanupFailure(error, 'release', cleanupError);
         cleanupReady = false;
       }
     }
@@ -248,7 +254,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
         recovery.phase = 'cleanup';
         try { await saveRecovery(root, recovery, options.storage); }
         catch (cleanupError) {
-          if (!recordReadinessCleanupFailure(error, 'recovery-checkpoint', cleanupError)) throw cleanupError;
+          error = withDropletCleanupFailure(error, 'recovery-checkpoint', cleanupError);
           cleanupReady = false;
         }
       }
@@ -256,7 +262,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
       // owner; do not admit image cleanup across an incomplete boundary.
       if (cleanupReady) {
         try { await recoverSnapshot(root, recovery, options.store, env, dependencies.api, options.storage); }
-        catch (cleanupError) { recordReadinessCleanupFailure(error, 'recovery', cleanupError); /* retained for restart/timer retries */ }
+        catch (cleanupError) { error = withDropletCleanupFailure(error, 'recovery', cleanupError); /* retained for restart/timer retries */ }
       }
     }
     const cause = `${stage}: ${error instanceof Error ? error.message : 'snapshot preparation failed'}`;

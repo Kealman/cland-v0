@@ -20,7 +20,7 @@ import type { DropletDependencies } from '../src/executor/droplet/dependencies.t
 import { executorSnapshotNotice, Dispatcher } from '../src/hub/dispatch.ts';
 import { DropletExecutor, projectName } from '../src/executor/droplet/droplet.ts';
 import { keyHash, readSnapshot, snapshotPath, type Snapshot } from '../src/executor/droplet/prepare.ts';
-import { readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { readLeases, readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { Machine } from '../src/executor/droplet/machine.ts';
 import { diagnosticResult } from '../src/hub/merge-batches.ts';
 import { DeliveryTransportError } from '../src/executor/droplet/run.ts';
@@ -34,6 +34,58 @@ import { copyFixtureCase } from './executor-copy-fixture.ts';
 import { MachineRequestError } from '../src/executor/droplet/machine.ts';
 import { readRecoveries } from '../src/executor/droplet/snapshot-recovery.ts';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
+import { DigitalOceanError } from '../src/executor/droplet/api.ts';
+import { testDeadlineMs } from './until.ts';
+
+for (const boundary of ['reservation', 'regional refusal'] as const) test(`acquisition preserves primary failure at ${boundary} cleanup boundary`, async t => {
+  const scope = guardedLeaseCase(t, undefined, { timeoutMs: testDeadlineMs(5000) });
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('boundary fixture setup', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    await step(() => scope.wait('fixture hub stop', () => f.stop()));
+    const snapshot: Snapshot = { image: 900, name: 'ready', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'], sizeGb: 1, minDiskSize: 10, created: f.clock.now().toISOString() };
+    await step(() => scope.wait('snapshot setup', async () => {
+      await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+      await writeFile(snapshotPath(f.root), JSON.stringify(snapshot));
+    }));
+    const primary = boundary === 'reservation' ? new Error('reservation checkpoint failed') : new DigitalOceanError(422, 'unprocessable_entity', 'Size is not available in this region');
+    const cleanup = new Error('secondary checkpoint or unlock failed');
+    const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, f.dependencies);
+    const rename = files.rename, remove = files.rm;
+    let refused = false;
+    const restoreRename = scope.patch(files, 'rename', async (...args: Parameters<typeof rename>) => {
+      if (!refused && String(args[1]).endsWith('/lease.json')) { refused = true; throw boundary === 'reservation' ? primary : cleanup; }
+      return rename(...args);
+    });
+    if (boundary === 'regional refusal') {
+      restoreRename();
+      scope.patch(f.dependencies.api, 'create', async () => {
+        scope.patch(files, 'rename', async (...args: Parameters<typeof rename>) => {
+          if (!refused && String(args[1]).endsWith('/lease.json')) { refused = true; throw cleanup; }
+          return rename(...args);
+        });
+        throw primary;
+      });
+    }
+    const lock = join(f.root, '.cland/run/executor/budget.lock');
+    const restoreRemove = scope.patch(files, 'rm', async (...args: Parameters<typeof remove>) => {
+      if (boundary === 'reservation' && String(args[0]) === lock) throw cleanup;
+      return remove(...args);
+    });
+    try {
+      await step(() => scope.wait('acquisition failure receipt', () => assert.rejects(drive(f, executor.acquire({ id: 'boundary-failure' }, new Date(f.clock.now().getTime() + 60000).toISOString())), error => {
+        assert.equal(error, primary);
+        assert.ok(primary.cause instanceof AggregateError);
+        assert.deepEqual(primary.cause.errors, [cleanup]);
+        return true;
+      })));
+      if (boundary === 'reservation') await step(() => scope.wait('retained lock receipt', () => stat(lock)));
+    } finally { restoreRemove(); restoreRename(); }
+    await step(() => scope.wait('retained owner reconciliation', () => drive(f, executor.reconcile(true))));
+    await step(() => scope.wait('lock removal receipt', () => assert.rejects(stat(lock), { code: 'ENOENT' })));
+    assert.deepEqual(f.api.droplets, []);
+    assert.deepEqual(f.api.keys, []);
+  });
+});
 
 test('prepare replaces a matching oversized snapshot so c-4 and c-8 restore it', async t => {
   await fixtureNativeGuard(t);
@@ -223,6 +275,107 @@ for (const cleanupFailure of ['none', 'release', 'recovery-checkpoint', 'recover
     }
     assert.deepEqual(f.api.droplets, []);
     assert.deepEqual(f.api.keys, []);
+  });
+});
+
+for (const cleanupFailure of ['none', 'release', 'recovery-checkpoint', 'recovery'] as const) test(`snapshot preparation preserves non-readiness failure (cleanup failure: ${cleanupFailure})`, async t => {
+  const scope = guardedLeaseCase(t, undefined, { timeoutMs: testDeadlineMs(5000) });
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('builder readiness fixture', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    await step(() => scope.wait('fixture hub stop', () => f.stop()));
+    f.setFailure('install');
+    const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, f.dependencies);
+    const cleanupError = new Error('scripted builder cleanup rejected');
+    let captured: DropletLease | undefined;
+    const release = executor.release;
+    const rename = files.rename;
+    const restore = scope.patch(executor, 'release', async (lease: DropletLease) => {
+      captured = lease;
+      if (cleanupFailure === 'release') throw cleanupError;
+      const result = await release.call(executor, lease);
+      if (cleanupFailure === 'recovery-checkpoint') scope.patch(files, 'rename', async (...args: Parameters<typeof rename>) => {
+        if (String(args[1]).includes('/snapshot-recovery/')) throw cleanupError;
+        return rename(...args);
+      });
+      if (cleanupFailure === 'recovery') scope.patch(f.dependencies.api, 'snapshots', async () => { throw cleanupError; });
+      return result;
+    });
+    try {
+      await step(() => scope.wait('preparation failure receipt', () => assert.rejects(drive(f, executor.prepare()), error => {
+        assert.ok(error instanceof Error);
+        assert.ok(error.cause instanceof Error);
+        assert.match(error.cause.message, /prepare failed \(exit 8\)/);
+        if (cleanupFailure !== 'none') {
+          assert.ok(error.cause.cause instanceof AggregateError);
+          assert.deepEqual(error.cause.cause.errors, [cleanupError]);
+        }
+        assert.match(error.message, /install: prepare failed/);
+        return true;
+      })));
+      const retained = await step(() => readRecoveries(f.root));
+      assert.equal(retained.length, cleanupFailure === 'none' ? 0 : 1);
+      if (cleanupFailure !== 'none') {
+        assert.equal(retained[0]!.builder, captured!.resource);
+        assert.equal(retained[0]!.phase, cleanupFailure === 'recovery' ? 'cleanup' : 'build');
+      }
+      if (cleanupFailure === 'release') {
+        const leases = await step(() => readLeases(f.root));
+        assert.ok(leases.some(lease => lease.lease === captured!.lease && lease.resource === captured!.resource && lease.state !== 'released'));
+        restore();
+        const recovered = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, f.dependencies);
+        await step(() => scope.wait('restart reconciliation receipt', () => drive(f, recovered.reconcile(true))));
+        assert.deepEqual(f.api.droplets, []);
+        assert.deepEqual(f.api.keys, []);
+        assert.equal((await step(() => readRecoveries(f.root))).length, 0);
+      }
+    } finally {
+      restore();
+      if (captured) await step(() => scope.wait('builder release receipt', () => drive(f, executor.release(captured!))));
+    }
+    assert.deepEqual(f.api.droplets, []);
+    assert.deepEqual(f.api.keys, []);
+  });
+});
+
+for (const cleanupFailure of ['release', 'lease-checkpoint'] as const) test(`provider create failure survives acquisition ${cleanupFailure} rejection`, async t => {
+  const scope = guardedLeaseCase(t, undefined, { timeoutMs: testDeadlineMs(5000) });
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('provider failure fixture', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    await step(() => scope.wait('fixture hub stop', () => f.stop()));
+    const snapshot: Snapshot = { image: 900, name: 'ready', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'], sizeGb: 1, minDiskSize: 10, created: f.clock.now().toISOString() };
+    await step(() => mkdir(join(f.root, '.cland/run/executor'), { recursive: true }));
+    await step(() => writeFile(snapshotPath(f.root), JSON.stringify(snapshot)));
+    const previous = new Error('provider connection failed');
+    const primary = new Error('provider create failed', { cause: previous });
+    const cleanup = new Error('cleanup rejected');
+    const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, f.dependencies);
+    const rename = files.rename;
+    let restoreCheckpoint = () => {};
+    scope.patch(f.dependencies.api, 'create', async () => {
+      if (cleanupFailure === 'lease-checkpoint') restoreCheckpoint = scope.patch(files, 'rename', async (...args: Parameters<typeof rename>) => {
+        if (String(args[1]).endsWith('/lease.json')) throw cleanup;
+        return rename(...args);
+      });
+      throw primary;
+    });
+    const restoreRelease = scope.patch(executor, 'release', async () => { throw cleanup; });
+    try {
+      await step(() => scope.wait('provider failure receipt', () => assert.rejects(drive(f, executor.acquire({ id: 'provider-cleanup' }, new Date(f.clock.now().getTime() + 60000).toISOString())), error => {
+        assert.equal(error, primary);
+        assert.ok(primary.cause instanceof AggregateError);
+        assert.deepEqual(primary.cause.errors, [previous, cleanup]);
+        return true;
+      })));
+      const retained = await step(() => readLeases(f.root));
+      assert.equal(retained.length, 1);
+      assert.equal(retained[0]!.run, 'provider-cleanup');
+      assert.equal(retained[0]!.state, 'creating');
+      assert.ok(retained[0]!.keyId);
+      restoreCheckpoint(); restoreRelease();
+      await step(() => scope.wait('provider recovery receipt', () => drive(f, executor.reconcile(true))));
+      assert.deepEqual(f.api.droplets, []);
+      assert.deepEqual(f.api.keys, []);
+    } finally { restoreCheckpoint(); restoreRelease(); }
   });
 });
 

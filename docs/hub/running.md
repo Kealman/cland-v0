@@ -847,7 +847,15 @@ Preparation wrappers also preserve the typed error as `Error.cause`. Subsequent
 release, recovery-checkpoint or recovery failures stay secondary in its
 `cleanupFailures` receipts and human-readable cleanup notice. A failed builder
 release or recovery checkpoint retains recovery ownership and skips subsequent
-image cleanup. Other error classes retain their existing cleanup policy.
+image cleanup. Acquisition and preparation preserve non-readiness primary
+errors too: cleanup failures become an `AggregateError` cause alongside any
+existing cause. Frozen or non-Error thrown values remain the cause of an
+aggregate wrapper. Acquisition retains its lease when its failure checkpoint
+or release rejects; restart reconciliation retries from the durable record.
+Reservation failure also survives a rejected budget-lock release. The executor
+keeps that exact lock owner's release handle for retry before another reservation,
+during reconciliation and on close; a failed retry retains the handle. Regional
+capacity-refusal checkpoints preserve the provider refusal if persistence fails.
 The delivered lease checkpoints the local log prefix as `execution.deliveryLogEnd`
 before the hub starts collection. Restart uses that durable byte boundary even
 when the suite-job checkpoint still carries the pre-delivery offset. Already
