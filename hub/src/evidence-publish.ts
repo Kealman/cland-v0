@@ -60,12 +60,14 @@ export const scanEvidence: Scan = async (path, files, control) => {
 
 /** Scan a private snapshot and publish those exact bytes. No source path reaches the tool. */
 export async function publishEvidence<T>(args: EvidenceArgs, artifactCreate: (args: EvidenceArgs) => Promise<T>,
-  scan: Scan = scanEvidence, storage: SnapshotLifecycle = lifecycle): Promise<T> {
+  scan: Scan = scanEvidence, storage: SnapshotLifecycle = lifecycle,
+  replayUnknown = false): Promise<T> {
   let root: string | undefined;
   let result: T | undefined, failure: Error | undefined;
   const files = new Map<string, Buffer>();
   let kept = 0;
   let publicationStarted = false, publicationCompleted = false;
+  let uncertainAttempt = false;
   const limit = 50 * 1024 * 1024;
   async function copy(source: string, target: string, name: string): Promise<void> {
     const info = await lstat(source);
@@ -112,11 +114,18 @@ export async function publishEvidence<T>(args: EvidenceArgs, artifactCreate: (ar
       throw refuse(`incomplete or unsafe scan${diagnostic.matches.length ? '\n' + diagnostic.matches.join('\n') : ''}`);
     }
     publicationStarted = true;
-    result = await artifactCreate({ ...args, path: target });
+    const payload = { ...args, path: target, retryKey: args.retryKey ?? randomBytes(24).toString('hex') };
+    try { result = await artifactCreate(payload); }
+    catch (error) {
+      if (error instanceof HubRefusal || !replayUnknown) throw error;
+      uncertainAttempt = true;
+      // The durable actor/key/fingerprint receipt is the only recovery identity.
+      result = await artifactCreate(payload);
+    }
     publicationCompleted = true;
   } catch (error) {
     if (publicationStarted && error instanceof HubRefusal) {
-      publicationCompleted = true; // The hub positively refused; no reader remains.
+      publicationCompleted = !uncertainAttempt; // An earlier unknown attempt may still have a reader.
       failure = refuse(`hub refused (${error.refusalCode ?? 'unknown'}): ${error.message}`);
     } else {
       failure = error instanceof Error && safeErrors.has(error) ? error : refuse(publicationStarted
@@ -156,6 +165,13 @@ export async function publishSessionEvidence(args: EvidenceArgs,
   const discovery = readDiscovery(hubDiscovery(context.cwd, context.env));
   if (!discovery) throw refuse('no running hub');
   const { askHubFrame } = await import('./cli/socket-client.ts');
-  return publishEvidence({ ...args, path: resolve(context.cwd, args.path) },
-    payload => askHubFrame(discovery, { type: 'artifact.create', ...payload, as: actor }, undefined, context.env));
+  return publishEvidenceTransport({ ...args, path: resolve(context.cwd, args.path) },
+    frame => askHubFrame(discovery, { ...frame, as: actor }, undefined, context.env));
+}
+
+/** Session transport seam. Replays use the hub's durable actor/key receipt. */
+export function publishEvidenceTransport(args: EvidenceArgs,
+  request: (frame: {type: string} & Record<string, unknown>) => Promise<unknown>,
+  storage: SnapshotLifecycle = lifecycle): Promise<unknown> {
+  return publishEvidence(args, payload => request({type: 'artifact.create', ...payload}), scanEvidence, storage, true);
 }

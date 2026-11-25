@@ -18,10 +18,21 @@ item topic. A definitive hub refusal reports
 `Evidence refused: hub refused (<code>): <reason>` and removes the snapshot;
 older hub replies without a code use `unknown`. Stop on that refusal. A cleanup
 failure preserves the refusal and reports the observed snapshot disposition.
-A lost reply leaves the snapshot retained because the hub may still
-be copying it. Reconcile through the session's artifact list before any retry;
-do not request a second artifact with a fresh key. The installed library form `publishEvidence(args, artifactCreate)` also accepts
-the publishing session's tool callback. Test callbacks are fakes.
+A transport failure triggers one artifact.create replay with the same private
+snapshot path, arguments and retryKey. This is a request-bound reconciliation:
+the hub's durable actor/key/fingerprint receipt returns the original artifact if
+the first create succeeded, or the replay creates it if the first request was lost.
+The helper generates a key when omitted. The receipt lives in the project store's
+meta table, in the artifact registration transaction, and survives a hub restart
+with the same project store and actor identity. It prevents duplicate artifacts
+from late first success. A listed artifact with identical bytes is never completion
+evidence for this request, so no artifact-list lookup or content match is used.
+An uncertain replay keeps the snapshot and reports the original outcome-unknown
+refusal. Stop there and reconcile manually before further attempts.
+The installed library form `publishEvidence(args, artifactCreate)` also accepts
+the publishing session's tool callback. Its optional fifth argument `replayUnknown`
+enables the same replay policy; without it, transport failures retain the
+snapshot immediately. Test callbacks are fakes.
 
 The helper copies every regular file (including hidden and nested files) into a
 private snapshot, scans UTF-8 and UTF-16LE bytes plus relative filenames, then
@@ -61,6 +72,7 @@ value-free snapshot disposition (state and cleanup outcome); successful callers
 keep the original artifact result and receive any cleanup failure as a structured
 stderr diagnostic. After a cleanup failure, a filesystem observation reports the
 snapshot as retained or removed; an unreadable observation stays unknown.
-An unknown publication outcome keeps the snapshot for reconciliation.
-Reconcile before retrying. Embedded callers can observe
+An unknown publication outcome keeps the snapshot for reconciliation. A definitive
+refusal during retry also retains it because the first attempt may still be reading.
+Embedded callers can observe
 the same disposition through the optional SnapshotLifecycle callback.

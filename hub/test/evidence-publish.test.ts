@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, access, copyFile } fr
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { publishEvidence, publishSessionEvidence, scanEvidence, type EvidenceArgs, type SnapshotLifecycle } from '../src/evidence-publish.ts';
+import { publishEvidence, publishEvidenceTransport, publishSessionEvidence, scanEvidence, type EvidenceArgs, type SnapshotLifecycle } from '../src/evidence-publish.ts';
 import { guardedLeaseCase } from './executor-lease-fixture.ts';
 import type { FixtureStep } from '../../test-support/fixture-work.ts';
 import { Report } from '../src/init/files.ts';
@@ -14,6 +14,7 @@ import { HubRefusal } from '../../shared/socket-client.ts';
 import { projectHub, inProcessSpoke } from './harness.ts';
 import { sessionShell } from './session-credential-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
+import { drainFixtureCleanup } from './process-cleanup.ts';
 
 test('an implementer publishes a scanned Markdown dot-file from its worktree', t => evidenceCase(t, async ({root, step}) => {
   const hub = await step(() => projectHub(t, root));
@@ -72,9 +73,10 @@ test('evidence publication preserves a legacy hub refusal through cleanup failur
 
 function evidenceCase(t: TestContext, body: (fixture: {
   root: string; step: FixtureStep;
-  publish: (args: EvidenceArgs, create: (args: EvidenceArgs) => Promise<unknown>, scan?: typeof scanEvidence, options?: Partial<SnapshotLifecycle>) => Promise<unknown>;
-}) => Promise<void>) {
-  const scope = guardedLeaseCase(t); // Owner precedes guard installation and filesystem acquisition.
+  publish: (args: EvidenceArgs, create: (args: EvidenceArgs) => Promise<unknown>, scan?: typeof scanEvidence, options?: Partial<SnapshotLifecycle>, replayUnknown?: boolean) => Promise<unknown>;
+}) => Promise<void>, control: {releaseOnClose?: () => void; onOwner?: (scope: ReturnType<typeof guardedLeaseCase>) => void} = {}) {
+  const scope = guardedLeaseCase(t, control.releaseOnClose); // Release is enrolled before admission and acquisition.
+  control.onOwner?.(scope);
   return scope.run(async step => {
     const root = await step(() => scope.wait('evidence fixture setup', async () => {
       const acquired = await mkdtemp(join(tmpdir(), 'evidence-case-'));
@@ -83,15 +85,201 @@ function evidenceCase(t: TestContext, body: (fixture: {
       return acquired;
     }));
     await step(() => scope.wait('evidence case body', () => body({ root, step,
-      publish: (args, create, scan = scanEvidence, options = {}) => publishEvidence(args, create, scan, {
+      publish: (args, create, scan = scanEvidence, options = {}, replayUnknown) => publishEvidence(args, create, scan, {
         createRoot: () => mkdtemp(join(root, 'snapshot-')),
         removeRoot: path => rm(path, { recursive: true, force: true }),
         onDisposition: () => {},
         ...options,
-      }),
+      }, replayUnknown),
     })));
   });
 }
+
+test('an older identical artifact cannot release a pending publication snapshot', t => {
+  const receipt = Promise.withResolvers<unknown>();
+  let cancellationReceipt: unknown;
+  return evidenceCase(t, async ({root, step}) => {
+  const path = join(root, 'report.md');
+  await step(() => writeFile(path, 'clean'));
+  const older = {id: 'A-old', title: 'Report', topic: 'test', kind: 'file', path};
+  const current = {artifact: {...older, id: 'A-current'}, id: 'A-current', path};
+  cancellationReceipt = current;
+  const entered = Promise.withResolvers<void>();
+  let first: Record<string, unknown> | undefined, creates = 0, removed = false;
+  const work = publishEvidenceTransport({path, title: 'Report', kind: 'file', topic: 'test'}, async frame => {
+    if (frame.type === 'artifact.list') return {artifacts: [older]};
+    creates++;
+    if (!first) { first = frame; throw new Error('lost current reply'); }
+    assert.deepEqual(frame, first);
+    entered.resolve();
+    return receipt.promise;
+  }, {
+    createRoot: () => mkdtemp(join(root, 'snapshot-')),
+    removeRoot: async root => { removed = true; await rm(root, {recursive: true, force: true}); },
+    onDisposition: () => {},
+  });
+  try {
+    const boundary = await step(() => Promise.race([entered.promise.then(() => 'replay entered'), work.then(() => 'completed too early')]));
+    assert.equal(boundary, 'replay entered');
+    assert.equal(removed, false);
+    assert.equal(await step(() => readFile(String(first!.path), 'utf8')), 'clean');
+    receipt.resolve(current);
+    assert.deepEqual(await step(() => work), current);
+    assert.equal(creates, 2);
+    assert.equal(removed, true);
+  } finally { receipt.resolve(current); await work.catch(() => {}); }
+  }, {releaseOnClose: () => receipt.resolve(cancellationReceipt)});
+});
+
+test('cancelling evidence proof releases its held replay before joining and root removal', async t => {
+  const receipt = Promise.withResolvers<unknown>(), entered = Promise.withResolvers<void>(), ownerReleased = Promise.withResolvers<void>();
+  const current = {artifact: {id: 'A-current'}};
+  let scope!: ReturnType<typeof guardedLeaseCase>;
+  let rootPath = '', snapshot = '', released = false, proofComplete = false;
+  const order: string[] = [];
+  const running = evidenceCase(t, async ({root, step}) => {
+    rootPath = root;
+    const path = join(root, 'report.md');
+    await step(() => writeFile(path, 'clean'));
+    let creates = 0;
+    const result = await step(() => publishEvidenceTransport({path, title: 'Report', kind: 'file', topic: 'test'}, async frame => {
+      snapshot = String(frame.path);
+      if (++creates === 1) throw new Error('lost reply');
+      entered.resolve();
+      return receipt.promise;
+    }, {
+      createRoot: () => mkdtemp(join(root, 'snapshot-')),
+      removeRoot: async path => { order.push('snapshot cleanup'); await rm(path, {recursive: true, force: true}); },
+      onDisposition: () => {},
+    }));
+    assert.deepEqual(result, current);
+    assert.equal(creates, 2);
+    await assert.rejects(access(snapshot), {code: 'ENOENT'});
+    proofComplete = true;
+    order.push('complete proof');
+  }, {
+    onOwner: owner => { scope = owner; },
+    releaseOnClose: () => { released = true; order.push('release'); receipt.resolve(current); ownerReleased.resolve(); },
+  });
+  void running.catch(() => {});
+  let closing: Promise<void> | undefined;
+  try {
+    await scope.wait('held replay admitted', () => Promise.race([entered.promise, running]));
+    assert.equal(await readFile(snapshot, 'utf8'), 'clean');
+    closing = drainFixtureCleanup(t);
+    void closing.catch(() => {});
+    await scope.wait('owner released held replay', () => ownerReleased.promise);
+    assert.equal(released, true, 'owner releases the receipt before joining');
+    await assert.rejects(running, /fixture work admission closed/);
+    await closing;
+    assert.equal(proofComplete, true);
+    await assert.rejects(access(rootPath), {code: 'ENOENT'});
+    assert.deepEqual(order, ['release', 'snapshot cleanup', 'complete proof']);
+  } finally {
+    receipt.resolve(current);
+    ownerReleased.resolve();
+    closing ??= drainFixtureCleanup(t);
+    await running.catch(() => {});
+    await closing;
+  }
+});
+
+test('a lost publication reply returns the reconciled artifact without duplicating it', t => evidenceCase(t, async ({root, step, publish}) => {
+  const path = join(root, 'report.md');
+  await step(() => writeFile(path, 'clean'));
+  const artifact = {artifact: {id: 'A-existing'}};
+  let creates = 0;
+  const result = await step(() => publish({path, title: 'Report', kind: 'file', topic: 'test'}, async args => {
+    creates++;
+    assert.ok(args.retryKey);
+    if (creates === 1) throw new Error('lost reply');
+    return artifact;
+  }, undefined, undefined, true));
+  assert.deepEqual(result, artifact);
+  assert.equal(creates, 2);
+}));
+
+for (const mode of ['lost reply', 'lost request', 'late success', 'unknown retry', 'refused retry'] as const) {
+  test(`evidence transport reconciles ${mode} with the retained bytes`, t => evidenceCase(t, async ({root, step}) => {
+    const source = join(root, 'source');
+    const committed = join(root, 'committed');
+    const decoy = join(root, 'decoy');
+    await step(async () => {
+      for (const path of [source, committed, decoy]) {
+        await mkdir(join(path, 'nested'), {recursive: true});
+        await writeFile(join(path, 'report.md'), 'original');
+        await writeFile(join(path, 'nested/fact.txt'), path === decoy ? 'other' : 'fact');
+      }
+    });
+    const artifact = {id: 'A-existing', title: 'Report', topic: 'test', kind: 'file', path: committed, folder: true};
+    let creates = 0, lookups = 0;
+    const durableArtifacts = new Map<string, typeof artifact>();
+    let first: Record<string, unknown> | undefined;
+    const dispositions: unknown[] = [];
+    const work = () => publishEvidenceTransport({path: source, title: 'Report', topic: 'test', kind: 'file'}, async frame => {
+      if (frame.type === 'artifact.list') {
+        lookups++;
+        return {artifacts: [{...artifact, path: decoy}, ...(mode === 'lost reply' ? [artifact] : [])]};
+      }
+      creates++;
+      assert.equal(frame.type, 'artifact.create');
+      if (!first) {
+        first = frame;
+        if (mode === 'lost reply' || mode === 'late success') durableArtifacts.set(String(frame.retryKey), artifact);
+        await writeFile(join(source, 'report.md'), 'changed after admission');
+        throw new Error('private transport failure');
+      }
+      assert.deepEqual(frame, first);
+      assert.equal(await readFile(join(String(frame.path), 'report.md'), 'utf8'), 'original');
+      if (mode === 'unknown retry') throw new Error('private retry failure');
+      if (mode === 'refused retry') throw new HubRefusal('retry forbidden', 'forbidden');
+      if (!durableArtifacts.has(String(frame.retryKey))) durableArtifacts.set(String(frame.retryKey), artifact);
+      return {artifact: durableArtifacts.get(String(frame.retryKey)), id: artifact.id, path: artifact.path};
+    }, {
+      createRoot: () => mkdtemp(join(root, 'snapshot-')),
+      removeRoot: path => rm(path, {recursive: true, force: true}),
+      onDisposition: receipt => { dispositions.push(receipt); },
+    });
+    if (mode === 'unknown retry' || mode === 'refused retry') {
+      await step(() => assert.rejects(work(), {message: mode === 'refused retry'
+        ? 'Evidence refused: hub refused (forbidden): retry forbidden'
+        : 'Evidence refused: publication outcome unknown; snapshot retained; reconcile session artifacts before retrying'}));
+      assert.equal(await step(() => readFile(join(String(first!.path), 'report.md'), 'utf8')), 'original');
+      assert.deepEqual(dispositions, [{state: 'retained', cleanup: 'not-needed'}]);
+    } else {
+      assert.deepEqual(await step(work), {artifact, id: artifact.id, path: artifact.path});
+      assert.deepEqual(dispositions, [{state: 'removed', cleanup: 'complete'}]);
+    }
+    assert.equal(lookups, 0);
+    assert.equal(creates, 2);
+    assert.equal(durableArtifacts.size, mode === 'lost reply' || mode === 'lost request' || mode === 'late success' ? 1 : 0);
+  }));
+}
+
+test('single-file reconciliation uses only its keyed receipt and definitive refusal stops before replay', t => evidenceCase(t, async ({root, step}) => {
+  const path = join(root, 'report.md'), decoy = join(root, 'decoy.md');
+  await step(async () => { await writeFile(path, 'clean'); await writeFile(decoy, 'other'); });
+  const artifact = {id: 'A-file', path, title: 'Report', topic: 'test', kind: 'file'};
+  const storage = {
+    createRoot: () => mkdtemp(join(root, 'snapshot-')),
+    removeRoot: (path: string) => rm(path, {recursive: true, force: true}),
+    onDisposition: () => {},
+  };
+  const frames: string[] = [];
+  assert.deepEqual(await step(() => publishEvidenceTransport({path, title: 'Report', kind: 'file', topic: 'test'}, async frame => {
+    frames.push(frame.type);
+    if (frames.length === 1) throw new Error('lost reply');
+    assert.equal(frame.type, 'artifact.create');
+    return {artifact, id: artifact.id, path: artifact.path};
+  }, storage)), {artifact, id: artifact.id, path: artifact.path});
+  assert.deepEqual(frames, ['artifact.create', 'artifact.create']);
+  frames.length = 0;
+  await step(() => assert.rejects(publishEvidenceTransport({path, title: 'Report', kind: 'file', topic: 'test'}, async frame => {
+    frames.push(frame.type);
+    throw new HubRefusal('not authorized', 'forbidden');
+  }, storage), {message: 'Evidence refused: hub refused (forbidden): not authorized'}));
+  assert.deepEqual(frames, ['artifact.create']);
+}));
 
 test('evidence publication copies every nested file only after scanning', t => evidenceCase(t, async ({root, step, publish}) => {
   const source = join(root, 'evidence');
