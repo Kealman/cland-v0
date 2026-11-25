@@ -549,6 +549,24 @@ test('generic child processes require T3 while the cland CLI retains T2', () => 
   }
 });
 
+test('setup wrapper deadlines do not taint acquired result fields', () => {
+  for (const source of [input('boundedSetup'), input('boundedSetup').replace('run => {', 'function(run) {'), input('incidentalElapsed')]) {
+    assert.deepEqual(lintTestSource(file, source, 'T2').findings, []);
+  }
+  for (const source of [input('boundedSetupElapsed'), input('wrapperInnerElapsed'), input('invokedElapsed'), input('invokedElapsedFunction'), input('invokedElapsedAsync'), input('namedElapsed'), input('declaredElapsed'), input('argumentElapsed')]) {
+    const findings = lintTestSource(file, source, 'T2').findings;
+    assert.deepEqual(findings.map(f => f.rule), ['wall-clock-assertion'], source);
+  }
+});
+
+test('host survival setup assertions lint clean without their four exemptions', async () => {
+  const source = await readFile(new URL('./host-survival-native.test.ts', import.meta.url), 'utf8');
+  const exemptions = / \/\/ lint-allow-wall-clock: (?:launch success is asserted|send success is asserted|compares native job identities|asserts persisted process statuses)[^\n]*/g;
+  assert.equal([...source.matchAll(exemptions)].length, 4);
+  const stripped = source.replace(exemptions, '');
+  assert.deepEqual(lintTestSource('hub/test/host-survival-native.test.ts', stripped, 'T3').findings, []);
+});
+
 test('wall-clock waits and elapsed assertions require a reason on their line', () => {
   for (const wait of [input('sleepWait'), input('pauseWait'), input('delayWait'), input('timeoutWait'), input('promiseTimerWait')]) {
     assert.ok(lintTestSource(file, wait, 'T2').findings.some(f => f.rule === 'wall-clock-wait'), wait);

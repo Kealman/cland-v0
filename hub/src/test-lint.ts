@@ -189,15 +189,57 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
   };
   const timestamps = new Set<ts.Identifier>(), deltas = new Set<ts.Identifier>();
   const known = (set: Set<ts.Identifier>, node: ts.Node) => { const declaration = ts.isIdentifier(node) ? declarationOf(node) : undefined; return declaration !== undefined && set.has(declaration); };
-  const contains = (node: ts.Node, check: (n: ts.Node) => boolean): boolean => check(node) || !!ts.forEachChild(node, n => contains(n, check) || undefined);
+  const functionOf = (node: ts.Node, seen = new Set<ts.Node>()): ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | undefined => {
+    if (seen.has(node)) return;
+    seen.add(node);
+    if (ts.isArrowFunction(node) || ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node)) return node;
+    if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isNonNullExpression(node)) return functionOf(node.expression, seen);
+    if (ts.isIdentifier(node)) {
+      const declaration = declarationOf(node)?.parent;
+      if (declaration && ts.isFunctionDeclaration(declaration)) return declaration;
+      if (declaration && ts.isVariableDeclaration(declaration) && declaration.initializer) return functionOf(declaration.initializer, seen);
+    }
+  };
+  const contains = (node: ts.Node, check: (n: ts.Node) => boolean, skipFunctions = false, active = new Set<ts.Node>()): boolean => {
+    if (skipFunctions && ts.isFunctionLike(node)) return false;
+    if (check(node)) return true;
+    if (skipFunctions && ts.isCallExpression(node)) {
+      // within returns the acquired value; its deadline and error callback
+      // cannot become timing data in that value.
+      const binding = bindingOf(node.expression);
+      if (binding?.module === 'hub/src/executor/droplet/deadline.ts' && binding.name === 'within') {
+        return !!node.arguments[0] && contains(node.arguments[0], check, true, active);
+      }
+      const callee = functionOf(node.expression);
+      if (callee?.body) {
+        if (active.has(callee)) return false;
+        const next = new Set(active).add(callee);
+        // Follow returned values, not incidental setup/control statements or
+        // returns belonging to a nested function that has not been called.
+        const returned = (body: ts.Node): boolean => {
+          if (ts.isFunctionLike(body)) return false;
+          if (ts.isReturnStatement(body)) return !!body.expression && contains(body.expression, check, true, next);
+          return !!ts.forEachChild(body, child => returned(child) || undefined);
+        };
+        if (ts.isBlock(callee.body) ? returned(callee.body) : contains(callee.body, check, true, next)) return true;
+        // Retain the existing conservative propagation of measured arguments
+        // (for example a local identity/rounding helper).
+        return node.arguments.some(arg => contains(arg, check, true, active));
+      }
+    }
+    return !!ts.forEachChild(node, n => contains(n, check, skipFunctions, active) || undefined);
+  };
   const now = (node: ts.Node) => ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === 'now' && ['Date', 'performance'].includes(node.expression.expression.getText(source));
-  const timestamp = (node: ts.Node) => contains(node, n => now(n) || known(timestamps, n));
-  const delta = (node: ts.Node) => contains(node, n => known(deltas, n) || ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.MinusToken && timestamp(n));
+  const timestamp = (node: ts.Node, skipFunctions = false) => contains(node, n => now(n) || known(timestamps, n), skipFunctions);
+  const delta = (node: ts.Node, skipFunctions = false) => contains(node, n => known(deltas, n) || ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.MinusToken && timestamp(n, skipFunctions), skipFunctions);
   // Fixed point handles aliases and declarations in nested callbacks without executing code.
   for (let changed = true; changed;) {
     changed = false;
     for (const node of nodes) if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
-      const set = delta(node.initializer) ? deltas : timestamp(node.initializer) ? timestamps : null;
+      // A function value is neither a timestamp nor an elapsed duration. Its
+      // setup/cleanup body must not taint every caller's returned result.
+      // Assertions inside that body are still checked independently below.
+      const set = delta(node.initializer, true) ? deltas : timestamp(node.initializer, true) ? timestamps : null;
       if (set && !set.has(node.name)) { set.add(node.name); changed = true; }
     }
   }
@@ -332,7 +374,7 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
     }
     const assertion = ts.isIdentifier(node.expression) ? name === 'assert' || b?.module === 'assert/strict' || b?.module === 'assert'
       : ts.isPropertyAccessExpression(node.expression) && (node.expression.expression.getText(source) === 'assert' || ['assert', 'assert/strict'].includes(bindingOf(node.expression.expression)?.module ?? ''));
-    if (assertion && node.arguments.some(delta)) add(node, 'wall-clock-assertion', 'assertion depends on an elapsed wall-clock difference');
+    if (assertion && node.arguments.some(arg => delta(arg))) add(node, 'wall-clock-assertion', 'assertion depends on an elapsed wall-clock difference');
   }
   let lifecycle = typeof entry !== 'string' && !!('contract' in entry ? entry.contract : entry.scenario);
   {
