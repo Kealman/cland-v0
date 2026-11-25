@@ -209,7 +209,10 @@ or `node hub/test/lint-closed-item-wording.ts --help`.
 Under rule 17, CLI and derived summaries distinguish unknown or pending evidence from failure; neither is a failed result (A-8634 R13; T-1049).
 
 Record the stack's commands with `cland config set verification.prepare|check|test`
-(one key per invocation). These are project commands, independent of the language:
+(one key per invocation). String settings take argv literally, including quote
+characters; non-string settings accept TOML values. Types come from the shared
+writable-key exemplar, including optional keys omitted from generated configs.
+These are project commands, independent of the language:
 
 | Key under `[verification]` | Purpose | Where it runs |
 | --- | --- | --- |

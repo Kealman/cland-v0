@@ -55,3 +55,17 @@ T-1738: config set creates qa and agents through provider, answers applies now, 
 
 
 Host policy startup errors are fatal with their key. Table edits replace weights and harnesses, including subsets and empty tables, through CLI readback and persisted config.
+
+## Optional duration argv
+
+`config set keeps quoted duration argv literal even when the default is commented out`
+uses the generated config with absent `verification.test_timeout`. Literal argv
+containing `"17s"` must be refused by the duration parser without changing file
+bytes; unquoted `17s` must persist 17000ms and report restart application. The CLI
+completion and parsed file readback are the receipts; no timer wait is needed.
+
+The quoted-duration case installs `caseDeadlines` with shared directory ownership
+before acquisition, admits the complete sequence with `scope.run`, and bounds
+setup as `quoted duration fixture setup`. Each asynchronous step checks closing
+admission; the root is adopted immediately after acquisition. Late setup and
+CLI work join before cleanup hooks and guarded directory removal.

@@ -12,6 +12,8 @@ import { testMessenger } from './fakes/messenger.ts';
 import type { RemoteSettings } from '../src/remote/configuration.ts';
 import { heldRemoteBoundary } from './fakes/held-remote-boundary.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 
 test('a remote secrets reload refusal retains valid role admission and the last-good pair', async t => {
   const root = await tempProject(t);
@@ -231,6 +233,32 @@ test('config set keeps verification command arguments verbatim and applies them 
     assert.ok(result.stdout.includes(`verification.${key} = ${JSON.stringify(value)}; applies now`), result.stdout);
     assert.equal(parseConfig(await readFile(path, 'utf8'), root).verification[key], value);
   }
+});
+
+test('config set keeps quoted duration argv literal even when the default is commented out', async t => {
+  const scope = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  return scope.run(async step => {
+    const { root, path } = await scope.wait('quoted duration fixture setup', async () => {
+      const root = await step(() => tempProject(scope.fixtures));
+      scope.adoptRoot(root);
+      const path = join(root, '.cland/config.toml');
+      await step(() => mkdir(join(root, '.cland'), { recursive: true }));
+      const config = defaultConfig('Settings test');
+      config.verification.lockPath = join(root, 'suite.lock');
+      await step(() => writeFile(path, renderConfig(config)));
+      await step(() => projectHub(scope.fixtures, root));
+      return { root, path };
+    });
+    const original = await step(() => readFile(path, 'utf8'));
+    const refused = await step(() => cland(root, 'config', 'set', 'verification.test_timeout', '"17s"'));
+    assert.equal(refused.code, 1, refused.stdout);
+    assert.match(refused.stderr, /verification.test_timeout must be a positive duration/);
+    assert.equal(await step(() => readFile(path, 'utf8')), original);
+    const accepted = await step(() => cland(root, 'config', 'set', 'verification.test_timeout', '17s', '--json'));
+    assert.equal(accepted.code, 0, accepted.stderr);
+    assert.deepEqual(JSON.parse(accepted.stdout), { key: 'verification.test_timeout', value: '17s', applies: 'restart' });
+    assert.equal(parseConfig(await step(() => readFile(path, 'utf8')), root).verification.testTimeoutMs, 17_000);
+  });
 });
 
 test('config set accepts setup decline lists and refuses unknown harness ids', async t => {

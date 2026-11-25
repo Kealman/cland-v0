@@ -11,15 +11,25 @@ import { parsePoolName } from '../host/pool-name.ts';
 
 type Table = Record<string, unknown>;
 
-export function configKeys(): string[] {
+function configKeyTemplate(): string {
   const example = defaultConfig('');
   example.verification.testTimeoutIsDefault = false;
   example.verification.droplet.workers = example.verification.workers;
   example.verification.droplet.snapshot_size = example.verification.droplet.prepare_size;
   example.visibility = DEFAULT_VISIBILITY;
+  return renderConfig(example);
+}
+
+/** The writable vocabulary includes optional keys even when generated configs omit them. */
+export function configKeyExemplar(key: string): unknown {
+  return key.split('.').reduce<unknown>((table, part) =>
+    table && typeof table === 'object' ? Reflect.get(table, part) : undefined, parse(configKeyTemplate()));
+}
+
+export function configKeys(): string[] {
   let section = '';
   const keys: string[] = [];
-  for (const line of renderConfig(example).split('\n')) {
+  for (const line of configKeyTemplate().split('\n')) {
     const heading = /^\[([^\]]+)\]$/.exec(line);
     if (heading) section = heading[1]!;
     const assignment = /^([\w.]+)\s*=/.exec(line);

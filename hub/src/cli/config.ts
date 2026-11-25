@@ -2,7 +2,7 @@ import { parse } from 'smol-toml';
 import { hubDiscovery, readDiscovery } from '../project.ts';
 import { askHubFrame } from './socket-client.ts';
 import type { ConfigSetResult } from '../hub/configuration.ts';
-import { defaultConfig, renderConfig } from '../init/config.ts';
+import { configKeyExemplar } from '../init/config-set.ts';
 
 export async function runConfig(args: string[], cwd = process.cwd()): Promise<number> {
   const json = args.includes('--json');
@@ -10,8 +10,7 @@ export async function runConfig(args: string[], cwd = process.cwd()): Promise<nu
   if (sub !== 'set' || !key || input === undefined || extra.length) throw new Error('usage: cland config set <section.key> <value> [--json]');
   const discovery = readDiscovery(hubDiscovery(cwd));
   if (!discovery) throw new Error('no hub runs for this project — run `cland hub start`');
-  const templateValue = key.split('.').reduce<unknown>((table, part) =>
-    table && typeof table === 'object' ? Reflect.get(table, part) : undefined, parse(renderConfig(defaultConfig(''))));
+  const templateValue = configKeyExemplar(key);
   // A string key takes argv literally, even when it looks like a TOML value.
   let value: unknown = input;
   if (typeof templateValue !== 'string') {
