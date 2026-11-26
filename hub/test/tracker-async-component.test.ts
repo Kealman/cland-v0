@@ -11,7 +11,9 @@ import { parseItem } from '../src/tracker/item.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { renderConfig, parseConfig } from '../src/init/config.ts';
 import { FakeClock } from './fake-clock.ts';
-import { tempProject } from './harness.ts';
+import { tempProject, startHub, dispatcherUi } from './harness.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { testDeadlineMs } from './until.ts';
 
 const human = { id: 'human', name: 'human', role: null };
 const deferred = () => {
@@ -19,6 +21,174 @@ const deferred = () => {
   const promise = new Promise<void>(done => { resolve = done; });
   return { promise, resolve };
 };
+
+test('a stalled planned read is fenced and releases the queue without a fatal shutdown', async t => {
+  const owner = stageCase(t);
+  const entered = deferred(), release = deferred();
+  owner.releaseOnClose(release.resolve);
+  await owner.run(async step => {
+    const { root, tracker, child, epic, clock, fatal, events, ui, readCount } = await owner.wait('complete planned read setup', async () => {
+      const root = await step(() => tempProject(owner.fixtures));
+      owner.adoptRoot(root);
+      const clock = new FakeClock();
+      const fatal: unknown[] = [], events: Record<string, unknown>[] = [];
+      let held = false, reads = 0;
+      const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), clock,
+        git: async () => null, readBase: async () => null, storageStallMs: 100, storageFatalMs: 300,
+        onStorageFatal: op => fatal.push(op), log: event => events.push(event),
+        files: { ...files, readFile: async (...args) => {
+          if (!held && tracker.storageStatus().active?.operation === 'planned check') {
+            held = true; reads++; entered.resolve(); await release.promise;
+          }
+          return files.readFile(...args);
+        } },
+      });
+      let hub: Awaited<ReturnType<typeof startHub>> | undefined;
+      owner.requireClose(async () => { release.resolve(); await hub?.close(); await tracker.stop(); });
+      const epic = await step(() => tracker.create(human, { title: 'Plan', kind: 'epic' }));
+      const child = await step(() => tracker.create(human, { title: 'Work', parent: epic.id }));
+      // The low-level hub accepts the fake-file tracker; projectHub constructs its own.
+      hub = await step(() => startHub({ tracker, clock }));
+      const ui = await step(() => dispatcherUi(owner.resources, hub!.dispatcher, root));
+      await step(() => tracker.setPlan(human, epic.id, `stages:\n  - name: Build\n    qa: { scope: none, when: per-item }\n    lanes: [[${child.id}]]`));
+      return { root, tracker, child, epic, clock, fatal, events, ui, readCount: () => reads };
+    }, testDeadlineMs(10000));
+    await owner.wait('complete planned read action and results', async () => {
+      await step(() => owner.wait('planned read admitted', () => entered.promise, testDeadlineMs(5000)));
+      const reading = ui.request({ type: 'task.view', item: child.id });
+      clock.block(350);
+      await step(() => clock.advance(0));
+      assert.deepEqual(fatal, [], 'read-only timeout must not invoke daemon fatal shutdown');
+      const view = await step(() => owner.wait('queued view completed', () => reading, testDeadlineMs(5000)));
+      assert.equal(view.ok, true, view.error);
+      assert.equal((view.value as { item: { id: string } }).item.id, child.id);
+      const diagnostic = events.find(e => e.event === 'tracker-storage-read-cancelled');
+      assert.equal(diagnostic?.operation, 'planned check');
+      assert.equal(diagnostic?.item, epic.id);
+      assert.equal(diagnostic?.kind, 'read');
+      assert.equal(diagnostic?.waitMs, 350);
+      assert.equal(diagnostic?.queueDepth, 1);
+      assert.equal(diagnostic?.eventLoopDelayMs, 50);
+      assert.equal(typeof diagnostic?.cpuUserMicros, 'number');
+      release.resolve();
+      await step(() => tracker.stop());
+      assert.equal(readCount(), 1, 'cancellation does not spin retries');
+      const text = await step(() => files.readFile(join(root, child.path), 'utf8'));
+      assert.equal(parseItem(text, child.file).fm.status, 'backlog', 'late read cannot publish planned status');
+    }, testDeadlineMs(10000));
+  });
+});
+
+for (const mode of ['view', 'planned write'] as const) test(`a stalled ${mode} has the correct refusal and shutdown boundary`, async t => {
+  const owner = stageCase(t);
+  const entered = deferred(), release = deferred(), backgroundClosed = deferred();
+  owner.releaseOnClose(release.resolve);
+  await owner.run(async step => {
+    const { tracker, child, epic, clock, fatal, events, start, stopped } = await owner.wait('complete storage boundary setup', async () => {
+      const root = await step(() => tempProject(owner.fixtures));
+      owner.adoptRoot(root);
+      const clock = new FakeClock();
+      const fatal: unknown[] = [], events: Record<string, unknown>[] = [];
+      let hold = false, stopping: Promise<void> | undefined;
+      const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), clock,
+        git: async () => null, readBase: async () => null, storageStallMs: 100, storageFatalMs: 300,
+        onStorageFatal: op => { fatal.push(op); stopping = tracker.stop({ stalled: op }); },
+        log: event => { events.push(event); if (event.event === 'task-watch-error') backgroundClosed.resolve(); }, files: { ...files,
+          readFile: async (...args) => {
+            if (hold && mode === 'view' && tracker.storageStatus().active?.operation === 'view') {
+              hold = false; entered.resolve(); await release.promise;
+            }
+            return files.readFile(...args);
+          },
+          writeFile: async (...args) => {
+            await files.writeFile(...args);
+            if (hold && mode === 'planned write' && tracker.storageStatus().active?.operation === 'planned check') {
+              hold = false; entered.resolve(); await release.promise;
+            }
+          },
+        },
+      });
+      owner.requireClose(async () => {
+        release.resolve();
+        if (stopping) await owner.wait('abandoned writer closed', () => backgroundClosed.promise, testDeadlineMs(5000));
+        await tracker.stop();
+      });
+      const epic = await step(() => tracker.create(human, { title: 'Plan', kind: 'epic' }));
+      const child = await step(() => tracker.create(human, { title: 'Work', parent: epic.id }));
+      return { tracker, child, epic, clock, fatal, events, start: () => { hold = true; }, stopped: () => stopping };
+    }, testDeadlineMs(10000));
+    await owner.wait('complete storage boundary action and results', async () => {
+      start();
+      let refusal: Promise<void> | undefined;
+      if (mode === 'view') refusal = assert.rejects(tracker.viewAsync(child.id), /tracker read cancelled.*retry/);
+      else await step(() => tracker.setPlan(human, epic.id, `stages:\n  - name: Build\n    qa: { scope: none, when: per-item }\n    lanes: [[${child.id}]]`));
+      await step(() => owner.wait('held operation admitted', () => entered.promise, testDeadlineMs(5000)));
+      const next = tracker.viewAsync(child.id);
+      const nextResult = mode === 'view' ? next.then(() => {}) : assert.rejects(next, /tracker storage abandoned/);
+      await step(() => clock.advance(300));
+      if (mode === 'view') {
+        await step(() => refusal!);
+        assert.equal((await step(() => next)).id, child.id);
+        assert.deepEqual(fatal, []);
+      } else {
+        assert.equal(fatal.length, 1);
+        assert.equal((fatal[0] as { kind: string }).kind, 'write');
+        await step(() => stopped()!);
+        await step(() => nextResult);
+        const abandoned = events.find(e => e.event === 'tracker-storage-abandoned');
+        assert.ok(abandoned, 'pending writes are recorded before shutdown completes');
+        assert.deepEqual(tracker.storageStatus().abandoned.map(op => op.operation), ['planned check', 'view']);
+      }
+      release.resolve();
+    }, testDeadlineMs(10000));
+  });
+});
+
+for (const label of ['view', 'planned check', 'ready check']) test(`a writeItem labeled ${label} retains fatal writer ownership`, async t => {
+  const owner = stageCase(t);
+  const entered = deferred(), release = deferred();
+  owner.releaseOnClose(release.resolve);
+  await owner.run(async step => {
+    const { tracker, clock, fatal, events, child, source, text, arm, stopped } = await owner.wait('complete labeled writer setup', async () => {
+      const root = await step(() => tempProject(owner.fixtures));
+      owner.adoptRoot(root);
+      const clock = new FakeClock();
+      const fatal: unknown[] = [], events: Record<string, unknown>[] = [];
+      let hold = false, stopping: Promise<void> | undefined;
+      const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), clock,
+        git: async () => null, readBase: async () => null, storageStallMs: 100, storageFatalMs: 300,
+        onStorageFatal: op => { fatal.push(op); stopping = tracker.stop({ stalled: op }); },
+        log: event => events.push(event), files: { ...files, writeFile: async (...args) => {
+          await files.writeFile(...args);
+          if (hold) { hold = false; entered.resolve(); await release.promise; }
+        } },
+      });
+      owner.requireClose(async () => { release.resolve(); await tracker.stop(); });
+      const child = await step(() => tracker.create(human, { title: 'Writer' }));
+      const text = await step(() => files.readFile(join(root, child.path), 'utf8'));
+      const source = parseItem(text, child.file);
+      source.body += '\nwriter change\n';
+      return { tracker, clock, fatal, events, child, source, text, arm: () => { hold = true; }, stopped: () => stopping };
+    }, testDeadlineMs(10000));
+    await owner.wait('complete labeled writer action and results', async () => {
+      arm();
+      const writing = tracker.writeItem(human, label, source, { file: child.file, text });
+      const writeResult = writing.then(value => ({ value, error: null }), error => ({ value: null, error }));
+      await step(() => entered.promise);
+      const successor = tracker.viewAsync(child.id);
+      const successorResult = successor.then(value => ({ value, error: null }), error => ({ value: null, error }));
+      await step(() => clock.advance(300));
+      assert.equal(fatal.length, 1, 'writer label must never select read cancellation');
+      assert.equal((fatal[0] as { kind: string }).kind, 'write');
+      await step(() => stopped()!);
+      assert.match(String((await step(() => writeResult)).error), /tracker storage abandoned/);
+      assert.match(String((await step(() => successorResult)).error), /tracker storage abandoned/);
+      assert.ok(events.some(event => event.event === 'tracker-storage-abandoned'));
+      assert.deepEqual(tracker.storageStatus().abandoned.map(op => op.operation), [label, 'view']);
+      release.resolve();
+    }, testDeadlineMs(10000));
+  });
+});
 
 test('concurrent comments and writes to other items commit in admission order', async t => {
   const root = await tempProject(t);

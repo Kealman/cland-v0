@@ -223,7 +223,7 @@ retain the mounted disk and exact-machine fence, and emit a named Agents notice.
 - [cland doctor](../docs/hub/cland-doctor.md): remote admission refusals with credential repair versus unanswered sockets with tunnel repair, toolchain, remote readiness, read-only hosts diagnostics and sign-in mode with hub-backed users counts. With `[release] web_bundle = true`, also checks gh resolution on the running hub's PATH without auth or network calls; missing tools need a hub restart with the tool on PATH.
 - [The project's hub](../docs/hub/the-projects-hub.md)
 - [Adapters and sessions](../docs/hub/adapters-and-sessions.md): managed Claude Bash guard refuses computed and unquoted-glob rm/rmdir targets; OpenCode server launch bounds port selections at eight, including repeated ports, within its launch deadline.
-- [The tracker](../docs/hub/the-tracker.md)
+- [The tracker](../docs/hub/the-tracker.md): planned/ready checks and views cancel their read phase at the configured stall deadline while the hub keeps serving; mutating phases retain fatal recovery.
 - [Running](../docs/hub/running.md): executor API endpoint declarations, per-token request budgets, shared dependency preparation for local batch/probe checkouts and shared test gates for executor/host/bootstrap SSH binary overrides.
 - [Enqueue preflight](../docs/hub/running.md#enqueue-preflight): isolated merged-head checks, projected closure and bounded dev-movement retries before queue mutation.
 - [Artifacts](../docs/hub/artifacts.md) (includes offline QA brief lint; per-test Markdown guide references are checked by full path at the selected commit, with [report-only run-copy advice](../docs/agents/qa-brief-lint.md#corrected-run-copies))

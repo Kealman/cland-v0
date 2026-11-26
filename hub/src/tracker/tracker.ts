@@ -88,7 +88,7 @@ export const DEBOUNCE_MS = 100;
 export const CONCURRENT_MS = 2000;
 /** Warning threshold; the operation keeps its place in the queue and may still finish. */
 export const STORAGE_STALL_MS = 5000;
-/** Fatal deadline; a serving daemon terminates rather than releasing a stalled queue. */
+/** Read cancellation / fatal write deadline, measured from admission. */
 export const STORAGE_FATAL_MS = 60000;
 /** Maximum storage drain on shutdown, below the CLI's stop fallback. */
 export const STORAGE_STOP_MS = 2000;
@@ -100,7 +100,7 @@ export type TrackerStorageStatus = {
   queued: number;
   abandoned: StorageOperation[];
 };
-type StorageWork = StorageOperation & { started: number | null; stalled: boolean; timer?: ClockTimer; fatalTimer?: ClockTimer; abandon: () => void };
+type StorageWork = StorageOperation & { kind: 'read' | 'write'; cancelled: boolean; started: number | null; stalled: boolean; timer?: ClockTimer; fatalTimer?: ClockTimer; abandon: () => void };
 
 /**
  * Who asks: a session or a person at the CLI. `id` is the identity a claim is held by — a session's id,
@@ -295,6 +295,7 @@ export class Tracker {
   readonly #files: TrackerFiles;
   #queue: Promise<unknown> = Promise.resolve();
   readonly #storageWork = new Set<StorageWork>();
+  readonly #storageReads = new Set<Promise<unknown>>();
   readonly #storageStallMs: number;
   readonly #storageFatalMs: number;
   readonly #onStorageFatal: ((operation: StorageOperation) => void) | undefined;
@@ -597,7 +598,7 @@ export class Tracker {
       this.#plannedTimer = null;
       const ids = [...this.#plannedChecks];
       this.#plannedChecks.clear();
-      for (const epic of ids) this.#runBackground(() => this.#serial(resumed => this.#checkPlanned(epic, resumed), this.#watchResumed, { operation: 'planned check', item: epic }));
+      for (const epic of ids) this.#runBackground(() => this.#serial(resumed => this.#checkPlanned(epic, resumed), this.#watchResumed, { operation: 'planned check', item: epic, kind: 'read' }));
     });
     this.#plannedTimer.unref();
   }
@@ -735,7 +736,7 @@ export class Tracker {
         timer.unref();
         this.#readyRetries.set(id, timer);
       }); }
-    }, this.#watchResumed, { operation: 'ready check', item: id }));
+    }, this.#watchResumed, { operation: 'ready check', item: id, kind: 'read' }));
   }
 
   #readyStatus(view: ItemView): Status | null {
@@ -1078,7 +1079,7 @@ export class Tracker {
     this.#stopping = (async () => {
       if (!this.#storageAbandoned) {
         let timer: ClockTimer | undefined;
-        const drained = Promise.allSettled([...this.#background, this.#queue, freshnessStopped]).then(() => true);
+        const drained = Promise.allSettled([...this.#background, ...this.#storageReads, this.#queue, freshnessStopped]).then(() => true);
         const deadline = new Promise<false>(resolve => { timer = this.#clock.setTimeout(() => resolve(false), this.#stopTimeoutMs); });
         const complete = await Promise.race([drained, deadline]);
         this.#clock.clearTimeout(timer);
@@ -1758,7 +1759,7 @@ export class Tracker {
         // Evidence and claims are read after the file await, within the same tracker admission.
         return evidence ? this.#mergeViewOf(view) : view;
       });
-    }, resumed, { operation: 'view', item: this.#referenceId(rawId) ?? rawId });
+    }, resumed, { operation: 'view', item: this.#referenceId(rawId) ?? rawId, kind: 'read' });
   }
 
   /** Lane order is met on closure, or once all task children close and the last lands on dev. */
@@ -2740,34 +2741,59 @@ export class Tracker {
   // ---------------------------------------------------------------- writing
 
   /** Admit every operation on one tail: file names and frontmatter ids can change while work waits. */
-  #serial<T>(work: (resumed: Resumed) => Promise<T> | T, resumed: Resumed, operation: Pick<StorageOperation, 'operation' | 'item'>): Promise<T> {
+  #serial<T>(work: (resumed: Resumed) => Promise<T> | T, resumed: Resumed, operation: Pick<StorageOperation, 'operation' | 'item'> & { kind?: 'read' }): Promise<T> {
     if (this.#storageAbandoned) return Promise.reject(new TrackerError(this.#storageError));
     if (this.#stopping) return Promise.reject(new TrackerError('tracker is stopping'));
     let abandon!: () => void;
     const abandoned = new Promise<never>((_, reject) => { abandon = () => reject(new TrackerError(this.#storageError)); });
-    const entry: StorageWork = { ...operation, startedAt: null, started: null, stalled: false, abandon };
+    // Read admission is internal and explicit, never inferred from diagnostic text.
+    // Every other admission, including writeItem's arbitrary label, is a writer.
+    const kind = operation.kind ?? 'write';
+    const entry: StorageWork = { ...operation, kind, cancelled: false, startedAt: null, started: null, stalled: false, abandon };
     this.#storageWork.add(entry);
-    const guarded = this.#guardStorage(resumed);
+    const guarded: Resumed = callback => this.#guardStorage(resumed)(() => {
+      if (entry.cancelled) throw new TrackerError(`tracker read cancelled: ${entry.operation} on ${entry.item}`);
+      return callback();
+    });
+    const expired = Promise.withResolvers<never>();
     const admitted = () => guarded(() => {
-      entry.started = performance.now();
+      entry.started = this.#clock.now().getTime();
       entry.startedAt = this.#clock.now().toISOString();
+      const cpu = process.cpuUsage();
+      const diagnostic = (deadline: number) => ({ operation: entry.operation, item: entry.item, startedAt: entry.startedAt,
+        kind: entry.kind, waitMs: this.#clock.now().getTime() - entry.started!,
+        queueDepth: [...this.#storageWork].filter(work => work.started === null).length,
+        eventLoopDelayMs: Math.max(0, this.#clock.now().getTime() - entry.started! - deadline),
+        cpuUserMicros: process.cpuUsage(cpu).user, cpuSystemMicros: process.cpuUsage(cpu).system });
       entry.timer = this.#clock.setTimeout(() => {
         entry.stalled = true;
-        this.#log({ event: 'tracker-storage-stalled', operation: entry.operation, item: entry.item, startedAt: entry.startedAt, thresholdMs: this.#storageStallMs });
+        this.#log({ event: 'tracker-storage-stalled', ...diagnostic(this.#storageStallMs), thresholdMs: this.#storageStallMs });
       }, this.#storageStallMs);
       entry.timer.unref();
       entry.fatalTimer = this.#clock.setTimeout(() => {
-        this.#onStorageFatal?.({ operation: entry.operation, item: entry.item, startedAt: entry.startedAt });
+        const detail = diagnostic(this.#storageFatalMs);
+        if (entry.kind === 'read') {
+          entry.cancelled = true;
+          if (entry.operation === 'ready check' && entry.item) {
+            this.#readyChecks.delete(entry.item);
+            this.#readyAgain.delete(entry.item);
+          }
+          this.#log({ event: 'tracker-storage-read-cancelled', ...detail });
+          expired.reject(new TrackerError(`tracker read cancelled: ${entry.operation} on ${entry.item}; retry the request`));
+        } else this.#onStorageFatal?.(detail);
       }, this.#storageFatalMs);
       entry.fatalTimer.unref();
-      return work(guarded);
+      const original = Promise.resolve().then(() => guarded(() => work(guarded)));
+      this.#storageReads.add(original);
+      void original.then(() => this.#storageReads.delete(original), () => this.#storageReads.delete(original));
+      return Promise.race([original, expired.promise]);
     });
     const run = this.#queue.then(admitted, admitted).finally(() => {
       this.#clock.clearTimeout(entry.timer);
       this.#clock.clearTimeout(entry.fatalTimer);
       this.#storageWork.delete(entry);
     });
-    // Never advance the actual queue tail on a detection timer or a caller rejection.
+    // A cancelled read is fenced; writers retain the tail until completion or daemon exit.
     this.#queue = run.catch(() => {});
     return Promise.race([run, abandoned]);
   }
@@ -2793,7 +2819,7 @@ export class Tracker {
     const active = [...this.#storageWork].find(work => work.started !== null);
     return {
       stalled: active?.stalled ?? false,
-      active: active ? { operation: active.operation, item: active.item, startedAt: active.startedAt, elapsedMs: performance.now() - active.started! } : null,
+      active: active ? { operation: active.operation, item: active.item, startedAt: active.startedAt, elapsedMs: this.#clock.now().getTime() - active.started! } : null,
       queued: [...this.#storageWork].filter(work => work.started === null).length,
       abandoned: this.#abandonedOperations.map(operation => ({ ...operation })),
     };
@@ -2808,6 +2834,7 @@ export class Tracker {
    * source and guard publication so concurrent editor saves survive.
    */
   async #write(name: string, item: Item, resumed: Resumed, read?: { id: string; op: string; hash: string; fd: FileHandle; captured?: string }, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, planWriter?: Actor, planReason?: string): Promise<Item> {
+    this.#promoteStorageWrite(resumed);
     const active = [...this.#storageWork].find(work => work.started !== null);
     if (active) active.item = item.fm.id;
     this.#normalizeStatus(item);
@@ -2949,8 +2976,16 @@ export class Tracker {
     }
   }
 
+  #promoteStorageWrite(resumed: Resumed): void {
+    resumed(() => {
+      const active = [...this.#storageWork].find(work => work.started !== null);
+      if (active) active.kind = 'write';
+    });
+  }
+
   /** Called only with the tracker queue held: always read the latest committed file. */
   async #mutate(rawId: string, actor: Actor, op: string, change: (item: Item) => void, resumed: Resumed, verdictWriter?: Actor, beforeCommit?: () => void, committed?: () => void, beforeRename?: () => Promise<void>, skipUnchanged = false, planReason?: string, unchanged?: () => boolean): Promise<ItemView> {
+    this.#promoteStorageWrite(resumed);
     const { id, file } = this.#require(rawId);
     const path = join(this.#dir, file);
     let fd: FileHandle;

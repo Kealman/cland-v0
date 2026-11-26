@@ -126,6 +126,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   // the tracker
   'task-written',
   'tracker-storage-stalled',
+  'tracker-storage-read-cancelled',
   'tracker-storage-fatal',
   'tracker-storage-abandoned',
   'task-plan-changed',
