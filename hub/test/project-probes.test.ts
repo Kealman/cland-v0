@@ -47,8 +47,8 @@ async function startObservation() {
   }
   syncBuiltinESMExports();
   finishObservation = () => {
-    try { assert.deepEqual(census, {}, 'the complete file observation window contains zero children'); }
-    finally { for (const [method, original] of originals) Reflect.set(cp, method, original); syncBuiltinESMExports(); }
+    for (const [method, original] of originals) Reflect.set(cp, method, original);
+    syncBuiltinESMExports();
   };
   // Import inside the observation window: eager ps probes count too.
   const { connectUi, projectHub, tempProject } = await import('./harness.ts');
@@ -59,6 +59,7 @@ async function startObservation() {
 test('importing the project harness starts zero child processes', async t => {
   await observeChildren(t);
 });
+
 
 test('projectHub without runner identity persists a fixture identity without native children', async t => {
   const owner = fixtureWork(t);
@@ -235,4 +236,10 @@ test('projectHub defaults launch, signal and stop every harness with zero child 
   assert.equal(reload.ok, true, reload.error);
   assert.equal((reload.value as { sourceCommit: string }).sourceCommit, commit);
 
+});
+
+test('the complete file observation window contains zero children', async () => {
+  const seen = await (observation ??= startObservation());
+  try { assert.deepEqual(seen.census, {}, 'the complete file observation window contains zero children'); }
+  finally { finishObservation(); }
 });

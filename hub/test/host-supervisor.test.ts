@@ -42,12 +42,15 @@ async function joinControls() {
   await Promise.all([...controls].map(owner => owner.close()));
 }
 async function removeRoot(root: string, afterControlJoin?: () => Promise<void>) {
+  await cleanupRoot(root, afterControlJoin);
+  await assert.rejects(access(root));
+}
+async function cleanupRoot(root: string, afterControlJoin?: () => Promise<void>) {
   await joinControls();
   await afterControlJoin?.();
   await closeSupervisors(root);
   await removeFixtureSockets(root);
   await rm(root, {recursive:true, force:true});
-  await assert.rejects(access(root));
   roots.splice(roots.indexOf(root), 1);
 }
 const restartOwners = new Map<string, Array<{stop: () => Promise<void>; agents: Array<() => Promise<void>>}>>();
@@ -75,13 +78,10 @@ async function fixtureRoot(prefix: string) {
 after(async () => {
   await joinControls();
   const survivors = roots.flatMap(root => fixtureProcessCensus(root));
-  try { assert.deepEqual(survivors, [], 'post-file fixture process census: supervised writers survived teardown'); }
-  finally {
-    // Red-control safety net; this runs only after the assertion has observed the leak.
-    for (const root of roots) await closeSupervisors(root);
-    await cleanupOwnedProcesses(survivors);
-    for (const root of [...roots]) await removeRoot(root);
-  }
+  // Safety net also runs when a selected local invocation omits the final case.
+  for (const root of roots) await closeSupervisors(root);
+  await cleanupOwnedProcesses(survivors);
+  for (const root of [...roots]) await cleanupRoot(root);
 });
 const script = new URL('../src/host/agent/supervisor.sh', import.meta.url).pathname;
 const cli = new URL('../bin/cland.ts', import.meta.url).pathname;
@@ -343,4 +343,11 @@ test('cancelled supervisor control retains its root until a held producer and mi
     await removing;
     await assert.rejects(access(root));
   } finally { gate.resolve(); await owner.close(); }
+});
+
+test('post-file fixture process census has no supervised writers after teardown', async () => {
+  await joinControls();
+  const survivors = roots.flatMap(root => fixtureProcessCensus(root));
+  assert.deepEqual(survivors, [], 'post-file fixture process census: supervised writers survived teardown');
+  for (const root of [...roots]) await removeRoot(root);
 });

@@ -9,7 +9,7 @@ import type { Tier, TierEntry, TierManifest } from './suite-shards.ts';
 // Most hub sessions never lint. Do not load the compiler into every daemon or CLI.
 const syntax = (): typeof ts => requireTypeScript('test lint');
 
-export type TestLintFinding = { file: string; line: number; rule: 'tier-import' | 'tier-process' | 'wall-clock-wait' | 'wall-clock-assertion' | 't3-lifecycle' | 'skip-reason'; message: string; reportOnly?: boolean };
+export type TestLintFinding = { file: string; line: number; rule: 'tier-import' | 'tier-process' | 'wall-clock-wait' | 'wall-clock-assertion' | 't3-lifecycle' | 'skip-reason' | 'file-after'; message: string; reportOnly?: boolean };
 export type TestLintFile = { file: string; tier: Tier; qualifies: Tier; findings: TestLintFinding[]; reachable?: { tier: Tier; resources: TestLintFinding[] } };
 const processHelpers = new Set(['startDaemon', 'killDaemon', 'spawnSpoke', 'fakeClaude', 'fakeCodex', 'fakeOpenCode']);
 const socketHelpers = new Set(['projectHub', 'startHub', 'cland', 'clandWithEnv', 'connectUi', 'connectSocket', 'connectWsUi', 'inProcessSpoke']);
@@ -127,6 +127,40 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
     }
   };
   const harness = (module: string) => module === 'hub/test/harness.ts';
+  const afterKind = (callback: ts.Node | undefined): string => {
+    const seen = new Set<ts.Node>();
+    let assertion = false, opaque = false;
+    const walk = (node: ts.Node | undefined): void => {
+      if (!node || seen.has(node)) return;
+      seen.add(node); // Each local syntax node is inspected at most once per hook.
+      const reference = bindingOf(node);
+      if (reference && ['assert', 'assert/strict'].includes(reference.module)) assertion = true;
+      else if (reference) opaque = true;
+      if (ts.isIdentifier(node)) {
+        const declaration = declarationOf(node)?.parent;
+        if (declaration && ts.isImportSpecifier(declaration)) opaque = true;
+        if (declaration && (ts.isFunctionDeclaration(declaration) || ts.isVariableDeclaration(declaration))) {
+          if (ts.isVariableDeclaration(declaration) && !declaration.initializer) opaque = true;
+          if (ts.isVariableDeclaration(declaration) && !(ts.isVariableDeclarationList(declaration.parent) && declaration.parent.flags & ts.NodeFlags.Const)) opaque = true;
+          walk(ts.isFunctionDeclaration(declaration) ? declaration.body : declaration.initializer);
+          return;
+        }
+      }
+      if (ts.isCallExpression(node)) {
+        const bound = bindingOf(node.expression);
+        if (bound && ['assert', 'assert/strict'].includes(bound.module)) assertion = true;
+        else {
+          const declaration = ts.isIdentifier(node.expression) ? declarationOf(node.expression)?.parent : undefined;
+          if (declaration && (ts.isFunctionDeclaration(declaration) || ts.isVariableDeclaration(declaration))) walk(node.expression);
+          else opaque = true;
+        }
+      }
+      ts.forEachChild(node, walk);
+    };
+    if (callback && ts.isIdentifier(callback) && !declarationOf(callback)) opaque = true;
+    walk(callback);
+    return assertion ? 'assertion-bearing' : opaque || !callback ? 'unresolved callback' : 'cleanup-only';
+  };
   const inspectModule = (node: ts.Node, module: string, names: string[]) => {
     if (machineModules.has(module)) resource(node, 2, module);
     if (module === 'hub/test/process-cleanup.ts' || module === 'nvim/test/harness.ts' || module === 'nvim/test/rpc.ts' || module === 'nvim/test/stub-hub.ts') resource(node, 2, module);
@@ -314,6 +348,11 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
   for (const node of nodes) if (ts.isCallExpression(node)) {
     const b = bindingOf(node.expression);
     const name = b?.name ?? nameOf(node.expression);
+    // Conservatively report registrations, including helper callbacks: their
+    // assertions may be indirect. TestContext.after belongs to a named case.
+    if (b?.module === 'test' && name === 'after') findings.push({ file, line: lineOf(node),
+      rule: 'file-after', reportOnly: true,
+      message: `${afterKind(node.arguments[0])}: file-level after may hide assertions under plain node; put guards in a final named test (cleanup-only hooks may remain)` });
     if (['until', 'eventually', 'remoteEventually'].includes(name)) {
       const unwrap = (value: ts.Expression): ts.Expression => ts.isParenthesizedExpression(value) || ts.isAsExpression(value) || ts.isSatisfiesExpression(value) ? unwrap(value.expression) : value;
       for (const argument of node.arguments) {

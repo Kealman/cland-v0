@@ -1,5 +1,11 @@
 # Hub documentation
 
+Local test files run with `node --test <file>`; plain `node <file>` can silently
+exit 0 on a failed file-level teardown assertion. Fixture child environments
+remove inherited `NODE_TEST_CONTEXT` after overlays. Global `after` registrations
+have a report-only census; assertion guards belong in a final named test.
+See [test invocation and hook guidance](../docs/agents/tests.md).
+
 Pending merge freshness refusals name the `ready` state and the item inspection
 command; see [the merge gate](../docs/hub/cland-init-and-cland-update.md#the-merge-gate).
 

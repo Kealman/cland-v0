@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { lintTests, testLintReport } from '../src/test-lint.ts';
+import { lintTests, testLintReport, testLintFacts } from '../src/test-lint.ts';
 import { testLintPolicy, lintRefusalLines, shrinkTestLint } from '../src/test-lint-policy.ts';
 import { readDurationManifest } from '../src/suite-durations.ts';
 import { fixedTestWaits } from '../src/fixed-test-waits.ts';
@@ -14,15 +14,23 @@ let fixedCount = 0;
 let fixedComplete = true;
 try {
   for await (const file of glob(['hub/test/**/*.ts', 'web/test/**/*.ts', 'nvim/test/**/*.ts'], { cwd })) {
+    const text = await readFile(join(cwd, file), 'utf8');
+    // The lexical resolver below handles aliases/shadowing; skip sources that
+    // cannot possibly register the node:test after API before loading a binder.
+    if (/(['"])(?:node:)?test\1/.test(text) && /\bafter\b/.test(text)) {
+      for (const finding of testLintFacts(file, text, 'T1').result.findings.filter(f => f.rule === 'file-after')) {
+        console.log(`file after census (report only): ${finding.file}:${finding.line} ${finding.message}`);
+      }
+    }
     if (file === 'hub/test/until.ts') continue; // The shared default is the census boundary.
-    for (const finding of fixedTestWaits(file, await readFile(join(cwd, file), 'utf8'))) {
+    for (const finding of fixedTestWaits(file, text)) {
       fixedCount++;
       console.log(`fixed test wait (report only): ${finding.file}:${finding.line} ${finding.message}`);
     }
   }
 } catch {
   fixedComplete = false;
-  console.log('fixed test wait census incomplete (report only); no admission or exit-status effect');
+  console.log('test helper censuses incomplete (report only); no admission or exit-status effect');
 }
 console.log(`fixed test waits outside shared helper (report only): ${fixedComplete ? fixedCount : `unknown; partial count ${fixedCount}`}`);
 if (args.includes('--shrink')) await shrinkTestLint(cwd);

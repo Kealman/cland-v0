@@ -7,6 +7,14 @@ import { fixtureEnvironment, scratchAccountEnvironment, runnerFixtureEnvironment
 import { syntheticProviderEnvironment, type SyntheticProvider } from './synthetic-provider.ts';
 import type { Provider } from '../src/executor/droplet/dependencies.ts';
 
+test('child fixtures remove inherited test worker context after the final overlay', () => {
+  const base = { NODE_TEST_CONTEXT: 'child-v8' };
+  assert.equal(fixtureEnvironment('/scratch', base).NODE_TEST_CONTEXT, undefined);
+  assert.equal(fixtureEnvironment('/scratch', {}, base).NODE_TEST_CONTEXT, undefined);
+  assert.equal(runnerFixtureEnvironment('/scratch', base).NODE_TEST_CONTEXT, undefined);
+  assert.equal(base.NODE_TEST_CONTEXT, 'child-v8');
+});
+
 test('QA case environments keep QA inputs without fixture or caller authority', () => {
   const env = qaCaseEnvironment('/scratch/qa', {
     CLAND_QA_TMP: '/scratch/qa', CLAND_QA_CASE: '/scratch/case.lua', CLAND_NODE: '/scratch/qa/node',

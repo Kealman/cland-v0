@@ -32,7 +32,8 @@ export function fixtureEnvironment(root: string, base: NodeJS.ProcessEnv, extra:
     if (credential(key)
       || /^(CLAUDE_|CODEX_|OPENCODE_)/.test(key) && !['CLAUDE_CONFIG_DIR', 'CODEX_HOME'].includes(key)
       || key.startsWith('GIT_') && !/^GIT_(AUTHOR|COMMITTER)_(NAME|EMAIL|DATE)$/.test(key)) delete env[key];
-    else if (env[key] === undefined) delete env[key];
+    // A child Node test is a fresh coordinator, never its parent's worker.
+    else if (key === 'NODE_TEST_CONTEXT' || env[key] === undefined) delete env[key];
   }
   // Missing messenger roots trigger fixed client configuration errors; speech
   // uses loopback port zero. Never leave undefined production defaults.

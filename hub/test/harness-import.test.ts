@@ -1,6 +1,6 @@
 // T1: importing a pure harness helper must not start fixtures or native resources,
 // including through global hooks and file cleanup.
-import { test, after, mock } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
@@ -20,6 +20,6 @@ test('a bare harness import keeps pure helpers free of native resources', () => 
   assert.ok(accountKeys.every((key, index) => process.env[key] === inherited[index]), 'import must preserve inherited account settings');
 });
 
-after(() => {
+test('file import and global hooks create no fixture directories', () => {
   assert.equal(directories.mock.callCount(), 0, 'no fixture setup in global hooks');
 });

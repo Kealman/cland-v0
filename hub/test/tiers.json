@@ -67,6 +67,7 @@
     "hub/test/adapter-generation-forward.test.ts": "T3",
     "hub/test/adapter-generation.test.ts": "T2",
     "hub/test/adapter-native-boundary.test.ts": "T3",
+    "hub/test/after-hooks.test.ts": "T3",
     "hub/test/agents-checkpoint.test.ts": "T1",
     "hub/test/agents-filters.test.ts": "T2",
     "hub/test/agents-journal.test.ts": "T2",

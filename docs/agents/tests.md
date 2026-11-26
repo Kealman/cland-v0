@@ -1,5 +1,22 @@
 # Running tests
 
+Run a local test file with `node --test <file>`, under the supported Node 24
+engine range. Plain `node <file>` is unsupported: Node 24.21 can print a failed
+file-level `after` hook while exiting 0 and counting zero failures. Supported
+`--test` execution and the suite's serial/parallel paths propagate that failure.
+Fresh child test runners must not inherit `NODE_TEST_CONTEXT`; the shared
+`fixtureEnvironment` builder strips it after the final overlay, including for
+`runnerFixtureEnvironment` callers. Inheriting `child-v8` can skip the entire file.
+
+Test lint reports `node:test` global `after` registrations, including renamed
+imports and helper callbacks, across hub, web and Neovim test sources. This
+conservative census includes cleanup-only hooks because callback assertions may
+be indirect. Each finding names detected assertions, a cleanup-only callback,
+or an unresolved callback when imported/dynamic work cannot be classified locally.
+It changes no admission or exit status. Put assertions and census
+guards in a final named test; retain cleanup-only hooks for unconditional release.
+Per-case `TestContext.after` hooks belong to their named case and are unaffected.
+
 Per-test guidance lives in the [test-file index](tests/index.md). Add test-specific paragraphs to the file named after the repository test path (slashes become hyphens, followed by `.md`). Keep shared tiers, budgets, cover-quiet and conventions here.
 
 The tracked `.gitattributes` uses Git's built-in `union` merge driver for per-test documents. Independent paragraphs survive parallel additions, including two branches creating the same document. The index is derived from document filenames and headings: run `node hub/test/generate-test-docs-index.ts --write` after adding guides and after combining branches. The static check reports drift without blocking; existing membership/link checks still reject missing or dangling documents. Keep paragraphs independent and review combined advice: union retains both sides of overlapping edits.

@@ -7,6 +7,32 @@ import { join } from 'node:path';
 import { lintTests, lintTestSource, testLintFacts, testLintReport, touchesMachineResources } from '../src/test-lint.ts';
 import { fixedTestWaits } from '../src/fixed-test-waits.ts';
 
+test('global after census reports direct and indirect guards without changing admission', async () => {
+  const file = 'hub/test/planted.test.ts';
+  const { checkTestLint } = await import('../src/test-lint-policy.ts');
+  const source = `import { after as finish } from 'node:test';
+import * as runner from 'node:test';
+const end = finish;
+end(() => assert.equal(leftovers, 0));
+runner.after(checkCensus);
+test('case', t => t.after(checkCensus));
+function local(finish) { finish(checkCensus); }
+const text = 'after(() => assert.fail())';`;
+  const findings = lintTestSource(file, source, 'T1').findings.filter(f => f.rule === 'file-after');
+  assert.deepEqual(findings.map(f => f.line), [4, 5]);
+  assert.ok(findings.every(f => f.reportOnly && f.message.includes('final named test')));
+  const classify = (callback: string) => lintTestSource(file, `import {after} from 'node:test'; import assert from 'node:assert/strict'; ${callback}`, 'T1').findings.find(f => f.rule === 'file-after')!.message;
+  assert.match(classify('function census() { assert.equal(1, 0); } after(census);'), /^assertion-bearing:/);
+  assert.match(classify('after(() => {});'), /^cleanup-only:/);
+  assert.match(classify('after(() => importedCleanup());'), /^unresolved callback:/);
+  assert.match(classify("import {cleanup} from './cleanup.ts'; after(cleanup);"), /^unresolved callback:/);
+  assert.match(classify("import cleanup from './cleanup.ts'; after(cleanup);"), /^unresolved callback:/);
+  assert.match(classify('after(assert.fail);'), /^assertion-bearing:/);
+  assert.match(classify('let finish = () => {}; after(() => finish());'), /^unresolved callback:/);
+  assert.match(classify('function census() { census(); assert.equal(1, 0); } after(census);'), /^assertion-bearing:/);
+  assert.deepEqual(await checkTestLint({manifest: {version: 1, tests: {[file]: 'T1'}}, source: async () => source}), []);
+});
+
 test('fixed timeout census includes defaults and browser APIs and stays advisory', () => {
  const planted = `
 test('case', { timeout: 5000 }, body);
