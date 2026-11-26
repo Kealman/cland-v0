@@ -18,6 +18,97 @@ import cp from 'node:child_process';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
 import { receiptFixtureCase } from './receipt-fixture-case.ts';
 import { testWaitMs } from './until.ts';
+import { suiteCase } from './suite-case-fixture.ts';
+import { fixture as runnerFixture } from './durations-runner-fixture.ts';
+import { EventEmitter } from 'node:events';
+
+test('runner case close stops its held child before joining completion and releasing root or guard', async t => {
+  const supervisor = stageCase(t);
+  await supervisor.run(async () => {
+    const hooks: Array<() => unknown> = [];
+    const context = { name: t.name, signal: t.signal, after: (hook: () => unknown) => { hooks.push(hook); } } as unknown as TestContext;
+    const dispose = async () => { for (const hook of hooks) await hook(); };
+    const entered = Promise.withResolvers<void>(), closing = Promise.withResolvers<void>();
+    const completion = Promise.withResolvers<{ stdout: string; stderr: string }>();
+    const child = Object.assign(new EventEmitter(), { pid: undefined, stdout: undefined });
+    let launches = 0, stops = 0, closed = false, root = '', guarded = cp.spawn;
+    const finish = () => {
+      if (closed) return;
+      closed = true; child.emit('close', 0, null); completion.resolve({ stdout: '', stderr: '' });
+    };
+    const execute = ((_file: unknown, _args: unknown, options: { signal?: AbortSignal }) => {
+      launches++;
+      options.signal?.addEventListener('abort', () => { stops++; }, { once: true });
+      return Object.assign(completion.promise, { child });
+    }) as unknown as NonNullable<Parameters<typeof runnerFixture>[3]>;
+    let running: Promise<void> | undefined;
+    supervisor.releaseOnClose(finish);
+    supervisor.requireClose(async () => { finish(); await running?.catch(() => {}); await dispose(); });
+    const outerGuard = cp.spawn;
+    running = suiteCase(context, async scope => {
+      scope.releaseOnClose(() => closing.resolve());
+      guarded = cp.spawn;
+      const f = await runnerFixture(scope.fixtures, false, scope, execute);
+      root = f.root;
+      const started = await f.start();
+      entered.resolve();
+      await started.result;
+    });
+    const rejected = assert.rejects(running, /fixture work admission closed/);
+    void rejected.catch(() => {});
+    await supervisor.wait('held child acquisition receipt', () => entered.promise, testWaitMs(5000));
+    assert.equal(launches, 1);
+    assert.equal(stops, 0);
+    const disposing = dispose(); void disposing.catch(() => {});
+    try {
+      await supervisor.wait('case close entered before native completion join', () => closing.promise, testWaitMs(5000));
+      assert.equal(stops, 1, 'case close requests native stop before awaiting its held completion');
+      assert.equal(closed, false, 'stop request is not the producer close receipt');
+      assert.equal((await stat(root)).isDirectory(), true, 'held child retains its root');
+      assert.equal(cp.spawn, guarded, 'held child retains its launch guard');
+    } finally { finish(); }
+    await supervisor.wait('native close and original caller drainage', async () => { await rejected; await disposing; }, testWaitMs(5000));
+    assert.equal(closed, true);
+    assert.equal(stops, 1);
+    await assert.rejects(stat(root), { code: 'ENOENT' });
+    assert.equal(cp.spawn, outerGuard, 'inner guard releases only after native close and root cleanup');
+  });
+});
+
+test('runner case close fences a held configuration continuation before any native launch', async t => {
+  const supervisor = stageCase(t);
+  await supervisor.run(async () => {
+    const hooks: Array<() => unknown> = [];
+    const context = { name: t.name, signal: t.signal, after: (hook: () => unknown) => { hooks.push(hook); } } as unknown as TestContext;
+    const dispose = async () => { for (const hook of hooks) await hook(); };
+    const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+    let launches = 0;
+    const execute = (() => {
+      launches++;
+      const child = Object.assign(new EventEmitter(), { pid: undefined, stdout: undefined });
+      queueMicrotask(() => child.emit('close', 0, null));
+      return Object.assign(Promise.resolve({ stdout: '', stderr: '' }), { child });
+    }) as unknown as NonNullable<Parameters<typeof runnerFixture>[3]>;
+    let running: Promise<void> | undefined;
+    supervisor.releaseOnClose(() => release.resolve());
+    supervisor.requireClose(async () => { release.resolve(); await running?.catch(() => {}); await dispose(); });
+    running = suiteCase(context, async scope => {
+      scope.releaseOnClose(() => release.resolve());
+      const f = await runnerFixture(scope.fixtures, false, scope, execute);
+      await scope.step('held configuration continuation', async () => {
+        entered.resolve(); await release.promise;
+        const started = await f.start();
+        await started.result;
+      });
+    });
+    const rejected = assert.rejects(running, /fixture work admission closed/);
+    void rejected.catch(() => {});
+    await supervisor.wait('configuration hold receipt', () => entered.promise, testWaitMs(5000));
+    await supervisor.wait('case close and held continuation drainage', dispose, testWaitMs(5000));
+    await rejected;
+    assert.equal(launches, 0, 'closed admission prevents the native effect itself');
+  });
+});
 
 for (const owner of ['fixtureNativeGuard', 'receiptFixtureCase'] as const) test(`${owner} defaults retain the native guard until rejected resource closure is repaired`, async t => {
   const supervisor = stageCase(t);

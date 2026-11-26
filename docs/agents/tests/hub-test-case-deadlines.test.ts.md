@@ -1,5 +1,16 @@
 # hub/test/case-deadlines.test.ts
 
+The two runner-case close controls use the shared durations-runner fixture
+with an injected execFile boundary and a positively controlled native guard.
+Their stageCase supervisor owns every hold before acquisition, with independent
+fallback release and named entry/drain observations. Closing the nested case
+must fence a held configuration continuation before launch (zero native effects).
+For an already acquired fake child, closing must request stop before joining
+its held completion. The root and inner guard stay retained until the producer
+emits close and completion settles; real registered cleanup then removes the
+root and restores the outer guard. Both controls assert work counts and final
+closure/removal facts, with no subprocess or network call.
+
 The two generated `stage case TestContext abort fences held writer` cases drive
 a real AbortController supplied as a controlled TestContext.signal. Before any
 normal hook runs, abort must synchronously refuse new admission. The original

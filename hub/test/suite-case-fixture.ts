@@ -11,9 +11,10 @@ export function suiteCase(t: TestContext, body: (scope: {
   setup: <T extends { root: string }>(work: (fixtures: TestContext) => Promise<T>) => Promise<T>;
   guardControl: () => void;
   releaseOnClose: (release: () => void) => void;
-}) => Promise<void>, options: { native?: boolean } = {}) {
+}) => Promise<void>, options: { native?: boolean; timeoutMs?: number } = {}) {
   const releases: Array<() => void> = [];
   const owner = caseDeadlines(t, {
+    ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     ownership: { beforeDirectories, guardDirectoryRemoval },
     releaseOnClose: () => { for (const release of releases) release(); },
   });

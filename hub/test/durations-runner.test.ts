@@ -1,61 +1,32 @@
 // T3: real Node runner lifecycle: deadlines and signals reap repetitions before phase-root removal.
 // Real reporter contract uses fixture-local admission leases.
-import type { SuiteSelection } from '../src/suite-selection.ts';
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { suiteProgress } from '../src/suite-progress.ts';
 import { timingReceipts } from '../src/suite-tier-report.ts';
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import test, { type TestContext } from 'node:test';
-import { ownDirectory, ownProcess, pause } from './process-cleanup.ts';
+import test from 'node:test';
+import { ownProcess } from './process-cleanup.ts';
 import { suiteCase } from './suite-case-fixture.ts';
+import { until } from './until.ts';
+import { fixture } from './durations-runner-fixture.ts';
 
-const exec = promisify(execFile);
-const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
-async function fixture(t: TestContext, packageRun = false) {
-  const cwd = await mkdtemp(join(tmpdir(), 'cland-duration-runner-'));
-  ownDirectory(t, cwd);
-  await mkdir(join(cwd, 'hub/test'), { recursive: true });
-  await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
-  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: category\ntitle: Allowance owner\nstate: open\n---\n');
-  const file = join(cwd, 'hub/test/fixture.test.ts');
-  await writeFile(file, `import test from 'node:test';
-test('parent', async t => { await t.test('child', () => new Promise(r => setTimeout(r, 100))); });
-test('skipped', {skip: 'fixture platform'}, () => {});`);
-  if (packageRun) {
-    await writeFile(join(cwd, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/fixture.test.ts': 'T3', 'nvim/test/scenarios/workbench.test.ts': 'T3' } }));
-    await mkdir(join(cwd, 'nvim/test/scenarios'), { recursive: true });
-    await writeFile(join(cwd, 'nvim/test/scenarios/workbench.test.ts'), '// empty cross-package smoke fixture\n');
-  }
-  const start = (loadGate = false, extraSelection: Partial<SuiteSelection> = {}) => {
-    const selection = { mode: 'hub-only', files: ['hub/test/fixture.test.ts'], reason: 'fixture task selection from hub', loadGate, ...extraSelection };
-    const code = packageRun
-      ? `import {runPackageSuite} from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], ${JSON.stringify({ cwd, lockDirs: { hub: join(cwd, 'lock'), nvim: join(cwd, 'nvim-lock') } })});`
-      : `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd, lockDir: join(cwd, 'lock'), selection })});`;
-    const execution = exec(process.execPath, ['--input-type=module', '-e', code], { cwd, env: fixtureEnvironment(cwd, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_DIAGNOSTIC_FIXTURE: 'private-fixture-value-720\nprivate-fixture-second-line-720', CLAND_DIAGNOSTIC_COLLISION: 'test', CLAND_SUITE_SELECTION: JSON.stringify(selection), XDG_CONFIG_HOME: join(cwd, 'poison'), CLAUDE_CONFIG_DIR: join(cwd, 'poison'), CODEX_HOME: join(cwd, 'poison') }) });
-    ownProcess(t, execution.child.pid);
-    let output = '';
-    execution.child.stdout?.on('data', chunk => { output += String(chunk); });
-    const result = execution.then(
-      r => ({ code: 0, output: r.stdout + r.stderr }),
-      (e: { code: number; stdout: string; stderr: string }) => ({ code: e.code, output: e.stdout + e.stderr }),
-    );
-    return { child: execution.child, result, output: () => output };
-  };
-  const run = (loadGate = false, extraSelection: Partial<SuiteSelection> = {}) => start(loadGate, extraSelection).result;
-  const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 0.05, fileSeconds: 60 }, files: {}, tests: {}, allow: {} };
-  const path = join(cwd, 'hub/test/durations.json');
-  return { run, start, manifest, path, cwd, file };
-}
+test('runner fixture acquisition uses the whole-case setup owner with a positive launch guard', t => suiteCase(t, async scope => {
+  scope.guardControl();
+  let setups = 0;
+  const f = await fixture(scope.fixtures, false, { ...scope, setup: work => {
+    setups++;
+    return scope.setup(work);
+  } });
+  assert.equal(setups, 1, 'fixture acquisition and writes use the named setup bound');
+  assert.equal(await readFile(f.file, 'utf8').then(Boolean), true);
+  scope.guardControl();
+}));
 
-test('task duration check runs changed T3/T4 identities once and retains commit-ready stanzas in its report', async t => {
-  const { run, manifest, path, cwd, file } = await fixture(t, true);
+test('task duration check runs changed T3/T4 identities once and retains commit-ready stanzas in its report', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path, cwd, file } = await fixture(scope.fixtures, true, scope);
   const journal = join(cwd, 'duration-journal');
   await writeFile(file, `import test from 'node:test'; import { appendFileSync } from 'node:fs';
     test('passing [identity].*', async () => { appendFileSync(${JSON.stringify(journal)}, 'T3\\n'); await new Promise(r => setTimeout(r, 100)); });
@@ -82,11 +53,14 @@ test('task duration check runs changed T3/T4 identities once and retains commit-
   const { suiteSummary } = await import('../src/hub/suites.ts');
   assert.ok(suiteSummary(result.output).includes(rows[0]!), 'ready report retains the complete JSON stanza');
   assert.equal(await readFile(path, 'utf8'), contents);
-});
 
-test('shared contract cases use the launched wrapper for load, timing, budget and tier receipts', t => suiteCase(t, async ({ setup, step }) => {
-  const { run } = await setup(async fixtures => {
-    const f = await fixture(fixtures, true);
+  });
+}, { native: true }));
+
+test('shared contract cases use the launched wrapper for load, timing, budget and tier receipts', t => suiteCase(t, async scope => {
+  const { step } = scope;
+  const { run } = await step('wrapper configuration', async () => {
+    const f = await fixture(scope.fixtures, true, scope);
     await writeFile(f.file, `import { register } from './contract.ts'; register();`);
     await writeFile(join(f.cwd, 'hub/test/contract.ts'), `import test from 'node:test';
 export function register() { test('shared contract', () => {}); }`);
@@ -108,8 +82,9 @@ export function register() { test('shared contract', () => {}); }`);
   assert.equal(progress.completed.filter(row => row.scope === 'load-gate' && row.file === 'hub/test/fixture.test.ts' && row.name === 'shared contract' && row.outcome === 'pass').length, 5);
 }, { native: true }));
 
-test('task load gate catches a one-in-three flake and repeats a stable new name five times alongside the phase', async t => {
-  const { run, manifest, path, cwd, file } = await fixture(t, true);
+test('task load gate catches a one-in-three flake and repeats a stable new name five times alongside the phase', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path, cwd, file } = await fixture(scope.fixtures, true, scope);
   const journal = join(cwd, 'journal');
   await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { appendFileSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 const journal = ${JSON.stringify(journal)};
@@ -140,10 +115,13 @@ test('known load', async () => { writeFileSync(journal + '.running', 'yes'); con
   assert.equal(entries.filter(line => line === 'flaky').length, 6);
   assert.equal(entries.filter(line => line === 'load done').length, 1);
   assert.ok(entries.indexOf('load done') > entries.indexOf('stable', entries.indexOf('stable') + 1), 'a repetition ran before the ordinary phase finished');
-});
 
-test('load-gate failure diagnostics survive in the suite log and result summary', async t => {
-  const { run, manifest, path, cwd, file } = await fixture(t, true);
+  });
+}, { native: true }));
+
+test('load-gate failure diagnostics survive in the suite log and result summary', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path, cwd, file } = await fixture(scope.fixtures, true, scope);
   const attempts = join(cwd, 'diagnostic-attempts');
   await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 const journal = ${JSON.stringify(attempts)};
@@ -174,12 +152,15 @@ test('stable diagnostic control', t => t.diagnostic('passing detail must stay ou
   assert.ok(summary.includes(records[0]!), summary);
   assert.match(summary, /diagnostic failure 4\/5 passed/);
   assert.equal(await readFile(attempts, 'utf8'), '6');
-});
 
-test('an outer repetition deadline reaps a failed worker with a live socket before continuing', { timeout: 30_000 }, async t => {
+  });
+}, { native: true }));
+
+test('an outer repetition deadline reaps a failed worker with a live socket before continuing', { timeout: 30_000 }, t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
   // Exercise the suite runner directly: package admission and phase planning
   // are covered above and are unrelated to this lifecycle proof.
-  const { run, manifest, path, cwd, file } = await fixture(t);
+  const { run, manifest, path, cwd, file } = await fixture(scope.fixtures, false, scope);
   const attempts = join(cwd, 'hung-attempts');
   const worker = join(cwd, 'hung-worker');
   await writeFile(join(cwd, '.cland/config.toml'), '[verification]\ntest_timeout="1s"\nload_gate_workers=1\n');
@@ -218,10 +199,13 @@ test('after hung identity', () => {});`);
   assert.equal(await readFile(attempts, 'utf8'), '6', 'all five repetitions finished');
   const pid = Number(await readFile(worker, 'utf8'));
   assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' }, 'completion includes reaping the exact worker');
-});
 
-test('task load gate bounds eight new tests with parallel lanes and five sequential repetitions each', { timeout: process.env.CLAND_LOAD_GATE_SLOW_PROBE === '1' ? 600_000 : 30_000 }, async t => {
-  const { run, manifest, path, cwd, file } = await fixture(t, true);
+  });
+}, { native: true }));
+
+test('task load gate bounds eight new tests with parallel lanes and five sequential repetitions each', { timeout: process.env.CLAND_LOAD_GATE_SLOW_PROBE === '1' ? 600_000 : 30_000 }, t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path, cwd, file } = await fixture(scope.fixtures, true, scope);
   // The optional slow probe measures T-557's eight-by-20-second acceptance case
   // through the same package boundary; ordinary regression runs stay short.
   const seconds = process.env.CLAND_LOAD_GATE_SLOW_PROBE === '1' ? 20 : 0.1;
@@ -280,10 +264,13 @@ for (let identity = 0; identity < 8; identity++) test('new ' + identity, async (
     assert.equal(new Set(entries.filter(entry => entry.identity === identity).map(entry => entry.pid)).size, 6, 'ordinary phase and five fresh processes');
     assert.ok(result.output.includes(`load gate: hub/test/fixture.test.ts::new ${identity} 5/5 passed`), result.output);
   }
-});
 
-test('task load gate honors a configured single lane', async t => {
-  const { run, manifest, path, cwd, file } = await fixture(t);
+  });
+}, { native: true, ...(process.env.CLAND_LOAD_GATE_SLOW_PROBE === '1' ? { timeoutMs: 600_000 } : {}) }));
+
+test('task load gate honors a configured single lane', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path, cwd, file } = await fixture(scope.fixtures, false, scope);
   await mkdir(join(cwd, '.cland'), { recursive: true });
   await writeFile(join(cwd, '.cland/config.toml'), '[verification]\nload_gate_workers=1\n');
   await writeFile(file, `import test from 'node:test'; test('new', () => {});`);
@@ -292,10 +279,13 @@ test('task load gate honors a configured single lane', async t => {
   assert.equal(result.code, 0, result.output);
   assert.match(result.output, /load gate workers 1;/);
   assert.match(result.output, /load gate: hub\/test\/fixture.test.ts::new 5\/5 passed/);
-});
 
-test('task load gate leaves known tests alone and integrated runs add no repetitions', async t => {
-  const { run, manifest, path, cwd, file } = await fixture(t);
+  });
+}, { native: true }));
+
+test('task load gate leaves known tests alone and integrated runs add no repetitions', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path, cwd, file } = await fixture(scope.fixtures, false, scope);
   const journal = join(cwd, 'journal');
   await writeFile(file, `import test from 'node:test'; import { appendFileSync } from 'node:fs'; test('known', () => appendFileSync(${JSON.stringify(journal)}, 'ran\\n'));`);
   await writeFile(path, JSON.stringify({ ...manifest, tests: { 'hub/test/fixture.test.ts::known': 0.01 } }));
@@ -307,10 +297,13 @@ test('task load gate leaves known tests alone and integrated runs add no repetit
   assert.equal(integrated.code, 0, integrated.output);
   assert.doesNotMatch(integrated.output, /load gate/);
   assert.equal(await readFile(journal, 'utf8'), 'ran\nran\n');
-});
 
-test('one load-gate fixture distinguishes all seven prerequisite receipt shapes', async t => {
-  const { run, manifest, path, file, cwd } = await fixture(t);
+  });
+}, { native: true }));
+
+test('one load-gate fixture distinguishes all seven prerequisite receipt shapes', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path, file, cwd } = await fixture(scope.fixtures, false, scope);
   const journal = join(cwd, 'attempts');
   const otherPlatform = process.platform === 'linux' ? 'darwin' : 'linux';
   const platformCase = `test('platform prerequisite', {skip: process.platform !== ${JSON.stringify(otherPlatform)} ? 'fixture binary unavailable' : false}, () => {});`;
@@ -356,11 +349,14 @@ test('one load-gate fixture distinguishes all seven prerequisite receipt shapes'
     assert.ok(!result.output.includes(`${name} skipped, not load-gated`), result.output);
   }
   for (const outcome of ['pass', 'fail']) assert.equal(await readFile(journal + outcome, 'utf8'), '6', 'ordinary phase and all five gated repetitions ran');
-});
+
+  });
+}, { native: true }));
 
 for (const signal of ['SIGTERM', 'SIGKILL'] as const) {
-  test(`${signal} during a load repetition reaps it before removing the phase root`, { timeout: 10_000 }, async t => {
-    const { run, start, manifest, path, cwd, file } = await fixture(t);
+  test(`${signal} during a load repetition reaps it before removing the phase root`, { timeout: 10_000 }, t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+    const { run, start, manifest, path, cwd, file } = await fixture(scope.fixtures, false, scope);
     const marker = join(cwd, 'repeat.json');
     await writeFile(file, `import test from 'node:test'; import { existsSync, writeFileSync } from 'node:fs';
 for (let identity = 0; identity < 2; identity++) test('held repetition ' + identity, async () => {
@@ -368,21 +364,20 @@ const marker = ${JSON.stringify(marker)} + identity;
 if (!existsSync(marker + '.first')) { writeFileSync(marker + '.first', 'yes'); return; }
 writeFileSync(marker, JSON.stringify({pid: process.pid, root: process.env.TMPDIR})); await new Promise(r => setTimeout(r, 60000)); });`);
     await writeFile(path, JSON.stringify(manifest));
-    const suite = start(true);
-    const until = async (condition: () => Promise<boolean> | boolean) => {
-      const deadline = Date.now() + 4000;
-      while (!await condition() && Date.now() < deadline) await pause(20);
+    const suite = await start(true);
+    const observe = async (condition: () => Promise<boolean> | boolean, what: string) => {
+      await until(condition, { what });
       assert.ok(await condition(), 'bounded lifecycle observation');
     };
-    await until(async () => (await Promise.all([0, 1].map(identity => readFile(marker + identity, 'utf8').catch(() => '')))).every(Boolean));
+    await observe(async () => (await Promise.all([0, 1].map(identity => readFile(marker + identity, 'utf8').catch(() => '')))).every(Boolean), 'both repetition worker receipts');
     // Observe the ordinary phase's completion summary separately from the
     // repetition worker barrier: only repetitions remain held at interruption.
-    await until(() => /ℹ duration_ms /.test(suite.output()));
+    await observe(() => /ℹ duration_ms /.test(suite.output()), 'ordinary phase completion summary');
     const repeated = await Promise.all([0, 1].map(async identity => JSON.parse(await readFile(marker + identity, 'utf8')) as { pid: number; root: string }));
-    for (const worker of repeated) ownProcess(t, worker.pid);
+    for (const worker of repeated) ownProcess(scope.fixtures, worker.pid);
     const exited = new Promise<void>(resolve => suite.child.once('exit', () => resolve()));
     suite.child.kill(signal);
-    await exited;
+    await scope.step('interrupted runner exit', () => exited);
     if (signal === 'SIGTERM') {
       const stopped = await suite.result;
       assert.equal(stopped.code, 143, stopped.output);
@@ -400,14 +395,17 @@ writeFileSync(marker, JSON.stringify({pid: process.pid, root: process.env.TMPDIR
     assert.deepEqual(progress!.completed.filter(row => row.scope !== 'load-gate').map(row => row.name).sort(), ['held repetition 0', 'held repetition 1']);
     assert.deepEqual(timingReceipts(stopped.output).map(row => row.name).sort(), ['held repetition 0', 'held repetition 1'], 'repetitions do not add ordinary timings');
     const gone = () => repeated.every(worker => { try { process.kill(worker.pid, 0); return false; } catch (error) { return (error as NodeJS.ErrnoException).code === 'ESRCH'; } });
-    await until(gone);
+    await observe(gone, 'both exact repetition workers reaped');
     assert.ok(gone(), 'both exact repeat workers are gone');
     assert.equal(await stat(repeated[0]!.root).catch(error => { if (error.code === 'ENOENT') return null; throw error; }), null);
+
   });
+}, { native: true }));
 }
 
-test('runner emits top-level timings, fails test budgets, accepts reasons and disables without a manifest', async t => {
-  const { run, manifest, path } = await fixture(t);
+test('runner emits top-level timings, fails test budgets, accepts reasons and disables without a manifest', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path } = await fixture(scope.fixtures, false, scope);
   const absent = await run();
   assert.equal(absent.code, 0, absent.output);
   assert.doesNotMatch(absent.output, /suite timing |suite budget overhead/);
@@ -429,10 +427,13 @@ test('runner emits top-level timings, fails test budgets, accepts reasons and di
   assert.equal(passed.code, 0, passed.output);
   assert.doesNotMatch(passed.output, /duration budget:/);
   assert.match(passed.output, /duration regression hub\/test\/fixture.test.ts::parent .*over budget/);
-});
 
-test('runner sums file test-time and requires a separate reasoned file allowance', async t => {
-  const { run, manifest, path } = await fixture(t);
+  });
+}, { native: true }));
+
+test('runner sums file test-time and requires a separate reasoned file allowance', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path } = await fixture(scope.fixtures, false, scope);
   const allowed = manifest;
   await writeFile(path, JSON.stringify({ ...allowed, budget: { testSeconds: 5, fileSeconds: 0.05 } }));
   const fileFailed = await run();
@@ -442,28 +443,37 @@ test('runner sums file test-time and requires a separate reasoned file allowance
   const filePassed = await run();
   assert.equal(filePassed.code, 0, filePassed.output);
   assert.doesNotMatch(filePassed.output, /duration budget:/);
-});
 
-test('a known over-budget test reports without an allowance or failure', async t => {
-  const { run, manifest, path } = await fixture(t);
+  });
+}, { native: true }));
+
+test('a known over-budget test reports without an allowance or failure', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path } = await fixture(scope.fixtures, false, scope);
   await writeFile(path, JSON.stringify({ ...manifest, tests: { 'hub/test/fixture.test.ts::parent': 0.1 } }));
   const result = await run();
   assert.equal(result.code, 0, result.output);
   assert.doesNotMatch(result.output, /duration budget:/);
   assert.match(result.output, /duration regression hub\/test\/fixture.test.ts::parent .*\(over budget: 0.05 s\)/);
-});
 
-test('a known over-budget file reports without an allowance or failure', async t => {
-  const { run, manifest, path } = await fixture(t);
+  });
+}, { native: true }));
+
+test('a known over-budget file reports without an allowance or failure', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path } = await fixture(scope.fixtures, false, scope);
   await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 0.05 }, files: { 'hub/test/fixture.test.ts': { seconds: 0.2, tests: 2 } } }));
   const result = await run();
   assert.equal(result.code, 0, result.output);
   assert.doesNotMatch(result.output, /duration budget:/);
   assert.match(result.output, /duration regression hub\/test\/fixture.test.ts [\d.]+ s → [\d.]+ s \(over budget: 0.05 s\)/);
-});
 
-test('tier overages only report while the existing runner gate remains authoritative', async t => {
-  const { run, manifest, path } = await fixture(t, true);
+  });
+}, { native: true }));
+
+test('tier overages only report while the existing runner gate remains authoritative', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path } = await fixture(scope.fixtures, true, scope);
   await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 60, T3: { testSeconds: 0.001, fileSeconds: 0.001, wallSeconds: 900 } } }));
   const result = await run();
   assert.equal(result.code, 0, result.output);
@@ -472,10 +482,13 @@ test('tier overages only report while the existing runner gate remains authorita
   assert.doesNotMatch(result.output, /duration budget:/);
   const { suiteSummary } = await import('../src/hub/suites.ts');
   assert.match(suiteSummary(result.output), /budget \(report only\): would fail/);
-});
 
-test('runner enforces tier budgets through real reporter receipts', async t => {
-  const { run, manifest, path, cwd } = await fixture(t);
+  });
+}, { native: true }));
+
+test('runner enforces tier budgets through real reporter receipts', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path, cwd } = await fixture(scope.fixtures, false, scope);
   await writeFile(join(cwd, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/fixture.test.ts': 'T2' } }));
   const head = { ...manifest, budget: { mode: 'enforce', testSeconds: 5, fileSeconds: 60, T2: { testSeconds: 0.05, fileSeconds: 30, wallSeconds: 480 } },
     tests: { 'hub/test/fixture.test.ts::parent': 0.1 } };
@@ -491,10 +504,13 @@ test('runner enforces tier budgets through real reporter receipts', async t => {
   const passed = await run();
   assert.equal(passed.code, 0, passed.output);
   assert.doesNotMatch(passed.output, /duration budget:/);
-});
 
-test('macOS cover reruns one recent-green failed repetition once and preserves red with both receipts', async t => {
-  const { run, manifest, path, file, cwd } = await fixture(t);
+  });
+}, { native: true }));
+
+test('macOS cover reruns one recent-green failed repetition once and preserves red with both receipts', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path, file, cwd } = await fixture(scope.fixtures, false, scope);
   const repeats = join(cwd, 'repetition-count');
   await writeFile(file, `import test from 'node:test'; import { readFileSync, writeFileSync } from 'node:fs';
     test('recent green', () => { if (process.env.CLAND_TEST_TIMING_RECEIPTS === '0') { let r = 0; try { r = Number(readFileSync(${JSON.stringify(repeats)}, 'utf8')); } catch {} writeFileSync(${JSON.stringify(repeats)}, String(++r)); if (r === 1) throw new Error('one repetition failure'); } });`);
@@ -511,10 +527,13 @@ test('macOS cover reruns one recent-green failed repetition once and preserves r
     assert.equal(rows[1].kind, 'rerun'); assert.equal(rows[1].passed, true);
     for (const row of rows) { assert.equal(row.head, 'a'.repeat(40)); assert.equal(row.platform, 'darwin'); }
   } else assert.doesNotMatch(result.output, /load-gate rerun receipt /);
-});
 
-test('failed macOS advisory rerun retains redacted useful diagnostic facts', async t => {
-  const { run, manifest, path, file, cwd } = await fixture(t);
+  });
+}, { native: true }));
+
+test('failed macOS advisory rerun retains redacted useful diagnostic facts', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path, file, cwd } = await fixture(scope.fixtures, false, scope);
   const counter = join(cwd, 'failed-rerun-counter');
   await writeFile(file, `import test from 'node:test'; import { readFileSync, writeFileSync } from 'node:fs';
     test('sensitive retry', () => {
@@ -532,10 +551,13 @@ test('failed macOS advisory rerun retains redacted useful diagnostic facts', asy
     assert.match(result.output, /"code":1,"signal":null,"timedOut":false/);
     assert.match(result.output, /did not pass on rerun/);
   }
-});
 
-test('macOS advisory retry blocked in admission retains an incomplete native receipt', async t => {
-  const { run, manifest, path, file, cwd } = await fixture(t);
+  });
+}, { native: true }));
+
+test('macOS advisory retry blocked in admission retains an incomplete native receipt', t => suiteCase(t, async scope => {
+  await scope.step('runner configuration and assertions', async () => {
+  const { run, manifest, path, file, cwd } = await fixture(scope.fixtures, false, scope);
   const counter = join(cwd, 'admission-retry-counter');
   await writeFile(file, `import test from 'node:test'; import { readFileSync, writeFileSync } from 'node:fs';
     test('blocked retry', () => {
@@ -556,4 +578,6 @@ test('macOS advisory retry blocked in admission retains an incomplete native rec
     assert.match(result.output, /"kind":"original"/);
     assert.match(result.output, /"passed":false,"skipped":0,"admissions":1/);
   }
-});
+
+  });
+}, { native: true }));
