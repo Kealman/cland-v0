@@ -271,19 +271,11 @@ test('enqueue checks the merged candidate before mutation and cleans up findings
 
 /** Enroll before acquisition; even late fixture hooks must join the whole body. */
 function joinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep) => Promise<void>) {
-  const owner = fixtureWork();
-  t.after(() => owner.close());
-  const fixtures = new Proxy(t, { get(target, key) {
-    if (key === 'after') return (close: () => unknown) => t.after(async () => { await owner.close(); await close(); });
-    const value = Reflect.get(target, key, target);
-    return typeof value === 'function' ? value.bind(target) : value;
-  } });
-  return owner.run(step => body(fixtures, step));
+  return guardedMemberCase(t, body);
 }
 
 function boundedJoinedCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep) => Promise<void>) {
-  const scope = caseDeadlines(t);
-  return scope.wait('fixture setup and receipt assertions', () => joinedCase(scope.fixtures, body));
+  return guardedMemberCase(t, body);
 }
 
 function guardedMemberCase(t: TestContext, body: (fixtures: TestContext, step: FixtureStep, setup: <T>(name: string, run: () => Promise<T>) => Promise<T>) => Promise<void>) {
@@ -754,7 +746,8 @@ test('sole configured T1 remains when interaction fallback adds a T2 phase', t =
   assert.deepEqual((await step(() => state.f.suites.receipt(batch.run!))).job.commands?.plan?.map(item => item.name), ['check', 'T1', 'T2']);
 }));
 
-for (const mode of ['teardown', 'abort']) test(`member owner fences a held continuation on ${mode} before joining`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
+for (const helper of [guardedMemberCase, joinedCase, boundedJoinedCase])
+for (const mode of ['teardown', 'abort']) test(`${helper.name} owner fences a held continuation on ${mode} before joining`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
   const entered = Promise.withResolvers<void>(), held = Promise.withResolvers<void>();
   const cancellation = new AbortController();
   const hooks: Array<() => unknown> = [];
@@ -775,8 +768,8 @@ for (const mode of ['teardown', 'abort']) test(`member owner fences a held conti
     const value = Reflect.get(target, key, target);
     return typeof value === 'function' ? value.bind(target) : value;
   } });
-  work = guardedMemberCase(context, async (_fixtures, innerStep, innerSetup) => {
-    await innerStep(() => innerSetup('held setup', async () => { entered.resolve(); await held.promise; }));
+  work = helper(context, async (_fixtures, innerStep) => {
+    await innerStep(async () => { entered.resolve(); await held.promise; });
     await innerStep(async () => { admitted = true; });
   });
   const observed = work.then(() => ({ state: 'resolved' as const }), error => ({ state: 'rejected' as const, error }));
