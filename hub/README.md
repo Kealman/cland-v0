@@ -170,6 +170,9 @@ captured requester identities until a positive durable publication receipt.
 - [Fixture ownership](../docs/agents/tests.md#implementer-test-selection): registration requires allocated scratch roots; readers refuse escaped roots and legacy global receipts. Allocators grant their own roots; headless QA carries its fixed-root grant through a checked Node preload outside the case environment. Optional hub/stub receipt refusals emit structured stderr diagnostics and keep serving without receipt authority for that root. Private runtime receipts and aliases stay out of Git and fixture copies; copies acquire fresh ownership.
 - [Fake-Claude fixture recovery](../docs/agents/tests/hub-test-fake-claude-cleanup.test.ts.md): admitted scripted sessions hold private PID/birth receipts; guarded orphan recovery joins their spokes after test-worker death, and native adapter files end with named process censuses.
 - [Host process observation](../docs/agents/host-agent.md): Linux procfs ENOENT requires an independent signal-zero ESRCH before exit; hidden live PIDs remain unknown.
+  Linux owned-stop descendant discovery reads selected parents' task children;
+  discovery skips vanished task/PID selectors without claiming exit. macOS retains
+  pgrep. Selected ps ancestry remains bracketed by native births.
 - [Demo publication policy](../docs/agents/qa-demo-recording.md): remote QA captures reject Bearer credentials in Authorization headers (including complete entry pairs and nested property keys) and standalone token runs of at least 16 characters; short prose remains publishable. Manual captures still require redaction and scanning.
 - [Thread runs and fold lines](../docs/hub/thread-runs-and-fold-lines.md)
 - [Asks and the inbox](../docs/hub/asks-and-the-inbox.md), including internal hub cards and synchronous answer handlers; [login wait cards](../docs/hub/logins.md#login-wait-cards) share one prompt per pool/harness shortage

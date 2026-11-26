@@ -31,11 +31,27 @@ const row = (pid, parent, group, started = start) => ({ pid, parent, group, star
 let onNative = async () => {}, nativeFailure = false, nativePid = pid => pid;
 let rows = [], onProbe = () => {}, onSignal = () => {}, onTable = () => {}, onChildren = () => {}, cwdOf = () => '', tableOutput, pgrepStderr = '', pgrepCode = 0;
 const signals = []; const listings = []; const liveness = [];
-let onStat = async () => {};
+let onStat = async () => {}, onTaskChildren = async () => {}, onTaskList = async () => {}, childRowsRead = 0, pgrepCalls = 0;
 if (process.platform === 'linux') {
+ const list = nativeFiles.readdir;
+ nativeFiles.readdir = async (path, ...args) => {
+  const match = /^\\/proc\\/(\\d+)\\/task$/.exec(String(path));
+  if (!match) return list(path, ...args);
+  const pid = Number(match[1]);
+  return await onTaskList(pid) ?? [String(pid), String(pid + 1000000)];
+ };
  const read = nativeFiles.readFile;
  nativeFiles.readFile = async (path, ...args) => {
   if (path === '/proc/sys/kernel/random/boot_id') return boot;
+  const children = /^\\/proc\\/(\\d+)\\/task\\/(\\d+)\\/children$/.exec(String(path));
+  if (children) {
+   const pid = Number(children[1]), tid = Number(children[2]);
+   const override = await onTaskChildren(pid, tid);
+   if (override !== undefined) return override;
+   const selected = rows.filter(r => r.parent === pid && (r.thread ? tid === pid + 1000000 : tid === pid));
+   childRowsRead += selected.length;
+   return selected.map(r => r.pid).join(' ');
+  }
   const match = /^\\/proc\\/(\\d+)\\/stat$/.exec(String(path));
   if (!match) return read(path, ...args);
   const pid = Number(match[1]), error = await onStat(pid);
@@ -70,6 +86,7 @@ cp.spawn = (bin, args) => {
       }
       output = Buffer.concat(records);
     } else if (bin === 'pgrep') {
+      pgrepCalls++;
       await onChildren();
       if (pgrepStderr) { child.stdout.end(); child.stderr.end(pgrepStderr); child.emit('close', pgrepCode); return; }
       const parents = args[1].split(',').map(Number);

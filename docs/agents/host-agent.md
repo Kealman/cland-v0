@@ -41,6 +41,13 @@ A descendant that escaped before any capture is outside cland’s authority on b
 
 This is the Coordinator's final 2026-11-02 06:59Z refinement (24e17b6f), replacing the intermediate group-only note. Local `endProcess` walks ancestry while intact; remote capture follows that boundary. An already reparented escape cannot be discovered from its old parent PID. The missed-exit unknown fence remains; routine observed exits do not all become unknown.
 
+Linux descendant discovery reads each selected parent's procfs task children,
+including nonleader threads, without enumerating the machine. ENOENT during
+discovery skips only that vanished task or PID entry; it proves no process exit.
+Other read errors still throw. Native exit still requires its independent receipt.
+The owned-tree stop still brackets selected ps ancestry with native birth reads.
+macOS retains pgrep descendant discovery.
+
 The [SSH carrier](../hub/ssh-transport.md) streams bootstrap secrets only on stdin,
 reuses `supervisor.sh --check` liveness and exposes optional tunnel facts in
 `hub.status.hosts`. Stop joins the hub-owned carrier while host processes survive.

@@ -3,8 +3,21 @@
 The Linux/Darwin owned-tree stop controls place 1,000 unrelated branches under
 PID1. Every selected ps PID parsed by cland must belong to the captured tree or
 protected caller ancestry; no full-table ps selector is allowed. The parsed
-rows and native-birth reads are scoped, while descendant discovery uses
-`pgrep -P`, which enumerates the process table natively outside this counter.
+rows and native-birth reads are scoped. Linux descendant discovery reads
+`/proc/<pid>/task/*/children` for captured parents, including nonleader threads;
+macOS retains `pgrep -P`. The Linux work-count control adds 10,000 unrelated
+branches and requires zero pgrep calls and fewer than 30 child rows across stop
+phases. Unreadable or malformed child selectors refuse. ENOENT during discovery
+skips only the vanished task or PID selector, then continues other entries;
+the subsequent native identity and exit checks remain authoritative. Fake task,
+PID-read and PID-list disappearance controls retain positive surviving-child
+termination and zero pgrep calls.
+The timer-drain control uses the same project resource census as projectHub,
+including unref'ed timers, with a positively detected planted timer. It checks
+vanished tasks, vanished PID reads/lists and EACCES after the walk settles.
+Procfs read deadlines are owned and cleared after every settled read, both for
+descendant discovery and the denial-only caller ancestry walk; no expiry wait
+or garbage collection is needed to release the timer.
 A child forked during STOP must be captured, frozen and killed. Separate
 controls retain reused-birth refusal,
 self/ancestor refusal, and incomplete termination when caller ancestry is

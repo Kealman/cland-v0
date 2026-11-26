@@ -15,13 +15,29 @@ import { processStarted, processStartedAsync } from '../src/hub/lock.ts';
 import { captureProcess, ownProcess } from './process-cleanup.ts';
 import { systemProcessProbe as probe } from './system-process-probe.ts';
 
-for (const platform of ['linux', 'darwin'] as const) test(`${platform} owned-tree stop scopes cland snapshots and retains descendant, birth and ancestor fences`, async () => {
+test('Linux owned stop reads only captured task children even with unrelated processes', async t => {
+  await probe(`
+rows = [row(1, 0, 1), row(420100, 1, 420100), { ...row(420101, 420100, 420101), thread: true },
+ ...Array.from({ length: 10000 }, (_, i) => row(430000 + i, 1, 430000 + i))];
+const inspectedParents = [];
+onTaskChildren = async pid => { inspectedParents.push(pid); };
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, { inspection: 'owned-tree' }), true);
+assert.equal(pgrepCalls, 0, 'Linux discovery must not enumerate the machine via pgrep');
+assert.ok(childRowsRead > 0 && childRowsRead < 30, 'only captured child rows are read across stop phases');
+assert.ok(inspectedParents.length > 0 && inspectedParents.every(pid => [420100, 420101].includes(pid)), 'procfs discovery never reads unrelated parents or caller ancestors');
+assert.ok(signals.some(s => s.pid === 420101 && s.signal === 'SIGKILL'), 'a nonleader thread child is captured');
+assert.equal(rows.length, 10001, 'all unrelated processes survive');
+`, 'linux', { context: t });
+});
+
+for (const platform of ['linux', 'darwin'] as const) test(`${platform} owned-tree stop scopes cland snapshots and retains descendant, birth and ancestor fences`, async t => {
   await probe(`
 const options = { inspection: 'owned-tree' };
 rows = [row(1, 0, 1), row(420100, 1, 420100), row(420101, 420100, 420101),
  ...Array.from({ length: 1000 }, (_, i) => row(430000 + i, 1, 430000 + i))];
 const parents = [];
 onChildren = () => { parents.push(rows.length); };
+onTaskChildren = async () => { parents.push(rows.length); };
 let forked = false;
 onSignal = (pid, signal) => {
  if (signal === 'SIGTERM') return false;
@@ -34,7 +50,7 @@ assert.equal(forked, true, 'fork-to-freeze observer positively engaged');
 for (const pid of [420100, 420101, 420102]) assert.ok(signals.some(s => s.pid === pid && s.signal === 'SIGKILL'), 'every captured branch receives KILL');
 assert.equal(rows.length, 1001, 'unrelated PID1 branches stay alive');
 assert.ok(parents.length > 0, 'scoped descendant discovery engaged');
-assert.ok(listings.length > 0 && listings.every(args => args.includes('-p')), 'cland parses selected ps snapshots; native pgrep still enumerates the table');
+assert.ok(listings.length > 0 && listings.every(args => args.includes('-p')), 'cland parses selected ps snapshots');
 assert.ok(listings.every(args => args[args.indexOf('-p') + 1].split(',').map(Number).every(pid => [process.pid, 1, 420100, 420101, 420102].includes(pid))), 'unrelated rows never reach cland snapshot parsing or native-birth reads');
 assert.ok(signals.every(s => [420100, 420101, 420102].includes(s.pid)), 'no unowned signal');
 signals.length = 0;
@@ -64,7 +80,89 @@ if (process.platform === 'linux') {
 rows = rows.filter(r => r.pid !== 1);
 await assert.rejects(endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, options), /cannot verify caller ancestry/);
 assert.deepEqual(signals, [], 'missing caller ancestry never grants authority');
-`, platform);
+`, platform, { context: t });
+});
+
+for (const vanished of ['task', 'pid', 'pid-list'] as const) test(`Linux child discovery continues after a vanished ${vanished} entry`, async t => {
+  await probe(`
+rows = [row(1, 0, 1), row(420100, 1, 420100), { ...row(420101, 420100, 420101), thread: true }, row(420102, 420100, 420102)];
+let vanished = false;
+const missing = () => { throw Object.assign(new Error('vanished procfs entry'), { code: 'ENOENT' }); };
+onTaskChildren = async (pid, tid) => {
+ if (${JSON.stringify(vanished)} === 'task' && pid === 420100 && tid === pid + 500000) { vanished = true; missing(); }
+ if (${JSON.stringify(vanished)} === 'pid' && pid === 420102) { vanished = true; rows = rows.filter(r => r.pid !== pid); missing(); }
+};
+onTaskList = async pid => {
+ if (${JSON.stringify(vanished)} === 'pid-list' && pid === 420102) { vanished = true; rows = rows.filter(r => r.pid !== pid); missing(); }
+ if (${JSON.stringify(vanished)} === 'task' && pid === 420100) return [String(pid), String(pid + 500000), String(pid + 1000000)];
+};
+onSignal = (pid, signal) => signal === 'SIGTERM' ? false : undefined;
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, { inspection: 'owned-tree' }), true);
+assert.equal(vanished, true, 'vanish injection was reached');
+for (const pid of [420100, 420101]) assert.ok(signals.some(s => s.pid === pid && s.signal === 'SIGKILL'), 'surviving managed tree still stops');
+if (${JSON.stringify(vanished)} === 'task') assert.ok(signals.some(s => s.pid === 420102 && s.signal === 'SIGKILL'), 'children listed before the vanished task are retained');
+assert.ok(signals.every(s => [420100, 420101, 420102].includes(s.pid)), 'no unrelated signal');
+assert.equal(pgrepCalls, 0);
+`, 'linux', { context: t });
+});
+
+test('Linux discovery drains inspection timers after vanished tasks and PIDs', async t => {
+  await probe(`
+const { hubResources } = await import(${JSON.stringify(new URL('./hub-resources.ts', import.meta.url).href)});
+const { testDeadlineMs } = await import(${JSON.stringify(new URL('./until.ts', import.meta.url).href)});
+const control = hubResources(true);
+const timer = control.run(() => setTimeout(() => {}, testDeadlineMs(3000)));
+timer.unref();
+try { await assert.rejects(control.check({ retain: true }), /Timeout/, 'census must detect an unrefed timer'); }
+finally { clearTimeout(timer); }
+await control.check();
+for (const vanished of ['task', 'pid', 'pid-list', 'error']) {
+ rows = [row(1, 0, 1), row(420100, 1, 420100), { ...row(420101, 420100, 420101), thread: true }, row(420102, 420100, 420102)];
+ signals.length = 0;
+ const missing = () => { throw Object.assign(new Error('vanished procfs entry'), { code: 'ENOENT' }); };
+ onTaskList = async pid => {
+  if (vanished === 'pid-list' && pid === 420102) { rows = rows.filter(r => r.pid !== pid); missing(); }
+  return [String(pid), String(pid + 500000), String(pid + 1000000)];
+ };
+ onTaskChildren = async (pid, tid) => {
+  if (vanished === 'task' && tid === pid + 500000) missing();
+  if (vanished === 'pid' && pid === 420102) { rows = rows.filter(r => r.pid !== pid); missing(); }
+  if (vanished === 'error') throw Object.assign(new Error('procfs denied'), { code: 'EACCES' });
+ };
+ onSignal = (pid, signal) => signal === 'SIGTERM' ? false : undefined;
+ const resources = hubResources(true);
+ await resources.run(async () => {
+  const ended = endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, { inspection: 'owned-tree' });
+  if (vanished === 'error') { await assert.rejects(ended, /procfs denied/); assert.deepEqual(signals, []); }
+  else { assert.equal(await ended, true); assert.ok(signals.some(s => s.pid === 420101 && s.signal === 'SIGKILL')); }
+ });
+ await resources.check();
+}
+`, 'linux', { context: t });
+});
+
+test('Linux child inspection refuses unreadable or invalid live branches and accepts confirmed absence', async t => {
+  await probe(`
+for (const failure of ['EACCES', 'EIO', 'EPERM', 'invalid']) {
+ rows = [row(1, 0, 1), row(420100, 1, 420100), row(420101, 420100, 420101)];
+ onTaskChildren = async pid => {
+  if (pid !== 420101) return;
+  if (failure === 'invalid') return 'not-a-pid';
+  throw Object.assign(new Error('children unavailable'), { code: failure });
+ };
+ await assert.rejects(endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, { inspection: 'owned-tree' }), /children unavailable|invalid native child identity/);
+ assert.deepEqual(signals, [], 'unknown child branch never permits signals');
+}
+onTaskChildren = async pid => {
+ if (pid !== 420101) return;
+ rows = rows.filter(r => r.pid !== pid);
+ throw Object.assign(new Error('gone children'), { code: 'ENOENT' });
+};
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, { inspection: 'owned-tree' }), true);
+assert.ok(signals.every(s => s.pid !== 420101), 'vanished child is not signalled');
+assert.ok(signals.some(s => s.pid === 420100 && s.signal === 'SIGTERM'), 'confirmed absence leaves a managed leader stoppable');
+assert.equal(pgrepCalls, 0);
+`, 'linux', { context: t });
 });
 
 test('recorded macOS and procps listings parse the same identities and complete commands', () => {

@@ -1,5 +1,5 @@
 import { pgrepMembers } from './pgrep-result.ts';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { parseLinuxStat } from './host/agent/proc-stat.ts';
 import { readLinuxStat } from './host/agent/identity.ts';
 import type { HostCapturedProcess } from './host/host.ts';
@@ -54,8 +54,45 @@ function timeout(deadline?: number, env: NodeJS.ProcessEnv = process.env): numbe
   if (remaining <= 0) throw new Error('process inspection deadline reached; remaining processes preserved');
   return Math.min(probeTimeout(env, 3000), remaining);
 }
+/** Own the deadline until the native read settles, including missing entries. */
+async function readProcFile(path: string, deadline: number | undefined, env: NodeJS.ProcessEnv): Promise<string> {
+  const budget = timeout(deadline, env);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new DOMException('The operation was aborted due to timeout', 'TimeoutError')), budget);
+  timer.unref();
+  try { return await readFile(path, { encoding: 'utf8', signal: controller.signal }); }
+  finally { clearTimeout(timer); }
+}
 export async function systemProcesses(resumed: Resumed = untimed, deadline?: number, pids?: number[], descendants = false, env: NodeJS.ProcessEnv = process.env, reportExited?: IdentityExited): Promise<SystemProcess[]> {
   return processSnapshot(resumed, deadline, pids, descendants, env, reportExited);
+}
+/** Every thread can own children. These selectors grant no signal authority. */
+async function linuxChildren(parents: number[], deadline: number, env: NodeJS.ProcessEnv): Promise<number[]> {
+  const children = new Set<number>();
+  const entry = async <T>(read: () => Promise<T>): Promise<T | undefined> => {
+    try { return await read(); } catch (error) {
+      // Discovery is only a selector: an entry can vanish during the walk.
+      // The later ancestry/birth probes still decide ownership and native exit.
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+      throw error;
+    }
+  };
+  for (const pid of parents) {
+    timeout(deadline, env);
+    const tasks = await entry(() => readdir(`/proc/${pid}/task`));
+    for (const tid of tasks ?? []) {
+      if (!/^[1-9]\d*$/.test(tid)) throw new Error('invalid native task identity');
+      const text = await entry(() => readProcFile(`/proc/${pid}/task/${tid}/children`, deadline, env));
+      if (text === undefined) continue;
+      for (const token of text.trim() ? text.trim().split(/\s+/) : []) {
+        const child = Number(token);
+        if (!/^[1-9]\d*$/.test(token) || !Number.isSafeInteger(child)) throw new Error('invalid native child identity');
+        children.add(child);
+      }
+    }
+  }
+  timeout(deadline, env);
+  return [...children];
 }
 async function processSnapshot(resumed: Resumed, deadline: number | undefined, pids: number[] | undefined, descendants: boolean, env: NodeJS.ProcessEnv, reportExited?: IdentityExited, protectedPids: number[] = []): Promise<SystemProcess[]> {
   if (pids && descendants) {
@@ -65,8 +102,9 @@ async function processSnapshot(resumed: Resumed, deadline: number | undefined, p
     while (parents.length) {
       // Select children of captured PIDs, then walk only those newly selected parents.
       // The ps snapshot below must still prove every ancestry edge before capture.
-      const children = await run('pgrep', ['-P', parents.join(',')], env, timeout(discoveryDeadline, env));
-      const discovered = pgrepMembers(children);
+      const discovered = process.platform === 'linux'
+        ? await linuxChildren(parents, discoveryDeadline, env)
+        : pgrepMembers(await run('pgrep', ['-P', parents.join(',')], env, timeout(discoveryDeadline, env)));
       parents = resumed(() => discovered.filter(pid => {
         if (selected.has(pid)) return false;
         selected.add(pid); return true;
@@ -120,7 +158,7 @@ async function callerAncestors(resumed: Resumed, deadline: number | undefined, e
     if (pid === 1) break;
     if (process.platform === 'linux') {
       const selected = pid;
-      const record = parseLinuxStat(await readLinuxStat(() => readFile(`/proc/${selected}/stat`, { encoding: 'utf8', signal: AbortSignal.timeout(timeout(deadline, env)) })));
+      const record = parseLinuxStat(await readLinuxStat(() => readProcFile(`/proc/${selected}/stat`, deadline, env)));
       if (!record || record.pid !== selected || record.parent === null || /^[ZX]/.test(record.state)) throw new Error('cannot verify caller ancestry: native parent inspection unavailable');
       pid = record.parent;
       continue;
