@@ -22,6 +22,45 @@ import { suiteCase } from './suite-case-fixture.ts';
 import { fixture as runnerFixture } from './durations-runner-fixture.ts';
 import { EventEmitter } from 'node:events';
 
+for (const registration of ['outer context', 'fixture context'] as const) test(`suite case retains roots and native denial until rejected resource close is repaired (${registration})`, async t => {
+  const supervisor = stageCase(t);
+  await supervisor.run(async step => {
+    const hooks: Array<() => unknown> = [];
+    const context = { name: t.name, signal: t.signal, after: (hook: () => unknown) => { hooks.push(hook); } } as unknown as TestContext;
+    const dispose = () => supervisor.wait('suite case cleanup receipt', async () => { for (const hook of hooks) await hook(); }, testWaitMs(5000));
+    const rejection = new Error('controlled suite case resource close rejection');
+    const originalSpawn = cp.spawn;
+    let refuse = true, closed = false, attempts = 0, root = '';
+    supervisor.requireClose(async () => { refuse = false; await dispose(); });
+    await step(() => supervisor.wait('suite case setup', () => suiteCase(context, async ({ setup, fixtures, guardControl }) => {
+      guardControl();
+      onCleanup(registration === 'outer context' ? context : fixtures, async () => {
+        attempts++;
+        if (refuse) throw rejection;
+        assert.equal((await stat(root)).isDirectory(), true, 'close precedes root disposal');
+        closed = true;
+      });
+      await setup(async () => ({ root: root = await tempProject(fixtures) }));
+    }), testWaitMs(5000)));
+    await step(() => supervisor.wait('rejected cleanup and positive repair', async () => {
+      const guardedSpawn = cp.spawn;
+      assert.notEqual(guardedSpawn, originalSpawn);
+      await assert.rejects(dispose(), error => registration === 'outer context' ? error === rejection : error instanceof Error && error.cause instanceof AggregateError && error.cause.errors.includes(rejection));
+      assert.equal(closed, false);
+      assert.equal((await stat(root)).isDirectory(), true, 'failed close retains root');
+      assert.equal(cp.spawn, guardedSpawn, 'failed close retains native denial');
+      assert.equal(attempts, 1);
+      refuse = false;
+      await dispose();
+      assert.equal(closed, true);
+      await assert.rejects(stat(root), { code: 'ENOENT' });
+      assert.equal(cp.spawn, originalSpawn);
+      await dispose();
+      assert.equal(attempts, 2, 'confirmed close is not repeated');
+    }, testWaitMs(5000)));
+  });
+});
+
 test('runner case close stops its held child before joining completion and releasing root or guard', async t => {
   const supervisor = stageCase(t);
   await supervisor.run(async () => {

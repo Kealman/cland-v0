@@ -1,6 +1,6 @@
 import type { TestContext } from 'node:test';
 import { caseDeadlines, drainFixtureWork } from './case-deadlines.ts';
-import { afterCleanup, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { fenceFixtureCleanup, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { fakeNativeGuard } from './fake-native-guard.ts';
 
 type Step = <T>(name: string, work: () => Promise<T>) => Promise<T>;
@@ -12,15 +12,18 @@ export function suiteCase(t: TestContext, body: (scope: {
   guardControl: () => void;
   releaseOnClose: (release: () => void) => void;
 }) => Promise<void>, options: { native?: boolean; timeoutMs?: number } = {}) {
+  const cleanup = fenceFixtureCleanup(t);
   const releases: Array<() => void> = [];
   const owner = caseDeadlines(t, {
     ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     ownership: { beforeDirectories, guardDirectoryRemoval },
     releaseOnClose: () => { for (const release of releases) release(); },
   });
+  // The proxy has its own cleanup identity; its writers must close before roots.
+  fenceFixtureCleanup(owner.fixtures);
   let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
   let restore: (() => void) | undefined;
-  afterCleanup(t, async () => {
+  cleanup.release(async () => {
     // An incomplete caller join retains patches as well as the fixture root.
     await drainFixtureWork();
     try { guard?.verify(); } finally { restore?.(); }

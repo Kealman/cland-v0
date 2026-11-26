@@ -1,5 +1,16 @@
 # hub/test/case-deadlines.test.ts
 
+The two `suite case retains roots and native denial until rejected resource close
+is repaired` cases enter their whole-case supervisor before acquisition.
+They register the rejecting close on the outer context and on the distinct
+fixture proxy, respectively; both cleanup identities must be fenced.
+Each invokes the registered cleanup hook with an injected close rejection and
+checks the literal error identity (inside the existing case-hook wrappers for
+the proxy), retained scratch root and installed native
+guard. Repair exercises that same cleanup owner, confirms close before root
+removal, then observes guard restoration. Work counts prove the failed close
+runs twice and a confirmed close is never replayed; there is no elapsed-time
+assertion. Setup and proof observations use shared load-scaled bounds.
 The two runner-case close controls use the shared durations-runner fixture
 with an injected execFile boundary and a positively controlled native guard.
 Their stageCase supervisor owns every hold before acquisition, with independent
