@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1794
 branch: t/T-1909-a-site-only-dev-commit-rebuilds-a-green
 created: 2026-11-16T10:35:08.568Z
-updated: 2026-11-25T14:18:57.338Z
+updated: 2026-11-26T19:23:16.599Z
 ---
 
 ## Summary
@@ -29,8 +29,10 @@ The batch's test-input check counts a changed path only when a test in the batch
 
 - [x] C1. A dev commit that changes only `site/**` while a batch is running lands the green batch without a rebuild, when no selected tier reads site files (test, red before the fix).
   - done: impl-1909 · 2026-11-25T14:17:00.335Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1909-final · 2026-11-26T01:42:55.381Z · commit f9bb5870a6904a6ce9517808738dd6f50fee4bdc
 - [x] C2. A commit that changes a file a selected tier reads still rebuilds the batch, as today (test).
   - done: impl-1909 · 2026-11-25T14:17:00.543Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1909-final · 2026-11-26T01:42:55.381Z · commit f9bb5870a6904a6ce9517808738dd6f50fee4bdc
 
 ## Comments
 
@@ -54,3 +56,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; A-23470 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23470-t-1909-source-clear-at-f9bb5870a.md), no findings. Coordinator-approved scope 700b4015/83c0f0c9 is implemented: only release-log paths on recorded built-in T3-only plans; missing/custom/other-tier/Web/borrowed-T1 proof remains conservative. Durable evidence.job supplies optional policy proof; immediate override and old absent-proof callers unchanged. Required named T3/T4 lexical source-reader guard and direct/recursive positive controls retained. Landing reuse/rebuild and diff/history work counts inspected. Local A-23467 changed165/165 plus direct123/123/static0 are scoped; graph706 is selection, not coverage. C1/C2 final marks pending exact-head configured proof with named guard and both landing identities. Human midnight UTC hold/Coordinator window retained. Reviewer made no edits or executions.
+
+### rev-40 · 2026-11-26T01:42:55.381Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-1909-final
+commit: f9bb5870a6904a6ce9517808738dd6f50fee4bdc
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; C1/C2 verified within Coordinator-approved release-log/T3-only scope. A-23518 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23518-t-1909-final-clear-at-f9bb5870a.md). Exact-head5b5ee556/A-23517 passed; canonicaladdc4177 executable match. All4 required plan/path/reader-guard/T3-land/T1T3-rebuild controls have structured base+5/5pass receipts, preserving direct/recursive positives and diff/history work counts. All165 merge-batches and five direct consumers pass. T0/T1/fallbackT2/243selectedT3/Web exit0, Linuxc8nyc1 workers2 Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156, noncached,12prerequisite skips. RemainingT3 batch/T4 unexecuted, budgets advisory. No scope broadening or immediate override change; no findings or Reviewer edits/executions.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-40 · 2026-11-26T19:23:16.599Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-1909-source2
+commit: 824c3dff981ffd677842049503a11a7ec32ffea7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge delta source clear; A-23591 records Standards/Spec, zero findings. Both README paragraphs retained. Four task production files (batch-inputs helper, dispatch, merge-batch-territory and merge-batches) are unchanged from prior reviewed head; artifact's 'four integration files plus helper' wording means these four total. Inherited joined/bounded helper delegation retains synchronous fence-before-join and cleanup/guard ordering. Required T3/T4 reader guard, positive controls, both landing identities and diff/history work assertions remain. Coordinator-approved release-log/recorded-built-in-T3-only scope unchanged; unknown/custom/covered/Web/borrowed-T1 cases still rebuild. A-23589 local169+123/static0 are scoped reported checks, graph706 not coverage. C1/C2 prior verified marks stale at merged head; no final marks renewed pending fresh authorized configured receipt. Old5b5ee556 applies only f9bb5870a. Hold released; no Reviewer execution.

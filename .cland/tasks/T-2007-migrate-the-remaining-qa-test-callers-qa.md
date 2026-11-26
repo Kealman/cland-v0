@@ -3,7 +3,7 @@ id: T-2007
 kind: task
 title: Migrate the remaining QA test callers (qa.test, qa-shipped via qa-runner) to whole-caller fixture ownership
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1789
 branch: t/T-2007-migrate-the-remaining-qa-test-callers-qa
 created: 2026-11-19T14:04:47.226Z
-updated: 2026-11-25T14:16:48.389Z
+updated: 2026-11-26T19:16:57.677Z
 ---
 
 ## Summary
@@ -28,9 +28,11 @@ Migrate the remaining QA callers to the shared whole-caller fixture ownership th
 ## Acceptance criteria
 
 - [x] C1. Every callback in `nvim/test/qa.test.ts` and `nvim/test/qa-shipped.test.ts` that acquires a root or child runs under whole-caller fixture ownership, listed by name in the item (test).
-  - done: impl-2007 · 2026-11-25T14:14:40.989Z
+  - done: impl-2007 · 2026-11-26T19:16:08.732Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-2007-final · 2026-11-26T19:16:56.154Z · commit b7ae99b5c5ef68d1188a0f5ee2652d36030d2afa
 - [x] C2. A control interrupting setup mid-acquisition shows the root and child joined before storage removal (test).
   - done: impl-2007 · 2026-11-25T14:14:41.604Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-2007-final · 2026-11-26T19:16:56.154Z · commit b7ae99b5c5ef68d1188a0f5ee2652d36030d2afa
 
 ## Comments
 
@@ -358,3 +360,48 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; A-23462 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23462-t-2007-correction-source-clear-at-b7ae99b5c.md), no findings. M3 fixed by synchronous fake-admission fence, listening/server-close join before acquired-child close, no close for unadmitted child, and nested close before original join; pre-listen and held-attach controls retain actual guarded removal assertions. M4 preserves product120s plus shared headroom through original/completion/owner/sequence-join budgets with separate setup default. Prior early-handle and independent-close M1/M2 retained. Shared optional contracts and callback/consumer inventories inspected; omitted defaults unchanged. A-23460 current owner17/17/static0 and selected importers are scoped; native30/32 samples precede final undefined-option omission and are not exact-final native proof. C1/C2 final marks pending exact-head configured evidence with actual QA caller/guard coverage. Earlier failed/interrupted rounds retained. Human midnight UTC hold/Coordinator window unchanged. Reviewer made no edits or executions.
+
+### rev-40 · 2026-11-26T02:44:27.028Z
+
+verdict: review
+result: not clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-2007-evidence1
+commit: b7ae99b5c5ef68d1188a0f5ee2652d36030d2afa
+scope: evidence
+findings: [{"severity":"medium","text":"E1: configured run143/deadline75m/package closure incomplete; changed qa-shipped catalogue incomplete (GRAPH-001/PANELS-019 unfinished), no completeT4/Web.","file":".cland/artifacts/A-23537-suite-2c7ccbb2-56a5-43df-9a14-c8d01da9caea-auto-at-b7ae99b.log","line":53051},{"severity":"low","text":"L1: GRAPH-001 timingpass conflicts with producer unfinished and absent finish; no completion credit. S Bugs follow-up/deduplicate timing-progress reporting.","file":".cland/artifacts/A-23537-suite-2c7ccbb2-56a5-43df-9a14-c8d01da9caea-auto-at-b7ae99b.log","line":53053}]
+finding_counts: {"high":0,"medium":1,"low":1}
+
+Evidence not clear; A-23538 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23538-t-2007-configured-evidence-not-clear-at-b7ae99b5c.md). Producer143/deadlineExpiredtrue primaryrun timeout75m, secondarypackage closure incomplete/machine deletionrequired; complete T0/T1/T2/T3exit0, no completeT4/Web, canonicala1def99f executablematch. Producer confirms exactlyGRAPH/PANELS unfinished; timingpassGRAPH not positive completion. All7 new owner controls base+5/5 and owner17unique cases pass, QA27pass/3skip inclKEYS002, shipped19finishpass retained. C2 positive control assertions not failed, but final marks pending overall completion. Linuxc8nyc1 workers2 Node24.21/Nvim0.12.5 noncache,12skips,no browser, budget noticesadvisory. Hold released; pin source for lead/Coordinator disposition, no Reviewer edit/probe/retry.
+
+Criteria: C1 failed (Configured2c7ccbb2 timed out with incomplete package closure; only19 shipped positive finish receipts, GRAPH-001/PANELS-019 unfinished, later catalogue unexecuted.).
+
+### rev-40 · 2026-11-26T18:31:28.446Z
+
+verdict: review
+result: not clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-2007-evidence2
+commit: b7ae99b5c5ef68d1188a0f5ee2652d36030d2afa
+scope: evidence
+findings: [{"severity":"medium","text":"E1: configured T3 exit1; prune restart fails foreground discovery with process inspection deadline diagnostic. Both QA catalogues, T4 and Web unexecuted; final every-caller coverage incomplete. Structured cause empty/unknown.","file":".cland/artifacts/A-23560-suite-5e40e738-948e-4af6-8c9d-790e69f5187c-auto-at-b7ae99b.log","line":52126},{"severity":"low","text":"L1 retained: prior GRAPH-001 timing pass conflicts with producer unfinished/absent finish. This retry never executes catalogue and supplies no resolution; reporting follow-up remains separate.","file":".cland/artifacts/A-23537-suite-2c7ccbb2-56a5-43df-9a14-c8d01da9caea-auto-at-b7ae99b.log","line":53053}]
+finding_counts: {"high":0,"medium":1,"low":1}
+
+Evidence not clear; A-23563 records exact-head failed 5e40e738/A-23560. Producer1/cause empty, deadlineExpired/packageClosure absent (unknown), unfinished[]. T0/T1/fallbackT2 complete0, selectedT3 complete1; QA catalogue/T4/Web unexecuted. Literal failure: foreground hub durable discovery not within20000ms; recovery reservation process inspection deadline reached, writers fenced. No source-cause inference from diagnostic. Owner17 unique/52 pass rows retain C2 positive assertions; C2 not failed. Noncached Linuxc16nyc1 workers4 Node24.21/Nvim0.12.5,9 prerequisite skips, browsernull, budgetsreportonly. Prior143 timeout and GRAPH conflict retained. Implementer cites Coordinator T-2031 attribution/one retry; admitted0d880984 is pending, not pass. Hold released; no Reviewer executions.
+
+Criteria: C1 failed (Configured 5e40e738 fails T3 prune restart; QA catalogue/T4/Web unexecuted, so every-caller final evidence remains incomplete.).
+
+### rev-40 · 2026-11-26T19:16:56.154Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-2007-final
+commit: b7ae99b5c5ef68d1188a0f5ee2652d36030d2afa
+scope: evidence
+findings: [{"severity":"low","text":"L1 retained: historical GRAPH-001 timing pass conflicts with absent finish/producer unfinished. Current run supplies actual pass completion but does not repair old reporting; existing S Bugs/T-2108 follow-up remains separate.","file":".cland/artifacts/A-23537-suite-2c7ccbb2-56a5-43df-9a14-c8d01da9caea-auto-at-b7ae99b.log","line":53053}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Final clear; A-23587 audits0d880984/A-23586 at unchanged source3 b7ae99b5c. Producer0/cause empty/unfinished[]; complete T0–T4/Web exit0 at canonicala1def99f, executablematch. C1: actual shipped32/32 finishes incl GRAPH001/PANELS019, qa.test27pass/3declared macOS sandbox skips; every callback source ownership retained. C2: owner17unique/52pass rows, all7new exact controls base+5/5 retaining late root/child join and guarded removal proofs. Linuxc16nyc1 workers4 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156 noncache,12prerequisite skips, budget/skip checksreportonly. T4onecataloguefile32identitiesonce; remainingT3batch/otherT4unexecuted. Prior143timeout and code1prune failure remain failed; historical timing-conflict low retained separately. Both criteria verified; no high/medium findings. Hold released. No Reviewer executions.
+
+Criteria: C1 verified, C2 verified.

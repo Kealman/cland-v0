@@ -2,8 +2,8 @@
 id: T-1963
 kind: task
 title: merge-batches.test.ts's boundedJoinedCase + joinedCase helpers fence fixture work only after caseDeadlines' pending-work join
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1785
 branch: t/T-1963-merge-batches-test-ts-s
 created: 2026-11-18T08:00:17.305Z
-updated: 2026-11-25T13:32:13.048Z
+updated: 2026-11-26T00:32:14.430Z
+closed: 2026-11-26T00:32:14.430Z
 ---
 
 ## Summary
@@ -67,3 +68,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, C1/C2 verified. A-23429 independently audits same-head52323095/A-23428: result code0/cause empty, bothT0/T1/T2/T3/Web complete exit0, no unfinished. Six exact owner/teardown/abort controls each base+5distinct load passes; all six unchanged migrated callers base pass; whole changed file165/165+file finish pass.2714paired records, no mismatch/finish-only;2394basepass+30loadpass,0skip/fail. Execution scope hub-selected: fullT1, no T2-file execution credit despite empty phase exit0,7selectedT3 and Web smoke1file/5tests; otherT2/T3/T4/Web uncredited. Linuxx64 c-8nyc1/2workers,Node24.21,HeadlessShell1248/v156.0.8078.4; report advisories,cache unknown. Git5aa1db7d/suite40d632b1 trees recorded literally; lifetime/cost machine accounting. Source unchanged; reviewer executed no tests/lint/probes/native/browser.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-26T00:32:14.430Z
+
+Merged 05d708e41a481972fd807239c2dacb583a0e66b3 onto dev.

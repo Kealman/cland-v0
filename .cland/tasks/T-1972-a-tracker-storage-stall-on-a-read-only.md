@@ -2,8 +2,8 @@
 id: T-1972
 kind: task
 title: A tracker storage stall on a read-only planned check still exits the hub with running suites (repeat class after T-253/T-483)
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1791
 branch: t/T-1972-a-tracker-storage-stall-on-a-read-only
 created: 2026-11-18T12:31:23.399Z
-updated: 2026-11-25T13:52:19.597Z
+updated: 2026-11-26T19:18:11.721Z
+closed: 2026-11-26T19:18:11.721Z
 ---
 
 ## Summary
@@ -29,10 +30,13 @@ Make the fatal path depend on what stalled. A stalled read-only check (planned, 
 
 - [x] C1. A fake tracker whose read-only planned check never settles produces a structured stall diagnostic and a refused or degraded reply to its caller, and the hub keeps serving other requests (test).
   - done: impl-1972 · 2026-11-25T13:50:52.267Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1972-final · 2026-11-26T01:24:13.768Z · commit aa875f05063e0dd86e8d6ca83bc9d71a4f57a8d9
 - [x] C2. A stalled write still exits as today, after recording its pending writes (test).
   - done: impl-1972 · 2026-11-25T13:50:52.652Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1972-final · 2026-11-26T01:24:13.768Z · commit aa875f05063e0dd86e8d6ca83bc9d71a4f57a8d9
 - [x] C3. The stall diagnostic includes the operation kind, item, wait time, queue depth and event-loop delay at the stall; every caller of the tracker queue's fatal path is listed (rule 41) (test).
   - done: impl-1972 · 2026-11-25T13:50:52.847Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1972-final · 2026-11-26T01:24:13.768Z · commit aa875f05063e0dd86e8d6ca83bc9d71a4f57a8d9
 
 ## Comments
 
@@ -75,3 +79,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; no remaining findings. A-23445 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23445-t-1972-correction-source-clear-at-aa875f050.md). M1: read admission is explicit at the three private read callers; generic labels retain writer policy, and shared guarded promotion protects both mutation boundaries. Three reserved-label public-writer controls preserve fatal metadata, caller/successor abandonment and recorded queue facts. M2: separately named load-scaled observations now cover complete setup and action/results within the existing whole-sequence owner; original assertions retained. Diagnostics/census/docs remain consistent. Local A-23444 selected 98/98 and static checks are scoped evidence; broader selected closure, native daemon and configured Linux proof remain pending. C1/C2/C3 final verification marks await exact-head configured receipt. Prior A-23442 retained historical not-clear; human midnight UTC hold and Coordinator window unchanged. Reviewer made no edits or executions.
+
+### rev-40 · 2026-11-26T01:24:13.768Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-1972-final
+commit: aa875f05063e0dd86e8d6ca83bc9d71a4f57a8d9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; C1/C2/C3 verified. A-23512 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23512-t-1972-final-clear-at-aa875f050.md). Exact-head64a9157d/A-23511 producer0/emptycause complete T0/T1/fallbackT2/selectedT3/Web, canonicald7b41eba executable match. All6 new read/view/planned-write/reserved-label writer controls have base+5/5pass receipts, preserving structured diagnostic fields, late-read fence, queue progress and fatal/abandoned-write results. Native tracker-async21/21 includes both held/released serving-write fatal daemon cases and bounded abandonment; related diagnostic/journal/ready/summary consumers pass. Linuxc8nyc1 workers2 Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156, noncached,12prerequisite skips. RemainingT3 batch/T4 unexecuted, budgets advisory. Prior A-23442 historical not-clear retained; no findings or Reviewer edits/executions.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-26T19:18:11.721Z
+
+Merged d193c2311eabbe4bc22f192db3f65bf8679d7e45 onto dev.

@@ -2,8 +2,8 @@
 id: T-2008
 kind: task
 title: "Executor snapshot 'stale: base' notice fires on every dev landing, asking for a 22-minute prepare that a base-only change rarely needs"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1728
 topic: topic-1784
 branch: t/T-2008-executor-snapshot-stale-base-notice
 created: 2026-11-19T14:15:57.545Z
-updated: 2026-11-25T13:23:47.246Z
+updated: 2026-11-26T18:20:47.310Z
+closed: 2026-11-26T18:20:47.310Z
 ---
 
 ## Summary
@@ -30,8 +31,10 @@ Raise the "run cland executor prepare" notice only for lock, recipe, provision o
 
 - [x] C1. A dev move that changes only the base posts no prepare notice at any age, while `executor status` still reports the base as behind (test).
   - done: impl-2008 · 2026-11-25T13:22:44.893Z
+  - verified: rev-35 [reviewer] · run rev-35-2008-evidence-1 · 2026-11-26T01:13:41.649Z · commit 8fa6d040b5520bb9a724f5e3ad55c5958227bf2b
 - [x] C2. A lockfile or recipe change still posts the notice once (test).
   - done: impl-2008 · 2026-11-25T13:22:45.137Z
+  - verified: rev-35 [reviewer] · run rev-35-2008-evidence-1 · 2026-11-26T01:13:41.649Z · commit 8fa6d040b5520bb9a724f5e3ad55c5958227bf2b
 
 ## Comments
 
@@ -85,3 +88,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-23423: source clear, M1/M1-R resolved. Exactly one-line correction connects snapshotCase to testDeadlineMs(5000) at owner construction; all separate named observations, original-work/positive-close/root/native-guard fences and final policy assertions retained. Production/consumer review carries forward unchanged. A-23422 corrects prior scaling overstatement; local63/63/typecheck/lint evidence scoped, earlier importer/CLI checks not rerun. C1/C2 remain unverified pending exact-head configured result. Human89c5adf4 holds submissions until00:00UTC plus subsequent Coordinator window; source clear does not override it. Source-review hold released. Reviewer ran no tests/lint/probes/native/browser.
+
+### rev-35 · 2026-11-26T01:13:41.649Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2008-evidence-1
+commit: 8fa6d040b5520bb9a724f5e3ad55c5958227bf2b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-23506 records independent A-23505/result.json audit for runf72d8311. Structured code0/empty cause and complete exit0 T0/T1/T2/selected251 T3/Web receipts bind the source-cleared head. Both generated base-only ages and all four install-input cases each have base pass plus five distinct passing load IDs; changed file63 base tests and named related readers all pass. C1/C2 verified with source3. Linux x64 c-8/nyc1 Node24.21, isolated Headless Shell1248/v156, reported2 workers; cache status unknown/null. Twelve explicit prerequisite skips,24 other T3/18 T4 unexecuted; budget/lint report-only. Existing three finish-only protected-output passes/T-2045 kept separate from aggregate and paired proof. No new findings, source change or rerun.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-26T18:20:47.310Z
+
+Merged 504cdf8671d29dba0dc7b3f5169666409cca5381 onto dev.

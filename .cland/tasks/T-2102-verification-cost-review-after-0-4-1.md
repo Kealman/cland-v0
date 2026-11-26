@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-25T07:11:26.501Z
-updated: 2026-11-25T10:12:41.173Z
+updated: 2026-11-26T00:31:54.975Z
 ---
 
 ## Summary
@@ -53,3 +53,7 @@ All ran on c-16 with 4 workers. The same full selections on c-8 with 2 workers e
 ### coord · 2026-11-25T10:12:41.173Z
 
 Data point after hub restart #104 (dev a6ff2853b, 2026-11-25 09:28Z). T-2097's merge batch adb1a896, suite 7338b8d1 (A-23375), ran only the T3 importers its change affects, 8 files, with "remaining T3 deferred to integrated occasions". It finished in 5.5 minutes wall for $0.0305 over two shards, against about 28 minutes and $0.17–0.22 for the full-T3 batches before the restart. If that selection holds for code-changing batches too, it removes driver 4 (every batch running a full T3) from the cost review. Check which landing introduced it, and what the periodic dev-T3 and stage covers now carry in its place.
+
+### coord · 2026-11-26T00:31:54.975Z
+
+A cost input for the review, from 2026-11-26. Merge batch 306542dc (T-1963 alone) ran the full T3 selection, about 27 minutes on two shards. Its selection reason was "full T3: hub behaviour or verifier change: hub/test/durations.json". The durations.json changes came from coord's dev commits (add-only baseline refresh f39f02dd7, key fix 686235868, allowance retirement e39407bec), not from T-1963. Every batch after a dev-side durations edit therefore pays for a full T3 run, even when the members are T1-only. Consider whether baseline-only or allowance-only durations changes need to count as a verifier change.

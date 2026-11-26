@@ -2,8 +2,8 @@
 id: T-1997
 kind: task
 title: A failing assertion in a file-level after hook may not fail the test run
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1790
 branch: t/T-1997-a-failing-assertion-in-a-file-level
 created: 2026-11-19T03:30:57.433Z
-updated: 2026-11-25T13:59:50.726Z
+updated: 2026-11-26T19:16:53.329Z
+closed: 2026-11-26T19:16:53.329Z
 ---
 
 ## Summary
@@ -29,10 +30,13 @@ First, reproduce minimally: a file whose `after` hook throws or fails an asserti
 
 - [x] C1. A minimal reproduction records exactly what each runner path does with a failing file-level `after` hook (exit status, suite result, failure list), with literal output (evidence).
   - done: impl-1997 · 2026-11-25T13:48:00.990Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1997-final · 2026-11-26T01:21:14.643Z · commit 6363563e4b23bdf81cfacbb73bf4fbfad683cb9e
 - [x] C2. A failing file-level `after` hook fails its file with a named failure in every supported runner path (`node --test`, runSuite direct and parallel); a child test run started from a test does not inherit NODE_TEST_CONTEXT, so it cannot skip a file silently; and a report-only lint names file-level `after` assertions (enforcement in a follow-up item, rule 27) (test).
   - done: impl-1997 · 2026-11-25T13:58:52.605Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1997-final · 2026-11-26T01:21:14.643Z · commit 6363563e4b23bdf81cfacbb73bf4fbfad683cb9e
 - [x] C3. Every existing file-level `after` hook that asserts is listed with its disposition (rule 41).
   - done: impl-1997 · 2026-11-25T13:48:01.524Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1997-final · 2026-11-26T01:21:14.643Z · commit 6363563e4b23bdf81cfacbb73bf4fbfad683cb9e
 
 ## Comments
 
@@ -71,3 +75,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; A-23449 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23449-t-1997-correction-source-clear-at-6363563e4.md), no findings. Prior M1 resolved by named root/write/launch setup observations and producing-native-close observation under shared caseDeadlines/testDeadlineMs policy. Early captured-child stop precedes original-work join; late acquisition is adopted; fenced resource cleanup awaits close before roots. Original exact exit1/signal-null, hook/assertion/fail1 and structured file-failure checks retained. Full prior environment isolation/report-only lint/migration scope reviewed; C1 literal reproduction and C3 dispositions retained with approved T-2107/T-2108 follow-ups. Current local A-23448: native3/3, shared T2 10/10, static0; other A-23443 receipts remain earlier and 954 reachable files are inventory, not coverage. C1–C3 final marks pending exact-head configured evidence. Human midnight UTC hold/Coordinator window unchanged. Reviewer ran no tests/probes or edits.
+
+### rev-40 · 2026-11-26T01:21:14.643Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-1997-final
+commit: 6363563e4b23bdf81cfacbb73bf4fbfad683cb9e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; C1/C2/C3 verified. A-23510 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23510-t-1997-final-clear-at-6363563e4.md). Exact-head40f35683/A-23509 passed; provenanceefbe9ed8 differs from local0136f301 only by canonical .cland/tasks/RULES exclusions, executable diff empty. All3 native after-hook modes structured pass and exact exit1/signalnull/hook/assertion/fail1/file-failure assertions execute. Environment context/census controls pass base+5/5; migrated import/probe guards pass base+5/5, host-supervisor final census passes. Six-source C3 dispositions/literal C1 evidence A-23440 retained; T-2107/T-2108 separate. T0/T1/fallbackT2/274selectedT3/Web exit0; Linuxc8nyc1 workers2 Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156, noncached,13prerequisite skips. RemainingT3 batch; T4 unexecuted; budgets advisory. No findings or Reviewer edits/executions.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-26T19:16:53.329Z
+
+Merged 2fb380581061e4c77005e62735d6d0dc37a68d91 onto dev.

@@ -2,8 +2,8 @@
 id: T-2045
 kind: task
 title: Suite summary pass count (9,397) disagrees with raw base pass finishes (9,400); 18 output-control passes have no retained start (A-22307)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1796
 branch: t/T-2045-suite-summary-pass-count-9-397-disagrees
 created: 2026-11-21T03:04:36.183Z
-updated: 2026-11-25T14:27:15.272Z
+updated: 2026-11-26T19:19:57.704Z
+closed: 2026-11-26T19:19:57.704Z
 ---
 
 ## Summary
@@ -25,6 +26,7 @@ In T-1901's full run 66f497e2 at 895ad0152 (A-22307), rev-35's final audit (A-22
 
 - [x] C1. The cause of the mismatch is named from the A-22307 log (missing start events, double-counted finishes, or load-gate repetitions folded into base), and the suite summary's pass count is reconciled to the raw events, or the difference is labelled in the summary (test).
   - done: impl-2045 · 2026-11-25T14:27:02.692Z
+  - verified: rev-35 [reviewer] · run rev-35-2045-evidence-1 · 2026-11-26T03:01:07.175Z · commit b757f900a4effb9f29ce0da7b7ee3157bc4d4b39
 
 ## Comments
 
@@ -50,3 +52,35 @@ Criteria: C1 failed (The new accounting reader duplicates the retained progress 
 ### impl-2045 · 2026-11-25T14:25:54.176Z
 
 Addressing source-1 M1/A-23475: extracted exported parseTestProgress in suite-progress.ts and both reducers call it. Common retained grammar unchanged; event/outcome/cancellation/envelope policies remain in each reducer. New whole-case acceptance/refusal characterization passed before/after extraction (no new red claim; original red preserved in A-23471). Six selected T1 files now 48 passing cases on macOS Node 24.21.0; typecheck exit 0; full lint running in reserved slot 2. No dev merge after first review; no configured verify submitted.
+
+### rev-35 · 2026-11-25T14:27:47.028Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2045-source-2
+commit: b757f900a4effb9f29ce0da7b7ee3157bc4d4b39
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-23479 records full source/correction review. Sole M1 resolved: exported parseTestProgress supplies prefix/JSON/common-field validation to both reducers while their event/outcome/cancellation/envelope policies remain unchanged. Pure common-grammar characterization and prior discrepancy/10006-visit assertions remain. A-23475's independent A-22307 accounting audit retained; historical stdout-loss explanation remains inference. No remaining findings. C1 stays done/unverified pending configured exact-head result and final audit. Spending pause until00:00UTC and subsequent Coordinator window still apply; no new local replay requested.
+
+### rev-35 · 2026-11-26T03:01:07.175Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2045-evidence-1
+commit: b757f900a4effb9f29ce0da7b7ee3157bc4d4b39
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear; A-23541 combines source2/A-23479, independent historical A-22307 audit/A-23475 and green f39d09f2/A-23540. Producer code0/empty cause; recorded T0/T1/T2/selected245 T3/Web complete exit0. Each of three new grammar/accounting/summary cases passes at base+five distinct load IDs; all13 summary and named adjacent reader cases pass. C1 verified via permitted discrepancy disclosure: missing retained starts are distinguished from duplicate finishes/loaded repetitions; no native-loss cause or starts invented. Candidate suiteSummary behavior is tested; no claim that this outer hosting report already emits the new line. Raw/aggregate/load totals stay distinct. Twelve explicit skips,30 other T3/18 T4 unexecuted, report-only budgets/lint; cache unknown. No findings/source change/rerun needed.
+
+Criteria: C1 verified.
+
+### coord · 2026-11-26T19:19:57.704Z
+
+Merged bd61542fd1266825d4c72a0af3dda4a78c201c9e onto dev.

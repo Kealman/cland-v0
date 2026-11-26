@@ -2,8 +2,8 @@
 id: T-2000
 kind: task
 title: durations-runner.test.ts's existing cases still use the legacy fixture path without a pre-acquisition owner
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1787
 branch: t/T-2000-durations-runner-test-ts-s-existing
 created: 2026-11-19T06:48:58.122Z
-updated: 2026-11-25T13:36:57.837Z
+updated: 2026-11-26T02:02:51.369Z
+closed: 2026-11-26T02:02:51.369Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ Move the file's remaining cases onto `suiteCase`, with a whole-caller owner regi
 
 - [x] C1. Every case in durations-runner.test.ts runs through `suiteCase` with a pre-acquisition owner and named setup bounds, and all assertions are unchanged (test, diff review).
   - done: impl-2000 · 2026-11-25T13:35:41.555Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-2000-final · 2026-11-26T00:39:36.951Z · commit 8275662e883766daaf0326c9d5ce5585319034a5
 - [x] C2. A positively controlled launch guard and the cleanup census still pass for the whole file (test).
   - done: impl-2000 · 2026-11-25T13:35:41.760Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-2000-final · 2026-11-26T00:39:36.951Z · commit 8275662e883766daaf0326c9d5ce5585319034a5
 
 ## Comments
 
@@ -73,3 +76,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; no findings. A-23435 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23435-t-2000-correction-source-clear-at-8275662e8.md). M1 resolved by admission before native effect, with held-configuration zero-launch red/green control. M2 resolved by early captured-owner stop/abort before original completion join, with withheld producer close, root/guard retention, and actual registered removal/restoration receipts. Original assertions and tier retained. Shared timeoutMs extension preserves absent defaults; only existing optional 600-second probe opts in. Local macOS Node24.21 evidence A-23434: native 21/21 once, changed T2 12/12, five importers 124/124, full typecheck/lint exit0; remaining consumer closure/configured Linux evidence and optional slow probe unexecuted. C1/C2 final verification marks pending exact-head configured receipt; human midnight UTC hold and Coordinator window remain in force. Reviewer ran no tests or edits.
+
+### impl-2000 · 2026-11-26T00:39:05.845Z
+
+Exact-head configured receipt c4e39aa8-e8b4-425c-b37d-077235e7ea83 / A-23503 passed at 8275662e883766daaf0326c9d5ce5585319034a5 (tree145e8494dbbe3760509b8f28d9a90884538b44ff), Linux x64 droplet c-8 nyc1 Node24.21.0, Chrome for Testing156.0.8078.4 headless-shell. T0/T1/all fallback T2/11 selected T3 files/Web exit0; other T3 deferred to merge batch, T4 not run. 7790 passed, 1 skipped (local macOS stage-selector prerequisite), no failures/cancellations. Inspected structured finish receipts: both runner-case close controls passed ordinarily plus five load repetitions each; acquisition launch-guard identity passed. Duration/Web-wall notices and skip-reason check are report-only. Droplet lifetime1716s/costUSD0.1192 are producer receipt values, not a test-duration claim. Reviewer received same-head result for final criteria settlement; no source change or resubmission.
+
+### rev-40 · 2026-11-26T00:39:36.951Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-2000-final
+commit: 8275662e883766daaf0326c9d5ce5585319034a5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; C1/C2 verified. A-23504 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23504-t-2000-final-clear-at-8275662e8.md). Exact source-reviewed head, canonical145e8494 executable match; configured c4e39aa8/A-23503 passed. All21 durations-runner named base receipts pass including positive acquisition guard and exact native reaping/root assertions; both corrective case-close controls have positive base and5/5 receipts. All13 shared-helper consumer files have explicit passing base identities. T0/T1/fallbackT2/11selectedT3/Web exit0, Linuxc8nyc1 workers2 Node24.21/Nvim0.12.5, HeadlessShell1248/CfT156, noncached,7790pass/1macOS-prerequisite skip/0fail. RemainingT3 deferred batch; T4 and optional600s slow probe unexecuted; Linux macOS-named controls do not claim Darwin branches, local A-23434 remains separate. Budgets/report suggestions advisory, no performance clearance. No findings, Reviewer edits or executions.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-26T02:02:51.369Z
+
+Merged f72b000e9878adb1c4416d3c9d7e0fc8e2c32f98 onto dev.
