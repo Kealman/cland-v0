@@ -66,7 +66,7 @@ export type BatchBoundary = {
   changed?(): void;
   entries(): MergeQueueEntry[];
   build(id: string, members: MergeQueueEntry[], base?: string): Promise<BatchCandidate>;
-  rebuildReason(tested: BatchCandidate, current: BatchCandidate): Promise<string | null>;
+  rebuildReason(tested: BatchCandidate, current: BatchCandidate, proof?: import('../batch-inputs.ts').BatchInputProof): Promise<string | null>;
   land(entry: MergeQueueEntry, candidate: BatchCandidate): Promise<void>;
   drop(entry: MergeQueueEntry, reason: string): void;
   cleanup(candidate: BatchCandidate): Promise<void>;
@@ -328,7 +328,7 @@ export class MergeBatches {
       const remaining = batch.members.slice(index).filter(e => !batch!.diagnosis?.excluded?.includes(e.item) && !this.boundary.isLanded(e));
       const current = await this.boundary.build(batch.id, remaining);
       if (this.#closed) return;
-      const rebuild = current.tree !== candidate.tree ? await this.boundary.rebuildReason(candidate, current) : null;
+      const rebuild = current.tree !== candidate.tree ? await this.boundary.rebuildReason(candidate, current, evidence.job) : null;
       if (this.#closed) return;
       if (rebuild) {
         this.boundary.report(batch, `batch ${batch.id} rebuild: ${rebuild}`, 'rebuild');

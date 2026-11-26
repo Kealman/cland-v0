@@ -42,7 +42,98 @@ import { CodexAdapter } from '../src/adapters/codex.ts';
 import type { HarnessProcess } from '../src/adapters/contract.ts';
 import { recordingHost } from './recording-host.ts';
 import { ToolForbidden } from '../src/roles/permissions.ts';
+import { namesSiteSource, unreadBatchReleaseLog, type BatchInputProof } from '../src/batch-inputs.ts';
+import { readTierAssignments } from '../src/suite-shards.ts';
+import { fileURLToPath } from 'node:url';
 import { verificationCommands } from '../src/verification-commands.ts';
+
+test('release log reuse refuses unknown plans, covered tiers and other paths', t => guardedMemberCase(t, async (_fixtures, step) => {
+  await step(async () => {
+    const proof: BatchInputProof = { selection: { mode: 'full', files: [], reason: 'batch', tiers: ['T3'] }, commands: {
+      prepare: '', check: '', test: '', plan: [{ name: 'T3', command: 'node hub/test/run-suite.ts --tier T3' }],
+    } };
+    const log = 'site/src/content/log/release.mdx';
+    assert.equal(unreadBatchReleaseLog(log, proof), true);
+    for (const path of ['site/src/content/docs/docs/install.md', 'site/public/install.sh', 'site/scripts/check-links.ts', 'hub/src/parser.ts', 'unknown', 'site/src/content/logger/a.mdx', 'site/src/content/log/../docs/install.md']) assert.equal(unreadBatchReleaseLog(path, proof), false, path);
+    const plans: Array<BatchInputProof | undefined> = [undefined, {}, { commands: proof.commands! },
+      { selection: proof.selection! }, { ...proof, commands: { prepare: '', check: '', test: 'custom' } },
+      { ...proof, batchT1: { skipped: true, members: [], reason: 'member proofs' } },
+      ...(['T1', 'T2', 'T4'] as const).map(tier => ({ ...proof, selection: { ...proof.selection!, tiers: [tier] } })),
+      { ...proof, selection: { ...proof.selection!, tiers: ['T1', 'T3'] } },
+      { ...proof, commands: { ...proof.commands!, prepare: 'custom prepare' } },
+      { ...proof, commands: { ...proof.commands!, check: 'custom check' } },
+      { ...proof, commands: { ...proof.commands!, plan: [{ name: 'T3', command: 'custom test' }] } },
+      { ...proof, commands: { ...proof.commands!, plan: [...proof.commands!.plan!, { name: 'Web', command: 'node hub/test/run-suite.ts --tier Web' }] } },
+    ];
+    for (const candidate of plans) assert.equal(unreadBatchReleaseLog(log, candidate), false, JSON.stringify(candidate));
+    const before: BatchCandidate = { base: 'before', head: 'before-head', tree: 'before-tree', cwd: '/isolated', budgetLines: [] };
+    const after = { ...before, base: 'after', head: 'after-head', tree: 'after-tree' };
+    const calls: string[][] = [];
+    const provider: BatchRepository = { git: async args => { calls.push(args); return args[0] === 'diff' ? `${log}\0docs/guide.md\0hub/src/parser.ts\0` : 'code-commit'; }, facts: async () => ({ context: null, workers: 1 }), identity: async () => null, checkout: async () => {}, remove: async () => {} };
+    assert.equal(await batchRebuildReason('/isolated', before, after, {}, provider, proof), 'commit code-commit changed batch test inputs: hub/src/parser.ts');
+    assert.deepEqual(calls[1], ['--literal-pathspecs', 'log', '-1', '--format=%H', 'after', '^before', '--', 'hub/src/parser.ts']);
+    assert.equal(calls.length, 2, 'one diff and one bounded forcing-commit query');
+  });
+}));
+
+test('T3 and T4 source readers fence release log evidence reuse', t => guardedMemberCase(t, async (_fixtures, step, setup) => {
+  await step(() => setup('source-reader census', async () => {
+    assert.equal(namesSiteSource("readFile('site/src/content/log/entry.mdx')"), true);
+    assert.equal(namesSiteSource("readdir(join(root, 'site', 'src'), { recursive: true })"), true);
+    assert.equal(namesSiteSource("readFile('site/public/install.sh')"), false);
+    const root = fileURLToPath(new URL('../../', import.meta.url));
+    const assignments = await readTierAssignments(root);
+    assert.ok(assignments?.size);
+    for (const [file, tier] of assignments) if (tier === 'T3' || tier === 'T4') {
+      assert.equal(namesSiteSource(await readFile(join(root, file), 'utf8')), false, `${file}: site-source reader invalidates the release-log exemption`);
+    }
+  }));
+}));
+
+for (const tiers of [['T3'], ['T1', 'T3']]) test(`release log movement ${tiers.length === 1 ? 'lands' : 'rebuilds'} a green ${tiers.join('/')} batch`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const state = await setup('batch fixture', () => fixture(fixtures));
+  const { f, boundary, entries, landed } = state;
+  entries.splice(1);
+  await f.configure(`[merge]\nqueue = true\nbatch_tiers = ${JSON.stringify(tiers)}\n[verification]\nexecutor = "droplet"\ncheck = "true"\ntest_integration = "node hub/test/run-suite.ts --tier T3"\ntest_unit = "node hub/test/run-suite.ts --tier T1"`);
+  await writeFile(join(f.root, '.cland/config.toml'), renderConfig(f.config));
+  let dev = 'before', diffs = 0, logs = 0;
+  const provider: BatchRepository = {
+    git: async args => {
+      if (args[0] === 'rev-parse') return args.at(-1) === 'refs/heads/dev' ? dev : entries[0]!.head;
+      if (args[0] === 'merge-tree') return `${dev}-tree\0`;
+      if (args[0] === 'commit-tree') return `${dev}-head`;
+      if (args[0] === 'diff') { diffs++; return 'site/src/content/log/release.mdx\0'; }
+      if (args[0] === '--literal-pathspecs') { logs++; return 'release-commit'; }
+      throw new Error(`unexpected Git operation ${args}`);
+    },
+    facts: async () => ({ context: null, workers: 1 }), identity: async head => head.replace('-head', '-tree'),
+    checkout: boundary.checkout, remove: boundary.cleanup,
+  };
+  boundary.build = (id, members, base) => prepareMergeBatch(f.root, id, members, {}, provider, base);
+  boundary.rebuildReason = (tested, current, proof) => batchRebuildReason(f.root, tested, current, {}, provider, proof);
+  await step(async () => {
+    await f.clock.advance(600_000); await state.runner.tick();
+    const first = f.suites.status()[0]!;
+    assert.deepEqual(first.selection?.tiers, tiers);
+    dev = 'after';
+    await f.machine.waits.run(f.machine.started(first.id));
+    const green = t0Green + tiers.map(tier => `tier ${tier}: exit 0; duration 1 s; output tail: passed\n`).join('') + passLog;
+    await f.finish(first.id, 0, green); await state.runner.tick();
+    if (tiers.length === 1) assert.deepEqual(landed, ['T-1'], 'unread release log lands with the original green receipt');
+    assert.equal(diffs, 1, 'one immutable candidate comparison');
+    assert.equal(logs, tiers.length === 1 ? 0 : 1, 'unread log needs no history scan');
+    if (tiers.length > 1) {
+      assert.deepEqual(landed, []);
+      await state.runner.tick();
+      const second = f.suites.status().at(-1)!;
+      assert.notEqual(second.id, first.id);
+      await f.finish(second.id, 0, green); await state.runner.tick();
+    }
+    assert.deepEqual(landed, ['T-1']);
+    assert.equal(f.suites.status().length, tiers.length === 1 ? 1 : 2);
+    assert.equal(state.runner.snapshot(), null);
+  });
+}));
 
 test('enqueue checks frozen usage on the merged candidate before admission and reports its duration', t => guardedMemberCase(t, async (fixtures, step, wait) => {
   const root = await step(() => wait('candidate files', () => tempProject(fixtures)));

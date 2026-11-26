@@ -1,5 +1,19 @@
 # hub/test/merge-batches.test.ts
 
+Release-log movement controls use the shared guarded whole-case owner and fake
+repository/machine receipts. A configured T3-only batch lands with one suite;
+T1/T3 still rebuilds because T1 scans site source. The T3-only control was red
+at its landing assertion (`[]` versus `['T-1']`) before the fix. Counts prove
+one candidate diff and zero history queries for an unread log; mixed code/log
+changes query only the code path. No wall-clock performance claim is made.
+
+`T3 and T4 source readers fence release log evidence reuse` scans every T3/T4
+test in the current tier manifest and fails on a named `site/src` path or split
+`site`, `src` construction. Direct-read and recursive-read positive controls
+keep the scan meaningful. A new site-source reader requires revisiting the
+narrow exemption before that test can pass. Policy controls retain rebuilds
+for custom/missing plans, T1/T2/T4, borrowed T1 receipts, Web additions,
+non-log site paths and a previous receipt shape without the new proof argument.
 Frozen usage enqueue coverage resolves the real candidate configuration inside
 the shared guarded member owner. Fake Git and command receipts prove merged-head
 execution, refusal naming MERGE_USAGE, one command and one cleanup per attempt,

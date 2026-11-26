@@ -1,5 +1,10 @@
 # Hub documentation
 
+Batch landing reuses release-log changes only with a recorded built-in T3-only
+plan; other tiers and unknown plans keep rebuilding. See
+[verification commands](../docs/hub/running.md#verification-commands) for the
+scope and source-reader guard.
+
 Local test files run with `node --test <file>`; plain `node <file>` can silently
 exit 0 on a failed file-level teardown assertion. Fixture child environments
 remove inherited `NODE_TEST_CONTEXT` after overlays. Global `after` registrations

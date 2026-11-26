@@ -412,7 +412,7 @@ export class Dispatcher {
       changed: () => { landingReports?.reconcile(); options.core.publishVerification({ ...this.#suites!.snapshot(), batch: this.#batches?.snapshot() ?? null, cleanups: this.#batches?.cleanupStatus() ?? [], cleanupOverflow: this.#batches?.cleanupOverflow() ?? { count: 0 } }); },
       entries: () => { landingReports?.reconcile(); return this.#mergeQueue!.entries(); },
       build: (id, members, base) => this.#worktrees!.serial(() => prepareMergeBatch(root, id, members, options.env, options.batchRepository, base)),
-      rebuildReason: (tested, current) => batchRebuildReason(root, tested, current, options.env, options.batchRepository),
+      rebuildReason: (tested, current, proof) => batchRebuildReason(root, tested, current, options.env, options.batchRepository, proof),
       ...(!options.batchRepository ? { validateOwnership: (candidate: import('./merge-batches.ts').BatchCandidate) => requireCandidateOwnership(root, candidate, options.env ?? process.env) } : {}),
       cleanup: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.remove(candidate) : removeMergeBatch(root, candidate, options.env)),
       checkout: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.checkout(candidate) : checkoutMergeBatch(root, candidate, options.env)),

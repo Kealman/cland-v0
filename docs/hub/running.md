@@ -216,6 +216,14 @@ or `node hub/test/lint-closed-item-wording.ts --help`.
 
 ### Verification commands
 
+At batch landing, release-log-only changes under `site/src/content/log/`
+reuse the green receipt only with an explicitly recorded built-in T3-only
+runtime plan. Missing or custom plans, other tiers, Web additions and T1
+coverage borrowed from member receipts retain rebuilds. Other changed paths
+retain the existing documentation/tracker exemptions and conservative rebuild
+policy. The T3/T4 source-reader guard in `hub/test/merge-batches.test.ts`
+fences this narrow repository claim; it does not change immediate merge overrides.
+
 <!-- cland-allow-closed-wording: pending evidence is a runtime outcome, not pending T-1049 -->
 Under rule 17, CLI and derived summaries distinguish unknown or pending evidence from failure; neither is a failed result (A-8634 R13; T-1049).
 
