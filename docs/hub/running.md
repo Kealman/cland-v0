@@ -708,7 +708,8 @@ a hub restart before real runs use them.
 release as a run, installs the exact versions with digest checks, delivers from
 the territory and runs the root's configured prepare command as `runner` (or
 reports `prepare: not set`). It powers off before snapshotting,
-polls actions under a twenty-minute bound, transfers to configured regions and
+polls power-off and snapshot actions under a twenty-minute bound, then transfers
+to configured regions within the builder's remaining admitted lifetime and
 tags the image `cland` and `cland-p-<hash>`, then releases the builder.
 
 Stopping the hub interrupts provider waits, reservation-lock and spend-ledger
@@ -741,6 +742,10 @@ old image has a GET-by-id 404 receipt. Snapshot DELETE uses the same confirmed
 deletion helper as droplets and keys, including DELETE404/GET200 split answers.
 Unconfirmed retirement and partial-image cleanup retain their recovery record;
 the next recovery retries DELETE for saved IDs even when a catalogue omits them.
+Preparation checkpoints the created image's ID before transfer. A failed prepare
+reports image cleanup as confirmed only after recovery confirms deletion; otherwise
+it names image cleanup as unconfirmed. Builder lifetime and cost likewise stay
+unconfirmed until the existing lease release confirms deletion.
 Only an unstarted or definitely rejected delete permits
 rollback to the old image.
 

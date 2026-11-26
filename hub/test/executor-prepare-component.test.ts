@@ -685,6 +685,73 @@ function snapshotCase(t: TestContext) {
   };
 }
 
+for (const expires of [false, true]) test(`five-region preparation respects the remaining builder budget (expires: ${expires})`, async t => {
+  const ownership = snapshotCase(t);
+  const { scope } = ownership;
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('five-region fixture setup', () => fixture(scope.fixtures, { CLAND_TEST_DROPLET_ACTION_MS: '100000', CLAND_TEST_DROPLET_POLL_MS: '20000', CLAND_TEST_DROPLET_RELEASE_MS: '100000', ...(expires ? { CLAND_TEST_EXECUTOR_LIFETIME_MS: '180000' } : {}) }, scope.adoptRoot)));
+    await step(() => scope.wait('five-region setup hub stop', () => f.stop()));
+    const regions = ['lon1', 'nyc1', 'sfo2', 'ams3', 'fra1'];
+    await step(() => scope.wait('five-region configuration setup', () => writeFile(join(f.root, '.cland/config.toml'), `[verification]\nprepare = "npm ci"\n[verification.droplet]\nregions=${JSON.stringify(regions)}\n`)));
+    const owner = ownership.open(f, f.dependencies);
+    if (expires) {
+      await step(() => scope.wait('expired five-region preparation receipt', () => assert.rejects(drive(f, owner.backend.prepare(f.key)), /transfer: .*deadline/)));
+      assert.deepEqual(f.api.images, []);
+      assert.equal(await step(() => scope.wait('expired preparation publication read', () => readSnapshot(f.root))), null);
+    } else {
+      const result = await step(() => scope.wait('five-region preparation completion receipt', () => drive(f, owner.backend.prepare(f.key))));
+      assert.equal(result.state, 'prepared');
+      assert.deepEqual(new Set(result.snapshot.regions), new Set(regions));
+      assert.ok(result.lifetimeMs !== null && result.costUsd !== null);
+    }
+    const transfers = f.api.requests.filter(r => r.body?.type === 'transfer');
+    assert.equal(transfers.length, expires ? 2 : 4);
+    assert.ok(f.api.requests.filter(r => /\/actions\//.test(r.path)).length <= 20, 'bounded action reads');
+    assert.deepEqual(f.api.droplets, []);
+    await step(() => scope.wait('five-region owner disposal', () => ownership.dispose()));
+  });
+});
+
+for (const builderUnknown of [false, true]) for (const refused of [false, true]) test(`failed transfer retains its identified image through catalogue omission (deletion refused: ${refused}, builder unconfirmed: ${builderUnknown})`, async t => {
+  const ownership = snapshotCase(t);
+  const { scope } = ownership;
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('failed-transfer fixture setup', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    await step(() => scope.wait('failed-transfer setup hub stop', () => f.stop()));
+    const provider = f.api.provider;
+    let imageId = 0;
+    const api = new Proxy(provider, { get(target, property) {
+      if (property === 'transferImage') return async (id: number) => {
+        imageId = id;
+        f.api.faults.omitSnapshotIds = [id];
+        if (refused) f.api.faults.deleteSnapshot = id;
+        if (builderUnknown) f.api.faults.deleteError = 403;
+        throw new DigitalOceanError(422, 'transfer_failed', 'transfer refused');
+      };
+      const value = Reflect.get(target, property);
+      return typeof value === 'function' ? value.bind(target) : value;
+    } });
+    const owner = ownership.open(f, { ...f.dependencies, api });
+    await step(() => scope.wait('failed-transfer preparation and cleanup receipt', () => assert.rejects(drive(f, owner.backend.prepare(f.key)), error => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /transfer: DigitalOcean 422 transfer_failed/);
+      assert.match(error.message, refused ? /image cleanup unconfirmed/ : /image cleanup confirmed/);
+      if (builderUnknown) assert.match(error.message, /builder lifetime unconfirmedms, cost \$unconfirmed/);
+      else assert.doesNotMatch(error.message, /builder lifetime unconfirmed|cost \$unconfirmed/);
+      return true;
+    })));
+    assert.ok(imageId > 0);
+    assert.equal(f.api.droplets.length, builderUnknown ? 1 : 0);
+    if (!builderUnknown) assert.deepEqual(f.api.keys, []);
+    assert.equal(f.api.images.length, refused ? 1 : 0);
+    const recoveries = await step(() => scope.wait('failed-transfer recovery read', () => readRecoveries(f.root)));
+    assert.equal(recoveries.length, refused ? 1 : 0);
+    if (refused) assert.deepEqual(recoveries[0]!.seen, [imageId]);
+    assert.ok(f.api.requests.filter(r => r.method === 'DELETE' && r.path === `/v2/snapshots/${imageId}`).length <= 2);
+    await step(() => scope.wait('failed-transfer owner disposal', () => ownership.dispose()));
+  });
+});
+
 test('snapshot status names recipe and hook drift after a slow local inspection', async t => {
   const ownership = snapshotCase(t);
   const { scope } = ownership;

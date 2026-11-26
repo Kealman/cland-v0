@@ -468,3 +468,9 @@ an actor-scoped durable receipt on supporting hubs; reuse identical arguments
 after a lost reply. See [artifact admission and retry receipts](../docs/hub/artifacts.md#inline-admission-and-retry-receipts).
 
 Executor preparation uses `verification.droplet.snapshot_size`, inheriting `prepare_size` when unset. This project selects c-4; paid host builders retain c-8. Matching inputs rebuild an oversized snapshot; verify admission rejects a disk mismatch before T0 and names fitting catalog sizes. See [prepared snapshots](../docs/hub/running.md#controls-and-the-prepared-snapshot).
+
+Snapshot creation has a twenty-minute action bound; regional transfers use the
+builder's remaining admitted lifetime. Preparation saves the created image ID
+before transfer so failed-prepare cleanup survives catalogue omissions. Failure
+reports name image cleanup confirmation and the builder's lifetime and cost,
+leaving unconfirmed values explicit. See the prepared snapshot reference above.

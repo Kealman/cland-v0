@@ -204,8 +204,13 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     const producer = builder.resource!;
     image = (await api.snapshots(limit)).find(candidate => snapshotFromBuilder(candidate, name, producer));
     if (!image) throw new Error('completed snapshot image missing');
+    // Keep the positive identity receipt before transfer: a later catalogue may
+    // omit this image, but cleanup must still confirm deletion by id.
+    recovery.seen.push(image.id); await saveRecovery(root, recovery, options.storage);
     step('transfer');
-    image = await ensureRegions(api, image.id, image.regions, options.regions, limit, options.signal, env, clock, wait, options.tags);
+    // Regional actions are serial and can outlast snapshot creation's action
+    // budget. They share the admitted builder lifetime, not its spent action cap.
+    image = await ensureRegions(api, image.id, image.regions, options.regions, Date.parse(builder.deadline), options.signal, env, clock, wait, options.tags);
     if (options.maxDiskSize !== undefined && image.min_disk_size > options.maxDiskSize) throw new Error('snapshot minimum disk exceeds run size');
     step('release');
     released = await options.release(builder);
@@ -241,6 +246,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     return result;
   } catch (error) {
     let cleanupReady = true;
+    let imageCleanupConfirmed = false;
     if (builder) {
       try { released = await options.release(builder); }
       catch (cleanupError) {
@@ -262,14 +268,14 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
       // A failed release or checkpoint retains ownership for its existing retry
       // owner; do not admit image cleanup across an incomplete boundary.
       if (cleanupReady) {
-        try { await recoverSnapshot(root, recovery, options.store, env, dependencies.api, options.storage); }
+        try { imageCleanupConfirmed = await recoverSnapshot(root, recovery, options.store, env, dependencies.api, options.storage); }
         catch (cleanupError) { error = withDropletCleanupFailure(error, 'recovery', cleanupError); /* retained for restart/timer retries */ }
       }
     }
     const cause = `${stage}: ${error instanceof Error ? error.message : 'snapshot preparation failed'}`;
     try { log({ event: 'executor-prepare-failed', key, image: image?.id ?? null, regions: options.regions, durationMs: clock.now().getTime() - started, ...released, cause }); }
     catch (sinkError) { error = withCleanupFailure(error, sinkError); }
-    throw new Error(`${cause}; image ${image?.id ?? 'none'}; regions ${options.regions.join(', ')}; duration ${clock.now().getTime() - started}ms; builder lifetime ${released.lifetimeMs ?? 'unconfirmed'}ms, cost $${released.costUsd ?? 'unconfirmed'}`, { cause: error });
+    throw new Error(`${cause}; image ${image?.id ?? 'none'}; regions ${options.regions.join(', ')}; duration ${clock.now().getTime() - started}ms; builder lifetime ${released.lifetimeMs ?? 'unconfirmed'}ms, cost $${released.costUsd ?? 'unconfirmed'}; image cleanup ${imageCleanupConfirmed && recovery.phase === 'cleanup' ? 'confirmed' : 'unconfirmed'}`, { cause: error });
   }
 }
 async function ensureRegions(api: Provider, id: number, known: string[], requested: string[], limit: number, signal: AbortSignal | undefined, env: NodeJS.ProcessEnv, clock: Clock, wait: (ms: number) => Promise<void>, tags: string[] = []): Promise<SnapshotImage> {

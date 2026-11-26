@@ -10,6 +10,19 @@ lock, Node, recipe and provision cases publish once across a base move and execu
 reopen using the persisted receipt. All provider and transport work is scripted;
 the shared positive native-launch guard spans setup and cleanup. No timing bound
 is asserted and no image is implicitly prepared.
+Five-region preparation uses `snapshotCase`'s guarded whole-case owner from
+acquisition through closure. Named `scope.wait` observations bound
+fixture acquisition, setup shutdown, configuration writes and preparation
+separately, retaining original work through timeout and cleanup. Fake-clock
+polling spans more than a transport request and the snapshot action budget;
+completion proves every requested region
+published. A shorter admitted builder lifetime refuses transfer and leaves no
+published or partial image. Work bounds count transfer submissions and action
+reads, with no wall-clock assertions. Failed-transfer cases omit the already
+identified image from the catalogue, cross image-delete refusal with builder
+deletion refusal, and assert by-id cleanup or retained recovery IDs plus explicit
+image cleanup, lifetime and cost confirmation in the error. All provider,
+machine, watchdog, lock and ledger boundaries remain guarded fakes.
 
 Held acquisition, reap, shard release and snapshot publication cases fence the
 directory write inside `guardedLeaseCase`. Each deliberately removes its root
