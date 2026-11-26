@@ -8,7 +8,7 @@ import { committedTreeOrThrow } from '../verification-tree.ts';
 import { verificationCommands } from '../verification-commands.ts';
 import { suiteCommand, SuiteCommandFailure, commandFailure, type SuiteCommandClosure } from '../suite-command.ts';
 import { fixtureEnvironment, scratchGitEnvironment } from '../../../test-support/fixture-environment.ts';
-import { ProtectedCommandCapture } from '../suite-command-output.ts';
+import { ProtectedCommandCapture, protectedCommandText } from '../suite-command-output.ts';
 import { beginCandidateCommand } from '../batch-candidate-ownership.ts';
 import { EnqueueNativeIncomplete, EnqueueFailure, ENQUEUE_CHECK_SKIPPED } from './enqueue-preflight.ts';
 import { MergeError } from '../merge.ts';
@@ -19,7 +19,7 @@ const services = { prepareMergeBatch, checkoutMergeBatch, removeMergeBatch, comm
   forward: (text: string) => { if (text) process.stderr.write(text + '\n'); } };
 
 /** The checkout and command lifecycle reuse batch ownership and the suite supervisor. */
-export function enqueuePreflight(root: string, entry: () => Promise<{ member: MergeQueueEntry; base: string }>, env: NodeJS.ProcessEnv, native = services): EnqueueBackend {
+export function enqueuePreflight(root: string, entry: () => Promise<{ member: MergeQueueEntry; base: string }>, env: NodeJS.ProcessEnv, native = services, now = () => performance.now()): EnqueueBackend {
   return {
     identity: head => native.committedTreeOrThrow(root, head, env),
     async prepare() {
@@ -29,7 +29,7 @@ export function enqueuePreflight(root: string, entry: () => Promise<{ member: Me
     },
     async check(candidate): Promise<EnqueueCheck> {
       await native.checkoutMergeBatch(root, candidate, env);
-      const command = (await native.verificationCommands(candidate.cwd, root, env, { requireTest: false })).check;
+      const command = (await native.verificationCommands(candidate.cwd, root, env, { requireTest: false, enqueue: true })).check;
       if (!command) return { command: null, code: null, tail: '', skipped: ENQUEUE_CHECK_SKIPPED };
       const capture = new ProtectedCommandCapture();
       if (!candidate.owner) throw new Error('candidate command environment requires checkout ownership');
@@ -49,6 +49,7 @@ export function enqueuePreflight(root: string, entry: () => Promise<{ member: Me
         throw new EnqueueNativeIncomplete(candidate.cwd, primary, settled);
       };
       let result;
+      const started = now();
       try {
         result = await native.suiteCommand(command, candidate.cwd, executionEnv, undefined, undefined, { forward: false, requireClosure: true, observe: chunk => capture.write(chunk) });
       } catch (error) {
@@ -70,7 +71,7 @@ export function enqueuePreflight(root: string, entry: () => Promise<{ member: Me
         : new EnqueueFailure(primary, `${command}: exit ${result.code}; closure checkpoint failed`, [secondary]); }
       try { native.forward(tail); } catch { /* a protected publication failure cannot rewrite the native outcome */ }
       if (facts && result.code !== 0) throw primary;
-      return { command, code: result.code, tail };
+      return { command, code: result.code, tail, summary: protectedCommandText(`preflight check: ${command}; exit ${result.code}; duration ${(now() - started) / 1000} s`) };
     },
     remove: candidate => native.removeMergeBatch(root, candidate, env),
   };

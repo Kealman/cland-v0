@@ -15,7 +15,18 @@ With the merge queue enabled, code enqueue prepares the reviewed item head
 merged with current dev, projects the item's closure through the shared wording
 lint, and runs the candidate's configured `[verification].check` in an isolated
 checkout. This repository configures `npm run check`, including whole-source
-lints, typechecking and build. If the resolved candidate/root check is empty,
+lints, typechecking and build. For cland candidates containing both
+`hub/test/run-suite.ts` and `hub/test/cli-usage-compatibility.test.ts`, enqueue
+appends `node --test hub/test/cli-usage-compatibility.test.ts` after a successful
+configured check, on that same merged checkout. Compatibility failures name the
+first differing usage export and refuse before queue mutation. The successful
+enqueue reply's existing `preflight` string reports the combined command, exit
+and duration in seconds, from command launch through closure checkpoint and
+protected output publication; checkout preparation and removal are excluded.
+Older hubs may omit this successful-check summary. Deploy and restart the hub
+to activate the additional enqueue check. Other stacks and candidates without
+the compatibility test retain their configured command.
+If the resolved candidate/root check is empty,
 enqueue retains immutable tier/test lint and projected wording checks but runs
 no command. It continues with the optional `preflight` result field set to
 `preflight skipped: no verification check configured`; the CLI prints that note

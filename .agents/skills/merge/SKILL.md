@@ -7,9 +7,13 @@ metadata:
 
 Lane order uses `follows` between epics, separate from `blocked_by`. A follow is met when its predecessor closes, or has task children all closed with its last ticket merged. When every ticket of the predecessor’s last stage is in review, cut the following epic’s tickets with `to-tickets` and write its `plan-epic`; launch the first stage on the last merge once blockers are closed and follows met. The predecessor’s QA demo runs in parallel. Until either demo verdict is recorded or the predecessor closes, the merge gate holds follower tickets whose diff overlaps files changed by that predecessor’s merges on dev; tickets with no overlap can merge.
 
+<!-- cland-workflow-change: T-1938 document frozen CLI usage enqueue preflight -->
 Code enqueue runs the configured check on an isolated merged head before taking
-the territory lock. A finding refuses before queue mutation; inspect its command
-and output tail. Dev verification-tree movement retries once, then refuses.
+the territory lock. Cland candidates containing the runner and frozen CLI usage
+test append that compatibility test after the configured check; the successful
+enqueue receipt reports combined check duration. A finding refuses before queue
+mutation; inspect its command and output tail. Dev verification-tree movement
+retries once, then refuses.
 Without a resolved candidate/root check it reports
 `preflight skipped: no verification check configured` in the enqueue result and
 continues through the existing gates; this supplies no verification pass. A

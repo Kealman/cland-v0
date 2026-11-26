@@ -1,5 +1,16 @@
 # hub/test/merge-batches.test.ts
 
+Frozen usage enqueue coverage resolves the real candidate configuration inside
+the shared guarded member owner. Fake Git and command receipts prove merged-head
+execution, refusal naming MERGE_USAGE, one command and one cleanup per attempt,
+and successful admission with a deterministic injected-clock duration. No native
+command runs. The merge-queue case separately checks the public preflight string;
+older replies and absent-check skips retain their existing controls.
+The M1 review regression retains a configured check ending in a shell comment
+and requires separate lines for both subshell delimiters, so the comment cannot
+consume the closing delimiter or compatibility command. This checks command
+composition through the real resolver under the same fake-only whole-case owner.
+
 Landing identity controls use the real Codex adapter with a recording Host and
 a positive native-launch guard through cleanup. A transient missing birth
 observation must recover on one retry and reach the worktree removal receipt.

@@ -615,6 +615,10 @@ allowlist enqueue; the CLI returns `queued <n>`, their current FIFO position.
 When no check resolves from candidate/root configuration, the queued reply adds
 `preflight: "preflight skipped: no verification check configured"`; the CLI also
 prints the note. This admits no command and supplies no verification pass.
+With a configured check, cland candidates containing the runner and frozen CLI
+usage test also run compatibility on the merged checkout before enqueue. A
+successful reply uses the same optional `preflight` string for combined command
+duration; older hubs can omit it. See [enqueue preflight](../hub/running.md#enqueue-preflight).
 Allowlisted-only changes still use the immediate gate with their required
 verdicts. The allowlist is the human-override scope in the merge skill; skills
 and role configuration are outside it. `cland merge queue [--json]` lists pinned

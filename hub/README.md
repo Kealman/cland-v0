@@ -63,7 +63,9 @@ candidate check outside serialization, protects bounded output before publishing
 its tail and retains checkouts whose native command closure is unconfirmed.
 The same reference describes ready-status and completed same-head task receipt
 admission, its no-command/empty-diff dispositions and hub restart requirement.
-An absent resolved check is reported explicitly as skipped in the enqueue result.
+Cland candidates with the runner and frozen usage test append CLI usage
+compatibility after their configured check; the enqueue result reports combined
+check duration. An absent resolved check is reported explicitly as skipped.
 Preflight HOME, XDG and default HOME-relative npm cache writes stay in the candidate's owned Git
 metadata outside its checkout; guarded removal collects both after native closure.
 Duration-manifest projects also require structured exact-head Linux timing

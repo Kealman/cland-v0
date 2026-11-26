@@ -254,7 +254,7 @@ test(preflightCase, t => {
       enqueuePreflight: (...args) => ({ ...fakeEnqueuePreflight(...args),
         check: async () => {
           if (mode === 'held') { entered.resolve(); await release.promise; }
-          return { command: 'candidate check', code: mode === 'red' ? 1 : 0, tail: 'src/parser.ts:7: planted finding' };
+          return { command: 'candidate check', code: mode === 'red' ? 1 : 0, tail: 'src/parser.ts:7: planted finding', summary: 'preflight check: candidate check; exit 0; duration 0.25 s' };
         },
         remove: async () => { removals++; },
       }),
@@ -273,7 +273,7 @@ test(preflightCase, t => {
     assert.match(cancelled.error ?? '', /cancelled during preflight/);
     assert.deepEqual((await value<{ entries: unknown[] }>(f.ui, { type: 'merge.queue' })).entries, []);
     mode = 'green';
-    assert.deepEqual(await step(() => scope.wait('fresh request enqueue', () => value(f.ui, { type: 'merge', item: f.item.id }))), { item: f.item.id, queued: 1 });
+    assert.deepEqual(await step(() => scope.wait('fresh request enqueue', () => value(f.ui, { type: 'merge', item: f.item.id }))), { item: f.item.id, queued: 1, preflight: 'preflight check: candidate check; exit 0; duration 0.25 s' });
     assert.equal((await value<{ entries: unknown[] }>(f.ui, { type: 'merge.queue' })).entries.length, 1);
     assert.equal(removals, 3);
   }));

@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { defaultConfig, parseConfig } from './init/config.ts';
 import { readTierAssignments } from './suite-shards.ts';
@@ -17,7 +17,7 @@ export async function clandRunner(cwd: string): Promise<{ inheritedLease: boolea
 }
 
 /** Resolve once at admission. A candidate's explicit whole test takes precedence over root tiers. */
-export async function verificationCommands(cwd: string, root: string, env: NodeJS.ProcessEnv = process.env, options: { requireTest?: boolean } = {}): Promise<VerificationCommands> {
+export async function verificationCommands(cwd: string, root: string, env: NodeJS.ProcessEnv = process.env, options: { requireTest?: boolean; enqueue?: boolean } = {}): Promise<VerificationCommands> {
   const read = async (dir: string) => {
     const text = await readFile(join(dir, '.cland/config.toml'), 'utf8').catch(error => {
       if (error.code === 'ENOENT') return null;
@@ -28,6 +28,13 @@ export async function verificationCommands(cwd: string, root: string, env: NodeJ
   const candidate = await read(cwd);
   const fallback = resolve(cwd) === resolve(root) ? candidate : await read(root);
   const commands = { prepare: candidate.prepare || fallback.prepare, check: candidate.check || fallback.check, test: candidate.test || fallback.test };
+  if (options.enqueue && commands.check && await clandRunner(cwd)) {
+    const compatibility = await stat(join(cwd, 'hub/test/cli-usage-compatibility.test.ts')).catch(error => {
+      if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null;
+      throw error;
+    });
+    if (compatibility?.isFile()) commands.check = `(\n${commands.check}\n) && node --test hub/test/cli-usage-compatibility.test.ts`;
+  }
   const tierKeys = verificationTierKeys;
   if (candidate.test && !tierKeys.some(([key]) => candidate[key])) return commands;
   const tiers: NonNullable<TierCommands['tiers']> = {};

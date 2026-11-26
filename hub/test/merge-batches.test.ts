@@ -42,6 +42,57 @@ import { CodexAdapter } from '../src/adapters/codex.ts';
 import type { HarnessProcess } from '../src/adapters/contract.ts';
 import { recordingHost } from './recording-host.ts';
 import { ToolForbidden } from '../src/roles/permissions.ts';
+import { verificationCommands } from '../src/verification-commands.ts';
+
+test('enqueue checks frozen usage on the merged candidate before admission and reports its duration', t => guardedMemberCase(t, async (fixtures, step, wait) => {
+  const root = await step(() => wait('candidate files', () => tempProject(fixtures)));
+  await step(() => wait('candidate configuration', async () => {
+    await mkdir(join(root, '.cland'), { recursive: true });
+    await mkdir(join(root, 'hub/test'), { recursive: true });
+    await writeFile(join(root, '.cland/config.toml'), '[verification]\ncheck="configured-check"\n');
+    await writeFile(join(root, 'hub/test/run-suite.ts'), '');
+    await writeFile(join(root, 'hub/test/cli-usage-compatibility.test.ts'), '');
+  }));
+  const member: MergeQueueEntry = { item: 'T-1', branch: 't/1', head: 'task', verdictBase: 'dev', enqueued: '', by: { id: 'coord', name: 'coord', role: 'coordinator' } };
+  for (const code of [1, 0]) {
+    let queued = 0, commands = 0, removals = 0, clock = 100;
+    const backend = enqueuePreflight(root, async () => ({ member, base: 'current-dev' }), {}, {
+      prepareMergeBatch: async () => ({ base: 'current-dev', head: 'merged-head', tree: 'merged-tree', cwd: root, budgetLines: [] }),
+      committedTreeOrThrow: async () => 'base-tree', checkoutMergeBatch: async (_root, candidate) => { assert.equal(candidate.head, 'merged-head'); fakeEnqueueCheckout(candidate); },
+      verificationCommands, beginCandidateCommand: async () => ({ complete: async () => {}, retain: async () => assert.fail('closed command') }),
+      forward: () => {}, removeMergeBatch: async () => { removals++; },
+      suiteCommand: async (command, cwd, _env, _native, _inspection, output) => {
+        commands++; clock += 250;
+        assert.equal(cwd, root);
+        assert.equal(command, '(\nconfigured-check\n) && node --test hub/test/cli-usage-compatibility.test.ts');
+        if (code) (typeof output === 'function' ? output : output?.observe)?.('first differing usage export: MERGE_USAGE');
+        return { code, cause: '', closure: { state: 'closed', pid: 1, birth: 'fake', captured: [], unverified: [], nativeClose: { code, signal: null } } };
+      },
+    }, () => clock);
+    await step(() => wait('enqueue result', async () => {
+      const run = () => checkedEnqueue(backend, async (_candidate, receipt) => { queued++; assert.equal(receipt.summary, 'preflight check: (\nconfigured-check\n) && node --test hub/test/cli-usage-compatibility.test.ts; exit 0; duration 0.25 s'); return 'queued'; });
+      if (code) await assert.rejects(run, /cli-usage-compatibility.test.ts[\s\S]*MERGE_USAGE/);
+      else assert.equal(await run(), 'queued');
+    }));
+    assert.equal(queued, code ? 0 : 1);
+    assert.equal(commands, 1);
+    assert.equal(removals, 1);
+  }
+  await step(() => wait('compatibility capability boundaries', async () => {
+    await writeFile(join(root, '.cland/config.toml'), '[verification]\ncheck="configured-check # fast gate"\n');
+    assert.equal((await verificationCommands(root, root, {}, { requireTest: false, enqueue: true })).check, '(\nconfigured-check # fast gate\n) && node --test hub/test/cli-usage-compatibility.test.ts', 'a final shell comment cannot consume the subshell boundary');
+    await writeFile(join(root, '.cland/config.toml'), '[verification]\ncheck="configured-check"\n');
+    assert.equal((await verificationCommands(root, root, {}, { requireTest: false })).check, 'configured-check', 'ordinary verification stays unchanged');
+    await rename(join(root, 'hub/test/run-suite.ts'), join(root, 'hub/test/saved-runner.ts'));
+    assert.equal((await verificationCommands(root, root, {}, { requireTest: false, enqueue: true })).check, 'configured-check', 'other stacks retain their command');
+    await rename(join(root, 'hub/test/saved-runner.ts'), join(root, 'hub/test/run-suite.ts'));
+    await rename(join(root, 'hub/test/cli-usage-compatibility.test.ts'), join(root, 'hub/test/saved-compatibility.ts'));
+    assert.equal((await verificationCommands(root, root, {}, { requireTest: false, enqueue: true })).check, 'configured-check', 'older candidates retain their command');
+    await rename(join(root, 'hub/test/saved-compatibility.ts'), join(root, 'hub/test/cli-usage-compatibility.test.ts'));
+    await writeFile(join(root, '.cland/config.toml'), '[verification]\n');
+    assert.equal((await verificationCommands(root, root, {}, { requireTest: false, enqueue: true })).check, '', 'no configured check stays skipped');
+  }));
+}));
 
 function fakeEnqueueCheckout(candidate: BatchCandidate): void {
   candidate.owner = { id: 'fixture-owner', root: '/owned', cwd: candidate.cwd, gitdir: '/owned/.git/worktrees/check', rootBirth: 'root', birth: 'checkout', gitBirth: 'metadata', head: candidate.head, tree: candidate.tree };

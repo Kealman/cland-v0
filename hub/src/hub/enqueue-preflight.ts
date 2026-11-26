@@ -65,8 +65,8 @@ export async function validateEnqueueCandidate(checked: { taskHead: string; base
 }
 
 export const ENQUEUE_CHECK_SKIPPED = 'preflight skipped: no verification check configured';
-export type EnqueueCheck = { command: string; code: number; tail: string; skipped?: never }
-  | { command: null; code: null; tail: ''; skipped: typeof ENQUEUE_CHECK_SKIPPED };
+export type EnqueueCheck = { command: string; code: number; tail: string; summary?: string; skipped?: never }
+  | { command: null; code: null; tail: ''; summary?: never; skipped: typeof ENQUEUE_CHECK_SKIPPED };
 
 export interface EnqueuePreflight<C> {
   prepare(): Promise<C>;

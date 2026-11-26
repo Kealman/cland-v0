@@ -6,5 +6,8 @@ import * as usage from '../src/cli/usage.ts';
 
 test('all command usage exports retain their pre-refactor bytes', () => {
   const expected = frozenUsage();
-  assert.deepEqual({ ...usage }, expected);
+  const actual: Record<string, string> = { ...usage };
+  for (const name of [...new Set([...Object.keys(actual), ...Object.keys(expected)])].sort()) {
+    if (actual[name] !== expected[name]) assert.fail(`first differing usage export: ${name}`);
+  }
 });

@@ -211,7 +211,8 @@ export class TaskMerges {
           resumed(validateCancellation);
           const validateTiming = await checkEnqueueTimings(checked.taskHead, checked.base, { git: args => this.#rootGit(this.tracker.root, args, false, undefined, this.#env), identity: backend.identity, timings: this.#timings, owner: fallback => durationAllowanceOwner(this.tracker.root, id, { fallbackOwner: fallback, readOwner: async key => this.tracker.summary(key) ?? undefined }), now: this.#timingNow() });
           const result = await this.#merge(id, actor, resumed, override, authorize, queuedCandidate, { candidate: checked, validate: () => { validateCancellation(); validateTiming(); }, identity: backend.identity });
-          return receipt.skipped && 'queued' in result ? { ...result, preflight: receipt.skipped } : result;
+          const preflight = receipt.skipped ?? receipt.summary;
+          return preflight && 'queued' in result ? { ...result, preflight } : result;
         });
       }
     }
