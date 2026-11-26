@@ -51,7 +51,7 @@ export async function suiteWorker(input: string, native = workerNative): Promise
 }
 
 async function runAdmittedWorker(job: RunRef, signal: () => NodeJS.Signals | null, native: typeof workerNative) {
-  if (job.queued) process.stdout.write(`verification queue wait ${((Date.now() - Date.parse(job.queued)) / 1000).toFixed(2)}s\n`);
+  if (job.queued) process.stdout.write(`verification queue wait ${((Date.now() - Date.parse(job.queued)) / 1000).toFixed(2)}s; wall interval\n`);
   let code = 0;
   const inspections: Array<{ commandId: string; receipt: SuiteInspectionReceipt }> = [];
   const tierReceipts: TierReceipt[] = [];

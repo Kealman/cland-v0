@@ -18,7 +18,7 @@ export async function waitForHumanSlot(result: SuiteSlotResult, options: {
     const eta = duration(waiter?.etaMs ?? null);
     const signature = `${place}:${eta}:${holder?.session}:${holder?.pid}`;
     if (signature !== last || options.now() - printed >= 60_000) {
-      options.report(`waiting for the suite queue: place ${place} · ${holder?.session ?? holder?.kind ?? 'no holder'} runs ${duration(holder?.runMs ?? null)} · ETA ~${eta}\n`);
+      options.report(`waiting for the suite queue: place ${place} · ${holder?.session ?? holder?.kind ?? 'no holder'} wall run ${duration(holder?.runMs ?? null)} · ETA ~${eta}\n`);
       last = signature; printed = options.now();
     }
     await options.wait(2000);

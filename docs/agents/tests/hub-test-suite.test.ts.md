@@ -7,6 +7,12 @@ Assert the emitted T0 exit and duration receipt as well as runtime tier receipts
 Keep the failure case proving that a red check stops the tests. Pure admission
 permutations belong in `verification-commands.test.ts`.
 
+Raw duration receipts accept integers and dot-decimal seconds, matching the
+production tier reader. Retain all exits, output tails and execution-journal
+assertions in both the Python task/batch case and the integrated-occasion case.
+The latter's dynamic RegExp must cover the same grammar for T1, T2, T3 and T4;
+later assertions count as exercised only when their preceding checks pass.
+
 For cleanup-preserved identity recovery, use `launchWorker()` from the shared
 suite fixture before stopping the hub or editing its saved job. It waits for the
 worker PID in `hub.status` and registers process ownership; `launch()` may return

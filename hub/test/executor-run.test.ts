@@ -245,8 +245,8 @@ test('droplet delivery uses recorded shell lines after the project config change
   assert.match(log, /Host gate: printf recorded-check/);
   assert.match(log, /recorded-prepare/);
   assert.doesNotMatch(log, /prepare failed/);
-  assert.match(result.text, /tier T1: exit 0; duration \d+ s; output tail: recorded-test/);
-  assert.match(result.text, /tier T2: exit 7; duration \d+ s; output tail: recorded-component/);
+  assert.match(result.text, /tier T1: exit 0; duration \d+(?:\.\d+)? s; output tail: recorded-test/);
+  assert.match(result.text, /tier T2: exit 7; duration \d+(?:\.\d+)? s; output tail: recorded-component/);
   assert.ok(result.text.includes(`T2 exited 7: ${testLine}`), result.text);
   assert.match(result.text, /Failures:\nrecorded-component\n\$ echo preparing/);
   assert.doesNotMatch(log, /\$ printf must-not-run|\$ exit 98/);

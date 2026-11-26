@@ -23,6 +23,95 @@ import { fileURLToPath } from 'node:url';
 import { clandCliLaunch } from './tier-cli.ts';
 import { stageCase } from './stage-case-fixture.ts';
 import { ProtectedCommandCapture } from '../src/suite-command-output.ts';
+import { runSuite } from './run-suite.ts';
+import { verificationStepCommand, verificationStepResults } from '../src/verification-plan.ts';
+import { runInNewContext } from 'node:vm';
+import { testDeadlineMs, testSetupWaitMs } from './until.ts';
+
+test('tier wrapper samples a portable monotonic clock while wall time changes', t => {
+  const scope = stageCase(t);
+  return scope.wait('whole tier clock case', () => scope.run(async () => {
+    const command = verificationStepCommand({ name: 'T1', command: 'fake unit command' });
+    // Decode only the outer shell quote; execute the emitted clock program with
+    // fake Node globals rather than starting a shell or a native command.
+    const shell = command.slice('/bin/sh -c '.length + 1, -1).replaceAll("'\\''", "'");
+    const programs = [...shell.matchAll(/node -e '([^']+)'/g)].map(match => match[1]!);
+    assert.equal(programs.length, 2);
+    const outputs: string[] = [];
+    let mono = 1000000000n;
+    const context = { process: { argv: ['node', '1000'], env: { LC_ALL: 'de_DE.UTF-8', LC_NUMERIC: 'de_DE.UTF-8', POSIXLY_CORRECT: '1' }, hrtime: { bigint: () => mono }, stdout: { write: (value: string) => outputs.push(value) } }, Date: { now: () => { throw new Error('wall clock is unavailable for elapsed accounting'); } } };
+    runInNewContext(programs[0]!, context);
+    mono += 2500000000n;
+    runInNewContext(programs[1]!, context);
+    assert.deepEqual(outputs, ['1000', '2.500']);
+    assert.match(shell, /tier_seconds=\$\(node -e .* "\$tier_start"\)/);
+    // The emitted Node formatter produces dot decimals even with hostile locale
+    // metadata, without changing the configured test command's environment.
+    assert.doesNotMatch(shell, /\bawk\b/);
+    assert.doesNotMatch(shell, /(?:export LC_ALL|^LC_ALL=)/m);
+    for (const seconds of ['2', outputs[1]!]) {
+      const rows = verificationStepResults(`tier T1: exit 0; duration ${seconds} s; output tail: complete\n`);
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0]!.seconds, Number(seconds));
+      assert.equal(rows[0]!.code, 0);
+    }
+  }));
+});
+
+for (const jump of [4430512, -4430512]) test(`suite elapsed reporting survives a ${jump > 0 ? 'forward' : 'backward'} wall clock correction`, t => {
+  const scope = stageCase(t);
+  return scope.wait('whole runner clock case', () => scope.run(async step => {
+    const root = await scope.wait('runner fixture setup', () => step(async () => {
+      const root = await mkdtemp(join(tmpdir(), 'runner-clock-'));
+      scope.adoptRoot(root);
+      scope.requireClose(() => rm(root, { recursive: true, force: true }));
+      return root;
+    }), testSetupWaitMs());
+    const mkdir = fs.mkdir, writeFile = fs.writeFile;
+    let wall = 10000000, mono = 1000, output = '';
+    let live = false;
+    const child = Object.assign(new EventEmitter(), { pid: 43001, stdout: new PassThrough(), stderr: new PassThrough() });
+    scope.releaseOnClose(() => { live = false; child.stdout.end(); child.stderr.end(); child.emit('exit', 0, null); child.emit('close', 0, null); });
+    scope.patch(globalThis, 'Date', new Proxy(Date, {
+      construct(target, args) { return Reflect.construct(target, args.length ? args : [wall]); },
+      get(target, key) { return key === 'now' ? () => wall : Reflect.get(target, key); },
+    }));
+    scope.patch(performance, 'now', () => mono);
+    scope.patch(cp, 'spawnSync', () => ({ status: 0, stdout: 'start', stderr: '' }));
+    scope.patch(cp, 'spawn', () => { live = true; return child; });
+    scope.patch(cp, 'execFileSync', (command: string) => {
+      if (command === 'ps') return live ? '43001 1 43001 Wed Nov 25 14:00:00 2026 S fake-runner' : '';
+      if (command === '/usr/bin/perl') {
+        const bytes = Buffer.alloc(648); bytes.writeBigInt64LE(1000n); bytes.writeInt32LE(43001, 40); return bytes;
+      }
+      return '';
+    });
+    const readFileSync = nativeFs.readFileSync;
+    scope.patch(nativeFs, 'readFileSync', (path: string, ...args: unknown[]) => {
+      if (String(path).startsWith('/proc/')) return String(path).endsWith('/stat') ? `43001 (fake) S ${Array.from({ length: 19 }, (_, i) => i === 18 ? '1000' : '0').join(' ')}` : '00000000-0000-0000-0000-000000000001';
+      return Reflect.apply(readFileSync, nativeFs, [path, ...args]);
+    });
+    scope.patch(process, 'kill', () => { throw Object.assign(new Error('fake exited'), { code: 'ESRCH' }); });
+    scope.patch(fs, 'mkdir', async (...args: Parameters<typeof fs.mkdir>) => {
+      const value = await Reflect.apply(mkdir, fs, args);
+      if (/\/cland-suite-[^/]+$/.test(String(args[0]))) { wall += jump; mono += 2000; }
+      return value;
+    });
+    scope.patch(process.stderr, 'write', (chunk: string) => { output += chunk; return true; });
+    scope.patch(fs, 'writeFile', async (...args: Parameters<typeof fs.writeFile>) => {
+      const result = await Reflect.apply(writeFile, fs, args);
+      if (String(args[0]).endsWith('/start-0')) {
+        wall += jump; mono += 3500; live = false;
+        child.stdout.end(); child.stderr.end(); child.emit('exit', 0, null); child.emit('close', 0, null);
+      }
+      return result;
+    });
+    assert.equal(await scope.wait('runner completion and child close receipt', () => step(() =>
+      runSuite([['-e', 'fake command']], { cwd: root, force: true, phaseNames: ['clock phase'] })), testDeadlineMs(5000)), 0);
+    assert.match(output, /shard duration clock phase 3\.50s;/);
+    assert.match(output, /suite duration 5\.50s; lock wait 0\.00s;/);
+  }), testDeadlineMs(20000));
+});
 
 for (const reconciled of ['absence', 'birth reuse'] as const) test(`a captured detached writer with unknown current birth retains the real checkout fence${reconciled === 'birth reuse' ? ' until observed birth reuse' : ''}`, t => {
   const scope = stageCase(t);

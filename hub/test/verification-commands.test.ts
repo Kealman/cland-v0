@@ -11,6 +11,34 @@ import { parseConfig } from '../src/init/config.ts';
 import { occasionSelection } from '../src/verification-occasion.ts';
 import { clandRunner, verificationCommands, recordedCommands } from '../src/verification-commands.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { testDeadlineMs, testSetupWaitMs } from './until.ts';
+
+test('host T0 elapsed receipt survives a wall clock correction', t => {
+  const scope = stageCase(t);
+  return scope.wait('whole host clock case', () => scope.run(async step => {
+    let mono = 1000;
+    scope.patch(performance, 'now', () => mono);
+    const f = await scope.wait('host fixture setup', () => step(async () => {
+      const created = await suiteUnit(scope.resources, { patch: scope.patch, executor: 'droplet', dropletServices: { hostGate: async run => {
+        mono += 2500;
+        await f.clock.advance(4430512);
+        return { tree: run.tree ?? null, command: 'npm run check', code: 2 };
+      } } }, 'check="npm run check"\ntest_unit="true"\n');
+      scope.adoptRoot(created.root);
+      return created;
+    }), testSetupWaitMs());
+    const receipt = await scope.wait('host gate completion receipt', () => step(async () => {
+      const job = await f.launch({ mode: 'all', occasion: 'batch', fresh: true });
+      await f.suites.settled();
+      await f.tick();
+      await f.suites.settled();
+      return f.suites.receipt(job.id);
+    }), testDeadlineMs(5000));
+    assert.match(receipt.log, /tier T0: exit 2; duration 2\.5 s;/);
+    assert.deepEqual(f.acquisitions, []);
+  }), testDeadlineMs(20000));
+});
 
 test('cland runner presence and capabilities are resolved from the candidate', async t => {
   const root = await tempProject(t);

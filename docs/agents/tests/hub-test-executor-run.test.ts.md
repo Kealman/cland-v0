@@ -20,6 +20,12 @@ config, and prove the T0 timing wrapper is delivered before runtime tier wrapper
 Assert actual exit and output receipts, stop-on-failure and confirmed provider
 resource release. Command-plan policy permutations belong in T1.
 
+The raw T1/T2 duration assertions accept integers and dot-decimal seconds, matching
+the tier receipt grammar. Keep the recorded output tails and exact exits (0 and
+7), including stop-on-failure and config-pinning assertions; decimal timing does
+not change those command facts. The recorded-shell-lines case exercises both
+assertion sites, including the second assertion after the first passes.
+
 Finish barriers use `fakes/finish-poller.ts` with a five-minute base scaled by
 the shared policy when the producer arms its timer; the backstop
 exits 124. Fake provider close drains owned machine writers and asserts an empty

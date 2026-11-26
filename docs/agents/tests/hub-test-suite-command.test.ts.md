@@ -112,3 +112,16 @@ guard's installation try/catch also covers partial installation. Fault controls
 exercise a partial install and a caller setup failure, then observe all module
 functions and the prototype restored. Matrix teardown joins the fake command,
 destroys streams and restores mocks before releasing the guard.
+
+## Monotonic execution accounting
+
+The clock cases run inside `stageCase` with its positive native launch guard.
+Fake children close at the runner gate write; fake process tables and births
+cover capture and cleanup on Linux and macOS. Controlled monotonic increments
+and forward/backward wall corrections prove exact shard and suite figures,
+without asserting a real-time bound. The tier wrapper case evaluates its emitted
+Node clock programs with fake globals, checks the start sample and formatted
+elapsed seconds under comma-decimal locale metadata, and feeds that emitted
+decimal plus a legacy integer through `verificationStepResults`; no shell runs.
+Runner setup and completion/child-close observations have separate named,
+load-scaled bounds inside the encompassing whole-case owner.

@@ -12,3 +12,10 @@ that this check includes typecheck and static lints; do not run them against the
 live project from a fixture. A red fake host gate must collect the timed T0
 receipt without acquiring a droplet. Command records survive config changes and
 store reopen. See [Queued merge batches](../tests.md#queued-merge-batches).
+
+The host T0 clock-correction case retains its `stageCase` whole-case owner,
+positive native launch guard and pre-acquisition cleanup registration. Observe
+fixture setup and the persisted host-gate completion receipt with separate named
+bounds from `testSetupWaitMs` and `testDeadlineMs`; their observation clocks use
+shared load headroom, independently of the fake product clock correction.
+Keep the exact monotonic duration assertion and empty acquisition inventory.

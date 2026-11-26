@@ -1578,12 +1578,12 @@ export class Suites {
     const command = verificationSteps(recordedCommands(job)).find(step => step.name === 'check')?.command;
     await appendFile(job.log, `\nHost gate: ${command ?? 'check not set'}\n`);
     if (!command) return;
-    const started = this.#clock.now().getTime();
+    const started = performance.now();
     const record = async () => {
       (job.tierReceipts ??= []).push(tierReceipt({ id: job.id, tree: job.hostGate!.tree }, { name: 'check', command: job.hostGate!.command }, job.hostGate!.code));
       this.#save(job);
       const binding = { run: job.id, tree: job.hostGate!.tree, command: job.hostGate!.command };
-      await appendFile(job.log, `\nverification step binding ${JSON.stringify(binding)}\ntier T0: exit ${job.hostGate!.code}; duration ${(this.#clock.now().getTime() - started) / 1000} s; output tail: host check\n`);
+      await appendFile(job.log, `\nverification step binding ${JSON.stringify(binding)}\ntier T0: exit ${job.hostGate!.code}; duration ${(performance.now() - started) / 1000} s; output tail: host check\n`);
       if (job.hostGate!.code === 0 && binding.tree && binding.tree === job.tree && previous && verificationInterrupted(previous.code)
         && previous.tree === binding.tree && previous.command === binding.command) {
         await appendFile(job.log, `Host gate retry superseded aborted attempt: run ${job.id}; tree ${binding.tree}; command ${JSON.stringify(binding.command)}; exit ${previous.code}; duration retained in preceding T0 receipt\n`);

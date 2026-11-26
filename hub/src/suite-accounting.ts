@@ -1,7 +1,7 @@
 import type { SuiteJob } from './hub/suites.ts';
 
 export function machineAccounting(machine: NonNullable<SuiteJob['machine']>): string {
-  return `${machine.resources ? `total across ${machine.resources} machines · ` : ''}lifetime ${machine.lifetimeMs === null ? 'pending confirmation' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost ${machine.costUsd === null ? 'pending confirmation' : '$' + machine.costUsd.toFixed(4)}`;
+  return `${machine.resources ? `total across ${machine.resources} machines · ` : ''}wall lifetime ${machine.lifetimeMs === null ? 'pending confirmation' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost ${machine.costUsd === null ? 'pending confirmation' : '$' + machine.costUsd.toFixed(4)}`;
 }
 
 /** The same receipt is printed in the result and the durable log footer. */

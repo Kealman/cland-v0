@@ -465,10 +465,10 @@ console.log('python ' + phase);
     const output = await readFile(join(directory, 'suite.log'), 'utf8');
     assert.equal(JSON.parse(await readFile(join(directory, 'result.json'), 'utf8')).code, 0, output);
     assert.equal(await readFile(join(root, 'executions'), 'utf8'), kind === 'task' ? 'check\nunit\n' : 'check\nunit\nintegration\n');
-    assert.match(output, /tier T0: exit 0; duration \d+ s; output tail: python check/);
-    assert.match(output, /tier T1: exit 0; duration \d+ s; output tail: python unit/);
+    assert.match(output, /tier T0: exit 0; duration \d+(?:\.\d+)? s; output tail: python check/);
+    assert.match(output, /tier T1: exit 0; duration \d+(?:\.\d+)? s; output tail: python unit/);
     if (kind === 'task') assert.doesNotMatch(output, /python integration/);
-    else assert.match(output, /tier T3: exit 0; duration \d+ s; output tail: python integration/);
+    else assert.match(output, /tier T3: exit 0; duration \d+(?:\.\d+)? s; output tail: python integration/);
   }
 });
 
@@ -505,6 +505,6 @@ test('another stack integrated occasion fetches dev proof and executes configure
   assert.equal(job.selection?.recordCoverage, undefined);
   const log = await readFile(join(directory, 'suite.log'), 'utf8');
   for (const [tier, output] of [['T1', 'unit'], ['T2', 'component'], ['T3', 'integration'], ['T4', 'soak']]) {
-    assert.match(log, new RegExp(`tier ${tier}: exit 0; duration \\d+ s; output tail: ${output}`));
+    assert.match(log, new RegExp(`tier ${tier}: exit 0; duration \\d+(?:\\.\\d+)? s; output tail: ${output}`));
   }
 });

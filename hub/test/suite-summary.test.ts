@@ -83,9 +83,9 @@ test('interrupted metrics disclosure retains native zero and unknown without cla
 
 test('accounting distinguishes confirmed spend from pending confirmation', () => {
   assert.equal(suiteAccounting({ executor: 'droplet', machine: { name: 'cland-run', size: 'c-8', region: 'ams3', lifetimeMs: 123000, costUsd: 0.0123 }, workers: 8 }),
-    'Executor droplet · c-8 ams3 · cland-run · lifetime 123 s · cost $0.0123 · workers 8');
+    'Executor droplet · c-8 ams3 · cland-run · wall lifetime 123 s · cost $0.0123 · workers 8');
   assert.equal(suiteAccounting({ executor: 'droplet', machine: { lifetimeMs: null, costUsd: null } }),
-    'Executor droplet · unknown unknown · unavailable · lifetime pending confirmation · cost pending confirmation');
+    'Executor droplet · unknown unknown · unavailable · wall lifetime pending confirmation · cost pending confirmation');
 });
 
 function commandLog(line: string, output: string[], code: number, id = 'command-1') {

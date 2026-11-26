@@ -94,7 +94,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
   const leases: Lease[] = [];
   let machine: Lease[] = [];
   let root: string | undefined;
-  const invoked = Date.now();
+  const invoked = performance.now();
   let started = invoked;
   let peak = loadavg()[0]!;
   const sample = setInterval(() => { peak = Math.max(peak, loadavg()[0]!); }, 1000);
@@ -129,7 +129,7 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       runId = holder.token;
     }
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
-    started = Date.now();
+    started = performance.now();
     peak = loadavg()[0]!;
     // The unique planned path was durably published with the initial lock, before mkdir.
     root = holder.root!;
@@ -180,12 +180,12 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
         for (const lease of leases) await lease.publish();
         if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       }
-      const phaseStarted = Date.now();
+      const phaseStarted = performance.now();
       let machineWait = 0;
       if (options.resources?.[index] === 'machine' && !options.force && process.env.CLAND_TEST_SKIP_LOCK !== '1') {
         const machineDir = `${(options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock'])[0]}.machine`;
         machine = await acquire([machineDir], () => interruption.signal !== null, holder);
-        machineWait = Date.now() - phaseStarted;
+        machineWait = performance.now() - phaseStarted;
       }
       const env: NodeJS.ProcessEnv = { ...suiteTestEnv(options.selection), TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token, TEST_SUITE_CWD: holder.worktree };
       // Do not freeze the host load into an override inherited by every wait.
@@ -367,7 +367,7 @@ process.chdir(cwd);`);
       if (tierFailed) code = 1;
       let budgetFailed = false;
       if (webPhase) {
-        const seconds = (Date.now() - phaseStarted - machineWait) / 1000;
+        const seconds = (performance.now() - phaseStarted - machineWait) / 1000;
         const limit = durationManifest?.budget.Web?.wallSeconds ?? 40;
         process.stdout.write(`budget${durationManifest?.budget.mode === 'enforce' ? '' : ' (report only)'}: Web phase wall ${seconds.toFixed(3)} s; budget ${limit} s${seconds > limit ? '; over budget' : ''}\n`);
         budgetFailed = seconds > limit && durationManifest?.budget.mode === 'enforce';
@@ -394,7 +394,7 @@ process.chdir(cwd);`);
       }
       const checkedFiles = options.selection?.durationCheck?.files.filter(file => args.some(arg => !arg.startsWith('-') && matchesGlob(file, arg))) ?? [];
       if (checkedFiles.length) {
-        durationCheckWallMs += Date.now() - phaseStarted - machineWait;
+        durationCheckWallMs += performance.now() - phaseStarted - machineWait;
         for (const file of checkedFiles) durationCheckFiles.add(file);
       }
       if (webPhase && options.selection?.loadGate && code === 0 && !interruption.signal) {
@@ -443,7 +443,7 @@ process.chdir(cwd);`);
       active = undefined; activeIdentity = null; activeClosed = undefined;
       for (const lease of machine.reverse()) await lease.release();
       machine = [];
-      if (options.phaseNames?.[index]) process.stderr.write(`shard duration ${options.phaseNames[index]} ${((Date.now() - phaseStarted) / 1000).toFixed(2)}s; workers ${options.workers?.[index] ?? 4}; resource ${options.resources?.[index] ?? 'machine'}; machine wait ${(machineWait / 1000).toFixed(2)}s\n`);
+      if (options.phaseNames?.[index]) process.stderr.write(`shard duration ${options.phaseNames[index]} ${((performance.now() - phaseStarted) / 1000).toFixed(2)}s; workers ${options.workers?.[index] ?? 4}; resource ${options.resources?.[index] ?? 'machine'}; machine wait ${(machineWait / 1000).toFixed(2)}s\n`);
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       if (code !== 0) return code;
       if (budgetFailed) return 1;
@@ -503,7 +503,7 @@ process.chdir(cwd);`);
         budgetOverheadMs += performance.now() - budgetStarted;
         process.stderr.write(`suite budget overhead ${budgetOverheadMs.toFixed(2)} ms\n`);
       }
-      process.stderr.write(`suite duration ${((Date.now() - started) / 1000).toFixed(2)}s; lock wait ${((started - invoked) / 1000).toFixed(2)}s; peak 1m load ${peak.toFixed(2)}${options.selection?.loadGate ? `; load gate extra wall ${(loadExtraWallMs / 1000).toFixed(2)}s` : ''}${options.selection ? `; ${describeSelection(options.selection)}` : ''}\n`);
+      process.stderr.write(`suite duration ${((performance.now() - started) / 1000).toFixed(2)}s; lock wait ${((started - invoked) / 1000).toFixed(2)}s; peak 1m load ${peak.toFixed(2)}${options.selection?.loadGate ? `; load gate extra wall ${(loadExtraWallMs / 1000).toFixed(2)}s` : ''}${options.selection ? `; ${describeSelection(options.selection)}` : ''}\n`);
       for (const line of tierReport(options.tierPlan ?? [], observed)) process.stderr.write(line + '\n');
     }
   }

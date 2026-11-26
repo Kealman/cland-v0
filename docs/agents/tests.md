@@ -1683,7 +1683,7 @@ line follows its branch/head, for example:
 
 ```text
 Executor local · <os> <arch> · Node <version> · Neovim <pin>
-Executor droplet · c-8 lon1 · <machine> · linux x64 <release> · Node <version> · Neovim <pin> · lifetime 1398 s · cost $0.0971
+Executor droplet · c-8 lon1 · <machine> · linux x64 <release> · Node <version> · Neovim <pin> · wall lifetime 1398 s · cost $0.0971
 ```
 
 The worker measures Node on its PATH and the candidate's Neovim pin (`none` for

@@ -399,7 +399,7 @@ test('past-window accounting publishes pending confirmation then corrects once f
   await f.machine.waits.run(f.result(job.id));
   assert.equal(f.reports.length, 1);
   assert.equal(f.reports[0]!.accountingPending, true);
-  assert.equal(machineAccounting(f.reports[0]!.machine!), 'lifetime pending confirmation · cost pending confirmation');
+  assert.equal(machineAccounting(f.reports[0]!.machine!), 'wall lifetime pending confirmation · cost pending confirmation');
   assert.equal(corrections.length, 0);
   await f.reopen();
   f.api.faults.deleteError = 0;

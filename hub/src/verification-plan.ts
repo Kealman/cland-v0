@@ -61,16 +61,23 @@ export function verificationSteps(commands: TierCommands): VerificationStep[] {
 }
 
 const quote = (text: string) => `'${text.replaceAll("'", "'\\''")}'`;
+// hrtime has a system-wide monotonic origin on both supported executor platforms.
+// Separate Node invocations may therefore sample it across a streaming shell command.
+const monotonicMilliseconds = 'Number(process.hrtime.bigint()/1000000n)';
+const elapsedClockProgram = `process.stdout.write(String(${monotonicMilliseconds}))`;
+// Number.toFixed has locale-independent dot-decimal syntax, including when the
+// command inherits LC_ALL/LC_NUMERIC or POSIXLY_CORRECT. Keep its locale intact.
+const elapsedSecondsProgram = `process.stdout.write(((${monotonicMilliseconds}-Number(process.argv[1]))/1000).toFixed(3))`;
 
 /** Portable streaming shell wrapper: retain the command exit through tee and one bounded tail. */
 export function verificationStepCommand(step: VerificationStep): string {
   if (step.name === 'test') return step.command;
   return `/bin/sh -c ${quote(`tier_log=$(mktemp) || exit 1
 trap 'rm -f "$tier_log" "$tier_log.status"' EXIT
-tier_start=$(date +%s)
+tier_start=$(node -e ${quote(elapsedClockProgram)}) || exit 1
 ( /bin/sh -c ${quote(step.command)}; echo $? > "$tier_log.status" ) 2>&1 | tee "$tier_log"
 tier_code=$(cat "$tier_log.status") || exit 1
-tier_seconds=$(( $(date +%s) - tier_start ))
+tier_seconds=$(node -e ${quote(elapsedSecondsProgram)} "$tier_start") || exit 1
 tier_tail=$(tail -n 8 "$tier_log" | tr '\\n' ' ' | cut -c 1-1200)
 ${step.name === 'Web' ? `if test \"$tier_code\" -eq 0 && grep -q '^tier Web: not run;' \"$tier_log\"; then exit 0; fi\n` : ''}printf '\\ntier ${verificationStepLabel(step.name)}: exit %s; duration %s s; output tail: %s\\n' "$tier_code" "$tier_seconds" "$tier_tail"
 exit "$tier_code"`)}`;

@@ -319,7 +319,20 @@ Each is a POSIX shell command; empty means unset. Use
 `cland config set verification.test_unit '<command>'` to store it verbatim.
 Tasks with hosting batch protection run `check`, unit and component; merge batches run `check` (T0) before commands matching `merge.batch_tiers` (default unit/integration), omitting unit with complete exact-head member receipts, adding Web after T1 for web/ candidate diffs; periodic `dev-t3` runs integration;
 integrated dev, explicit `all` and tasks without batch protection run T1–T3; occasions and nightly soak run all
-four. Tier lines report exit, duration and output tail. Admission records the
+four. Tier lines report exit, duration and output tail. Execution durations use
+monotonic clocks: the package runner and host T0 gate use `performance.now()`,
+and tier shell wrappers sample Node's system monotonic `hrtime` in milliseconds
+before and after the command (Linux and macOS). The second clock program formats
+elapsed seconds with locale-independent `Number.toFixed(3)`; inherited numeric
+locale settings do not affect the receipt or the configured command's locale.
+Start and finish timestamps
+remain UTC wall-clock timestamps. Timing samples, manifest seconds and budget
+readers keep their existing format; tier duration readers accept decimal seconds
+as well as older integer-second lines. Sharded overall wall, queue waits, run
+metrics and billed machine lifetimes remain wall intervals because they can
+span hub restarts or machines; they are labelled as wall intervals in reports.
+Queue/UI ages and ETAs derive from those wall intervals, not execution timers.
+Admission records the
 commands so config reloads cannot change queued evidence. With only `test` set,
 the whole command runs per task and `[merge] queue` defaults to `false`.
 Enable it for batch landing; `merge.batch` (default 3) and `merge.batch_wait`
@@ -939,7 +952,7 @@ A restarted hub reattaches to an active run, resumes at the local log's byte off
 and posts its result once. An expired lease reports `remote machine lifetime expired`.
 
 After collection and confirmed release, the result adds a line such as
-`Executor droplet · c-8 lon1 · cland-project-1a2b3c4d · linux x64 6.8.0 · Node v24.21.0 · Neovim v0.12.5 · lifetime 1398 s · cost $0.0971`.
+`Executor droplet · c-8 lon1 · cland-project-1a2b3c4d · linux x64 6.8.0 · Node v24.21.0 · Neovim v0.12.5 · wall lifetime 1398 s · cost $0.0971`.
 The job and `suite-result` record retain the machine name, size, region, lifetime
 and cost. A green same-head Linux result is merge-gate suite evidence for its tree
 and mode;
