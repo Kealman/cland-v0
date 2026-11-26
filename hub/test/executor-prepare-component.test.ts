@@ -648,7 +648,7 @@ function snapshotCase(t: TestContext) {
   type Owner = { backend?: DropletExecutor; store?: Store; database?: DatabaseSync; closed: boolean; closing?: Promise<void> };
   const owners: Owner[] = [];
   const released = () => owners.every(owner => owner.closed);
-  const scope = guardedLeaseCase(t, undefined, { canRestore: released });
+  const scope = guardedLeaseCase(t, undefined, { timeoutMs: testDeadlineMs(5000), canRestore: released });
   const assertReleased = () => { if (!released()) throw new Error('snapshot owner closure unconfirmed; root retained'); };
   const close = (owner: Owner): Promise<void> => {
     if (owner.closed) return Promise.resolve();
@@ -708,6 +708,74 @@ test('snapshot status names recipe and hook drift after a slow local inspection'
       assert.deepEqual(f.api.droplets, []);
       assert.deepEqual(f.api.keys, []);
     } finally { await step(() => ownership.close(owner)); }
+  });
+});
+
+for (const ageDays of [0, 365]) test(`base-only snapshot drift stays visible without a prepare notice (age days: ${ageDays})`, async t => {
+  const ownership = snapshotCase(t);
+  const { scope } = ownership;
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('base drift fixture setup', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    await step(() => scope.wait('base drift fixture stop', () => f.stop()));
+    const oldKey = structuredClone(f.key);
+    const notices: string[] = [];
+    let reads = 0;
+    const owner = ownership.open(f, {
+      ...f.dependencies,
+      prepareKey: async () => { reads++; return structuredClone(f.key); },
+      snapshotNotice: (id, text) => { notices.push(text); return id; },
+      machine: { ...f.dependencies.machine, exec: async () => JSON.stringify(oldKey) },
+    });
+    await step(() => scope.wait('base drift snapshot setup', async () => {
+      await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+      await writeFile(snapshotPath(f.root), JSON.stringify({ image: 123, name: 'prepared', key: oldKey, keyHash: keyHash(oldKey), regions: ['lon1'], created: new Date(f.clock.now().getTime() - ageDays * 86400000).toISOString() }));
+    }));
+    try {
+      f.moveBase();
+      const lease = await step(() => scope.wait('base drift acquisition', () => drive(f, owner.backend.acquire({ id: 'base-only' }, new Date(f.clock.now().getTime() + 60000).toISOString()))));
+      assert.equal(lease.state, 'active');
+      await step(() => scope.wait('base drift release', () => drive(f, owner.backend.release(lease))));
+      const status = await step(() => scope.wait('base drift inspection', () => drive(f, owner.backend.inspect())));
+      assert.equal(status.snapshot?.freshness, 'stale: base');
+      assert.equal(reads, 2, 'one bounded key observation per acquire and status');
+      assert.deepEqual(notices, []);
+      assert.equal(f.api.images.length, 0);
+    } finally { await step(() => ownership.dispose()); }
+  });
+});
+
+for (const part of ['lock', 'node', 'recipe', 'provision'] as const) test(`snapshot ${part} drift prompts once across base moves and restart`, async t => {
+  const ownership = snapshotCase(t);
+  const { scope } = ownership;
+  return scope.run(async step => {
+    const f = await step(() => scope.wait('install drift fixture setup', () => fixture(scope.fixtures, {}, scope.adoptRoot)));
+    await step(() => scope.wait('install drift fixture stop', () => f.stop()));
+    const oldKey = { ...f.key, [part]: 'old' };
+    const notices: string[] = [];
+    const dependencies = {
+      ...f.dependencies,
+      snapshotNotice: (id: string, text: string) => { notices.push(text); return id; },
+      machine: { ...f.dependencies.machine, exec: async () => JSON.stringify(oldKey) },
+    };
+    let owner = ownership.open(f, dependencies, true);
+    await step(() => scope.wait('install drift snapshot setup', async () => {
+      await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+      await writeFile(snapshotPath(f.root), JSON.stringify({ image: 123, name: 'prepared', key: oldKey, keyHash: keyHash(oldKey), regions: ['lon1'] }));
+    }));
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt === 1) f.moveBase();
+        if (attempt === 2) {
+          await step(() => ownership.close(owner));
+          owner = ownership.open(f, dependencies, true);
+        }
+        const lease = await step(() => scope.wait('install drift acquisition', () => drive(f, owner.backend.acquire({ id: `input-${attempt}` }, new Date(f.clock.now().getTime() + 60000).toISOString()))));
+        assert.equal(lease.state, 'active');
+        await step(() => scope.wait('install drift release', () => drive(f, owner.backend.release(lease))));
+      }
+      assert.deepEqual(notices, [`snapshot prepared image=123 stale: ${part}; run cland executor prepare`]);
+      assert.equal(f.api.images.length, 0);
+    } finally { await step(() => ownership.dispose()); }
   });
 });
 

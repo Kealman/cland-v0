@@ -669,7 +669,7 @@ After provisioning changes land, restart the hub onto that code before preparing
 the root cloud-init template comes from the running hub, while a delivered branch's
 prepare command runs as the non-root runner. Collect Web evidence on the rebuilt image.
 
-Acquire reports stale inputs once per distinct snapshot/current key to the Coordinator in Agents, naming `cland executor prepare`. This advisory does not block the run or rebuild an image. Metadata/publication failures retain a bounded, credential-redacted secondary hub-log diagnostic; a failing diagnostic sink also cannot block acquisition. Its receipt survives hub restart; matching inputs or successful preparation clear it. Inspection uses local committed inputs with a five-second bound and no fetch.
+Acquire reports changed lock, Node, recipe or provision inputs once per distinct snapshot/install-input key to the Coordinator in Agents, naming `cland executor prepare`. Base-only drift stays visible in status at any age without prompting; further base moves do not repeat an existing install-input notice. This advisory does not block the run or rebuild an image. Metadata/publication failures retain a bounded, credential-redacted secondary hub-log diagnostic; a failing diagnostic sink also cannot block acquisition. Its receipt survives hub restart; matching install inputs or successful preparation clear it. Inspection uses local committed inputs with a five-second bound and no fetch.
 
 Acquire creates from the image, without user data, only in regions holding it.
 It polls until active with a public IPv4 address under a five-minute bound,

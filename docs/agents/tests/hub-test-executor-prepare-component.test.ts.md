@@ -1,5 +1,16 @@
 # hub/test/executor-prepare-component.test.ts
 
+Snapshot advisory cases use `snapshotCase` from setup through owner closure,
+with separate named load-scaled `scope.wait` observations for fixture setup/stop,
+snapshot setup, acquisition, release and inspection. Owner closure keeps its
+shared bounded observation; the original whole continuation stays enrolled.
+Base-only drift retains `stale: base` in inspection, publishes no prepare notice
+and performs exactly two key reads across acquisition and inspection. Parameterized
+lock, Node, recipe and provision cases publish once across a base move and executor
+reopen using the persisted receipt. All provider and transport work is scripted;
+the shared positive native-launch guard spans setup and cleanup. No timing bound
+is asserted and no image is implicitly prepared.
+
 Held acquisition, reap, shard release and snapshot publication cases fence the
 directory write inside `guardedLeaseCase`. Each deliberately removes its root
 while the writer is held, resumes and joins the original work, then asserts root

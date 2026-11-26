@@ -323,7 +323,8 @@ Public cross-host relaunch admission uses the same checkout checkpoint policy be
 
 Executor status compares snapshot freshness to local `refs/remotes/origin/dev`,
 names its short commit as `local=origin/dev@<SHA>`, and never fetches. Preparation
-still fetches `origin dev` by default. Acquisition reports stale keys once in Agents;
+still fetches `origin dev` by default. Acquisition reports changed lock, Node,
+recipe and provision inputs once in Agents; base-only drift stays status-only.
 rebuilding remains explicit. See [executor status](../docs/hub/running.md).
 
 Executor images support an optional `[verification] provision` repository script, run

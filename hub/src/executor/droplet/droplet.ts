@@ -428,13 +428,14 @@ export class DropletExecutor implements Executor {
     let current: PrepareKey;
     try { current = await within(this.#key(provision, true), Math.max(0, Math.min(inspectionBudgetMs, deadline - this.clock.now().getTime())), this.clock); }
     catch { return; } // Inspection failure is not evidence of stale inputs.
-    const parts = staleParts(snapshot, current);
+    // Base drift changes delivery size, not the installed snapshot inputs.
+    const parts = staleParts(snapshot, current).filter(part => part !== 'base');
     if (!parts.length) {
       this.#staleNotice = null;
       this.store?.setMeta('executor-stale-notice', '');
       return;
     }
-    const identity = createHash('sha256').update(JSON.stringify([snapshot.key, current])).digest('hex');
+    const identity = createHash('sha256').update(JSON.stringify([snapshot.key, { ...current, base: snapshot.key.base }])).digest('hex');
     if ((this.store?.meta('executor-stale-notice') ?? this.#staleNotice) === identity || !this.dependencies.snapshotNotice) return;
     const id = `executor-stale:${identity}`;
     const receipt = this.dependencies.snapshotNotice(id, `snapshot ${snapshot.name} image=${snapshot.image} stale: ${parts.join('|')}; run cland executor prepare`);
