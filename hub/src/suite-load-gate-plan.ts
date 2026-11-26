@@ -50,7 +50,13 @@ export function loadProofIdentities(log: string): string[] {
  * the same text. Only positive success/quarantine totals prove completion. */
 export function loadGateCompletionSummary(log: string): { complete: number; unknown: number } {
   const complete = new Set<string>(), unknown = new Set<string>(), skipped = new Set<string>();
-  for (const line of log.split('\n')) {
+  // Keep only the current line alongside the identity sets, never an array of
+  // retained history. Do not import suite-log here: it owns native file IO.
+  let offset = 0;
+  while (offset < log.length) {
+    const newline = log.indexOf('\n', offset);
+    const line = log.slice(offset, newline < 0 ? log.length : newline);
+    offset = newline < 0 ? log.length : newline + 1;
     const start = /^load gate start: (.+::.+); five repetitions alongside phase$/.exec(line);
     if (start) unknown.add(start[1]!);
     const result = /^(?:✖ |quarantine )?load gate: (.+::.+) ([0-5])\/5 passed(?:; ([0-5])\/5 quarantined failures)?$/.exec(line);
@@ -61,7 +67,8 @@ export function loadGateCompletionSummary(log: string): { complete: number; unkn
     const skip = /^load gate: (.+::.+) skipped, not load-gated; 5\/5 skipped; reasons:/.exec(line);
     if (skip) skipped.add(skip[1]!);
   }
-  for (const identity of [...complete, ...skipped]) unknown.delete(identity);
+  for (const identity of complete) unknown.delete(identity);
+  for (const identity of skipped) unknown.delete(identity);
   return { complete: complete.size, unknown: unknown.size };
 }
 

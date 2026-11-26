@@ -4,6 +4,46 @@ import assert from 'node:assert/strict';
 import { soakDeadlinePlan, loadGateCompletionSummary, soakCalibration, soakExecutionSeconds, SOAK_RUNNER_STARTED } from '../src/suite-load-gate-plan.ts';
 import type { TierPlan } from '../src/suite-tier-report.ts';
 import type { DurationManifest } from '../src/suite-durations.ts';
+import { suiteCase } from './suite-case-fixture.ts';
+
+test('completion summary scans large semantic history without a whole-log allocation', t => suiteCase(t, async ({ fixtures, step }) => {
+  const noise = 'suite progress {"event":"finish","type":"file","outcome":"pass"}\n';
+  const receipts = 'load gate start: hub/test/example.test.ts::pending; five repetitions alongside phase\n'
+    + 'load gate: hub/test/example.test.ts::pass 5/5 passed\n'
+    + 'quarantine load gate: hub/test/example.test.ts::quarantined 3/5 passed; 2/5 quarantined failures\n'
+    + 'load gate start: hub/test/example.test.ts::skip; five repetitions alongside phase\n'
+    + 'load gate: hub/test/example.test.ts::skip skipped, not load-gated; 5/5 skipped; reasons: []\n';
+  const log = noise.repeat(10000) + receipts + noise.repeat(10000)
+    + '✖ load gate: hub/test/example.test.ts::partial 3/5 passed';
+  const split = String.prototype.split, indexOf = String.prototype.indexOf, slice = String.prototype.slice;
+  let searches = 0, scanned = 0, largestSlice = 0;
+  await step('install allocation and linear scan controls', async () => {
+    fixtures.mock.method(String.prototype, 'split', function(this: string, ...args: Parameters<typeof split>) {
+      if (String(this) === log) throw new Error('completion scan allocated a whole-log split array');
+      return split.apply(this, args);
+    });
+    fixtures.mock.method(String.prototype, 'indexOf', function(this: string, needle: string, from = 0) {
+      const end = indexOf.call(this, needle, from);
+      if (String(this) === log) {
+        searches++; scanned += (end < 0 ? log.length : end + needle.length) - from;
+        assert.ok(searches <= 20006 && scanned <= log.length, 'scan stays within one linear pass');
+      }
+      return end;
+    });
+    fixtures.mock.method(String.prototype, 'slice', function(this: string, start?: number, end?: number) {
+      const result = slice.call(this, start, end);
+      if (String(this) === log) largestSlice = Math.max(largestSlice, result.length);
+      return result;
+    });
+    assert.throws(() => log.split('\n'), /whole-log split array/, 'positive allocation control');
+  });
+  await step('summarize planted receipts', async () => {
+    assert.deepEqual(loadGateCompletionSummary(log), { complete: 2, unknown: 2 });
+    assert.equal(searches, 20006);
+    assert.equal(scanned, log.length);
+    assert.ok(largestSlice <= 200, 'only the current line is sliced');
+  });
+}));
 
 test('load repetition summary requires positive completion and preserves ambiguous legacy failures', () => {
   const file = 'hub/test/example.test.ts';

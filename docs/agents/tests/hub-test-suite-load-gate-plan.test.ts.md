@@ -5,6 +5,11 @@ quarantine totals, duplicate identities, skips, interrupted start-only records,
 and ambiguous legacy failure lines. A legacy complete failure and an interrupted
 3/5 run share the same text, so neither supplies positive completion evidence.
 This pure parser leaves the total unknown while retaining confirmed counts.
+The large planted completion log contains 20,006 lines, including a final
+unterminated partial receipt. A positively controlled split guard rejects a
+whole-log array; scan counters bound newline searches to one forward pass and
+line slices to 200 characters for this fixture. Identity sets still scale with
+distinct reported identities; the scanner retains only its current line.
 
 Pure T1 manifest fixture using A-19799 tier totals/projections: the 75-minute
 deadline trims an oversized calibrated base; a 150-minute deadline fits
