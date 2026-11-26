@@ -5,6 +5,7 @@ import { resolveClock, type Clock, type ClockOptions, type ClockTimer } from './
 import { mergeHumanMarks } from './human-marks.ts';
 import type { AnswerAttribution, HumanMessageKind, RemoteVia } from '../protocol.ts';
 import { ModelRing } from './model-ring.ts';
+import { ModelEncoder } from './model-encoder.ts';
 import { heartbeatDigest } from './heartbeat.ts';
 import { defaultCrew } from '../crew.ts';
 import { durationMs } from '../duration.ts';
@@ -209,6 +210,7 @@ export class HubCore {
   readonly #epoch = randomUUID();
   #modelSeq = 0;
   readonly #modelRing: ModelRing;
+  readonly #modelEncoder = new ModelEncoder();
   /** Snapshots describe the state after this delta, without consuming a number. */
   modelCursor(): { epoch: string; seq: number } { return { epoch: this.#epoch, seq: this.#modelSeq }; }
   resumeModel(epoch: string, seq: number, features: readonly ClientFeature[]): string[] | null {
@@ -825,7 +827,7 @@ export class HubCore {
     if (projected.type === 'task') {
       const layers = projected.layers ?? {};
       const changed: Record<string, Layer | null> = {};
-      for (const id of new Set([...Object.keys(this.#taskLayers), ...Object.keys(layers)])) {
+      for (const id of layers === this.#taskLayers ? [] : new Set([...Object.keys(this.#taskLayers), ...Object.keys(layers)])) {
         if (this.#taskLayers[id] !== layers[id]) changed[id] = layers[id] ?? null;
       }
       this.#taskLayers = layers;
@@ -850,7 +852,7 @@ export class HubCore {
             variants.set(client.key, variant);
           }
           const shared = variant;
-          client.send(shared.frame, () => shared.json ??= JSON.stringify(shared.frame));
+          client.send(shared.frame, () => shared.json ??= this.#modelEncoder.encode(shared.frame));
         } catch { /* a disconnected client cannot undo a committed publication */ }
       }
     });

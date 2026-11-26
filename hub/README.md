@@ -140,6 +140,8 @@ captured requester identities until a positive durable publication receipt.
 - [Modules](../docs/hub/modules.md)
 - [Web edge](../docs/hub/web-edge.md)
 - [Spoke discovery and reconnect](../docs/hub/web-edge.md#spoke-discovery-retry)
+- [Task layers and legacy compatibility](../docs/hub/negotiated-connection-snapshot.md):
+  negotiated deltas and shared encoding of full legacy maps during publication.
 - [Gateway authority](../docs/hub/gateway-authority.md)
 - [Durable remote outbox](../docs/hub/durable-remote-outbox.md)
 - [Connection events filter](../docs/hub/connection-events-filter.md)

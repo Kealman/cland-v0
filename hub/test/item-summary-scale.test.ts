@@ -17,6 +17,8 @@ import {stageCase} from './stage-case-fixture.ts';
 import {ExplorerFieldsIndex} from '../src/tracker/explorer-fields.ts';
 import {within} from '../src/executor/droplet/deadline.ts';
 import {seedPlanStageCover} from './plan-stage-fixture.ts';
+import {HubCore} from '../src/hub/core.ts';
+import {publicationWork} from './publication-work.ts';
 
 let churnAcquisitions = 0;
 test('loading scale cases does not acquire the churn fixture', () => {
@@ -169,7 +171,22 @@ test('a planned-stage status and verdict comment permits a task view within two 
   // Observations can reject before the body reaches their join; each original
   // stays enrolled in the owner and is still awaited below.
   void observed.catch(()=>{});void tail.catch(()=>{});void secondChange.catch(()=>{});
+  let mapEntriesCompared=0,hubCpuMicros=0;
+  const keys=Object.keys;
+  const accounting=publicationWork(JSON.stringify);
+  owner.patch(JSON,'stringify',accounting.stringify);
+  owner.patch(Object,'keys',((value:object)=>{
+    const result=keys(value);
+    if(result.length===1650&&'R-1' in value)mapEntriesCompared+=result.length;
+    return result;
+  }) as typeof Object.keys);
+  const publish=HubCore.prototype.publishTask;
+  owner.patch(HubCore.prototype,'publishTask',function(this:HubCore,...args:Parameters<HubCore['publishTask']>){
+    const started=process.cpuUsage();
+    try{return publish.apply(this,args);}finally{const cpu=process.cpuUsage(started);hubCpuMicros+=cpu.user+cpu.system;}
+  });
   const cpuStarted=process.cpuUsage(),workStarted=performance.now();
+  accounting.start();
   armed=true;
   moved=true;
   const comment=owned('status and verdict comment',()=>reviewer.call<{ok:boolean;error?:string;item:{status:string;verdicts:Array<{run:string}>;criteria:Array<{id:string;marks:Array<{kind:string;note?:string}>}>}}>('task.comment',{id:'T-503',text:'Please fix the regression.',
@@ -178,7 +195,12 @@ test('a planned-stage status and verdict comment permits a task view within two 
   const answered=await within(observed,60000,undefined,()=>new Error('task view receipt incomplete'));
   const {afterEdit,interleaved}=await secondChange;
   await tail;
+  const {mapEntriesSerialized,encodedBytes}=accounting.stop();
   const cpu=process.cpuUsage(cpuStarted);
+  t.diagnostic(JSON.stringify({mapEntriesSerialized,mapEntriesCompared,encodedBytes,hubCpuMicros,node:process.version}));
+  assert.ok(mapEntriesSerialized<1_000_000,`serialized ${mapEntriesSerialized} layer entries; bound below half the legacy fixture work`);
+  assert.ok(mapEntriesCompared<1_000_000,`compared ${mapEntriesCompared} layer entries; legacy baseline 2,989,800`);
+  assert.ok(encodedBytes<32_000_000,`encoded ${encodedBytes} task/map JSON bytes; legacy baseline 64,062,183`);
   t.diagnostic(JSON.stringify({cpuUserMs:cpu.user/1000,cpuSystemMs:cpu.system/1000,publicationReceiptMs:performance.now()-workStarted}));
   const later=ui.frames.slice(afterEdit).filter(frame=>frame.type==='task'&&frame.id==='T-1649');
   assert.equal(posted.ok,true,posted.error);

@@ -81,3 +81,26 @@ separate from positive hub/resource closure. Explicit owner close must succeed
 before the case reports closure, and root/native-guard restoration remains
 fenced on that success. The existing refused-close guard regression in
 `suite-persistence.test.ts` exercises the same owner.
+
+The planned-stage comment also counts work from immediately before the comment
+through the comment, view, interleaved title edit and tail-publication receipts.
+Every JSON.stringify result in that interval contributes its full UTF-8 byte
+length, including suffix fragments, small standalone slim maps, non-task frames
+and fixture/client JSON. This is complete interval encoding work, rather than
+wire bytes or hub-only encoding bytes. The native JSON traversal separately
+counts serialized item-id-keyed layer maps, whether standalone or nested.
+Object.keys counts entries enumerated for comparison in the full 1,650-item map.
+Bounds are below 1,000,000 entries and 32,000,000 encoded bytes; a matched
+baseline/changed receipt establishes the reduction against merged production.
+The pure positive control in model-ring.test.ts requires suffix fragments and
+small standalone/nested maps to contribute their literal byte and entry counts.
+Array replacers refuse accounting rather than silently undercounting.
+Reusing encoded map strings is not counted as encoding those entries again.
+The native launch guard remains active through writer close.
+
+The additional CPU diagnostic wraps synchronous `HubCore.publishTask` calls;
+it excludes client parsing, fixture setup, asynchronous tracker work and batch
+context refresh. It is an instrumented local sample, not total comment CPU or a
+performance gate. The separate process CPU diagnostic described above includes
+client parsing and asynchronous work and must not be called hub-only CPU.
+Pin Node 24.21.0 for comparisons.

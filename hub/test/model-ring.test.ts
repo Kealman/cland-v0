@@ -3,8 +3,33 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ModelRing } from '../src/hub/model-ring.ts';
 import { FakeClock } from './fake-clock.ts';
+import {publicationWork} from './publication-work.ts';
 
 const delta = (seq: number) => ({ type: 'visibility' as const, epoch: 'epoch', seq });
+
+test('publication accounting includes suffix fragments and small standalone or nested layer maps', () => {
+  const work=publicationWork(JSON.stringify);
+  work.start();
+  assert.equal(work.stringify({epoch:'e',seq:1}),'{"epoch":"e","seq":1}');
+  assert.equal(work.stringify({'T-2':null}),'{"T-2":null}');
+  assert.equal(work.stringify({type:'task',layers:{'T-3':'now'}}),'{"type":"task","layers":{"T-3":"now"}}');
+  // Fixed literal byte lengths: suffix 21, small map 12, task 38.
+  assert.deepEqual(work.stop(),{encodedBytes:71,mapEntriesSerialized:2});
+});
+
+test('task replay preserves previous wire bytes with layers before or after sequence fields', t => {
+  const ring = new ModelRing(new FakeClock());
+  t.after(() => ring.close());
+  const layers = { 'R-1': 'background' as const, 'T-2': 'now' as const };
+  const full = { type: 'task' as const, id: 'T-2', item: null, layers, epoch: 'epoch', seq: 1 };
+  const slim = { ...full, layers: { 'T-2': null } };
+  const expected = '{"type":"task","id":"T-2","item":null,"layers":{"R-1":"background","T-2":"now"},"epoch":"epoch","seq":1}';
+  assert.equal(ring.append(full, slim).full, expected);
+  assert.deepEqual(ring.after(0, false), [expected]);
+  assert.deepEqual(ring.after(0, true), ['{"type":"task","id":"T-2","item":null,"layers":{"T-2":null},"epoch":"epoch","seq":1}']);
+  const reordered = { type: 'task' as const, id: 'T-2', item: null, epoch: 'epoch', seq: 2, layers };
+  assert.equal(ring.append(reordered).full, '{"type":"task","id":"T-2","item":null,"epoch":"epoch","seq":2,"layers":{"R-1":"background","T-2":"now"}}');
+});
 
 test('a resume retains exactly fifteen minutes and accepts the last evicted number', t => {
   const clock = new FakeClock(0);

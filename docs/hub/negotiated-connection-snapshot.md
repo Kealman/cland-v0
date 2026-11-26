@@ -158,6 +158,9 @@ An optional `localBlocked: { reason }` exposes failed local compatibility
 inspection or release recovery until its successful retry. The CLI shows `local: blocked · <reason>`;
 local waiter ETAs are unknown. Existing holder and waiter fields stay present.
 
+The hub shares immutable layer encodings within a publication chunk, including
+the full legacy encoding; unchanged maps require no repeated entry comparison.
+
 With `slim-frames`, `task` carries the changed item and a `layers` map containing
 only entries that changed since the preceding model state. Changes in the active
 release can update other items' layers; a null layer removes a deleted entry.

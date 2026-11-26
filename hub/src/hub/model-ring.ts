@@ -1,5 +1,6 @@
 import type { ModelDelta } from '../protocol.ts';
 import type { Clock, ClockTimer } from './clock.ts';
+import { ModelEncoder } from './model-encoder.ts';
 
 const MAX_AGE_MS = 15 * 60 * 1000;
 export const MODEL_BYTES = 4 * 1024 * 1024;
@@ -8,6 +9,7 @@ type Entry = { seq: number; at: number; full: string; slim: string; bytes: numbe
 /** The epoch's bounded wire history. Only the core's model emit point appends. */
 export class ModelRing {
   readonly #clock: Clock;
+  readonly #encoder = new ModelEncoder();
   readonly #entries: Entry[] = [];
   #bytes = 0;
   #latest = 0;
@@ -16,8 +18,8 @@ export class ModelRing {
   constructor(clock: Clock) { this.#clock = clock; }
 
   append(full: ModelDelta, slim: ModelDelta = full): { full: string; slim: string } {
-    const json = JSON.stringify(full);
-    let slimJson = slim === full ? json : JSON.stringify(slim);
+    const json = this.#encoder.encode(full);
+    let slimJson = slim === full ? json : this.#encoder.encode(slim);
     if (slimJson === json) slimJson = json; // Retain one string when the shapes encode identically.
     if (this.#closed) return { full: json, slim: slimJson };
     const bytes = Buffer.byteLength(json) + (slimJson === json ? 0 : Buffer.byteLength(slimJson));
