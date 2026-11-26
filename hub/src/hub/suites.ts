@@ -21,7 +21,7 @@ import { suiteAuthor } from './suite-author.ts';
 import { missingDependencyHint } from '../dependency-install.ts';
 import { pinVerificationPlan, verificationSteps, verificationInterrupted, verificationStepResults } from '../verification-plan.ts';
 import { loadProofIdentities, skipT4LoadRepetitions, soakDeadlinePlan, soakCalibration, soakExecutionSeconds } from '../suite-load-gate-plan.ts';
-import { suiteProgress, progressLines } from '../suite-progress.ts';
+import { suiteProgress, progressLines, passAccounting } from '../suite-progress.ts';
 import { terminalDeadlineMetadata } from './suite-result-metadata.ts';
 import { tierExecution, executionLines } from '../suite-execution.ts';
 import { suiteCandidate, type SuiteCandidate } from './suite-candidate.ts';
@@ -211,6 +211,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
   const executedTiers = tierLines.filter(line => /^tier (?:T[0-4]|Web): exit /.test(line));
   const webPhase = unavailableWebPhase(text);
   const priority = [
+    ...passAccounting(lines, counts.get('pass')),
     ...suiteInfrastructureCauses(options),
     ...(lines.some(line => line.startsWith('suite stall ')) ? [`stall process detail: log${options.logArtifact ? ' ' + options.logArtifact : ''}`] : []),
     ...lines.filter(line => line.startsWith('shard not run ')),

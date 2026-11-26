@@ -6,6 +6,69 @@ import { suiteEvidence } from '../src/suite-log.ts';
 import { soakExecutionSeconds } from '../src/suite-load-gate-plan.ts';
 import { suiteAccounting } from '../src/suite-accounting.ts';
 import { suiteProvenance } from '../src/suite-provenance.ts';
+import { fixtureWork } from '../../test-support/fixture-work.ts';
+import { passAccounting, suiteProgress } from '../src/suite-progress.ts';
+
+test('accounting and interruption readers accept legacy receipt fields and refuse malformed common fields', async t => {
+  const owner = fixtureWork();
+  t.after(() => owner.close());
+  await owner.run(async () => {
+    const finish = { event: 'finish', id: 'legacy', file: 'output.test.ts', name: 'control', at: 1, nesting: 0, outcome: 'pass', seconds: 0 };
+    const encode = (row: unknown) => 'suite progress ' + JSON.stringify(row);
+    for (const row of [finish, { ...finish, type: 'test', scope: 'load-gate', futureField: true }]) {
+      const line = encode(row);
+      assert.equal(suiteProgress(line, 1)?.completed.length, 1);
+      assert.equal(passAccounting([line], 0).length, 1);
+    }
+    for (const row of [null, {}, { ...finish, id: 1 }, { ...finish, file: null }, { ...finish, name: false },
+      { ...finish, at: '1' }, { ...finish, at: null }, { ...finish, nesting: 0.5 }, { ...finish, nesting: '0' }]) {
+      const line = encode(row);
+      assert.equal(suiteProgress(line, 1), null);
+      assert.deepEqual(passAccounting([line], 0), []);
+    }
+    for (const line of ['suite progress {torn', 'ordinary output', 'suite progress']) {
+      assert.equal(suiteProgress(line, 1), null);
+      assert.deepEqual(passAccounting([line], 0), []);
+    }
+  });
+});
+
+test('pass accounting scans once and counts unique test finishes without envelopes or invented starts', async t => {
+  const owner = fixtureWork();
+  t.after(() => owner.close());
+  await owner.run(async () => {
+    let visits = 0;
+    const finish = { event: 'finish', id: 'base', file: 'output.test.ts', name: 'control', at: 1, nesting: 0, outcome: 'pass', seconds: 0 };
+    const encode = (row: object) => 'suite progress ' + JSON.stringify(row);
+    function* lines() {
+      for (let n = 0; n < 10000; n++) { visits++; yield 'ordinary output'; }
+      for (const row of [finish, finish, { ...finish, id: 'file', type: 'file' }, { ...finish, id: 'suite', type: 'suite' },
+        { ...finish, id: 'fail', outcome: 'fail' }]) { visits++; yield encode(row); }
+      visits++; yield 'suite progress null';
+    }
+    assert.deepEqual(passAccounting(lines(), undefined), ['Pass accounting: aggregate unknown; raw base pass finishes 1 (difference unknown); finishes without retained start: base 1, load-gate 0']);
+    assert.equal(visits, 10006, 'one visit per input record');
+    assert.deepEqual(passAccounting([encode({ ...finish, event: 'start' }), encode(finish)], 1), []);
+    assert.deepEqual(passAccounting([], 3), [], 'legacy aggregate without progress stays unchanged');
+  });
+});
+
+test('summary discloses finish-only base passes separately from load repetitions', async t => {
+  const owner = fixtureWork();
+  t.after(() => owner.close());
+  await owner.run(async () => {
+    const row = { file: 'hub/test/output.test.ts', name: 'output control', at: 1, nesting: 0, type: 'test' };
+    const records = [
+      { ...row, event: 'start', id: 'paired' },
+      { ...row, event: 'finish', id: 'paired', outcome: 'pass', seconds: 0 },
+      { ...row, event: 'finish', id: 'base', outcome: 'pass', seconds: 0 },
+      { ...row, event: 'finish', id: 'loaded', scope: 'load-gate', outcome: 'pass', seconds: 0 },
+    ];
+    const log = '# tests 1\n# pass 1\n' + records.map(row => 'suite progress ' + JSON.stringify(row)).join('\n');
+    assert.equal(suiteSummary(log), 'tests 1; pass 1\nPass accounting: aggregate 1; raw base pass finishes 2 (difference +1); finishes without retained start: base 1, load-gate 1');
+    assert.equal(suiteSummary(log, [], { priorityOnly: true }), suiteSummary(log));
+  });
+});
 
 test('interrupted metrics disclosure retains native zero and unknown without claiming samples', () => {
   const input = { head: 'head', executor: 'droplet' as const };

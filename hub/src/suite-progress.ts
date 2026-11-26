@@ -4,6 +4,38 @@ export type CompletedTest = TestProgress & { event: 'finish'; outcome: NonNullab
 export type UnfinishedTest = TestProgress & { runningSeconds: number };
 export type SuiteProgress = { completed: CompletedTest[]; unfinished: UnfinishedTest[] };
 
+/** Common retained-receipt grammar. Event/outcome policies belong to reducers. */
+export function parseTestProgress(line: string): TestProgress | null {
+  if (!line.startsWith('suite progress ')) return null;
+  let row: TestProgress;
+  try { row = JSON.parse(line.slice('suite progress '.length)); } catch { return null; }
+  if (!row || typeof row.id !== 'string' || typeof row.file !== 'string' || typeof row.name !== 'string'
+    || !Number.isFinite(row.at) || !Number.isInteger(row.nesting)) return null;
+  return row;
+}
+
+/** Keep aggregate counters authoritative while disclosing a different receipt boundary.
+ * One pass over lines; storage follows unique test identities, not output bytes. */
+export function passAccounting(lines: Iterable<string>, aggregate: number | undefined): string[] {
+  const starts = new Set<string>();
+  const finishes = new Map<string, TestProgress>();
+  for (const line of lines) {
+    const row = parseTestProgress(line);
+    if (!row) continue;
+    if (row.event === 'start') starts.add(row.id);
+    else if (row.event === 'finish' && row.outcome === 'pass' && Number.isFinite(row.seconds) && row.seconds! >= 0
+      && row.type !== 'file' && row.type !== 'suite') finishes.set(row.id, row);
+  }
+  let base = 0, missingBase = 0, missingLoad = 0;
+  for (const [id, row] of finishes) {
+    if (row.scope !== 'load-gate') base++;
+    if (!starts.has(id)) { if (row.scope === 'load-gate') missingLoad++; else missingBase++; }
+  }
+  if (!missingBase && !missingLoad && (aggregate === undefined || base <= aggregate)) return [];
+  const difference = aggregate === undefined ? 'difference unknown' : `difference ${base - aggregate >= 0 ? '+' : ''}${base - aggregate}`;
+  return [`Pass accounting: aggregate ${aggregate ?? 'unknown'}; raw base pass finishes ${base} (${difference}); finishes without retained start: base ${missingBase}, load-gate ${missingLoad}`];
+}
+
 export function suiteProgress(log: string, stoppedAt: number, options: { fileEnvelopes?: boolean } = {}): SuiteProgress | null {
   const started = new Map<string, TestProgress>();
   const completed = new Map<string, CompletedTest>();
@@ -16,10 +48,8 @@ export function suiteProgress(log: string, stoppedAt: number, options: { fileEnv
         if (Number.isFinite(at)) for (const id of started.keys()) if (!cutoffs.has(id)) cutoffs.set(id, at);
       } catch { /* an interrupted marker cannot erase valid progress */ }
     }
-    if (!line.startsWith('suite progress ')) continue;
-    let row: TestProgress;
-    try { row = JSON.parse(line.slice('suite progress '.length)) as TestProgress; } catch { continue; }
-    if (!row || typeof row.id !== 'string' || typeof row.file !== 'string' || typeof row.name !== 'string' || !Number.isFinite(row.at) || !Number.isInteger(row.nesting)) continue;
+    const row = parseTestProgress(line);
+    if (!row) continue;
     if (row.event === 'start') {
       const { timedOut: _unproven, ...start } = row;
       started.set(row.id, start); seen = true;

@@ -285,6 +285,14 @@ duration budgets, tier accounting and quarantine, including cases registered by
 imported helpers. Source locations remain in diagnostics. Older reporter events
 without `entryFile` keep source-file attribution.
 
+Suite summaries keep the producer's aggregate counts. When retained progress
+contains pass finishes without starts or more base passes than the aggregate,
+the summary labels the raw base count and its difference from the aggregate,
+plus separate base/load-gate counts of pass finishes without retained starts.
+File and suite envelopes and duplicate finish identities do not add test passes.
+Logs without progress retain their aggregate-only summary; missing aggregates
+are shown as unknown in the accounting disclosure.
+
 Filed flaky cover and batch failures can carry five same-tree hub rerun receipts;
 see [flaky receipts and quarantine](../docs/agents/tests.md#test-placement-and-review)
 for executor admission, stage acceptance and evidence manifest ownership.
