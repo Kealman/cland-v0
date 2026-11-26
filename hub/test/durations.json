@@ -15302,13 +15302,6 @@
       "added": "2026-11-25",
       "expires": "2026-12-09",
       "reason": "T-2010 (E-2073): selected-case ownership includes churn root acquisition, seeding and warmup in case timing. Worst passing Linux droplet sample 8.296 s at head 5721828a96da471de1a322ce42ff2e06a1845acf, run 978f03e9-4b5e-45f6-8430-339c1eb6f272 (A-23177); 12.5 s is about 1.5x measured headroom. That run failed the 5 s duration gate; its assertions passed. Reply p95 retains the separate 1 s behaviour bound excluding setup."
-    },
-    "web/test/sessions.test.ts::Sessions stopped and exited rows and pages retain state reasons": {
-      "seconds": 6.111,
-      "owner": "E-880",
-      "added": "2026-11-24",
-      "expires": "2026-12-01",
-      "reason": "Linux measured peak 4.074 s; 1.5x headroom for sessions.test.ts: Sessions stopped and exited rows and pages retain state reasons."
     }
   }
 }
