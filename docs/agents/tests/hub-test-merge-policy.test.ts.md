@@ -1,5 +1,12 @@
 # hub/test/merge-policy.test.ts
 
+Report-only `case phases` diagnostics wrap project setup and task-branch preparation
+(the `landing` label). The latter includes claims and native Git commits, not the
+public merge itself. Other merge/assertion work remains in the inclusive body
+envelope. Aggregates may overlap, and post-body time includes teardown scheduling;
+neither is CPU time or a cleanup receipt. Import/compile time is unavailable.
+The existing whole-case owner and Node verdict remain authoritative.
+
 T3 native Git/public merge frames prove admission and landing. The queued-member
 regression uses the prepared disposable territory with queue enabled: two
 reviewed branches independently pass dev but conflict on parser.txt. Enqueue the

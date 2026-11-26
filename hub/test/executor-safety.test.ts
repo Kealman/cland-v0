@@ -9,18 +9,28 @@ import { pollerDeadline } from './fakes/finish-poller.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { DatabaseSync } from 'node:sqlite';
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import baseTest from 'node:test';
+import { phase, phaseTests } from './case-phase-fixture.ts';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile, rm, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { fixture, remoteWaitMs } from './remote-fixture.ts';
-import { nativeProjectHub as projectHub, cland, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
+import { fixture as remoteFixture, remoteWaitMs } from './remote-fixture.ts';
+import { nativeProjectHub as projectHub, cland as nativeCland, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
 import { leaseDir, writeLease, type DropletLease, type WatchdogReceipt } from '../src/executor/droplet/lease.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
 const exec = promisify(execFile);
+const test = phaseTests(baseTest, 'hub/test/executor-safety.test.ts');
+const cland = (...args: Parameters<typeof nativeCland>) => phase('cli', () => nativeCland(...args));
+async function fixture(...args: Parameters<typeof remoteFixture>) {
+  const f = await phase('setup', () => remoteFixture(...args));
+  return { ...f,
+    launch: (...args: Parameters<typeof f.launch>) => phase('launch', () => f.launch(...args)),
+    result: (...args: Parameters<typeof f.result>) => phase('completion', () => f.result(...args)),
+  };
+}
 const longTest = `node -e "${pollerDeadline()}const fs=require('fs');console.log('RUNNING');const t=setInterval(()=>{if(fs.existsSync(process.env.HOME+'/finish'))clearInterval(t)},50)"`;
 type Ledger = { entries: { run: string; reservation: number; cost: number | null }[] };
 const ledger = async (state: string): Promise<Ledger> => JSON.parse(await readFile(join(state, 'spend.json'), 'utf8'));

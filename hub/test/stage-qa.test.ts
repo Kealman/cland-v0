@@ -1,5 +1,6 @@
 // T3: residual stage QA rules: native Git ancestry failures and daemon receipt recovery remain here; the end-to-end core is scenarios/stage-close.test.ts.
-import test from 'node:test';
+import baseTest from 'node:test';
+import { phase, phaseSync, phaseTests } from './case-phase-fixture.ts';
 import { claudeLaunchIdentity } from './claude-launch-fixture.ts';
 import assert from 'node:assert/strict';
 import { readFile, rm, writeFile } from 'node:fs/promises';
@@ -8,10 +9,21 @@ import { stringify } from 'yaml';
 import { DatabaseSync } from 'node:sqlite';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { gitIn } from '../src/tracker/verdict-git.ts';
-import { cland, connectUi, eventually, nativeProjectHub, spawnSpoke, startDaemon } from './harness.ts';
-import { git, fixture } from './stage-qa-support.ts';
+import { cland as nativeCland, connectUi, eventually, nativeProjectHub, spawnSpoke, startDaemon } from './harness.ts';
+import { git as nativeGit, fixture as stageFixture } from './stage-qa-support.ts';
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
 import { onCleanup } from './process-cleanup.ts';
+
+const test = phaseTests(baseTest, 'hub/test/stage-qa.test.ts');
+const cland = (...args: Parameters<typeof nativeCland>) => phase('cli', () => nativeCland(...args));
+const git = (...args: Parameters<typeof nativeGit>) => phaseSync('git', () => nativeGit(...args));
+async function fixture(...args: Parameters<typeof stageFixture>) {
+  const f = await phase('setup', () => stageFixture(...args));
+  // Keep the fixture's live ui/rev/qa getters across its landing restart.
+  const land = f.land;
+  f.land = () => phase('landing', land);
+  return f;
+}
 
 test('a two-shard Linux stage cover is pending then counts across projectHub restart', async t => {
   const f = await fixture(t, false, 1);

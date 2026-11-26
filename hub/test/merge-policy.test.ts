@@ -4,19 +4,24 @@ import { completeJournalLines } from './journal-lines.ts';
 import { waitMergeReady } from './merge-readiness.ts';
 import type { Tracker } from '../src/tracker/tracker.ts';
 import { onCleanup } from './process-cleanup.ts';
-import { mergeTest as test, mergeStep } from './merge-case.ts';
+import { mergeTest, mergeStep } from './merge-case.ts';
+import { phase, phaseSync, phaseTests } from './case-phase-fixture.ts';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, eventually, inProcessSpoke, nativeProjectHub as projectHub } from './harness.ts';
+import { cland as nativeCland, eventually, inProcessSpoke, nativeProjectHub as projectHub } from './harness.ts';
 import { preparedProject } from './prepared-project.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { value, call } from './validation-support.ts';
-import { git, ok, json, review, refused, observableProject } from './merge-support.ts';
+import { git as nativeGit, ok, json, review, refused, observableProject } from './merge-support.ts';
 
-async function project(t: TestContext, queue = false) {
+const test = phaseTests(mergeTest, 'hub/test/merge-policy.test.ts');
+const cland = (...args: Parameters<typeof nativeCland>) => phase('cli', () => nativeCland(...args));
+const git = (...args: Parameters<typeof nativeGit>) => phaseSync('git', () => nativeGit(...args));
+const project = (t: TestContext, queue = false) => phase('setup', () => projectSetup(t, queue));
+async function projectSetup(t: TestContext, queue: boolean) {
   const root = await preparedProject(t, 'territory', 'cland-merge-policy-');
   if (queue) {
     const config = join(root, '.cland/config.toml');
@@ -30,7 +35,9 @@ async function project(t: TestContext, queue = false) {
   return { root, ui, rev, discovery, tracker };
 }
 
-async function task(ui: Awaited<ReturnType<typeof dispatcherUi>>, title = 'Ship the parser', file = 'parser.txt') {
+const task = (ui: Awaited<ReturnType<typeof dispatcherUi>>, title = 'Ship the parser', file = 'parser.txt') =>
+  phase('landing', () => taskSetup(ui, title, file));
+async function taskSetup(ui: Awaited<ReturnType<typeof dispatcherUi>>, title: string, file: string) {
   const { item } = await value<{ item: { id: string } }>(ui, { type: 'task.create', size: 'M', title });
   const { worktree } = await value<{ worktree: { path: string; branch: string } }>(ui, { type: 'task.claim', item: item.id });
   await writeFile(join(worktree.path, file), 'first\n');

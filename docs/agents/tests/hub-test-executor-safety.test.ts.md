@@ -1,5 +1,15 @@
 # hub/test/executor-safety.test.ts
 
+Report-only `case phases` diagnostics measure the setup fixture, launch calls and
+completion observation calls. The body envelope includes those phases and nested
+cases. Phase totals are inclusive and may overlap; do not subtract or sum them as
+exclusive CPU time. Counts distinguish repeated work from slower operations.
+`afterBodyObservationMilliseconds` observes the interval through registered
+teardown hooks, including scheduling overhead; it is not a cleanup success receipt.
+Import/compile time is explicitly unavailable (`null`). Node's case result remains
+the authority for pass/fail. Only this file and the stage-qa/merge-policy call sites
+enable the shared recorder, so unrelated fixture consumers produce no diagnostics.
+
 T3 keeps native shell, hub-process and detached-watchdog lifecycle boundaries.
 The sentinel case uses the normal fixture lifetime while preparing, delivering
 and starting each run. It observes the crash run's durable `pgid` before stopping

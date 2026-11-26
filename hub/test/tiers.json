@@ -102,6 +102,7 @@
     "hub/test/bridge-grace.test.ts": "T1",
     "hub/test/build-guard-tiers.test.ts": "T1",
     "hub/test/case-deadlines.test.ts": "T2",
+    "hub/test/case-phases.test.ts": "T2",
     "hub/test/cland-auth.test.ts": "T3",
     "hub/test/claude-agent-launch.test.ts": "T1",
     "hub/test/claude-capture-concurrency.test.ts": "T3",

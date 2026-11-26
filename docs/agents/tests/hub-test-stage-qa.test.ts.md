@@ -1,5 +1,12 @@
 # hub/test/stage-qa.test.ts
 
+Report-only `case phases` diagnostics wrap fixture setup and `land`, including its
+native Git work, platform seed and hub/spoke restart. These are inclusive elapsed
+aggregates with call/completion/failure counts, not CPU or exclusive phases. The
+body envelope includes them; the post-body observation includes teardown scheduling
+overhead. Import/compile time stays unavailable. Missing diagnostics are incomplete
+observations, never zero cost. Test verdicts still come from Node.
+
 Residual T3 stage QA checks use sealed native Git projects and real verifier
 spokes; the core in-process rule seam is `planned-stage.test.ts`. Premature QA
 fixtures claim their tasks before closing them, so an empty branch still requires
