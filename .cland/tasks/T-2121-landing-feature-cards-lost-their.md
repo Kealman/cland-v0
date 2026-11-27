@@ -2,8 +2,8 @@
 id: T-2121
 kind: task
 title: Landing feature cards lost their screenshots when the carousel became a grid (T-1482); restore an image on each card that has one
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1809
 branch: t/T-2121-landing-feature-cards-lost-their
 created: 2026-11-27T16:07:10.643Z
-updated: 2026-11-27T17:13:07.979Z
+updated: 2026-11-27T17:29:02.297Z
+closed: 2026-11-27T17:29:02.297Z
 ---
 
 ## Summary
@@ -161,3 +162,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-23855 final same-head audit of b0469b86/A-23854: producer code0, empty cause, finished17:09:03Z, unfinished[]. Complete T0 host check/T1/fallback allT2/7selectedT3/Web exit0; no T4 receipt/remainingT3 unexecuted. Both changed landing cases have paired1base+5unique load passes; all43remote-docs wrapper cases, install3 and selection12pass, with file finishes. C1/C2/C3 verified from source3, exact-head generated execution and A-23847's scoped local built captures. C2 site build is specifically Implementer transcript-backed npm run build exit0 (session80949,30pages/prebuild42), procedural final-candidate binding per a367c5d8, without published native build/source-hash receipt; inspected published layout and exact-head site guards support it. Configured T0 builds web, not site; no Linux site-build claim. Local macOS arm64 Headless Shell r1248 captures have12visible/nooverflow, all gaps14px, desktop frame-bottom deltas0px; fixed dark palette under both preferences explicit. Git tree53d013f588aa1a2e1e7e4ac30453f691199a2d1a/recorded run treef89b0e7fc432e12e46af6945b7675ca519a65e6c named independently. Linuxx64 dropletc8nyc1/2workers Node24.21, configured Web isolated HeadlessShell1248/Chrome156.0.8078.4. Paired base7840pass/1macOS-prerequisite skip+10loadpass;3known finish-only protected-output passes stay unpaired (raw base7843), producer7854completed includes them/repetitions. No missing finishes/duplicates/identity mismatches. Budget/ratchet/skip diagnostics report-only, cache unknown, lint refusals0. Earlier head/capture history retained. No source changes, Reviewer execution or new submission. Post-0.4.1 landing/publication hold remains separate.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-11-27T17:28:36.414Z
+
+Published marketing t/T-2121-landing-feature-cards-lost-their at 888956c11bffa26d61a60561c5a7e75a5e36b9cc (GitHub default branch and site); dev 8a30fad24515161ab2e9142bed278827078e261d.
+
+### coord · 2026-11-27T17:29:02.297Z
+
+Published to GitHub through `cland publish t/T-2121-landing-feature-cards-lost-their --item T-2121` on 2026-11-27 at about 17:29Z, approved by the human (ask 94563084). GitHub's default branch and the site branch moved to 888956c11 and dev to 8a30fad24, with the branch merged into dev by publish. Evidence: source clear rev-35-2121-source-3 (A-23849), verify b0469b86 passed at 0a3af053b, and final captures A-23847.
