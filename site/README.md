@@ -102,10 +102,11 @@ The site deploys to GitHub Pages with the custom domain `cland.app` (`public/CNA
 
 ## Landing features
 
-The landing page shows all eleven features as compact cards, in two columns above
+The landing page shows all eleven features as cards, in two columns above
 900 px and one column below. Keep each `feature-<id>` anchor and docs link stable.
-Cards contain a number, title, text and Learn more link; screenshots and diagrams
-remain in the hero, workbench and documentation.
+Cards contain a number, title, text and Learn more link, followed by the feature's
+screenshot or diagram when available. Screenshots use responsive sizes, and
+diagrams scale to the card width without inner scrolling.
 
 Learn more links use GoatCounter's `data-goatcounter-click` attribute with the
 fixed event name `feature-<id>`. The existing async count.js binds these clicks
