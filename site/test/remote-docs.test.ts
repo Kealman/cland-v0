@@ -230,11 +230,27 @@ test('landing shows all eleven features in the chosen order without carousel con
   assert.match(featureSection, /All features in the docs →/);
 });
 
-test('feature cards keep anchors and only number, title, text and docs link in a responsive grid', () => {
+test('feature cards keep anchors and historical images in a responsive grid', () => {
   assert.match(featureSection, /id=\{`feature-\$\{s.id\}`\}/);
   assert.match(featureSection, /pad\(i \+ 1\)/);
   for (const field of ['s.h', 's.p', 's.href']) assert.ok(featureSection.includes(field));
-  assert.doesNotMatch(featureSection, /Screenshot|Diagram|<img|<svg|<button|hidden/);
+  assert.doesNotMatch(featureSection, /<button|hidden/);
+  // Independent mapping from the former feature slides, matched by id rather than order.
+  const entries = featureList.split(/\n  \{\n/).slice(1);
+  const shots = { harness: 7, accounts: 2, inbox: 6, gate: 9, items: 5, topics: 13, plans: 8, artifacts: 11 };
+  for (const [id, n] of Object.entries(shots)) {
+    const entry = entries.find(entry => entry.includes(`id: '${id}'`))!;
+    assert.match(entry, new RegExp(`shot: ${n},`), id);
+  }
+  for (const id of ['verify', 'release']) {
+    assert.match(entries.find(entry => entry.includes(`id: '${id}'`))!, /diagram: `%%/);
+  }
+  assert.match(featureSection, /s.shot && <Screenshot n=\{s.shot\}[^>]*sizes=/);
+  assert.match(featureSection, /s.diagram && <Diagram code=\{s.diagram\}/);
+  assert.match(entries.find(entry => entry.includes("id: 'remote'"))!, /phones: \[14, 15\]/);
+  assert.match(featureSection, /s.phones.map/);
+  assert.match(featureSection, /<Screenshot n=\{n\}[^>]*sizes=/);
+  assert.match(landingSource, /@media \(max-width: 600px\)\s*\{\s*\.feature-phones\s*\{\s*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(landingSource, /\.feature-grid\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(landingSource, /@media \(max-width: 900px\)\s*\{\s*\.feature-grid\s*\{\s*grid-template-columns: minmax\(0, 1fr\)/);
 });

@@ -20,6 +20,18 @@ export interface Screen {
 
 const list: Screen[] = [
   {
+    n: 14,
+    file: 'discord.png',
+    size: '1179×1740',
+    desc: 'Discord on a phone: the Coordinator asks how to ship release 1.8, with four numbered option buttons, Other answer and Decline.',
+  },
+  {
+    n: 15,
+    file: 'telegram.png',
+    size: '1179×1815',
+    desc: 'Telegram on a phone: the same release 1.8 decision with option rows and a free-answer reply to the Coordinator.',
+  },
+  {
     n: 1,
     file: 'hero.png',
     size: '2881×1675',
