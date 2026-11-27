@@ -222,12 +222,14 @@ const landingSource = source('site/src/pages/index.astro');
 const featureList = landingSource.slice(landingSource.indexOf('const features = ['), landingSource.indexOf('const pad ='));
 const featureSection = landingSource.split('<section id="features"')[1]!.split('</section>')[0]!;
 
-test('landing shows all eleven features in the chosen order without carousel controls', () => {
+test('landing shows all twelve features in the chosen order without carousel controls', () => {
   assert.deepEqual([...featureList.matchAll(/id: '([^']+)'/g)].map(match => match[1]),
-    ['harness', 'accounts', 'remote', 'inbox', 'gate', 'items', 'topics', 'plans', 'verify', 'artifacts', 'release']);
+    ['harness', 'accounts', 'remote', 'inbox', 'gate', 'items', 'topics', 'plans', 'verify', 'hosts', 'artifacts', 'release']);
   assert.match(featureSection, /features\.map\(/);
   assert.doesNotMatch(landingSource, /carousel|scroll-snap|aria-roledescription/);
   assert.match(featureSection, /All features in the docs →/);
+  const hosts = featureList.split("id: 'hosts',")[1]!.split('\n  },')[0]!;
+  for (const fact of ['DigitalOcean pools', 'harness logins', 'remote machines', 'terminal workbench', 'test runs', 'daily spend cap', "href: '/docs/hosts/'", 'diagram: `%%']) assert.ok(hosts.includes(fact), fact);
 });
 
 test('feature cards keep anchors and historical images in a responsive grid', () => {
@@ -265,7 +267,7 @@ test('feature link clicks use GoatCounter feature ids and privacy wording includ
 
 test('every landing feature points to an existing documentation page', () => {
   const links = [...featureList.matchAll(/href: '(\/docs\/[^']+)'/g)].map(match => match[1]!);
-  assert.equal(links.length, 11);
+  assert.equal(links.length, 12);
   for (const href of links) {
     const slug = href.split('#')[0]!.replace(/^\/docs\//, '').replace(/\/$/, '');
     assert.ok(['md', 'mdx'].some(ext => existsSync(new URL(`../src/content/docs/docs/${slug}.${ext}`, import.meta.url))), href);
