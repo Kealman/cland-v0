@@ -1,5 +1,7 @@
 import { fixtureCommand as cland } from './fixture-command.ts';
 import { readyVerificationFixture } from './ready-verification-fixture.ts';
+import { largePatchFixture } from './large-patch-fixture.ts';
+import { gitIn } from '../src/tracker/verdict-git.ts';
 import { beforeEach } from 'node:test';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
 import { stageCase } from './stage-case-fixture.ts';
@@ -16,7 +18,13 @@ const cleanupProjectionCases = [false, true].map(rejectConstructor => ({ rejectC
 const ownedGuardAdmissions = new Set<string>();
 const batchGitCase = 'the production batch Git adapter preserves whitespace in unknown paths';
 const receiptStates = ['absent', 'launching', 'running', 'failed', 'cancelled', 'passed', 'cached', 'old head', 'incomplete'] as const;
+const patchModes = ['empty', 'missing identity', 'oversize', 'diff failure', 'spawn failure', 'abort'] as const;
+const patchCancellationModes = ['context abort', 'observation expiry'] as const;
 const admissionCases = new Set([
+  'patch setup cancellation joins its late root without admitting native work',
+  ...patchCancellationModes.map(mode => `patch cleanup retains its root and seams through held close after ${mode}`),
+  ...patchModes.map(mode => `patch identity joins its children after ${mode}`),
+  'a large rewritten fixture becomes ready and enqueues without buffering its patch',
   ...receiptStates.map(state => `merge admission requires completed task evidence: ${state}`),
   ...['no command', 'empty diff'].map(disposition => `merge admission preserves disposition: ${disposition}`),
   'merge refuses a passed receipt when the task status is not ready',
@@ -72,7 +80,7 @@ import type { VerifyResult } from '../src/hub/suites.ts';
 
 type AdmissionFixture = Awaited<ReturnType<typeof fixture>>;
 type AdmissionObservation = <T>(name: string, start: () => Promise<T>) => Promise<T>;
-function admissionCase(t: TestContext, body: (setup: (options?: ProjectHubOptions & { verification?: string }, files?: string[]) => Promise<AdmissionFixture>, observe: AdmissionObservation) => Promise<void>) {
+function admissionCase(t: TestContext, body: (setup: (options?: ProjectHubOptions & { verification?: string; patchGit?: Git }, files?: string[]) => Promise<AdmissionFixture>, observe: AdmissionObservation, scope: ReturnType<typeof stageCase>) => Promise<void>) {
   assert.ok(ownedGuardAdmissions.delete(t.name), 'exact callback delegates to its encompassing owner');
   const scope = stageCase(t);
   let acquired: AdmissionFixture | undefined;
@@ -88,9 +96,156 @@ function admissionCase(t: TestContext, body: (setup: (options?: ProjectHubOption
         acquired = await fixture(scope.fixtures, { ...options, openDatabase: open }, files, undefined, root => scope.adoptRoot(root), undefined, scope.resources);
         return acquired;
       });
-    await body(setup, observe);
+    await body(setup, observe, scope);
   }));
 }
+
+test('a large rewritten fixture becomes ready and enqueues without buffering its patch', t => admissionCase(t, async (setup, observe, scope) => {
+  // This fake branch rewrites a 20 MiB tracked fixture. Native Git is guarded;
+  // only the diff/patch-id transport is replaced with bounded chunk producers.
+  const native = largePatchFixture(scope);
+  const f = await setup({ patchGit: gitIn(native.root, fixtureEnvironment(native.root, process.env)) });
+  // Move the tip after review: the ready watcher must compare both patches,
+  // rather than taking the exact-head verdict fast path.
+  const rebased = 'c'.repeat(40);
+  f.heads.set('reviewed', f.heads.get('t/parser')!);
+  f.heads.set('t/parser', rebased);
+  await observe('rebased fixture tip receipt', () => f.tips.refresh());
+  f.completeReady(f.item.id, 't/parser', rebased);
+  await observe('large fixture watcher ready receipt', () => until(async () => {
+    await f.clock.advance(100);
+    const current = await value<{ item: ItemView }>(f.ui, { type: 'task.view', item: f.item.id });
+    return native.bytes() >= 40 * 1024 * 1024 && current.item.status === 'ready';
+  }, { what: 'large patch watcher readiness' }));
+  assert.equal((await value<{ item: ItemView }>(f.ui, { type: 'task.view', item: f.item.id })).item.status, 'ready');
+  const reply = await observe('large fixture enqueue receipt', () => f.ui.request({ type: 'merge', item: f.item.id }));
+  assert.equal(reply.ok, true, reply.error);
+  assert.ok(native.bytes() >= 20 * 1024 * 1024, 'the native transport consumed the complete large patch');
+  assert.ok(native.peak() <= 128 * 1024, 'stream queues stay bounded independently of patch size');
+}));
+
+test('patch setup cancellation joins its late root without admitting native work', t => admissionCase(t, async (_setup, observe, supervisor) => {
+  const hooks: Array<() => unknown> = [], cancellation = new AbortController();
+  const context = { name: 'late patch setup', signal: cancellation.signal, after: (hook: () => unknown) => hooks.push(hook) } as unknown as TestContext;
+  const acquired = Promise.withResolvers<string>(), releaseSetup = Promise.withResolvers<void>(), sealed = Promise.withResolvers<void>();
+  let nested: ReturnType<typeof stageCase> | undefined, native: ReturnType<typeof largePatchFixture> | undefined;
+  let afterSetup = false;
+  supervisor.releaseOnClose(() => { releaseSetup.resolve(); cancellation.abort(); });
+  supervisor.requireClose(async () => { releaseSetup.resolve(); await nested?.close(); await nested?.restore(); });
+  const outerBoundary = supervisor.nativeBoundary();
+  nested = stageCase(context);
+  nested.releaseOnClose(() => sealed.resolve());
+  const running = nested.run(async step => {
+    const root = await step(async () => {
+      const directory = await tempProject(nested!.fixtures);
+      acquired.resolve(directory);
+      await releaseSetup.promise;
+      return directory;
+    });
+    nested!.adoptRoot(root);
+    afterSetup = true;
+    await step(async () => {
+      native = largePatchFixture(nested!, 'empty');
+      await gitIn(native.root, fixtureEnvironment(root, process.env)).patchId!(['diff', '--binary', 'base', 'head', '--'], native.signal);
+    });
+  });
+  void running.catch(() => {});
+  const root = await observe('late root acquisition receipt', () => acquired.promise);
+  const heldBoundary = nested.nativeBoundary();
+  cancellation.abort();
+  const disposing = (async () => { for (const hook of hooks) await hook(); })();
+  void disposing.catch(() => {});
+  await observe('setup cancellation sealed before root delivery', () => sealed.promise);
+  assert.equal((await stat(root)).isDirectory(), true);
+  assert.equal(afterSetup, false);
+  assert.equal(nested.nativeBoundary(), heldBoundary);
+  releaseSetup.resolve();
+  await assert.rejects(running, /fixture work admission closed/);
+  await observe('late setup joined and root cleanup completed', () => disposing);
+  assert.equal(afterSetup, true, 'the late root was captured before rejecting the next admission');
+  assert.equal(native, undefined, 'sealed setup admits no new fixture or Git launch');
+  await assert.rejects(stat(root), { code: 'ENOENT' });
+  assert.equal(nested.nativeBoundary(), outerBoundary);
+}));
+
+for (const mode of patchModes) test(`patch identity joins its children after ${mode}`, t => admissionCase(t, async (_setup, observe, scope) => {
+  const native = largePatchFixture(scope, mode);
+  const git = gitIn(native.root, fixtureEnvironment(native.root, process.env));
+  const run = () => observe('streamed patch close receipts', () => {
+    const pending = git.patchId!(['diff', '--binary', 'base', 'head', '--'], native.signal);
+    if (mode === 'abort') native.abort();
+    return pending;
+  });
+  if (mode === 'oversize') await assert.rejects(run, /4096 byte limit/);
+  else if (mode === 'spawn failure') await assert.rejects(run, /diff launch failed/);
+  else if (mode === 'abort') await assert.rejects(run, /fixture patch cancelled/);
+  else assert.equal(await run(), mode === 'empty' ? 'empty' : null);
+}));
+
+for (const mode of patchCancellationModes) test(`patch cleanup retains its root and seams through held close after ${mode}`, t => admissionCase(t, async (_setup, observe, supervisor) => {
+  const hooks: Array<() => unknown> = [], contextAbort = new AbortController();
+  const context = { name: mode, signal: contextAbort.signal, after: (hook: () => unknown) => hooks.push(hook) } as unknown as TestContext;
+  const dispose = async () => { for (const hook of hooks) await hook(); };
+  const gate = Promise.withResolvers<void>(), allowDelete = Promise.withResolvers<void>(), removalEntered = Promise.withResolvers<void>();
+  let nested: ReturnType<typeof stageCase> | undefined;
+  // This supervisor owns the intentional close hold before nested acquisition.
+  supervisor.releaseOnClose(() => { gate.resolve(); allowDelete.resolve(); contextAbort.abort(); });
+  supervisor.requireClose(async () => { gate.resolve(); await nested?.close(); await nested?.restore(); });
+  const outerBoundary = supervisor.nativeBoundary();
+  nested = stageCase(context);
+  let native: ReturnType<typeof largePatchFixture> | undefined, root = '', resultSettled = false, continuationDone = false, deletionAdmitted = false;
+  let removeRoot: (() => Promise<void>) | undefined;
+  const running = nested.run(async step => {
+    root = await step(() => tempProject(nested!.fixtures));
+    // Direct cleanup has no earlier context-join fence: it must reach the
+    // actual directory guard. The first guard records that distinct attempt.
+    removeRoot = ownDirectory(undefined, root, { beforeRemove: async () => { deletionAdmitted = true; await allowDelete.promise; } });
+    guardDirectoryRemoval(root, async () => { removalEntered.resolve(); });
+    nested!.adoptRoot(root);
+    await step(async () => {
+      native = largePatchFixture(nested!, 'abort', gate.promise);
+      const git = gitIn(native.root, fixtureEnvironment(root, process.env));
+      const result = git.patchId!(['diff', '--binary', 'base', 'head', '--'], native.signal);
+      void result.finally(() => { resultSettled = true; }).catch(() => {});
+      try { await result; }
+      finally { await writeFile(join(root, 'joined-continuation'), 'drained'); continuationDone = true; }
+    });
+  });
+  void running.catch(() => {});
+  await observe('pending native acquisition receipt', () => until(() => native ? native.started.then(() => true) : false, { what: 'native transport started' }));
+  const heldBoundary = nested.nativeBoundary();
+  let disposing: Promise<void>;
+  if (mode === 'context abort') { contextAbort.abort(); disposing = dispose(); }
+  else {
+    // Controlled fault bound: expire this observation, never the original work.
+    await assert.rejects(nested.wait('controlled observation', () => running, 1), /controlled observation incomplete/);
+    disposing = dispose();
+  }
+  void disposing.catch(() => {});
+  await observe('stop request receipt before original join', () => native!.stopped);
+  const removing = observe('direct guarded directory cleanup', () => removeRoot!());
+  void removing.catch(() => {});
+  await observe('actual directory guard entry receipt', () => removalEntered.promise);
+  assert.equal((await stat(root)).isDirectory(), true, 'actual guarded removal retains the root while native close is held');
+  assert.equal(deletionAdmitted, false, 'the actual writer guard prevents deletion admission before close');
+  await assert.rejects(nested.restore(), /resource close unconfirmed/);
+  assert.equal(native!.closed(), 0, 'stop has no fabricated close receipt');
+  assert.equal(resultSettled, false, 'transport outcome stays pending until independently released native close');
+  assert.equal(continuationDone, false, 'the whole original callback remains owned');
+  assert.equal(nested.nativeBoundary(), heldBoundary, 'patched native seam remains installed');
+  gate.resolve();
+  await assert.rejects(running, /fixture patch cancelled/);
+  await observe('positive native closure and guarded cleanup', () => disposing);
+  allowDelete.resolve();
+  // A simultaneous direct attempt may observe the join before required-close
+  // bookkeeping settles; its explicit guard refusal is also retained/joined.
+  await removing.catch(error => { assert.match(String(error), /stage resource close unconfirmed/); });
+  assert.equal(native!.closed(), 2);
+  assert.equal(resultSettled, true);
+  assert.equal(continuationDone, true);
+  await assert.rejects(stat(root), { code: 'ENOENT' });
+  assert.equal(nested.nativeBoundary(), outerBoundary, 'native seam restores only after close and root cleanup');
+}));
 
 for (const state of receiptStates) test(`merge admission requires completed task evidence: ${state}`, t => admissionCase(t, async (setup, observe) => {
   let tracker!: Tracker;
@@ -388,8 +543,8 @@ for (const { kind, name } of timingConstructorCases) test(name, async t => {
   await assert.rejects(stat(root), { code: 'ENOENT' });
 });
 
-async function fixture(t: TestContext, options: ProjectHubOptions & { verification?: string; seedDatabase?: SeedDatabase } = {}, files = ['hub/src/parser.ts'], seed?: (tracker: Tracker) => Promise<void>, adoptRoot?: (root: string) => void, captureDispose?: (dispose: () => Promise<void>) => void, hubContext = t) {
-  const { verification = 'test="true"', seedDatabase, ...hubOptions } = options;
+async function fixture(t: TestContext, options: ProjectHubOptions & { verification?: string; seedDatabase?: SeedDatabase; patchGit?: Git } = {}, files = ['hub/src/parser.ts'], seed?: (tracker: Tracker) => Promise<void>, adoptRoot?: (root: string) => void, captureDispose?: (dispose: () => Promise<void>) => void, hubContext = t) {
+  const { verification = 'test="true"', seedDatabase, patchGit, ...hubOptions } = options;
   const root = await tempProject(t);
   adoptRoot?.(root);
   await mkdir(join(root, '.cland'), { recursive: true });
@@ -402,6 +557,7 @@ async function fixture(t: TestContext, options: ProjectHubOptions & { verificati
   const manifests = new Map<string, string>();
   const history = { read: undefined as (() => string | null) | undefined };
   const git: Git = async (args, input) => {
+    if (patchGit && (args[0] === 'patch-id' || args[0] === 'diff' && !args.includes('--name-only'))) return patchGit(args, input);
     if (args[0] === 'for-each-ref') return [...heads].map(([branch, head]) => `${head} refs/heads/${branch}`).join('\n');
     if (args[0] === 'show-ref' && args.includes('--exclude-existing=refs/heads/')) return input!.trim().split('\n').filter(ref => !heads.has(ref.slice('refs/heads/'.length))).join('\n');
     if (args[0] === 'rev-parse') {
@@ -419,6 +575,7 @@ async function fixture(t: TestContext, options: ProjectHubOptions & { verificati
     if (args[0] === 'log') return args.includes('--raw') && history.read ? history.read() : [...surfaces].map(([item, paths]) => `${'c'.repeat(40)}\0${item}\0\0${paths.map(path => `\n:100644 100644 ${'a'.repeat(40)} ${'b'.repeat(40)} M\0${path}\0`).join('')}`).join('\0');
     return null;
   };
+  if (patchGit?.patchId) git.patchId = patchGit.patchId;
   if (seed) {
     // Seed durable landed history through the tracker before the serving hub opens it.
     const trackerOptions = { root, db: join(root, '.cland/hub.db'), clock, git, stageTree: async () => 'fixture-stage-tree', readBase: async () => 'dev', env: fixtureEnvironment(root, process.env) };

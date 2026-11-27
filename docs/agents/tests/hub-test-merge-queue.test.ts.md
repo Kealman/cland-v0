@@ -1,5 +1,30 @@
 # hub/test/merge-queue.test.ts
 
+The large-patch case moves a reviewed branch tip and waits for the ready
+watcher's patch comparisons and ready item receipt before public enqueue.
+Its guarded Git fixture streams 20 MiB per patch in 64 KiB chunks, counts
+consumed bytes and bounds queued bytes. No real Git, network or provider is
+launched. Transport cases cover empty patches, capped scalar output, nonzero
+diff exit, partial launch failure and cancellation; the whole-case owner
+requires every launched fake child to close before releasing the fixture.
+Fixture abort/stop is enrolled with `releaseOnClose` before acquisition, so
+whole-case cancellation initiates stop before joining its original callback.
+Two additional controls drive a controlled TestContext abort and observation
+expiry. An outer owner enrols release of an independent native-close gate
+before nested acquisition. After stop, the tests invoke direct `ownDirectory`
+cleanup, observe entry into its real guard chain and prove `beforeRemove`
+has not been admitted. This removal continuation is retained and joined
+separately from context disposal. The transport result, root, original
+continuation and native seam stay fenced until the gate releases both closes.
+Removing the production close joins makes both controls fail their pending
+result assertion. Removing `adoptRoot` makes both fail their deletion-admission
+assertion. A setup control holds root delivery across cancellation, captures
+the late root, then re-enters step admission before installing the fixture or
+launching Git; the sealed owner admits neither. The expiry's one-millisecond bound injects that fault; no
+wall-time performance claim or fixed sleep is involved.
+Native readers retain the existing callable Git interface; its optional
+streamed patch capability is preserved by Freshness's cancellation wrapper.
+
 T-2055 exercises public merge admission with absent, launching, running, failed,
 cancelled, stale-head and incomplete receipts; passed and projected cache
 receipts admit. A separate status control refuses in-progress items despite a

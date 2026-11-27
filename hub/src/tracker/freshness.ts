@@ -112,6 +112,10 @@ export class Freshness {
       this.#gitStop.signal.throwIfAborted();
       return options.git(args, input, this.#gitStop.signal);
     };
+    if (options.git.patchId) this.#git.patchId = args => {
+      this.#gitStop.signal.throwIfAborted();
+      return options.git.patchId!(args, this.#gitStop.signal);
+    };
     this.#readBase = options.readBase ?? (async (tips) => verdictBaseOf(tips));
     this.#log = options.log ?? (() => {});
     this.#intervalMs = options.intervalMs ?? TIP_CHECK_MS;

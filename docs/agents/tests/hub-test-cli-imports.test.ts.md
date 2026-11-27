@@ -17,6 +17,13 @@ help module (38 total). Keep the
 non-help implementation budgets unchanged. Native no-hub auth/user calls remain
 database-free, and both dispatch paths preserve their import-failure stderr/exit.
 
+Task patch streaming loads only inside `Git.patchId`. `cland task list --json`
+imports the callable verdict reader without its streaming transport: the
+native counter records 55 total modules, including 38 pure help modules,
+within the existing 17-module implementation budget. The transport still
+checks cancellation before native launch after its deferred import; the
+merge-queue cases retain the large-patch and held-close behavior proof.
+
 Hub lifecycle readers load dynamically only when their operation needs a lock. Empty-project status and stop avoid importing lock/host-identity/process probes; keep the existing module budgets and full command-closure assertions. Foreign-lock behavior remains covered by the reader tests.
 
 Paid-term wire shape validation lives in dependency-free

@@ -7,10 +7,13 @@ import { execFile } from 'node:child_process';
  * or null when git said no (a non-zero exit). It rejects when git
  * could not answer at all (not started, timed out, killed): that is no fact to keep. Tests inject one to count spawns.
  */
-export type Git = (args: string[], input?: string, signal?: AbortSignal) => Promise<string | null>;
+export type Git = ((args: string[], input?: string, signal?: AbortSignal) => Promise<string | null>) & {
+  /** Native transports stream large patches; legacy injected readers remain callable. */
+  patchId?: (args: string[], signal?: AbortSignal) => Promise<string | null>;
+};
 
 export function gitIn(root: string, env: NodeJS.ProcessEnv = process.env): Git {
-  return (args, input, signal) =>
+  const git: Git = (args, input, signal) =>
     new Promise((resolve, reject) => {
       signal?.throwIfAborted();
       const child = execFile('git', args, { cwd: root, env, encoding: 'utf8', timeout: 5000, maxBuffer: 16 * 1024 * 1024 }, (err, stdout) => {
@@ -27,6 +30,12 @@ export function gitIn(root: string, env: NodeJS.ProcessEnv = process.env): Git {
       child.stdin?.on('error', () => {});
       child.stdin?.end(input ?? '');
     });
+  git.patchId = async (args, signal) => {
+    signal?.throwIfAborted();
+    const { streamedPatchId } = await import('./patch-id.ts');
+    return streamedPatchId(root, env, args, signal);
+  };
+  return git;
 }
 
 export const resolveCommit = (git: Git, ref: string): Promise<string | null> => git(['rev-parse', '--verify', '--end-of-options', `${ref}^{commit}`]);
@@ -57,7 +66,9 @@ export async function taskPatch(git: Git, base: string, sha: string): Promise<st
   const mergeBase = await git(['merge-base', `refs/heads/${base}`, sha]);
   if (!mergeBase) return null;
   // Ignore external diff drivers, textconv and user-configured diff algorithms.
-  const diff = await git(['diff', '--no-color', '--no-ext-diff', '--no-textconv', '--binary', '--diff-algorithm=myers', '--no-renames', mergeBase, sha, '--']);
+  const args = ['diff', '--no-color', '--no-ext-diff', '--no-textconv', '--binary', '--diff-algorithm=myers', '--no-renames', mergeBase, sha, '--'];
+  if (git.patchId) return git.patchId(args);
+  const diff = await git(args);
   if (diff === null) return null;
   if (!diff) return 'empty';
   const id = await git(['patch-id', '--stable'], diff + '\n');
