@@ -1,5 +1,15 @@
 # Hub documentation
 
+Dev T3 tip-probe exceptions end that file's search as inconclusive across ticks
+and restarts. The heartbeat retains the blocked reason, attempt count and age.
+It reads a bounded projection of ten recent blocked files, with older omissions
+counted or explicitly unknown; full reasons remain in search checkpoints.
+Known omissions contribute to the global stale count; unknown totals carry a
+lower-bound label and `staleComplete: false` through notice metadata and logs.
+Suite refusals before admission remove their generated directory after writes
+settle; transaction commit transfers ownership to the admitted run, including
+when later observers fail. See [periodic search policy](../docs/agents/tests.md#periodic-dev-t2t3-and-release-gate).
+
 Verification cache reuse for explicit executor requests and stage, epic or release
 occasions requires the effective executor and OS, including configured occasion
 defaults. Cache reports identify the original executor and platform; incompatible

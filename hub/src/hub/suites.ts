@@ -477,7 +477,7 @@ export class Suites {
     if (job.shardWait?.path === 'fallback') this.#applyWholeFallback(job);
     this.#save(job);
   }
-  #save = (job?: SuiteJob) => {
+  #save = (job?: SuiteJob, committed?: () => void) => {
     if (job?.shards) job.timingShards = { state: 'sharded', runs: job.shards.map(shard => shard.id) };
     if (job?.timingReceipts) job.timingSummary = job.timingReceipts.map(({ samples, ...owner }) => ({ ...owner, samples: samples.length }));
     this.#stageReceipts = undefined;
@@ -508,6 +508,9 @@ export class Suites {
       }
       if (active !== this.#savedActive) this.#store.setMeta(KEY, active);
     });
+    // Admission owns its root as soon as the transaction commits, even when a
+    // later observer fails. This callback records that exact durable boundary.
+    committed?.();
     for (const [id, value] of saved) this.#savedJobs.set(id, value);
     this.#savedActive = active;
     if (job && !job.parentRun) this.#remember(job, true);
@@ -874,85 +877,102 @@ export class Suites {
     }
     const existing = this.#existingSubmission(input, head, authorize);
     if (existing) return existing;
-    await mkdir(dir, { recursive: true, mode: 0o700 });
-    const cacheExecutor = input.occasion === 'stage' || input.occasion === VERIFY_OCCASIONS.epic || input.occasion === 'release' ? executor : input.executor;
-    const cached = !input.fresh && tree && !(input.occasion === 'soak' && selection.shard) ? this.#cached(tree, selection, workers, commands, input.size, cacheExecutor, input.occasion) : undefined;
-    const incompatible = !input.fresh && tree && cacheExecutor && !cached ? this.#cached(tree, selection, workers, commands, input.size) : undefined;
-    const cacheBypass = incompatible && !receiptExecutionMatches(incompatible, { executor: cacheExecutor })
-      ? `requested executor ${cacheExecutor} · platform ${cacheExecutor === 'droplet' ? 'linux' : process.platform}; cached green executor ${incompatible.executor} · platform ${incompatible.platform?.os ?? 'unknown'}` : undefined;
+    let admissionCommitted = false;
+    try {
+      await mkdir(dir, { recursive: true, mode: 0o700 });
+      const cacheExecutor = input.occasion === 'stage' || input.occasion === VERIFY_OCCASIONS.epic || input.occasion === 'release' ? executor : input.executor;
+      const cached = !input.fresh && tree && !(input.occasion === 'soak' && selection.shard) ? this.#cached(tree, selection, workers, commands, input.size, cacheExecutor, input.occasion) : undefined;
+      const incompatible = !input.fresh && tree && cacheExecutor && !cached ? this.#cached(tree, selection, workers, commands, input.size) : undefined;
+      const cacheBypass = incompatible && !receiptExecutionMatches(incompatible, { executor: cacheExecutor })
+        ? `requested executor ${cacheExecutor} · platform ${cacheExecutor === 'droplet' ? 'linux' : process.platform}; cached green executor ${incompatible.executor} · platform ${incompatible.platform?.os ?? 'unknown'}` : undefined;
 
-    // Older candidate runners and fixture packages remain usable. Coverage is
-    // recorded only by a capable runner on a clean integrated full dev run.
-    if (input.integrated && branch === 'dev' && tree && wholeSuiteSelection(selection) && !cached && runner?.reduceCoverage) selection.recordCoverage = { head, tree, run: id };
-    authorize();
-    const workerPolicy = config ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(this.#root, 'local', this.#env)).workers, droplet: (await suiteLimits(this.#root, 'droplet', this.#env)).workers };
-    const fallbackWorkers = input.workers ?? workerPolicy.local;
-    const previousGreen = input.occasion === 'dev-t3' ? this.#jobs.findLast(job => job.occasion === 'dev-t3' && job.reported && job.outcome?.code === 0 && !job.cached && !job.cancelled && !job.requesterDied) : undefined;
-    const {source: hostSource, ...jobInput}=input;
-    const job: SuiteJob = { ...(hostSource?{hostSource}:{}), ...jobInput, ...(input.occasion === 'dev-t3' ? { devT3: { previousGreenHead: previousGreen?.head ?? null, previousGreenRun: previousGreen?.id ?? null } } : {}), commands, ...((input.occasion === 'soak' || input.occasion === 'dev-t3') && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
-    if (batchBaselineRuns) job.batchBaselineRuns = batchBaselineRuns;
-    if (batchBaselineFileRuns) {
-      job.batchBaselineFileRuns = batchBaselineFileRuns;
-      job.batchBaselineSourceRuns = [...new Set(Object.values(batchBaselineFileRuns))];
-    }
-    if (batchT1) job.batchT1 = batchT1;
-    if (cacheBypass) job.cacheBypass = cacheBypass;
-    // Persist the complete request before acknowledging it. No waiting worker exists.
-    await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nCommands: check ${commands.check || 'not set'} · test ${commands.test}\n${commands.plan ? 'Tier commands: ' + commands.plan.map(step => `${step.name} ${step.command}`).join(' · ') + '\n' : ''}Prepare: ${commands.prepare || 'not set'}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
-    if (batchT1) await appendFile(job.log, batchT1Summary(batchT1) + '\n');
-    if (input.devT3Probe) await appendFile(job.log, 'Historical probe: hosting hub manifest and test lint skipped; candidate commands retained; tier projections unavailable\n');
-    if (soakDropped.length) await appendFile(job.log, soakDropped.join('\n') + '\n');
-    if (cacheBypass) await appendFile(job.log, `Cache bypassed: ${cacheBypass}\n`);
-    if (cached) {
-      const artifact = this.#store.resolveArtifact(cached.artifact!)!;
-      const copied = await copyFile(artifact.path, job.log + '.cache.tmp').then(() => true, () => false);
-      if (copied && await this.#candidate.tree(input.cwd, head) === tree) {
-        job.executor = cached.executor;
-        if (cached.platform) job.platform = { ...cached.platform };
-        if (cached.machine) job.machine = { ...cached.machine };
-        if (cached.health) job.health = structuredClone(cached.health);
-        if (cached.shardHealth) job.shardHealth = structuredClone(cached.shardHealth);
-        job.cached = { run: cached.id, head: cached.head, tree: tree!, occasion: cached.occasion ?? null, executor: cached.executor };
-        job.finished = cached.finished!;
-        job.outcome = { code: 0, cause: 'cached' }; job.state = 'finished';
-        await appendFile(job.log + '.cache.tmp', `\nCached candidate ${tree}\nOriginal run ${cached.id} · head ${cached.head}\nOriginal occasion ${cached.occasion ?? 'none'} · executor ${cached.executor} · platform ${cached.platform?.os ?? 'unknown'}\nRequested head ${head}\n`);
-        await rename(job.log + '.cache.tmp', job.log);
-      } else await rm(job.log + '.cache.tmp', { force: true });
-    }
-    if (!job.cached && capacityRefusal) job.outcome = { code: 1, cause: capacityRefusal.message, notRun: 'provider-capacity' };
-    if (!job.cached && !job.outcome && executor === 'droplet') {
-      if (job.requireRemote && !tree) throw new Error('dirty worktree cannot be bundled for droplet');
-      try {
-        if (job.requireRemote) await this.#droplet.checkSpend(input.size, config);
-        else await this.#droplet.checkReachability(input.size, config);
+      // Older candidate runners and fixture packages remain usable. Coverage is
+      // recorded only by a capable runner on a clean integrated full dev run.
+      if (input.integrated && branch === 'dev' && tree && wholeSuiteSelection(selection) && !cached && runner?.reduceCoverage) selection.recordCoverage = { head, tree, run: id };
+      authorize();
+      const workerPolicy = config ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(this.#root, 'local', this.#env)).workers, droplet: (await suiteLimits(this.#root, 'droplet', this.#env)).workers };
+      const fallbackWorkers = input.workers ?? workerPolicy.local;
+      const previousGreen = input.occasion === 'dev-t3' ? this.#jobs.findLast(job => job.occasion === 'dev-t3' && job.reported && job.outcome?.code === 0 && !job.cached && !job.cancelled && !job.requesterDied) : undefined;
+      const {source: hostSource, ...jobInput}=input;
+      const job: SuiteJob = { ...(hostSource?{hostSource}:{}), ...jobInput, ...(input.occasion === 'dev-t3' ? { devT3: { previousGreenHead: previousGreen?.head ?? null, previousGreenRun: previousGreen?.id ?? null } } : {}), commands, ...((input.occasion === 'soak' || input.occasion === 'dev-t3') && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+      if (batchBaselineRuns) job.batchBaselineRuns = batchBaselineRuns;
+      if (batchBaselineFileRuns) {
+        job.batchBaselineFileRuns = batchBaselineFileRuns;
+        job.batchBaselineSourceRuns = [...new Set(Object.values(batchBaselineFileRuns))];
       }
-      catch (error) {
-        if (!(error instanceof ProviderCapacityUnavailable)) throw error;
-        job.outcome = { code: 1, cause: error.message, notRun: 'provider-capacity' };
+      if (batchT1) job.batchT1 = batchT1;
+      if (cacheBypass) job.cacheBypass = cacheBypass;
+      // Persist the complete request before acknowledging it. No waiting worker exists.
+      await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nCommands: check ${commands.check || 'not set'} · test ${commands.test}\n${commands.plan ? 'Tier commands: ' + commands.plan.map(step => `${step.name} ${step.command}`).join(' · ') + '\n' : ''}Prepare: ${commands.prepare || 'not set'}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
+      if (batchT1) await appendFile(job.log, batchT1Summary(batchT1) + '\n');
+      if (input.devT3Probe) await appendFile(job.log, 'Historical probe: hosting hub manifest and test lint skipped; candidate commands retained; tier projections unavailable\n');
+      if (soakDropped.length) await appendFile(job.log, soakDropped.join('\n') + '\n');
+      if (cacheBypass) await appendFile(job.log, `Cache bypassed: ${cacheBypass}\n`);
+      if (cached) {
+        const artifact = this.#store.resolveArtifact(cached.artifact!)!;
+        const copied = await copyFile(artifact.path, job.log + '.cache.tmp').then(() => true, () => false);
+        if (copied && await this.#candidate.tree(input.cwd, head) === tree) {
+          job.executor = cached.executor;
+          if (cached.platform) job.platform = { ...cached.platform };
+          if (cached.machine) job.machine = { ...cached.machine };
+          if (cached.health) job.health = structuredClone(cached.health);
+          if (cached.shardHealth) job.shardHealth = structuredClone(cached.shardHealth);
+          job.cached = { run: cached.id, head: cached.head, tree: tree!, occasion: cached.occasion ?? null, executor: cached.executor };
+          job.finished = cached.finished!;
+          job.outcome = { code: 0, cause: 'cached' }; job.state = 'finished';
+          await appendFile(job.log + '.cache.tmp', `\nCached candidate ${tree}\nOriginal run ${cached.id} · head ${cached.head}\nOriginal occasion ${cached.occasion ?? 'none'} · executor ${cached.executor} · platform ${cached.platform?.os ?? 'unknown'}\nRequested head ${head}\n`);
+          await rename(job.log + '.cache.tmp', job.log);
+        } else await rm(job.log + '.cache.tmp', { force: true });
+      }
+      if (!job.cached && capacityRefusal) job.outcome = { code: 1, cause: capacityRefusal.message, notRun: 'provider-capacity' };
+      if (!job.cached && !job.outcome && executor === 'droplet') {
+        if (job.requireRemote && !tree) throw new Error('dirty worktree cannot be bundled for droplet');
+        try {
+          if (job.requireRemote) await this.#droplet.checkSpend(input.size, config);
+          else await this.#droplet.checkReachability(input.size, config);
+        }
+        catch (error) {
+          if (!(error instanceof ProviderCapacityUnavailable)) throw error;
+          job.outcome = { code: 1, cause: error.message, notRun: 'provider-capacity' };
+        }
+      }
+      if (head !== 'unknown' && await this.#candidate.head(input.cwd) !== head) throw new Error('head changed during submission; submit verification again');
+      authorize();
+      if (this.#closed) throw new Error('hub is closing');
+      // No await between the last identity fence and persistence: overlapping retries join one run.
+      const concurrent = this.#existingSubmission(input, head, authorize);
+      if (concurrent) return concurrent;
+      this.#jobs.push(job); this.#save(job, () => { admissionCommitted = true; });
+      if (input.occasion === 'soak') {
+        if (selection.shard) {
+          for (const row of tierPlan) soakCursors[row.tier] = (soakCursors[row.tier] ?? 0) + row.files.length;
+          this.#store.setMeta('soak-cursors', JSON.stringify(soakCursors));
+        }
+        const text = `nightly soak ${job.id}: ${selection.reason}`;
+        this.#store.setMeta('soak-coverage', text);
+        if (selection.shard) this.#options.onSoakNotice?.(`soak-trim:${job.id}`, text);
+      }
+      if (!job.cached && executor === 'droplet' && (!this.#env.DIGITALOCEAN_TOKEN || !tree)) this.#fallback(job, !this.#env.DIGITALOCEAN_TOKEN ? 'DIGITALOCEAN_TOKEN is required' : 'dirty worktree cannot be bundled for droplet');
+      // Socket/RPC callers can acknowledge the durable checkpoint without changing
+      // start()'s scheduler-completion contract for in-process callers.
+      onAdmitted?.({ id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) });
+      if (inspect) await this.#check();
+      return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
+    } finally {
+      // All preparation writes have settled. Admission transfers ownership to
+      // the indexed job; refusals and overlapping submissions own no worker.
+      if (!admissionCommitted) {
+        const uncommitted = this.#jobs.findIndex(job => job.id === id);
+        if (uncommitted >= 0) this.#jobs.splice(uncommitted, 1);
+        this.#order.delete(id);
+        if (this.#batchBaselineStates.delete(id)) this.#batchBaselineVersion++;
+        try { await rm(dir, { recursive: true, force: true }); }
+        catch (error) {
+          try { this.#options.log?.({ event: 'suite-unadmitted-directory-retained', id, path: dir, error: String(error) }); }
+          catch { /* an ancillary observer must not replace the refusal */ }
+        }
       }
     }
-    if (head !== 'unknown' && await this.#candidate.head(input.cwd) !== head) throw new Error('head changed during submission; submit verification again');
-    authorize();
-    if (this.#closed) throw new Error('hub is closing');
-    // No await between the last identity fence and persistence: overlapping retries join one run.
-    const concurrent = this.#existingSubmission(input, head, authorize);
-    if (concurrent) return concurrent;
-    this.#jobs.push(job); this.#save(job);
-    if (input.occasion === 'soak') {
-      if (selection.shard) {
-        for (const row of tierPlan) soakCursors[row.tier] = (soakCursors[row.tier] ?? 0) + row.files.length;
-        this.#store.setMeta('soak-cursors', JSON.stringify(soakCursors));
-      }
-      const text = `nightly soak ${job.id}: ${selection.reason}`;
-      this.#store.setMeta('soak-coverage', text);
-      if (selection.shard) this.#options.onSoakNotice?.(`soak-trim:${job.id}`, text);
-    }
-    if (!job.cached && executor === 'droplet' && (!this.#env.DIGITALOCEAN_TOKEN || !tree)) this.#fallback(job, !this.#env.DIGITALOCEAN_TOKEN ? 'DIGITALOCEAN_TOKEN is required' : 'dirty worktree cannot be bundled for droplet');
-    // Socket/RPC callers can acknowledge the durable checkpoint without changing
-    // start()'s scheduler-completion contract for in-process callers.
-    onAdmitted?.({ id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) });
-    if (inspect) await this.#check();
-    return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
   }
   #existingSubmission(input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion' | 'devT3Probe'> & { executor?: ExecutorKind; size?: string; workers?: number }, head: string, authorize: () => void): { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | null {
     authorize();

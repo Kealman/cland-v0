@@ -4,12 +4,19 @@ import type { SuiteJob } from './suites.ts';
 import type { Store } from './store.ts';
 import type { DropletLease } from '../executor/droplet/lease.ts';
 import { suiteAuthor } from './suite-author.ts';
+import { blockedDevT3Searches } from './dev-t3-search.ts';
 
 /** Build from committed hub facts at the firing; no tools, Git or network work on the clock. */
 export function heartbeatDigest(store: Store, items: ItemSummary[], interval: number, now: number, idleMs: number, runTimeoutMs: number, queue?: VerificationQueue) {
   const flight: string[] = [], stale: string[] = [];
   const age = (since: number) => `${Math.max(0, Math.floor((now - since) / 1000))}s`;
   const statuses = ['in progress', 'review', 'qa', 'ready', 'planned', 'backlog', 'done'];
+  const blockedSearches = blockedDevT3Searches(store);
+  for (const blocked of blockedSearches.rows) {
+    stale.push(`dev T3 search ${blocked.run} blocked · ${blocked.file} · attempts ${blocked.attempts} · age ${age(Date.parse(blocked.since))} · ${blocked.reason}`);
+  }
+  const blockedOmitted = blockedSearches.omitted === null ? 'older blocked files: unknown'
+    : blockedSearches.omitted ? `${blockedSearches.omitted} older blocked files omitted` : '';
   const byStatus = (item: ItemSummary) => { const rank = statuses.indexOf(item.status ?? ''); return rank < 0 ? statuses.length : rank; };
   for (const item of items.slice().sort((a, b) => byStatus(a) - byStatus(b))) {
     if (item.state !== 'open') continue;
@@ -63,10 +70,16 @@ export function heartbeatDigest(store: Store, items: ItemSummary[], interval: nu
   for (const lease of leases.values()) {
     if (lease.state !== 'released' && Date.parse(lease.deadline) > now) flight.push(`lease ${lease.name} · ${lease.state} · expires ${lease.deadline}`);
   }
-  const section = (title: string, rows: string[]) => `${title} (${rows.length})\n${rows.slice(0, 10).map(row => `- ${row.replace(/[\r\n]+/g, ' ')}`).join('\n') || '- none'}${rows.length > 10 ? `\n- and ${rows.length - 10} more` : ''}`;
+  const section = (title: string, rows: string[], count = String(rows.length), empty = 'none') => `${title} (${count})\n${rows.slice(0, 10).map(row => `- ${row.replace(/[\r\n]+/g, ' ')}`).join('\n') || `- ${empty}`}${rows.length > 10 ? `\n- and ${rows.length - 10} more` : ''}`;
+  const knownStale = stale.length + (blockedSearches.omitted ?? 0);
+  // The numeric field remains compatible; incomplete totals explicitly carry
+  // a lower-bound disposition through every notice/log consumer.
+  const counts = { inFlight: flight.length, stale: Math.min(Number.MAX_SAFE_INTEGER, knownStale),
+    staleComplete: blockedSearches.omitted !== null && Number.isSafeInteger(knownStale) };
+  const staleLabel = counts.staleComplete ? String(counts.stale) : `at least ${counts.stale}; total unknown`;
   const soak = store.meta('soak-coverage');
   const retention = store.meta('suite-retention-progress');
   const progress = retention ? JSON.parse(retention) as {passes:number;at:string;backlog:number;removed:number;unindexed:{scanned:number;removed:number;continuing:boolean}} : null;
   const retentionText = progress ? `\n\nSuite retention\n${progress.passes} passes by last scheduler owner; last ${progress.at}; indexed backlog ${progress.backlog} (includes protected runs), removed ${progress.removed}; last directory pass scanned ${progress.unindexed.scanned}, removed ${progress.unindexed.removed}, discovery ${progress.unindexed.continuing?'continuing':'complete'}` : '';
-  return { text: `${section('In flight', flight)}\n\n${section('Stale', stale)}${soak ? `\n\nSoak coverage\n${soak}` : ''}${retentionText}`, inFlight: flight.length, stale: stale.length };
+  return { text: `${section('In flight', flight)}\n\n${section('Stale', stale, staleLabel, counts.staleComplete ? 'none' : 'none observed')}${blockedOmitted ? `\n${blockedOmitted}` : ''}${soak ? `\n\nSoak coverage\n${soak}` : ''}${retentionText}`, ...counts, counts, staleLabel };
 }

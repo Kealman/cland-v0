@@ -2,6 +2,21 @@
 
 T2 heartbeat digest over a projectHub fixture and a FakeClock: schedules, firing, in-flight and stale sections, and durable replacement through real frames.
 
+Aggregate notice/log controls opt into the fixture's `stageCase` owner. It adopts
+the root and registers a required partial-resource closer before constructing
+or starting Tracker/Crew/Hub. Tracker startup is awaited on this owned path.
+Positive Hub, Crew and Tracker close receipts are remembered independently;
+directory hooks run afterwards. Existing fixture callers keep their old path.
+
+Ownership fault controls cover Tracker and Crew startup failure after acquisition,
+and rejected Hub close after complete setup. Each first refuses its required
+resource close, then invokes a real `ownDirectory` removal guard independently
+of the existence check. A `beforeRemove` safety stop would fail the test before
+deleting live storage if the guard were bypassed. Assert no removal entry,
+retained root and native guard, and refused restoration. Repair the resource
+fault, run registered cleanup and assert positive close, root removal and guard
+restoration inside the named load-scaled proof observation.
+
 Expiry fixtures enter the inclusive five-day UTC warning window. The first case
 observes every exact allowance in the Coordinator message and its injection
 receipt; the held-read case crosses the boundary while I/O is pending and proves

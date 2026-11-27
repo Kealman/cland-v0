@@ -17,7 +17,7 @@ import { guardedLeaseCase } from './executor-lease-fixture.ts';
 import cp from 'node:child_process';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
 import { receiptFixtureCase } from './receipt-fixture-case.ts';
-import { testWaitMs } from './until.ts';
+import { testWaitMs, testSetupWaitMs } from './until.ts';
 import { ownedQa, ownedDumpClient } from '../../nvim/test/qa-runner.ts';
 import { createClient } from '../../nvim/test/client.ts';
 import { decode } from '../../nvim/test/rpc.ts';
@@ -29,6 +29,53 @@ import { fileURLToPath } from 'node:url';
 import { ownDirectory, afterCleanup } from './process-cleanup.ts';
 import { suiteCase } from './suite-case-fixture.ts';
 import { fixture as runnerFixture } from './durations-runner-fixture.ts';
+import { suiteUnit } from './suite-unit-fixture.ts';
+import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { readdir } from 'node:fs/promises';
+
+test('aborted refusal case retains spend override through late admission and resource cleanup', async t => {
+  const supervisor = stageCase(t, { waitMs: testSetupWaitMs });
+  await supervisor.run(async () => supervisor.wait('complete aborted refusal setup and proof', async () => {
+    const abort = new AbortController(), hooks: Array<() => unknown> = [];
+    const context = { name: 'controlled refusal abort', signal: abort.signal, after: (hook: () => unknown) => { hooks.push(hook); } } as unknown as TestContext;
+    fenceFixtureCleanup(context);
+    const owner = stageCase(context, { waitMs: testSetupWaitMs });
+    const previous = DropletExecutor.prototype.checkSpend;
+    const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+    let spent = false, cleanup = false;
+    const spend = async () => { spent = true; throw new Error('late spend refusal'); };
+    const dispose = async () => { for (const hook of hooks) await hook(); };
+    let running: Promise<void> | undefined;
+    supervisor.releaseOnClose(() => release.resolve());
+    supervisor.requireClose(async () => { release.resolve(); await running?.catch(() => {}); await owner.close(); await dispose(); });
+    running = owner.run(async step => {
+      const f = await owner.wait('held admission setup', () => step(() => suiteUnit(owner.resources, { executor: 'droplet', patch: owner.patch })));
+      owner.adoptRoot(f.root);
+      owner.patch(DropletExecutor.prototype, 'checkSpend', spend);
+      owner.requireClose(async () => {
+        assert.equal(spent, true);
+        assert.equal(DropletExecutor.prototype.checkSpend, spend, 'override remains during resource cleanup');
+        cleanup = true;
+      });
+      f.beforeInspect(async () => { entered.resolve(); await release.promise; });
+      await step(() => assert.rejects(f.launch({ executor: 'droplet' }), /late spend refusal/));
+      assert.deepEqual(await readdir(join(f.root, '.cland/run/suites')), []);
+      assert.deepEqual(f.suites.status(), []);
+    });
+    const rejected = assert.rejects(running, /fixture work admission closed/); void rejected.catch(() => {});
+    await supervisor.wait('held admission entered', () => entered.promise);
+    abort.abort(new Error('controlled refusal abort'));
+    const disposing = dispose(); void disposing.catch(() => {});
+    assert.equal(DropletExecutor.prototype.checkSpend, spend);
+    assert.equal(cleanup, false);
+    release.resolve();
+    await supervisor.wait('post-release refusal and restoration proof', async () => {
+      await rejected; await disposing;
+      assert.equal(spent, true); assert.equal(cleanup, true);
+      assert.equal(DropletExecutor.prototype.checkSpend, previous, 'restoration follows positive cleanup');
+    });
+  }));
+});
 
 for (const phase of ['setup', 'completion', 'owner join'] as const) test(`explicit QA completion headroom preserves separate ${phase} budget`, t => receiptFixtureCase(t, false, async (fixtures, step, _adoptRoot, release) => {
   const clock = new FakeClock();

@@ -1,5 +1,5 @@
 // T1: durable culprit search with a fake failing-file runner; no processes or clock waits.
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -9,6 +9,144 @@ import { DevT3Search, type ProbeReceipt, type SearchReport } from '../src/hub/de
 import type { DevT3Result } from '../src/hub/dev-t3-result.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { suiteCase } from './suite-case-fixture.ts';
+import { heartbeatDigest } from '../src/hub/heartbeat.ts';
+import { readdir } from 'node:fs/promises';
+import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { testSetupWaitMs } from './until.ts';
+
+
+function retainedRefusalCase(t: TestContext, body: (f: Awaited<ReturnType<typeof suiteUnit>>, scope: ReturnType<typeof stageCase>) => Promise<void>) {
+  const scope = stageCase(t, { waitMs: testSetupWaitMs });
+  return scope.run(async step => {
+    const f = await scope.wait('refusal fixture setup', () => step(() => suiteUnit(scope.resources, { executor: 'droplet', patch: scope.patch })));
+    scope.adoptRoot(f.root);
+    await scope.wait('complete refusal proof', () => body(f, scope));
+  });
+}
+
+for (const committed of [false, true]) test(`admission ${committed ? 'keeps committed ownership on observer failure' : 'rolls back uncommitted ownership on persistence failure'}`, t => retainedRefusalCase(t, async (f, scope) => {
+  const setMeta = f.store.setMeta.bind(f.store), meta = f.store.meta.bind(f.store);
+  let injected = false;
+  if (!committed) scope.patch(f.store, 'setMeta', (key: string, value: string) => {
+    setMeta(key, value);
+    if (key === 'suite-jobs') { injected = true; throw new Error('persistence refused'); }
+  });
+  else scope.patch(f.store, 'meta', (key: string) => {
+    if (key.startsWith('suite-retired:')) { injected = true; throw new Error('observer failed'); }
+    return meta(key);
+  });
+  await scope.wait('injected admission failure', () => assert.rejects(f.launch({ executor: 'droplet' }), committed ? /observer failed/ : /persistence refused/));
+  assert.equal(injected, true);
+  const durable = JSON.parse(meta('suite-jobs') ?? '[]');
+  assert.equal(durable.length, committed ? 1 : 0);
+  const status = f.suites.status(), directories = await readdir(join(f.root, '.cland/run/suites'));
+  assert.equal(status.length, committed ? 1 : 0);
+  assert.equal(directories.length, committed ? 1 : 0);
+  if (committed) { assert.equal(status[0]!.id, durable[0].id); assert.deepEqual(directories, [durable[0].id]); }
+  assert.equal(f.acquisitions.length, 0);
+  scope.patch(f.store, 'setMeta', setMeta); scope.patch(f.store, 'meta', meta);
+  if (!committed) { await scope.wait('scheduler after rollback', () => f.tick()); assert.equal(f.acquisitions.length, 0); }
+}));
+
+test('blocked heartbeat projection bounds rows fields and encoded bytes with populated failure history', t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(fixtures => suiteUnit(fixtures));
+  const reason = 'failure ' + '界'.repeat(3000);
+  const search = new DevT3Search(f.store, {
+    currentDev: async () => 'tip', probe: async () => { throw new Error(reason); }, report: async () => {},
+  });
+  await step('populated failure history', async () => {
+    for (let i = 0; i < 40; i++) {
+      search.accept({ ...redResult(), run: `failure-${i}`, failingFiles: ['hub/test/regression.test.ts'] });
+      await search.tick(); await search.tick();
+    }
+  });
+  const projection = f.store.meta('dev-t3-blocked-searches')!;
+  assert.ok(Buffer.byteLength(projection) <= 16384);
+  const summary = JSON.parse(projection);
+  assert.equal(summary.rows.length, 10); assert.equal(summary.omitted, 30);
+  assert.ok(summary.rows.every((row: { reason: string }) => Buffer.byteLength(JSON.stringify(row.reason)) <= 512));
+  const digest = heartbeatDigest(f.store, [], 1000, Date.now(), 0, 1000);
+  assert.equal(digest.stale, 40);
+  assert.equal(digest.staleComplete, true);
+  assert.match(digest.text, /Stale \(40\)/);
+  assert.match(digest.text, /30 older blocked files omitted/);
+  assert.equal((digest.text.match(/dev T3 search failure-/g) ?? []).length, 10);
+  const history = JSON.parse(f.store.meta('dev-t3-searches')!);
+  assert.equal(history.length, 40);
+  assert.equal(history[0].files[0].reason, 'Error: ' + reason);
+  await search.close(f.clock);
+}));
+
+test('oversized legacy blocked projection reads one bounded page and reports unknown history', t => retainedRefusalCase(t, async (f, scope) => {
+  f.store.setMeta('dev-t3-blocked-searches', JSON.stringify(Array.from({ length: 2000 }, () => ({ reason: 'x'.repeat(1024) }))));
+  const read = f.store.metaPage.bind(f.store);
+  let pages = 0, bytes = 0;
+  scope.patch(f.store, 'metaPage', (...args: Parameters<Store['metaPage']>) => {
+    const rows = read(...args);
+    if (args[0] === 'dev-t3-blocked-searches') {
+      pages++; bytes += rows.reduce((sum, row) => sum + row.readBytes, 0);
+      assert.equal(rows.length, 1); assert.equal(rows[0]!.oversized, true);
+    }
+    return rows;
+  });
+  const digest = heartbeatDigest(f.store, [], 1000, Date.now(), 0, 1000);
+  assert.equal(pages, 1); assert.equal(bytes, 16384);
+  assert.match(digest.text, /older blocked files: unknown/);
+  assert.equal(digest.staleComplete, false);
+  assert.match(digest.text, /Stale \(at least 0; total unknown\)/);
+  assert.doesNotMatch(digest.text, /older blocked files omitted/);
+}));
+
+test('throwing tip probe is terminal across ticks and restart and stays visible in heartbeat', t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(fixtures => suiteUnit(fixtures));
+  let attempts = 0;
+  const reports: SearchReport[] = [];
+  const boundary = {
+    currentDev: async () => 'fresh-tip',
+    probe: async () => { attempts++; throw new Error('dirty worktree cannot be bundled for droplet'); },
+    report: async (report: SearchReport) => { reports.push(report); },
+  };
+  let search = new DevT3Search(f.store, boundary);
+  search.accept({ ...redResult(), failingFiles: ['hub/test/regression.test.ts'] });
+  await step('failed tip checkpoint', () => search.tick());
+  await search.close(f.clock);
+  search = new DevT3Search(f.store, boundary);
+  await step('bounded subsequent ticks', async () => { for (let i = 0; i < 20; i++) await search.tick(); });
+  assert.equal(attempts, 1);
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0]!.files[0]!.result, 'inconclusive');
+  const digest = heartbeatDigest(f.store, [], 1000, Date.now() + 5000, 0, 1000);
+  assert.match(digest.text, /dev T3 search red-run blocked.*attempts 1.*age \d+s.*dirty worktree/);
+  await search.close(f.clock);
+}));
+
+test('refused dirty droplet submission removes its unadmitted run directory', t => retainedRefusalCase(t, async (f, scope) => {
+  f.candidate.tree = null;
+  await scope.wait('refused admission', () => assert.rejects(f.launch({ executor: 'droplet' }), /dirty worktree cannot be bundled/));
+  assert.deepEqual(await readdir(join(f.root, '.cland/run/suites')), []);
+  assert.deepEqual(f.suites.status(), []);
+}));
+
+for (const reason of ['spend refusal', 'head changed', 'authorization revoked'] as const) {
+  test(`submission cleanup retains the original ${reason} after log creation`, t => retainedRefusalCase(t, async (f, scope) => {
+    let reached = false;
+    scope.patch(DropletExecutor.prototype, 'checkSpend', async () => {
+      const directories = await readdir(join(f.root, '.cland/run/suites'));
+      assert.equal(directories.length, 1, 'refusal occurs after run directory creation');
+      reached = true;
+      if (reason === 'spend refusal') throw new Error('spend refused');
+      if (reason === 'head changed') f.candidate.head = 'changed';
+    });
+    await scope.wait('refusal after preparation writes', () => assert.rejects(f.suites.start({
+      mode: 'auto', cwd: f.root, topic: 'agents', to: [], actor: null, executor: 'droplet',
+    }, () => { if (reached && reason === 'authorization revoked') throw new Error('authorization revoked'); }),
+    reason === 'spend refusal' ? /spend refused/ : reason === 'head changed' ? /head changed during submission/ : /authorization revoked/));
+    assert.equal(reached, true);
+    assert.deepEqual(await readdir(join(f.root, '.cland/run/suites')), []);
+    assert.deepEqual(f.suites.status(), []);
+  }));
+}
 
 test('search contains a throwing blocked notice and retries its report on the next timer tick', async t => {
   const f = await suiteUnit(t);

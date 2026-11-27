@@ -502,6 +502,26 @@ receipts supply no fixed or failing proof and file no Bug. Each filed Bug retain
 the current tip's red receipt alongside the historical boundary receipts. This
 adds one probe per distinct tip/file visited; the stable original red tip uses
 its existing rerun. No integrated/stage cache is reused for tip evidence.
+An exception from a tip probe checkpoints that file as inconclusive before
+notifying the Coordinator. Further ticks and restarts do not retry that file;
+the heartbeat retains its blocked reason, attempt count and age even after the
+diagnosis is reported. A refusal before suite admission removes the generated
+run directory after preparation writes settle; an admitted job keeps ownership
+of its directory. Cleanup errors retain the original refusal and log a separate
+`suite-unadmitted-directory-retained` diagnostic for retention to revisit.
+The heartbeat projection retains the latest ten blocked files and an omitted
+count. Encoded run/file/reason fields are limited to 128/256/512 bytes; its
+SQLite read is capped at 16 KiB before materialization. Older detail remains in
+the terminal search checkpoints. An oversized, legacy or invalid projection
+reports older history as unknown rather than scanning it on the heartbeat.
+Known omitted files contribute to the global stale count. The digest, notice
+detail and log share `stale` and `staleComplete`: when completeness is false,
+the numeric count is a lower bound and text says the total is unknown. Older
+heartbeat notices without `staleComplete` retain their previous complete-count
+meaning; existing numeric fields remain present.
+Run-directory ownership transfers at the admission transaction's commit;
+rollback removes the uncommitted in-memory job, while later observer failures
+retain the committed job and root.
 Historical probe checkouts are standalone detached repositories sharing Git
 objects, so candidate checks read allowance owners from the pinned tracker
 rather than the hosting hub's live tracker. Existing linked-worktree checkpoints

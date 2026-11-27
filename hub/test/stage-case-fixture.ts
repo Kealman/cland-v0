@@ -7,7 +7,7 @@ import { afterCleanup, beforeDirectories, guardDirectoryRemoval } from './proces
 import { fakeNativeGuard } from './fake-native-guard.ts';
 
 /** Item-local owner. A settled rejection never supplies a writer-close receipt. */
-export function stageCase(t: TestContext, options: { native?: boolean } = {}) {
+export function stageCase(t: TestContext, options: { native?: boolean; waitMs?: () => number } = {}) {
   const original = fixtureWork();
   const pending = new Set<Promise<unknown>>();
   const required: Array<{ close: () => Promise<void>; done: boolean }> = [];
@@ -19,8 +19,9 @@ export function stageCase(t: TestContext, options: { native?: boolean } = {}) {
   let guard: Awaited<ReturnType<typeof fakeNativeGuard>> | undefined;
   let restoreGuard: (() => void) | undefined;
   let attempt: Promise<void> | undefined;
-  const bound = <T>(name: string, work: Promise<T>, timeoutMs = 5000) => within(work, timeoutMs, undefined, () => new Error(`${t.name}: ${name} incomplete; fixture retained`));
-  const wait = <T>(name: string, start: () => Promise<T>, timeoutMs = 5000) => {
+  const defaultWaitMs = options.waitMs ?? (() => 5000);
+  const bound = <T>(name: string, work: Promise<T>, timeoutMs = defaultWaitMs()) => within(work, timeoutMs, undefined, () => new Error(`${t.name}: ${name} incomplete; fixture retained`));
+  const wait = <T>(name: string, start: () => Promise<T>, timeoutMs = defaultWaitMs()) => {
     const work = Promise.resolve().then(start);
     pending.add(work);
     void work.then(() => pending.delete(work), () => pending.delete(work));

@@ -2,12 +2,12 @@
 import { sessionClient, sessionUi as connectUi, sessionDispatcherUi as dispatcherUi } from './session-credential-fixture.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { frameClient, projectHub, tempProject, type FrameClient } from './harness.ts';
 import { createHubBase, type HubBase } from '../src/hub/server.ts';
 import { Store } from '../src/hub/store.ts';
-import { beforeDirectories, onCleanup } from './process-cleanup.ts';
+import { beforeDirectories, onCleanup, fenceFixtureCleanup, ownDirectory } from './process-cleanup.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { CrewFile } from '../src/crew.ts';
 import { fixedRoles } from '../src/roles/config.ts';
@@ -19,6 +19,8 @@ import type { Message } from '../src/protocol.ts';
 import { caseDeadlines } from './case-deadlines.ts';
 import type { CoreOptions } from '../src/hub/core.ts';
 import { readDurationAllowanceWarnings } from '../src/suite-durations.ts';
+import { stageCase } from './stage-case-fixture.ts';
+import { testSetupWaitMs, eventually } from './until.ts';
 
 const heartbeat = (frame: Record<string, unknown>) => frame.type === 'message' && (frame.message as Message).detail?.event === 'heartbeat';
 const notes = async (ui: FrameClient) => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<Message & { stage: string }> }).messages.filter(m => m.detail?.event === 'heartbeat');
@@ -85,15 +87,27 @@ async function protocolPeer(t: TestContext, dispatcher: Pick<Dispatcher, 'open'>
   return peer;
 }
 
-async function fixture(t: TestContext, heartbeatMs: number, options: { runTimeoutMs?: number; durationWarnings?: CoreOptions['durationWarnings']; sentinel?: boolean; clock?: FakeClock } = {}) {
+async function fixture(t: TestContext, heartbeatMs: number, options: { owner?: ReturnType<typeof stageCase>; log?: CoreOptions['log']; runTimeoutMs?: number; durationWarnings?: CoreOptions['durationWarnings']; sentinel?: boolean; clock?: FakeClock } = {}) {
   const root = await tempProject(t);
+  options.owner?.adoptRoot(root);
+  let ownedTracker: Tracker | undefined, ownedCrew: CrewFile | undefined, ownedHub: HubBase | undefined, ownedStore: Store | undefined;
+  let hubClosed = false, crewClosed = false, trackerClosed = false;
+  // Enroll before constructors/startup. Required writer receipts are separate
+  // from tempProject's directory hooks, so a failed close cannot free its root.
+  options.owner?.requireClose(async () => {
+    if (ownedHub && !hubClosed) { await ownedHub.close(); hubClosed = true; }
+    if (ownedCrew && !crewClosed) { await ownedCrew.stop(); crewClosed = true; }
+    if (ownedTracker && !trackerClosed) { await ownedTracker.stop(); trackerClosed = true; }
+    ownedStore?.close();
+  });
   const clock = options.clock ?? new FakeClock();
-  const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, 'tracker.db'), now: () => clock.now() });
-  tracker.start();
-  const crew = new CrewFile(join(root, '.cland/crew.toml'), () => {}, () => {}, tracker);
+  const tracker = ownedTracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, 'tracker.db'), now: () => clock.now() });
+  if (options.owner) await tracker.start(); else tracker.start();
+  const crew = ownedCrew = new CrewFile(join(root, '.cland/crew.toml'), () => {}, () => {}, tracker);
   await crew.start();
-  const hub = createHubBase({ hasTerritory: async () => false, secret: 'heartbeat', clock, store: new Store(), tracker, crew, roles: fixedRoles(), heartbeatMs, ...(options.durationWarnings ? { durationWarnings: options.durationWarnings } : {}), ...(options.runTimeoutMs !== undefined ? { heartbeatRunTimeoutMs: options.runTimeoutMs } : {}) });
-  beforeDirectories(t, async () => {
+  const store = ownedStore = new Store();
+  const hub = ownedHub = createHubBase({ hasTerritory: async () => false, secret: 'heartbeat', clock, store, tracker, crew, roles: fixedRoles(), heartbeatMs, ...(options.log ? { log: options.log } : {}), ...(options.durationWarnings ? { durationWarnings: options.durationWarnings } : {}), ...(options.runTimeoutMs !== undefined ? { heartbeatRunTimeoutMs: options.runTimeoutMs } : {}) });
+  if (!options.owner) beforeDirectories(t, async () => {
     try { await hub.close(); }
     finally { try { await crew.stop(); } finally { await tracker.stop(); } }
   });
@@ -109,6 +123,91 @@ async function fixture(t: TestContext, heartbeatMs: number, options: { runTimeou
   await clock.advance(heartbeatMs / 4);
   return { root, clock, tracker, crew, hub, ui, coord };
 }
+
+for (const complete of [true, false]) test(`blocked heartbeat aggregate reaches notices and logs as ${complete ? 'complete' : 'a lower bound'}`, async t => {
+  const owner = stageCase(t, { waitMs: testSetupWaitMs });
+  await owner.run(async step => {
+    const logs: Record<string, unknown>[] = [];
+    const f = await owner.wait('aggregate heartbeat setup', () => step(() => fixture(owner.fixtures, 200, { owner, log: row => { logs.push(row); } })));
+    const rows = Array.from({ length: 10 }, (_, i) => ({ run: `blocked-${i}`, file: 'hub/test/example.test.ts', attempts: 1, since: f.clock.now().toISOString(), reason: 'probe failed' }));
+    f.hub.core.store.setMeta('dev-t3-blocked-searches', complete ? JSON.stringify({ version: 1, rows, omitted: 30 }) : 'x'.repeat(20000));
+    const message = await owner.wait('aggregate heartbeat notice receipt', () => nextHeartbeat(f.clock, f.ui, 400));
+    assert.equal(message.detail?.stale, complete ? 40 : 0);
+    assert.equal(message.detail?.staleComplete, complete);
+    assert.match(message.text, complete ? /Stale \(40\)/ : /Stale \(at least 0; total unknown\)/);
+    const log = await owner.wait('aggregate heartbeat log receipt', () => eventually('heartbeat log with aggregate facts', () => logs.find(row => row.event === 'event-announced' && row.kind === 'heartbeat')));
+    assert.equal(log.stale, complete ? 40 : 0); assert.equal(log.staleComplete, complete);
+    assert.match(String(log.text), complete ? /stale 40/ : /stale at least 0; total unknown/);
+  });
+});
+
+for (const phase of ['tracker', 'crew', 'hub'] as const) test(`heartbeat ${phase} ownership retains guarded root and launch guard until close repair`, async t => {
+  const supervisor = stageCase(t, { waitMs: testSetupWaitMs });
+  await supervisor.run(async () => supervisor.wait('complete partial heartbeat ownership proof', async () => {
+    const hooks: Array<() => unknown> = [];
+    const context = { name: 'partial heartbeat owner', after: (hook: () => unknown) => { hooks.push(hook); } } as unknown as TestContext;
+    fenceFixtureCleanup(context);
+    const owner = stageCase(context, { waitMs: testSetupWaitMs });
+    const originalTrackerStart = Tracker.prototype.start, originalTrackerStop = Tracker.prototype.stop;
+    const originalCrewStart = CrewFile.prototype.start, originalCrewStop = CrewFile.prototype.stop;
+    let tracker: Tracker | undefined, crew: CrewFile | undefined, closeHub: (() => Promise<void>) | undefined;
+    let root = '', refuse = true, closed = false, hubClosed = false, removalEntered = 0;
+    const dispose = async () => { for (const hook of hooks) await hook(); };
+    supervisor.requireClose(async () => {
+      refuse = false;
+      if (closeHub && !hubClosed) { await closeHub(); hubClosed = true; }
+      if (crew) await originalCrewStop.call(crew);
+      if (tracker) await originalTrackerStop.call(tracker);
+      await owner.close(); await dispose();
+    });
+    owner.patch(Tracker.prototype, 'start', async function (this: Tracker, ...args: Parameters<Tracker['start']>) {
+      tracker = this; root = this.root; await originalTrackerStart.apply(this, args);
+      if (phase === 'tracker') throw new Error('partial tracker startup');
+    });
+    owner.patch(Tracker.prototype, 'stop', async function (this: Tracker) {
+      if (phase === 'tracker' && refuse) throw new Error('tracker close refused');
+      await originalTrackerStop.call(this); if (phase === 'tracker') closed = true;
+    });
+    owner.patch(CrewFile.prototype, 'start', async function (this: CrewFile) {
+      crew = this; await originalCrewStart.call(this);
+      if (phase === 'crew') throw new Error('partial crew startup');
+    });
+    owner.patch(CrewFile.prototype, 'stop', async function (this: CrewFile) {
+      if (phase === 'crew' && refuse) throw new Error('crew close refused');
+      await originalCrewStop.call(this); if (phase === 'crew') closed = true;
+    });
+    const outerGuard = supervisor.nativeBoundary();
+    const setup = owner.wait('partial heartbeat setup', () => owner.run(async step => {
+      const f = await step(() => fixture(owner.fixtures, 200, { owner }));
+      closeHub = f.hub.close.bind(f.hub);
+      owner.patch(f.hub, 'close', async () => {
+        if (refuse) throw new Error('hub close refused');
+        await closeHub!(); hubClosed = true; closed = true;
+      });
+    }));
+    if (phase === 'hub') await setup;
+    else await assert.rejects(setup, new RegExp(`partial ${phase} startup`));
+    const heldGuard = owner.nativeBoundary();
+    await assert.rejects(owner.close(), new RegExp(`${phase} close refused`));
+    const remove = ownDirectory(undefined, root, { beforeRemove: () => {
+      removalEntered++;
+      if (refuse) throw new Error('unguarded removal attempted');
+    } });
+    await assert.rejects(remove(), /stage resource close unconfirmed/);
+    assert.equal(removalEntered, 0);
+    assert.equal((await stat(root)).isDirectory(), true);
+    await assert.rejects(owner.restore(), /resource close unconfirmed/);
+    assert.equal(owner.nativeBoundary(), heldGuard);
+    assert.equal(closed, false);
+    refuse = false;
+    await supervisor.wait('repaired heartbeat resource and directory receipts', async () => {
+      await owner.close(); await dispose();
+      assert.equal(closed, true);
+      await assert.rejects(stat(root), { code: 'ENOENT' });
+      assert.equal(owner.nativeBoundary(), outerGuard);
+    });
+  }));
+});
 
 test('a held manifest read uses the heartbeat firing clock at the 5-day boundary', async t => {
   const run = caseDeadlines(t);

@@ -1,5 +1,32 @@
 # hub/test/dev-t3-search.test.ts
 
+The terminal tip regression owns the whole case, replaces the search owner after
+the first exception and drives twenty more ticks. Assert one probe call, one
+inconclusive report and heartbeat reason/age/attempts. Populated failure-history
+coverage checks ten retained projection rows, the omitted count and encoded
+byte bound independently of the full checkpoint reason. An oversized legacy
+projection uses one 16 KiB SQLite page and renders unknown history.
+The populated and oversized controls also assert complete totals versus an
+explicit lower bound. `heartbeat.test.ts` observes the consuming notice and log
+receipts with the same aggregate/completeness facts.
+
+Refusal controls use `stageCase.patch`, including every `suiteUnit` seam, so
+restoration follows original continuation and resource closure. The controlled
+abort in `case-deadlines.test.ts` holds inspection, dispatches cancellation and starts real guarded cleanup
+before releasing the continuation into the retained spend fake. Assert the fake
+remains installed through resource cleanup and is restored afterwards. The
+native launch guard remains active throughout.
+These cases opt into `stageCase`'s `waitMs` callback with `testSetupWaitMs`,
+sampling shared load headroom separately for each setup/receipt/cleanup
+observation. Existing callers retain their previous defaults and explicit
+bounds stay exact. Named complete-case and post-release observations include
+the final positive assertions; original work remains owned beyond observation.
+
+Persistence controls inject failure after the active metadata write inside its
+transaction, and separately during the first post-commit observer. Assert the
+original error, durable job, in-memory job, directory and acquisition facts:
+rollback retains none; committed observer failure retains the admitted job/root.
+
 T-1232 injects a failing search report followed by a throwing blocked notice at
 the T1 durable controller seam. Assert the tick resolves, the original error
 remains in the store and the secondary failure is logged. Release the report

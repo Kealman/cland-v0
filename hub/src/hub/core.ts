@@ -411,10 +411,10 @@ export class HubCore {
         const digest = heartbeatDigest(this.#store, [...this.#itemSnapshots.values()], interval, firing, this.#idleNotifyMs, this.#heartbeatRunTimeoutMs, this.#verificationQueue);
         this.#store.replaceHeartbeat(session.name);
         const text = `${digest.text}${warnings.length ? `\n\nDuration allowances (${warnings.length})\n${warnings.map(row => `- ${row}`).join('\n')}` : ''}`;
-        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to: [session.name], text: `heartbeat · ${session.name} · ${text}`, detail: { event: 'heartbeat', subject: { session: session.name }, digest: this.sessionState(id) === 'idle' ? 'now' : 'turn', inFlight: digest.inFlight, stale: digest.stale } }, new Set([session.name]));
+        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to: [session.name], text: `heartbeat · ${session.name} · ${text}`, detail: { event: 'heartbeat', subject: { session: session.name }, digest: this.sessionState(id) === 'idle' ? 'now' : 'turn', ...digest.counts } }, new Set([session.name]));
         this.#store.firedHeartbeat(schedule, firing);
         if (message) this.#afterCommit(() => this.#publishNotice(message));
-        this.#afterCommit(() => this.#log({ event: 'event-announced', kind: 'heartbeat', subject: { session: session.name }, session: session.name, text: `${session.name} · in flight ${digest.inFlight} · stale ${digest.stale}`, firing }));
+        this.#afterCommit(() => this.#log({ event: 'event-announced', kind: 'heartbeat', subject: { session: session.name }, session: session.name, text: `${session.name} · in flight ${digest.inFlight} · stale ${digest.staleLabel}`, ...digest.counts, firing }));
       });
     }
   }

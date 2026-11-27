@@ -12,6 +12,7 @@ export type ProbeReceipt = { head: string; file: string; reason?: string } & (
   (ProbeVerdict & { run: string; artifact: string; path: string })
   | { result: 'absent'; run: null; artifact: null; path: null; tree: string });
 type FileSearch = { file: string; low: number; high: number; phase: 'repeat' | 'baseline' | 'bisect' | 'confirm-green' | 'confirm-red'; receipts: ProbeReceipt[];
+  attempts?: number; blocked?: { since: string; reason: string };
   tip?: ProbeReceipt; result?: 'already-fixed' | 'culprit' | 'pre-existing' | 'flake' | 'inconclusive'; culprit?: { head: string; subject: string }; reason?: string };
 export type SearchReport = { input: DevT3Result; files: FileSearch[] };
 type Search = SearchReport & { reported?: boolean };
@@ -27,11 +28,48 @@ const executedResult = (receipt: ProbeReceipt) => receipt.result === 'partial' ?
 const exclusions = (receipt: ProbeReceipt) => receipt.result === 'partial'
   ? JSON.stringify([receipt.platform.os, receipt.platform.arch, receipt.platformSkips.map(skip => [skip.name, skip.reason]).sort()]) : '';
 const KEY = 'dev-t3-searches';
+const BLOCKED_KEY = 'dev-t3-blocked-searches';
+type BlockedSearch = { run: string; file: string; attempts: number; since: string; reason: string };
+type BlockedSummary = { version: 1; rows: BlockedSearch[]; omitted: number | null };
+export const BLOCKED_SEARCH_BYTES = 16384;
+const BLOCKED_ROWS = 10;
+// Bound encoded fields before collection, including escaping of control bytes.
+function clippedField(value: string, bytes: number): string {
+  let kept = '';
+  for (const char of value) {
+    if (Buffer.byteLength(JSON.stringify(kept + char + '…')) > bytes) return kept + '…';
+    kept += char;
+  }
+  return kept;
+}
+export function blockedDevT3Searches(store: Store) {
+  // SQLite clips before materialization. Legacy/invalid summaries remain unknown;
+  // neither heartbeat nor admission reconstructs them by scanning search history.
+  const page = store.metaPage(BLOCKED_KEY, '', 1, BLOCKED_SEARCH_BYTES)[0];
+  if (!page || page.key !== BLOCKED_KEY) return { version: 1, rows: [], omitted: 0 } as BlockedSummary;
+  const unknown: BlockedSummary = { version: 1, rows: [], omitted: null };
+  if (page.oversized) return unknown;
+  try {
+    const value = JSON.parse(page.value) as BlockedSummary;
+    if (value.version !== 1 || !Array.isArray(value.rows) || value.rows.length > BLOCKED_ROWS
+      || value.omitted !== null && (!Number.isSafeInteger(value.omitted) || value.omitted < 0)) return unknown;
+    for (const row of value.rows) {
+      if (!row || !Number.isSafeInteger(row.attempts) || row.attempts < 0) return unknown;
+      for (const [field, cap] of [['run', 128], ['file', 256], ['since', 32], ['reason', 512]] as const) {
+        if (typeof row[field] !== 'string' || Buffer.byteLength(JSON.stringify(row[field])) > cap) return unknown;
+      }
+      if (!Number.isFinite(Date.parse(row.since))) return unknown;
+    }
+    return { version: 1, omitted: value.omitted, rows: value.rows.map(({ run, file, attempts, since, reason }) =>
+      ({ run, file, attempts, since, reason })) } as BlockedSummary;
+  } catch { return unknown; }
+}
 export class DevT3Search {
   readonly store: Store;
   readonly boundary: SearchBoundary;
   #work: Promise<void> | null = null;
   #timer: ClockTimer | null = null;
+  #clock?: Clock;
   #closed = false;
   constructor(store: Store, boundary: SearchBoundary) { this.store = store; this.boundary = boundary; }
   #read(): Search[] { return JSON.parse(this.store.meta(KEY) ?? '[]') as Search[]; }
@@ -43,6 +81,7 @@ export class DevT3Search {
     this.store.setMeta(KEY, JSON.stringify(searches));
   }
   start(clock: Clock): void {
+    this.#clock = clock;
     this.#timer = clock.setInterval(() => { void this.tick(); }, 1000); this.#timer.unref();
   }
   tick(): Promise<void> {
@@ -78,7 +117,26 @@ export class DevT3Search {
     if (file) {
       const { input } = search;
       if (stale) {
-        const receipt = await this.boundary.probe(input, tip!, file.file);
+        file.attempts = (file.attempts ?? 0) + 1; save();
+        let receipt: ProbeReceipt | null;
+        try { receipt = await this.boundary.probe(input, tip!, file.file); }
+        catch (error) {
+          file.result = 'inconclusive'; file.reason = String(error); delete file.culprit;
+          file.blocked = { since: (this.#clock?.now() ?? new Date()).toISOString(), reason: file.reason };
+          this.store.transaction(() => {
+            save();
+            const blocked = blockedDevT3Searches(this.store);
+            blocked.rows.push({ run: clippedField(input.run, 128), file: clippedField(file.file, 256),
+              attempts: file.attempts!, since: file.blocked!.since, reason: clippedField(file.reason!, 512) });
+            if (blocked.rows.length > BLOCKED_ROWS) {
+              blocked.rows.shift();
+              if (blocked.omitted !== null) blocked.omitted = blocked.omitted < Number.MAX_SAFE_INTEGER ? blocked.omitted + 1 : null;
+            }
+            this.store.setMeta(BLOCKED_KEY, JSON.stringify(blocked));
+          });
+          this.boundary.blocked?.(input, file.reason);
+          return;
+        }
         if (!receipt || this.#closed) return;
         file.receipts.push(receipt);
         if (receipt.head !== tip || receipt.file !== file.file || receipt.result === 'inconclusive' || receipt.result === 'absent') {
