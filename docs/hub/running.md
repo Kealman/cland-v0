@@ -1628,15 +1628,17 @@ commands and tier/occasion coverage on the effective executor and OS: Linux on a
 droplet, or the current host OS locally. This applies to configured defaults too;
 a macOS stage or release receipt cannot satisfy a droplet release request. Missing
 platform evidence is a cache miss. A compatible full stage receipt on Linux
-droplets can satisfy a droplet release request. An explicit `--executor droplet` reuses only a green that
-ran on a droplet. If only a local green qualifies, it starts a fresh remote run
-and names that cache bypass in the result header and log. With no executor flag,
-ordinary reuse stays cross-executor, including when the configured default is droplet;
-`--executor local` also keeps cross-executor reuse. Hits retain the original
+droplets can satisfy a droplet release request. Explicit `--executor local|droplet`
+requests and stage, epic and release occasions require the effective executor and
+OS (current host OS for local, Linux for droplet), including configured occasion defaults.
+Unknown platform evidence cannot satisfy these requests. Incompatible cached greens
+produce a fresh run and a cache-bypass explanation in the result header and log.
+With no executor flag, ordinary reuse stays cross-executor, including when the
+configured default is droplet. Hits retain the original
 executor and platform. Only successful completed, reported runs with an available
 log artifact qualify; old pre-cache jobs, failures and cancelled runs do not. A
 new failed or pending fresh attempt supersedes older green evidence for its key
-(restricted to droplet attempts for an explicit droplet request).
+(restricted to the requested executor for a constrained request).
 Cancelled attempts (by the requester, requester death, or a head change before
 admission) do not supersede older green evidence. Test failures, worker crashes
 and timeouts still do.
@@ -1645,7 +1647,7 @@ project. Requests from a repository subdirectory bypass caching, since their npm
 scripts can differ from those at the worktree root. A hit creates its own durable request and posts once to the usual topic
 and recipients, with the requested head, `cached`, original run/head and identical
 canonical tree hash. Its log artifact carries the original log and provenance.
-Cache notices and logs name the original occasion and executor separately from
+Cache notices and logs name the original occasion, executor and platform separately from
 the requested occasion; older cached records without an occasion say `unknown`.
 
 The merge gate and T-209 criterion freshness remain exact-head: a cache hit alone

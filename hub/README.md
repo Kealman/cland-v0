@@ -1,5 +1,11 @@
 # Hub documentation
 
+Verification cache reuse for explicit executor requests and stage, epic or release
+occasions requires the effective executor and OS, including configured occasion
+defaults. Cache reports identify the original executor and platform; incompatible
+greens trigger fresh execution with a bypass reason. See
+[cache policy](../docs/hub/running.md).
+
 Batch landing reuses release-log changes only with a recorded built-in T3-only
 plan; other tiers and unknown plans keep rebuilding. See
 [verification commands](../docs/hub/running.md#verification-commands) for the

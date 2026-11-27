@@ -540,7 +540,7 @@ for (const executor of ['local', 'droplet'] as const) test(`${executor} suite lo
   const run = caseDeadlines(t);
   const f = await run.wait('isolated suite setup', async () => {
     const { suiteUnit } = await import('./suite-unit-fixture.ts');
-    return suiteUnit(run.fixtures, { executor });
+    return suiteUnit(run.fixtures, { executor, localPlatform: process.platform });
   });
   const job = await run.wait('admitted suite', () => f.launch({ executor }));
   const finished = await run.wait('completed reported suite', () => f.finish(job.id, 0, 'suite browser {"binary":"/fixture/chrome-headless-shell","version":"Chromium 150.0"}\nsuite skip {"file":"platform.test.ts","name":"platform case","reason":"requires Linux"}\nsuite skip {"file":"missing.test.ts","name":"missing reason","reason":"test marked skip without a reason"}\n# tests 2\n# pass 2\n'));
@@ -552,7 +552,7 @@ for (const executor of ['local', 'droplet'] as const) test(`${executor} suite lo
   assert.equal(footer.head, 'a'.repeat(40));
   assert.equal(footer.tree, 'd'.repeat(40));
   assert.equal(footer.executor, executor);
-  assert.equal(footer.platform.os, executor === 'local' ? 'darwin' : 'linux');
+  assert.equal(footer.platform.os, executor === 'local' ? process.platform : 'linux');
   assert.equal(footer.occasion, null);
   assert.deepEqual(footer.browser, { binary: '/fixture/chrome-headless-shell', version: 'Chromium 150.0' });
   assert.equal(footer.skips[0].reason, 'requires Linux');

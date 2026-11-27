@@ -1781,11 +1781,14 @@ on the effective executor and OS (Linux droplets or the local host OS), even
 when configured rather than explicit. Compatible Linux droplet stage/release
 receipts qualify; macOS stage receipts cannot satisfy a droplet release request,
 and missing platform evidence cannot supply a release cache hit.
-An explicit `--executor droplet` reuses only a green that ran on a droplet. A
-local-only green triggers a fresh remote run, with the reason in the result
-header and log. Outside stage and release occasions, omitting the executor flag preserves cross-executor reuse even
-with a droplet default; `--executor local` also keeps cross-executor reuse.
-Cache hits retain their original executor and platform.
+An explicit executor request reuses only a green from that executor and OS.
+An incompatible green triggers a fresh run, with the reason in the result
+header and log. Outside stage, epic and release occasions, omitting the executor
+flag preserves cross-executor reuse even with a droplet default.
+Cache hits retain their original executor and platform. Explicit executor requests
+and stage, epic and release occasions reuse only receipts matching the effective
+executor and OS, including configured occasion defaults. Missing OS evidence is
+a miss; ordinary requests without an executor flag retain cross-executor reuse.
 The Reviewer still verifies criteria at the requested exact head using that
 result; a cached result never revives an old criterion mark automatically.
 

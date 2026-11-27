@@ -66,6 +66,7 @@ import { machineHealthFromLog, type MachineHealth, type ShardMachineHealth } fro
 import { occasionSelection } from '../verification-occasion.ts';
 import { unavailableWebPhase, webUnavailableLine, type WebPhaseUnavailable } from '../web-phase.ts';
 import { receiptExecutionMatches } from '../verification-tree.ts';
+import { VERIFY_OCCASIONS } from '../verification-policy.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteAdmission = { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] };
@@ -864,10 +865,11 @@ export class Suites {
     const existing = this.#existingSubmission(input, head, authorize);
     if (existing) return existing;
     await mkdir(dir, { recursive: true, mode: 0o700 });
-    const cacheExecutor = input.occasion === 'stage' || input.occasion === 'release' ? executor : input.executor === 'droplet' ? 'droplet' : undefined;
+    const cacheExecutor = input.occasion === 'stage' || input.occasion === VERIFY_OCCASIONS.epic || input.occasion === 'release' ? executor : input.executor;
     const cached = !input.fresh && tree && !(input.occasion === 'soak' && selection.shard) ? this.#cached(tree, selection, workers, commands, input.size, cacheExecutor, input.occasion) : undefined;
-    const cacheBypass = !input.fresh && tree && input.executor === 'droplet' && !cached && this.#cached(tree, selection, workers, commands, input.size)?.executor === 'local'
-      ? 'explicit --executor droplet requires a droplet green; cached green ran locally' : undefined;
+    const incompatible = !input.fresh && tree && cacheExecutor && !cached ? this.#cached(tree, selection, workers, commands, input.size) : undefined;
+    const cacheBypass = incompatible && !receiptExecutionMatches(incompatible, { executor: cacheExecutor })
+      ? `requested executor ${cacheExecutor} · platform ${cacheExecutor === 'droplet' ? 'linux' : process.platform}; cached green executor ${incompatible.executor} · platform ${incompatible.platform?.os ?? 'unknown'}` : undefined;
 
     // Older candidate runners and fixture packages remain usable. Coverage is
     // recorded only by a capable runner on a clean integrated full dev run.
@@ -903,7 +905,7 @@ export class Suites {
         job.cached = { run: cached.id, head: cached.head, tree: tree!, occasion: cached.occasion ?? null, executor: cached.executor };
         job.finished = cached.finished!;
         job.outcome = { code: 0, cause: 'cached' }; job.state = 'finished';
-        await appendFile(job.log + '.cache.tmp', `\nCached candidate ${tree}\nOriginal run ${cached.id} · head ${cached.head}\nOriginal occasion ${cached.occasion ?? 'none'} · executor ${cached.executor}\nRequested head ${head}\n`);
+        await appendFile(job.log + '.cache.tmp', `\nCached candidate ${tree}\nOriginal run ${cached.id} · head ${cached.head}\nOriginal occasion ${cached.occasion ?? 'none'} · executor ${cached.executor} · platform ${cached.platform?.os ?? 'unknown'}\nRequested head ${head}\n`);
         await rename(job.log + '.cache.tmp', job.log);
       } else await rm(job.log + '.cache.tmp', { force: true });
     }

@@ -8,12 +8,12 @@ import { promisify } from 'node:util';
 import type { ExecutorKind } from './executor/executor.ts';
 import type { VerifyOccasion } from './protocol.ts';
 
-/** Release reuse preserves the admitted machine boundary, including configured defaults.
+/** Constrained reuse preserves the admitted machine boundary, including occasion defaults.
  * Commands and selection still prove full tier/occasion coverage at admission.
  */
 export function receiptExecutionMatches(receipt: { executor: ExecutorKind; platform?: { os: string } }, request: { occasion?: VerifyOccasion | undefined; executor?: ExecutorKind | undefined }): boolean {
   if (request.executor && receipt.executor !== request.executor) return false;
-  return request.occasion !== 'release' || receipt.platform?.os === (request.executor === 'droplet' ? 'linux' : process.platform);
+  return !request.executor || receipt.platform?.os === (request.executor === 'droplet' ? 'linux' : process.platform);
 }
 
 const exec = promisify(execFile);

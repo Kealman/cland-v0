@@ -272,7 +272,7 @@ test('explicit droplet reuses only droplet greens while omitted executor keeps c
   const remote = await f.launch({ executor: 'droplet' }); assert.equal(remote.cached, undefined);
   await remoteReady(f, remote.id); await f.finish(remote.id);
   assert.equal(f.status(remote.id).executor, 'droplet');
-  assert.match(await f.log(remote.id), /Cache bypassed: explicit --executor droplet requires a droplet green; cached green ran locally/);
+  assert.match(await f.log(remote.id), /Cache bypassed: requested executor droplet · platform linux; cached green executor local/);
   const remoteHit = await f.launch({ executor: 'droplet' }); assert.equal(remoteHit.cached?.run, remote.id); await f.result(remoteHit.id);
   assert.equal(f.status(remoteHit.id).executor, 'droplet');
   const newerLocal = await f.launch({ executor: 'local', fresh: true }); await f.finish(newerLocal.id);

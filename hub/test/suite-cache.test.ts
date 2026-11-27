@@ -4,6 +4,58 @@ import assert from 'node:assert/strict';
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { webPhaseAvailable } from '../src/web-phase.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
+import { suiteCase } from './suite-case-fixture.ts';
+
+for (const request of ['explicit local', 'epic default'] as const) test(`${request} cache requires the requested executor and platform`, t => suiteCase(t, async ({ setup, step, guardControl }) => {
+  const f = await setup(fixtures => suiteUnit(fixtures, { machineReceiptsOnly: true, localPlatform: process.platform }));
+  guardControl();
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated full', fetchedDev: f.candidate.head, soak: true, loadGate: true };
+  const input = request === 'explicit local' ? { executor: 'local' as const, mode: 'all' as const, integrated: true } : { occasion: 'epic' as const, mode: 'all' as const, integrated: true };
+  for (const incompatible of ['droplet', 'wrong OS', 'unknown OS'] as const) {
+    const original = await step('seed admission', () => f.launch({ ...input, fresh: true }));
+    await step('seed completion', () => f.finish(original.id));
+    const source = (await step('read source receipt', () => f.jobs())).find(job => job.id === original.id)!;
+    source.occasion = 'stage';
+    if (incompatible === 'droplet') source.executor = 'droplet';
+    if (incompatible === 'unknown OS') delete source.platform;
+    else source.platform!.os = incompatible === 'droplet' ? 'linux' : process.platform === 'linux' ? 'darwin' : 'linux';
+    await step('restore incompatible receipt', () => f.reopen([source]));
+    const run = await step('requested admission', () => f.launch(input));
+    assert.equal(run.cached, undefined, incompatible);
+    assert.equal(f.status(run.id).executor, 'local');
+    assert.match((await step('read bypass receipt', () => f.jobs())).find(job => job.id === run.id)!.cacheBypass!, /executor.*platform/);
+    await step('requested completion', () => f.finish(run.id));
+  }
+  const executions = f.delivered.size;
+  const source = (await step('read compatible receipt', () => f.jobs())).find(job => job.id === f.reports.at(-1)!.id)!;
+  await step('restore host platform receipt', () => f.reopen([source]));
+  const hit = await step('compatible admission', () => f.launch(input));
+  assert.equal(hit.cached?.run, source.id);
+  const result = await step('compatible durable result', () => f.result(hit.id));
+  assert.equal(result.executor, 'local');
+  assert.equal(result.platform?.os, process.platform);
+  assert.ok((await step('cache log', () => f.log(hit.id))).includes(`executor local · platform ${process.platform}`));
+  assert.equal(f.delivered.size, executions, 'compatible cache starts no worker');
+}));
+
+test('ordinary unconstrained reuse accepts a legacy receipt without platform evidence', t => suiteCase(t, async ({ setup, step, guardControl }) => {
+  const f = await setup(fixtures => suiteUnit(fixtures, { machineReceiptsOnly: true }));
+  guardControl();
+  const original = await step('original admission', () => f.launch());
+  await step('original completion', () => f.finish(original.id));
+  const source = (await step('read original receipt', () => f.jobs())).find(job => job.id === original.id)!;
+  source.executor = 'droplet';
+  delete source.platform;
+  await step('restore legacy receipt', () => f.reopen([source]));
+  const executions = f.delivered.size;
+  const hit = await step('unconstrained admission', () => f.launch());
+  assert.equal(hit.cached?.run, original.id);
+  const result = await step('cached durable result', () => f.result(hit.id));
+  assert.equal(result.executor, 'droplet');
+  assert.equal(result.platform, undefined);
+  assert.equal(f.delivered.size, executions);
+}));
 
 test('droplet cache reuse has no new native result receipt and retains its original green outcome', async t => {
   const f = await suiteUnit(t, { executor: 'droplet', machineReceiptsOnly: true });

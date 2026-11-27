@@ -341,7 +341,7 @@ test('occasion load gate repeats only identities absent from the last green stag
 });
 
 test('a T1 to T3 batch green cannot supply an occasion cache or stage cover', async t => {
-  const f = await suiteUnit(t, { machineReceiptsOnly: true });
+  const f = await suiteUnit(t, { machineReceiptsOnly: true, localPlatform: process.platform });
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   const actor = { name: 'coordinator', sessionId: 'coordinator', shell: true as const };

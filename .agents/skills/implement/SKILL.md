@@ -117,8 +117,9 @@ The Coordinator or human can switch the default and merge-batch executor live
 with `cland verify executor local|droplet [--workers N]`. Implementers retain
 their per-run override procedure; running runs keep their admitted policy.
 
-Cache evidence names the original occasion and executor. Release reuse requires
-full matching coverage on the effective executor/OS, including configured defaults;
+Cache evidence names the original occasion, executor and platform. Explicit executor
+requests and stage, epic and release reuse require matching coverage on the effective
+executor/OS, including configured occasion defaults;
 a local macOS stage receipt cannot satisfy a droplet release request. See
 `docs/agents/tests.md` for receipt identity and provenance.
 

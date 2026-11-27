@@ -12,6 +12,10 @@ large log files and scripted executor receipts. It launches no worker or browser
 The retained-proof case checks one sequential stream per source and zero whole
 reads. The stage/cache case uses three 20 MB logs and six concurrent admissions,
 retaining the two-source-scan, persisted-identity and 96 MiB heap-growth limits.
+Its semantic droplet executor supplies Linux stage receipts on every host; the
+single-slot fixture records the whole-stage fallback and never creates a native
+worker or real provider resource. This preserves both eligible stage evidence
+and executor/OS matching for subsequent epic cache lookups on Linux and macOS.
 Setup is separately bounded by `caseDeadlines`; the full stage/cache operation
 remains registered through fixture drainage. After concurrent cache admission,
 advance the fake scheduler once before awaiting the exact reported receipts;

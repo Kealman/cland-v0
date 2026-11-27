@@ -75,8 +75,14 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
   assert.match(calls, /runner@203\.0\.113/); assert.match(calls, /tree\.bundle/);
   const view = JSON.parse((await cland(f.root, 'task', 'view', f.item, '--json')).stdout);
   assert.equal(view.item.verify.executor, 'droplet');
+  const unconstrained = await f.launch();
+  assert.equal(unconstrained.cached?.run, job.id);
+  assert.match((await f.result(unconstrained.id)).text, /Executor droplet/);
   const local = await f.launch('--executor', 'local');
-  assert.equal(local.cached!.run, job.id); assert.match((await f.result(local.id)).text, /Executor droplet/);
+  assert.equal(local.cached, undefined, 'explicit local executes instead of borrowing droplet evidence');
+  const localResult = await f.result(local.id);
+  assert.match(localResult.text, /auto exit 0/);
+  assert.match(localResult.text, /Executor local/);
   const invalid = await clandWithEnv(f.root, f.actor, 'verify', '--executor', 'other', '--report', f.topic);
   assert.equal(invalid.code, 1); assert.match(invalid.stderr, /executor must be local or droplet/);
   const refused = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, executor: 'other' });

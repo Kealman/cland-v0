@@ -125,11 +125,12 @@ test('concurrent admissions stream each retained log once and reuse durable proo
 
 test('cached and stage admissions share derived evidence from several 20 MB logs', async t => {
   const run = caseDeadlines(t);
-  const f = await run.wait('isolated stage setup', () => suiteUnit(run.fixtures, { machineReceiptsOnly: true }));
+  const f = await run.wait('isolated stage setup', () => suiteUnit(run.fixtures, { executor: 'droplet', remoteBudget: 1, machineReceiptsOnly: true }));
   await run.wait('cached and stage proof receipts', async () => {
     f.candidate.branch = 'dev';
     f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
     const first = await f.launch({ mode: 'all', integrated: true, occasion: 'stage', fresh: true });
+    await f.machine.started(first.id);
     await f.finish(first.id);
     const original = (await f.suites.receipt(first.id)).job;
     const jobs = [];

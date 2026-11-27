@@ -71,8 +71,10 @@ for (const receipt of [
     const report = (history.value as { messages: TopicMessage[] }).messages.find(m => m.id === `suite:${result.id}`);
     assert.ok(report, 'cache result has a durable topic receipt');
     assert.match(report.text, new RegExp(`Original occasion ${receipt.occasion} · executor droplet`));
+    assert.match(report.text, /executor droplet · platform linux/);
     const cachedLog = await readFile(join(root, '.cland/run/suites', result.id, 'suite.log'), 'utf8');
     assert.match(cachedLog, new RegExp(`Original occasion ${receipt.occasion} · executor droplet`));
+    assert.match(cachedLog, /executor droplet · platform linux/);
     if (receipt.occasion === 'stage') {
       const cli = await clandWithEnv(root, { CLAND_SESSION_NAME: 'coord', CLAND_SESSION_ID: 'coord', CLAND_ROLE: 'coordinator' }, 'verify', 'all', '--occasion', 'release', '--report', 'general');
       assert.equal(cli.code, 0, cli.stderr);

@@ -23,7 +23,7 @@ import { fixtureEnvironment } from './fixture-environment.ts';
 import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 import { ownedDatabases } from './owned-tracker.ts';
 
-export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions & { machineReceiptsOnly?: boolean; onRoot?: (root: string) => void; deferRootRemoval?: boolean; openDatabase?: ConstructorParameters<typeof Store>[1]; patch?: (target: object, key: PropertyKey, value: unknown) => void } = {}, source = '', accounting = false) {
+export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions & { localPlatform?: string; machineReceiptsOnly?: boolean; onRoot?: (root: string) => void; deferRootRemoval?: boolean; openDatabase?: ConstructorParameters<typeof Store>[1]; patch?: (target: object, key: PropertyKey, value: unknown) => void } = {}, source = '', accounting = false) {
   const mock = (target: object, key: string, value: unknown) => options.patch ? options.patch(target, key, value) : t.mock.method(target, key as never, value as never);
   // Register partial acquisition cleanup before the first await; whole-case callers
   // collect this hook and join setup/body continuations before invoking it.
@@ -187,7 +187,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     else {
       const run = delivered.get(id); assert.ok(run, 'observe worker admission before completion');
       await writeFile(run.log, log);
-      receipts.set(id, { ...(timingReceipts ? { timingReceipts } : {}), state: 'done', code, ...(tierReceipts ? { tierReceipts } : {}), finished: clock.now().toISOString(), platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'v0.12.5' } });
+      receipts.set(id, { ...(timingReceipts ? { timingReceipts } : {}), state: 'done', code, ...(tierReceipts ? { tierReceipts } : {}), finished: clock.now().toISOString(), platform: { os: options.localPlatform ?? 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'v0.12.5' } });
     }
     await tick();
     if (report) return machine.waits.run(result(id));
