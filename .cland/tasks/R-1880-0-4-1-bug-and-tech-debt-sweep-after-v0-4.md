@@ -11,7 +11,7 @@ blocked_by: []
 topic: topic-1530
 branch: null
 created: 2026-11-16T07:08:51.029Z
-updated: 2026-11-24T06:43:35.433Z
+updated: 2026-11-27T19:42:46.268Z
 ---
 
 ## Goal
@@ -20,7 +20,7 @@ updated: 2026-11-24T06:43:35.433Z
 
 ## Notes
 
-0.4.1 is a patch release. It fixes bugs and pays down tech debt after v0.4.0, and adds the verification and flow improvements from the v0.4.0 retrospective. It holds 173 tasks across eight epics.
+0.4.1 is a patch release. It fixes bugs and pays down tech debt after v0.4.0, and adds the verification and flow improvements from the v0.4.0 retrospective. It holds 263 tasks across fourteen epics: eight from the first triage and six from the re-triage on 2026-11-24.
 
 - **Steadier covers and batches.** Test setup waits and per-test timeouts now scale with machine load. More than thirty timing-sensitive tests no longer redden suites on slow or loaded machines (E-1881, E-1888).
 - **Faster, lighter verification.** The periodic dev T3 runs in two shards, and a timeout counts as inconclusive rather than failed. A failed merge batch no longer makes the next batch repeat every slow identity. Merge batches run T1 and the full T3 once, on the integrated tree (E-1888, E-1883).
@@ -29,6 +29,7 @@ updated: 2026-11-24T06:43:35.433Z
 - **Sessions, the hub and recovery.** Fixes to launch, stop, handover and restart recovery (E-1885).
 - **Remotes, workbenches and CLI.** Fixes across the remote control, the web and Neovim workbenches, and the CLI (E-1886).
 - **Test fixtures and QA kit.** Fixture ownership, T2 hygiene, TMPDIR residue, QA kit checks and docs (E-1882, E-1887).
+- **Second sweep (re-triage).** Load and timing flakes and fenced fixture cleanup (E-2072); fixture ownership and tier hygiene (E-2073); a quicker merge queue and suite reporting, including executor-aware cache reuse, bounded merge Git reads, scheduled run retention, pinned item-verify bundles, and a full run that waits for two shards for up to 20 minutes before falling back to one c-16 machine (E-2074); host, executor and droplet fixes (E-2075); session, hub and recovery fixes (E-2076); and workbench, CLI, QA kit and docs fixes (E-2077).
 - **Release preflight.** `gh` is checked on the hub PATH, and the managed .gitignore header no longer moves the release tree (T-1876, T-1877).
 
-Every epic closed with a clear QA verdict. Release covers at 4cbdba6a7 (tree bbc13c73) are green on Linux (c4e171e7, A-22746) and macOS (68c47db0, A-22750).
+Every epic closed with a clear QA verdict. The final release covers are green: Linux 90e8a4c8 at fab0223fc (A-23873), and the paired Linux 4bab60dc (A-23861) and macOS 35f47391 (A-23865) at 5862e24c4. Since 5862e24c4, dev has changed only by QA briefs and tracker files.
