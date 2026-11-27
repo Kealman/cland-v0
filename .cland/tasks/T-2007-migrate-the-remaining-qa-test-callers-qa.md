@@ -2,8 +2,8 @@
 id: T-2007
 kind: task
 title: Migrate the remaining QA test callers (qa.test, qa-shipped via qa-runner) to whole-caller fixture ownership
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1789
 branch: t/T-2007-migrate-the-remaining-qa-test-callers-qa
 created: 2026-11-19T14:04:47.226Z
-updated: 2026-11-27T01:30:23.141Z
+updated: 2026-11-27T03:12:56.960Z
+closed: 2026-11-27T03:12:56.960Z
 ---
 
 ## Summary
@@ -29,9 +30,11 @@ Migrate the remaining QA callers to the shared whole-caller fixture ownership th
 
 - [x] C1. Every callback in `nvim/test/qa.test.ts` and `nvim/test/qa-shipped.test.ts` that acquires a root or child runs under whole-caller fixture ownership, listed by name in the item (test).
   - done: impl-2007 · 2026-11-27T01:29:27.368Z
+  - verified: rev-40 [reviewer] · run rev-40-20261127-2007-final2 · 2026-11-27T02:19:50.561Z · commit e2520f8e0a1e68ce725826b8df22cc0301b5b0b0
 - [x] C2. A control interrupting setup mid-acquisition shows the root and child joined before storage removal (test).
   - verified: rev-40 [reviewer] · run rev-40-20261126-2007-final · 2026-11-26T19:16:56.154Z · commit b7ae99b5c5ef68d1188a0f5ee2652d36030d2afa
   - done: impl-2007 · 2026-11-27T01:29:27.584Z
+  - verified: rev-40 [reviewer] · run rev-40-20261127-2007-final2 · 2026-11-27T02:19:50.561Z · commit e2520f8e0a1e68ce725826b8df22cc0301b5b0b0
 
 ## Comments
 
@@ -449,3 +452,22 @@ findings: [{"severity":"low","text":"L1 retained: historical GRAPH-001 timingpas
 finding_counts: {"high":0,"medium":0,"low":1}
 
 Shared-fix merge source clear; A-23685 records integration. All ten task files and shared suite/runner/native guard/cleanup/fixture-work files unchanged from source-clear087. History includes posted T-2031/T-2114/T-2115; Linux ESRCH is vanished selector only, preserving later ownership/exit checks. No QA assertions, setup/completion/join budgets or cleanup fences changed. A-23684 Macowner21/QA30/prune7/direct89/static0 are scoped reported checks; Macprune is not Linux proof and graph766 not execution. C1/C2 source validity retained; final marks pending authorized current-head configured receipt. Prior087failed run and b7-onlygreen retain outcomes. No new findings, historical low retained. Hold released; no Reviewer execution.
+
+### rev-40 · 2026-11-27T02:19:50.561Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261127-2007-final2
+commit: e2520f8e0a1e68ce725826b8df22cc0301b5b0b0
+scope: evidence
+findings: [{"severity":"low","text":"L1 retained: historical GRAPH timingpass conflicts with producer unfinished/absent finish. Current actual completion proves this run, without repairing historical reporting; separate S Bugs/T-2108 follow-up retained.","file":".cland/artifacts/A-23537-suite-2c7ccbb2-56a5-43df-9a14-c8d01da9caea-auto-at-b7ae99b.log","line":53053}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Final clear after shared fixes; A-23695 audits6323055e/A-23694 at source5 e2520f8e0. Producer0/cause empty/unfinished[], complete T0–T4/Web0, canonical35f2fb24 executable match. C1: shipped32actual distinct finishes incl GRAPH/PANELS019; mainQA27pass/3explicit macOS sandbox skips, KEYS002pass. C2: owner21unique/56pass rows, all7new controls base+5/5 and4inherited controls basepass retain independent close/join/guarded removal proofs. Prune7/system71 Linux passes including former restart failure. Noncached Linuxc16fra1 workers4 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156,12prerequisite skips,budgetsreportonly. T4onecataloguefile32identitiesonce; remainingT3batch/otherT4unexecuted. All prior failures and old-head green remain attributed. C1/C2 verified; no high/medium, historical low retained. Hold released; no Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-27T03:12:56.960Z
+
+Merged e2d09a6149aced6bdd5b8cc0d8c699ed0d9fd1b9 onto dev.

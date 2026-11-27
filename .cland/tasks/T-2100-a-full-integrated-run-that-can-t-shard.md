@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-25T03:50:04.390Z
-updated: 2026-11-25T13:02:27.567Z
+updated: 2026-11-27T02:51:20.686Z
 ---
 
 ## Summary
@@ -54,3 +54,7 @@ Fourth case: T-1926's task verify b27c3801 (A-23295) at 9ed6c32f0 exited 143 wit
 ### coord · 2026-11-25T07:41:50.364Z
 
 c-16 data point, under the human's temporary measure: T-1928's verify 41546aee (A-23316) at 0a0296c81 ran on c-16 with 4 workers and passed, with every tier including Web. Lifetime was 2,543 s (42 min) and cost $0.3532. The same full selection on c-8 with 2 workers timed out at 75 min for $0.32 (030d6d25). So c-16 cost about the same per run and finished, where the c-8 runs were wasted. This is relevant to T-2102.
+
+### coord · 2026-11-27T02:51:20.686Z
+
+Fifth case, 2026-11-27: T-2044's task verify cf0f336c (A-23700) at 3850ab09d ran unsharded on c-8 with 2 workers. It exited 143 with "run timeout 75m". T0 through T3 completed with exit 0 and no failed cases, and Web was cut off with 7 files in flight. The selection was full because T-2044 changes verifier code. It is being retried once on c-16 with 4 workers under the human's temporary measure. The human's choice of approach is pending in ask 0ed06e8d.

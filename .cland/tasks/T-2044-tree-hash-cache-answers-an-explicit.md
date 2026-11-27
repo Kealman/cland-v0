@@ -3,7 +3,7 @@ id: T-2044
 kind: task
 title: Tree-hash cache answers an explicit --executor local epic cover with a cached Linux droplet result (no macOS run)
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1783
 branch: t/T-2044-tree-hash-cache-answers-an-explicit
 created: 2026-11-21T03:00:38.190Z
-updated: 2026-11-27T01:27:47.510Z
+updated: 2026-11-27T02:51:57.322Z
 ---
 
 ## Summary
@@ -207,3 +207,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Posted shared-fix merge delta source clear at3850ab09d. Both-parent comparisons: README retains taskcachepolicy and devbatch/T3-plan paragraph with separation; cacheadmission/matcher/reporting and migratedunit/native consumers unchanged from0e9a2aaa3. Taskdiffagainstdevde4118939 retains priorcachepolicy only, no additional implementation/config/help changes. Standards/Spec no findings; A-23683 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23683-t-2044-shared-fix-merge-delta-source-clear-at-3850ab09d.md. C1/C2done, old marks stale/unverified atnewhead; newconfigured evidencepending. A-23682 actualmacOSarm64 Node24.21selected101/101/typecheck+lint0 islocal evidenceonly. Prior4053e1b7failure retained; Coordinator sharedfixattribution isnotpass. Alloldrounds retained, Reviewerexecutednothing. Obtain Coordinator newheadverifywindow.
+
+### rev-41 · 2026-11-27T02:51:57.322Z
+
+verdict: review
+result: not clear
+by: rev-41 [reviewer]
+run: rev-41-20261127-2044-evidence1
+commit: 3850ab09d903bf17edda4bc899cbe51d61733b04
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Evidence incomplete, not clear. Run cf0f336c/A-23700 at source-clear 3850ab09d: producer deadlineExpired=true/code143, cause `run timeout 75m; secondary diagnostic: package closure incomplete; machine deletion required`, closure incomplete/nativeExit143. Structured T0–T3 complete exit0; Web interrupted/no complete receipt, T4 unexecuted. Three cache controls each base+5/5 pass; native droplet scenario and previously failing OpenCode log-rollback case base pass, retained only as partial evidence. No new source finding; C1/C2 done, old verification stale/unverified at this head; no failed marks inferred from incomplete Web. A-23701 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23701-t-2044-shared-fix-run-incomplete-during-web-at-3850ab09d.md. Source/tree 7c562783 matched. Linux x64 c8 fra1, workers2, Node24.21/Nvim0.12.5, HeadlessShell1248/CFT156 in incomplete Web; 12 skips and report-only advisories retained. All prior rounds retained. Authorized larger same-head e7499da9 now admitted/pending; Reviewer ran nothing.

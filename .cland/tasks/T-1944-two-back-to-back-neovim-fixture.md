@@ -2,8 +2,8 @@
 id: T-1944
 kind: task
 title: Two back-to-back Neovim fixture refreshes still differ in incidental task.view captures (T-654 benchmark row, R-1), so a refresh leaves a versioned diff
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-1781
 branch: t/T-1944-two-back-to-back-neovim-fixture
 created: 2026-11-17T12:09:38.187Z
-updated: 2026-11-26T19:23:54.344Z
+updated: 2026-11-27T02:46:05.388Z
+closed: 2026-11-27T02:46:05.388Z
 ---
 
 ## Summary
@@ -29,12 +30,14 @@ The recorder captures a deterministic set of frames per scenario, either by awai
 ## Acceptance criteria
 
 - [x] C1. `npm run test:nvim-fixtures` run twice in a row leaves no versioned diff across the catalog, every slice and the live baseline (test).
-  - done: impl-1944 · 2026-11-26T18:45:38.086Z
   - verified: rev-35 [reviewer] · run rev-35-1944-evidence-3 · 2026-11-26T19:23:11.687Z · commit 90718147c3c30de304eed3801f47ffd3fbce24fa
+  - done: impl-1944 · 2026-11-27T01:40:18.833Z
+  - verified: rev-35 [reviewer] · run rev-35-1944-evidence-4 · 2026-11-27T02:16:22.292Z · commit 2cf65d22ec647aaef5c1e62775059339dae3f036
 - [x] C2. The cause of the varying captures is named with a deterministic reproducer that fails first (test).
   - verified: rev-35 [reviewer] · run rev-35-1944-evidence-1 · 2026-11-26T01:49:01.653Z · commit 75e9ab74b419435ed9745139c9aa5de0d569f520
-  - done: impl-1944 · 2026-11-26T18:45:38.314Z
   - verified: rev-35 [reviewer] · run rev-35-1944-evidence-3 · 2026-11-26T19:23:11.687Z · commit 90718147c3c30de304eed3801f47ffd3fbce24fa
+  - done: impl-1944 · 2026-11-27T01:40:19.068Z
+  - verified: rev-35 [reviewer] · run rev-35-1944-evidence-4 · 2026-11-27T02:16:22.293Z · commit 2cf65d22ec647aaef5c1e62775059339dae3f036
 
 ## Comments
 
@@ -148,3 +151,35 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final exact-head evidence clear; A-23590 combines source3/source4, accepted A-23558 parent native pair and configured de08d6d3/A-23588. Producer code0/empty cause, unfinished[], T0/T1/T2/selected32 T3/Web complete exit0 at canonical1ad63c2d30cf645ef4206ab666bc82be12eceffc. Full-catalog case base4.418251964s and all5 distinct loaded observations pass, maximum4.715693604s below unchanged5s gate. Mixed-format plus selection/transient/append controls also each pass base+5; boundary13/refresh9/discovery5 all pass. Parent pair remains explicitly ed504424f-scoped, independently audited499/499 twice with27 matching fixture hashes/four matching source inventories; only non-consumed T1 test/docs differ. Current Linux receipts cover47/50 maintenance consumers, three T4 unexecuted. Four macOS prerequisite skips retained;243 other T3/18 T4 unexecuted;7884 paired base pass/4skip plus25 loaded pass, known3 finish-only accounting records separate. Linuxc8nyc1 Node24.21/Nvim0.12.5 workers2, isolated HeadlessShell1248/Chrome156.0.8078.4; advisory checks/cache limits recorded. Prior975356b5 duration failure remains historical, no gate relaxation. C1/C2 verified; findings none, no Reviewer changes or additional run.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-35 · 2026-11-27T01:45:17.270Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1944-source-5
+commit: 2cf65d22ec647aaef5c1e62775059339dae3f036
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Allowance-only delta source clear; findings []. A-23687 records the pinned two-file review. The sole 6.628 s allowance matches the existing formatter applied to the eligible 4.418251964 s Linux base sample, with approved standing owner E-880 and seven-day expiry. Manifest remainder, producer, fixture bytes and assertions are unchanged; the guide matches the case-specific allowance. A-23686 retains validation and the matching 13/13 local file output. C1/C2 remain unverified at this changed head; prior native-pair/green receipts keep their earlier-head scope. Same-head configured verification is pending the Coordinator window.
+
+### rev-35 · 2026-11-27T02:16:22.293Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-1944-evidence-4
+commit: 2cf65d22ec647aaef5c1e62775059339dae3f036
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear; A-23693 records independent A-23692/result.json audit for e94851e4. Producer code0/empty cause, unfinished[], T0/T1/fallback all T2/selected32 T3/Web complete exit0 at recorded tree e20be0cf24e87dd1b3968af4d89aa08fa3893756. Five changed regression identities each pass base+5 distinct load IDs; complete catalog base4.129766742s/loaded max4.584291545s within approved6.628s allowance. Boundary13/refresh9/discovery5 and47/50 maintenance consumers have positive Linux receipts; three T4 consumers unexecuted. Accepted A-23558 parent native pair remains explicitly producer-parent-scoped, 499/499 twice, matching27-file maps/four source inventories; source5 changes only allowance/docs. C1/C2 verified from combined source/native/current configured proof. Four macOS prerequisite skips,243 other T3/18 T4 unexecuted; report-only advisory checks/cache unknown. Paired7884basepass+4skip and25loadpass; known3 finish-only records separate. Earlier failed A-23566 remains red. Findings [], no Reviewer changes or additional run.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-27T02:46:05.388Z
+
+Merged 831f9f63e16e62b5bfff6380c0136771eae1838b onto dev.
