@@ -107,6 +107,9 @@ The landing page shows all twelve features as cards, in two columns above
 Cards contain a number, title, text and Learn more link, followed by the feature's
 screenshot or diagram when available. Screenshots use responsive sizes, and
 diagrams scale to the card width without inner scrolling.
+Desktop visuals share 16:10 frames, with screenshots contained at the top and
+links directly following the text. Single-column screenshots keep their natural
+proportions; the remote phone pair stacks below 600 px.
 
 Learn more links use GoatCounter's `data-goatcounter-click` attribute with the
 fixed event name `feature-<id>`. The existing async count.js binds these clicks
