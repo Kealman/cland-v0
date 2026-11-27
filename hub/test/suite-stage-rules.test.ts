@@ -14,6 +14,102 @@ import { StageCandidates } from '../src/tracker/stage-candidates.ts';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { suiteStartIssues } from '../src/protocol.ts';
+import { suiteSummary } from '../src/hub/suites.ts';
+
+for (const path of ['fallback', 'sharded', 'override', 'fits', 'restart', 'legacy', 'custom', 'task', 'busy', 'race', 'race-size', 'race-workers', 'race-both', 'race-custom'] as const) test(`full run admission chooses ${path} from capacity and projection`, t => suiteCase(t, async ({ setup, step }) => {
+  const race = path.startsWith('race');
+  const custom = path === 'custom' || path === 'race-custom';
+  let refuseAcquisition = race;
+  const sizeOverride = path === 'override' || path === 'race-size' || path === 'race-both';
+  const workersOverride = path === 'override' || path === 'race-workers' || path === 'race-both';
+  const attempts: Array<string | undefined> = [];
+  const f = await setup(async fixtures => {
+    const f = await ownedSuiteUnit(t, fixtures, { executor: 'droplet', remoteBudget: 1, machineReceiptsOnly: true }, custom ? 'shard_wait="3m"\n[verification.droplet]\nfallback_size="c-8"\nfallback_workers=3' : path === 'busy' ? 'stall_timeout="60m"' : race ? '[verification.droplet]\nworkers=2' : '');
+    if (race) {
+      const acquire = DropletExecutor.prototype.acquire;
+      fixtures.mock.method(DropletExecutor.prototype, 'acquire', async function (this: DropletExecutor, ...args: Parameters<typeof acquire>) {
+        attempts.push(args[0].size ?? args[3]?.verification.droplet.size);
+        if (refuseAcquisition) throw new RemoteBudgetFull();
+        return acquire.apply(this, args);
+      });
+    }
+    return f;
+  });
+  const blocker = path === 'busy' ? await step('occupy remote slot', () => f.launch({ fresh: true })) : undefined;
+  if (blocker) await step('observe occupying worker', () => f.machine.waits.run(f.machine.started(blocker.id)));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  await step('write projected test', () => writeFile(join(f.root, 'hub/test/slow.test.ts'), ''));
+  await step('write projected tiers', () => writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/slow.test.ts': 'T3' } })));
+  await step('write duration baseline', () => writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { mode: 'report', testSeconds: 5, fileSeconds: 60 }, tests: {}, allow: {}, files: { 'hub/test/slow.test.ts': { tests: 1, seconds: path === 'fits' ? 4500 : 5000 } } })));
+  f.candidate.tierPlan = [{ tier: 'T3', files: ['hub/test/slow.test.ts'], tests: 1, seconds: 5000, projectedWall: 5000, workers: 4, missing: 0 }];
+  const run = await step('queue full close', () => f.launch({ mode: 'all', ...(path === 'task' ? {} : { integrated: true, occasion: 'stage' as const }), fresh: true, ...(sizeOverride ? { size: 'c-8' } : {}), ...(workersOverride ? { workers: 3 } : {}) }));
+  await step('settle admission decision', () => f.suites.settled());
+  if (path === 'fits') {
+    await step('observe fitting worker', () => f.machine.waits.run(f.machine.started(run.id)));
+    assert.equal(f.acquisitions.length, 1);
+    await step('complete fitting run', () => f.finish(run.id));
+    assert.doesNotMatch(await step('read fitting log', () => f.log(run.id)), /sharding decision:/);
+    return;
+  }
+  assert.equal(f.status(run.id).state, 'queued');
+  assert.equal(f.acquisitions.length, blocker ? 1 : 0);
+  if (path === 'restart') await step('restore waiting run', () => f.reopen());
+  if (path === 'legacy') {
+    const saved = await step('read retained admission', () => f.jobs());
+    const retained = saved.find(row => row.id === run.id)!;
+    Reflect.deleteProperty(retained.config!.verification, 'shardWaitMs');
+    Reflect.deleteProperty(retained.config!.verification.droplet, 'fallback_size');
+    Reflect.deleteProperty(retained.config!.verification.droplet, 'fallback_workers');
+    retained.config!.verification.dailySpendUsd = 7.25;
+    await step('restore pre-policy admission snapshot', () => f.reopen(saved));
+  }
+  await step('advance below shard deadline', () => f.tick((custom ? 2 : 19) * 60 * 1000));
+  await step('settle waiting admission', () => f.suites.settled());
+  assert.equal(f.acquisitions.length, blocker ? 1 : 0);
+  if (path === 'sharded') {
+    await step('release second remote slot', async () => { f.configure('[verification]\nexecutor="droplet"\nremote_budget=2'); await f.tick(1000); await f.suites.settled(); });
+    const parent = (await step('read shard plan', () => f.jobs())).find(row => row.id === run.id)!;
+    assert.equal(parent.shards!.length, 2);
+    for (const shard of parent.shards!) {
+      await step('observe shard worker', () => f.machine.waits.run(f.machine.started(shard.id)));
+      f.machine.finish(shard.id, 0, '# tests 1\n# pass 1\n');
+    }
+    await step('collect shard receipts', async () => { await f.tick(5000); await f.suites.settled(); });
+    assert.match(await step('read sharded policy log', () => f.log(run.id)), /sharded after a wait of 1141s; projection 5000/);
+    return;
+  }
+  await step('advance to shard deadline', () => f.tick(60 * 1000));
+  await step('settle fallback admission', () => f.suites.settled());
+  if (race) {
+    assert.ok(attempts.length > 0, 'observe acquire-time capacity refusal');
+    assert.equal(f.status(run.id).state, 'queued');
+    await step('restore refused acquisition', () => f.reopen());
+    if (path === 'race-custom') f.configure('[verification]\nexecutor="droplet"\nremote_budget=1\n[verification.droplet]\nworkers=2\nfallback_size="c-16"\nfallback_workers=4');
+    refuseAcquisition = false;
+    await step('retry selected fallback', async () => { await f.tick(1000); await f.suites.settled(); });
+  }
+  if (blocker) {
+    assert.equal(f.status(run.id).state, 'queued');
+    assert.equal(f.status(run.id).executor, 'droplet');
+    await step('release occupied remote slot', () => f.finish(blocker.id));
+    await step('admit queued fallback remotely', async () => { await f.tick(1000); await f.suites.settled(); });
+  }
+  await step('observe fallback worker', () => f.machine.waits.run(f.machine.started(run.id)));
+  const job = f.status(run.id);
+  assert.equal(job.executor, 'droplet');
+  assert.equal(job.workers, workersOverride || custom ? 3 : 4);
+  assert.equal(f.config.verification.droplet.size, 'c-8', 'fallback never mutates the loaded defaults');
+  assert.equal((await step('read pinned fallback config', () => f.jobs())).find(row => row.id === run.id)!.config!.verification.droplet.size, sizeOverride || custom ? 'c-8' : 'c-16');
+  if (race) assert.deepEqual(attempts, attempts.map(() => sizeOverride || custom ? 'c-8' : 'c-16'));
+  if (path === 'legacy') assert.equal((await step('read retained spend cap', () => f.jobs())).find(row => row.id === run.id)!.config!.verification.dailySpendUsd, 7.25);
+  await step('complete fallback', () => f.finish(run.id));
+  const result = await step('read terminal decision', () => import('node:fs/promises').then(fs => fs.readFile(join(f.root, '.cland/run/suites', run.id, 'result.json'), 'utf8')));
+  assert.equal(JSON.parse(result).shardWait.path, 'fallback');
+  assert.equal(JSON.parse(result).code, 0);
+  assert.match(await step('read policy log', () => f.log(run.id)), /fallback c-(8|16).*wait of (1200|180)s; projection 5000/);
+  assert.match(suiteSummary(await step('read result summary input', () => f.log(run.id))), /sharding decision: fallback/);
+}));
 
 test('stage selectors are additive to legacy verification frames and require unique epic ids', () => {
   const legacy = { id: 'request', cwd: '/scratch', mode: 'all', occasion: 'stage', executor: 'local' };
@@ -53,7 +149,7 @@ test('targeted Mac stages pin their union and publish separate exact-path receip
 import { tierReceipt } from '../src/verification-tier-receipts.ts';
 import { verificationSteps } from '../src/verification-plan.ts';
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
-import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { DropletExecutor, RemoteBudgetFull } from '../src/executor/droplet/droplet.ts';
 
 for (const constructionFailure of [false, true]) test(`flaky receipt cleanup retains its root and controls until ${constructionFailure ? 'failed construction' : 'resource'} database close is confirmed`, t => {
   const supervisor = stageCase(t);

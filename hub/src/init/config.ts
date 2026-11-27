@@ -27,7 +27,7 @@ export type ProjectConfig = {
   release: { webBundle: boolean; homebrew: { tap: string } };
   setup: { declinedInstalls: HarnessId[]; declinedAccounts: string[] };
   merge: { batchInteraction: 'report' | 'run'; queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
-  verification: { testTimeoutIsDefault?: boolean; provision: string; prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; coordinatorSuites: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; suiteRetentionMinAgeDays: number; suiteRetentionPassLimit:number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; snapshot_size?: string; regions: string[]; image: string } };
+  verification: { testTimeoutIsDefault?: boolean; provision: string; prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; coordinatorSuites: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; shardWaitMs: number; coverageMaxAgeMs: number; coverageMapRetention: number; suiteRetentionMinAgeDays: number; suiteRetentionPassLimit:number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { fallback_size: string; fallback_workers: number; workers?: number; size: string; prepare_size: string; snapshot_size?: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -50,7 +50,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   release: { webBundle: false, homebrew: { tap: '' } },
   setup: { declinedInstalls: [], declinedAccounts: [] },
   merge: { batchInteraction: 'report', queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] },
-  verification: { testTimeoutIsDefault: true, provision: '', prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, coordinatorSuites: 1, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, coverageMapRetention: 10, suiteRetentionMinAgeDays: 7, suiteRetentionPassLimit:SUITE_RETENTION_PASS_LIMIT, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { testTimeoutIsDefault: true, provision: '', prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, coordinatorSuites: 1, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, shardWaitMs: 1200000, coverageMaxAgeMs: 172800000, coverageMapRetention: 10, suiteRetentionMinAgeDays: 7, suiteRetentionPassLimit:SUITE_RETENTION_PASS_LIMIT, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { fallback_size: 'c-16', fallback_workers: 4, size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -64,6 +64,14 @@ export const defaultConfig = (name: string): ProjectConfig => ({
 });
 
 const minutes = (ms: number): number => ms / MINUTE;
+
+/** Fill only policy fields absent from older retained admission snapshots. */
+export function normalizeRetainedShardPolicy(config: ProjectConfig): void {
+  const defaults = defaultConfig('').verification;
+  if (config.verification.shardWaitMs === undefined) config.verification.shardWaitMs = defaults.shardWaitMs;
+  if (config.verification.droplet.fallback_size === undefined) config.verification.droplet.fallback_size = defaults.droplet.fallback_size;
+  if (config.verification.droplet.fallback_workers === undefined) config.verification.droplet.fallback_workers = defaults.droplet.fallback_workers;
+}
 
 /** Existing-file writers must supply the source: ProjectConfig is a runtime projection,
  * not the whole document. Keep unmodeled tables/keys while upgrading modeled defaults. */
@@ -153,6 +161,8 @@ shards = ${c.verification.shards}
 lock_path = ${JSON.stringify(c.verification.lockPath)}
 # Reuse green candidate trees for this many minutes; 0 disables caching.
 cache_max_age_minutes = ${minutes(c.verification.cacheMaxAgeMs)}
+# Oversized full runs wait for two remote slots before whole-run fallback.
+shard_wait = "${c.verification.shardWaitMs / 1000}s"
 # Queue wait p90 target; informational, without changing admission.
 wait_p90_target = "${c.verification.waitP90TargetMs % MINUTE === 0 ? `${minutes(c.verification.waitP90TargetMs)}m` : `${c.verification.waitP90TargetMs / 1000}s`}"
 # Report function coverage older than this; mapped ancestor hunks still select.
@@ -178,6 +188,8 @@ dev_t3_every = ${JSON.stringify(c.verification.devT3Every)}
 
 [verification.droplet]
 ${c.verification.droplet.workers === undefined ? "# workers inherits verification.workers" : `workers = ${c.verification.droplet.workers}`}
+fallback_size = ${JSON.stringify(c.verification.droplet.fallback_size)}
+fallback_workers = ${c.verification.droplet.fallback_workers}
 size = ${JSON.stringify(c.verification.droplet.size)}
 prepare_size = ${JSON.stringify(c.verification.droplet.prepare_size)}
 ${c.verification.droplet.snapshot_size === undefined ? "" : `snapshot_size = ${JSON.stringify(c.verification.droplet.snapshot_size)}\n`}regions = ${JSON.stringify(c.verification.droplet.regions)}
@@ -406,7 +418,7 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     if (typeof verification.soak !== 'string' || verification.soak !== '' && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(verification.soak)) throw new Error('verification.soak must be HH:MM UTC or empty');
     c.verification.soak = verification.soak;
   }
-  for (const [key, field] of [['test_timeout', 'testTimeoutMs'], ['stall_timeout', 'stallTimeoutMs'], ['coverage_max_age', 'coverageMaxAgeMs'], ['wait_p90_target', 'waitP90TargetMs']] as const) {
+  for (const [key, field] of [['test_timeout', 'testTimeoutMs'], ['stall_timeout', 'stallTimeoutMs'], ['coverage_max_age', 'coverageMaxAgeMs'], ['wait_p90_target', 'waitP90TargetMs'], ['shard_wait', 'shardWaitMs']] as const) {
     if (verification[key] === undefined) continue;
     try {
       if (typeof verification[key] !== 'string') throw new Error('not a duration');
@@ -456,8 +468,9 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     const droplet = verification.droplet;
     if (!droplet || typeof droplet !== 'object' || Array.isArray(droplet) || droplet instanceof Date) throw new Error('verification.droplet must be a table');
     const values = droplet as Record<string, unknown>;
+    if (values.fallback_workers !== undefined) c.verification.droplet.fallback_workers = workerCount(values.fallback_workers, 'verification.droplet.fallback_workers');
     if (values.workers !== undefined) c.verification.droplet.workers = workerCount(values.workers, 'verification.droplet.workers');
-    for (const key of ['size', 'image', 'prepare_size', 'snapshot_size'] as const) if (values[key] !== undefined) {
+    for (const key of ['size', 'image', 'prepare_size', 'snapshot_size', 'fallback_size'] as const) if (values[key] !== undefined) {
       if (typeof values[key] !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(values[key])) throw new Error(`verification.droplet.${key} must be a nonempty slug`);
       c.verification.droplet[key] = values[key];
     }

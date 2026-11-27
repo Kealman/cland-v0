@@ -158,6 +158,21 @@ test('queue wait target defaults, validates positive durations and survives conf
   }
 });
 
+test('shard wait and whole fallback settings default, validate and round trip', () => {
+  const defaults = parseConfig('', 'test').verification;
+  assert.equal(defaults.shardWaitMs, 1200000);
+  assert.equal(defaults.droplet.fallback_size, 'c-16');
+  assert.equal(defaults.droplet.fallback_workers, 4);
+  const config = parseConfig('[verification]\nshard_wait="3m"\n[verification.droplet]\nfallback_size="c-8"\nfallback_workers=3', 'test');
+  const restored = parseConfig(renderConfig(config), 'test').verification;
+  assert.equal(restored.shardWaitMs, 180000);
+  assert.equal(restored.droplet.fallback_size, 'c-8');
+  assert.equal(restored.droplet.fallback_workers, 3);
+  for (const source of ['shard_wait="0m"', 'shard_wait=3', '[verification.droplet]\nfallback_size=""', '[verification.droplet]\nfallback_workers=0']) {
+    assert.throws(() => parseConfig(`[verification]\n${source}`, 'test'), /verification\.(shard_wait|droplet\.fallback_)/);
+  }
+});
+
 test('verify queue and hub status expose matching windows, configured target, and cache counts', async t => {
   const root = await tempProject(t, 'cland-wait-visible-');
   await mkdir(join(root, '.cland'));

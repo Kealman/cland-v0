@@ -17,6 +17,10 @@ export function taskTierEvidence(selection: SuiteSelection | undefined, queue: {
 
 export type TierPlan = Array<{ tier: Tier; files: string[]; tests: number; seconds: number; projectedWall: number; workers: number; missing: number; wallBudget?: number; phases?: Array<{ weights: number[]; serial: boolean }> }>;
 export type SuiteDryRun = { dryRun: true; head: string; executor: 'local' | 'droplet'; workers: number; selection: SuiteSelection; tiers: TierPlan; lines: string[] };
+/** Sequential tier wall projection at the effective admitted worker policy. */
+export function projectedTierWall(plan: TierPlan, workers: number): number {
+  return tierPlanWorkers(plan, workers).reduce((sum, row) => sum + row.projectedWall, 0);
+}
 const seconds = (n: number) => Number(n.toFixed(3)).toString();
 const budgets: Record<Tier, number | null> = { T1: 120, T2: 480, T3: 900, T4: null, Web: 40 };
 

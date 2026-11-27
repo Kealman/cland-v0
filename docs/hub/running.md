@@ -530,7 +530,8 @@ history retains its existing receipt policy.
 
 The hub atomically reserves the whole group's estimated lifetime cost against
 the shared daily ledger ($3 here) before creating machines. When the cap cannot
-cover every shard, or fewer than two remote slots are free, it runs whole on one
+cover every shard, or fewer than two remote slots are free and the projection fits
+the run timeout, it runs whole on one
 slot with one warn notice: `sharding skipped: daily spend cap $3 would be exceeded`
 or `sharding skipped: fewer than 2 remote slots free`. Shards are not silently
 retried or run locally after admission. If every shard is refused before execution,
@@ -1492,12 +1493,31 @@ Shares use the current duration manifest, rather than claiming historical wall
 times. The replay bar is zero misses on those merges' own changed/added tests;
 every wider miss must be listed with its cause.
 
-**Close-run sharding.** Only integrated `dev` requests with `--occasion
-stage|epic|release` shard remotely; cland tier-command batches may shard under the same remote slot/spend policy. The
+**Close-run sharding.** Integrated `dev` requests with `--occasion
+stage|epic|release`, periodic dev runs and ordinary integrated full requests shard remotely; cland tier-command batches may shard under the same remote slot/spend policy. The
 Coordinator sets the occasion; QA may use `epic` for its demo. File balancing,
 Neovim placement, the daily-cap whole-run fallback and per-run costs are described
 under [Remote executors: Close runs](#close-runs). The result and queue show the
 occasion and the remote shard machines.
+
+Full selections, including task verifies, whose summed tier wall projection exceeds
+`verification.run_timeout` wait for two free remote slots for
+`verification.shard_wait` (default `20m`). Soak retains its single-slot policy.
+If slots arrive, the run shards normally; otherwise it runs whole using
+`verification.droplet.fallback_size` (`c-16`) and `fallback_workers` (`4`). Explicit
+`--size` and `--workers` each override their respective fallback. Generated configs
+include these defaults; inherited configs receive parser defaults. The fallback
+uses ordinary acquisition and reserves its actual size’s price against the daily
+spend cap. If all remote slots remain occupied at the deadline, the selected
+fallback stays queued for one remote slot rather than falling back locally.
+Queue waiting creates no machine and precedes the remote run timeout.
+Suite logs, result reports and result.json’s additive `shardWait` metadata name
+the chosen path, wait and triggering projection. The chosen fallback size/workers
+persist independently of replaceable config snapshots and are reapplied after
+acquire-time capacity refusal or restart. Older retained admission snapshots fill
+only absent shard-policy fields from the shared defaults, preserving other
+admitted values. Projections that fit preserve
+existing behavior. The setting is independent of informational `wait_p90_target`.
 
 **Executors.** `hub/src/executor/executor.ts` defines acquire, deliver, prepare,
 start, status, log, cancel, release and reap. The backend owns its durable lease's

@@ -59,6 +59,11 @@ framing features remain separate.
 Subsystem reference and implementation guidance live in `docs/hub/`.
 Live executor switching and bounded remote reachability are described in
 [Remote executors](../docs/hub/running.md#remote-executors-droplets).
+Oversized full droplet runs wait for shard capacity (`verification.shard_wait`,
+default 20m), then use `verification.droplet.fallback_size` (c-16) and
+`fallback_workers` (4). Caller size/workers overrides win; the actual size's
+price still reserves against the daily cap. See the same reference for admission
+conditions and the durable decision recorded in logs and results.
 Evidence publication uses the session-aware `publishSessionEvidence` library;
 see [scan and publication](../docs/agents/evidence-publication.md) for snapshot,
 positive-control, shared scanner profiles and refusal behaviour.

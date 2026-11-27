@@ -61,6 +61,8 @@ lock_path = "/tmp/cland-suite.lock"
 cache_max_age_minutes = 1440
 # Queue wait p90 target; informational, without changing admission.
 wait_p90_target = "20m"
+# Oversized full runs wait for two remote slots before using the whole-run fallback.
+shard_wait = "20m"
 # Report function coverage older than this; mapped ancestor hunks still select.
 coverage_max_age = "172800s"
 # Newest coverage pointers to keep; artifact retention is independent.
@@ -80,6 +82,8 @@ soak = "03:00"
 dev_t3_every = "8h"
 
 [verification.droplet]
+fallback_size = "c-16"
+fallback_workers = 4
 workers = 2
 size = "c-8"
 prepare_size = "c-8"

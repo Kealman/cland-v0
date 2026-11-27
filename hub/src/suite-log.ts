@@ -55,6 +55,7 @@ export async function retainedLoadProofs(path: string): Promise<string[]> {
  */
 const evidence = /^(?:suite (?:inspection |infrastructure: |execution summary |web phase |browser |provenance |timing |progress |skip |interruption |stall |test failures |quarantine |admission timeouts |machine health |duration |budget overhead |command excerpt )|(?:#|ℹ) (?:tests|pass|fail|cancelled|skipped|todo) \d+\s*$|\s*not ok \d+|✖ |test at |duration (?:budget:|regression |check:|allowance stanza )|shard[- ]|verification queue wait |total cost |occasion |--- close shards ---|(?:unexecuted|incomplete) tier |tier |typecheck: |load gate|quarantine load gate: |test lint |budget|T3 ratchet)/;
 function semanticEvidence(line: string): boolean {
+  if (line.startsWith('sharding decision: ')) return true;
   if (line.startsWith('machine metrics unavailable: ')) return true;
   if (line.startsWith('suite package closure ')) return true;
   if (line.startsWith('suite machine metrics ') || line.startsWith('suite machine metrics-incomplete ')) return true;

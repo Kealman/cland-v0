@@ -412,6 +412,9 @@ test('config set applies optional template keys now with normalized parser readb
     ['keys.layouts', ['ru', 'ru'], ['ru'], 'now'],
     ['verification.droplet.workers', 3, 3, 'now'],
     ['verification.wait_p90_target', '120s', '2m', 'now'],
+    ['verification.shard_wait', '3m', '180s', 'now'],
+    ['verification.droplet.fallback_size', 'c-8', 'c-8', 'now'],
+    ['verification.droplet.fallback_workers', 3, 3, 'now'],
     ['visibility.messages.agent', 'watch', 'watch', 'restart'],
   ] as const) {
     const result = await ui.request({ type: 'config.set', key, value });

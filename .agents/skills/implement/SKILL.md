@@ -117,6 +117,13 @@ The Coordinator or human can switch the default and merge-batch executor live
 with `cland verify executor local|droplet [--workers N]`. Implementers retain
 their per-run override procedure; running runs keep their admitted policy.
 
+<!-- cland-workflow-change: T-2100 describe oversized full droplet admission -->
+Full droplet selections projecting beyond run_timeout wait for two remote slots
+up to verification.shard_wait (default 20m), then use droplet.fallback_size and
+fallback_workers (c-16 and 4). Explicit per-run size/workers each win; the daily
+spend cap still applies at the actual price. Logs and results record the path,
+wait and projection. Soak and fitting projections retain their existing policy.
+
 Cache evidence names the original occasion, executor and platform. Explicit executor
 requests and stage, epic and release reuse require matching coverage on the effective
 executor/OS, including configured occasion defaults;

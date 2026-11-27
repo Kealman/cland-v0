@@ -36,11 +36,11 @@ import { dirname, join } from 'node:path';
 import { hubShards, balanceCloseShards, readTierAssignments } from '../suite-shards.ts';
 import { lintTests, testLintReport } from '../test-lint.ts';
 import { clandRunner, verificationCommands, recordedCommands } from '../verification-commands.ts';
-import { planTierReport, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
+import { planTierReport, projectedTierWall, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
 import { durationBudgetReport, durationBudgetSummary, type DurationBudgetContext } from '../suite-duration-budget.ts';
 import { baselineTimings, durationBudgetContext, durationHistory } from '../suite-duration-context.ts';
 import { readDurationManifest } from '../suite-durations.ts';
-import type { ProjectConfig } from '../init/config.ts';
+import { normalizeRetainedShardPolicy, type ProjectConfig } from '../init/config.ts';
 import { suiteLimits, suiteLimitsFromConfig } from '../suite-limits.ts';
 import type { VerifyOccasion, SuiteStatus, VerificationQueue, VerificationHolder, DurationStats, SuiteSlot, SuiteSlotResult } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
@@ -93,6 +93,7 @@ export type SuiteJob = {
   followsConfig?: boolean;
   workerPolicy?: { local: number; droplet: number };
   workersOverride?: number;
+  shardWait?: { started: number; projectedSeconds: number; timeoutSeconds: number; waitedSeconds?: number; path?: 'sharded' | 'fallback'; fallback?: { size: string; workers: number }; message?: string };
   devT3Probe?: { key: string; files: string[] };
   devT3?: { previousGreenHead: string | null; previousGreenRun: string | null };
   occasion?: VerifyOccasion; shards?: SuiteJob[]; plannedShards?: number; parentRun?: string; shardName?: string; shardingSkipped?: string; shardingSkipLogged?: boolean; groupMerged?: boolean;
@@ -191,6 +192,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
     ? text.split('\n--- close shards ---\n')[1]!.split('\n').filter(line => /^(?:shard (?:duration|collection) shard-\d+ |total cost |occasion |suite duration .*overall wall)/.test(line)).map(line => line.slice(0, 300))
     : text.split('\n').filter(line => /^(?:verification queue wait |shard (?:duration|collection) |suite duration )/.test(line)).slice(-8).map(line => line.slice(0, 300));
   timings.push(...text.split('\n').filter(line => /^duration regression /.test(line)).slice(0, 5));
+  timings.push(...text.split('\n').filter(line => /^sharding decision: /.test(line)).slice(-1));
   timings.push(...text.split('\n').filter(line => /^suite budget overhead /.test(line)).slice(-1));
   timings.push(...text.split('\n').filter(line => /^typecheck: /.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate workers /.test(line)));
@@ -460,13 +462,19 @@ export class Suites {
     this.#save();
   }
   #captureConfig(job: SuiteJob): void {
-    if (job.config || !this.#options.projectConfig) return;
-    job.config = this.#options.projectConfig();
+    if (job.config) {
+      normalizeRetainedShardPolicy(job.config);
+      if (job.shardWait?.path === 'fallback') this.#applyWholeFallback(job);
+      return;
+    }
+    if (!this.#options.projectConfig) return;
+    job.config = structuredClone(this.#options.projectConfig());
     const v = job.config.verification;
     job.workerPolicy = { local: v.workers, droplet: v.droplet.workers ?? v.workers };
     job.workers = job.workersOverride ?? job.workerPolicy[job.executor];
     job.fallbackWorkers = job.workersOverride ?? job.workerPolicy.local;
     job.limits = suiteLimitsFromConfig(job.config, job.executor, job.workers);
+    if (job.shardWait?.path === 'fallback') this.#applyWholeFallback(job);
     this.#save(job);
   }
   #save = (job?: SuiteJob) => {
@@ -1283,6 +1291,7 @@ export class Suites {
         else await appendFile(job.log, line);
       });
       if (this.#retentionAdmitted) this.startRetention();
+      if (job.shardWait?.message && job.remoteLogStart === undefined) await appendFile(job.log, `sharding decision: ${job.shardWait.message}\n`);
       if (job.shards) { await this.#launchShards(job); return; }
       // Once remote collection starts, local bytes would count as remote output.
       // Pending delivery/start receipts can re-enter launch with that boundary set.
@@ -1430,11 +1439,13 @@ export class Suites {
     }
   }
   #shouldPlanShards(job: SuiteJob): boolean {
+    if (job.shards) return false;
     // Integrated is assigned by dispatch only to Coordinator root runs (or QA
     // epic occasions). Soaks retain their single-slot policy.
     return !job.batch?.diagnostic && (job.occasion !== 'batch' || Boolean(job.tierPlan?.length && job.commands?.tiers)) && job.occasion !== 'soak' && !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
       && job.branch === 'dev' && job.mode === 'all' && job.tree
-      && job.selection?.mode === 'full' && job.selection.fetchedDev === job.head);
+      && job.selection?.mode === 'full' && job.selection.fetchedDev === job.head) || !job.parentRun && !job.batch?.diagnostic && !job.shardingSkipped && job.occasion !== 'soak' && job.selection?.mode === 'full'
+      && projectedTierWall(job.tierPlan ?? [], job.workers ?? 4) * 1000 > (job.config?.verification.runTimeoutMs ?? this.#options.runTimeoutMs ?? 4500000);
   }
   async #planShards(job: SuiteJob, free: number): Promise<void> {
     // Cancellation may mark an outcome now, but cannot collect/report before reservation settles.
@@ -1444,7 +1455,19 @@ export class Suites {
       const count = Math.min(free, this.#remoteBudget - durable, job.config?.verification.shards ?? this.#options.shards ?? 2);
       let cause: string | undefined;
       if (!await clandRunner(job.cwd)) cause = 'project commands are not sharded';
-      else if (count < 2) cause = free < 2 || this.#remoteBudget - durable < 2 ? 'fewer than 2 remote slots free' : `configured shard limit ${job.config?.verification.shards ?? this.#options.shards ?? 2}`;
+      else if (count < 2) {
+        cause = free < 2 || this.#remoteBudget - durable < 2 ? 'fewer than 2 remote slots free' : `configured shard limit ${job.config?.verification.shards ?? this.#options.shards ?? 2}`;
+        const projectedSeconds = projectedTierWall(job.tierPlan ?? [], job.workers ?? 4);
+        const timeoutSeconds = (job.config?.verification.runTimeoutMs ?? 4500000) / 1000;
+        if (cause === 'fewer than 2 remote slots free' && projectedSeconds > timeoutSeconds) {
+          job.requireRemote = true;
+          job.shardWait ??= { started: this.#clock.now().getTime(), projectedSeconds, timeoutSeconds };
+          const waited = this.#clock.now().getTime() - job.shardWait.started;
+          if (waited < (job.config?.verification.shardWaitMs ?? 1200000)) { this.#save(job); return; }
+          this.#applyWholeFallback(job);
+          this.#recordShardWait(job, 'fallback');
+        }
+      }
       else {
         const history = durationHistory(this.#options.durationContext);
         const tiers = job.selection?.soak ? null : await readTierAssignments(job.cwd);
@@ -1466,16 +1489,39 @@ export class Suites {
           shard.tierPlan = await planTierReport(job.cwd, shard.selection!, job.workers ?? 4, undefined, history);
         }
         this.#save(job);
-        try { await this.#droplet.reserveShards(job.shards!.map(shard => shard.id), job.size, job.config); }
+        try { await this.#droplet.reserveShards(job.shards!.map(shard => shard.id), job.size, job.config); if (job.shardWait) this.#recordShardWait(job, 'sharded'); }
         catch (error) { cause = error instanceof Error ? error.message : String(error); }
       }
       if (cause) {
+        if (job.shardWait && !job.shardWait.path) {
+          this.#applyWholeFallback(job);
+          this.#recordShardWait(job, 'fallback');
+          job.shardWait.message += `; sharding unavailable: ${cause}`;
+        }
         if (job.shards) await this.#droplet.releaseShardReservations(job.shards.map(shard => shard.id));
         delete job.shards;
         job.shardingSkipped = cause; this.#save(job);
         this.#announceShardingSkip(job);
       }
     } finally { this.#planning.delete(job.id); }
+  }
+  #applyWholeFallback(job: SuiteJob): void {
+    const config = job.config!;
+    normalizeRetainedShardPolicy(config);
+    const selected = job.shardWait!.fallback ??= {
+      size: job.size ?? config.verification.droplet.fallback_size,
+      workers: job.workersOverride ?? config.verification.droplet.fallback_workers,
+    };
+    config.verification.droplet.size = selected.size;
+    job.workers = selected.workers;
+    if (job.limits) job.limits.workers = selected.workers;
+  }
+  #recordShardWait(job: SuiteJob, path: 'sharded' | 'fallback'): void {
+    const wait = job.shardWait!;
+    wait.path = path;
+    wait.waitedSeconds = (this.#clock.now().getTime() - wait.started) / 1000;
+    wait.message = `${path === 'fallback' ? `fallback ${job.size ?? job.config!.verification.droplet.size}` : 'sharded'} after a wait of ${wait.waitedSeconds}s; projection ${wait.projectedSeconds}s exceeds run timeout ${wait.timeoutSeconds}s; fewer than 2 remote slots free`;
+    this.#save(job);
   }
   #announceShardingSkip(job: SuiteJob): void {
     if (!job.shardingSkipped || job.shardingSkipLogged) return;
@@ -1554,7 +1600,7 @@ export class Suites {
       `shard duration ${shard.shardName} · ${shard.machine?.name ?? 'unavailable'} · ${shard.machine?.size ?? 'unknown'} ${shard.machine?.region ?? ''} · ${seconds(shard.finished ? elapsed(shard.admittedAt, Date.parse(shard.finished)) : null)} · ${shard.machine ? machineAccounting(shard.machine) : 'cost $0.0000'}; admission through remote finish`,
       `shard collection ${shard.shardName} ${seconds(shard.collectedAt ? elapsed(shard.finished, Date.parse(shard.collectedAt)) : null)}; remote finish through collection complete`,
     ]);
-    await aggregateSuiteLogs(job.log, shards, `${job.occasion ? `occasion ${job.occasion}\n` : ''}${failures.map(shard => shard.outcome?.notRun
+    await aggregateSuiteLogs(job.log, shards, `${job.shardWait?.message ? `sharding decision: ${job.shardWait.message}\n` : ''}${job.occasion ? `occasion ${job.occasion}\n` : ''}${failures.map(shard => shard.outcome?.notRun
       ? `shard not run ${shard.shardName}: ${shard.outcome.notRun}; ${shard.outcome.cause}`
       : `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost ${job.accountingPending ? 'pending confirmation' : '$' + shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((this.#clock.now().getTime() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
     await rename(job.log + '.shards.tmp', job.log);
@@ -1816,6 +1862,12 @@ export class Suites {
         this.#announceRemoteReclaim(job);
       }
       const chosenExecutor = job?.executor;
+      if (job?.executor === 'droplet' && this.#shouldPlanShards(job)
+        && projectedTierWall(job.tierPlan ?? [], job.workers ?? 4) * 1000 > (job.config?.verification.runTimeoutMs ?? this.#options.runTimeoutMs ?? 4500000)) {
+        this.#captureConfig(job);
+        await this.#planShards(job, Math.max(0, this.#remoteBudget - remoteActive));
+      }
+      if (job?.shardWait && !job.shardWait.path) continue;
       // Preparation and unconfirmed cleanup can occupy durable slots without a
       // running suite. Remote-only requests wait for those releases too.
       if (job?.requireRemote && (await this.#liveLeases()).length >= this.#remoteBudget) continue;
@@ -1823,7 +1875,7 @@ export class Suites {
       if (job?.executor === 'droplet' && remoteActive < this.#remoteBudget) {
         this.#captureConfig(job);
         if (this.#shouldPlanShards(job)) await this.#planShards(job, this.#remoteBudget - remoteActive);
-        if (job.state !== 'queued' || job.outcome) continue;
+        if (job.state !== 'queued' || job.outcome || job.shardWait && !job.shardWait.path) continue;
         remoteActive += job.shards?.length ?? 1;
         this.#options.log?.({ event: 'verification-admitted', id: job.id, item: job.item ?? null, session: suiteAuthor(job), executor: 'droplet', remoteActive, remoteBudget: this.#remoteBudget });
         this.#launchRemote(job);
