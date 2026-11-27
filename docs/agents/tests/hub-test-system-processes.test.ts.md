@@ -1,5 +1,23 @@
 # hub/test/system-processes.test.ts
 
+Synthetic process probes redirect every asynchronous reservation filesystem
+operation (including guard directories, temporary files and both link/rename
+paths) from the global termination namespace into their parent-owned scratch
+root. Independent probes reuse fake PID 420100; their fake liveness observations
+must never reclaim another probe's real reservation. The two-probe control holds
+both stops at the pre-signal boundary and checks that the first nonce survives
+the second acquisition. The transient-release control arms its fault only after
+recovery thaw, verifies the acquired holder, and awaits a completed unlink plus
+ENOENT before starting a later stop. Two failures and one successful recovery
+unlink are counted separately from the later stop's release. Production local
+cleanup errors still reject the awaited caller; background retries retain and
+settle the nonce-owned handle.
+
+The parallel control observes its outer coordination-root setup through
+`testSetupWaitMs`. Its whole-case owner registers a join before admission and
+retains the original `scope.root` acquisition promise across observation expiry;
+late root adoption must settle before directory disposal can finish.
+
 The Linux/Darwin owned-tree stop controls place 1,000 unrelated branches under
 PID1. Every selected ps PID parsed by cland must belong to the captured tree or
 protected caller ancestry; no full-table ps selector is allowed. The parsed

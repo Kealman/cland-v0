@@ -4,6 +4,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fixtureWork } from './fixture-work.ts';
+import { testSetupWaitMs } from './until.ts';
+import { within } from '../src/executor/droplet/deadline.ts';
 import { fileURLToPath } from 'node:url';
 import { parseProcessTable } from '../src/process-table.ts';
 import { processAlive } from '../src/adapters/processes.ts';
@@ -859,18 +865,62 @@ assert.equal(signals.some(p => p.signal === 'SIGKILL'), false);
 `);
 });
 
-test('a transient reservation release failure cannot block a later stop in the live caller', async () => {
+test('parallel synthetic stops retain independent reservations for the same fake PID', async t => {
+  const owner = fixtureWork(t);
+  let acquiringRoot: Promise<string> | undefined;
+  // Observation expiry must still join late creation and scope.root adoption
+  // before disposal can remove roots or report that the fixture has settled.
+  owner.release(async () => { await Promise.allSettled(acquiringRoot ? [acquiringRoot] : []); });
+  await owner.run(async scope => {
+    acquiringRoot = scope.root(() => mkdtemp(join(tmpdir(), 'cland-reservation-control-')));
+    const root = await within(acquiringRoot, testSetupWaitMs(), undefined,
+      () => new Error('parallel reservation control root setup incomplete'));
+    const bodies = ['first', 'second'].map(name => `
+import fs from 'node:fs/promises';
+const { until } = await import(${JSON.stringify(new URL('./until.ts', import.meta.url).href)});
+const shared = ${JSON.stringify(root)};
+const exists = async name => { try { await fs.readFile(shared + '/' + name); return true; } catch (e) { if (e.code === 'ENOENT') return false; throw e; } };
+const wait = name => until(() => exists(name), { what: name });
+const reservation = '/tmp/cland-termination-' + process.getuid() + '/420100';
+rows = [row(420100, 1, 420100)];
+if (${JSON.stringify(name)} === 'second') await wait('first-acquired');
+assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, async () => {
+  const captured = JSON.parse(await fs.readFile(reservation, 'utf8'));
+  await fs.writeFile(shared + '/${name}-acquired', 'ready');
+  if (${JSON.stringify(name)} === 'first') {
+    try {
+      await wait('second-acquired');
+      assert.equal(JSON.parse(await fs.readFile(reservation, 'utf8')).token, captured.token,
+        'another probe cannot replace the first live reservation');
+    } finally { await fs.writeFile(shared + '/checked', 'ready'); }
+  } else await wait('checked');
+}), true);
+`);
+    const results = await scope.step(() => Promise.allSettled(bodies.map(body => probe(body, 'darwin', { context: t }))));
+    for (const result of results) if (result.status === 'rejected') throw result.reason;
+  });
+});
+
+test('a transient reservation release failure cannot block a later stop in the live caller', async t => {
   await probe(`
 import fs from 'node:fs/promises';
+const { until } = await import(${JSON.stringify(new URL('./until.ts', import.meta.url).href)});
 const rm = fs.rm;
 const reservation = '/tmp/cland-termination-' + process.getuid() + '/420100';
-let failedReleases = 0;
+let failedReleases = 0, releaseArmed = false, released = false;
 fs.rm = async (path, options) => {
-  if (String(path) === reservation && ++failedReleases <= 2) throw new Error('transient reservation unlink failure');
-  return rm(path, options);
+  if (String(path) === reservation && releaseArmed) {
+    assert.equal(JSON.parse(await fs.readFile(path, 'utf8')).pid, process.pid, 'fault targets our acquired reservation');
+    if (++failedReleases <= 2) throw new Error('transient reservation unlink failure');
+  }
+  await rm(path, options);
+  if (String(path) === reservation && releaseArmed) released = true;
 };
 rows = [row(420100, 1, 420100)];
-onSignal = (pid, signal) => signal === 'SIGTERM' ? false : undefined;
+onSignal = (pid, signal) => {
+  if (signal === 'SIGCONT') releaseArmed = true;
+  return signal === 'SIGTERM' ? false : undefined;
+};
 try {
   await assert.rejects(endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, {
     canSignal: current => !current.some(p => p.pid === 420100 && p.state === 'T')
@@ -878,13 +928,18 @@ try {
   assert.equal(rows[0].state, 'S', 'release failure cannot skip recovery thaw');
   // The first operation is gone, but its process is still alive. Recovery must retain
   // the nonce-owned reservation and retry after another transient failure.
-  assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0, undefined, {
-    deadline: Date.now() + 2000
-  }), true);
+  await until(async () => {
+    if (!released) return false;
+    try { await fs.readFile(reservation); return false; }
+    catch (error) { if (error.code === 'ENOENT') return true; throw error; }
+  }, { what: 'completed recovery unlink after the local call returns' });
+  assert.equal(failedReleases, 3, 'two failed unlinks followed by one completed recovery unlink');
+  releaseArmed = false;
+  assert.equal(await endProcess({ pid: 420100, pidStarted: start }, () => {}, 0), true);
   assert.deepEqual(rows, []);
   assert.ok(failedReleases >= 3, 'failed release is retried after the local call returns');
 } finally { fs.rm = rm; await rm(reservation, { force: true }); }
-`);
+`, 'darwin', { context: t });
 });
 
 test('a failed tree acquisition retains and releases earlier reservations without hiding the primary failure', async () => {

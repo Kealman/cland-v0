@@ -24,6 +24,18 @@ import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import { syncBuiltinESMExports } from 'node:module';
 Object.defineProperty(process, 'platform', { value: ${JSON.stringify(platform)} });
+// Synthetic PIDs are shared by independent probes. Keep their real lock I/O
+// inside the parent-owned scratch root, including guards and temporary links.
+const reservationPrefix = '/tmp/cland-termination-' + process.getuid();
+const reservationPath = path => typeof path === 'string' && (path === reservationPrefix || path.startsWith(reservationPrefix + '/'))
+  ? process.cwd() + '/termination-reservations' + path.slice(reservationPrefix.length) : path;
+for (const method of ['readFile', 'writeFile', 'mkdir', 'rmdir', 'rm', 'lstat', 'readdir', 'rename', 'link']) {
+  const native = nativeFiles[method].bind(nativeFiles);
+  nativeFiles[method] = (path, ...args) => {
+    if (method === 'rename' || method === 'link') args[0] = reservationPath(args[0]);
+    return native(reservationPath(path), ...args);
+  };
+}
 const boot = '11111111-2222-3333-4444-555555555555';
 const nativeBirth = r => r && process.platform === 'linux' ? 'linux:' + boot + ':' + (r.ticks ?? 90001) : r ? 'darwin:' + Math.floor(Date.parse(r.started + ' UTC') / 1000) + ':' + (r.micros ?? 200001) : null;
 const start = 'Mon Oct 5 12:00:00 2026';
