@@ -224,7 +224,7 @@ const featureSection = landingSource.split('<section id="features"')[1]!.split('
 
 test('landing shows all twelve features in the chosen order without carousel controls', () => {
   assert.deepEqual([...featureList.matchAll(/id: '([^']+)'/g)].map(match => match[1]),
-    ['harness', 'accounts', 'remote', 'inbox', 'gate', 'items', 'topics', 'plans', 'verify', 'hosts', 'artifacts', 'release']);
+    ['harness', 'accounts', 'remote', 'inbox', 'gate', 'items', 'topics', 'plans', 'verify', 'artifacts', 'hosts', 'release']);
   assert.match(featureSection, /features\.map\(/);
   assert.doesNotMatch(landingSource, /carousel|scroll-snap|aria-roledescription/);
   assert.match(featureSection, /All features in the docs →/);
