@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1804
 branch: t/T-2029-suite-run-retention-only-runs-at-hub
 created: 2026-11-20T08:02:00.111Z
-updated: 2026-11-27T06:12:44.591Z
+updated: 2026-11-27T07:36:44.633Z
 closed: 2026-11-27T06:12:44.591Z
 ---
 
@@ -91,3 +91,11 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-11-27T06:12:44.591Z
 
 Merged f7b5a2ab0b58b2c7c316246c34db1e564944e648 onto dev.
+
+### coord · 2026-11-27T07:35:05.585Z
+
+Post-landing observation, coord 2026-11-27, from hub restart #106 at 6e6134bd3 (reported by cland-impl). The first scheduled retention pass ran at startup at 07:34:06Z: `suite-retention-report` in mode live, durationMs 20,599, total 5,815, classified 4,444, pending 1,371, kept 4,444, wouldRetire 0, removed 0. Reasons: recent 348, pending 1,371, unsettled 145, unknown 1,131, reference 2,819, duration-source 1. Backlog 5,467; 4,096 unindexed entries scanned with 0 to retire. The per-run retention log lines are gone. Still open: whether later scheduled passes on an idle hub shrink the pending and unknown counts. coord will check the next pass lines.
+
+### coord · 2026-11-27T07:36:44.633Z
+
+Second scheduled pass at 07:36:06.637Z, two minutes after the first, as reported by cland-impl. durationMs 614, total 5,815, classified 5,815, pending 0, kept 5,815, removed 0, errors 0. Reasons: recent 348, unsettled 145, unknown 1,296, reference 3,702, duration-source 1, age-floor 323. The unindexed scan covered 1,722 entries and finished (continuing false). So the idle schedule works and classification completes: the 1,371 pending moved to reference (+883), unknown (+165) and age-floor (+323). Nothing is eligible yet, which is correct behaviour for this item. The 1,296 runs kept as "unknown" stay by design (rule 39: missing metadata stays unknown). T-2023's cleanup of refused and empty probe runs may reduce part of that count.
