@@ -3,7 +3,7 @@ id: T-2092
 kind: task
 title: Merge-batch load gate takes an integrated stage cover whose T3 never executed (stopped at a T2 failure) as its T3 baseline, so the next batch repeats all 749 T3 identities five times and times out
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: E-2074
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-2092-merge-batch-load-gate-takes-an
 created: 2026-11-24T17:01:06.268Z
-updated: 2026-11-24T17:53:19.853Z
+updated: 2026-11-27T15:04:47.998Z
 ---
 
 ## Summary
