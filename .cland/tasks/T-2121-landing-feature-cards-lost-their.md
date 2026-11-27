@@ -3,7 +3,7 @@ id: T-2121
 kind: task
 title: Landing feature cards lost their screenshots when the carousel became a grid (T-1482); restore an image on each card that has one
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1809
 branch: t/T-2121-landing-feature-cards-lost-their
 created: 2026-11-27T16:07:10.643Z
-updated: 2026-11-27T16:42:44.489Z
+updated: 2026-11-27T17:13:07.979Z
 ---
 
 ## Summary
@@ -29,13 +29,16 @@ Each feature card in the grid shows its screenshot (or the diagram the carousel 
 
 - [x] C1. Every feature card whose carousel slide had a screenshot or diagram shows it again, using the existing Screenshot or Diagram component with responsive sizes, and every feature is still visible without arrows or scrolling inside the section (test or evidence from the built site).
   - done: impl-2121 · 2026-11-27T16:14:29.916Z
+  - verified: rev-35 [reviewer] · run rev-35-2121-evidence-1 · 2026-11-27T17:13:07.794Z · commit 0a3af053baff01f7bac8422d0474770bcb24f570
 - [x] C2. The site builds, the site tests pass, and the landing renders without horizontal scroll at 375 px and 1440 px in light and dark themes, shown by isolated headless-browser captures in the item's evidence (evidence).
   - done: impl-2121 · 2026-11-27T16:14:30.110Z
+  - verified: rev-35 [reviewer] · run rev-35-2121-evidence-1 · 2026-11-27T17:13:07.794Z · commit 0a3af053baff01f7bac8422d0474770bcb24f570
 - [x] C3. SCREENSHOTS.md lists the landing feature grid under "Pages" for each image now used there (test or evidence).
   - done: impl-2121 · 2026-11-27T16:14:30.307Z
   - verified: rev-35 [reviewer] · run rev-35-2121-source-1 · 2026-11-27T16:26:24.787Z · commit 3211c129f8ffb57a06c5a23bcd3de5942e038987
   - verified: rev-35 [reviewer] · run rev-35-2121-source-2 · 2026-11-27T16:37:16.400Z · commit a590e0df2e281d41a8a26d5ac8ea22555c7c6b26
   - verified: rev-35 [reviewer] · run rev-35-2121-source-3 · 2026-11-27T16:41:35.127Z · commit 0a3af053baff01f7bac8422d0474770bcb24f570
+  - verified: rev-35 [reviewer] · run rev-35-2121-evidence-1 · 2026-11-27T17:13:07.794Z · commit 0a3af053baff01f7bac8422d0474770bcb24f570
 
 ## Comments
 
@@ -139,3 +142,22 @@ Criteria: C3 verified.
 ### impl-2121 · 2026-11-27T16:42:44.489Z
 
 Source clear rev-35-2121-source-3 at0a3af053baff01f7bac8422d0474770bcb24f570. Coordinator granted one mode-free verify window; submitted exactly once, admitted run b0469b86-b4b0-4c67-acea-b92c7d8049dc, queue position1, default size/executor, reporttopic-1809 torev-35/impl-2121. Window released on queued receipt per Coordinator instruction. No source changes; waiting hub result. Postready hold for after0.4.1 remains.
+
+### impl-2121 · 2026-11-27T17:10:10.520Z
+
+Configured run b0469b86-b4b0-4c67-acea-b92c7d8049dc finished passed at unchanged reviewed0a3af053baff01f7bac8422d0474770bcb24f570; producer artifactA-23854. T0,T1,all fallbackT2,7selectedT3 importers and Web exit0; T4 unexecuted, otherT3 deferred to merge batch. Executor droplet c-8 nyc1 Linuxx64 Node24.21.0,2workers; isolated Headless Shell156.0.8078.4 revision1248 for Web. Lifetime1535s,cost0.1066USD. Duration/lint budget findings report-only. Reviewer has same-head final evidence hold; source fixed, no additional submissions. Final local landing captures A-23847; postready hold unchanged.
+
+### rev-35 · 2026-11-27T17:13:07.794Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2121-evidence-1
+commit: 0a3af053baff01f7bac8422d0474770bcb24f570
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-23855 final same-head audit of b0469b86/A-23854: producer code0, empty cause, finished17:09:03Z, unfinished[]. Complete T0 host check/T1/fallback allT2/7selectedT3/Web exit0; no T4 receipt/remainingT3 unexecuted. Both changed landing cases have paired1base+5unique load passes; all43remote-docs wrapper cases, install3 and selection12pass, with file finishes. C1/C2/C3 verified from source3, exact-head generated execution and A-23847's scoped local built captures. C2 site build is specifically Implementer transcript-backed npm run build exit0 (session80949,30pages/prebuild42), procedural final-candidate binding per a367c5d8, without published native build/source-hash receipt; inspected published layout and exact-head site guards support it. Configured T0 builds web, not site; no Linux site-build claim. Local macOS arm64 Headless Shell r1248 captures have12visible/nooverflow, all gaps14px, desktop frame-bottom deltas0px; fixed dark palette under both preferences explicit. Git tree53d013f588aa1a2e1e7e4ac30453f691199a2d1a/recorded run treef89b0e7fc432e12e46af6945b7675ca519a65e6c named independently. Linuxx64 dropletc8nyc1/2workers Node24.21, configured Web isolated HeadlessShell1248/Chrome156.0.8078.4. Paired base7840pass/1macOS-prerequisite skip+10loadpass;3known finish-only protected-output passes stay unpaired (raw base7843), producer7854completed includes them/repetitions. No missing finishes/duplicates/identity mismatches. Budget/ratchet/skip diagnostics report-only, cache unknown, lint refusals0. Earlier head/capture history retained. No source changes, Reviewer execution or new submission. Post-0.4.1 landing/publication hold remains separate.
+
+Criteria: C1 verified, C2 verified, C3 verified.
