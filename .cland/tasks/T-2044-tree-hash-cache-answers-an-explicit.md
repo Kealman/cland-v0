@@ -3,7 +3,7 @@ id: T-2044
 kind: task
 title: Tree-hash cache answers an explicit --executor local epic cover with a cached Linux droplet result (no macOS run)
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1783
 branch: t/T-2044-tree-hash-cache-answers-an-explicit
 created: 2026-11-21T03:00:38.190Z
-updated: 2026-11-26T22:43:49.451Z
+updated: 2026-11-27T01:27:47.510Z
 ---
 
 ## Summary
@@ -29,10 +29,10 @@ When a submission names an executor or platform, or its occasion requires one (t
 
 - [x] C1. An `--executor local` (or macOS-required occasion) submission with only a cached Linux droplet result for the tree runs locally instead of returning the cached result (test).
   - verified: rev-41 [reviewer] · run rev-41-20261126-2044-final · 2026-11-26T21:28:03.610Z · commit 3af173d308b1bb0b2fb3666246b62727d60b2e10
-  - done: impl-2044 · 2026-11-26T21:31:52.239Z
+  - done: impl-2044 · 2026-11-27T01:27:08.780Z
 - [x] C2. A same-platform cached result is still reused, and the result names the cached run's executor and platform (test).
   - verified: rev-41 [reviewer] · run rev-41-20261126-2044-final · 2026-11-26T21:28:03.610Z · commit 3af173d308b1bb0b2fb3666246b62727d60b2e10
-  - done: impl-2044 · 2026-11-26T21:31:52.347Z
+  - done: impl-2044 · 2026-11-27T01:27:08.936Z
 
 ## Comments
 
@@ -194,3 +194,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Merged-head evidence notclear. Run4053e1b7/A-23651 producer code1/causeempty, completeT0/T1/T2exit0,T3exit1, Web/T4/browserunexecuted. Literal OpenCodeAdapter failureatlog rollback assertion true!==false at adapter-native-boundary:488 tests presence of .cland/opencode/impl (directory retained), not child-exit assertion. Source/tree5049c225checked; taskdiffagainstdev doesnotchange failingtest/adapter/system-processes, but no causal/flaky attribution inferred. Exactcachecontrolsbase+5/5 and correctednativecasebasepass retained onlypartial. A-23652 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23652-t-2044-merged-head-run-failed-in-opencode-rollback-assertion.md. No newcachesourcefinding; C1/C2done/staleunverified atmergedhead, nofailed/verifiedmarksadded. Linuxx64c8nyc1workers2 Node24.21/Nvim0.12.5,9skips/advisorybudgetsreport-only. Allpriorroundsretained. Lead/Coordinatorattributionand retrydecisionpending; Reviewerlaunchednothing.
+
+### rev-41 · 2026-11-27T01:27:47.510Z
+
+verdict: review
+result: clear
+by: rev-41 [reviewer]
+run: rev-41-20261127-2044-delta2
+commit: 3850ab09d903bf17edda4bc899cbe51d61733b04
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Posted shared-fix merge delta source clear at3850ab09d. Both-parent comparisons: README retains taskcachepolicy and devbatch/T3-plan paragraph with separation; cacheadmission/matcher/reporting and migratedunit/native consumers unchanged from0e9a2aaa3. Taskdiffagainstdevde4118939 retains priorcachepolicy only, no additional implementation/config/help changes. Standards/Spec no findings; A-23683 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23683-t-2044-shared-fix-merge-delta-source-clear-at-3850ab09d.md. C1/C2done, old marks stale/unverified atnewhead; newconfigured evidencepending. A-23682 actualmacOSarm64 Node24.21selected101/101/typecheck+lint0 islocal evidenceonly. Prior4053e1b7failure retained; Coordinator sharedfixattribution isnotpass. Alloldrounds retained, Reviewerexecutednothing. Obtain Coordinator newheadverifywindow.

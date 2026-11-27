@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-25T09:29:05.649Z
+updated: 2026-11-27T01:25:51.007Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -734,3 +734,7 @@ Restart #103 (2026-11-24, on coord's GO under rule 19; #102 had touched 3.01 GB 
 ### human · 2026-11-25T09:29:05.649Z
 
 Restart #104 (2026-11-25, on coord's request under rule 19: T-2062 bounded stage containment, T-2020, T-2013): hub r103 pid 13781 (9af601700, 14 h 16 m up, RSS 1.9 GB, 2 stalls in total, 20 landings) stopped 09:27:59Z; job cland-hub-r104 pid 29725 started from the root at a6ff2853b (dev = origin/dev, root clean, web/dist rebuilt for one web/src change, no package changes, merge queue empty, no droplet verify running), serving 09:28:12.582Z, gap 14 s. Binding listeners 4 ms, web listener 283 ms. Port 49982, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job.
+
+### human · 2026-11-27T01:25:51.007Z
+
+Restart #105 (2026-11-27, on coord's request under rule 19: T-2112 bounded merge Git reads, the stdout maxBuffer fix): hub r104 pid 29725 (a6ff2853b, 1 d 15 h 56 m up, RSS 1.27 GB, 0 stalls) stopped 01:24:38Z; job cland-hub-r105 pid 85225 started from the root at de4118939 (dev = origin/dev, root clean, no package or web/src changes, merge queue empty, no suite running), serving 01:24:52.556Z, gap 14 s. Binding listeners 7 ms, web listener 291 ms. Port 63537, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job.
