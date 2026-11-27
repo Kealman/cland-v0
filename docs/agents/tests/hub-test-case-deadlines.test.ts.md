@@ -81,3 +81,19 @@ retains the legacy catch-and-continue path and requires a caller-specific
 ownership justification. There are no such callers in the audited tree.
 `receiptFixtureCase(..., true, ...)` remains a native fixture choice and does
 not install this fake guard.
+
+Optional receipt completion headroom increases the owner teardown bound and its
+underlying sequence-join backstop; omitted options retain both defaults. Setup
+steps retain their existing default. ReceiptStep accepts an optional per-step
+bound, passed to caseDeadlines.wait without changing its default. ownedQa opts
+only the original run and completion observer into the longer allowance.
+Generated fake-clock controls separately exercise the unchanged setup cutoff,
+120 seconds of simulated product work, and owner closure while that work is
+held. Existing omitted-option/default guard controls remain unchanged.
+
+The dump controls use the actual createClient with a guarded fake spawn and
+local RPC peer. One holds attach and independent child close. The other closes
+before listen and attempts late acquisition against a synchronous fence. Cleanup
+closes the nested owner before joining original setup, and a terminal fallback
+never publishes a close for a child that was not acquired. All fallback holds
+are released and joined by the enclosing whole-case owner.

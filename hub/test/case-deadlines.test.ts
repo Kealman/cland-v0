@@ -18,9 +18,215 @@ import cp from 'node:child_process';
 import { fixtureNativeGuard } from './fake-native-guard.ts';
 import { receiptFixtureCase } from './receipt-fixture-case.ts';
 import { testWaitMs } from './until.ts';
+import { ownedQa, ownedDumpClient } from '../../nvim/test/qa-runner.ts';
+import { createClient } from '../../nvim/test/client.ts';
+import { decode } from '../../nvim/test/rpc.ts';
+import { createServer, type Socket } from 'node:net';
+import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
+import { syncBuiltinESMExports } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import { ownDirectory, afterCleanup } from './process-cleanup.ts';
 import { suiteCase } from './suite-case-fixture.ts';
 import { fixture as runnerFixture } from './durations-runner-fixture.ts';
-import { EventEmitter } from 'node:events';
+
+for (const phase of ['setup', 'completion', 'owner join'] as const) test(`explicit QA completion headroom preserves separate ${phase} budget`, t => receiptFixtureCase(t, false, async (fixtures, step, _adoptRoot, release) => {
+  const clock = new FakeClock();
+  const setupMs = testWaitMs(60_000), completionMs = 120_000 + setupMs;
+  const nested = { name: t.name, signal: t.signal, after: () => {} } as unknown as TestContext;
+  const entered = Promise.withResolvers<void>(), complete = Promise.withResolvers<void>();
+  release(() => { entered.resolve(); complete.resolve(); });
+  let original!: Promise<void>, result = '';
+  onCleanup(fixtures, async () => { complete.resolve(); await drainFixtureCleanup(nested); await original?.catch(() => {}); });
+  original = receiptFixtureCase(nested, true, async (owned, setup, adoptRoot, close) => {
+    close(() => { if (phase !== 'owner join') complete.resolve(); });
+    const run = await ownedQa(owned, setup, adoptRoot, close, [], { completionMs }, async (_context, _args, options) => {
+      if (phase !== 'setup') options?.started?.({ exitCode: 0, signalCode: null } as cp.ChildProcess);
+      entered.resolve();
+      await complete.promise;
+      if (phase === 'setup') options?.started?.({ exitCode: 0, signalCode: null } as cp.ChildProcess);
+      return { code: 0, stdout: '', stderr: '', line: { case: 'KEYS-002', result: 'PASS', duration_ms: 120_000, build: 'fake', hub: 'stub', evidence: null } };
+    });
+    result = run.line.result;
+  }, { completionMs, clock });
+  void original.catch(() => {});
+  const checked = phase === 'setup' ? assert.rejects(original, new RegExp(`QA native ownership setup: deadline exceeded after ${setupMs} ms`))
+    : phase === 'owner join' ? assert.rejects(original, /fixture work admission closed/) : original;
+  void checked.catch(() => {});
+  await step('fake QA producer entered', () => entered.promise);
+  await step('fake setup completion turn', () => clock.advance(0));
+  const closing = phase === 'owner join' ? step('extended owner join', () => drainFixtureCleanup(nested)) : undefined;
+  void closing?.catch(() => {});
+  await step('simulated product budget', () => clock.advance(phase === 'setup' ? setupMs : 120_000));
+  complete.resolve();
+  await step('scoped QA budget outcome', () => checked);
+  await closing;
+  if (phase !== 'setup') assert.equal(result, 'PASS', 'completion survives the old observer bound and full product allowance');
+}));
+
+for (const phase of ['held RPC attach', 'pre-listen acquisition'] as const) test(`dump client interruption during ${phase} retains storage until independent child close`, t => receiptFixtureCase(t, false, async (fixtures, step, _adoptRoot, release) => {
+  const abort = new AbortController();
+  const nested = { name: t.name, signal: abort.signal, after: () => {} } as unknown as TestContext;
+  const attached = Promise.withResolvers<void>(), stopped = Promise.withResolvers<void>(), closed = Promise.withResolvers<void>();
+  const acquiring = Promise.withResolvers<void>(), resume = Promise.withResolvers<void>();
+  let fallback = false, closing = false, launched = false;
+  let socket: Socket | undefined, root = '', completed = 0, stopCount = 0, closeCount = 0, disposed = false;
+  const child = Object.assign(new EventEmitter(), {
+    pid: undefined, exitCode: null as number | null, signalCode: null,
+    stderr: new PassThrough(),
+    kill: () => { stopCount++; stopped.resolve(); return true; },
+  }) as unknown as cp.ChildProcess;
+  child.once('close', () => { closeCount++; closed.resolve(); });
+  const server = createServer(connection => {
+    if (closing) { connection.destroy(); return; }
+    socket = connection;
+    connection.once('data', bytes => {
+      const request = decode(bytes).value as unknown[];
+      assert.equal(request[2], 'nvim_ui_attach', 'actual RPC setup is held');
+      attached.resolve();
+    });
+  });
+  const listening = Promise.withResolvers<void>();
+  server.once('listening', listening.resolve);
+  server.once('error', listening.reject);
+  void listening.promise.catch(() => {});
+  let finishing: Promise<void> | undefined;
+  const finish = () => {
+    closing = true; // Fence native admission before publishing a terminal receipt.
+    return finishing ??= (async () => {
+      if (!launched) return;
+      await listening.promise;
+      socket?.destroy();
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+      Object.assign(child, { exitCode: 0 });
+      child.emit('close', 0, null);
+    })();
+  };
+  // Both fallback release and its join precede acquisition or mutation.
+  release(() => { fallback = true; acquiring.resolve(); resume.resolve(); attached.resolve(); stopped.resolve(); void finish().catch(() => {}); });
+  onCleanup(fixtures, finish);
+  const fakeSpawn = fixtures.mock.method(cp, 'spawn', (_bin: string, args: string[]) => {
+    if (closing) throw new Error('fake dump acquisition closed before listen');
+    assert.equal(_bin, 'fake-nvim');
+    const path = args[args.indexOf('--listen') + 1];
+    assert.ok(path);
+    launched = true;
+    server.listen(path);
+    return child;
+  });
+  syncBuiltinESMExports();
+  afterCleanup(fixtures, () => { fakeSpawn.mock.restore(); syncBuiltinESMExports(); });
+  let original!: Promise<void>;
+  let cleanup: Promise<void> | undefined;
+  onCleanup(fixtures, async () => { await finish(); await (cleanup ?? drainFixtureCleanup(nested)); await original?.catch(() => {}); });
+  original = receiptFixtureCase(nested, true, async (owned, setup, adoptRoot, close) => {
+    close(() => resume.resolve());
+    root = await setup('dump control root allocation', () => tempProject(owned));
+    adoptRoot(root);
+    try {
+      await ownedDumpClient(owned, setup, close, async started => {
+        if (phase === 'pre-listen acquisition') {
+          acquiring.resolve();
+          await resume.promise;
+          if (fallback) throw new Error('controlled fallback refused late acquisition');
+        }
+        return createClient(owned, 'fake-nvim', root,
+        { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('../../nvim/test/stub-hub.ts', import.meta.url))]) },
+        { started }, { isolateVerification: async () => {}, ownProcess: () => { throw new Error('unexpected native ownership'); }, ownDirectory, beforeDirectories });
+      });
+    } finally { completed++; }
+  });
+  const rejected = assert.rejects(original, phase === 'held RPC attach' ? /nvim closed the RPC socket/ : /fake dump acquisition closed before listen|controlled fallback refused late acquisition/); void rejected.catch(() => {});
+  await step('dump setup boundary observed', () => phase === 'held RPC attach' ? attached.promise : acquiring.promise);
+  if (phase === 'pre-listen acquisition') {
+    await step('fallback before native acquisition', finish);
+    assert.equal(closeCount, 0, 'no child close is published before native acquisition');
+  }
+  abort.abort(new Error('controlled dump setup interrupt'));
+  cleanup = step('dump control guarded cleanup', async () => { await drainFixtureCleanup(nested); disposed = true; });
+  void cleanup.catch(() => {});
+  if (phase === 'pre-listen acquisition') {
+    await step('late acquisition original joined', () => rejected);
+    await cleanup;
+    assert.equal(fakeSpawn.mock.callCount(), 1, 'late native admission reached the refusing fence');
+    assert.equal(server.listening, false);
+    assert.equal(closeCount, 0);
+    assert.equal(completed, 1);
+    assert.equal(existsSync(root), false);
+    return;
+  }
+  await step('early dump child stop request observed', () => stopped.promise);
+  assert.equal(stopCount, 1);
+  assert.equal(closeCount, 0);
+  assert.equal(completed, 0);
+  assert.equal(disposed, false);
+  assert.equal(existsSync(root), true, 'actual guarded cleanup retains root while native close is held');
+  await step('independent dump child close publication', finish);
+  await step('positive dump child close receipt', () => closed.promise);
+  await step('original dump setup drained', () => rejected);
+  await cleanup;
+  assert.equal(closeCount, 1);
+  assert.equal(completed, 1);
+  assert.equal(existsSync(root), false, 'guarded storage removal follows close and original completion');
+}));
+
+for (const phase of ['root', 'child'] as const) test(`QA setup interruption joins late ${phase} work before guarded storage removal`, t => receiptFixtureCase(t, false, async (fixtures, step, _adoptRoot, release) => {
+  const abort = new AbortController();
+  const nested = { name: t.name, signal: abort.signal, after: () => {} } as unknown as TestContext;
+  const entered = Promise.withResolvers<void>(), resume = Promise.withResolvers<void>(), captured = Promise.withResolvers<void>();
+  const stopRequested = Promise.withResolvers<void>(), nativeClose = Promise.withResolvers<void>();
+  release(() => { entered.resolve(); captured.resolve(); stopRequested.resolve(); resume.resolve(); nativeClose.resolve(); });
+  let root = '', completed = 0, stopped = 0, acquired = 0, closed = 0;
+  const child = { pid: 123, exitCode: null, signalCode: null, kill: () => { stopped++; stopRequested.resolve(); return true; } } as unknown as cp.ChildProcess;
+  let original!: Promise<unknown>;
+  onCleanup(fixtures, async () => { await drainFixtureCleanup(nested); await original?.catch(() => {}); });
+  await step('interrupted QA caller joins', async () => {
+    original = receiptFixtureCase(nested, true, async (owned, setup, adoptRoot, close) => {
+      close(() => resume.resolve());
+      await ownedQa(owned, setup, adoptRoot, close, [], {}, async (context, _args, options) => {
+        entered.resolve();
+        context.after(() => {
+          assert.equal(completed, 1, 'cleanup follows original work completion');
+          assert.equal(stopped, phase === 'child' ? 1 : 0, 'child stop precedes storage cleanup');
+          assert.equal(existsSync(root), true, 'root retained until writer cleanup');
+        });
+        if (phase === 'root') await resume.promise;
+        root = await tempProject(context);
+        acquired++;
+        try {
+          options?.rootAllocated?.(root);
+          options?.started?.(child);
+          captured.resolve();
+          await nativeClose.promise;
+          Object.assign(child, { exitCode: 0 });
+          closed++;
+        } finally { completed++; }
+        throw new Error('controlled QA completion');
+      });
+    });
+    const rejected = assert.rejects(original); void rejected.catch(() => {});
+    await entered.promise;
+    if (phase === 'child') await step('fake QA child captured', () => captured.promise);
+    abort.abort(new Error('controlled QA setup interrupt'));
+    const cleanup = step('interrupted QA guarded cleanup', () => drainFixtureCleanup(nested));
+    void cleanup.catch(() => {});
+    if (phase === 'child') {
+      await step('QA stop request receipt', () => stopRequested.promise);
+      assert.equal(closed, 0, 'stop does not publish native close');
+      assert.equal(completed, 0, 'original run waits for independent close');
+      assert.equal(existsSync(root), true, 'guarded removal retains root while child close is unresolved');
+      nativeClose.resolve();
+    }
+    await cleanup;
+    await rejected;
+  });
+  assert.equal(acquired, 1);
+  assert.equal(completed, 1, 'original acquisition/completion joined');
+  assert.equal(stopped, phase === 'child' ? 1 : 0);
+  assert.equal(closed, phase === 'child' ? 1 : 0, 'positive native close precedes removal');
+  assert.equal(existsSync(root), false, 'guarded cleanup removed the joined root');
+
+}));
 
 for (const registration of ['outer context', 'fixture context'] as const) test(`suite case retains roots and native denial until rejected resource close is repaired (${registration})`, async t => {
   const supervisor = stageCase(t);

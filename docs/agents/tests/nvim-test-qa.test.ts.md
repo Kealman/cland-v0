@@ -32,12 +32,36 @@ signal-zero ESRCH confirms absence; every other probe error fails immediately
 with its literal code. The pure `hub/test/qa-process-group.test.ts` regression injects
 ESRCH, EPERM and EIO without launching or signalling a native process.
 
-The five new receipt/tamper callbacks enter receiptFixtureCase before acquisition.
-Their proxy owns normal/signal teardown and guards each late root. Tamper directory,
-script and wrapper setup have named bounds. The original QA run is enrolled before
+Every callback enters receiptFixtureCase before acquisition, including the
+fixture-writer CLI and ordinary dump client. Its proxy owns normal/signal
+teardown and guards each late root. Directory, script, wrapper and dump-client
+setup have named bounds. The original QA run is enrolled before
 its separate native-ownership setup observer, with immediate rejection handling;
 completion is observed on the same owned promise. Closure fences further steps,
 refuses launch after a late root allocation, stops an already captured live child
 and joins original work/resources before directory cleanup. qa-runner's optional
-rootAllocated hook adopts its actual root before environment construction/spawn;
-other existing QA callers keep their current behavior.
+rootAllocated hook adopts its actual root before environment construction/spawn.
+Both QA files use the shared ownedQa helper in qa-runner.ts. The injected runner
+in case-deadlines.test.ts interrupts held root acquisition and captured child
+setup without native launches; its stop request and independently held close
+have separate receipts. The dump control calls the actual createClient with a
+guarded fake spawn and a real local RPC socket holding nvim_ui_attach. The
+optional started observer receives the child before connect/attach; the shared
+ownedDumpClient enrolls its close immediately and can stop it during setup.
+Both controls check root retention while close is unresolved, then publish and
+observe close, join the original work and exercise actual guarded removal.
+Fallback releases and joins are registered before acquisition. The signal-readiness
+observer is armed before starting the QA call.
+
+The dump control also interrupts before listen: fallback fences fake native
+admission synchronously, closes the nested owner before joining setup, and
+publishes no child-close receipt for an acquisition that was never admitted.
+Its retained late attempt must reach the refusing fence with no listener left.
+
+KEYS-002 retains its 120-second product timeout. Its original run, completion
+observer and owner teardown opt into that allowance plus shared testDeadlineMs
+setup/closure headroom. The native-startup observer and other steps keep their
+existing setup bound; other callers retain their defaults. The generated
+fake-clock cases prove setup still expires at its setup bound, completion can
+cross the full product allowance, and a closing owner joins that longer work.
+These are simulated-clock receipts, not a 120-second timing measurement.

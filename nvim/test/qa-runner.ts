@@ -1,3 +1,4 @@
+import type { ReceiptStep } from '../../hub/test/receipt-fixture-case.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 // Shared headless QA CLI fixture; all children belong to the calling test.
 import assert from 'node:assert/strict';
@@ -41,4 +42,48 @@ export async function qa(t: TestContext, args: string[], options: { prefix?: str
       }
     });
   });
+}
+
+/** Enroll the original QA call before observing setup. A close that wins during
+ * allocation also stops a late child as soon as its native owner is captured. */
+export async function ownedQa(t: TestContext, step: ReceiptStep, adoptRoot: (root: string) => void, release: (action: () => void) => void,
+  args: string[], options: NonNullable<Parameters<typeof qa>[2]> & { completionMs?: number } = {}, runQa: typeof qa = qa) {
+  const { completionMs, ...runOptions } = options;
+  const setup = Promise.withResolvers<void>();
+  let closing = false, child: ChildProcess | undefined;
+  const stop = () => { if (child?.pid !== undefined && child.exitCode === null && child.signalCode === null) child.kill('SIGTERM'); };
+  release(() => { closing = true; stop(); });
+  const original = step('original QA run', () => runQa(t, args, {
+    ...runOptions,
+    rootAllocated: root => {
+      adoptRoot(root);
+      if (closing) throw new Error('QA acquisition closed before launch');
+      options.rootAllocated?.(root);
+    },
+    started: value => {
+      child = value;
+      if (closing) stop();
+      options.started?.(value);
+      setup.resolve();
+    },
+  }), completionMs);
+  void original.catch(error => setup.reject(error));
+  await step('QA native ownership setup', () => setup.promise);
+  return step('QA native completion and result', () => original, completionMs);
+}
+
+/** Capture the native handle and enroll its close before awaiting RPC setup. */
+export function ownedDumpClient<T>(t: TestContext, step: ReceiptStep, release: (action: () => void) => void,
+  start: (started: (child: ChildProcess) => void) => Promise<T>): Promise<T> {
+  let closing = false, child: ChildProcess | undefined;
+  const stop = () => { if (child && child.exitCode === null && child.signalCode === null) child.kill('SIGTERM'); };
+  release(() => { closing = true; stop(); });
+  return step('QA dump client setup', () => start(value => {
+    child = value;
+    const receipt = new Promise<void>(resolve => value.once('close', () => resolve()));
+    const joined = step('QA dump child close receipt', () => receipt);
+    void joined.catch(() => {});
+    t.after(() => joined);
+    if (closing) stop();
+  }));
 }

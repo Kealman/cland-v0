@@ -21,6 +21,10 @@ combine cleanly is task evidence in the item topic (T-1020, A-10628), not a test
 it needs a real Git repository and belongs to no permanent tier. The walk's test
 names are unchanged, so `hub/test/durations.json` keeps its per-case budgets.
 
+Each generated callback enters receiptFixtureCase before calling ownedQa from
+qa-runner.ts. Setup and completion have separate named bounds; interruption
+joins the original work and late roots/children before storage cleanup.
+
 Changes to `nvim/lua/cland/init.lua` select this T4 file once in mode-free task
 verification through `tiers.json`'s read-path guard. `ARTIFACT-001` checks the
 registered artifact toggle on the visible help grid: extra explanatory help

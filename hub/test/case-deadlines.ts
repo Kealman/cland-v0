@@ -32,7 +32,7 @@ export async function drainFixtureWork(clock: Clock = realClock, timeoutMs = DEA
   })(), clock, timeoutMs);
 }
 
-export function caseDeadlines(t: TestContext, options: { clock?: Clock; timeoutMs?: number;
+export function caseDeadlines(t: TestContext, options: { clock?: Clock; timeoutMs?: number; joinTimeoutMs?: number;
   ownership?: {
     beforeDirectories: (context: TestContext, close: () => Promise<unknown>) => void;
     guardDirectoryRemoval: (root: string, join: () => Promise<unknown>) => void;
@@ -42,14 +42,14 @@ export function caseDeadlines(t: TestContext, options: { clock?: Clock; timeoutM
   const clock = options.clock ?? realClock;
   const timeoutMs = options.timeoutMs ?? DEADLINE_MS;
   const pending = new Set<Promise<unknown>>();
-  const sequence = admittedFixtureWork();
+  const sequence = admittedFixtureWork(options.joinTimeoutMs);
   const hooks: Array<() => Promise<void>> = [];
   const completedHooks = new Set<() => Promise<void>>();
-  const wait = <T>(operation: string, run: () => Promise<T>): Promise<T> => {
+  const wait = <T>(operation: string, run: () => Promise<T>, operationTimeoutMs = timeoutMs): Promise<T> => {
     const work = own(Promise.resolve().then(run));
     pending.add(work);
     void work.then(() => pending.delete(work), () => pending.delete(work));
-    return bounded(`${t.name}: ${operation}`, work, clock, timeoutMs);
+    return bounded(`${t.name}: ${operation}`, work, clock, operationTimeoutMs);
   };
   let joined: Promise<void> | undefined, cleanup: Promise<void> | undefined;
   const join = () => {

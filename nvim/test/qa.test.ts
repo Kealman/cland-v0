@@ -12,9 +12,9 @@ import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { qa } from './qa-runner.ts';
+import { ownedQa, ownedDumpClient } from './qa-runner.ts';
 import { processGroupGone } from './process-group.ts';
-import { eventually, testWaitMs } from '../../hub/test/until.ts';
+import { eventually, testWaitMs, testDeadlineMs } from '../../hub/test/until.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { accountFixtureEnvironment } from '../../hub/test/account-fixture-env.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
@@ -27,33 +27,6 @@ const CLI = fileURLToPath(new URL('../../hub/bin/cland.ts', import.meta.url));
 const SHIPPED = fileURLToPath(new URL('../../qa/cases/', import.meta.url));
 const CASES = fileURLToPath(new URL('./qa-cases/', import.meta.url));
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
-
-/** Enroll the original QA call before observing setup. A close that wins during
- * allocation also stops a late child as soon as its native owner is captured. */
-async function ownedQa(t: TestContext, step: ReceiptStep, adoptRoot: (root: string) => void, release: (action: () => void) => void,
-  args: string[], options: NonNullable<Parameters<typeof qa>[2]> = {}) {
-  const setup = Promise.withResolvers<void>();
-  let closing = false, child: ChildProcess | undefined;
-  const stop = () => { if (child?.pid !== undefined && child.exitCode === null && child.signalCode === null) child.kill('SIGTERM'); };
-  release(() => { closing = true; stop(); });
-  const original = step('original QA run', () => qa(t, args, {
-    ...options,
-    rootAllocated: root => {
-      adoptRoot(root);
-      if (closing) throw new Error('QA acquisition closed before launch');
-      options.rootAllocated?.(root);
-    },
-    started: value => {
-      child = value;
-      if (closing) stop();
-      options.started?.(value);
-      setup.resolve();
-    },
-  }));
-  void original.catch(error => setup.reject(error));
-  await step('QA native ownership setup', () => setup.promise);
-  return step('QA native completion and result', () => original);
-}
 
 /** A stand-in for the Neovim binary that writes its pid to `pidFile` and becomes the real one: the run's process group leader. */
 async function pidWrapper(dir: string): Promise<{ wrapper: string; pid: () => Promise<number> }> {
@@ -97,15 +70,18 @@ async function qaReady(child: ChildProcess): Promise<void> {
   throw new Error('the QA run closed stderr before its readiness receipt');
 }
 
-async function tempDir(t: TestContext, prefix: string): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), prefix));
-  ownDirectory(t, dir);
-  enableFixtureHostSockets(dir);
-  return dir;
+async function tempDir(t: TestContext, step: ReceiptStep, adoptRoot: (root: string) => void, prefix: string): Promise<string> {
+  return step('QA directory allocation', async () => {
+    const dir = await mkdtemp(join(tmpdir(), prefix));
+    ownDirectory(t, dir);
+    adoptRoot(dir);
+    enableFixtureHostSockets(dir);
+    return dir;
+  });
 }
 
-test('SHELL-001 passes against its own stdio hub: exit 0 and one JSON line with the result, the duration, the build and the evidence inline', { skip }, async (t) => {
-  const run = await qa(t, [`${SHIPPED}SHELL-001.lua`]);
+test('SHELL-001 passes against its own stdio hub: exit 0 and one JSON line with the result, the duration, the build and the evidence inline', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const run = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}SHELL-001.lua`]);
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
   assert.equal(run.code, 0);
   assert.equal(run.line.case, 'SHELL-001');
@@ -117,18 +93,18 @@ test('SHELL-001 passes against its own stdio hub: exit 0 and one JSON line with 
   assert.match(evidence.screen, /⌁ queued/);
   assert.equal(evidence.screen.split('\n').length, 45, 'the fixed 160×45 grid');
   assert.deepEqual(evidence.state.topics.map((x) => x.id), ['general', 'agents']);
-});
+}));
 
-test('the QA fixture seals its CLI environment before the product starts', { skip }, async t => {
-  const dir = await tempDir(t, 'cland-qa-env-');
+test('the QA fixture seals its CLI environment before the product starts', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const dir = await tempDir(t, step, adoptRoot, 'cland-qa-env-');
   const probe = join(dir, 'probe.sh');
   const receipt = join(dir, 'environment');
-  await writeFile(probe, 'out=$1; shift\nprintf "%s\\n" "$HOME" "${OPENAI_API_KEY-unset}" "${GIT_DIR-unset}" "${CLAND_FIXTURE_EXPLICIT-unset}" "$PWD" > "$out"\nexec "$@"\n');
+  await step('QA file setup', () => writeFile(probe, 'out=$1; shift\nprintf "%s\\n" "$HOME" "${OPENAI_API_KEY-unset}" "${GIT_DIR-unset}" "${CLAND_FIXTURE_EXPLICIT-unset}" "$PWD" > "$out"\nexec "$@"\n'));
   const parent = process.env;
   process.env = { ...fixtureEnvironment(dir, parent), HOME: join(dir, 'parent-home'), OPENAI_API_KEY: 'synthetic-parent-key', GIT_DIR: join(dir, 'parent-git') };
   let run;
   try {
-    run = await qa(t, [`${SHIPPED}SHELL-001.lua`, '--hub', 'stub'], { prefix: ['/bin/sh', probe, receipt], env: { CLAND_FIXTURE_EXPLICIT: 'requested' } });
+    run = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}SHELL-001.lua`, '--hub', 'stub'], { prefix: ['/bin/sh', probe, receipt], env: { CLAND_FIXTURE_EXPLICIT: 'requested' } });
   } finally { process.env = parent; }
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
   const [home, key, git, explicit, cwd] = (await readFile(receipt, 'utf8')).trim().split('\n');
@@ -137,7 +113,7 @@ test('the QA fixture seals its CLI environment before the product starts', { ski
   assert.equal(git, 'unset');
   assert.equal(explicit, 'requested');
   assert.notEqual(cwd, process.cwd());
-});
+}));
 
 test('QA child hubs register allocated roots without grant variables in the case environment', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
   for (const hub of ['stdio', 'stub']) {
@@ -150,7 +126,7 @@ test('QA child hubs register allocated roots without grant variables in the case
 for (const target of ['shim', 'preload'] as const) for (const change of ['missing', 'tampered'] as const) {
   test(`QA refuses a ${change} ${target} before launching Node`, { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
     const dir = await step('QA tamper control directory setup', async () => {
-      const root = await tempDir(t, 'cland-qa-node-check-');
+      const root = await tempDir(t, step, adoptRoot, 'cland-qa-node-check-');
       adoptRoot(root);
       return root;
     });
@@ -167,9 +143,9 @@ for (const target of ['shim', 'preload'] as const) for (const change of ['missin
   }));
 }
 
-test('a failed expectation exits 1 with FAIL, its message, and the grid and the state dumped in --out', { skip }, async (t) => {
-  const out = join(await tempDir(t, 'cland-qa-out-'), 'evidence');
-  const run = await qa(t, [`${CASES}FAIL-001.lua`, '--out', out]);
+test('a failed expectation exits 1 with FAIL, its message, and the grid and the state dumped in --out', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const out = join(await tempDir(t, step, adoptRoot, 'cland-qa-out-'), 'evidence');
+  const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}FAIL-001.lua`, '--out', out]);
   assert.equal(run.line.result, 'FAIL', JSON.stringify(run.line));
   assert.equal(run.code, 1);
   assert.equal(run.line.message, 'the board is on screen');
@@ -182,44 +158,44 @@ test('a failed expectation exits 1 with FAIL, its message, and the grid and the 
   const state = JSON.parse(await readFile(join(out, 'FAIL-001.state.json'), 'utf8')) as { view: unknown; hub: { state: string } };
   assert.deepEqual(state.view, { kind: 'thread', id: 'general' });
   assert.equal(state.hub.state, 'connected');
-});
+}));
 
-test('a wait_for that times out exits 2 with INCONCLUSIVE and the last screen', { skip }, async (t) => {
-  const run = await qa(t, [`${CASES}WAIT-001.lua`]);
+test('a wait_for that times out exits 2 with INCONCLUSIVE and the last screen', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}WAIT-001.lua`]);
   assert.equal(run.line.result, 'INCONCLUSIVE', JSON.stringify(run.line));
   assert.equal(run.code, 2);
   assert.equal(run.line.message, 'wait_for timed out after 300 ms: a row that never shows');
   // the keys typed before the wait were taken: the items panel is open on the last screen
   assert.match((run.line.evidence as { screen: string }).screen, /ITEMS/);
-});
+}));
 
-test('a Lua error in the case exits 2 with BLOCKED, the error with its line, and the last screen', { skip }, async (t) => {
-  const out = await tempDir(t, 'cland-qa-out-');
-  const run = await qa(t, [`${CASES}ERROR-001.lua`, '--out', out]);
+test('a Lua error in the case exits 2 with BLOCKED, the error with its line, and the last screen', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const out = await tempDir(t, step, adoptRoot, 'cland-qa-out-');
+  const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}ERROR-001.lua`, '--out', out]);
   assert.equal(run.line.result, 'BLOCKED', JSON.stringify(run.line));
   assert.equal(run.code, 2);
   assert.match(run.line.message ?? '', /ERROR-001\.lua:9: attempt to index local 'missing' \(a nil value\)/);
   assert.match(await readFile(join(out, 'ERROR-001.screen.txt'), 'utf8'), /General/);
-});
+}));
 
-test('a case that is not there, or does not load, is BLOCKED with exit 2; a bad command line is a usage error', { skip }, async (t) => {
-  const missing = await qa(t, [`${CASES}NOPE-001.lua`]);
+test('a case that is not there, or does not load, is BLOCKED with exit 2; a bad command line is a usage error', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const missing = await ownedQa(t, step, adoptRoot, release, [`${CASES}NOPE-001.lua`]);
   assert.equal(missing.line.result, 'BLOCKED');
   assert.equal(missing.code, 2);
   assert.match(missing.line.message ?? '', /no case file .*NOPE-001\.lua/);
 
-  const broken = await qa(t, [fileURLToPath(import.meta.url)]);
+  const broken = await ownedQa(t, step, adoptRoot, release, [fileURLToPath(import.meta.url)]);
   assert.equal(broken.line.result, 'BLOCKED', JSON.stringify(broken.line));
   assert.equal(broken.code, 2);
   assert.match(broken.line.message ?? '', /the case does not load/);
 
-  await assert.rejects(qa(t, [`${CASES}FAIL-001.lua`, '--hub', 'tcp']), /--hub is stdio or stub/);
+  await assert.rejects(ownedQa(t, step, adoptRoot, release, [`${CASES}FAIL-001.lua`, '--hub', 'tcp']), /--hub is stdio or stub/);
   // a timer Node cannot keep would fire at once
-  await assert.rejects(qa(t, [`${CASES}FAIL-001.lua`, '--timeout', '3000000']), /--timeout needs a number of seconds, at most 2147483/);
-});
+  await assert.rejects(ownedQa(t, step, adoptRoot, release, [`${CASES}FAIL-001.lua`, '--timeout', '3000000']), /--timeout needs a number of seconds, at most 2147483/);
+}));
 
-test('qa.state() holds the stub scenario: the sessions with their states, the roles, and the topics, asks and items the screen shows', { skip }, async (t) => {
-  const run = await qa(t, [`${CASES}STATE-001.lua`]);
+test('qa.state() holds the stub scenario: the sessions with their states, the roles, and the topics, asks and items the screen shows', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}STATE-001.lua`]);
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
   type Snapshot = {
     project: string;
@@ -264,10 +240,10 @@ test('qa.state() holds the stub scenario: the sessions with their states, the ro
   assert.match(evidence.dumps.sessions?.screen ?? '', /impl-1 \[Implementer\]/);
   assert.match(evidence.dumps.sessions?.screen ?? '', /WAITING · 1/);
   assert.deepEqual(evidence.dumps.sessions?.state.panels, { left: false, right: 'sessions', dock: false, kinds: { right: 'sessions' } });
-});
+}));
 
-test('ITEMS-001 passes against its own stdio hub, and against the stub hub with --hub stub', { skip }, async (t) => {
-  const real = await qa(t, [`${SHIPPED}ITEMS-001.lua`]);
+test('ITEMS-001 passes against its own stdio hub, and against the stub hub with --hub stub', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const real = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}ITEMS-001.lua`]);
   assert.equal(real.line.result, 'PASS', JSON.stringify(real.line));
   assert.equal(real.code, 0);
   assert.equal(real.line.hub, 'stdio');
@@ -276,13 +252,13 @@ test('ITEMS-001 passes against its own stdio hub, and against the stub hub with 
   assert.match(screen, /parent +E-1 Workbench shell/);
   assert.match(screen, /The tree of items, each under its parent\./);
 
-  const stub = await qa(t, [`${SHIPPED}ITEMS-001.lua`, '--hub', 'stub']);
+  const stub = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}ITEMS-001.lua`, '--hub', 'stub']);
   assert.equal(stub.line.result, 'PASS', JSON.stringify(stub.line));
   assert.equal(stub.line.hub, 'stub');
-});
+}));
 
-test("the fixture's roles.toml and config.toml are the stdio hub's: the launcher fills in the Coordinator's defaults including its danger-full-access sandbox", { skip }, async (t) => {
-  const run = await qa(t, [`${CASES}ROLES-001.lua`]);
+test("the fixture's roles.toml and config.toml are the stdio hub's: the launcher fills in the Coordinator's defaults including its danger-full-access sandbox", { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}ROLES-001.lua`]);
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
   const { screen, state } = run.line.evidence as { screen: string; state: { mode: string; roles: Array<{ role: string; launch: Record<string, unknown> }> } };
   assert.deepEqual(state.roles.find((r) => r.role === 'coordinator')?.launch, {
@@ -294,17 +270,17 @@ test("the fixture's roles.toml and config.toml are the stdio hub's: the launcher
   assert.match(screen, /│name +coord /);
   assert.match(screen, /│model +qa-model /);
   assert.equal(state.mode, 'i');
-});
+}));
 
-test('every run is given the fixed grid, the pinned TERM, LANG and TZ, paths of its own and no server socket, whatever the caller has', { skip }, async (t) => {
-  const run = await qa(t, [`${CASES}ENV-001.lua`], { env: { TERM: 'dumb', LANG: 'ru_RU.UTF-8', TZ: 'Asia/Tokyo', NVIM_APPNAME: 'mine', CLAND_SESSION_NAME: 'impl-1', CLAND_REFRESH_MS: '1' } });
+test('every run is given the fixed grid, the pinned TERM, LANG and TZ, paths of its own and no server socket, whatever the caller has', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}ENV-001.lua`], { env: { TERM: 'dumb', LANG: 'ru_RU.UTF-8', TZ: 'Asia/Tokyo', NVIM_APPNAME: 'mine', CLAND_SESSION_NAME: 'impl-1', CLAND_REFRESH_MS: '1' } });
   assert.equal(run.line.message, undefined);
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
-});
+}));
 
-test('FOLLOWS-001 reaches its closed predecessor task under both the stdio and stub hubs', { skip }, async (t) => {
+test('FOLLOWS-001 reaches its closed predecessor task under both the stdio and stub hubs', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
   for (const hub of ['stdio', 'stub']) {
-    const run = await qa(t, [`${SHIPPED}FOLLOWS-001.lua`, '--hub', hub]);
+    const run = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}FOLLOWS-001.lua`, '--hub', hub]);
     assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
     assert.equal(run.code, 0, hub);
     const { items } = (run.line.evidence as { state: { items: Array<Record<string, unknown>> } }).state;
@@ -313,11 +289,11 @@ test('FOLLOWS-001 reaches its closed predecessor task under both the stdio and s
     assert.equal(predecessor?.state, 'closed', hub);
     assert.equal(predecessor?.parent, 'E-2', hub);
   }
-});
+}));
 
-test('fixture values YAML would read as structure reach the client whole, the same under the stdio hub and the stub hub', { skip }, async (t) => {
+test('fixture values YAML would read as structure reach the client whole, the same under the stdio hub and the stub hub', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
   for (const hub of ['stdio', 'stub']) {
-    const run = await qa(t, [`${CASES}LABELS-001.lua`, '--hub', hub]);
+    const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}LABELS-001.lua`, '--hub', hub]);
     assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
     const { items } = (run.line.evidence as { state: { items: Array<Record<string, unknown>> } }).state;
     const fields = (i: Record<string, unknown> | undefined) => [i?.id, i?.kind, i?.title, i?.state, i?.labels, i?.parent ?? null, i?.blocked_by];
@@ -332,50 +308,54 @@ test('fixture values YAML would read as structure reach the client whole, the sa
     assert.match(screen, /With a rule in it\./, hub);
     assert.match(screen, /COMMENTS · 1/, hub);
   }
-});
+}));
 
-test('a fixture that would write outside the run directory (its project name, an item id) is BLOCKED before any write', { skip }, async (t) => {
+test('a fixture that would write outside the run directory (its project name, an item id) is BLOCKED before any write', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
   // the run's temp dir is this test's own, so anything written beside the run directory shows
-  const tmp = realpathSync(await tempDir(t, 'cland-qa-tmp-'));
+  const tmp = realpathSync(await tempDir(t, step, adoptRoot, 'cland-qa-tmp-'));
   for (const [name, why] of [['ESCAPE-001', /the fixture's project "\.\.\/live" is not a plain directory name/], ['ESCAPE-002', /the fixture's item id "\.\.\/\.\.\/T-1" is not an item id/]] as const) {
     for (const hub of ['stdio', 'stub']) {
-      const run = await qa(t, [`${CASES}${name}.lua`, '--hub', hub], { env: { TMPDIR: tmp } });
+      const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}${name}.lua`, '--hub', hub], { env: { TMPDIR: tmp } });
       assert.equal(run.line.result, 'BLOCKED', JSON.stringify(run.line));
       assert.equal(run.code, 2);
       assert.match(run.line.message ?? '', why);
       assert.deepEqual(await readdir(tmp), [], `${name} on ${hub}: nothing is left in the temp dir, beside the run directory or in it`);
     }
   }
-});
+}));
 
-test('keys longer than Neovim\'s input buffer are all typed, the last ones too', { skip }, async (t) => {
-  const run = await qa(t, [`${CASES}KEYS-001.lua`]);
+test('keys longer than Neovim\'s input buffer are all typed, the last ones too', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}KEYS-001.lua`]);
   assert.equal(run.line.message, undefined);
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
+}));
+
+test('a long sequence is cut only right after <Esc> or <CR>: rev-6\'s x×4084 then <Esc><Space>i, and the cut at every distance from the limit', { skip }, t => {
+  const productSeconds = 120;
+  const completionMs = productSeconds * 1000 + testDeadlineMs(60_000);
+  return receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+    const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}KEYS-002.lua`, '--timeout', String(productSeconds)], { completionMs });
+    assert.equal(run.line.message, undefined);
+    assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
+  }, { completionMs });
 });
 
-test('a long sequence is cut only right after <Esc> or <CR>: rev-6\'s x×4084 then <Esc><Space>i, and the cut at every distance from the limit', { skip }, async (t) => {
-  const run = await qa(t, [`${CASES}KEYS-002.lua`, '--timeout', '120']);
-  assert.equal(run.line.message, undefined);
-  assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
-});
-
-test('a Normal-mode command after a long stretch arrives whole when there is an <Esc> to cut at; with none in over 4 KiB the keys are refused, never left hanging', { skip }, async (t) => {
-  const gi = await qa(t, [`${CASES}KEYS-003.lua`, '--timeout', '60']);
+test('a Normal-mode command after a long stretch arrives whole when there is an <Esc> to cut at; with none in over 4 KiB the keys are refused, never left hanging', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const gi = await ownedQa(t, step, adoptRoot, release, [`${CASES}KEYS-003.lua`, '--timeout', '60']);
   assert.equal(gi.line.message, undefined);
   assert.equal(gi.line.result, 'PASS', JSON.stringify(gi.line));
 
-  const refused = await qa(t, [`${CASES}KEYS-004.lua`, '--timeout', '60']);
+  const refused = await ownedQa(t, step, adoptRoot, release, [`${CASES}KEYS-004.lua`, '--timeout', '60']);
   assert.equal(refused.line.result, 'BLOCKED', JSON.stringify(refused.line));
   assert.equal(refused.code, 2);
   assert.match(refused.line.message ?? '', /^keys: 4097 bytes from byte 1 on hold no <Esc> or <CR> within 4096 bytes, the most typed at once; put an <Esc> or a <CR> where the mode is known/);
   assert.ok(refused.line.duration_ms < 30_000, `refused at once, not after a wait: ${refused.line.duration_ms} ms`);
   const { state } = refused.line.evidence as { state: { mode: string } };
   assert.equal(state.mode, 'n', 'nothing was typed: no command is pending');
-});
+}));
 
-test('`cland --qa-fixture` writes a new fixture project only: an existing one is refused and left as it was', async (t) => {
-  const dir = realpathSync(await tempDir(t, 'cland-qa-fixture-'));
+test('`cland --qa-fixture` writes a new fixture project only: an existing one is refused and left as it was', t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const dir = realpathSync(await tempDir(t, step, adoptRoot, 'cland-qa-fixture-'));
   const fixture = (title: string) => JSON.stringify({ dir, project: 'proj', items: [{ id: 'T-1', title }] });
   const write = (input: string) => spawnSync(process.execPath, [CLI, '--qa-fixture'], { cwd: dir, env: fixtureEnvironment(dir, process.env), input, encoding: 'utf8' });
   const first = write(fixture('First'));
@@ -388,32 +368,34 @@ test('`cland --qa-fixture` writes a new fixture project only: an existing one is
   assert.match(again.stderr, /the fixture project .*proj already exists/);
   assert.deepEqual(await readdir(join(dir, 'proj', '.cland', 'tasks')), ['T-1-first.md']);
   assert.equal(await readFile(file, 'utf8'), before);
-});
+}));
 
-test('a case that never returns is ended by --timeout: BLOCKED, exit 2, and no Neovim left spinning', { skip }, async (t) => {
-  const nv = await pidWrapper(await tempDir(t, 'cland-qa-hang-'));
-  const run = await qa(t, [`${CASES}HANG-001.lua`, '--timeout', '2'], { env: { CLAND_NVIM: nv.wrapper } });
+test('a case that never returns is ended by --timeout: BLOCKED, exit 2, and no Neovim left spinning', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const dir = await tempDir(t, step, adoptRoot, 'cland-qa-hang-');
+  const nv = await step('QA pid wrapper setup', () => pidWrapper(dir));
+  const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}HANG-001.lua`, '--timeout', '2'], { env: { CLAND_NVIM: nv.wrapper } });
   assert.equal(run.line.result, 'BLOCKED', JSON.stringify(run.line));
   assert.equal(run.code, 2);
   assert.match(run.line.message ?? '', /^the run did not finish within 2 s/);
   assert.equal(await groupGone(await nv.pid()), true);
-});
+}));
 
-test('a run that is interrupted (SIGTERM) takes its Neovim with it and still says BLOCKED', { skip }, async (t) => {
+test('a run that is interrupted (SIGTERM) takes its Neovim with it and still says BLOCKED', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
   // T3: SIGTERM must reap the real Neovim process group and preserve the CLI's BLOCKED result.
-  const nv = await pidWrapper(await tempDir(t, 'cland-qa-term-'));
+  const dir = await tempDir(t, step, adoptRoot, 'cland-qa-term-');
+  const nv = await step('QA pid wrapper setup', () => pidWrapper(dir));
   let runner!: ChildProcess;
-  let ready!: Promise<void>;
-  const done = qa(t, [`${CASES}HANG-001.lua`], { env: { CLAND_NVIM: nv.wrapper }, started: (child) => {
+  const ready = Promise.withResolvers<void>();
+  const done = ownedQa(t, step, adoptRoot, release, [`${CASES}HANG-001.lua`], { env: { CLAND_NVIM: nv.wrapper }, started: (child) => {
     runner = child;
-    ready = qaReady(child);
+    void qaReady(child).then(ready.resolve, ready.reject);
   } });
   const [pid] = await Promise.race([
     Promise.all([nv.pid().then((pid) => {
       // Also own the detached group if readiness fails before the CLI can handle SIGTERM.
       ownProcess(t, pid);
       return pid;
-    }), ready]),
+    }), ready.promise]),
     done.then(() => { throw new Error('the QA run finished before SIGTERM'); }),
   ]);
   assert.equal(runner.kill('SIGTERM'), true);
@@ -422,13 +404,14 @@ test('a run that is interrupted (SIGTERM) takes its Neovim with it and still say
   assert.equal(run.code, 2);
   assert.match(run.line.message ?? '', /^interrupted by SIGTERM/);
   assert.equal(await groupGone(pid), true);
-});
+}));
 
-test(':Cland qa dump <path> writes the grid and the state in an ordinary run', { skip }, async (t) => {
-  const dir = await tempDir(t, 'cland-qa-dump-');
+test(':Cland qa dump <path> writes the grid and the state in an ordinary run', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const dir = await tempDir(t, step, adoptRoot, 'cland-qa-dump-');
   const root = join(dir, 'proj-dump');
-  await mkdir(join(root, '.git'), { recursive: true });
-  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]) });
+  await step('QA file setup', () => mkdir(join(root, '.git'), { recursive: true }));
+  const c = await ownedDumpClient(t, step, release, started => startClient(t, bin, root,
+    { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]) }, { started }));
   await c.waitScreen((s) => s.includes('No messages in General yet.') && s.includes('hub: connected'), 'General, connected');
   await c.input(`<Esc>:Cland qa dump ${join(dir, 'shots', 'now')}<CR>`);
   await c.waitScreen((s) => s.includes('qa dump: '), 'the dump named on the status line');
@@ -440,7 +423,7 @@ test(':Cland qa dump <path> writes the grid and the state in an ordinary run', {
   assert.equal(state.hub.state, 'connected');
   assert.deepEqual(state.view, { kind: 'thread', id: 'general' });
   assert.deepEqual(state.panels, { left: false, right: 'sessions', dock: false, kinds: { right: 'sessions' } });
-});
+}));
 
 // ------------------------------------------------------------------ under sandbox-exec
 
@@ -451,30 +434,30 @@ const sandboxed = (profile: string) => ['/usr/bin/sandbox-exec', '-p', `(version
 const NO_NETWORK = '(deny network*)';
 const TMP = realpathSync(tmpdir());
 
-test('with the network denied (no socket to bind or reach), both cases pass', { skip: sandboxSkip }, async (t) => {
+test('with the network denied (no socket to bind or reach), both cases pass', { skip: sandboxSkip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
   for (const name of ['SHELL-001', 'ITEMS-001']) {
-    const run = await qa(t, [`${SHIPPED}${name}.lua`], { prefix: sandboxed(NO_NETWORK) });
+    const run = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}${name}.lua`], { prefix: sandboxed(NO_NETWORK) });
     assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
     assert.equal(run.line.hub, 'stdio');
     assert.equal(run.code, 0);
   }
-});
+}));
 
-test('with file writes also denied outside the temp dir, both cases pass and dump their evidence there', { skip: sandboxSkip }, async (t) => {
-  const out = await tempDir(t, 'cland-qa-out-');
+test('with file writes also denied outside the temp dir, both cases pass and dump their evidence there', { skip: sandboxSkip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const out = await tempDir(t, step, adoptRoot, 'cland-qa-out-');
   const profile = `${NO_NETWORK}(deny file-write*)(allow file-write* (subpath ${JSON.stringify(TMP)}) (literal "/dev/null"))`;
   for (const name of ['SHELL-001', 'ITEMS-001']) {
-    const run = await qa(t, [`${SHIPPED}${name}.lua`, '--out', out], { prefix: sandboxed(profile) });
+    const run = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}${name}.lua`, '--out', out], { prefix: sandboxed(profile) });
     assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
     assert.equal(run.line.hub, 'stdio');
     assert.deepEqual(run.line.evidence, [join(out, `${name}.screen.txt`), join(out, `${name}.state.json`)]);
     assert.ok((await readFile(join(out, `${name}.screen.txt`), 'utf8')).includes('cland qa-'));
   }
-});
+}));
 
-test('with every file write denied, as in a read-only rescue run, a stub-hub case without --out passes; one that needs the stdio hub is BLOCKED and says why', { skip: sandboxSkip }, async (t) => {
+test('with every file write denied, as in a read-only rescue run, a stub-hub case without --out passes; one that needs the stdio hub is BLOCKED and says why', { skip: sandboxSkip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
   const readOnly = sandboxed(`${NO_NETWORK}(deny file-write*)`);
-  const run = await qa(t, [`${CASES}STATE-001.lua`], { prefix: readOnly });
+  const run = await ownedQa(t, step, adoptRoot, release, [`${CASES}STATE-001.lua`], { prefix: readOnly });
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
   assert.equal(run.code, 0);
   assert.equal(run.line.hub, 'stub');
@@ -482,14 +465,14 @@ test('with every file write denied, as in a read-only rescue run, a stub-hub cas
   assert.match(evidence.screen, /cland qa-state +T-1 Workbench shell │ General/);
   assert.equal(evidence.state.sessions.length, 2);
 
-  const shipped = await qa(t, [`${SHIPPED}SHELL-001.lua`, '--hub', 'stub'], { prefix: readOnly });
+  const shipped = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}SHELL-001.lua`, '--hub', 'stub'], { prefix: readOnly });
   assert.equal(shipped.line.result, 'PASS', JSON.stringify(shipped.line));
 
-  const real = await qa(t, [`${SHIPPED}SHELL-001.lua`], { prefix: readOnly });
+  const real = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}SHELL-001.lua`], { prefix: readOnly });
   assert.equal(real.line.result, 'BLOCKED', JSON.stringify(real.line));
   assert.equal(real.code, 2);
   assert.equal(real.line.message, 'no temp dir to build the fixture project in: a read-only run takes a stub-hub case (--hub stub)');
-});
+}));
 
 // ------------------------------------------------------------------ nothing of the user's, nothing left
 
@@ -503,33 +486,33 @@ async function snapshot(dir: string): Promise<Record<string, string>> {
   return files;
 }
 
-test('a run reads no user configuration, leaves the live project it was started in alone, and leaves no process and no fixture behind', { skip }, async (t) => {
-  const dir = realpathSync(await tempDir(t, 'cland-qa-live-'));
+test('a run reads no user configuration, leaves the live project it was started in alone, and leaves no process and no fixture behind', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+  const dir = realpathSync(await tempDir(t, step, adoptRoot, 'cland-qa-live-'));
   // the live project the run is started in: a hub.json naming a hub, an item, and the session's environment
   const live = join(dir, 'live');
-  await mkdir(join(live, '.cland', 'tasks'), { recursive: true });
-  await mkdir(join(live, '.git'));
-  await writeFile(join(live, '.cland', 'hub.json'), JSON.stringify({ root: live, socket: join(live, '.cland', 'hub.sock'), port: 1, secret: 's', pid: process.pid, version: '0' }));
-  await writeFile(join(live, '.cland', 'tasks', 'T-1-live.md'), '---\nid: T-1\nkind: task\ntitle: The live item\nstate: open\n---\n');
+  await step('QA file setup', () => mkdir(join(live, '.cland', 'tasks'), { recursive: true }));
+  await step('QA file setup', () => mkdir(join(live, '.git')));
+  await step('QA file setup', () => writeFile(join(live, '.cland', 'hub.json'), JSON.stringify({ root: live, socket: join(live, '.cland', 'hub.sock'), port: 1, secret: 's', pid: process.pid, version: '0' })));
+  await step('QA file setup', () => writeFile(join(live, '.cland', 'tasks', 'T-1-live.md'), '---\nid: T-1\nkind: task\ntitle: The live item\nstate: open\n---\n'));
   const before = await snapshot(live);
   // a user configuration that would leave a mark, under every name Neovim could look for
   const mark = join(dir, 'user-config-was-read');
   const touched = `vim.fn.writefile({ 'read' }, ${JSON.stringify(mark)})\n`;
   for (const app of ['nvim', 'cland', 'cland-qa']) {
     for (const base of [join(dir, 'xdg'), join(dir, 'home', '.config')]) {
-      await mkdir(join(base, app, 'plugin'), { recursive: true });
-      await writeFile(join(base, app, 'init.lua'), touched);
-      await writeFile(join(base, app, 'plugin', 'mark.lua'), touched);
+      await step('QA file setup', () => mkdir(join(base, app, 'plugin'), { recursive: true }));
+      await step('QA file setup', () => writeFile(join(base, app, 'init.lua'), touched));
+      await step('QA file setup', () => writeFile(join(base, app, 'plugin', 'mark.lua'), touched));
     }
   }
   // a command the client would run instead of the hub, were CLAND_COMMAND honoured
   const rogue = join(dir, 'rogue-hub');
-  await writeFile(rogue, `#!/bin/sh\necho ran > ${JSON.stringify(mark)}\n`);
-  await chmod(rogue, 0o755);
+  await step('QA file setup', () => writeFile(rogue, `#!/bin/sh\necho ran > ${JSON.stringify(mark)}\n`));
+  await step('QA file setup', () => chmod(rogue, 0o755));
   // the Neovim the run starts, wrapped to learn its pid: it leads the run's process group
-  const nv = await pidWrapper(dir);
+  const nv = await step('QA pid wrapper setup', () => pidWrapper(dir));
 
-  const run = await qa(t, [`${SHIPPED}ITEMS-001.lua`], {
+  const run = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}ITEMS-001.lua`], {
     cwd: live,
     env: {
       CLAND_NVIM: nv.wrapper,
@@ -555,14 +538,14 @@ test('a run reads no user configuration, leaves the live project it was started 
   // neither Neovim nor the hub it spawned is left: nothing answers in its process group
   const pid = await nv.pid();
   assert.equal(await groupGone(pid), true, `process group ${pid} still has a process`);
-});
+}));
 
 // T3 CLI contract: user-authored QA scenarios are not restricted to test recordings.
 // The CLI owns the Neovim process and its clean/read-only environment; no hub daemon starts.
-test('stub QA accepts user-authored frames absent from the T2 recording catalog', { skip }, async t => {
+test('stub QA accepts user-authored frames absent from the T2 recording catalog', { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
   const { randomUUID } = await import('node:crypto');
   const marker = `user-frame-${randomUUID()}`;
-  const path = join(await tempDir(t, 'cland-qa-user-'), 'USER-FRAME.lua');
+  const path = join(await tempDir(t, step, adoptRoot, 'cland-qa-user-'), 'USER-FRAME.lua');
   await writeFile(path, `return {
     hub = 'stub',
     scenario = { messages = { general = {{ id = 'user-frame', from = 'human', fromKind = 'human', to = {}, topic = 'general', ts = '2026-10-13T12:00:00.000Z', text = '${marker}' }} } },
@@ -570,9 +553,9 @@ test('stub QA accepts user-authored frames absent from the T2 recording catalog'
       qa.wait_for(function() return qa.screen():find('${marker}', 1, true) end, 5000, 'user-authored frame')
     end,
   }`);
-  const run = await qa(t, [path]);
+  const run = await ownedQa(t, step, adoptRoot, release, [path]);
   assert.equal(run.line.result, 'PASS');
   assert.equal(run.code, 0);
   assert.equal(run.line.hub, 'stub');
   assert.ok((run.line.evidence as { screen: string }).screen.includes(marker));
-});
+}));

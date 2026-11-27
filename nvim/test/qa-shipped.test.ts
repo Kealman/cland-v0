@@ -3,7 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { nvimOrSkip } from './harness.ts';
-import { qa } from './qa-runner.ts';
+import { ownedQa } from './qa-runner.ts';
+import { receiptFixtureCase } from '../../hub/test/receipt-fixture-case.ts';
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
 const SHIPPED = fileURLToPath(new URL('../../qa/cases/', import.meta.url));
@@ -55,9 +56,9 @@ const CATALOGUE = [
 ];
 
 for (const name of CATALOGUE) {
-  test(`${name} passes through the headless QA runner`, { skip }, async (t) => {
-    const run = await qa(t, [`${SHIPPED}${name}.lua`]);
+  test(`${name} passes through the headless QA runner`, { skip }, t => receiptFixtureCase(t, true, async (t, step, adoptRoot, release) => {
+    const run = await ownedQa(t, step, adoptRoot, release, [`${SHIPPED}${name}.lua`]);
     assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
     assert.equal(run.code, 0);
-  });
+  }));
 }
