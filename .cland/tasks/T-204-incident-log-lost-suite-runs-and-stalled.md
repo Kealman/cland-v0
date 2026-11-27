@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-27T07:34:40.235Z
+updated: 2026-11-27T17:32:42.702Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -742,3 +742,7 @@ Restart #105 (2026-11-27, on coord's request under rule 19: T-2112 bounded merge
 ### human · 2026-11-27T07:34:40.235Z
 
 Restart #106 (2026-11-27, on coord's request under rule 19: T-2044 executor-aware cache reuse, T-2116, T-2029 scheduled suite-run retention, T-2100 shard wait plus c-16 fallback): hub r105 pid 85225 (de4118939, 6 h up, 1 startup stall, 6 landings) stopped 07:33:33Z; job cland-hub-r106 pid 12423 started from the root at 6e6134bd3 (dev = origin/dev, stage cover 77fe4c0b green at this commit: 10,064 passed, 0 failed; root clean, no package or web/src changes, merge queue empty, no suite running), serving 07:33:45.397Z, gap 13 s. Binding listeners 4 ms, web listener 203 ms. Port 49279, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job.
+
+### human · 2026-11-27T17:32:42.702Z
+
+Restart #107 (2026-11-27, on coord's request under rule 34, before the 0.4.1 release covers; hub changes since #106: T-2002, T-2023, T-2003, T-2092): hub r106 pid 12423 (6e6134bd3, 10 h up, 0 stalls, 2 landings) stopped 17:31:38Z; job cland-hub-r107 pid 69868 started from the root at 5862e24c4 (dev = origin/dev; hub code identical to stage cover c493b4f7's tree 6bff23291, 10,107 passed, 0 failed; root clean, no package or web/src changes, merge queue empty, no suite running), serving 17:31:50.402Z, gap 12 s. Binding listeners 4 ms, web listener 222 ms. Port 53828, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job.
