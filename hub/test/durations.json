@@ -213,9 +213,10 @@
       "A-21450",
       "A-21454",
       "A-23394",
-      "A-23688"
+      "A-23688",
+      "A-23748"
     ],
-    "commit": "de4118939b96c11bc9be4a2a292e7203eb0ebb33"
+    "commit": "6e6134bd3a56f515c06592418cbec54c5f005fbd"
   },
   "budget": {
     "testSeconds": 5,
@@ -14175,7 +14176,38 @@
     "hub/test/tracker-async-component.test.ts::a writeItem labeled planned check retains fatal writer ownership": 0.041625,
     "hub/test/tracker-async-component.test.ts::a writeItem labeled ready check retains fatal writer ownership": 0.02922,
     "hub/test/tracker-async-component.test.ts::a writeItem labeled view retains fatal writer ownership": 0.021241,
-    "hub/test/verification-commands.test.ts::host T0 elapsed receipt survives a wall clock correction": 0.741278
+    "hub/test/verification-commands.test.ts::host T0 elapsed receipt survives a wall clock correction": 0.741278,
+    "hub/test/case-deadlines.test.ts::dump client interruption during held RPC attach retains storage until independent child close": 0.028489,
+    "hub/test/case-deadlines.test.ts::dump client interruption during pre-listen acquisition retains storage until independent child close": 0.012772,
+    "hub/test/case-deadlines.test.ts::explicit QA completion headroom preserves separate completion budget": 0.002719,
+    "hub/test/case-deadlines.test.ts::explicit QA completion headroom preserves separate owner join budget": 0.002151,
+    "hub/test/case-deadlines.test.ts::explicit QA completion headroom preserves separate setup budget": 0.01497,
+    "hub/test/case-deadlines.test.ts::QA setup interruption joins late child work before guarded storage removal": 0.004168,
+    "hub/test/case-deadlines.test.ts::QA setup interruption joins late root work before guarded storage removal": 0.004987,
+    "hub/test/nvim-fixture-boundary.test.ts::compact and previous hash node IDs replay together across a slice fallback": 0.001148,
+    "hub/test/nvim-fixture-boundary.test.ts::the complete catalog fits the hub Git read limit and round-trips every recording": 5.119127,
+    "hub/test/nvim-frame-refresh.test.ts::a failed recorder append refuses its control context and all later capture publication": 0.002098,
+    "hub/test/nvim-frame-refresh.test.ts::a transient control context records cards without demand and defers invalid projection faults": 0.001925,
+    "hub/test/nvim-frame-refresh.test.ts::debounced card selection cannot change the refreshed catalog or slices": 0.032361,
+    "hub/test/suite-cache.test.ts::epic default cache requires the requested executor and platform": 0.246456,
+    "hub/test/suite-cache.test.ts::explicit local cache requires the requested executor and platform": 0.391211,
+    "hub/test/suite-cache.test.ts::ordinary unconstrained reuse accepts a legacy receipt without platform evidence": 0.112501,
+    "hub/test/suite-retention-scheduler.test.ts::idle scheduler continues bounded retention passes without suite launches": 1.440308,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses busy from capacity and projection": 0.328137,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses custom from capacity and projection": 0.163854,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses fallback from capacity and projection": 0.652918,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses fits from capacity and projection": 0.129599,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses legacy from capacity and projection": 0.296509,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses override from capacity and projection": 0.257194,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses race from capacity and projection": 0.237499,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses race-both from capacity and projection": 0.211531,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses race-custom from capacity and projection": 0.155804,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses race-size from capacity and projection": 0.263564,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses race-workers from capacity and projection": 0.205608,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses restart from capacity and projection": 0.317007,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses sharded from capacity and projection": 0.303386,
+    "hub/test/suite-stage-rules.test.ts::full run admission chooses task from capacity and projection": 0.187116,
+    "hub/test/suite-wait-metrics.test.ts::shard wait and whole fallback settings default, validate and round trip": 0.004819
   },
   "allow": {
     "hub/test/nvim-fixture-boundary.test.ts::the complete catalog fits the hub Git read limit and round-trips every recording": {
