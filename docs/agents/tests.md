@@ -332,6 +332,11 @@ would otherwise measure contention with the base phase. The selection and run
 result name this choice as `load gate: T4 repetitions skipped`, with the file
 count. Nightly deadline planning excludes those repetitions before budgeting.
 
+Batch baseline scans skip unexecuted tiers and interrupted or timed-out runs.
+When no observed receipt exists for a tier, the selection names the missing
+baseline and uses same-tier candidate duration-manifest identities as known;
+only absent identities repeat. Observed red receipts retain their per-file fences.
+
 Task load repetitions cover new T1/T2 identities against the duration baseline
 plus durable 5/5 load proofs from task heads that have landed on dev.
 The hub owns batch, dev-t3 and soak occasions. The Coordinator requests stage, epic and

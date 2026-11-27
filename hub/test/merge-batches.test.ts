@@ -614,6 +614,57 @@ test('full T3 triggers include waiting members, deleted production paths and ver
   assert.equal(fullBatchReason(['hub/src/hub/worktrees.test.ts'], 1), null);
 });
 
+for (const source of ['stage', 'epic', 'release', 'dev-t3', 'batch', 'deadline', 'interrupted', 'incomplete'] as const) test(`unexecuted ${source} T3 falls back to observed batch proof`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const { f, file } = await step(() => setup('baseline fixture', async () => {
+    const f = await suiteUnit(fixtures);
+    const file = 'hub/test/known.test.ts';
+    await writeFile(join(f.root, file), '');
+    await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [file]: 'T3' } }));
+    const seed = await f.launch(); await f.finish(seed.id);
+    const original = (await f.suites.receipt(seed.id)).job;
+    const older = { ...original, id: 'observed-batch', sequence: 1, occasion: 'batch' as const, batch: { id: 'older', members: [] },
+      selection: { mode: 'full' as const, files: [], reason: 'batch' },
+      tierPlan: [{ tier: 'T3' as const, files: [file], tests: 1, seconds: 1, projectedWall: 1, workers: 1, missing: 0 }], timingIdentities: [`${file}::known`] };
+    const newer = { ...older, id: 'unexecuted', sequence: 2, occasion: ['deadline', 'interrupted', 'incomplete'].includes(source) ? 'stage' as const : source as typeof older.occasion | 'stage' | 'epic' | 'release' | 'dev-t3', integrated: true, branch: 'dev',
+      timingIdentities: source === 'deadline' || source === 'interrupted' || source === 'incomplete' ? older.timingIdentities : ['hub/test/unit.test.ts::T2 known'],
+      ...(source === 'deadline' ? { timedOut: true } : {}),
+      ...(source === 'incomplete' ? { commands: { prepare: '', check: '', test: '', plan: [{ name: 'T3' as const, command: 'T3' }] }, tierReceipts: [tierReceipt({ ...older, id: 'unexecuted' }, { name: 'T3', command: 'T3' }, null)] } : {}),
+      outcome: { code: source === 'interrupted' ? 137 : 1, cause: 'producer outcome' } };
+    await f.reopen([older, newer]);
+    return { f, file };
+  }));
+  await step(() => setup('baseline selection', async () => {
+    const next = await f.launch({ mode: 'all', occasion: 'batch', batch: { id: 'next', members: [] }, fresh: true });
+    await f.finish(next.id);
+    const job = (await f.suites.receipt(next.id)).job;
+    assert.equal(job.batchBaselineRuns?.T3, 'observed-batch');
+    assert.deepEqual(['known', 'new'].map(name => loadGateRepetitions(`${file}::${name}`, job.selection, {})), [0, 5]);
+  }));
+}));
+
+test('missing T3 baseline repeats only identities absent from its tier manifest', t => guardedMemberCase(t, async (fixtures, step, setup) => {
+  const file = 'hub/test/known.test.ts', moved = 'hub/test/moved.test.ts';
+  const f = await step(() => setup('missing baseline fixture', async () => {
+    const f = await suiteUnit(fixtures, { durationContext: {
+      manifest: { version: 1, source: { artifacts: [], commit: 'base' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: { [`${file}::known`]: 1, [`${moved}::old-tier`]: 1 }, allow: {} },
+      tiers: { [file]: 'T3', [moved]: 'T1' },
+    } });
+    for (const path of [file, moved]) await writeFile(join(f.root, path), '');
+    await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [file]: 'T3', [moved]: 'T3' } }));
+    return f;
+  }));
+  await step(() => setup('missing baseline selection', async () => {
+    const next = await f.launch({ mode: 'all', occasion: 'batch', batch: { id: 'next', members: [] }, fresh: true });
+    await f.finish(next.id);
+    const job = (await f.suites.receipt(next.id)).job;
+    assert.equal(job.batchBaselineRuns?.T3, null);
+    assert.match(job.selection!.reason, /baseline missing for T3; known identities from manifest/);
+    const work = ['known', 'new'].reduce((sum, name) => sum + loadGateRepetitions(`${file}::${name}`, job.selection, {}), 0);
+    assert.equal(work, 5, 'only the one identity absent from the manifest repeats');
+    assert.equal(loadGateRepetitions(`${moved}::old-tier`, job.selection, {}), 5, 'previous-tier identities supply no T3 proof');
+  }));
+}));
+
 for (const red of [false, true]) test(`partial T3 baseline preserves unrelated proof and ${red ? 'fences red' : 'uses green'} file receipts`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
   const { f, a, b } = await step(() => setup('complete baseline setup', async () => {
     const f = await suiteUnit(fixtures);
@@ -645,10 +696,11 @@ for (const red of [false, true]) test(`partial T3 baseline preserves unrelated p
 }));
 
 for (const failure of ['file', 'identity'] as const) test(`red full T3 baseline retains passing files and fences ${failure} failure and incomplete files across restart`, t => guardedMemberCase(t, async (fixtures, step, setup) => {
-  const f = await step(() => setup('red baseline fixture', () => suiteUnit(fixtures)));
+  const f = await step(() => setup('red baseline fixture', () => suiteUnit(fixtures, {}, 'test_unit = "true"\ntest_integration = "true"\n')));
   const passing = Array.from({ length: 20 }, (_, i) => `hub/test/pass-${i}.test.ts`);
   const failed = 'hub/test/failed.test.ts', incomplete = 'hub/test/incomplete.test.ts';
   const files = [...passing, failed, incomplete];
+  let redLogs: string[] = [];
   await step(() => setup('persist batch receipts', async () => {
     for (const file of files) await writeFile(join(f.root, file), '');
     await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries(files.map(file => [file, 'T3' as const])) }));
@@ -658,19 +710,31 @@ for (const failure of ['file', 'identity'] as const) test(`red full T3 baseline 
       selection: { mode: 'full' as const, files: [], reason: 'stage' },
       tierPlan: [{ tier: 'T3' as const, files, tests: files.length, seconds: 1, projectedWall: 1, workers: 1, missing: 0 }],
       timingIdentities: files.flatMap(file => [`${file}::known`, `${file}::old-only`]) };
-    const log = join(f.root, 'red-baseline.log');
     const lines = files.flatMap(file => [
       `suite timing ${JSON.stringify({ file, name: 'known', outcome: file === failed && failure === 'identity' ? 'fail' : 'pass', seconds: 0.01 })}`,
       ...(file === incomplete ? [] : [`suite progress ${JSON.stringify({ event: 'finish', id: file, file, name: file, type: 'file', at: 1, nesting: 0, outcome: file === failed && failure === 'file' ? 'fail' : 'pass', seconds: 0.01 })}`]),
     ]);
-    await writeFile(log, lines.join('\n') + '\n');
-    const red = { ...older, id: 'red-full', sequence: 2, occasion: 'batch' as const, batch: { id: 'prior', members: [] },
-      log, artifact: null, outcome: { ...original.outcome!, code: 1 } };
-    await f.reopen([older, red]);
+    await f.reopen([older]);
+    const red = await f.launch({ mode: 'all', occasion: 'batch', batch: { id: 'prior', members: [] }, fresh: true });
+    const run = f.delivered.get(red.id)!;
+    const producer = run.commands!.plan!.map(step => tierReceipt(run, step, step.name === 'T3' ? 1 : 0));
+    await f.finish(red.id, 1, lines.join('\n') + '\n', true, producer);
+    const collected = (await f.suites.receipt(red.id)).job;
+    assert.equal(collected.outcome?.code, 1);
+    assert.ok(collected.interruptedAt, 'ordinary red collection persists a reporting cutoff');
+    assert.deepEqual(collected.tierReceipts, producer, 'the exact producer completed normally, including its red tier');
+    const artifact = f.store.resolveArtifact(collected.artifact!);
+    assert.ok(artifact, 'collection publishes the retained artifact');
+    assert.equal(artifact.path, collected.finalizedLog?.path, 'the artifact selects the finalized evidence');
+    redLogs = [...new Set([run.log, artifact.path, collected.finalizedLog!.path])];
   }));
   for (const restart of [false, true]) await step(() => setup('select next batch baseline', async () => {
     if (restart) {
-      await writeFile(join(f.root, 'red-baseline.log'), 'retained log no longer available\n');
+      for (const path of redLogs) {
+        assert.match(await readFile(path, 'utf8'), /suite timing /, 'positive control: this source held observed identities');
+        await writeFile(path, 'retained log no longer available\n');
+        assert.equal(await readFile(path, 'utf8'), 'retained log no longer available\n', 'both raw and retained evidence are observably unavailable');
+      }
       await f.reopen();
     }
     const result = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true, occasion: 'batch', batch: { id: 'next', members: [] } }, () => {});
@@ -2729,6 +2793,7 @@ for (const source of ['stage', 'batch'] as const) test(`batch retains the latest
     const seed = await f.launch(); await f.finish(seed.id);
     const original = (await f.suites.receipt(seed.id)).job;
     const row = (tier: 'T1' | 'T3', file: string) => ({ tier, files: [file], tests: 1, seconds: 0.01, projectedWall: 0.01, workers: 1, missing: 0 });
+    delete original.tierReceipts; // Retained legacy receipts predate structured producer evidence.
     const stage = { ...original, id: 'older-stage', sequence: 1, occasion: 'stage' as const, branch: 'dev', integrated: true,
       selection: { mode: 'full' as const, files: [], reason: 'recorded stage' }, tierPlan: [row('T1', unit), row('T3', process)], timingIdentities: [`${unit}::old`, `${process}::old`] };
     const batch = { ...stage, id: 'green-T3-batch', sequence: 2, occasion: 'batch' as const, batch: { id: 'prior', members: [] }, timingIdentities: [`${process}::old`, `${process}::batch addition`] };

@@ -104,7 +104,9 @@ in [Running](../docs/hub/running.md#soak-deadline-accounting).
 Integrated dev droplet delivery pins the submitted commit, runs its check remotely
 and records delivery failures as infrastructure not run; see [delivery](../docs/hub/running.md).
 Merge batch baselines select passing file receipts per executed tier, including
-completed passing files in red runs; see
+completed passing files in red runs. Unexecuted tiers fall back to older observed
+receipts; interrupted and timed-out runs are excluded. Without a tier receipt,
+only identities absent from that tier's candidate duration manifest repeat; see
 [Running](../docs/hub/running.md) for summary provenance and repetition counts.
 That reference also describes same-run host-check retries: a later pass with
 matching tree and command supersedes an aborted attempt while retaining its log

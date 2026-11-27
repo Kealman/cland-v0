@@ -7,7 +7,7 @@ import { RawCoverageSweep, removeRawCoverage } from '../suite-raw-coverage.ts';
 import { recentCoverGreens } from '../suite-load-rerun.ts';
 import { memberVerificationReason, batchT1Summary, type BatchT1 } from '../batch-member-verification.ts';
 import { batchDevT3Cover, fullPeriodicDevT3Cover, DEV_T3_BACKSTOP_MS } from '../dev-t3-coverage.ts';
-import { completeTierPlanReason, parseTierReceipts, tierReceipt, type TierReceipt } from '../verification-tier-receipts.ts';
+import { completeTierPlanReason, terminalTierPlanReason, parseTierReceipts, tierReceipt, type TierReceipt } from '../verification-tier-receipts.ts';
 import { parseTimingReceipts, type TimingReceipt } from '../suite-timing-receipts.ts';
 
 import { suiteRecoveryState, isolatedUnavailableReport, isolatedSuiteProcessOwned, isolatedSuiteEvidencePath, outsideSuitePath, sealSuiteJob } from './suite-isolation.ts';
@@ -860,6 +860,17 @@ export class Suites {
         batchBaselineFileRuns = baseline.fileRuns;
       }
       selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
+      const missing = tierPlan.filter(row => !batchBaselineRuns?.[row.tier]);
+      if (!pinned && missing.length) {
+        const context = this.#options.durationContext !== undefined ? this.#options.durationContext : await durationBudgetContext(input.cwd, { env: this.#env });
+        const known = new Set(selection.loadGateBaseline?.tests);
+        for (const row of missing) {
+          const files = new Set(row.files.filter(file => context?.tiers[file] === row.tier));
+          for (const identity of Object.keys(context?.manifest.tests ?? {})) if (files.has(identity.split('::')[0]!)) known.add(identity);
+          selection.reason += `; baseline missing for ${row.tier}; known identities from manifest`;
+        }
+        selection.loadGateBaseline = { run: null, tests: [...known].sort() };
+      }
     }
 
     if (input.dryRun) {
@@ -1105,7 +1116,7 @@ export class Suites {
     return [...known].sort();
   }
   #baselineCheckpoint(job: SuiteJob): void {
-    const state = JSON.stringify([job.reported, job.outcome?.code, job.outcome?.notRun, job.cancelled, job.requesterDied,
+    const state = JSON.stringify([job.reported, job.outcome?.code, job.outcome?.notRun, job.cancelled, job.requesterDied, job.timedOut,
       job.occasion, job.integrated, job.branch, job.selection?.mode, job.selection?.tiers, Boolean(job.batch?.diagnostic), Object.keys(job.selection?.batchTests ?? {}).sort()]);
     if (this.#batchBaselineStates.get(job.id) === state) return;
     this.#batchBaselineStates.set(job.id, state);
@@ -1142,6 +1153,11 @@ export class Suites {
         const priorFiles = (full.tierPlan ?? []).filter(prior => prior.tier === row.tier).flatMap(prior => prior.files);
         if (!priorFiles.length) continue;
         receipts++;
+        if (full.timedOut || verificationInterrupted(summary.outcome.code)) continue;
+        if (full.tierReceipts && terminalTierPlanReason(full) !== null) continue;
+        const observed = await this.#receiptIdentities(summary);
+        const prior = new Set(priorFiles);
+        if (!observed.tests.some(identity => prior.has(identity.split('::')[0]!))) continue;
         const mask = tierTestMask(full.selection, row.tier);
         const files = new Set(priorFiles.filter(file => remaining.has(file) && (!mask || mask.includes(file))));
         if (!files.size) continue;

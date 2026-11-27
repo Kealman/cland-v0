@@ -1996,8 +1996,14 @@ a newer red run contributes passing identities from files with positive passing
 file completion and no failed, skipped, todo or unfinished identity. Failed or
 incomplete files fence older green proof; missing completion stays unknown.
 Passing red-run identities are checkpointed across restart. A T1-only batch supplies no
-T3 proof. Cancelled, cached, unreported and diagnostic runs are excluded.
-Missing evidence treats identities as new. `batchBaselineFileRuns` retains
+T3 proof. Cancelled, cached, unreported, diagnostic, interrupted and timed-out
+runs are excluded. A planned tier with no observed timing identities supplies
+no baseline; the scan continues to older receipts. If no observed receipt is
+found for a tier, the selection reports `baseline missing for T3; known identities from manifest`
+(with the affected tier name), and uses only that tier's identities from the
+candidate duration manifest as known. Identities absent from that manifest repeat
+five times. This fallback does not replace red-file fences when a tier has an
+observed receipt. `batchBaselineFileRuns` retains
 per-file receipt ids; the per-tier summary names its newest contributing receipt.
 Light batches retain the same exact-head T1 omission as full batches. Their
 report names T1 coverage from member verifies, batch runtime or no configured T1.
