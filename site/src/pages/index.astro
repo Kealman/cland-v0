@@ -163,6 +163,13 @@ flowchart TD
   C --> R`,
   },
   {
+    id: 'artifacts',
+    h: 'Artifacts in the thread',
+    p: 'Reports, diagrams and pages a session shows you arrive in their topic, and HTML renders inline in the browser. Keep the ones that matter, or promote them into the repository.',
+    href: '/docs/concepts/#artifacts',
+    shot: 11,
+  },
+  {
     id: 'hosts',
     h: 'Work beyond one machine',
     p: 'Configure DigitalOcean pools and harness logins to run sessions on remote machines, and attach from the terminal workbench. Send test runs to fresh cloud machines in parallel under a daily spend cap.',
@@ -175,31 +182,15 @@ flowchart TD
   C --> R["Results on the task"]`,
   },
   {
-    id: 'artifacts',
-    h: 'Artifacts in the thread',
-    p: 'Reports, diagrams and pages a session shows you arrive in their topic, and HTML renders inline in the browser. Keep the ones that matter, or promote them into the repository.',
-    href: '/docs/concepts/#artifacts',
-    shot: 11,
-  },
-  {
     id: 'release',
     h: 'Releases from the item',
     p: 'From an idea to GitHub: grill it or chart it with a wayfinder map, write the spec, plan the epics, build the tasks in parallel lanes through the merge gate, demo each epic, and publish with one atomic push once you approve.',
     href: '/docs/verification-and-release/#releases',
     diagram: `%% A release: an idea pinned down, planned into epics, built in parallel, accepted and pushed
 flowchart TD
-  I(["Idea"]) --> G["Grilling"]
-  I --> W["Wayfinder map"]
-  G --> S["Spec"]
-  W --> S
-  S --> E1["Epic"]
-  S --> E2["Epic"]
-  E1 --> T1["Task"]
-  E1 --> T2["Task"]
-  E2 --> T3["Task"]
-  T1 --> R(["Merge gate, QA, your OK, one push"])
-  T2 --> R
-  T3 --> R`,
+  I["Idea → Grilling / wayfinder"] --> S["Spec → Epics"]
+  S --> T["Tasks in parallel lanes"]
+  T --> R["Merge gate, QA, your OK, one push"]`,
   },
 ];
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -917,12 +908,15 @@ const crewRows = [
     min-width: 0;
   }
   .feature-card :global(.feature-diagram .cland-diagram-scroll) {
+    aspect-ratio: 16 / 10;
+    display: flex;
+    align-items: center;
     overflow: visible;
   }
   .feature-card :global(.feature-diagram svg) {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
     min-width: 0;
   }
   .feature-card :global(.feature-diagram svg text) {
