@@ -73,7 +73,8 @@ async function linuxChildren(parents: number[], deadline: number, env: NodeJS.Pr
     try { return await read(); } catch (error) {
       // Discovery is only a selector: an entry can vanish during the walk.
       // The later ancestry/birth probes still decide ownership and native exit.
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT' || code === 'ESRCH') return undefined;
       throw error;
     }
   };

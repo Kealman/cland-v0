@@ -17,6 +17,12 @@ The parallel control observes its outer coordination-root setup through
 `testSetupWaitMs`. Its whole-case owner registers a join before admission and
 retains the original `scope.root` acquisition promise across observation expiry;
 late root adoption must settle before directory disposal can finish.
+Linux child discovery exercises ENOENT and ESRCH at both task-directory listing
+and task-children reads through the shared whole-case probe owner. Vanished
+selectors add no children; surviving managed branches still terminate, with a
+child-row work bound and no machine-wide pgrep. The resource census covers both
+codes and the denied-read path. Birth checks and native-exit authority remain
+separate from selector absence.
 
 The Linux/Darwin owned-tree stop controls place 1,000 unrelated branches under
 PID1. Every selected ps PID parsed by cland must belong to the captured tree or

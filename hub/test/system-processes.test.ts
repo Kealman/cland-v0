@@ -89,11 +89,11 @@ assert.deepEqual(signals, [], 'missing caller ancestry never grants authority');
 `, platform, { context: t });
 });
 
-for (const vanished of ['task', 'pid', 'pid-list'] as const) test(`Linux child discovery continues after a vanished ${vanished} entry`, async t => {
+for (const code of ['ENOENT', 'ESRCH'] as const) for (const vanished of ['task', 'pid', 'pid-list'] as const) test(`Linux child discovery continues after a vanished ${vanished} entry (${code})`, async t => {
   await probe(`
 rows = [row(1, 0, 1), row(420100, 1, 420100), { ...row(420101, 420100, 420101), thread: true }, row(420102, 420100, 420102)];
 let vanished = false;
-const missing = () => { throw Object.assign(new Error('vanished procfs entry'), { code: 'ENOENT' }); };
+const missing = () => { throw Object.assign(new Error('vanished procfs entry'), { code: ${JSON.stringify(code)} }); };
 onTaskChildren = async (pid, tid) => {
  if (${JSON.stringify(vanished)} === 'task' && pid === 420100 && tid === pid + 500000) { vanished = true; missing(); }
  if (${JSON.stringify(vanished)} === 'pid' && pid === 420102) { vanished = true; rows = rows.filter(r => r.pid !== pid); missing(); }
@@ -109,6 +109,7 @@ for (const pid of [420100, 420101]) assert.ok(signals.some(s => s.pid === pid &&
 if (${JSON.stringify(vanished)} === 'task') assert.ok(signals.some(s => s.pid === 420102 && s.signal === 'SIGKILL'), 'children listed before the vanished task are retained');
 assert.ok(signals.every(s => [420100, 420101, 420102].includes(s.pid)), 'no unrelated signal');
 assert.equal(pgrepCalls, 0);
+assert.ok(childRowsRead > 0 && childRowsRead < 60, 'discovery work stays bounded to the managed tree');
 `, 'linux', { context: t });
 });
 
@@ -122,10 +123,10 @@ timer.unref();
 try { await assert.rejects(control.check({ retain: true }), /Timeout/, 'census must detect an unrefed timer'); }
 finally { clearTimeout(timer); }
 await control.check();
-for (const vanished of ['task', 'pid', 'pid-list', 'error']) {
+for (const code of ['ENOENT', 'ESRCH']) for (const vanished of ['task', 'pid', 'pid-list', 'error']) {
  rows = [row(1, 0, 1), row(420100, 1, 420100), { ...row(420101, 420100, 420101), thread: true }, row(420102, 420100, 420102)];
  signals.length = 0;
- const missing = () => { throw Object.assign(new Error('vanished procfs entry'), { code: 'ENOENT' }); };
+ const missing = () => { throw Object.assign(new Error('vanished procfs entry'), { code }); };
  onTaskList = async pid => {
   if (vanished === 'pid-list' && pid === 420102) { rows = rows.filter(r => r.pid !== pid); missing(); }
   return [String(pid), String(pid + 500000), String(pid + 1000000)];
