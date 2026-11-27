@@ -3,7 +3,7 @@ id: T-2007
 kind: task
 title: Migrate the remaining QA test callers (qa.test, qa-shipped via qa-runner) to whole-caller fixture ownership
 state: open
-status: ready
+status: in progress
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1789
 branch: t/T-2007-migrate-the-remaining-qa-test-callers-qa
 created: 2026-11-19T14:04:47.226Z
-updated: 2026-11-26T19:16:57.677Z
+updated: 2026-11-26T20:50:43.218Z
 ---
 
 ## Summary
@@ -27,12 +27,11 @@ Migrate the remaining QA callers to the shared whole-caller fixture ownership th
 
 ## Acceptance criteria
 
-- [x] C1. Every callback in `nvim/test/qa.test.ts` and `nvim/test/qa-shipped.test.ts` that acquires a root or child runs under whole-caller fixture ownership, listed by name in the item (test).
-  - done: impl-2007 · 2026-11-26T19:16:08.732Z
-  - verified: rev-40 [reviewer] · run rev-40-20261126-2007-final · 2026-11-26T19:16:56.154Z · commit b7ae99b5c5ef68d1188a0f5ee2652d36030d2afa
+- [ ] C1. Every callback in `nvim/test/qa.test.ts` and `nvim/test/qa-shipped.test.ts` that acquires a root or child runs under whole-caller fixture ownership, listed by name in the item (test).
+  - failed: rev-40 [reviewer] · 2026-11-26T20:50:43.218Z · note Merged-head configured0d8b47e0 fails T3 prune restart; QA catalogues/T4/Web unexecuted, preventing final every-caller verification.
 - [x] C2. A control interrupting setup mid-acquisition shows the root and child joined before storage removal (test).
-  - done: impl-2007 · 2026-11-25T14:14:41.604Z
   - verified: rev-40 [reviewer] · run rev-40-20261126-2007-final · 2026-11-26T19:16:56.154Z · commit b7ae99b5c5ef68d1188a0f5ee2652d36030d2afa
+  - done: impl-2007 · 2026-11-26T20:02:47.090Z
 
 ## Comments
 
@@ -405,3 +404,31 @@ finding_counts: {"high":0,"medium":0,"low":1}
 Final clear; A-23587 audits0d880984/A-23586 at unchanged source3 b7ae99b5c. Producer0/cause empty/unfinished[]; complete T0–T4/Web exit0 at canonicala1def99f, executablematch. C1: actual shipped32/32 finishes incl GRAPH001/PANELS019, qa.test27pass/3declared macOS sandbox skips; every callback source ownership retained. C2: owner17unique/52pass rows, all7new exact controls base+5/5 retaining late root/child join and guarded removal proofs. Linuxc16nyc1 workers4 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156 noncache,12prerequisite skips, budget/skip checksreportonly. T4onecataloguefile32identitiesonce; remainingT3batch/otherT4unexecuted. Prior143timeout and code1prune failure remain failed; historical timing-conflict low retained separately. Both criteria verified; no high/medium findings. Hold released. No Reviewer executions.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-40 · 2026-11-26T20:04:25.294Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-2007-source4
+commit: 087c6fc65f90c7ff7ccc5256c42556b45edad855
+scope: delta
+findings: [{"severity":"low","text":"L1 retained: historical GRAPH-001 timingpass conflicts with absent finish/producer unfinished. Later positive completion does not repair historical reporting; existing separate S Bugs/T-2108 follow-up remains.","file":".cland/artifacts/A-23537-suite-2c7ccbb2-56a5-43df-9a14-c8d01da9caea-auto-at-b7ae99b.log","line":53053}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Merge delta source clear; A-23610 records review. Sole conflict preserves17old+4incoming controls and deduplicates EventEmitter; QA bodies/assertions unchanged. Shared suite/runner fixtures match dev, keeping timeoutMs passthrough, outer/proxy cleanup fences and stop-before-join/native-close proofs. T-2007 caseDeadlines, receipt helper, client, runner and QA files match previous verified head; per-operation setup/completion and sequence join budgets retain full product120s headroom/default behavior. A-23608 Macowner21/direct89/QA30/static0 are scoped reported observations; graph765 not coverage. C1/C2 old marks stale; no current-head final marks pending fresh authorized configured evidence. Previous green0d880984 applies onlyb7; earlier failures remain. No new findings, retained historical low only. Hold released; no Reviewer execution.
+
+### rev-40 · 2026-11-26T20:50:43.218Z
+
+verdict: review
+result: not clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-2007-evidence3
+commit: 087c6fc65f90c7ff7ccc5256c42556b45edad855
+scope: evidence
+findings: [{"severity":"medium","text":"E1: configured T3 exit1 at prune restart; recovery diagnostic cannot inspect OS process table: ps failed or timed out. Structured cause empty/unknown; QA catalogues/T4/Web unexecuted.","file":".cland/artifacts/A-23626-suite-0d8b47e0-f482-4db5-993a-4036d7a62857-auto-at-087c6fc.log","line":52418},{"severity":"low","text":"L1 retained: historical GRAPH-001 timingpass conflicts with producer unfinished/absent finish; old-head subsequent pass does not repair historical reporting. Existing separate reporting follow-up retained.","file":".cland/artifacts/A-23537-suite-2c7ccbb2-56a5-43df-9a14-c8d01da9caea-auto-at-b7ae99b.log","line":53053}]
+finding_counts: {"high":0,"medium":1,"low":1}
+
+Evidence not clear; A-23628 audits merged087c6fc65/run0d8b47e0/A-23626. Producer1/cause empty, deadline/closure metadata absent unknown, unfinished[]. T0/T1/fallbackT2 complete0, selectedT3 complete1; QA catalogue/T4/Web unexecuted. Literal diagnostic: foreground discovery not within20000ms, Git writer recovery required; cannot inspect OS process table: ps failed or timed out; territory writes fenced. Different phrase from prior deadline diagnostic; no attribution inferred. Owner21unique/56pass rows, seven new controls base+5/5 and four inherited controls basepass retain C2 positive assertions, no C2 assertion failure. C1 final gate failed; current final marks pending. Linuxc16nyc1 workers4 Node24.21/Nvim0.12.5 noncache,9skips,browsernull,budgetsreportonly; canonical667f8565 executable match. Earlier failures and b7-onlygreen retained. Hold released for lead/Coordinator disposition; no Reviewer execution/retry.
+
+Criteria: C1 failed (Merged-head configured0d8b47e0 fails T3 prune restart; QA catalogues/T4/Web unexecuted, preventing final every-caller verification.).

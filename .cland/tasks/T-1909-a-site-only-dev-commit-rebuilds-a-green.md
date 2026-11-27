@@ -2,8 +2,8 @@
 id: T-1909
 kind: task
 title: A site-only dev commit rebuilds a green merge batch whose tiers never run the site tests
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1794
 branch: t/T-1909-a-site-only-dev-commit-rebuilds-a-green
 created: 2026-11-16T10:35:08.568Z
-updated: 2026-11-26T19:23:16.599Z
+updated: 2026-11-26T22:34:54.664Z
+closed: 2026-11-26T22:34:54.664Z
 ---
 
 ## Summary
@@ -30,9 +31,13 @@ The batch's test-input check counts a changed path only when a test in the batch
 - [x] C1. A dev commit that changes only `site/**` while a batch is running lands the green batch without a rebuild, when no selected tier reads site files (test, red before the fix).
   - done: impl-1909 · 2026-11-25T14:17:00.335Z
   - verified: rev-40 [reviewer] · run rev-40-20261126-1909-final · 2026-11-26T01:42:55.381Z · commit f9bb5870a6904a6ce9517808738dd6f50fee4bdc
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1909-final2 · 2026-11-26T20:35:01.708Z · commit 824c3dff981ffd677842049503a11a7ec32ffea7
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1909-final3 · 2026-11-26T21:57:05.602Z · commit ac15c6722d6354826d0f806065a84cd9b6fae3df
 - [x] C2. A commit that changes a file a selected tier reads still rebuilds the batch, as today (test).
   - done: impl-1909 · 2026-11-25T14:17:00.543Z
   - verified: rev-40 [reviewer] · run rev-40-20261126-1909-final · 2026-11-26T01:42:55.381Z · commit f9bb5870a6904a6ce9517808738dd6f50fee4bdc
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1909-final2 · 2026-11-26T20:35:01.708Z · commit 824c3dff981ffd677842049503a11a7ec32ffea7
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1909-final3 · 2026-11-26T21:57:05.602Z · commit ac15c6722d6354826d0f806065a84cd9b6fae3df
 
 ## Comments
 
@@ -84,3 +89,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Merge delta source clear; A-23591 records Standards/Spec, zero findings. Both README paragraphs retained. Four task production files (batch-inputs helper, dispatch, merge-batch-territory and merge-batches) are unchanged from prior reviewed head; artifact's 'four integration files plus helper' wording means these four total. Inherited joined/bounded helper delegation retains synchronous fence-before-join and cleanup/guard ordering. Required T3/T4 reader guard, positive controls, both landing identities and diff/history work assertions remain. Coordinator-approved release-log/recorded-built-in-T3-only scope unchanged; unknown/custom/covered/Web/borrowed-T1 cases still rebuild. A-23589 local169+123/static0 are scoped reported checks, graph706 not coverage. C1/C2 prior verified marks stale at merged head; no final marks renewed pending fresh authorized configured receipt. Old5b5ee556 applies only f9bb5870a. Hold released; no Reviewer execution.
+
+### rev-40 · 2026-11-26T20:35:01.709Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-1909-final2
+commit: 824c3dff981ffd677842049503a11a7ec32ffea7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at merged head; A-23618 audits 3bcfb3da/A-23617. Producer code0/cause empty/unfinished[]; T0/T1/fallbackT2/selected245T3/Web complete0, canonical6f19bf7d executable match. All4 required release-log controls base+5/5 pass, including reader guard/direct-recursive positives and both landing identities with exact diff/history/suite work counts. Merge-batches169distinct cases and all5direct consumers pass. C1/C2 verified within approved release-log/recorded-built-in-T3-only scope; conservative other-plan/path/coverage rebuilds unchanged. Noncached Linuxc8nyc1 workers2 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156,12declared prerequisite skips; budgetsreportonly, T4unexecuted/remainingT3batch. Prior5b5ee556 remains proof at oldf9bb head only. No findings; hold released; no Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-40 · 2026-11-26T20:39:09.358Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-1909-source3
+commit: ac15c6722d6354826d0f806065a84cd9b6fae3df
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Second merge delta source clear; A-23620, zero findings. Four task production files unchanged from verified824c3dff9. Conflict retains both independent test blocks with verificationCommands at imports; original reader guard/positive controls, both landing identities and exact work-count assertions unchanged. Incoming frozen-usage enqueue path remains separate from ordinary runtime verification proof; approved narrow release-log/T3-only reuse unchanged. A-23619 local170+123/static0 are scoped reported checks, graph706 selection only. C1/C2 previous marks stale; no final marks renewed pending authorized same-head configured result. Prior3bcfb3da applies only824c head. Hold released; no Reviewer execution.
+
+### rev-40 · 2026-11-26T21:57:05.602Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-1909-final3
+commit: ac15c6722d6354826d0f806065a84cd9b6fae3df
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear after second merge; A-23644 audits b85b42f9/A-23643 at reviewed ac15c6722. Producer0/cause empty/unfinished[], T0/T1/fallbackT2/selected245T3/Web complete0, canonical99867b73 executable match. Four exact release-log controls each base+5/5 pass; merged enqueue control passes; all170distinct merge-batches cases and five direct consumers pass. Reader guard/positive controls, landing and work-count assertions retain approved narrow release-log/recorded-built-in-T3-only scope. C1/C2 verified, no findings. Noncached Linuxc8nyc1 workers2 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156,12declared prerequisite skips,budgetsreportonly; remainingT3batch/T4unexecuted. Prior green receipts remain attributed to prior heads. Hold released; no Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-26T22:34:54.664Z
+
+Merged f16bf42c06752b592762bf8644ae6086cc4ac7bb onto dev.

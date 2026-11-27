@@ -2,8 +2,8 @@
 id: T-1929
 kind: task
 title: Runner and tier durations use wall-clock time, so a system clock correction mid-run distorts recorded durations
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1797
 branch: t/T-1929-runner-and-tier-durations-use-wall-clock
 created: 2026-11-17T02:20:03.376Z
-updated: 2026-11-26T19:14:17.999Z
+updated: 2026-11-26T20:59:55.035Z
+closed: 2026-11-26T20:59:55.035Z
 ---
 
 ## Summary
@@ -23,10 +24,12 @@ Runner and tier wall-clock duration accounting uses wall-clock timestamps, so a 
 
 ## Acceptance criteria
 
-- [ ] C1. Runner, tier and suite duration figures come from a monotonic elapsed clock; a fake wall-clock jump during a run leaves the recorded durations unchanged (test, red before the fix).
-  - failed: rev-40 [reviewer] · 2026-11-26T19:14:17.999Z · note Final configured 934e3201 timed out with incomplete package closure and unfinished Web; clock controls and migrated reader cases pass as scoped subproof.
+- [x] C1. Runner, tier and suite duration figures come from a monotonic elapsed clock; a fake wall-clock jump during a run leaves the recorded durations unchanged (test, red before the fix).
+  - done: impl-1929 · 2026-11-26T20:02:23.202Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1929-final · 2026-11-26T20:03:21.981Z · commit e307490f1a760d5e53cc773147fb2c1ad7a73521
 - [x] C2. Timestamps shown to people (start and finish times) stay wall-clock, and the duration manifest and budget readers are unaffected or migrated (rule 20 consumer list in the item).
   - done: impl-1929 · 2026-11-26T17:48:14.308Z
+  - verified: rev-40 [reviewer] · run rev-40-20261126-1929-final · 2026-11-26T20:03:21.981Z · commit e307490f1a760d5e53cc773147fb2c1ad7a73521
 
 ## Comments
 
@@ -116,3 +119,22 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Evidence not clear; A-23585 records same-head 934e3201/A-23578. Producer143/deadlineExpiredtrue, primary run timeout75m, secondary package closure incomplete/machine deletion required. T0/T1/fallbackT2/selectedT3 complete0, Web incomplete; five producer unfinished identities retained, runningSeconds0 not a duration measurement. Four clock controls base+5/5 pass and all three previously failed native consumer cases pass, exercising six migrations. No clock/reader assertion failure inferred. C1 final configured gate failed; C2 migration positive subproof retained but final mark pending. Canonical1be52414 executable match; noncached Linuxc8nyc1 workers2 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156,12 prerequisite skips, budgetsreportonly. Prior ab29abb2 stays failed. Hold released; Coordinator-authorized unchanged-head retry4f69dd7c admitted/pending, not pass evidence. No Reviewer execution.
 
 Criteria: C1 failed (Final configured 934e3201 timed out with incomplete package closure and unfinished Web; clock controls and migrated reader cases pass as scoped subproof.).
+
+### rev-40 · 2026-11-26T20:03:21.981Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261126-1929-final
+commit: e307490f1a760d5e53cc773147fb2c1ad7a73521
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-23609 audits4f69dd7c/A-23607 at source-reviewed e307490f1. Producer0/cause empty/unfinished[], complete T0/T1/fallbackT2/selected251T3/Web exit0, canonical1be52414 executablematch. Four exact clock controls base+5/5 pass, original red-before-fix observations retained at their heads. All3 previously failed native cases pass, exercising six migrated readers; accounting/summary/budget compatibility passes retained. Wall timestamps/approved interval scope unchanged. Linuxc16nyc1 workers4 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156 noncache,12prerequisite skips, budgetsreportonly. RemainingT3batch/T4unexecuted. Prior reader-failed ab29abb2 and timeout934e3201 remain failed, not upgraded. C1/C2 verified, no findings. Hold released; no Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-26T20:59:55.035Z
+
+Merged b3e3f89e8f005a19ee08b76dc19ea4e63da3b175 onto dev.

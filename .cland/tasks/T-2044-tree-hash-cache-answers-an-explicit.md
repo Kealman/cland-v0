@@ -3,7 +3,7 @@ id: T-2044
 kind: task
 title: Tree-hash cache answers an explicit --executor local epic cover with a cached Linux droplet result (no macOS run)
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-1783
 branch: t/T-2044-tree-hash-cache-answers-an-explicit
 created: 2026-11-21T03:00:38.190Z
-updated: 2026-11-26T19:04:03.298Z
+updated: 2026-11-26T22:43:49.451Z
 ---
 
 ## Summary
@@ -28,9 +28,11 @@ When a submission names an executor or platform, or its occasion requires one (t
 ## Acceptance criteria
 
 - [x] C1. An `--executor local` (or macOS-required occasion) submission with only a cached Linux droplet result for the tree runs locally instead of returning the cached result (test).
-  - done: impl-2044 · 2026-11-26T19:02:54.317Z
+  - verified: rev-41 [reviewer] · run rev-41-20261126-2044-final · 2026-11-26T21:28:03.610Z · commit 3af173d308b1bb0b2fb3666246b62727d60b2e10
+  - done: impl-2044 · 2026-11-26T21:31:52.239Z
 - [x] C2. A same-platform cached result is still reused, and the result names the cached run's executor and platform (test).
-  - done: impl-2044 · 2026-11-26T19:02:54.450Z
+  - verified: rev-41 [reviewer] · run rev-41-20261126-2044-final · 2026-11-26T21:28:03.610Z · commit 3af173d308b1bb0b2fb3666246b62727d60b2e10
+  - done: impl-2044 · 2026-11-26T21:31:52.347Z
 
 ## Comments
 
@@ -138,3 +140,57 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at3af173d308b1bb0b2fb3666246b62727d60b2e10. Native consumer M1 resolved: omitted-executor hit preserves original droplet cachedID/report; explicitlocal asserts no cache and bounded exact result exit0/Executorlocal before stop/byte scans. All delivery/selection/runner/accounting/token/cleanup assertions retained; docs/index updated, no production change/devmerge. Expanded A-23576 per-hit274/78file+suiteUnit census assessed; reported41matching local files635pass/static0 are selected macOSarm64 Node24.21 proof, not nativeLinux/configuredclosure. Standards/Spec no findings; A-23577 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23577-t-2044-source-review-clear-at-3af173d30-after-native-consumer-migration.md. C1/C2done/unverified pending same-headconfiguredresult. Allthree prior failed configured rounds retained. No Reviewer tests/edits/native/browser execution. Coordinator window required before retry.
+
+### rev-41 · 2026-11-26T20:12:47.357Z
+
+verdict: review
+result: not clear
+by: rev-41 [reviewer]
+run: rev-41-20261126-2044-evidence4
+commit: 3af173d308b1bb0b2fb3666246b62727d60b2e10
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Evidence incomplete, not clear for e94867ad/A-23611. Producer code1 cause `remote machine lost`, only T0 completeexit0 in structured tierReceipts; remoteT1/T2/T3/Web completion/closure receipts missing, closure unknown. Collected logprints T1/T2/T3/Webexit0 and own exact regression passes (threecacheidentitiesbase+5/5, backfill/nativecasebasepass); retained as positive partial evidence, not owner-complete run. Source/treec728e454matcheshead. C1/C2staydone/unverified; no newsourcefinding or failedcriteria inferred from receiptloss. A-23616 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23616-t-2044-remote-loss-result-remains-incomplete-despite-collected-green-log.md. Linuxx64c8nyc1workers2 Node24.21/Nvim0.12.5, ChromeHeadlessShell1248/CFT156executed percollectedWeb;12skips/advisoriesreport-only/T4unexecuted. Allpriorroundsretained. Authorizedunchangedheadretry228fa8db nowadmitted/pending; Reviewerlaunchednothing.
+
+### rev-41 · 2026-11-26T21:28:03.610Z
+
+verdict: review
+result: clear
+by: rev-41 [reviewer]
+run: rev-41-20261126-2044-final
+commit: 3af173d308b1bb0b2fb3666246b62727d60b2e10
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; C1/C2 verified at3af173d30 from orderedretry228fa8db/A-23633. Producer code0/causeempty, completeT0/T1/T2/T3/Webexit0 all same-run/treec728e454; executablematchchecked. Three exact cache identities base+5/5load/filepasses; formerlyfailed footer/stage-rule/backfill/native scenario identities+files basepass. Native explicitlocal no-cache/completedlocalexit0 and omitted-executor remotehit retained; exact compatiblecached-ID/originalexecutor-platform/no-new-worker and legacyunknown-OS controls establish criteria. A-23634 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23634-t-2044-final-review-clear-at-3af173d30.md. Linuxx64c8nyc1workers2 Node24.21/Nvim0.12.5 HeadlessShell1248/CFT156.0.8078.4, noncached,12platform/prereqskips;253selectedT3once, remainingintegratedoccasionseparate/T4notfulltier, advisoriesreport-only. Allfour earlier failed/incomplete rounds retained, includinge948remote-loss structuredT0only; noneconvertedtopass. No findings or Reviewerexecution.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-41 · 2026-11-26T21:32:42.823Z
+
+verdict: review
+result: clear
+by: rev-41 [reviewer]
+run: rev-41-20261126-2044-delta1
+commit: 0e9a2aaa3b10cc079dde534872c07adca9f5a774
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized dev-merge delta source clear at0e9a2aaa3 (parents3af173d30/devb3e3f89e8). Both-parent comparisons and taskdiffagainstnewdev inspected. README retains task cache-policy and dev invocation/hook paragraphs; matching executor/OS/cache/bypass/report logic and all migrated consumers unchanged. Imported shared suites changes are pass-accounting and host-gate clock, outside cache policy. Standards/Spec no findings. A-23636 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23636-t-2044-authorized-dev-merge-delta-clear-at-0e9a2aaa3.md. C1/C2done but prior verification stale atnewhead; no newmarks. A-23635 local macOSarm64 Node24.21selected101+CLI10/fulltypecheck/lint0 not newconfiguredLinuxproof. Priorcomplete228fa8db and allfailed/incompleterounds retained asoldhead evidence. Reviewerexecutednothing. Fresh Coordinator window/newheadconfiguredreceipt required.
+
+### rev-41 · 2026-11-26T22:43:49.451Z
+
+verdict: review
+result: not clear
+by: rev-41 [reviewer]
+run: rev-41-20261126-2044-merge-evidence1
+commit: 0e9a2aaa3b10cc079dde534872c07adca9f5a774
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head evidence notclear. Run4053e1b7/A-23651 producer code1/causeempty, completeT0/T1/T2exit0,T3exit1, Web/T4/browserunexecuted. Literal OpenCodeAdapter failureatlog rollback assertion true!==false at adapter-native-boundary:488 tests presence of .cland/opencode/impl (directory retained), not child-exit assertion. Source/tree5049c225checked; taskdiffagainstdev doesnotchange failingtest/adapter/system-processes, but no causal/flaky attribution inferred. Exactcachecontrolsbase+5/5 and correctednativecasebasepass retained onlypartial. A-23652 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23652-t-2044-merged-head-run-failed-in-opencode-rollback-assertion.md. No newcachesourcefinding; C1/C2done/staleunverified atmergedhead, nofailed/verifiedmarksadded. Linuxx64c8nyc1workers2 Node24.21/Nvim0.12.5,9skips/advisorybudgetsreport-only. Allpriorroundsretained. Lead/Coordinatorattributionand retrydecisionpending; Reviewerlaunchednothing.
