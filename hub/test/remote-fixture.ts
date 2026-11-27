@@ -41,7 +41,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
   const scripted = options.machine === 'scripted';
   const root = await tempProject(t, 'remote-run-');
   // Scripted fixtures own no detached writers and need no reaper process.
-  const guard = scripted ? { pid: 0, register: async (_path: string) => {} } : await fixtureGuard(t, root);
+  const guard = scripted ? { pid: 0, register: async (_path: string) => {}, exited: Promise.resolve() } : await fixtureGuard(t, root);
   const territory = await tempProject(t, 'remote-territory-');
   await guard.register(territory);
   const clock = options.clock ?? new FakeClock();

@@ -1,5 +1,16 @@
 # hub/test/durations-runner.test.ts
 
+The fixture-guard bootstrap regression uses the real `runSuite` path with one
+ordinary guard case and five sequential fresh-process load-gate repetitions.
+Every guard acknowledges IPC registration and supplies a positive native exit;
+six durable exit rows plus five completed repetition receipts are required.
+Its explicit five-second test watchdog bounds the IPC regression, not a speed
+assertion. The disposable runner owns all fixture roots and native cleanup.
+Dedicated guard forks clear inherited `execArgv`: runner `--import` admission
+bootstraps must not execute inside a reaper whose sealed environment omits their
+worker/start controls. The scripted fixture exposes an already-settled exit
+promise and still creates no guard process.
+
 The shared-contract fixture imports a registration helper from its `.test.ts`
 wrapper. Its completed run must retain five passing wrapper identities, one
 ordinary timing, and a report-only duration overage classified as T1 for that

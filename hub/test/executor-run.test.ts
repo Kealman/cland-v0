@@ -1,7 +1,7 @@
 // T3: real worker delivery and host-receipt reuse, SSH interruption, provider loss, cancellation,
 // watchdog reaping and hub-crash reconciliation require real process boundaries.
 import { caseDeadlines } from './case-deadlines.ts';
-import { beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
+import { afterCleanup, beforeDirectories, guardDirectoryRemoval } from './process-cleanup.ts';
 import { pollerDeadline } from './fakes/finish-poller.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { DatabaseSync } from 'node:sqlite';
@@ -10,68 +10,88 @@ import { parseConfig, renderConfig } from '../src/init/config.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { nativeProjectHub as projectHub, cland, clandWithEnv, connectUi, startDaemon, tempProject, pidAlive } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
-import { fixture, remoteEventually as eventually } from './remote-fixture.ts';
+import { fixture, remoteEventually as eventually, remoteWaitMs } from './remote-fixture.ts';
 
 const exec = promisify(execFile);
 const token = 'cland-test-remote-suite-token';
 
-for (const dirty of ['tracker', 'source'] as const) test(`remote delivery ${dirty === 'tracker' ? 'bundles committed tracker state despite later tracker writes' : 'refuses and names source changes after submission'}`, async t => {
-  const f = await fixture(t, { hub: projectHub });
-  const view = JSON.parse((await cland(f.root, 'task', 'view', f.item, '--json')).stdout);
-  const tracker = view.item.path as string;
-  await f.git('add', '-f', tracker);
-  await f.git('commit', '-qm', 'Committed tracker');
-  const committed = await readFile(join(f.root, tracker), 'utf8');
-  const head = await f.git('rev-parse', 'HEAD');
-  const path = dirty === 'tracker' ? tracker : 'hub/src/tracker/change.ts';
-  f.api.beforeCreate(async () => {
-    await writeFile(join(f.root, path), 'uncommitted state\n');
-    await f.git('add', '-f', path);
-  });
-  const job = await f.launch('--fresh');
-  const result = await f.result(job.id);
-  if (dirty === 'source') {
-    assert.match(result.text, /dirty.*worktree cannot be bundled for droplet.*hub\/src\/tracker\/change\.ts/);
-    assert.doesNotMatch(await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8'), /\$ npm test/);
-  } else {
-    assert.match(result.text, /exit 0/);
-    for (const directory of f.api.machineDirs.values()) {
-      const cwd = join(directory, 'home/runner/cland');
-      assert.equal((await exec('git', ['rev-parse', 'HEAD'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout.trim(), head);
-      assert.equal(await readFile(join(cwd, tracker), 'utf8'), committed);
-      const script = await readFile(join(directory, 'home/runner/runs', job.id, 'run.sh'), 'utf8');
-      assert.ok(script.indexOf("echo '$ npm run typecheck'") < script.indexOf("echo '$ npm test'"));
-      assert.ok(script.includes('tier T0: exit %s'));
-      assert.ok(script.includes(`rmdir ${join(directory, 'home/runner/tmp/cland-suite.lock')}; trap - EXIT\necho '$ npm test'`));
-      assert.ok(script.includes("/bin/sh -c 'npm test' || suite_command_exit=$?"));
-      const echo = script.indexOf("echo '$ npm test'");
-      const execute = script.indexOf("/bin/sh -c 'npm test' || suite_command_exit=$?");
-      assert.ok(echo >= 0 && execute > echo, 'the same test command is announced before execution');
-      const beforeExecution = script.slice(echo, execute);
-      assert.ok(beforeExecution.includes(`export CLAND_TIMING_OUTPUT="$HOME/runs/${job.id}"/timing-receipts.json`));
-      const prefix = "export CLAND_TIMING_OWNER='";
-      const ownerLine = beforeExecution.split('\n').find(line => line.startsWith(prefix));
-      assert.ok(ownerLine, 'timing ownership is exported before this test command executes');
-      assert.ok(ownerLine.endsWith("'"), 'the exported owner has its closing shell quote');
-      const status = await f.ui.request({ type: 'hub.status', history: true });
-      assert.equal(status.ok, true, status.error);
-      const recorded = (status.value as HubStatus).suites!.find(run => run.id === job.id);
-      assert.ok(recorded?.tree, 'the durable admitted run carries its candidate tree');
-      assert.deepEqual(JSON.parse(ownerLine.slice(prefix.length, -1)), {
-        run: job.id, head, tree: recorded.tree, command: 'npm test', step: 'test',
+for (const dirty of ['tracker', 'source'] as const) test(`remote delivery ${dirty === 'tracker' ? 'bundles committed tracker state despite later tracker writes' : 'keeps submitted source despite later tracked writes'}`, async t => {
+  const owner = caseDeadlines(t, { ownership: { beforeDirectories, guardDirectoryRemoval } });
+  await owner.run(async step => {
+    const { f, tracker, committed, head, path, committedBytes, tree } = await owner.wait('complete delivery setup', () => step(async () => {
+      const f = await fixture(owner.fixtures, { hub: projectHub });
+      owner.adoptRoot(f.root);
+      afterCleanup(owner.fixtures, async () => {
+        await owner.wait('native fixture guard exit', () => f.guard.exited, remoteWaitMs());
+        const exists = await owner.wait('fixture root removal receipt', () => stat(f.root).then(() => true, error => {
+          if (error.code === 'ENOENT') return false;
+          throw error;
+        }), remoteWaitMs());
+        assert.equal(exists, false, 'fixture root removed after positive native guard exit');
       });
-      assert.equal((await exec('git', ['status', '--porcelain'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout, '');
-      const delivery = await readFile(join(f.root, '.cland/run/suites', job.id, 'delivery.log'), 'utf8');
-      assert.match(delivery, /dependencies match snapshot\nNeovim pin matches snapshot/);
-    }
-    assert.equal(await readFile(join(f.root, tracker), 'utf8'), 'uncommitted state\n');
-  }
-  assert.deepEqual(f.api.droplets, []);
+      const view = JSON.parse((await cland(f.root, 'task', 'view', f.item, '--json')).stdout);
+      const tracker = view.item.path as string;
+      await f.git('add', '-f', tracker);
+      await f.git('commit', '-qm', 'Committed tracker');
+      const committed = await readFile(join(f.root, tracker), 'utf8');
+      const head = await f.git('rev-parse', 'HEAD');
+      const path = dirty === 'tracker' ? tracker : 'hub/src/tracker/change.ts';
+      const committedBytes = await readFile(join(f.root, path), 'utf8');
+      const tree = await f.git('rev-parse', 'HEAD^{tree}');
+      assert.notEqual(committedBytes, 'uncommitted state\n');
+      return { f, tracker, committed, head, path, committedBytes, tree };
+    }), remoteWaitMs());
+    await owner.wait('complete delivery and receiver proof', () => step(async () => {
+      f.api.beforeCreate(async () => {
+        await writeFile(join(f.root, path), 'uncommitted state\n');
+        await f.git('add', '-f', path);
+      });
+      const job = await f.launch('--fresh');
+      const result = await f.result(job.id);
+      {
+        assert.match(result.text, /\nauto exit 0(?:;|\n)/);
+        assert.equal(f.api.machineDirs.size, 1, 'one receiver actually executed');
+        for (const directory of f.api.machineDirs.values()) {
+          const cwd = join(directory, 'home/runner/cland');
+          assert.equal((await exec('git', ['rev-parse', 'HEAD'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout.trim(), head);
+          assert.equal((await exec('git', ['rev-parse', 'HEAD^{tree}'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout.trim(), tree);
+          assert.equal(await readFile(join(cwd, path), 'utf8'), committedBytes, 'later written bytes never reach the receiver');
+          assert.equal(await readFile(join(cwd, tracker), 'utf8'), committed);
+          const script = await readFile(join(directory, 'home/runner/runs', job.id, 'run.sh'), 'utf8');
+          assert.ok(script.indexOf("echo '$ npm run typecheck'") < script.indexOf("echo '$ npm test'"));
+          assert.ok(script.includes('tier T0: exit %s'));
+          assert.ok(script.includes(`rmdir ${join(directory, 'home/runner/tmp/cland-suite.lock')}; trap - EXIT\necho '$ npm test'`));
+          assert.ok(script.includes("/bin/sh -c 'npm test' || suite_command_exit=$?"));
+          const echo = script.indexOf("echo '$ npm test'");
+          const execute = script.indexOf("/bin/sh -c 'npm test' || suite_command_exit=$?");
+          assert.ok(echo >= 0 && execute > echo, 'the same test command is announced before execution');
+          const beforeExecution = script.slice(echo, execute);
+          assert.ok(beforeExecution.includes(`export CLAND_TIMING_OUTPUT="$HOME/runs/${job.id}"/timing-receipts.json`));
+          const prefix = "export CLAND_TIMING_OWNER='";
+          const ownerLine = beforeExecution.split('\n').find(line => line.startsWith(prefix));
+          assert.ok(ownerLine, 'timing ownership is exported before this test command executes');
+          assert.ok(ownerLine.endsWith("'"), 'the exported owner has its closing shell quote');
+          const status = await f.ui.request({ type: 'hub.status', history: true });
+          assert.equal(status.ok, true, status.error);
+          const recorded = (status.value as HubStatus).suites!.find(run => run.id === job.id);
+          assert.ok(recorded?.tree, 'the durable admitted run carries its candidate tree');
+          assert.deepEqual(JSON.parse(ownerLine.slice(prefix.length, -1)), {
+            run: job.id, head, tree: recorded.tree, command: 'npm test', step: 'test',
+          });
+          assert.equal((await exec('git', ['status', '--porcelain'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout, '');
+          const delivery = await readFile(join(f.root, '.cland/run/suites', job.id, 'delivery.log'), 'utf8');
+          assert.match(delivery, /dependencies match snapshot\nNeovim pin matches snapshot/);
+        }
+        assert.equal(await readFile(join(f.root, path), 'utf8'), 'uncommitted state\n', 'positive control retains the later local write');
+      }
+      assert.deepEqual(f.api.droplets, []);
+    }), remoteWaitMs());
+  });
 });
 
 test('host check failure creates no machine; remote typecheck stops tests and failed tests retain failures', async t => {

@@ -1330,13 +1330,13 @@ export class Suites {
         remotePreExecution = !job.lease || !(job.lease as DropletLease).execution?.delivered;
         if (job.lease && Date.parse(job.lease.deadline) <= this.#clock.now().getTime()) throw new Error('remote machine lifetime expired');
         if (!(job.lease as DropletLease | undefined)?.execution?.delivered) {
-          if (!job.lease && !committedOnly && (!job.tree || await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree)) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
+          if (!job.lease && !committedOnly && await this.#candidate.head(job.cwd) !== job.head) throw new Error('head moved after admission; cannot bundle submitted item for droplet');
           if (!job.lease) {
             if (!job.parentRun && !committedOnly) await this.#hostGate(job);
             if (job.hostGate) run.hostGate = job.hostGate;
             if (job.tierReceipts) run.tierReceipts = job.tierReceipts;
             if (job.cancelled) throw new Error('cancelled');
-            if (!committedOnly && await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) { this.#fallback(job, 'dirty or changed worktree cannot be bundled for droplet'); return; }
+            if (!committedOnly && await this.#candidate.head(job.cwd) !== job.head) throw new Error('head moved after admission; cannot bundle submitted item for droplet');
             if (job.remoteAcquireAttempted) { this.#fallback(job, 'previous droplet acquisition was interrupted'); return; }
             job.remoteAcquireAttempted = true; this.#save(job);
             try { job.lease = await this.#droplet.acquire(run, new Date(this.#clock.now().getTime() + (job.config?.verification.lifetimeMs ?? this.#options.lifetimeMs ?? 6600000)).toISOString(), undefined, job.config, lease => {
@@ -1558,8 +1558,8 @@ export class Suites {
     }
     // Repeat only an interrupted host gate; provider acquisition is reconciled per child.
     if (!job.integrated && !shards.some(shard => shard.remoteAcquireAttempted)) await this.#hostGate(job);
-    if (!job.integrated && await this.#candidate.tree(job.cwd, job.head) !== job.tree) {
-      const cause = 'dirty or changed integrated dev candidate';
+    if (!job.integrated && await this.#candidate.head(job.cwd) !== job.head) {
+      const cause = 'head moved after admission; cannot bundle submitted item for droplet';
       // A restored group may already have submitted workers. Only untouched
       // shards prove this parent fence refused every child before execution.
       if (!job.cancelled && !job.outcome && shards.every(shard => !shard.remoteAcquireAttempted && !shard.lease)) {
@@ -1667,7 +1667,11 @@ export class Suites {
     if (!command) return;
     const started = performance.now();
     const record = async () => {
-      (job.tierReceipts ??= []).push(tierReceipt({ id: job.id, tree: job.hostGate!.tree }, { name: 'check', command: job.hostGate!.command }, job.hostGate!.code));
+      // A passing native exit does not bind a command to inputs that changed
+      // while it ran. Keep the exit, but let detached delivery check again.
+      const observedTree = await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head).catch(() => null);
+      if (job.hostGate!.tree !== observedTree || observedTree !== job.tree) job.hostGate!.tree = null;
+      if (job.hostGate!.tree) (job.tierReceipts ??= []).push(tierReceipt({ id: job.id, tree: job.hostGate!.tree }, { name: 'check', command: job.hostGate!.command }, job.hostGate!.code));
       this.#save(job);
       const binding = { run: job.id, tree: job.hostGate!.tree, command: job.hostGate!.command };
       await appendFile(job.log, `\nverification step binding ${JSON.stringify(binding)}\ntier T0: exit ${job.hostGate!.code}; duration ${(performance.now() - started) / 1000} s; output tail: host check\n`);
@@ -1675,7 +1679,10 @@ export class Suites {
         && previous.tree === binding.tree && previous.command === binding.command) {
         await appendFile(job.log, `Host gate retry superseded aborted attempt: run ${job.id}; tree ${binding.tree}; command ${JSON.stringify(binding.command)}; exit ${previous.code}; duration retained in preceding T0 receipt\n`);
       }
-      if (job.hostGate!.code !== 0) throw await this.#hostCheckFailure(job, job.hostGate!.code);
+      if (job.hostGate!.code !== 0) {
+        if (job.hostGate!.tree || job.cancelled || verificationInterrupted(job.hostGate!.code)) throw await this.#hostCheckFailure(job, job.hostGate!.code);
+        await appendFile(job.log, 'Host gate source identity unknown; native failure retained as diagnostic; detached T0 required\n');
+      }
     };
     if (this.#options.dropletServices?.hostGate) {
       job.hostGate = await this.#options.dropletServices.hostGate(runRef(job));

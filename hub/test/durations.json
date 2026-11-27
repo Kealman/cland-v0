@@ -5082,7 +5082,6 @@
     "hub/test/executor-run.test.ts::incremental byte logs survive SSH failure and hub restart and report once": 12.069647,
     "hub/test/executor-run.test.ts::provider loss and verify cancel each report once and release the machine and key": 11.199558,
     "hub/test/executor-run.test.ts::remote delivery bundles committed tracker state despite later tracker writes": 6.024965,
-    "hub/test/executor-run.test.ts::remote delivery refuses and names source changes after submission": 2.991554,
     "hub/test/executor-run.test.ts::restart reloads the lease after admission and never redelivers or cleans the live checkout": 10.906061,
     "hub/test/executor-safety-component.test.ts::a pre-start assertion failure drains both same-name acquisitions without start receipts": 0.700596,
     "hub/test/executor-safety-component.test.ts::a short-lived hub preserves a foreign live lease beyond its own lifetime threshold": 0.630151,
@@ -14210,6 +14209,13 @@
     "hub/test/suite-wait-metrics.test.ts::shard wait and whole fallback settings default, validate and round trip": 0.004819
   },
   "allow": {
+    "hub/test/executor-run.test.ts::remote delivery keeps submitted source despite later tracked writes": {
+      "seconds": 11.006,
+      "owner": "E-880",
+      "added": "2026-11-27",
+      "expires": "2026-12-04",
+      "reason": "T-2003: passing Linux c-16 sample 7.337 s from run 85d1bc80-d1fe-423d-8457-3016bd108cf1 (A-23797); 1.5x measured headroom rounded upward to milliseconds. The run failed its new-identity duration gate; assertions passed."
+    },
     "hub/test/nvim-fixture-boundary.test.ts::the complete catalog fits the hub Git read limit and round-trips every recording": {
       "seconds": 6.628,
       "owner": "E-880",

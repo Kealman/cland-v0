@@ -927,13 +927,32 @@ still exist; fresh builders install even with a matching key. The log retains
 Delivery ignores uncommitted changes under `.cland/tasks` and to `.cland/RULES.md`, including tracker writes
 between submission and bundling. Every bundle contains the committed head's tracker
 state; this applies to each shard of an occasion run too. Task runs require their
-exact submitted head and refuse other dirty files, with their paths in the error.
+exact submitted head. After clean admission, untracked files and working-tree
+edits do not enter the bundle or prevent delivery, including writes during T0.
+A later commit is refused with `head moved after admission`. The host T0 receipt
+is reused only when its recorded candidate tree matches the admitted tree.
+The host re-observes candidate identity after the command closes. Changed or
+unavailable identity clears the reusable tree while retaining the native exit;
+the detached droplet then executes T0 against the admitted commit.
+An ordinary nonzero host exit with uncertain input identity is diagnostic: remote
+T0 decides the submitted commit's result. A failure bound to unchanged admitted
+inputs still refuses delivery, as do cancellation and interrupted host checks.
 Integrated dev runs (including soak, stage, epic and release) and periodic
 `dev-t3` runs bundle the admitted commit directly from Git objects, independent
 of later source or administrative commits and dirty files in root dev. They
 skip the live-root host gate and run the recorded check remotely at the detached
 submitted head. A pre-execution delivery failure is retained as infrastructure
 not run, with its cause, and supplies no failed incident cover or culprit search.
+
+Bundle path census: `DropletRun.deliver` uses `runBundle` for both the initial
+snapshot-relative bundle and the full-bundle retry after a missing remote base.
+Both pin `RunRef.head` through a temporary suite ref, for task runs, restored
+leases, replacement machines and every shard. Integrated and periodic runs allow
+root HEAD to advance; task runs check HEAD before and after native bundling.
+`prepareBundle` instead bundles the territory's `refs/heads/dev` for image
+preparation; it is not an item submission. Host registry bootstrap bundles
+territory branches and HEAD for transport, also outside item verification.
+Local execution creates no Git bundle.
 
 The host computes the suite selection while `origin/dev` is available. The uploaded
 `env` carries the selection (inline JSON or a delivered selection file), worker

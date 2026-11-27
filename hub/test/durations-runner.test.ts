@@ -12,6 +12,43 @@ import { suiteCase } from './suite-case-fixture.ts';
 import { until } from './until.ts';
 import { fixture } from './durations-runner-fixture.ts';
 
+test('load-gate bootstrap cannot strand a fixture guard fork', t => suiteCase(t, async scope => {
+  const f = await fixture(scope.fixtures, false, scope);
+  const exits = join(f.cwd, 'guard-exits.jsonl');
+  const guardModule = new URL('./fixture-guard.ts', import.meta.url).href;
+  const cleanupModule = new URL('./process-cleanup.ts', import.meta.url).href;
+  await scope.step('configure guard IPC regression', async () => {
+    await writeFile(join(f.cwd, '.cland/config.toml'), '[verification]\ntest_timeout="5s"\nload_gate_workers=1\n');
+    await writeFile(f.path, JSON.stringify({ ...f.manifest, budget: { testSeconds: 5, fileSeconds: 60 } }));
+    await writeFile(f.file, `import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, appendFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fixtureGuard } from ${JSON.stringify(guardModule)};
+import { ownDirectory, afterCleanup } from ${JSON.stringify(cleanupModule)};
+test('guard acknowledges and exits', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'guard-bootstrap-'));
+  ownDirectory(t, root);
+  const guard = await fixtureGuard(t, root);
+  assert.ok(guard.pid > 0);
+  await guard.register(root);
+  afterCleanup(t, async () => {
+    await guard.exited;
+    await appendFile(${JSON.stringify(exits)}, JSON.stringify({ pid: guard.pid, exited: true }) + '\\n');
+  });
+});`);
+  });
+  const result = await scope.step('ordinary and five bootstrap repetitions finish', () => f.run(true));
+  assert.equal(result.code, 0, result.output);
+  assert.match(result.output, /load gate: hub\/test\/fixture.test.ts::guard acknowledges and exits 5\/5 passed/);
+  const receipts = (await scope.step('read native exit receipts', () => readFile(exits, 'utf8'))).trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(receipts.length, 6, 'ordinary phase plus five fresh-process repetitions');
+  assert.ok(receipts.every(receipt => receipt.pid > 0 && receipt.exited === true));
+  const progress = suiteProgress(result.output, 0)!;
+  assert.equal(progress.completed.filter(row => row.scope === 'load-gate' && row.name === 'guard acknowledges and exits' && row.outcome === 'pass').length, 5);
+}, { native: true }));
+
 test('runner fixture acquisition uses the whole-case setup owner with a positive launch guard', t => suiteCase(t, async scope => {
   scope.guardControl();
   let setups = 0;

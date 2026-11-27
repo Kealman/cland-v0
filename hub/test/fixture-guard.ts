@@ -8,7 +8,9 @@ import type { TestContext } from 'node:test';
 import { afterCleanup, cleanupProcesses, ownDirectory } from './process-cleanup.ts';
 
 export async function fixtureGuard(t: TestContext, root: string) {
-  const child = fork(fileURLToPath(import.meta.url), [], { env: fixtureEnvironment(root, process.env), detached: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+  // A dedicated reaper must not inherit the test runner's --import admission
+  // barrier: fixture environments deliberately remove that barrier's controls.
+  const child = fork(fileURLToPath(import.meta.url), [], { execArgv: [], env: fixtureEnvironment(root, process.env), detached: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
   const exited = new Promise<void>((resolve, reject) => {
     child.once('error', reject);
     child.once('exit', code => code === 0 ? resolve() : reject(new Error(`fixture guard exited ${code}`)));
@@ -35,7 +37,7 @@ export async function fixtureGuard(t: TestContext, root: string) {
     await exited;
   });
   await register(root);
-  return { register, pid: child.pid! };
+  return { register, pid: child.pid!, exited };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

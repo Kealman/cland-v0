@@ -1,5 +1,20 @@
 # hub/test/executor-run.test.ts
 
+Tracked source and tracker edits staged after submission are excluded from the
+delivered commit. Both delivery cases proceed, assert exactly one receiver,
+compare its full Git tree and edited path bytes with the captured commit, and
+retain the later local bytes as a positive mutation control. Existing script,
+timing owner, test execution and provider-release assertions remain intact.
+The shared whole-sequence owner registers before setup, adopts the fixture root,
+and fences the complete delivery/receiver assertion sequence before cleanup.
+Separate named `owner.wait` observations cover complete fixture/Git setup and
+the complete launch/result/receiver proof. Both sample `remoteWaitMs()` when
+that operation starts. Root adoption happens inside the setup producer before
+it settles, including late completion after the observation deadline.
+After shared fixture cleanup, each delivery case observes its captured native
+guard's `exited` promise and the removal of that exact fixture root. A missing
+or nonzero native exit cannot be replaced by PID absence or a matching log.
+
 The committed-tracker delivery case preserves the exact lock-release/trap/first
 test-echo adjacency and the release-before-execution proof. Timing output and
 owner exports sit after that echo and before the same native test command.

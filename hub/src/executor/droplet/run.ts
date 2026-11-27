@@ -36,6 +36,22 @@ export class DeliveryTransportError extends Error {
 const exec = promisify(execFile);
 /** Local diagnostics must never contribute to the remote log replay offset. */
 export const coverageDownloadDiagnostic = (coveragePath: string): string => join(dirname(coveragePath), 'coverage-download.log');
+/** Render the detached check, reusing only a positively bound host receipt. */
+export function hostCheckCommand(gate: RunRef['hostGate'], line: string, command: string, recordTier: string): string {
+  const fallback = `echo 'typecheck: droplet'\n${command}`;
+  if (!gate?.tree || gate.code !== 0 || gate.command !== line) return fallback;
+  const tree = `checked_tree=$(
+status=$(git status --porcelain=v1 --untracked-files=all -- ${candidatePathspec.map(quote).join(' ')}) || exit 1
+test -z "$status" || exit 1
+index_dir=$(mktemp -d) || exit 1
+trap 'rm -rf "$index_dir"' EXIT
+export GIT_INDEX_FILE="$index_dir/index"
+git read-tree HEAD || exit 1
+git rm --quiet -r --cached --ignore-unmatch -- ${excludedPaths.map(quote).join(' ')} || exit 1
+git write-tree
+)`;
+  return `if ${tree} && test "$checked_tree" = ${quote(gate.tree)}; then\necho ${quote(`typecheck: host gate at ${gate.tree} (not repeated)`)}\nsuite_command_exit=0\n${recordTier}\nelse\n${fallback}\nfi`;
+}
 /** Hosting-source program; delivered older trees need not contain the reader. */
 export function runStatusProgram(): string {
   const timing = `if(fs.existsSync(p+'/timing-receipts.json')){const rows=(${readTimingReceipts.toString()})(fs,p+'/timing-receipts.json',(${parseTimingReceipts.toString()}));if(rows)status.timingReceipts=rows;}`;
@@ -46,16 +62,14 @@ const remoteDir = (lease: DropletLease): string => {
   return `"$HOME/runs/${lease.run}"`;
 };
 
-/** Native Git bytes and worktree validation, separate from delivery policy. */
+/** Bundle admitted Git objects; non-integrated runs retain their HEAD fence. */
 export async function runBundle(run: RunRef, bundle: string, snapshotBase: string | undefined, committedOnly: boolean, env: NodeJS.ProcessEnv): Promise<void> {
   const git = async (...args: string[]) => (await exec('git', args, { cwd: run.cwd, env: machineEnv(env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout.trim();
-  const checkWorktree = async () => {
+  const checkHead = async () => {
     // Administrative writes may race delivery; bundle the submitted committed head.
-    if (await git('rev-parse', 'HEAD') !== run.head && !(run.integrated && run.tree && await candidateTree(run.cwd, undefined, machineEnv(env)) === run.tree)) throw new Error('dirty or changed worktree cannot be bundled for droplet: HEAD changed');
-    const dirty = await git('status', '--porcelain=v1', '--untracked-files=all', '--', ...candidatePathspec);
-    if (dirty) throw new Error(`dirty or changed worktree cannot be bundled for droplet: ${dirty.split('\n').join('; ')}`);
+    if (await git('rev-parse', 'HEAD') !== run.head && !(run.integrated && run.tree && await candidateTree(run.cwd, undefined, machineEnv(env)) === run.tree)) throw new Error('head moved after admission; cannot bundle submitted item for droplet');
   };
-  if (!committedOnly) await checkWorktree();
+  if (!committedOnly) await checkHead();
   const base = snapshotBase ? await git('merge-base', run.head, snapshotBase).catch(() => '') : '';
   // A candidate equal to the snapshot base has no incremental objects: send a full bundle.
   const ref = `refs/cland/suites/${run.id}`;
@@ -67,7 +81,7 @@ export async function runBundle(run: RunRef, bundle: string, snapshotBase: strin
   }
   try { await git('bundle', 'create', bundle, ref, ...(base && base !== run.head ? [`^${base}`] : [])); }
   finally { await git('update-ref', '-d', ref, run.head); }
-  if (!committedOnly) await checkWorktree();
+  if (!committedOnly) await checkHead();
 }
 
 /** Suite delivery and observation; lifecycle and provider accounting stay in DropletExecutor. */
@@ -169,22 +183,7 @@ export class DropletRun {
         released = true;
         return `${release}${command}`;
       }
-      const gate = run.hostGate;
-      const fallback = `echo 'typecheck: droplet'\n${command}`;
-      if (!gate?.tree || gate.code !== 0 || gate.command !== line) return fallback;
-      // Match candidateTree's exclusions using a private index, without trusting the
-      // submitted hash or changing the checkout's index. An unreadable tree checks again.
-      const tree = `checked_tree=$(
-status=$(git status --porcelain=v1 --untracked-files=all -- ${candidatePathspec.map(quote).join(' ')}) || exit 1
-test -z "$status" || exit 1
-index_dir=$(mktemp -d) || exit 1
-trap 'rm -rf "$index_dir"' EXIT
-export GIT_INDEX_FILE="$index_dir/index"
-git read-tree HEAD || exit 1
-git rm --quiet -r --cached --ignore-unmatch -- ${excludedPaths.map(quote).join(' ')} || exit 1
-git write-tree
-)`;
-      return `if ${tree} && test "$checked_tree" = ${quote(gate.tree)}; then\necho ${quote(`typecheck: host gate at ${gate.tree} (not repeated)`)}\nsuite_command_exit=0\n${recordTier}\nelse\n${fallback}\nfi`;
+      return hostCheckCommand(run.hostGate, line, command, recordTier);
     })).join('\n');
     // The typecheck owns the machine compatibility lock; the package runner then
     // takes its own compatibility leases, including cross-package smoke phases.

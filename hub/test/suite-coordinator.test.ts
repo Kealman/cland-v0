@@ -9,6 +9,9 @@ import { writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import streams from 'node:fs';
 import fs from 'node:fs/promises';
+import { suiteCase } from './suite-case-fixture.ts';
+import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import type { DropletLease } from '../src/executor/droplet/lease.ts';
 
 test('failed result reports are visible and retry without replacing finalized logs', t => {
  const scope = retentionCase(t);
@@ -164,10 +167,13 @@ for (const role of ['coordinator', 'implementer', 'reviewer', 'qa', null]) test(
 });
 
 
-test('two Coordinator droplet keys execute concurrently within the remote budget', async t => {
-  const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 2, machineReceiptsOnly: true }, 'coordinator_suites=2');
+test('two Coordinator droplet keys execute concurrently within the remote budget', t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(fixtures => suiteUnit(fixtures, { executor: 'droplet', remoteBudget: 2, machineReceiptsOnly: true }, 'coordinator_suites=2'));
   register(f);
   const first = await f.launch({ actor, executor: 'droplet' });
+  // The next key advances this fixture's one worktree HEAD. Observe delivery
+  // and worker start before changing it; an undelivered old HEAD must refuse.
+  await step('first durable worker start', () => f.machine.waits.run(f.machine.started(first.id)));
   f.candidate.head = 'b'.repeat(40);
   const second = await f.launch({ actor, executor: 'droplet' });
   for (const run of [first, second]) {
@@ -177,7 +183,7 @@ test('two Coordinator droplet keys execute concurrently within the remote budget
   assert.equal(f.suites.snapshot().remote!.length, 2);
   assert.equal(f.status(first.id).state, 'running');
   assert.equal(f.status(second.id).state, 'running');
-});
+}));
 
 
 test('Coordinator default cap retains the old refusal', async t => {
@@ -188,17 +194,64 @@ test('Coordinator default cap retains the old refusal', async t => {
   await assert.rejects(f.launch({ actor, executor: 'droplet' }), { message: 'this session already has a suite queued or running' });
 });
 
-test('a local-only matching key cannot bypass the Coordinator droplet cap', async t => {
-  const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 1, machineReceiptsOnly: true }, 'coordinator_suites=2');
+test('a local-only matching key cannot bypass the Coordinator droplet cap', t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(fixtures => suiteUnit(fixtures, { executor: 'droplet', remoteBudget: 1, machineReceiptsOnly: true }, 'coordinator_suites=2'));
   register(f);
   f.hold(true);
   const local = await f.launch({ actor, executor: 'local' });
   for (const head of ['b', 'c']) {
     f.candidate.head = head.repeat(40);
-    await f.launch({ actor, executor: 'droplet' });
+    const remote = await f.launch({ actor, executor: 'droplet' });
+    if (head === 'b') await step('first remote worker start', () => f.machine.waits.run(f.machine.started(remote.id)));
   }
   f.candidate.head = 'a'.repeat(40);
   await assert.rejects(f.launch({ actor, executor: 'droplet' }), { message: 'this session already has a suite queued or running (coordinator_suites cap 2)' });
   assert.equal((await f.launch({ actor, executor: 'local' })).id, local.id);
   assert.equal(f.suites.status().length, 3);
-});
+}));
+
+for (const phase of ['before acquisition', 'after acquisition'] as const) test(`head refusal ${phase} keeps Coordinator capacity until cleanup`, t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(fixtures => suiteUnit(fixtures, { executor: 'droplet', remoteBudget: 2, machineReceiptsOnly: true }));
+  register(f);
+  let refuse = true, release = false;
+  const releaseLease = DropletExecutor.prototype.release;
+  t.mock.method(DropletExecutor.prototype, 'release', async function(this: DropletExecutor, ...args: Parameters<typeof releaseLease>) {
+    if (!release) throw new Error('release confirmation unavailable');
+    return releaseLease.apply(this, args);
+  });
+  f.hostGate(async ref => {
+    if (refuse && phase === 'before acquisition') f.candidate.head = 'b'.repeat(40);
+    return { tree: ref.tree ?? null, command: 'true', code: 0 };
+  });
+  const transport = f.machine.dependencies.run;
+  const deliver = transport.deliver.bind(transport);
+  t.mock.method(transport, 'deliver', async (...args: Parameters<typeof deliver>) => {
+    if (refuse && phase === 'after acquisition') {
+      f.candidate.head = 'b'.repeat(40);
+      throw new Error('head moved after admission; cannot bundle submitted item for droplet');
+    }
+    return deliver(...args);
+  });
+  const first = await step('admit old head', () => f.launch({ actor, executor: 'droplet' }));
+  await step('head refusal checkpoint', () => f.suites.settled());
+  assert.match(f.status(first.id).outcome?.cause ?? '', /head moved/);
+  assert.equal(f.acquisitions.length, phase === 'before acquisition' ? 0 : 1);
+  assert.equal(f.machine.calls.some(call => call.step === 'start'), false);
+  await step('pending cleanup inspection', async () => { await f.tick(); await f.suites.settled(); });
+  if (phase === 'after acquisition') {
+    await assert.rejects(f.launch({ actor, executor: 'droplet' }), { message: 'this session already has a suite queued or running' });
+    const pending = (await step('unclean checkpoint', () => f.jobs())).find(job => job.id === first.id)!;
+    assert.notEqual(pending.cleaned, true);
+    assert.equal((pending.lease as DropletLease).state, 'active');
+  }
+  release = true; refuse = false;
+  await step('confirm cleanup', async () => { await f.tick(); await f.suites.settled(); await f.machine.waits.run(f.result(first.id)); });
+  const ended = (await step('terminal checkpoint', () => f.jobs())).find(job => job.id === first.id)!;
+  assert.equal(ended.cleaned, true);
+  assert.equal(ended.reported, true);
+  if (ended.lease) assert.equal((ended.lease as DropletLease).state, 'released');
+  else assert.equal(f.acquisitions.length, 0);
+  const next = await step('reuse freed capacity', () => f.launch({ actor, executor: 'droplet' }));
+  await step('next worker started', () => f.machine.waits.run(f.machine.started(next.id)));
+  await step('next worker completed', () => f.finish(next.id));
+}));

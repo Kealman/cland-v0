@@ -97,6 +97,7 @@ test('scripted remote verification acquires, delivers, starts, collects and rele
     assert.equal(lease?.watchdog?.pid, 0, 'the host fake never armed a detached child');
     assert.equal(f.spoke.pid, 0);
     assert.equal(f.guard.pid, 0, 'the scripted fixture needs no reaper process');
+    await operation('scripted guard has no pending native exit', () => f.guard.exited);
     assert.equal(f.api.url, '', 'the provider has no HTTP listener');
   });
 });
