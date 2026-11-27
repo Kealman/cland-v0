@@ -96,7 +96,7 @@ const features = [
   {
     id: 'harness',
     h: 'The harness, one key away',
-    p: 'Every session is a real Claude Code, Codex or OpenCode session. Attach to it from the workbench, see exactly what it shows and type into it. cland adds structure on top; it never walls the harness off.',
+    p: 'Every session is a real Claude Code, Codex or OpenCode session. Attach to it from the workbench, see exactly what it shows and type into it. cland adds structure on top; it never walls the harness off. Attach in a split to keep the topic and the harness side by side. Closing the terminal ends the attachment; the session keeps running.',
     href: '/docs/sessions/',
     shot: 7,
   },
@@ -117,7 +117,7 @@ const features = [
   {
     id: 'inbox',
     h: 'Only what needs you',
-    p: 'Questions travel up the chain of leads, and only the Coordinator asks you. The inbox holds the asks, approvals, plans and requests waiting on you, each answered with one key, from the terminal or your phone.',
+    p: 'Questions travel up the chain of leads, and only the Coordinator asks you. The inbox holds the asks, approvals, plans and requests waiting on you, each answered with one key, from the terminal or your phone. Every row shows how long it has waited. Pick a numbered option or type your own answer; the first reply from the terminal, browser or phone wins.',
     href: '/docs/topics/#the-inbox',
     shot: 6,
   },
@@ -131,7 +131,7 @@ const features = [
   {
     id: 'items',
     h: 'Your tracker, in your repo',
-    p: 'Releases, epics, tasks, specs and questions are Markdown files committed with your code. Configure the container ladder, collect loose work in Bugs, Tech debt, Follow-ups and Ideas, and import your GitHub issues in one command.',
+    p: 'Releases, epics, tasks, specs and questions are Markdown files committed with your code. Configure the container ladder, collect loose work in Bugs, Tech debt, Follow-ups and Ideas, and import your GitHub issues in one command. The explorer shows each task’s status, size, rank and acceptance criteria, alongside its claim and review trail.',
     href: '/docs/items/',
     shot: 5,
   },
@@ -145,7 +145,7 @@ const features = [
   {
     id: 'plans',
     h: 'Plans with stages and lanes',
-    p: 'Every epic gets ordered stages, parallel lanes and a QA policy before work starts. Approve each plan yourself, or let the Coordinator start and tell you.',
+    p: 'Every epic gets ordered stages, parallel lanes and a QA policy before work starts. Approve each plan yourself, or let the Coordinator start and tell you. Each stage sets its QA scope: none, affected or full. You can also require your approval before any epic starts.',
     href: '/docs/concepts/#plans-and-approval',
     shot: 8,
   },
@@ -942,7 +942,6 @@ const crewRows = [
   }
   .feature-link {
     align-self: flex-start;
-    margin-top: auto;
     font-family: var(--mono);
     font-size: 15px;
     padding: 6px 0;
@@ -951,6 +950,32 @@ const crewRows = [
     margin: 0;
     font-family: var(--mono);
     font-size: 15px;
+  }
+  @media (min-width: 901px) {
+    .feature-card > :global(.feature-shot),
+    .feature-phones {
+      aspect-ratio: 16 / 10;
+      background: var(--ground);
+    }
+    .feature-phones {
+      grid-template-rows: minmax(0, 1fr);
+    }
+    .feature-card > :global(.feature-shot),
+    .feature-phones :global(.feature-shot) {
+      position: relative;
+    }
+    .feature-card > :global(.feature-shot img),
+    .feature-phones :global(img) {
+      position: absolute;
+      inset: 0;
+      height: 100%;
+      object-fit: contain;
+      object-position: top;
+    }
+    .feature-phones :global(.feature-shot) {
+      height: 100%;
+      min-height: 0;
+    }
   }
   @media (max-width: 900px) {
     .feature-grid {
