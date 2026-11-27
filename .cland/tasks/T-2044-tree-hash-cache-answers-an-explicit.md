@@ -2,8 +2,8 @@
 id: T-2044
 kind: task
 title: Tree-hash cache answers an explicit --executor local epic cover with a cached Linux droplet result (no macOS run)
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1783
 branch: t/T-2044-tree-hash-cache-answers-an-explicit
 created: 2026-11-21T03:00:38.190Z
-updated: 2026-11-27T02:51:57.322Z
+updated: 2026-11-27T04:38:35.336Z
+closed: 2026-11-27T04:38:35.336Z
 ---
 
 ## Summary
@@ -30,9 +31,11 @@ When a submission names an executor or platform, or its occasion requires one (t
 - [x] C1. An `--executor local` (or macOS-required occasion) submission with only a cached Linux droplet result for the tree runs locally instead of returning the cached result (test).
   - verified: rev-41 [reviewer] · run rev-41-20261126-2044-final · 2026-11-26T21:28:03.610Z · commit 3af173d308b1bb0b2fb3666246b62727d60b2e10
   - done: impl-2044 · 2026-11-27T01:27:08.780Z
+  - verified: rev-41 [reviewer] · run rev-41-20261127-2044-final · 2026-11-27T04:08:44.892Z · commit 3850ab09d903bf17edda4bc899cbe51d61733b04
 - [x] C2. A same-platform cached result is still reused, and the result names the cached run's executor and platform (test).
   - verified: rev-41 [reviewer] · run rev-41-20261126-2044-final · 2026-11-26T21:28:03.610Z · commit 3af173d308b1bb0b2fb3666246b62727d60b2e10
   - done: impl-2044 · 2026-11-27T01:27:08.936Z
+  - verified: rev-41 [reviewer] · run rev-41-20261127-2044-final · 2026-11-27T04:08:44.892Z · commit 3850ab09d903bf17edda4bc899cbe51d61733b04
 
 ## Comments
 
@@ -220,3 +223,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Evidence incomplete, not clear. Run cf0f336c/A-23700 at source-clear 3850ab09d: producer deadlineExpired=true/code143, cause `run timeout 75m; secondary diagnostic: package closure incomplete; machine deletion required`, closure incomplete/nativeExit143. Structured T0–T3 complete exit0; Web interrupted/no complete receipt, T4 unexecuted. Three cache controls each base+5/5 pass; native droplet scenario and previously failing OpenCode log-rollback case base pass, retained only as partial evidence. No new source finding; C1/C2 done, old verification stale/unverified at this head; no failed marks inferred from incomplete Web. A-23701 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23701-t-2044-shared-fix-run-incomplete-during-web-at-3850ab09d.md. Source/tree 7c562783 matched. Linux x64 c8 fra1, workers2, Node24.21/Nvim0.12.5, HeadlessShell1248/CFT156 in incomplete Web; 12 skips and report-only advisories retained. All prior rounds retained. Authorized larger same-head e7499da9 now admitted/pending; Reviewer ran nothing.
+
+### rev-41 · 2026-11-27T03:30:39.823Z
+
+verdict: review
+result: not clear
+by: rev-41 [reviewer]
+run: rev-41-20261127-2044-evidence2
+commit: 3850ab09d903bf17edda4bc899cbe51d61733b04
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Evidence not clear for larger same-head retry e7499da9/A-23707. Actual failure: claude-code-remote.test.ts:536 late SessionEnd recovery case, `Error: process authority unknown; stop requires host reboot or recycling`, surfaced via agent-client.ts:27. Producer code1/causeempty, complete T0/T1/T2 exit0 and T3 exit1; Web/T4/browser unexecuted. Task diff does not touch failing case/agent/client/Claude adapter; no root-cause/flaky attribution inferred. C1/C2 remain done, old verification stale/unverified at this head; no new cache-source finding or failed criterion marks. A-23708 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23708-t-2044-larger-retry-fails-claude-late-sessionend-authority-case.md. Exact source/tree checked. Linux x64 c16 fra1 workers4 Node24.21/Nvim0.12.5; nine skips, report-only advisories. Prior same-head timeout and all earlier rounds retained. Lead/Coordinator attribution/retry decision pending; Reviewer ran nothing.
+
+### rev-41 · 2026-11-27T04:08:44.892Z
+
+verdict: review
+result: clear
+by: rev-41 [reviewer]
+run: rev-41-20261127-2044-final
+commit: 3850ab09d903bf17edda4bc899cbe51d61733b04
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; C1/C2 verified anew at shared-fix head 3850ab09d. Run 0fa959dd/A-23714 producer code0/causeempty, complete T0/T1/T2/T3/Web exit0, exact source/tree7c562783 match. Three cache identities each paired base+5/5 load passes and file passes; exact footer/stage/backfill/native scenario plus previously failing OpenCode rollback and Claude late-SessionEnd cases/files pass base. Retained exact cached-ID/executor/platform/no-worker, explicit local durable completion and unconstrained legacy controls establish criteria. A-23715 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-23715-t-2044-shared-fix-head-final-review-clear-at-3850ab09d.md. Linux x64 c16 fra1 workers4 Node24.21/Nvim0.12.5 HeadlessShell1248/CFT156.0.8078.4, noncached,12 prerequisite skips;254 selected duration-check files once, remaining integrated occasion separate/T4 not full tier, advisories report-only. All earlier failed/incomplete and old-head green receipts retained; no prior outcome converted to pass. No findings or Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-27T04:38:35.336Z
+
+Merged ddc9dc1136c15f46a2d605949a04325cfd00c857 onto dev.
