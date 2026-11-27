@@ -2,8 +2,8 @@
 id: T-2100
 kind: task
 title: "A full integrated run that can't shard (fewer than 2 remote slots free) no longer fits the 75-minute run timeout: T2 18 min + T3 51 min leaves Web unfinished"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1803
 branch: t/T-2100-a-full-integrated-run-that-can-t-shard
 created: 2026-11-25T03:50:04.390Z
-updated: 2026-11-27T05:01:13.845Z
+updated: 2026-11-27T06:42:03.467Z
+closed: 2026-11-27T06:42:03.467Z
 ---
 
 ## Summary
@@ -41,7 +42,7 @@ Pick one with the human; the choice affects spend.
 
 - [x] C1. With fewer than two remote slots free, a full run whose projected wall exceeds the run timeout waits for sharding up to the configured shard wait (default 20 min, the queue wait p90 target), then runs whole on the configured fallback size and workers (default c-16, 4 workers); the log names which path it took and why (test with fake executor slots and a fake clock).
   - done: impl-2100 · 2026-11-27T04:59:02.773Z
-- [ ] C2. A full run that cannot shard completes all tiers, Web included, on dev after the change, sharded or on the fallback size, inside the run timeout (evidence).
+  - verified: rev-40 [reviewer] · run rev-40-20261127-2100-evidence1 · 2026-11-27T05:53:15.596Z · commit aa7d90dba5c52de5ad3c3c7da44b8aff64b9c32b
 
 ## Comments
 
@@ -100,3 +101,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear; A-23731 records both axes, zero findings. M1 fills only absent retained policy fields via shared defaultConfig, preserving admitted settings; legacy restart control retains7.25cap and concretec16/4, red-before-fix retained. M2 persists effective fallback tuple independently of disposable config and reapplies it through one helper on capture/retry; five acquire-refusal/restart/override/custom-reload controls retain exact size/workers/remote/terminal assertions. Original wait/shard/fitting/soak, actual-price spend path and fake whole-case ownership retained. A-23730/request local44/static0 and selected checks are scoped reported evidence, no Linux/full closure proof. C1 done/source-correct, verification pending authorized exact-head configured result. C2 stays intentionally unchecked/unverified for Coordinator post-merge dev run. A-23729 failed source history retained. Hold released; no Reviewer execution.
+
+### rev-40 · 2026-11-27T05:53:15.596Z
+
+verdict: review
+result: clear
+by: rev-40 [reviewer]
+run: rev-40-20261127-2100-evidence1
+commit: aa7d90dba5c52de5ad3c3c7da44b8aff64b9c32b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+C1 evidence clear; A-23739 audits40244c63/A-23738 at source2aa7d90dba. Producer0/cause empty/unfinished[], complete T0/T1/fallbackT2/selected255T3/Web0 at canonicalbc1e54fd, executablematch. All14 exact admission variants base+5/5load pass, including legacy/defaults and five acquire-race/independent-override/custom-reload controls. Stage44distinct, config roundtripbase+5/5, direct consumers/spend20 pass; close18pass/1declared macOS skip. No findings. Noncached Linuxc16fra1 workers4 Node24.21/Nvim0.12.5 HeadlessShell1248/CfT156,12prerequisite skips,budgetsreportonly; T4/remainingT3unexecuted. C1 verified only. Explicit c16 task-head run is not C2 post-merge dev evidence; C2 remains intentionally unchecked/unverified for Coordinator. Prior red controls/source verdict retained. Hold released; no Reviewer execution.
+
+Criteria: C1 verified.
+
+### coord · 2026-11-27T05:53:46.235Z
+
+coord, 2026-11-27 05:54Z: C2 ("a full run that cannot shard completes all tiers on dev after the change") was removed. It's post-merge evidence and can't be checked before enqueue, so it blocked ready; my rewrite at 04:35Z made that mistake. The item's own verify 40244c63 can't prove it either, because it ran on the running hub's old code with an explicit c-16 override. After landing and the next hub restart, coord records here the first full run that takes the new wait or fallback path, with its log line, wall time and cost. If that run fails, it gets a regression item.
+
+### coord · 2026-11-27T06:42:03.467Z
+
+Merged 247e8b3fc4256dfce54ddb7dea0329b0c1ec36f8 onto dev.

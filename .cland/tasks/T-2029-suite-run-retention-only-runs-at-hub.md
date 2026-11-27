@@ -2,8 +2,8 @@
 id: T-2029
 kind: task
 title: Suite-run retention only runs at hub start and on suite launch, so an idle hub never sweeps its backlog
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-1804
 branch: t/T-2029-suite-run-retention-only-runs-at-hub
 created: 2026-11-20T08:02:00.111Z
-updated: 2026-11-27T04:52:12.781Z
+updated: 2026-11-27T06:12:44.591Z
+closed: 2026-11-27T06:12:44.591Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ Give retention its own bounded schedule, for example a pass every few minutes wh
 
 - [x] C1. With no suite launches, retention still completes passes on its own schedule until the backlog is swept (test with a fake clock).
   - done: impl-2029 · 2026-11-27T04:50:58.020Z
+  - verified: rev-35 [reviewer] · run rev-35-2029-evidence-1 · 2026-11-27T05:41:58.121Z · commit 146df0d585b13f9dd697e02265d05c573729e747
 - [x] C2. Passes never overlap, and the per-pass bounds are unchanged (test).
   - done: impl-2029 · 2026-11-27T04:44:57.984Z
+  - verified: rev-35 [reviewer] · run rev-35-2029-evidence-1 · 2026-11-27T05:41:58.121Z · commit 146df0d585b13f9dd697e02265d05c573729e747
 
 ## Comments
 
@@ -69,3 +72,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear; A-23728 records the M1 delta audit. Common seeded setup now has a separately named retained scope.wait with shared testSetupWaitMs; original setup/late acquisitions remain joined before resources/roots/seams. Both idle/close cases use shared load-scaled cleanup and fresh per-receipt budgets; earlier close-failure receipt is named/bounded. Exact fake-clock cadence, releases, work-count bounds and final assertions preserved. Production schedule/single-flight/caps/shutdown/progress and T4 consumer migration unchanged from full source1 review. A-23726 reports local scheduler7/7 and fresh full typecheck/lint0/refusals0; prior A-23724 red/other30-case/T4 scope remains earlier-head authored evidence. Findings []; C1/C2 remain unverified pending same-head configured producer/case receipts. Hold released; request Coordinator window for normal mode-free verification. No Reviewer edits or runs.
+
+### rev-35 · 2026-11-27T05:41:58.121Z
+
+verdict: review
+result: clear
+by: rev-35 [reviewer]
+run: rev-35-2029-evidence-1
+commit: 146df0d585b13f9dd697e02265d05c573729e747
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; A-23737 records independent49d2240d/A-23736/result.json audit. Producer code0/empty cause, unfinished[], complete exit0 T0/T1/allT2/selected246T3/selected1T4/Web at recorded treeb44ec37ffaa9bceca901af00f71ad8a8241f87ac. C1 exact idle-scheduler case base34562 plus5 distinct loaded passes proves scheduled bounded progress to EOF/persisted heartbeat. C2 held-close/non-overlap case34701 pass; unchanged cap/classifier source plus all3 actual T4 scale cases53280/286/293 pass, serving scan4096/remove4093 and direct4091-removal assertions retained. All30 focused identities have current Linux positive receipts. Twelve prerequisite skips;30 otherT3/17T4 unexecuted; broad selected coverage, not full-tier completion. Paired9805pass/12skip+5loaded; known3 finish-only records separate. Linuxc16fra1 Node24.21/Nvim0.12.5 workers4, isolated Headless1248/Chrome156; advisory budgets/lint/cache unknown. Prior local summaries retain authored/head scope. Findings []; C1/C2 verified; no new source/run/allowance or Reviewer execution.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-11-27T06:12:44.591Z
+
+Merged f7b5a2ab0b58b2c7c316246c34db1e564944e648 onto dev.
