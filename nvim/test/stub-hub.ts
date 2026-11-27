@@ -32,6 +32,7 @@ import type { EventRow, VerificationQueue, EventsFilter } from '../../hub/src/pr
 import type { Rule } from '../../hub/src/rules/rulebook.ts';
 import type { VisibilityOverrides } from '../../hub/src/hub/visibility.ts';
 import { replayFrame } from './frame-fixtures.ts';
+import { cardCriteriaInput, cardValue } from './card-frame.ts';
 import { controlRequestName } from './stub-control.ts';
 import { parse as parseToml } from 'smol-toml';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -156,9 +157,18 @@ const config = parseToml(source);
 const preferencesPath = join(process.cwd(), '.cland/ui.json');
 let preferences: Record<string, Record<string, string>> = (() => { try { return JSON.parse(readFileSync(preferencesPath, 'utf8')).visibility ?? {}; } catch { return {}; } })();
 const fixtureConfig = () => replayFrame<{ keys: unknown; tracker: { ladder: string[][] } }>('config', { source, tracker: scenario.tracker });
-const criteria = (item: Record<string, unknown>) => replayFrame<Record<string, unknown>>('criteria', { body: String(item.body ?? ''), criteria: item.criteria });
+const criteria = (item: Record<string, unknown>) => replayFrame<Record<string, unknown>>('criteria', cardCriteriaInput(item));
 const context = () => ({ preferences, visibility: scenario.visibility ?? config.visibility ?? {}, presence: scenario.presence ?? [], processes: scenario.processes ?? [], items: scenario.items ?? [], tracker: { ladder: fixtureConfig().tracker.ladder }, at: now() });
+const recordCards = (control = false) => {
+  const recorder = Reflect.get(globalThis, Symbol.for('cland.nvim.frameRecorder')) as {
+    cards?: (context: object, root: string) => void;
+    controlContext?: (read: () => object, root: string) => void;
+  } | undefined;
+  if (control) recorder?.controlContext?.(context, process.cwd());
+  else recorder?.cards?.(context(), process.cwd());
+};
 const projected = (frame: unknown) => {
+  recordCards();
   const f = frame as Frame;
   const requestType = requests.find(r => r.id === f.id)?.type;
   const bound = f.type === 'result' ? { ...f, id: '@request@' } : f;
@@ -302,6 +312,7 @@ function answerAsk(f: Frame) {
 }
 
 function answer(f: Frame) {
+  recordCards();
   requests.push(f);
   switch (f.type) {
     case 'hello':
@@ -570,7 +581,8 @@ function answer(f: Frame) {
       if (scenario.holdView) return;
       const item = canonicalItem(f.item);
       if (!item) return fail(f.id, `no item ${String(f.item)}`);
-      return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...item, ...criteria(item), path: `.cland/tasks/${String(item.file)}` } });
+      recordCards();
+      return ok(f.id, cardValue(item, criteria(item)));
     }
     default:
       return fail(f.id, `the stub hub does not answer ${String(f.type)}`);
@@ -624,7 +636,10 @@ if (controlPath) {
           }
           if (cmd.emit) write(cmd.emit);
           if (Array.isArray(cmd.emits)) process.stdout.write(cmd.emits.map(frame => `${JSON.stringify(projected(frame))}\n`).join(''));
-          if (cmd.set) Object.assign(scenario, cmd.set);
+          if (cmd.set) {
+            Object.assign(scenario, cmd.set);
+            recordCards(true);
+          }
           if (Array.isArray(cmd.releaseSnapshots)) {
             const selected = snapshots.filter(snapshot => cmd.releaseSnapshots instanceof Array && cmd.releaseSnapshots.includes(snapshot.type) && (!Object.hasOwn(cmd,'snapshotCursor') || (snapshot.cursor??null)===cmd.snapshotCursor));
             if (cmd.snapshotOrder !== 'oldest') selected.reverse();

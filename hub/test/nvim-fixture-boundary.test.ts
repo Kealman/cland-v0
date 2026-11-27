@@ -1,13 +1,27 @@
 // T1: source-import closure and recorder drift refusal; no live resources.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { nvimHubImports } from '../src/suite-selection.ts';
 import { assertRecordings } from './nvim-fixture-check.ts';
 import { recordedOutput } from './nvim-frame-source.ts';
-import { canonical, frameRecordingInput, FRAME_FIXTURES, parseRecordings, recordingKey, packRecordings, unpackRecordings, replayFrame, selectRecordings, recordingReader } from '../../nvim/test/frame-fixtures.ts';
+import { canonical, frameRecordingInput, FRAME_FIXTURES, parseRecordings, recordingKey, packRecordings, unpackRecordings, replayFrame, selectRecordings, recordingReader, serializeRecordings } from '../../nvim/test/frame-fixtures.ts';
+import { fixtureWork } from '../../test-support/fixture-work.ts';
 const root = fileURLToPath(new URL('../../', import.meta.url));
+test('the complete catalog fits the hub Git read limit and round-trips every recording', async t => {
+  const owner = fixtureWork();
+  t.after(() => owner.close());
+  await owner.run(async () => {
+    const source = await readFile(FRAME_FIXTURES, 'utf8');
+    assert.ok(Buffer.byteLength(source) < 16 * 1024 * 1024, 'complete catalog must fit the existing 16 MiB hub Git reader');
+    const records = parseRecordings(source);
+    const encoded = serializeRecordings(records);
+    const fingerprint = (text: string) => createHash('sha256').update(text).digest('hex');
+    assert.equal(fingerprint(encoded), fingerprint(source), 'full decode/re-encode retains every catalog byte, key, input and output');
+  });
+});
 test('the catalog has one record per normalized explorer input', async () => {
   const records = parseRecordings(await readFile(FRAME_FIXTURES,'utf8'));
   const keys = Object.values(records).map(r=>recordingKey(r.operation,frameRecordingInput(r.input)));
@@ -132,4 +146,22 @@ test('a slice loads the committed catalog once for a recorded interleaving and s
   assert.deepEqual(read('later', 'frame', {}), { text: 'Later frame' });
   assert.equal(loads, 1, 'the full catalog is cached after its first use');
   assert.throws(() => read('missing', 'frame', { requestType: 'task.view', frame: { type: 'result' } }), /operation=frame request=task.view key=missing/);
+});
+
+test('compact and previous hash node IDs replay together across a slice fallback', async t => {
+  const owner = fixtureWork();
+  t.after(() => owner.close());
+  await owner.run(async () => {
+    const own = { first: { operation: 'frame', input: {}, output: { text: 'Slice output' } } };
+    const all = { ...own, later: { operation: 'frame', input: {}, output: { text: 'Catalog output' } } };
+    const compact = (records: typeof own | typeof all) => JSON.parse(serializeRecordings(records));
+    assert.equal(serializeRecordings(Object.fromEntries(Object.entries(all).reverse())), serializeRecordings(all), 'input enumeration cannot change serialized bytes');
+    assert.deepEqual(unpackRecordings(packRecordings(all)), all, 'the previous full-hash node format remains readable');
+    for (const [slice, catalog] of [[compact(own), packRecordings(all)], [packRecordings(own), compact(all)]]) {
+      const read = recordingReader(slice, () => catalog);
+      assert.deepEqual(read('first', 'frame', {}), own.first.output);
+      assert.deepEqual(read('later', 'frame', {}), all.later.output);
+      assert.deepEqual(read('first', 'frame', {}), own.first.output, 'local node IDs remain scoped to their decoder');
+    }
+  });
 });

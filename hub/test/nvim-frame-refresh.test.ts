@@ -3,6 +3,101 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertRecordingRun, refreshFrameCatalog } from './nvim-frame-refresh.ts';
 import { recordingKey, type Recording } from '../../nvim/test/frame-fixtures.ts';
+import { canonical, serializeRecordings } from '../../nvim/test/frame-fixtures.ts';
+import { createFrameRecorder } from './nvim-frame-recorder.ts';
+import { recordedOutput } from './nvim-frame-source.ts';
+import { fixtureWork } from '../../test-support/fixture-work.ts';
+
+test('debounced card selection cannot change the refreshed catalog or slices', async t => {
+  const owner = fixtureWork();
+  t.after(() => owner.close());
+  await owner.run(async () => {
+    const context = { at: '2026-10-14T10:00:00Z', items: [
+      { id: 'R-1', kind: 'release', state: 'open', version: '0.1.0' },
+      { id: 'T-654', kind: 'task', parent: 'R-1', state: 'open', body: '## Summary\nBenchmark row.' },
+    ], tracker: {}, preferences: {}, visibility: {}, presence: [], processes: [] };
+    const refreshes: string[] = [];
+    for (const selected of [[], ['R-1', 'T-654']]) {
+      const frames: Recording[] = [];
+      let work = 0;
+      const recorder = createFrameRecorder((op, input) => { work++; return recordedOutput(op, input); }, r => frames.push(r));
+      recorder('config', { source: '' });
+      recorder.cards(context, '/fixture');
+      const eagerWork = work;
+      assert.equal(eagerWork, 5, 'one config and two producer operations per item');
+      assert.equal(frames.filter(r => r.operation === 'frame').length, 2);
+      recorder.cards(structuredClone(context), '/fixture');
+      assert.equal(work, eagerWork, 'identical contexts do no repeated producer work');
+      for (const id of selected) {
+        const item = context.items.find(item => item.id === id)!;
+        const input = { body: String(item.body ?? ''), criteria: undefined };
+        const normalized = canonical(input, '/fixture');
+        const criteria = normalized.restore(recorder('criteria', normalized.input));
+        const frame = { type: 'result', id: '@request@', ok: true, value: { item: { body: '', comments: [], verdicts: [], ...item, ...criteria as object, path: `.cland/tasks/${String(undefined)}` } } };
+        const card = canonical({ ...context, frame, requestType: 'task.view' }, '/fixture', context.at);
+        assert.deepEqual(recorder('frame', card.input), recordedOutput('frame', card.input));
+      }
+      await refreshFrameCatalog(['explorer.test.ts'], false, {
+        catalog: {}, slices: new Map([['explorer.test.ts', {}]]), capture: async () => frames,
+        normalize: r => [r], publish: async (catalog, slices) => { refreshes.push(serializeRecordings(catalog), serializeRecordings(slices.get('explorer.test.ts')!)); },
+      });
+    }
+    assert.deepEqual(refreshes.slice(0, 2), refreshes.slice(2), 'zero or two optional selections publish identical bytes');
+    const frames: Recording[] = [];
+    let calls = 0;
+    const recorder = createFrameRecorder((op, input) => { calls++; return recordedOutput(op, input); }, r => frames.push(r));
+    recorder.cards(context, '/fixture');
+    const changed = { ...context, items: context.items.map(item => item.id === 'T-654' ? { ...item, body: '## Summary\nChanged body.' } : item) };
+    recorder.cards(changed, '/fixture');
+    assert.equal(calls, 8, 'a changed context captures exactly two producer operations per item again');
+    assert.ok(frames.some(r => JSON.stringify(r.output).includes('Changed body.')), 'new wire facts remain recorded');
+    assert.throws(() => recorder('criteria', { body: 'not in this scenario' }), /outside its recorded scenario context/);
+  });
+});
+
+test('a transient control context records cards without demand and defers invalid projection faults', async t => {
+  const owner = fixtureWork();
+  t.after(() => owner.close());
+  await owner.run(async () => {
+    const frames: Recording[] = [];
+    const recorder = createFrameRecorder(recordedOutput, r => frames.push(r));
+    const context = { at: '2026-10-14T10:00:00Z', items: [{ id: 'T-654', kind: 'task', state: 'open', body: 'Transient control state' }] };
+    recorder.controlContext(() => context, '/fixture');
+    assert.equal(frames.filter(r => r.operation === 'frame').length, 1, 'the control boundary records the card even when selection is coalesced away');
+    const count = frames.length;
+    recorder.controlContext(() => { throw new Error('invalid tracker'); }, '/fixture');
+    assert.equal(frames.length, count, 'invalid setup leaves capture unchanged');
+    assert.throws(() => recorder.cards({ ...context, tracker: { ladder: 1 } }, '/fixture'), /levels must/);
+  });
+});
+
+test('a failed recorder append refuses its control context and all later capture publication', async t => {
+  const owner = fixtureWork();
+  t.after(() => owner.close());
+  await owner.run(async () => {
+    for (const failAt of [1, 2]) for (const nestedRead of [false, true]) {
+      let appends = 0;
+      const failure = new Error('recording storage unavailable');
+      const recorder = createFrameRecorder((op, input) => op === 'criteria' ? {} : input, () => {
+        if (++appends === failAt) throw failure;
+      });
+      const context = { at: '2026-10-14T10:00:00Z', items: [{ id: 'T-654', kind: 'task', state: 'open' }] };
+      assert.throws(() => recorder.controlContext(() => {
+        if (nestedRead) recorder('config', { source: '' });
+        return context;
+      }, '/fixture'), error => error === failure);
+      const publications: unknown[] = [];
+      await assert.rejects(refreshFrameCatalog(['failed-capture.test.ts'], false, {
+        catalog: {}, slices: new Map(), capture: async () => {
+          recorder('config', { source: '' });
+          return [];
+        }, normalize: r => [r], publish: async next => { publications.push(next); },
+      }), error => error === failure);
+      assert.equal(appends, failAt, 'a later operation cannot resume a failed capture');
+      assert.deepEqual(publications, [], 'failed capture never publishes a catalog');
+    }
+  });
+});
 
 const first: Recording = { operation: 'items', input: { page: 1 }, output: [] };
 const second: Recording = { operation: 'items', input: { page: 2 }, output: [] };

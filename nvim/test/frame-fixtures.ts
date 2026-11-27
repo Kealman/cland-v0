@@ -170,7 +170,19 @@ export function parseRecordings(text: string): Record<string, Recording> {
 }
 
 export function serializeRecordings(recordings: Record<string, Recording>): string {
-  const data = packRecordings(recordings);
+  const packed = packRecordings(recordings);
+  // Hashes intern equal values; only opaque local IDs need to reach disk.
+  // Assign in hash order so record enumeration cannot change serialized bytes.
+  const ids = new Map(Object.keys(packed.nodes).sort().map((hash, i) => [hash, `n${i.toString(36)}`]));
+  const atom = (value: Atom): Atom => value !== null && typeof value === 'object' ? { ref: ids.get(value.ref)! } : value;
+  const data: Packed = {
+    version: 1,
+    nodes: Object.fromEntries(Object.entries(packed.nodes).map(([hash, node]) => [ids.get(hash)!,
+      'array' in node ? { array: node.array.map(atom) }
+        : 'object' in node ? { object: node.object.map(([key, value]): [string, Atom] => [key, atom(value)]) }
+          : node])),
+    records: Object.fromEntries(Object.entries(packed.records).map(([key, r]) => [key, { ...r, input: atom(r.input), output: atom(r.output) }])),
+  };
   const section = (entries: object) => Object.entries(entries).map(([key, value]) => `    ${JSON.stringify(key)}: ${JSON.stringify(value)}`).join(',\n');
   return `{\n  "version": 1,\n  "nodes": {\n${section(data.nodes)}\n  },\n  "records": {\n${section(data.records)}\n  }\n}\n`;
 }

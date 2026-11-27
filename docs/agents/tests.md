@@ -1076,6 +1076,9 @@ counts can shrink when concurrent requests coalesce, so existing slice and catal
 counts are not completeness floors. An unavailable Neovim binary, incomplete test
 receipt or empty capture refuses the refresh, leaving fixtures unchanged. Full
 refreshes replace the catalog; targeted refreshes retain unrelated catalog entries.
+Card frames and criteria are captured eagerly for every item in each scenario
+context, cached by canonical context, so debounced selection does not change
+the recorded set. Repeated card demand must match that captured set.
 For an expensive consumer, `npm run test:nvim-fixtures -- --slice <test-file>`
 also commits a per-file catalog under `nvim/test/fixtures/protocol-frames/`.
 The parent test selects that slice for its stub processes; consumers without a
@@ -1088,6 +1091,8 @@ full catalog as well as checking that catalog against the hub producers.
 Review the generated JSON with the assertions that consume it. The catalog
 interns repeated JSON nodes, binds transient machine paths, UUIDs and timestamps,
 and retains the seven-day visibility age class and original wire values.
+Serialized intern references are compact opaque IDs assigned in hash order;
+recording keys remain SHA-256. Readers also accept the previous full-hash node IDs.
 
 `node hub/test/nvim-selection-replay.ts [dev-ref]` reports the latest 40 task
 landings against the current importer graph, failing an incomplete window or any

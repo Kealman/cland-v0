@@ -14178,6 +14178,13 @@
     "hub/test/verification-commands.test.ts::host T0 elapsed receipt survives a wall clock correction": 0.741278
   },
   "allow": {
+    "hub/test/nvim-fixture-boundary.test.ts::the complete catalog fits the hub Git read limit and round-trips every recording": {
+      "seconds": 6.628,
+      "owner": "E-880",
+      "added": "2026-11-27",
+      "expires": "2026-12-04",
+      "reason": "Linux measured peak 4.418 s; 1.5x headroom for nvim-fixture-boundary.test.ts: the complete catalog fits the hub Git read limit and round-trips every recording."
+    },
     "hub/test/lead-handover-failure.test.ts::forced handover assertion reports and closes": {
       "seconds": 24.402,
       "owner": "E-880",
