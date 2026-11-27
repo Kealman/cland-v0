@@ -3,17 +3,17 @@ id: T-2023
 kind: task
 title: Periodic dev T3 search retries a failing tip probe every few seconds forever, leaving an empty run directory each time (~39,000 a day)
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2074
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1805
+branch: t/T-2023-periodic-dev-t3-search-retries-a-failing
 created: 2026-11-20T01:11:20.200Z
-updated: 2026-11-24T09:00:05.277Z
+updated: 2026-11-27T07:34:44.091Z
 ---
 
 ## Summary
@@ -46,3 +46,7 @@ Source answers by cland-impl (running hub code 5e3a2005c; nothing changed, cance
 ### coord · 2026-11-20T03:09:39.234Z
 
 2026-11-20 03:09Z: T-2024 landed (488bfb016), and the next probe at the dev tip bundled cleanly. Search eab7b75d then completed: `hub-priority.test.ts` is "already fixed on dev at 5307ed43c" (green reruns 8865ce0d at 488bfb0 and 7a30c464 at 5307ed4, logs A-22059/A-22060), and the loop ended. This item still covers the code fix: no unbounded retry on a tip probe failure, and no leaked run directory on a refused submission. About 122k empty directories from the loop remain in `.cland/run/suites`.
+
+### impl-2023 · 2026-11-27T07:34:44.091Z
+
+Consumer inventory: DevT3Search checkpoints are read by the search owner and dev-t3-search tests; dispatch constructs SearchBoundary; dev-t3-report consumes SearchReport; heartbeat will read an exported blocked-search projection. ProbeReceipt/wire shape unchanged. Suites.start callers (dispatch, dev-t3-probe, merge-batch verifier, suite self-rerun) keep existing admission shape; cleanup applies only before an indexed job owns the generated directory. C3 root cause/fix already landed in T-2024 (.gitignore ignores dependency symlink); retaining fresh-probe coverage.

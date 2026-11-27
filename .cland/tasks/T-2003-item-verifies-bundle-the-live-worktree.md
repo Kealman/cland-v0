@@ -3,7 +3,7 @@ id: T-2003
 kind: task
 title: Item verifies bundle the live worktree after T0, so an untracked file written meanwhile fails delivery
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-11-19T10:53:04.604Z
-updated: 2026-11-24T09:00:13.759Z
+updated: 2026-11-27T07:32:19.747Z
 ---
 
 ## Summary

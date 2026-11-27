@@ -3,17 +3,17 @@ id: T-2002
 kind: task
 title: Coverage-download failures keep only the latest error; earlier attempts leave no durable diagnostic
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-2074
 blocked_by: []
-topic: null
-branch: null
+topic: topic-1806
+branch: t/T-2002-coverage-download-failures-keep-only-the
 created: 2026-11-19T10:01:10.786Z
-updated: 2026-11-24T09:00:12.882Z
+updated: 2026-11-27T07:34:29.919Z
 ---
 
 ## Summary

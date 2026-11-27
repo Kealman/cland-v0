@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-11-27T01:25:51.007Z
+updated: 2026-11-27T07:34:40.235Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -738,3 +738,7 @@ Restart #104 (2026-11-25, on coord's request under rule 19: T-2062 bounded stage
 ### human · 2026-11-27T01:25:51.007Z
 
 Restart #105 (2026-11-27, on coord's request under rule 19: T-2112 bounded merge Git reads, the stdout maxBuffer fix): hub r104 pid 29725 (a6ff2853b, 1 d 15 h 56 m up, RSS 1.27 GB, 0 stalls) stopped 01:24:38Z; job cland-hub-r105 pid 85225 started from the root at de4118939 (dev = origin/dev, root clean, no package or web/src changes, merge queue empty, no suite running), serving 01:24:52.556Z, gap 14 s. Binding listeners 7 ms, web listener 291 ms. Port 63537, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job.
+
+### human · 2026-11-27T07:34:40.235Z
+
+Restart #106 (2026-11-27, on coord's request under rule 19: T-2044 executor-aware cache reuse, T-2116, T-2029 scheduled suite-run retention, T-2100 shard wait plus c-16 fallback): hub r105 pid 85225 (de4118939, 6 h up, 1 startup stall, 6 landings) stopped 07:33:33Z; job cland-hub-r106 pid 12423 started from the root at 6e6134bd3 (dev = origin/dev, stage cover 77fe4c0b green at this commit: 10,064 passed, 0 failed; root clean, no package or web/src changes, merge queue empty, no suite running), serving 07:33:45.397Z, gap 13 s. Binding listeners 4 ms, web listener 203 ms. Port 49279, web 56935, nice 0, env check 2, homebrew on PATH, one launchd job.
