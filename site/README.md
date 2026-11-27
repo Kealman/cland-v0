@@ -102,7 +102,7 @@ The site deploys to GitHub Pages with the custom domain `cland.app` (`public/CNA
 
 ## Landing features
 
-The landing page shows all eleven features as cards, in two columns above
+The landing page shows all twelve features as cards, in two columns above
 900 px and one column below. Keep each `feature-<id>` anchor and docs link stable.
 Cards contain a number, title, text and Learn more link, followed by the feature's
 screenshot or diagram when available. Screenshots use responsive sizes, and
