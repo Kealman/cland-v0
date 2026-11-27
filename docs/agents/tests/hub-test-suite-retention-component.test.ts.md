@@ -1,5 +1,8 @@
 # hub/test/suite-retention-component.test.ts
 
+Interrupted retirement retains `coverage-download.log` alongside its map bytes;
+successful revalidation removes the whole run, including that diagnostic.
+
 Unindexed controls explicitly exercise report and disposable deletion modes.
 They require positive index absence and the newest bounded-inventory mtime past
 the floor, preserve indexed/referenced/pinned/young roots and a fresh file inside

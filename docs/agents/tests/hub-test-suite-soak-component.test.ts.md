@@ -1,5 +1,9 @@
 # hub/test/suite-soak-component.test.ts
 
+The download-diagnostic pointer case uses `suiteCase` and the scripted remote
+executor. After a durable diagnostic write and remote completion, it checks the
+published immutable log points to the retained run-local file.
+
 T-1996 keeps the ancestry case in T2: the production `suiteCandidate.isAncestor`
 uses a scripted `execFile` custom promisifier for positive, reverse and missing
 Git receipts. No repository is initialized and no native Git runs. The shared

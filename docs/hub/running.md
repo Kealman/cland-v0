@@ -874,8 +874,15 @@ cause of a network failure or change the existing upload retry policy.
 If persisting a failed upload diagnostic itself fails, the copy error remains
 the primary cause and a bounded secondary diagnostic names the persistence
 failure. The upload stops without claiming a durable diagnostic or retrying.
-Coverage downloads retain transport facts in their thrown diagnostic; durable
-per-attempt history here applies to delivery uploads only.
+Coverage downloads also append every failed transport attempt to `coverage-download.log`
+beside the destination coverage map before returning the error to Suites.
+They retain the same bounded, redacted transport facts; a later retry or success
+does not erase earlier diagnostics. Suites retains its existing collection
+retry policy. Diagnostic persistence failures retain the copy error as their
+cause and name the bounded secondary failure. This run-local diagnostic stays
+separate from the remote log mirror so it cannot change remote replay offsets.
+After collection settles, the published suite log points to this file. It belongs
+to the run directory and follows that directory's retention and retirement policy.
 
 Readiness deadline errors retain a typed producer phase, deadline milliseconds
 and observed clock milliseconds. `boot-readiness` identifies the image/boot

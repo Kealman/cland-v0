@@ -23,7 +23,9 @@ import { keyHash, readSnapshot, snapshotPath, prepareSnapshot, type Snapshot } f
 import { readLeases, readLeaseHistory, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { Machine } from '../src/executor/droplet/machine.ts';
 import { diagnosticResult } from '../src/hub/merge-batches.ts';
-import { DeliveryTransportError } from '../src/executor/droplet/run.ts';
+import { DeliveryTransportError, DropletRun } from '../src/executor/droplet/run.ts';
+import { suiteCase } from './suite-case-fixture.ts';
+import { scratchMachine } from './init-machine.ts';
 import { Store } from '../src/hub/store.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { defaultConfig } from '../src/init/config.ts';
@@ -38,6 +40,37 @@ import { DigitalOceanError } from '../src/executor/droplet/api.ts';
 import { testDeadlineMs } from './until.ts';
 import { fixtureWork } from '../../test-support/fixture-work.ts';
 import { within } from '../src/executor/droplet/deadline.ts';
+
+test('coverage download success retains both earlier transport failures in the run diagnostic', async t => suiteCase(t, async ({ setup, step, guardControl }) => {
+  const f = await setup(fixtures => scratchMachine(fixtures, { identity: false }));
+  const path = join(f.root, 'coverage-map.json');
+  const log = join(f.root, 'coverage-download.log');
+  await step('diagnostic setup', () => writeFile(log, 'existing run diagnostic\n'));
+  const failures = [
+    new MachineRequestError('machine scp failed (exit 255): first bounded stderr tail', false, { code: '255', signal: '', stderr: 'first bounded stderr tail', timedOut: false, timeoutMs: 120000 }),
+    new MachineRequestError('machine scp failed (exit null, signal SIGTERM): second bounded stderr tail', false, { code: 'null', signal: 'SIGTERM', stderr: 'second bounded stderr tail', timedOut: true, timeoutMs: 120000 }),
+  ];
+  let copies = 0;
+  const run = new DropletRun(f.root, f.env, { machine: {
+    async get(_lease, remote, local) {
+      assert.equal(remote, 'runs/coverage-run/coverage-map.json');
+      assert.equal(local, `${path}.tmp`);
+      const failure = failures[copies++];
+      if (failure) { await writeFile(local, '{partial'); throw failure; }
+      await writeFile(local, '{"complete":true}');
+    },
+  } as NonNullable<DropletDependencies['machine']> });
+  const lease = { run: 'coverage-run' } as DropletLease;
+  for (const failure of failures) await step('failed download receipt', () => assert.rejects(run.collectCoverage(lease, path), error => error === failure));
+  await step('successful download receipt', () => run.collectCoverage(lease, path));
+  assert.equal(copies, 3, 'one settled copy per collection attempt');
+  assert.equal(await step('completed map', () => readFile(path, 'utf8')), '{"complete":true}');
+  const diagnostic = await step('durable diagnostic', () => readFile(log, 'utf8'));
+  assert.ok(diagnostic.startsWith('existing run diagnostic\n'));
+  for (const failure of failures) assert.ok(diagnostic.includes(failure.message), failure.message);
+  assert.equal(diagnostic.split('coverage download failed:').length - 1, 2);
+  guardControl();
+}));
 
 /** Keep resource hooks outside caseDeadlines' settled ancillary-hook promise. */
 function heldWriterCase(t: TestContext, release?: () => void) {

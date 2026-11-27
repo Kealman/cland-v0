@@ -149,6 +149,7 @@ test('interrupted removal revalidates its persisted map artifact requirements', 
     await mkdir(run,{recursive:true});await mkdir(join(root,'.cland/artifacts'),{recursive:true});
     const log=join(root,'.cland/artifacts/log'),map=join(root,'.cland/artifacts/map');
     await writeFile(log,'log receipt');await writeFile(map,'map receipt');await writeFile(join(run,'coverage-map.json'),'retained map');
+    await writeFile(join(run,'coverage-download.log'),'retained download failure');
     const original=fs.rm;let interrupt=true;
     scope.patch(fs,'rm',async (...args:Parameters<typeof original>)=>{
       if(args[0]===tombstone&&interrupt){interrupt=false;throw new Error('planted removal interruption');}
@@ -158,6 +159,7 @@ test('interrupted removal revalidates its persisted map artifact requirements', 
     await rm(map);
     assert.equal(await retireSuiteRun(root,'old',[log],()=>true,{remove:true}),false);
     assert.equal(await readFile(join(tombstone,'coverage-map.json'),'utf8'),'retained map');
+    assert.equal(await readFile(join(tombstone,'coverage-download.log'),'utf8'),'retained download failure');
     await writeFile(map,'map receipt');
     assert.equal(await retireSuiteRun(root,'old',[log,map],()=>true,{remove:true}),true);
     assert.deepEqual(await readdir(join(root,'.cland/run/suites')),[]);

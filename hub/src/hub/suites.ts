@@ -51,7 +51,7 @@ import { readLeases, readLease, leaseDir, type DropletLease } from '../executor/
 import { machineEnv } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
 import type { ExecutorKind, HostGate, Lease, Platform, RunRef } from '../executor/executor.ts';
-import { DeliveryTransportError } from '../executor/droplet/run.ts';
+import { DeliveryTransportError, coverageDownloadDiagnostic } from '../executor/droplet/run.ts';
 import { ReadinessDeadlineError } from '../executor/droplet/readiness-deadline.ts';
 import { idNumber } from '../tracker/item.ts';
 import { diagnosticTestFile, taskSuiteSelection, describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
@@ -2174,6 +2174,15 @@ export class Suites {
       // remain raw byte offsets until the machine has been released.
       let evidence: string | undefined;
       const logEvidence = async () => evidence ??= await (job.cached ? this.evidence(job) : readSuiteEvidence(this.#finalizedPath(job) ?? job.log));
+      if (remote && !job.cached && !this.#finalizedPath(job)) {
+        const diagnostic = coverageDownloadDiagnostic(join(dirname(job.log), 'coverage-map.json'));
+        const present = await stat(diagnostic).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
+        if (present) {
+          const pointer = `coverage download diagnostics: ${diagnostic}\n`;
+          const log = await logEvidence();
+          if (!log.includes(pointer)) { await appendFile(job.log, pointer); evidence = log + pointer; }
+        }
+      }
       // A native success can coexist with an incomplete scheduler collection.
       // Keep that original receipt byte-for-byte, including across report retries.
       const preserveNativeResult = remote && incompleteCollection(job);

@@ -24,6 +24,19 @@ import type { Artifact, Message } from '../src/protocol.ts';
 import { flakyReceiptCase as periodicCase } from './flaky-receipt-fixture.ts';
 import { fenceFixtureCleanup } from './process-cleanup.ts';
 
+test('published remote run log points to retained coverage download diagnostics', async t => suiteCase(t, async ({ setup, step }) => {
+  const f = await setup(fixtures => suiteUnit(fixtures, { executor: 'droplet' }));
+  const job = await step('admission', () => f.launch({ executor: 'droplet', fresh: true }));
+  await step('running receipt', () => f.machine.waits.run(f.machine.started(job.id)));
+  const diagnostic = join(f.root, '.cland/run/suites', job.id, 'coverage-download.log');
+  await step('download diagnostic receipt', () => writeFile(diagnostic, 'coverage download failed: retained transport facts\n'));
+  await step('remote completion', () => f.finish(job.id));
+  assert.equal(f.reports.length, 1);
+  const published = await step('published diagnostic pointer', () => readFile(f.reports[0]!.log, 'utf8'));
+  assert.ok(published.includes(`coverage download diagnostics: ${diagnostic}\n`));
+  assert.equal(await step('retained bytes', () => readFile(diagnostic, 'utf8')), 'coverage download failed: retained transport facts\n');
+}));
+
 test('snapshot disk incompatibility refuses c-4 admission before T0 and names fitting sizes', async t => {
   const run = caseDeadlines(t);
   const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted' }));

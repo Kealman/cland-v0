@@ -34,6 +34,8 @@ export class DeliveryTransportError extends Error {
 }
 
 const exec = promisify(execFile);
+/** Local diagnostics must never contribute to the remote log replay offset. */
+export const coverageDownloadDiagnostic = (coveragePath: string): string => join(dirname(coveragePath), 'coverage-download.log');
 /** Hosting-source program; delivered older trees need not contain the reader. */
 export function runStatusProgram(): string {
   const timing = `if(fs.existsSync(p+'/timing-receipts.json')){const rows=(${readTimingReceipts.toString()})(fs,p+'/timing-receipts.json',(${parseTimingReceipts.toString()}));if(rows)status.timingReceipts=rows;}`;
@@ -315,7 +317,20 @@ git write-tree
   }
   async collectCoverage(lease: DropletLease, path: string): Promise<void> {
     // An interrupted copy cannot become a durable, apparently complete map.
-    await this.#machine.get(lease, `runs/${lease.run}/coverage-map.json`, `${path}.tmp`);
+    try { await this.#machine.get(lease, `runs/${lease.run}/coverage-map.json`, `${path}.tmp`); }
+    catch (error) {
+      // Machine.get settles the native writer and bounds/redacts its stderr
+      // before rejecting. Append before handing retry ownership to Suites:
+      // job.error is transient and a later successful collection clears it.
+      const failure = error instanceof Error ? error.message : 'machine request failed';
+      // Keep local diagnostics separate: suite.log size owns remote replay offsets.
+      try { await appendFile(coverageDownloadDiagnostic(path), `coverage download failed: ${failure}\n`, { mode: 0o600 }); }
+      catch (diagnosticError) {
+        const diagnosticFailure = (diagnosticError instanceof Error ? diagnosticError.message : 'diagnostic write failed').slice(0, 1024);
+        throw Object.assign(new Error(`coverage download failed: ${failure}; diagnostic persistence failed: ${diagnosticFailure}`, { cause: error }), { diagnosticFailure });
+      }
+      throw error;
+    }
     await rename(`${path}.tmp`, path);
   }
 }

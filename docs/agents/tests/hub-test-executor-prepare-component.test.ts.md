@@ -1,5 +1,12 @@
 # hub/test/executor-prepare-component.test.ts
 
+Coverage-download diagnostics use `suiteCase` from scratch setup through closure,
+with its positively controlled native launch guard. Fake `Machine.get` fails
+twice with distinct exit/signal and stderr diagnostics, then writes a complete
+map. Three settled copy calls prove the work count; the final map and `coverage-download.log`
+prove success retained both earlier failures and existing log bytes. No native
+transport, network or provider is used.
+
 Snapshot advisory cases use `snapshotCase` from setup through owner closure,
 with separate named load-scaled `scope.wait` observations for fixture setup/stop,
 snapshot setup, acquisition, release and inspection. Owner closure keeps its
