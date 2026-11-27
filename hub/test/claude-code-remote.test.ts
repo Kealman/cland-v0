@@ -43,7 +43,7 @@ function proofOwner(t:TestContext, options:{clock?:Clock;timeoutMs?:number}={}) 
  const fixtures=new Proxy(supervisor.fixtures,{get(target,key){
    return key==='signal'?innerSignal:Reflect.get(target,key,target);
  }});
- return {close:supervisor.close,releaseOnClose:supervisor.releaseOnClose,
+ return {close:supervisor.close,releaseOnClose:supervisor.releaseOnClose,wait:supervisor.wait,
    run:(body:(inner:TestContext)=>Promise<void>)=>{
      const producer=supervisor.run(()=>body(fixtures));
      return within(abortable(producer,t.signal),options.timeoutMs??waitTimeoutMs(testWaitMs(120_000)),options.clock,()=>new Error('whole fixture proof observation expired')).catch(error=>{
@@ -534,9 +534,13 @@ for(const mode of ['release','release-restart','forget-restart'] as const)test(`
 });
 
 test('late SessionEnd after the recovery snapshot never grants an adopted closed receipt',{timeout:8 * testWaitMs() + 120000},async t=>{
+ for(const ordering of ['recovery before capture','capture before recovery'] as const)await t.test(ordering,async t=>{
+ const proof=proofOwner(t);
+ const entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>();let armed=false;
+ proof.releaseOnClose(()=>release.resolve());
+ await proof.run(async t=>{
+ const {d,root,client,generation,signalled,marker}=await proof.wait('late SessionEnd recovery setup',async()=>{
  const {serveAgent}=await import('../src/host/agent/server.ts');
- const {ownProcess}=await import('./process-cleanup.ts');
- const {within}=await import('../src/executor/droplet/deadline.ts');
  let marker='',hook:unknown;
  const d=await remoteClaudeFixture(t,{awaitSignals:false,settings:settings=>settings.hooks.SessionEnd.push({hooks:[hook]}),setup:async f=>{
    marker=join(f.fake.home,'late-hook-ready');const script=join(f.fake.home,'late-hook.cjs');
@@ -547,29 +551,63 @@ test('late SessionEnd after the recovery snapshot never grants an adopted closed
  await eventually('initial turn completed before held capture',async()=>(await d.fake.log(d.row.harnessId)).includes('session.measure done')||undefined);
  const root=(await d.machine.identity(d.row.pid))!;
  await d.f.agent.close();
- const entered=Promise.withResolvers<void>(),release=Promise.withResolvers<void>();let armed=false;
  const signalled:number[]=[];
- const restarted=await serveAgent({runDir:d.f.fake.run,secret:d.f.secrets.readSecret('f1'),version:'test',env:d.f.env,processHooks:{beforeCheckpoint:async phase=>{if(armed&&phase==='recover'){armed=false;entered.resolve();await release.promise;}},beforeSignals:async targets=>{signalled.push(...targets.map(target=>target.pid));}}});d.f.addCleanup(()=>restarted.close());
+ const restarted=await serveAgent({runDir:d.f.fake.run,secret:d.f.secrets.readSecret('f1'),version:'test',env:d.f.env,memoryIntervalMs:waitTimeoutMs(testWaitMs(120000)),processHooks:{beforeCheckpoint:async phase=>{if(armed&&phase==='recover'){armed=false;entered.resolve();await release.promise;}},beforeSignals:async targets=>{signalled.push(...targets.map(target=>target.pid));}}});d.f.addCleanup(()=>restarted.close());
  const client=await AgentClient.connect(d.f.paths.agentSocket,d.f.secrets.readSecret('f1'));d.f.addCleanup(()=>client.close());
  const generations=(await readdir(join(d.f.fake.run,'claude'))).filter(name=>name.endsWith('.json'));assert.equal(generations.length,1);
  const generation=generations[0]!.slice(0,-5);
  await client.request('adopt-claude',{generation});
- armed=true;const preparing=client.request('prepare-stop',{pid:root.pid,identity:root.pidIdentity});
+ await client.request('restore-claude',{});
+ return {d,root,client,generation,signalled,marker};
+ },waitTimeoutMs(testWaitMs()));
+ // The timer-driven recovery could own the old checkpoint in the original
+ // case. Force that ordering instead of relying on Linux scheduling under load.
+ armed=true;
+ let preparing:Promise<unknown>|undefined;
+ const recovering=ordering==='recovery before capture'?client.request('restore-claude',{}):Promise.resolve();
+ void recovering.catch(()=>{});
  try{
-   await within(entered.promise,1000);
-   const ready=eventually('late SessionEnd durable PID',async()=>{try{return Number(await readFile(marker,'utf8'))||undefined;}catch{return undefined;}},{ timeoutMs: 2000, behaviour: "post-signal receipt deadline" });
+   if(ordering==='capture before recovery'){
+     preparing=client.request('prepare-stop',{pid:root.pid,identity:root.pidIdentity});
+     void preparing.catch(()=>{});
+   }
+   await within(entered.promise,waitTimeoutMs(testWaitMs()));
+   if(!preparing){
+     preparing=client.request('prepare-stop',{pid:root.pid,identity:root.pidIdentity});
+     void preparing.catch(()=>{});
+   }
+   const ready=eventually('late SessionEnd durable PID',async()=>{try{return Number(await readFile(marker,'utf8'))||undefined;}catch{return undefined;}});
+   void ready.catch(()=>{});
    process.kill(root.pid!,'SIGTERM');
    const pid=await ready;d.f.addCleanup(ownProcess(undefined,pid));
-   await eventually('root positively absent with the late hook still alive',async()=>!await d.machine.identity(root.pid!)||undefined,{ timeoutMs: 1000, behaviour: "post-signal receipt deadline" });
+   await eventually('root positively absent with the late hook still alive',async()=>(await observeProcesses([root.pid!],d.f.env)).get(root.pid!)?.ended||undefined);
    release.resolve();
-   const result=await within(preparing,1000) as {settled?:boolean;token?:string};
-   assert.notEqual(result.settled,true,'an uncaptured live writer prevents a closed receipt');
-   if(result.token)await client.request('abort-prepared',{token:result.token});
+   await within((async()=>{
+     await recovering;
+     if(ordering==='recovery before capture'){
+       // Restart lost fresh launch authority. An uncaptured hook can detach a
+       // writer, so permanent reboot/recycling refusal is intentional here;
+       // this is not a transient ps timeout or a grant to signal that hook.
+       await assert.rejects(preparing!,/^Error: process authority unknown; stop requires host reboot or recycling$/,
+         'recovery fences an uncaptured writer before stop admission');
+     }else{
+       const result=await preparing as {settled?:boolean;token?:string};
+       assert.notEqual(result.settled,true,'an uncaptured live writer prevents a closed receipt');
+       assert.ok(result.token,'capture before exit admits only its earlier pinned births');
+       await client.request('abort-prepared',{token:result.token});
+       await client.request('restore-claude',{});
+     }
+   })(),waitTimeoutMs(testWaitMs()));
+   const rows=JSON.parse(await readFile(join(d.f.fake.run,'processes.json'),'utf8')) as Array<{pid:number;identity:string;authority?:string;ended?:boolean}>;
+   assert.ok(rows.some(row=>row.pid===root.pid&&row.identity===root.pidIdentity&&row.authority==='unknown'&&!row.ended),
+     'the exact adopted birth remains durably held, without a closed receipt');
    await assert.rejects(client.request('remove-claude',{generation}),/cleanup ownership incomplete/);
    assert.ok(await d.machine.identity(pid));assert.equal(signalled.includes(pid),false);
    const record=JSON.parse(await readFile(join(d.f.fake.run,'claude',generation+'.json'),'utf8'));
    assert.notEqual(record.released,true);assert.ok((await readFile(join(record.privateDirectory,'settings.json'),'utf8')).includes(d.credential()));
- }finally{release.resolve();await Promise.allSettled([preparing]);}
+ }finally{release.resolve();await Promise.allSettled([preparing,recovering]);}
+ });
+ });
 });
 
 for(const failing of [false,true])test(`terminal remote PID settlement ${failing?'holds the row on native failure':'cleans before publishing exit'} without recurring CLI`,{timeout:8 * testWaitMs() + 120000},async t=>{

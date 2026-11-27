@@ -67,10 +67,25 @@ recovery and no repeated native stop or Host stop. Terminal receipts and hub
 private-deletion checkpoints carry no token; final forget removes the receipt
 only after private-directory absence. Revoke/remove integration is T-1666.
 
-The held-recovery-checkpoint control creates an asynchronous native SessionEnd
-hook after the old tree snapshot, observes root absence and keeps the unknown
-writer live: prepare-stop must not return settled, release refuses, and private
-settings remain. It independently joins the unowned hook before disposal.
+The held-recovery-checkpoint control covers recovery-before-capture and
+capture-before-recovery as explicit subcases under the shared whole-case owner.
+It creates an asynchronous native SessionEnd hook after the old tree snapshot,
+observes positive root exit and keeps the unknown writer live. Recovery before
+capture must refuse with `process authority unknown; stop requires host reboot
+or recycling`; capture before recovery returns only the earlier pinned births,
+never a settled receipt, and its prepared token is aborted. Both paths retain
+the exact adopted birth as durably unknown, refuse release, leave private
+settings intact and never signal the unowned hook. It independently joins the
+hook before disposal. The permanent refusal is intentional for this adversarial
+agent-restart fixture: an uncaptured hook could detach another writer. It is
+not a transient ps timeout, and disappearance of known PIDs cannot prove tree
+closure. The separately named `late SessionEnd recovery setup` observation
+covers fixture acquisition, initial turn, agent restart/connect, adoption and
+initial restoration. It uses the shared load-scaled bound through the whole-proof
+owner's retained wait: expiry leaves the original setup producer enrolled, so
+late acquisitions register their cleanup before the owner joins them and runs
+fixture teardown. Checkpoint and result observations keep separate load-scaled
+action bounds.
 Frame-level terminal controls observe cleanup before exit, and native stop/query
 failure with a held running row, role and credential copies. Four subsequent
 injected intervals run no further Claude commands. Dates remain real.
