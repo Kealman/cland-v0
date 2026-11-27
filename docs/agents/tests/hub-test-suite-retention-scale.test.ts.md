@@ -1,5 +1,10 @@
 # hub/test/suite-retention-scale.test.ts
 
+The serving-pass case observes successful native removal of `.retiring-run-*`
+roots through the shared whole-case filesystem seam; per-run diagnostic log
+lines are no longer a receipt. The final pass summary and directory assertions
+remain required.
+
 The live unindexed case uses the actual projectHub serving owner on 50,000 aged
 directories. Observers precede startup. A positive removal receipt starts the
 task.view measurement (<1000 ms); the full pass records its own durationMs,

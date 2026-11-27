@@ -63,7 +63,7 @@ Evidence publication uses the session-aware `publishSessionEvidence` library;
 see [scan and publication](../docs/agents/evidence-publication.md) for snapshot,
 positive-control, shared scanner profiles and refusal behaviour.
 The [suite retention reference](../docs/hub/suite-retention.md) describes bounded
-background deletion, durable publisher pins, preserved evidence and the
+background deletion on a two-minute backlog / ten-minute idle schedule, durable publisher pins, preserved evidence and the
 configurable age floor and pass cap, with an [exact consumer census](../docs/hub/suite-run-references.md).
 The [remote command reference](../docs/hub/remote-commands.md) describes local
 approval-code validation and known-invalid versus unknown request refusals.

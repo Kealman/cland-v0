@@ -272,6 +272,8 @@ export class Suites {
   readonly #retentionParents = new Map<string, string>();
   #retentionWork: Promise<void> | undefined;
   #retentionAdmitted = false;
+  #retentionTimer: ClockTimer | undefined;
+  #retentionPasses = 0;
   readonly #waitMetrics: VerificationWait;
   #waitTimer: ClockTimer | null;
   readonly #latestItems = new Map<number, SuiteJob>();
@@ -1215,7 +1217,11 @@ export class Suites {
   startRetention(): void {
     this.#retentionAdmitted = true;
     if (this.#closed || this.#retentionWork) return;
+    this.#clock.clearTimeout(this.#retentionTimer);
+    this.#retentionTimer = undefined;
     const started=performance.now();
+    let removedCount=0, errorCount=0;
+    let firstError: string | undefined;
     this.#options.log?.({event:'suite-retention-start'});
     this.#retentionWork = this.#retention.drain(id => {
       const parent = this.#retentionParents.get(id) ?? id;
@@ -1239,8 +1245,21 @@ export class Suites {
       return [{ id: log.id, path: log.path }, ...(coverage && !coverage.fileDeleted && coverage.status !== 'archived' ? [{ id: coverage.id, path: coverage.path }] : [])];
     }, (id, removed, error) => {
       if (removed) this.#store.setMeta(`suite-retired:${id}`, '1');
-      this.#options.log?.({ event: 'suite-retention', id, removed, ...(error ? { error: String(error) } : {}) });
-    }, () => this.#closed).then(() => this.#options.log?.({event:'suite-retention-report',durationMs:performance.now()-started,...this.#retention.snapshot()})).catch(error => this.#options.log?.({ event: 'suite-retention-incomplete',durationMs:performance.now()-started,...this.#retention.snapshot(),error: String(error) })).finally(() => { this.#retentionWork = undefined; });
+      if (removed) removedCount++;
+      if (error) { errorCount++; firstError ??= String(error).slice(0,1024); }
+    }, () => this.#closed).then(() => {
+      const snapshot=this.#retention.snapshot();
+      const progress={passes:++this.#retentionPasses,at:this.#clock.now().toISOString(),backlog:snapshot.backlog,removed:snapshot.removed,unindexed:snapshot.unindexed};
+      this.#store.setMeta('suite-retention-progress',JSON.stringify(progress));
+      this.#options.log?.({event:'suite-retention-report',durationMs:performance.now()-started,...snapshot,removedThisPass:removedCount,errors:errorCount,...(firstError?{firstError}:{})});
+    }).catch(error => this.#options.log?.({ event: 'suite-retention-incomplete',durationMs:performance.now()-started,...this.#retention.snapshot(),error: String(error) })).finally(() => {
+      this.#retentionWork = undefined;
+      if (!this.#closed) {
+        const snapshot=this.#retention.snapshot();
+        this.#retentionTimer=this.#clock.setTimeout(()=>this.startRetention(),snapshot.backlog||snapshot.unindexed.continuing?120000:600000);
+        this.#retentionTimer.unref();
+      }
+    });
   }
   async #launch(job: SuiteJob): Promise<void> {
     job.state = 'launching'; job.admittedAt ??= this.#clock.now().toISOString(); this.#launching.add(job.id); this.#save(job);
@@ -2551,6 +2570,8 @@ export class Suites {
   }
   async close(): Promise<void> {
     this.#closed = true;
+    this.#clock.clearTimeout(this.#retentionTimer);
+    this.#retentionTimer = undefined;
     await withCleanupAsync(async () => {
       const closingDroplet = this.#droplet.close(); for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); this.stopWaitMetrics(); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await this.#periodic; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await this.#hostSnapshotRecovery; await this.#leaseRefreshing; await Promise.allSettled(this.#inspecting.values()); await closingDroplet;
     }, async () => { await this.#retentionWork; await this.#retention.close(); });

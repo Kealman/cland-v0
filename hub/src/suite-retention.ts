@@ -44,7 +44,7 @@ export class SuiteRetention {
     this.#decisions.set(id,reason); this.#counts.set(reason,(this.#counts.get(reason)??0)+1);
   }
   snapshot() {
-    return {...suiteRetentionReport(Object.fromEntries(this.#counts),this.#known.size,this.#removed,this.#options.remove?'live':'report'),unindexed:this.#unindexed.snapshot()};
+    return {...suiteRetentionReport(Object.fromEntries(this.#counts),this.#known.size,this.#removed,this.#options.remove?'live':'report'),backlog:this.#pending.size,unindexed:this.#unindexed.snapshot()};
   }
   remember(run: RetainedSuite): void {
     this.#known.add(run.id);

@@ -5,9 +5,12 @@ import fs from 'node:fs/promises';
 import { join } from 'node:path';
 import { retentionCase } from './suite-retention-fixture.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
+import { heartbeatDigest } from '../src/hub/heartbeat.ts';
+import { testSetupWaitMs } from './until.ts';
 
-async function seeded(scope: ReturnType<typeof retentionCase>, step: <T>(work:()=>Promise<T>)=>Promise<T>, evidence?: Partial<SuiteJob>) {
-  const f = await step(() => scope.unit({machineReceiptsOnly:true}));
+async function seeded(scope: ReturnType<typeof retentionCase>, step: <T>(work:()=>Promise<T>)=>Promise<T>, evidence?: Partial<SuiteJob>, passLimit?: number) {
+  return scope.wait('complete scheduler seeded setup',async()=>{
+  const f = await step(() => scope.unit({machineReceiptsOnly:true, ...(passLimit===undefined?{}:{suiteRetentionPassLimit:passLimit})}));
   const run = await step(() => f.launch({fresh:true}));
   await step(() => f.finish(run.id));
   const template = (await f.jobs())[0]!;
@@ -26,7 +29,44 @@ async function seeded(scope: ReturnType<typeof retentionCase>, step: <T>(work:()
   }
   await step(() => f.reopen(jobs));
   return {f,log};
+  },testSetupWaitMs());
 }
+
+test('idle scheduler continues bounded retention passes without suite launches', t => {
+  const scope=retentionCase(t,undefined,{timeoutMs:testSetupWaitMs()});
+  return scope.run(async step=>{
+    const {f}=await seeded(scope,step,undefined,1);
+    f.logs.length=0;
+    const report=(count:number)=>f.when(()=>{
+      const reports=f.logs.filter(row=>row.event==='suite-retention-report');
+      return reports.length>=count?reports[count-1]:undefined;
+    });
+    const first=report(1);
+    f.suites.startRetention();
+    assert.equal((await scope.wait('first bounded pass',()=>first,testSetupWaitMs())).removed,1);
+    const second=report(2);
+    await f.clock.advance(120000);
+    assert.equal((await scope.wait('scheduled bounded pass',()=>second,testSetupWaitMs())).removed,2);
+    assert.equal(f.logs.filter(row=>row.event==='suite-retention-start').length,2);
+    for(const row of f.logs.filter(row=>row.event==='suite-retention-report')) {
+      assert.ok((row.unindexed as {scanned:number}).scanned<=1);
+    }
+    assert.equal((await fs.readdir(join(f.root,'.cland/run/suites'))).filter(id=>id.startsWith('retention-')).length,20);
+    for(let count=3;count<=24;count++) {
+      const next=report(count);
+      await f.clock.advance(120000);
+      const row=await scope.wait('scheduled directory discovery receipt',()=>next,testSetupWaitMs());
+      assert.ok((row.unindexed as {scanned:number}).scanned<=1);
+      if(!(row.unindexed as {continuing:boolean}).continuing)break;
+    }
+    const progress=JSON.parse(f.store.meta('suite-retention-progress')!);
+    assert.equal(progress.backlog,0);
+    assert.equal(progress.unindexed.continuing,false,'bounded scheduled passes reach directory EOF');
+    const digest=heartbeatDigest(f.store,[],1000,f.clock.now().getTime(),0,1000);
+    assert.match(digest.text,/indexed backlog 0 .*removed 2/);
+    assert.match(digest.text,/discovery complete/);
+  });
+});
 
 test('scheduler live retention uses bounded indexed lookups and guarded deletion', t => {
   const scope=retentionCase(t);
@@ -75,7 +115,7 @@ for(const [kind,evidence] of Object.entries({
 
 test('scheduler close joins retained filesystem work after an earlier cleanup rejection', t => {
   const release=Promise.withResolvers<void>();
-  const scope=retentionCase(t,()=>release.resolve());
+  const scope=retentionCase(t,()=>release.resolve(),{timeoutMs:testSetupWaitMs()});
   return scope.run(async step=>{
     const {f,log}=await seeded(scope,step);
     const entered=Promise.withResolvers<void>(), failed=Promise.withResolvers<void>();
@@ -86,7 +126,12 @@ test('scheduler close joins retained filesystem work after an earlier cleanup re
       return Reflect.apply(original,fs,args);
     });
     f.suites.startRetention();
-    await scope.wait('retention filesystem admission',()=>entered.promise);
+    await scope.wait('retention filesystem admission',()=>entered.promise,testSetupWaitMs());
+    const starts=f.logs.filter(row=>row.event==='suite-retention-start').length;
+    f.suites.startRetention();
+    await f.clock.advance(600000);
+    f.suites.startRetention();
+    assert.equal(f.logs.filter(row=>row.event==='suite-retention-start').length,starts,'held filesystem work excludes launch and scheduled overlap');
     const clear=f.clock.clearInterval.bind(f.clock), failure=new Error('planted earlier close rejection');
     let reject=true;
     scope.patch(f.clock,'clearInterval',(...args:Parameters<typeof clear>)=>{
@@ -95,11 +140,13 @@ test('scheduler close joins retained filesystem work after an earlier cleanup re
     });
     let closed=false;
     const closing=f.suites.close().then(()=>{closed=true;return null;},error=>{closed=true;return error;});
-    await failed.promise;
+    await scope.wait('earlier close rejection receipt',()=>failed.promise,testSetupWaitMs());
     assert.equal(closed,false,'close cannot settle before its admitted filesystem owner');
     release.resolve();
-    assert.equal(await scope.wait('close joined retention and preserved failure',()=>closing),failure);
+    assert.equal(await scope.wait('close joined retention and preserved failure',()=>closing,testSetupWaitMs()),failure);
     assert.equal(closed,true);
+    await f.clock.advance(600000);
+    assert.equal(f.logs.filter(row=>row.event==='suite-retention-start').length,starts,'closed scheduler admits no timer work');
     assert.equal((await fs.readdir(join(f.root,'.cland/run/suites'))).filter(id=>id.startsWith('retention-')).length,22);
   });
 });

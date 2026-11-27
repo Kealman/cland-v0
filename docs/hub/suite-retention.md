@@ -14,11 +14,14 @@ Each pass visits at most the configured number of indexed pending identities
 and the same number of directory entries, yielding every 32 entries. Thus the
 default upper bound is 4096 indexed retirement candidates and 4096 discovered
 classification entries per pass, with eligible unindexed entries also removed.
-At the observed 4.5 passes/hour, eligible directory capacity is 18,432/hour,
-net 16,932 after 1,500 new directories/hour. The 5.4-hour projection for 91,000
-entries assumes this full capacity; it excludes actual IO and protected/young
-entries and is not a measured clearance time. Lower the existing pass limit
-and reload to throttle subsequent passes on the live machine.
+After serving admits the first pass, the scheduler runs another pass two minutes
+after completion while indexed candidates or an open directory cursor remain,
+and ten minutes after completion otherwise. Suite launches retain their trigger;
+concurrent triggers share the admitted pass, and a launch replaces a pending
+timer. No sweep runs during startup recovery. The timer is unreferenced, uses
+the scheduler clock, and stops before shutdown joins admitted IO. The cadence
+does not depend on executor, authentication or network availability. Lower the
+existing pass limit and reload to throttle subsequent passes on the live machine.
 
 Indexed runs retain the newest 20 per occasion, unsettled/unknown-age jobs,
 references, pins, coverage pointers, duration sources and conservative cover,
@@ -57,11 +60,21 @@ unknown. Report mode makes no retirement claim and keeps every directory.
 SUITE_UNINDEXED_RETENTION_REMOVE is the independent activation default; its
 enabled value cites the human's exception beside the declaration. Disposable
 tests explicitly exercise production default, report and deletion settings.
-The serving owner emits suite-retention-start and durationMs on its complete
+The serving owner emits suite-retention-start and one summary rather than
+per-run decision lines, with removal and error counts and the first error
+(capped at 1024 characters). It emits durationMs on its complete
 or incomplete pass receipt. Duration covers admitted background work and its
 IO, excluding startup, queue wait, fixture setup and teardown.
 Shutdown stops and joins
 both work and the directory cursor even after another cleanup failure.
+
+Each successful pass checkpoints progress for the Coordinator heartbeat: last
+completion time, passes for that scheduler owner, remaining indexed candidates
+(including protected runs), cumulative indexed removals, last directory-pass
+scan/removal counts, and whether discovery continues. Directory backlog size
+remains unknown until EOF; a closed cursor means discovery completed, not that
+every retained directory was eligible for deletion. Progress is the last stored
+receipt and its timestamp remains visible after a hub restart.
 
 Before serving on an older tracker index, one schema migration invalidates item
 hashes so the existing bootstrap walk indexes parsed verified criterion run

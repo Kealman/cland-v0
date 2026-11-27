@@ -16,7 +16,7 @@ export class UnindexedSuiteRetention {
   #report:{mode:'report'|'live';scanned:number;wouldRetire:number;removed:number;reasons:Record<string,number>}={mode:'report',scanned:0,wouldRetire:0,removed:0,reasons:{}};
   readonly root:string;
   constructor(root:string) {this.root=root;}
-  snapshot(){return {...this.#report,reasons:{...this.#report.reasons}};}
+  snapshot(){return {...this.#report,continuing:this.#directory!==undefined,reasons:{...this.#report.reasons}};}
   async close():Promise<void> {const directory=this.#directory;this.#directory=undefined;await directory?.close();}
   async sweep(options:{absent:(id:string)=>boolean; referenced:(id:string)=>boolean; now:number; minimumAgeMs:number; remove:boolean; stopped:()=>boolean; limit:number; emit:(id:string,removed:boolean,error?:unknown)=>void}):Promise<void> {
     this.#report={mode:options.remove?'live':'report',scanned:0,wouldRetire:0,removed:0,reasons:{}};

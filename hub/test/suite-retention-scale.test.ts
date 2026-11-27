@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, utimesSync } from 'node:fs';
 import { mkdir, writeFile, readdir, readFile, opendir, utimes } from 'node:fs/promises';
+import fs from 'node:fs/promises';
 import { join } from 'node:path';
 import { SuiteRetention } from '../src/suite-retention.ts';
 import { pinSuiteRun } from '../src/suite-reference-pins.ts';
@@ -44,8 +45,15 @@ test('live unindexed scheduler pass stays responsive across fifty thousand direc
       const firstBoundary=Promise.race([first.promise,finished.promise.then(()=>{throw new Error('unindexed pass completed without a removal receipt');})]);
       void firstBoundary.catch(()=>{});
       const removed=new Set<string>();let complete=false;
+      const remove=fs.rm;
+      scope.patch(fs,'rm',async(...args:Parameters<typeof remove>)=>{
+        const result=await Reflect.apply(remove,fs,args);
+        if(typeof args[0]==='string'&&args[0].startsWith(join(suites,'.retiring-run-'))) {
+          removed.add(args[0].slice(join(suites,'.retiring-').length));first.resolve();
+        }
+        return result;
+      });
       const log=(entry:Record<string,unknown>)=>{
-        if(entry.event==='suite-retention'&&entry.removed===true){removed.add(String(entry.id));first.resolve();}
         if(entry.event==='suite-retention-report'){complete=true;finished.resolve(entry);}
         if(entry.event==='suite-retention-incomplete')finished.reject(new Error(`unindexed pass incomplete: ${String(entry.error)}`));
       };

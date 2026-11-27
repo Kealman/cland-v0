@@ -65,5 +65,8 @@ export function heartbeatDigest(store: Store, items: ItemSummary[], interval: nu
   }
   const section = (title: string, rows: string[]) => `${title} (${rows.length})\n${rows.slice(0, 10).map(row => `- ${row.replace(/[\r\n]+/g, ' ')}`).join('\n') || '- none'}${rows.length > 10 ? `\n- and ${rows.length - 10} more` : ''}`;
   const soak = store.meta('soak-coverage');
-  return { text: `${section('In flight', flight)}\n\n${section('Stale', stale)}${soak ? `\n\nSoak coverage\n${soak}` : ''}`, inFlight: flight.length, stale: stale.length };
+  const retention = store.meta('suite-retention-progress');
+  const progress = retention ? JSON.parse(retention) as {passes:number;at:string;backlog:number;removed:number;unindexed:{scanned:number;removed:number;continuing:boolean}} : null;
+  const retentionText = progress ? `\n\nSuite retention\n${progress.passes} passes by last scheduler owner; last ${progress.at}; indexed backlog ${progress.backlog} (includes protected runs), removed ${progress.removed}; last directory pass scanned ${progress.unindexed.scanned}, removed ${progress.unindexed.removed}, discovery ${progress.unindexed.continuing?'continuing':'complete'}` : '';
+  return { text: `${section('In flight', flight)}\n\n${section('Stale', stale)}${soak ? `\n\nSoak coverage\n${soak}` : ''}${retentionText}`, inFlight: flight.length, stale: stale.length };
 }
