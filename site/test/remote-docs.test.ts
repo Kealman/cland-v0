@@ -222,19 +222,37 @@ const landingSource = source('site/src/pages/index.astro');
 const featureList = landingSource.slice(landingSource.indexOf('const features = ['), landingSource.indexOf('const pad ='));
 const featureSection = landingSource.split('<section id="features"')[1]!.split('</section>')[0]!;
 
-test('landing shows all eleven features in the chosen order without carousel controls', () => {
+test('landing shows all twelve features in the chosen order without carousel controls', () => {
   assert.deepEqual([...featureList.matchAll(/id: '([^']+)'/g)].map(match => match[1]),
-    ['harness', 'accounts', 'remote', 'inbox', 'gate', 'items', 'topics', 'plans', 'verify', 'artifacts', 'release']);
+    ['harness', 'accounts', 'remote', 'inbox', 'gate', 'items', 'topics', 'plans', 'verify', 'artifacts', 'hosts', 'release']);
   assert.match(featureSection, /features\.map\(/);
   assert.doesNotMatch(landingSource, /carousel|scroll-snap|aria-roledescription/);
   assert.match(featureSection, /All features in the docs →/);
+  const hosts = featureList.split("id: 'hosts',")[1]!.split('\n  },')[0]!;
+  for (const fact of ['DigitalOcean pools', 'harness logins', 'remote machines', 'terminal workbench', 'test runs', 'daily spend cap', "href: '/docs/hosts/'", 'diagram: `%%']) assert.ok(hosts.includes(fact), fact);
 });
 
-test('feature cards keep anchors and only number, title, text and docs link in a responsive grid', () => {
+test('feature cards keep anchors and historical images in a responsive grid', () => {
   assert.match(featureSection, /id=\{`feature-\$\{s.id\}`\}/);
   assert.match(featureSection, /pad\(i \+ 1\)/);
   for (const field of ['s.h', 's.p', 's.href']) assert.ok(featureSection.includes(field));
-  assert.doesNotMatch(featureSection, /Screenshot|Diagram|<img|<svg|<button|hidden/);
+  assert.doesNotMatch(featureSection, /<button|hidden/);
+  // Independent mapping from the former feature slides, matched by id rather than order.
+  const entries = featureList.split(/\n  \{\n/).slice(1);
+  const shots = { harness: 7, accounts: 2, inbox: 6, gate: 9, items: 5, topics: 13, plans: 8, artifacts: 11 };
+  for (const [id, n] of Object.entries(shots)) {
+    const entry = entries.find(entry => entry.includes(`id: '${id}'`))!;
+    assert.match(entry, new RegExp(`shot: ${n},`), id);
+  }
+  for (const id of ['verify', 'release']) {
+    assert.match(entries.find(entry => entry.includes(`id: '${id}'`))!, /diagram: `%%/);
+  }
+  assert.match(featureSection, /s.shot && <Screenshot n=\{s.shot\}[^>]*sizes=/);
+  assert.match(featureSection, /s.diagram && <Diagram code=\{s.diagram\}/);
+  assert.match(entries.find(entry => entry.includes("id: 'remote'"))!, /phones: \[14, 15\]/);
+  assert.match(featureSection, /s.phones.map/);
+  assert.match(featureSection, /<Screenshot n=\{n\}[^>]*sizes=/);
+  assert.match(landingSource, /@media \(max-width: 600px\)\s*\{\s*\.feature-phones\s*\{\s*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(landingSource, /\.feature-grid\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(landingSource, /@media \(max-width: 900px\)\s*\{\s*\.feature-grid\s*\{\s*grid-template-columns: minmax\(0, 1fr\)/);
 });
@@ -249,7 +267,7 @@ test('feature link clicks use GoatCounter feature ids and privacy wording includ
 
 test('every landing feature points to an existing documentation page', () => {
   const links = [...featureList.matchAll(/href: '(\/docs\/[^']+)'/g)].map(match => match[1]!);
-  assert.equal(links.length, 11);
+  assert.equal(links.length, 12);
   for (const href of links) {
     const slug = href.split('#')[0]!.replace(/^\/docs\//, '').replace(/\/$/, '');
     assert.ok(['md', 'mdx'].some(ext => existsSync(new URL(`../src/content/docs/docs/${slug}.${ext}`, import.meta.url))), href);

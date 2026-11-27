@@ -11,16 +11,31 @@ Every screenshot on the landing and in the docs, by number. Every listed image i
 | No. | File | Size | Pages | Status |
 | --- | --- | --- | --- | --- |
 | 1 | `hero.png` | 2881×1675 | Landing: hero (below the crew window); Docs: The workbench | exists |
-| 2 | `accounts.png` | 1601×1200 | Landing: “Get more from every plan you pay for”; Docs: Accounts and limits; Docs: Sessions and harness access | exists |
+| 2 | `accounts.png` | 1601×1200 | Landing: feature grid; Landing: “Get more from every plan you pay for”; Docs: Accounts and limits; Docs: Sessions and harness access | exists |
 | 3 | `web.png` | 2400×1500 | Landing: “In the terminal, the browser or your pocket”; Docs: Web and phone, The layout | exists |
 | 4 | `phone.png` | 1170×2532 | Landing: “In the terminal, the browser or your pocket”; Docs: Web and phone, What the phone shows | exists |
-| 5 | `explorer.png` | 2940×1716 | Docs: Items and the tracker, top | exists |
-| 6 | `inbox.png` | 1377×800 | Docs: Topics and the inbox, The inbox | exists |
-| 7 | `attach.png` | 2934×1683 | Docs: Sessions and harness access, top | exists |
-| 8 | `plan.png` | 2917×1677 | | exists |
-| 9 | `task-card.png` | 2252×1683 | Docs: Items and the tracker, Acceptance criteria; Docs: Verification and release, The merge gate | exists |
-| 11 | `artifact.png` | 1851×1200 | Docs: Web and phone, Threads and asks | exists |
-| 13 | `topics.png` | 1600×1200 | Docs: Topics and the inbox, top | exists |
+| 5 | `explorer.png` | 2940×1716 | Landing: feature grid; Docs: Items and the tracker, top | exists |
+| 6 | `inbox.png` | 1377×800 | Landing: feature grid; Docs: Topics and the inbox, The inbox | exists |
+| 7 | `attach.png` | 2934×1683 | Landing: feature grid; Docs: Sessions and harness access, top | exists |
+| 8 | `plan.png` | 2917×1677 | Landing: feature grid | exists |
+| 9 | `task-card.png` | 2252×1683 | Landing: feature grid; Docs: Items and the tracker, Acceptance criteria; Docs: Verification and release, The merge gate | exists |
+| 11 | `artifact.png` | 1851×1200 | Landing: feature grid; Docs: Web and phone, Threads and asks | exists |
+| 13 | `topics.png` | 1600×1200 | Landing: feature grid; Docs: Topics and the inbox, top | exists |
+| 14 | `discord.png` | 1179×1740 | Landing: feature grid, remote control | exists |
+| 15 | `telegram.png` | 1179×1815 | Landing: feature grid, remote control | exists |
+
+## Remote phone captures
+
+Both sources are 1179×2556 phone captures. Crops use pixel rectangles with origin
+at the top left; pixels inside each rectangle are unchanged. No resizing or
+content edits were applied. The crops remove the phone status/header area and
+bottom input bars.
+
+- `discord.png`: x=0, y=480, width=1179, height=1740. Discord on a phone: the Coordinator asks how to ship release 1.8, with four numbered option buttons, Other answer and Decline.
+- `telegram.png`: x=0, y=345, width=1179, height=1815. Telegram on a phone: the same release 1.8 decision with option rows and a free-answer reply to the Coordinator.
+
+Both appear side by side in the remote-control feature card and stack below
+600 px. Descriptions match their alt text in `src/screens.ts`.
 
 ## 1. `hero.png` (exists)
 
